@@ -521,6 +521,7 @@ export const UpdatePublicationDtoSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
   images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
+  imageUrl: z.string().url().optional().nullable(), // For backward compatibility
   // Taxonomy fields (can be updated)
   impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
   beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),

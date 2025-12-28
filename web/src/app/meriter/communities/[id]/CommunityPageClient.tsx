@@ -17,27 +17,27 @@ import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown, Trash2 } from 'lucide-react';
 import {
-  IMPACT_AREAS,
-  BENEFICIARIES,
-  METHODS,
-  STAGES,
-  HELP_NEEDED,
-  type ImpactArea,
-  type Beneficiary,
-  type Method,
-  type Stage,
-  type HelpNeeded,
+    IMPACT_AREAS,
+    BENEFICIARIES,
+    METHODS,
+    STAGES,
+    HELP_NEEDED,
+    type ImpactArea,
+    type Beneficiary,
+    type Method,
+    type Stage,
+    type HelpNeeded,
 } from '@/lib/constants/taxonomy';
 import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/shadcn/select';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -48,6 +48,7 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
 import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
+import { useCommunityPolling } from '@/hooks/useCommunityPolling';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -60,11 +61,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
     const {
-      translateImpactArea,
-      translateStage,
-      translateBeneficiary,
-      translateMethod,
-      translateHelpNeeded,
+        translateImpactArea,
+        translateStage,
+        translateBeneficiary,
+        translateMethod,
+        translateHelpNeeded,
     } = useTaxonomyTranslations();
 
     // Get the post parameter from URL for deep linking
@@ -108,6 +109,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
+
+    // Enable periodic polling for this community (refresh content and quota every 30s)
+    useCommunityPolling(chatId);
 
     // Fetch all communities to find the future-vision community when on marathon-of-good
     // This must be called before calculating futureVisionCommunityId
@@ -155,6 +159,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Fetch deleted publications (will only return data if user is lead)
     // Hook is called here so it's available for useEffect/useMemo below
+    // 403 errors are suppressed by retry: false in the hook
     const {
         data: deletedData,
         fetchNextPage: fetchNextDeletedPage,
@@ -422,7 +427,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Helper function to toggle items in array
     const toggleInArray = <T,>(arr: T[], value: T): T[] => {
-      return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+        return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
     };
 
     // Filter publications by tag and search query
@@ -470,12 +475,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         // Filter by taxonomy fields (OR semantics for array fields)
         filtered = filtered.filter((p: FeedItem) => {
             if (p.type !== 'publication') return true; // Only filter publications
-            
+
             const pub = p as PublicationFeedItem & { impactArea?: string; stage?: string; beneficiaries?: string[]; methods?: string[]; helpNeeded?: string[] };
-            
+
             if (fImpactArea !== 'any' && pub.impactArea !== fImpactArea) return false;
             if (fStage !== 'any' && pub.stage !== fStage) return false;
-            
+
             // OR semantics across selected facets - item matches if it has ANY of the selected tags
             if (fBeneficiaries.length > 0) {
                 const pubBeneficiaries = pub.beneficiaries || [];
@@ -492,7 +497,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 const hasAnyHelpNeeded = fHelpNeeded.some(h => pubHelpNeeded.includes(h));
                 if (!hasAnyHelpNeeded) return false;
             }
-            
+
             return true;
         });
 

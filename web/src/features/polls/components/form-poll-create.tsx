@@ -12,6 +12,7 @@ import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Label } from '@/components/ui/shadcn/label';
 import { Loader2 } from 'lucide-react';
 import {
@@ -52,20 +53,21 @@ export const FormPollCreate = ({
     const isInTelegram = !!rawData;
     const isMountedRef = useRef(true);
     const updatePoll = useUpdatePoll();
+    const createPoll = useCreatePoll();
     const isEditMode = !!pollId && !!initialData;
     const currentCommunityId = communityId || initialData?.communityId || '';
     const { data: community } = useCommunity(currentCommunityId);
     const { data: quotaData } = useUserQuota(currentCommunityId);
     const { data: wallet } = useWallet(currentCommunityId || undefined);
-    
+
     // Get poll cost from community settings (default to 1 if not set)
     const pollCost = community?.settings?.pollCost ?? 1;
-    
+
     // Check if payment is required (not future-vision and cost > 0)
     const requiresPayment = community?.typeTag !== 'future-vision' && pollCost > 0;
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const walletBalance = wallet?.balance ?? 0;
-    
+
     // Automatic payment method selection: quota first, then wallet
     const willUseQuota = requiresPayment && quotaRemaining >= pollCost;
     const willUseWallet = requiresPayment && quotaRemaining < pollCost && walletBalance >= pollCost;
@@ -76,7 +78,7 @@ export const FormPollCreate = ({
         const now = new Date();
         const expires = new Date(expiresAt);
         const diffMs = expires.getTime() - now.getTime();
-        
+
         if (diffMs <= 0) {
             return { value: "24", unit: "hours" };
         }
@@ -94,7 +96,7 @@ export const FormPollCreate = ({
         }
     };
 
-    const initialTime = initialData?.expiresAt 
+    const initialTime = initialData?.expiresAt
         ? calculateTimeFromExpiresAt(initialData.expiresAt)
         : { value: "24", unit: "hours" as const };
 
@@ -220,7 +222,7 @@ export const FormPollCreate = ({
             // Automatic payment (quota first, then wallet)
             const quotaAmount = willUseQuota ? pollCost : 0;
             const walletAmount = willUseWallet ? pollCost : 0;
-            
+
             const payload = {
                 question: title.trim(),
                 description: description.trim() || undefined,
@@ -365,18 +367,17 @@ export const FormPollCreate = ({
     return (
         <div className="space-y-6">
             {!isEditMode && requiresPayment && (
-                <div className={`p-3 rounded-lg border ${
-                    hasInsufficientPayment
-                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                        : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                }`}>
+                <div className={`p-3 rounded-lg border ${hasInsufficientPayment
+                    ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                    : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                    }`}>
                     {hasInsufficientPayment ? (
                         <p className="text-red-700 dark:text-red-300 text-sm">
                             {t('insufficientPayment', { cost: pollCost })}
                         </p>
                     ) : pollCost > 0 ? (
                         <p className="text-blue-700 dark:text-blue-300 text-sm">
-                            {willUseQuota 
+                            {willUseQuota
                                 ? t('willPayWithQuota', { remaining: quotaRemaining, cost: pollCost })
                                 : t('willPayWithWallet', { balance: walletBalance, cost: pollCost })}
                         </p>
@@ -401,13 +402,13 @@ export const FormPollCreate = ({
 
             {/* Description Section */}
             <BrandFormControl label={t('descriptionLabel')}>
-                <textarea
+                <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t('descriptionPlaceholder')}
                     disabled={isCreating}
                     rows={3}
-                    className="w-full px-4 py-3 bg-brand-surface dark:bg-base-100 border border-brand-border dark:border-base-300/50 rounded-xl text-brand-text-primary dark:text-base-content placeholder:text-brand-text-secondary/50 dark:placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                    className="resize-none"
                 />
             </BrandFormControl>
 

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ActionType } from '../common/constants/action-types.constants';
-import type { 
-  PermissionRule, 
-  CommunityMeritSettings, 
-  CommunityVotingSettings 
+import type {
+  PermissionRule,
+  CommunityMeritSettings,
+  CommunityVotingSettings
 } from '../models/community/community.schema';
 
 /**
@@ -23,12 +23,12 @@ export class CommunityDefaultsService {
   getDefaultPermissionRules(typeTag?: string): PermissionRule[] {
     const baseRules = this.getBaseRules();
     const rulesMap = new Map<string, PermissionRule>();
-    
+
     // Add base rules first
     for (const rule of baseRules) {
       rulesMap.set(`${rule.role}:${rule.action}`, rule);
     }
-    
+
     // Override with type-specific rules
     let typeSpecificRules: PermissionRule[] = [];
     switch (typeTag) {
@@ -48,12 +48,12 @@ export class CommunityDefaultsService {
         // Custom or other types use base rules only
         break;
     }
-    
+
     // Override base rules with type-specific rules
     for (const rule of typeSpecificRules) {
       rulesMap.set(`${rule.role}:${rule.action}`, rule);
     }
-    
+
     return Array.from(rulesMap.values());
   }
 
@@ -84,7 +84,14 @@ export class CommunityDefaultsService {
       { role: 'lead', action: ActionType.CREATE_POLL, allowed: true },
       { role: 'lead', action: ActionType.EDIT_PUBLICATION, allowed: true },
       { role: 'lead', action: ActionType.DELETE_PUBLICATION, allowed: true },
-      { role: 'lead', action: ActionType.VOTE, allowed: true },
+      {
+        role: 'lead',
+        action: ActionType.VOTE,
+        allowed: true,
+        conditions: {
+          canVoteForOwnPosts: false,
+        },
+      },
       { role: 'lead', action: ActionType.COMMENT, allowed: true },
       { role: 'lead', action: ActionType.EDIT_COMMENT, allowed: true },
       { role: 'lead', action: ActionType.DELETE_COMMENT, allowed: true },

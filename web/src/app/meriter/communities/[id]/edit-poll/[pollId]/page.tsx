@@ -4,6 +4,12 @@ interface EditPollPageProps {
   params: Promise<{ id: string; pollId: string }>;
 }
 
+export async function generateMetadata() {
+  return {
+    title: 'Edit Poll',
+  };
+}
+
 export default async function EditPollPage({ params }: EditPollPageProps) {
   const { id, pollId } = await params;
   return <EditPollPageClient communityId={id} pollId={pollId} />;

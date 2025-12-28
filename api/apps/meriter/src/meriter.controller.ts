@@ -11,7 +11,7 @@ export class MeriterController {
   constructor(
     private readonly meriterService: MeriterService,
     private readonly configService: ConfigService<AppConfig>,
-  ) {}
+  ) { }
 
   @Get()
   getHello(): string {
@@ -30,7 +30,7 @@ export class MeriterController {
       const packageJsonPath = process.env.NODE_ENV === 'production'
         ? path.join(process.cwd(), 'package.json')
         : path.join(__dirname, '../../../package.json');
-      
+
       const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
       return { version: packageJson.version || 'unknown' };
     } catch (_error) {
@@ -44,38 +44,70 @@ export class MeriterController {
     return this.getVersion();
   }
 
-  // Serve favicon
-  @Get('favicon.ico')
-  favicon(@Res() res: Response): void {
+  // Helper method to serve static files
+  private serveStaticFile(
+    filename: string,
+    contentType: string,
+    res: Response,
+  ): void {
     try {
-      // Try multiple possible paths for favicon
       const possiblePaths = [
-        // Production: /app/public/favicon.ico
-        path.join(process.cwd(), 'public', 'favicon.ico'),
-        // Development: from dist/apps/meriter, go to source public directory
-        path.join(__dirname, '../../../apps/meriter/public', 'favicon.ico'),
+        // Production: /app/public/
+        path.join(process.cwd(), 'public', filename),
+        // Development: from dist/apps/meriter
+        path.join(__dirname, '../../../apps/meriter/public', filename),
         // Alternative: from api directory root
-        path.join(process.cwd(), 'apps', 'meriter', 'public', 'favicon.ico'),
+        path.join(process.cwd(), 'apps', 'meriter', 'public', filename),
       ];
 
-      let faviconPath: string | null = null;
+      let filePath: string | null = null;
       for (const possiblePath of possiblePaths) {
         if (fs.existsSync(possiblePath)) {
-          faviconPath = possiblePath;
+          filePath = possiblePath;
           break;
         }
       }
 
-      if (faviconPath) {
-        const favicon = fs.readFileSync(faviconPath);
-        res.setHeader('Content-Type', 'image/x-icon');
+      if (filePath) {
+        const fileContent = fs.readFileSync(filePath);
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
-        res.send(favicon);
+        res.send(fileContent);
       } else {
         res.status(HttpStatus.NOT_FOUND).send();
       }
     } catch (_error) {
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).send();
     }
+  }
+
+  // Serve favicon.ico
+  @Get('favicon.ico')
+  favicon(@Res() res: Response): void {
+    this.serveStaticFile('favicon.ico', 'image/x-icon', res);
+  }
+
+  // Serve favicon-96x96.png
+  @Get('favicon-96x96.png')
+  faviconPng(@Res() res: Response): void {
+    this.serveStaticFile('favicon-96x96.png', 'image/png', res);
+  }
+
+  // Serve favicon.svg
+  @Get('favicon.svg')
+  faviconSvg(@Res() res: Response): void {
+    this.serveStaticFile('favicon.svg', 'image/svg+xml', res);
+  }
+
+  // Serve apple-touch-icon.png
+  @Get('apple-touch-icon.png')
+  appleTouchIcon(@Res() res: Response): void {
+    this.serveStaticFile('apple-touch-icon.png', 'image/png', res);
+  }
+
+  // Serve site.webmanifest
+  @Get('site.webmanifest')
+  webManifest(@Res() res: Response): void {
+    this.serveStaticFile('site.webmanifest', 'application/manifest+json', res);
   }
 }

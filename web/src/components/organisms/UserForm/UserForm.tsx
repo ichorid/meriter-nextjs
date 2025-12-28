@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { BrandFormControl } from "@/components/ui";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Loader2 } from "lucide-react";
 import { OSMAutocomplete } from "@/components/molecules/OSMAutocomplete";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
@@ -282,11 +283,10 @@ export function UserForm({
                                         ? t("emailPlaceholder")
                                         : undefined
                                 }
-                                className={`h-11 rounded-xl w-full ${
-                                    !isEmailEditable
-                                        ? "bg-base-300/30 text-base-content/50"
-                                        : ""
-                                }`}
+                                className={`h-11 rounded-xl w-full ${!isEmailEditable
+                                    ? "bg-base-300/30 text-base-content/50"
+                                    : ""
+                                    }`}
                             />
                         </BrandFormControl>
                     </div>
@@ -296,8 +296,8 @@ export function UserForm({
                         label={t("otherContacts")}
                         helperText={t("otherContactsHelper")}
                     >
-                        <textarea
-                            className="w-full px-4 py-3 bg-base-100 border border-base-content/10 rounded-xl resize-none text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-base-content/20 focus:border-base-content/20 transition-all"
+                        <Textarea
+                            className="min-h-[80px]"
                             value={otherContacts}
                             onChange={(e) => setOtherContacts(e.target.value)}
                             placeholder={t("otherContactsPlaceholder")}
@@ -323,8 +323,8 @@ export function UserForm({
                             error={errors.about}
                             required
                         >
-                            <textarea
-                                className="w-full px-4 py-3 bg-base-100 border border-base-content/10 rounded-xl resize-none text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-base-content/20 focus:border-base-content/20 transition-all"
+                            <Textarea
+                                className="min-h-[120px]"
                                 value={about}
                                 onChange={(e) => setAbout(e.target.value)}
                                 placeholder={t("aboutPlaceholder")}
@@ -341,10 +341,9 @@ export function UserForm({
                 <footer
                     className={`
                         flex gap-3 justify-end pt-6 border-t border-base-content/5
-                        ${
-                            stickyFooter
-                                ? "sticky bottom-0 bg-base-100 pb-6 -mx-6 px-6 mt-8"
-                                : "mt-8"
+                        ${stickyFooter
+                            ? "sticky bottom-0 bg-base-100 pb-6 -mx-6 px-6 mt-8"
+                            : "mt-8"
                         }
                     `}
                 >
@@ -353,7 +352,7 @@ export function UserForm({
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isSubmitting}
-                            size="md"
+                            size="default"
                             className="rounded-xl active:scale-[0.98]"
                         >
                             {t("cancel")}

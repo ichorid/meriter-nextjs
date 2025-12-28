@@ -55,6 +55,8 @@ export function useUnreadCount() {
         retry: false,
         retryOnMount: false,
         throwOnError: false,
+        refetchInterval: 30000,
+        refetchIntervalInBackground: true,
     });
 }
 
@@ -64,7 +66,7 @@ export function useNotificationPreferences() {
 
 export const useMarkAsRead = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.notifications.markAsRead.useMutation({
         onSuccess: () => {
             // Invalidate notifications lists
@@ -77,7 +79,7 @@ export const useMarkAsRead = () => {
 
 export const useMarkAllAsRead = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.notifications.markAllAsRead.useMutation({
         onSuccess: () => {
             utils.notifications.getAll.invalidate();
@@ -88,7 +90,7 @@ export const useMarkAllAsRead = () => {
 
 export const useDeleteNotification = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.notifications.delete.useMutation({
         onSuccess: () => {
             utils.notifications.getAll.invalidate();
@@ -99,7 +101,7 @@ export const useDeleteNotification = () => {
 
 export const useUpdatePreferences = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.notifications.updatePreferences.useMutation({
         onSuccess: () => {
             utils.notifications.getPreferences.invalidate();
