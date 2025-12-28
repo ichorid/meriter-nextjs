@@ -34,6 +34,7 @@ describe('Publication edit notifications (E2E)', () => {
   let communityId: string;
   let authorId: string;
   let editorId: string;
+  let favoritingUserId: string;
 
   async function waitFor(
     predicate: () => Promise<boolean>,
@@ -79,6 +80,7 @@ describe('Publication edit notifications (E2E)', () => {
     communityId = uid();
     authorId = uid();
     editorId = uid();
+    favoritingUserId = uid();
   });
 
   beforeEach(async () => {
@@ -124,12 +126,21 @@ describe('Publication edit notifications (E2E)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: favoritingUserId,
+        authProvider: 'telegram',
+        authId: `tg-${favoritingUserId}`,
+        displayName: 'Favoriting User',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: editorId, communityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: favoritingUserId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
   });
 
@@ -208,6 +219,99 @@ describe('Publication edit notifications (E2E)', () => {
 
     const count = await connection.db!.collection('notifications').countDocuments({
       userId: authorId,
+      type: 'publication',
+      'metadata.publicationId': created.id,
+    });
+
+    expect(count).toBe(0);
+  });
+
+  it('notifies favoriting users when post is edited and deduplicates repeated edits', async () => {
+    setTestUserId(authorId);
+    const created = await trpcMutation(
+      app,
+      'publications.create',
+      createTestPublication(communityId, authorId, { title: 'Original title', description: 'Original desc' }),
+    );
+
+    // User favorites the post
+    setTestUserId(favoritingUserId);
+    await trpcMutation(app, 'favorites.add', {
+      targetType: 'publication',
+      targetId: created.id,
+    });
+
+    // Editor edits the post
+    setTestUserId(editorId);
+    await trpcMutation(app, 'publications.update', {
+      id: created.id,
+      data: { title: 'Edited title 1', content: 'Edited content 1' },
+    });
+
+    await waitFor(async () => {
+      const count = await connection.db!.collection('notifications').countDocuments({
+        userId: favoritingUserId,
+        type: 'publication',
+        read: false,
+        'metadata.publicationId': created.id,
+        'metadata.editorId': editorId,
+      });
+      return count === 1;
+    });
+
+    const n1 = (await connection.db!.collection('notifications').findOne({
+      userId: favoritingUserId,
+      type: 'publication',
+      read: false,
+      'metadata.publicationId': created.id,
+      'metadata.editorId': editorId,
+    })) as unknown as { message: string };
+    expect(n1.message).toContain('Editor');
+    expect(n1.message).toContain('favorite post');
+    expect(n1.message).toContain('Edited title 1');
+
+    // Second edit by same editor should replace the previous unread notification (dedup)
+    await trpcMutation(app, 'publications.update', {
+      id: created.id,
+      data: { title: 'Edited title 2', content: 'Edited content 2' },
+    });
+
+    const unreadAfterSecond = await connection.db!.collection('notifications').find({
+      userId: favoritingUserId,
+      type: 'publication',
+      read: false,
+      'metadata.publicationId': created.id,
+      'metadata.editorId': editorId,
+    }).toArray();
+    expect(unreadAfterSecond.length).toBe(1);
+
+    const n2 = unreadAfterSecond[0] as unknown as { message: string };
+    expect(n2.message).toContain('Edited title 2');
+  });
+
+  it('does not notify favoriting user if they are the editor', async () => {
+    setTestUserId(authorId);
+    const created = await trpcMutation(
+      app,
+      'publications.create',
+      createTestPublication(communityId, authorId, { title: 'Original title', description: 'Original desc' }),
+    );
+
+    // User favorites the post
+    setTestUserId(favoritingUserId);
+    await trpcMutation(app, 'favorites.add', {
+      targetType: 'publication',
+      targetId: created.id,
+    });
+
+    // Same user edits the post (they favorited it)
+    await trpcMutation(app, 'publications.update', {
+      id: created.id,
+      data: { title: 'My edit', content: 'My content edit' },
+    });
+
+    const count = await connection.db!.collection('notifications').countDocuments({
+      userId: favoritingUserId,
       type: 'publication',
       'metadata.publicationId': created.id,
     });

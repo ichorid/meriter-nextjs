@@ -197,6 +197,47 @@ export class NotificationHandlersService implements OnModuleInit {
       this.logger.log(
         `Created publication edit notification for user ${authorId} from editor ${editorId} on publication ${publicationId}`,
       );
+
+      // Notify users who favorited this publication
+      const favUserIds = await this.favoriteService.getFavoriteUserIdsForTarget(
+        'publication',
+        publicationId,
+      );
+
+      // Filter out editor and author (they already have notifications or don't need them)
+      const usersToNotify = favUserIds.filter(
+        (userId) => userId !== editorId && userId !== authorId,
+      );
+
+      await Promise.all(
+        usersToNotify.map(async (userId) => {
+          const favoriteNotificationDto: CreateNotificationDto = {
+            userId,
+            type: 'publication',
+            source: 'user',
+            sourceId: editorId,
+            metadata: {
+              publicationId,
+              communityId,
+              editorId,
+              authorId,
+              targetType: 'publication_edit',
+              targetId: publicationId,
+            },
+            title: 'Post edited',
+            message: `${editorName} edited a favorite post: ${postTitle}`,
+          };
+
+          await this.notificationService.createOrReplaceByEditorAndPost(favoriteNotificationDto, {
+            publicationId,
+            editorId,
+          });
+
+          this.logger.log(
+            `Created publication edit notification for favoriting user ${userId} from editor ${editorId} on publication ${publicationId}`,
+          );
+        }),
+      );
     } catch (error) {
       this.logger.error(`Error handling PublicationUpdated event:`, error);
     }
@@ -278,21 +319,52 @@ export class NotificationHandlersService implements OnModuleInit {
         `Created vote notification for user ${authorId} from vote on publication ${publicationId}`,
       );
 
-      // Favorites: mark as updated + notify favoriting users (dedup)
+      // Favorites: mark as updated + notify favoriting users with aggregated vote notifications
       await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
       const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
         'publication',
         publicationId,
       );
-      await this.notifyFavoriteUpdate({
-        actorId: voterId,
-        userIds: favUserIdsPublication,
-        targetType: 'publication',
-        targetId: publicationId,
-        communityId,
-        publicationId,
-        message: direction === 'up' ? `upvoted a favorite post` : `downvoted a favorite post`,
-      });
+
+      // Filter out voter (they don't need notification for their own vote)
+      const usersToNotifyPublication = favUserIdsPublication.filter((userId) => userId !== voterId);
+
+      await Promise.all(
+        usersToNotifyPublication.map(async (userId) => {
+          const voteNotificationDto: CreateNotificationDto = {
+            userId,
+            type: 'vote',
+            source: 'user',
+            sourceId: voterId,
+            metadata: {
+              publicationId,
+              communityId,
+              targetType: 'publication',
+              targetId: publicationId,
+              voteId,
+              amount,
+              direction,
+            },
+            title: 'New vote',
+            message: '', // Will be set by aggregation method
+          };
+
+          await this.notificationService.createOrReplaceAndAggregateVotes(
+            voteNotificationDto,
+            { publicationId },
+            {
+              voterId,
+              voterName,
+              amount,
+              direction,
+            },
+          );
+
+          this.logger.log(
+            `Created aggregated vote notification for favoriting user ${userId} on publication ${publicationId}`,
+          );
+        }),
+      );
 
       if (isProject) {
         await this.favoriteService.touchFavoritesForTarget('project', publicationId);
@@ -300,15 +372,46 @@ export class NotificationHandlersService implements OnModuleInit {
           'project',
           publicationId,
         );
-        await this.notifyFavoriteUpdate({
-          actorId: voterId,
-          userIds: favUserIdsProject,
-          targetType: 'project',
-          targetId: publicationId,
-          communityId,
-          publicationId,
-          message: direction === 'up' ? `upvoted a favorite project` : `downvoted a favorite project`,
-        });
+
+        // Filter out voter
+        const usersToNotifyProject = favUserIdsProject.filter((userId) => userId !== voterId);
+
+        await Promise.all(
+          usersToNotifyProject.map(async (userId) => {
+            const voteNotificationDto: CreateNotificationDto = {
+              userId,
+              type: 'vote',
+              source: 'user',
+              sourceId: voterId,
+              metadata: {
+                publicationId,
+                communityId,
+                targetType: 'publication',
+                targetId: publicationId,
+                voteId,
+                amount,
+                direction,
+              },
+              title: 'New vote',
+              message: '', // Will be set by aggregation method
+            };
+
+            await this.notificationService.createOrReplaceAndAggregateVotes(
+              voteNotificationDto,
+              { publicationId },
+              {
+                voterId,
+                voterName,
+                amount,
+                direction,
+              },
+            );
+
+            this.logger.log(
+              `Created aggregated vote notification for favoriting user ${userId} on project ${publicationId}`,
+            );
+          }),
+        );
       }
     } catch (error) {
       this.logger.error(`Error handling PublicationVoted event:`, error);

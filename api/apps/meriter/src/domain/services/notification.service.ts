@@ -34,6 +34,10 @@ export interface EditorPostDeduplicationKey {
   editorId: string;
 }
 
+export interface VoteAggregationKey {
+  publicationId: string;
+}
+
 export interface GetNotificationsOptions {
   page?: number;
   pageSize?: number;
@@ -151,6 +155,127 @@ export class NotificationService {
     }
 
     return this.createNotification(dto);
+  }
+
+  /**
+   * Create or replace a vote notification for favorited posts, aggregating vote data.
+   * 
+   * If an unread notification exists for the same user and publication, it aggregates:
+   * - Total upvotes and downvotes
+   * - Net amount
+   * - Voter count
+   * - Latest voter info
+   * 
+   * This prevents spam by showing one aggregated notification instead of many individual ones.
+   */
+  async createOrReplaceAndAggregateVotes(
+    dto: CreateNotificationDto,
+    key: VoteAggregationKey,
+    voterInfo: {
+      voterId: string;
+      voterName: string;
+      amount: number;
+      direction: 'up' | 'down';
+    },
+  ): Promise<Notification> {
+    const numberFromMetadata = (metadata: Record<string, unknown>, field: string): number => {
+      const value = metadata[field];
+      return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    };
+
+    const numberFromMetadataOrDefault = (
+      metadata: Record<string, unknown>,
+      field: string,
+      fallback: number,
+    ): number => {
+      const value = metadata[field];
+      return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    };
+
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: 'vote',
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.targetType': 'publication',
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      // Aggregate vote data from existing notification
+      const existingMetadata = existing.metadata as Record<string, unknown>;
+      const totalUpvotes =
+        numberFromMetadata(existingMetadata, 'totalUpvotes') +
+        (voterInfo.direction === 'up' ? voterInfo.amount : 0);
+      const totalDownvotes =
+        numberFromMetadata(existingMetadata, 'totalDownvotes') +
+        (voterInfo.direction === 'down' ? voterInfo.amount : 0);
+      const netAmount = totalUpvotes - totalDownvotes;
+      const voterCount = numberFromMetadataOrDefault(existingMetadata, 'voterCount', 1) + 1;
+
+      // Build aggregated message
+      const upStr = totalUpvotes > 0 ? `+${totalUpvotes}` : '';
+      const downStr = totalDownvotes > 0 ? `-${totalDownvotes}` : '';
+      const amountStr = (upStr || downStr) ? ` (${upStr}${downStr ? '/' + downStr : ''})` : '';
+      const message = `${voterInfo.voterName} and ${voterCount - 1} others voted on a favorite post${amountStr}`;
+
+      // Update existing notification with aggregated data
+      existing.source = dto.source;
+      existing.sourceId = voterInfo.voterId; // Latest voter
+      existing.metadata = {
+        ...dto.metadata,
+        totalUpvotes,
+        totalDownvotes,
+        netAmount,
+        voterCount,
+        latestVoterId: voterInfo.voterId,
+        latestVoterName: voterInfo.voterName,
+      };
+      existing.title = dto.title;
+      existing.message = message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification aggregated (vote): ${saved.id} for user ${dto.userId}, ${voterCount} voters, net: ${netAmount}`,
+      );
+      return saved.toObject();
+    }
+
+    // Create new notification with initial vote data
+    const initialUpvotes = voterInfo.direction === 'up' ? voterInfo.amount : 0;
+    const initialDownvotes = voterInfo.direction === 'down' ? voterInfo.amount : 0;
+    const netAmount = initialUpvotes - initialDownvotes;
+    let amountStr = '';
+    if (voterInfo.amount > 0) {
+      if (voterInfo.direction === 'up') {
+        amountStr = ` (+${voterInfo.amount})`;
+      } else {
+        amountStr = ` (-${voterInfo.amount})`;
+      }
+    }
+    const message = `${voterInfo.voterName} voted on a favorite post${amountStr}`;
+
+    const newDto: CreateNotificationDto = {
+      ...dto,
+      message,
+      metadata: {
+        ...dto.metadata,
+        totalUpvotes: initialUpvotes,
+        totalDownvotes: initialDownvotes,
+        netAmount,
+        voterCount: 1,
+        latestVoterId: voterInfo.voterId,
+        latestVoterName: voterInfo.voterName,
+      },
+    };
+
+    return this.createNotification(newDto);
   }
 
   async getNotifications(
