@@ -680,6 +680,9 @@
         }
     },
     "publications": {
+        "publicationDetails": "Детали публикации",
+        "beneficiary": "Получатель",
+        "editHistory": "История редактирования",
         "create": {
             "title": "Создать публикацию",
             "editTitle": "Редактировать публикацию",
