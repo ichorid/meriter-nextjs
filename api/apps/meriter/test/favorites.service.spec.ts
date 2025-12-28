@@ -67,6 +67,23 @@ describe('FavoriteService', () => {
     expect(after).toBe(0);
   });
 
+  it('does not mark favorites as unread for the acting user (excludeUserId)', async () => {
+    await favoriteService.addFavorite('u1', 'publication', 'p1');
+    await favoriteService.addFavorite('u2', 'publication', 'p1');
+
+    // Ensure activityAt is after the implicit lastViewedAt set by addFavorite()
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const activityAt = new Date();
+
+    await favoriteService.touchFavoritesForTarget('publication', 'p1', activityAt, 'u1');
+
+    const unreadU1 = await favoriteService.getUnreadCount('u1');
+    const unreadU2 = await favoriteService.getUnreadCount('u2');
+
+    expect(unreadU1).toBe(0);
+    expect(unreadU2).toBe(1);
+  });
+
   it('returns favorites paginated', async () => {
     await favoriteService.addFavorite('u1', 'publication', 'p1');
     await favoriteService.addFavorite('u1', 'poll', 'poll1');

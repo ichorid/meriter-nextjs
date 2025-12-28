@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.37.1",
+  "version": "0.37.4",
   "description": "",
   "author": "",
   "private": true,
@@ -19,7 +19,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail --forceExit"
+    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",
@@ -119,8 +119,6 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
-    "globalSetup": "<rootDir>/jest.global-setup.js",
-    "globalTeardown": "<rootDir>/jest.global-teardown.js",
     "setupFiles": [
       "<rootDir>/jest.setup.js"
     ],
@@ -128,7 +126,6 @@
       "<rootDir>/apps/",
       "<rootDir>/libs/"
     ],
-    "maxWorkers": 1,
     "transformIgnorePatterns": [
       "node_modules/(?!.*superjson|.*copy-anything|.*is-what|.*type-fest)"
     ],

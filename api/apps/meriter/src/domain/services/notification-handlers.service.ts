@@ -249,6 +249,7 @@ export class NotificationHandlersService implements OnModuleInit {
       const voterId = event.getVoterId();
       const amount = event.getAmount();
       const direction = event.getDirection();
+      const activityAt = new Date();
 
       // Get publication to find author
       const publication = await this.publicationService.getPublication(publicationId);
@@ -266,9 +267,14 @@ export class NotificationHandlersService implements OnModuleInit {
       // Don't notify if user voted on their own content
       if (authorId === voterId) {
         // Still update favorites activity (other users may have favorited it)
-        await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+        await this.favoriteService.touchFavoritesForTarget(
+          'publication',
+          publicationId,
+          activityAt,
+          voterId,
+        );
         if (isProject) {
-          await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+          await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, voterId);
         }
         return;
       }
@@ -320,7 +326,7 @@ export class NotificationHandlersService implements OnModuleInit {
       );
 
       // Favorites: mark as updated + notify favoriting users with aggregated vote notifications
-      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      await this.favoriteService.touchFavoritesForTarget('publication', publicationId, activityAt, voterId);
       const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
         'publication',
         publicationId,
@@ -367,7 +373,7 @@ export class NotificationHandlersService implements OnModuleInit {
       );
 
       if (isProject) {
-        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, voterId);
         const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
           'project',
           publicationId,
@@ -422,6 +428,7 @@ export class NotificationHandlersService implements OnModuleInit {
     try {
       const publicationId = event.getTargetId();
       const commenterId = event.getAuthorId();
+      const activityAt = new Date();
 
       const publication = await this.publicationService.getPublication(publicationId);
       if (!publication) {
@@ -432,7 +439,12 @@ export class NotificationHandlersService implements OnModuleInit {
       const isProject =
         publicationSnapshot.isProject === true || publicationSnapshot.postType === 'project';
 
-      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      await this.favoriteService.touchFavoritesForTarget(
+        'publication',
+        publicationId,
+        activityAt,
+        commenterId,
+      );
       const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
         'publication',
         publicationId,
@@ -448,7 +460,7 @@ export class NotificationHandlersService implements OnModuleInit {
       });
 
       if (isProject) {
-        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, commenterId);
         const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
           'project',
           publicationId,
@@ -472,6 +484,7 @@ export class NotificationHandlersService implements OnModuleInit {
     try {
       const pollId = event.getAggregateId();
       const casterId = event.getUserId();
+      const activityAt = new Date();
 
       const poll = await this.pollService.getPoll(pollId);
       if (!poll) {
@@ -481,7 +494,7 @@ export class NotificationHandlersService implements OnModuleInit {
       const snapshot = poll.toSnapshot();
       const communityId = snapshot.communityId;
 
-      await this.favoriteService.touchFavoritesForTarget('poll', pollId);
+      await this.favoriteService.touchFavoritesForTarget('poll', pollId, activityAt, casterId);
       const favUserIds = await this.favoriteService.getFavoriteUserIdsForTarget('poll', pollId);
       await this.notifyFavoriteUpdate({
         actorId: casterId,
