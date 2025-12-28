@@ -27,7 +27,6 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
         getCommunityByTypeTag: jest.fn().mockResolvedValue(null),
       },
       walletService: {
-        getTotalWithdrawnByReference: jest.fn().mockResolvedValue(0),
         addTransaction,
       },
       publicationService: {
@@ -38,10 +37,6 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
     const withdrawn = await autoWithdrawPublicationBalanceBeforeDelete(publicationId, publication, ctx);
 
     expect(withdrawn).toBe(5);
-    expect(ctx.walletService.getTotalWithdrawnByReference).toHaveBeenCalledWith(
-      'publication_withdrawal',
-      publicationId,
-    );
     expect(addTransaction).toHaveBeenCalledWith(
       beneficiaryId,
       communityId,
@@ -60,7 +55,7 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
     const publicationId = 'pub-2';
 
     const publication = {
-      getMetrics: { score: 3 },
+      getMetrics: { score: 0 },
       getCommunityId: { getValue: () => 'community-1' },
       getEffectiveBeneficiary: () => ({ getValue: () => 'beneficiary-1' }),
     };
@@ -71,7 +66,6 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
         getCommunityByTypeTag: jest.fn(),
       },
       walletService: {
-        getTotalWithdrawnByReference: jest.fn().mockResolvedValue(3),
         addTransaction: jest.fn(),
       },
       publicationService: {

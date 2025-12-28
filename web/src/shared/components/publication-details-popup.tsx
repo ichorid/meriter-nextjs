@@ -45,6 +45,16 @@ export const PublicationDetailsPopup: React.FC<PublicationDetailsPopupProps> = (
         return null;
     }
 
+    const stopPropagation = (e: React.SyntheticEvent) => {
+        e.stopPropagation();
+    };
+
+    const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+    };
+
     // Format timestamp
     const formattedTimestamp = createdAt 
         ? formatDate(createdAt, 'relative')
@@ -52,20 +62,35 @@ export const PublicationDetailsPopup: React.FC<PublicationDetailsPopupProps> = (
 
     return (
         <BottomPortal>
-            <div className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-auto">
+            <div
+                className="fixed inset-0 z-50 flex items-end justify-center p-4 pointer-events-auto"
+                onClick={stopPropagation}
+                onPointerDown={stopPropagation}
+            >
                 {/* Backdrop */}
                 <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-                    onClick={onClose}
+                    onClick={handleBackdropClick}
+                    onMouseDown={handleBackdropClick}
+                    onPointerDown={handleBackdropClick}
                 />
                 {/* Popup Container */}
-                <div className="relative z-10 w-full max-w-md bg-base-100 rounded-t-2xl shadow-2xl pointer-events-auto max-h-[90vh] overflow-y-auto">
+                <div
+                    className="relative z-10 w-full max-w-md bg-base-100 rounded-t-2xl shadow-2xl pointer-events-auto max-h-[90vh] overflow-y-auto"
+                    onClick={stopPropagation}
+                    onPointerDown={stopPropagation}
+                >
                     <div className="p-6">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-semibold">{t('publicationDetails') || 'Publication Details'}</h3>
+                            <h3 className="text-lg font-semibold">
+                                {t('publicationDetails', { defaultValue: 'Publication Details' })}
+                            </h3>
                             <button
-                                onClick={onClose}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose();
+                                }}
                                 className="btn btn-sm btn-circle btn-ghost"
                             >
                                 ✕
@@ -115,7 +140,9 @@ export const PublicationDetailsPopup: React.FC<PublicationDetailsPopupProps> = (
                         {/* Beneficiary Information */}
                         {beneficiaryName && beneficiaryName !== authorName && (
                             <div className="mb-4">
-                                <div className="text-xs opacity-70 mb-2">{t('beneficiary') || 'Beneficiary'}</div>
+                                <div className="text-xs opacity-70 mb-2">
+                                    {t('beneficiary', { defaultValue: 'Beneficiary' })}
+                                </div>
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
                                       <AvatarImage src={beneficiaryAvatar} alt={beneficiaryName} />
@@ -129,22 +156,25 @@ export const PublicationDetailsPopup: React.FC<PublicationDetailsPopupProps> = (
                         )}
 
                         {/* Edit History */}
-                        {editHistory && editHistory.length > 0 && (
-                            <>
-                                {(authorName || communityName || beneficiaryName) && (
-                                    <div className="border-t border-base-300 my-4"></div>
-                                )}
-                                <div className="mb-6">
-                                    <div className="text-sm opacity-70 mb-3">{t('editHistory') || 'Edit History'}</div>
+                        <>
+                            {(authorName || communityName || beneficiaryName) && (
+                                <div className="border-t border-base-300 my-4"></div>
+                            )}
+                            <div className="mb-6">
+                                <div className="text-sm opacity-70 mb-3">
+                                    {t('editHistory', { defaultValue: 'Edit History' })}
+                                </div>
+
+                                {editHistory && editHistory.length > 0 ? (
                                     <div className="space-y-3">
                                         {editHistory.map((entry, index) => {
                                             const editorName = entry.editor?.name || 'Unknown';
                                             const editorAvatar = entry.editor?.photoUrl;
                                             const editorId = entry.editor?.id || entry.editedBy;
                                             const formattedEditTime = formatDate(entry.editedAt, 'relative');
-                                            
+
                                             return (
-                                                <div key={index} className="flex items-center gap-3">
+                                                <div key={`${entry.editedBy}-${entry.editedAt}-${index}`} className="flex items-center gap-3">
                                                     <Avatar className="w-8 h-8">
                                                       <AvatarImage src={editorAvatar} alt={editorName} />
                                                       <AvatarFallback userId={editorId} className="font-medium text-xs">
@@ -159,9 +189,13 @@ export const PublicationDetailsPopup: React.FC<PublicationDetailsPopupProps> = (
                                             );
                                         })}
                                     </div>
-                                </div>
-                            </>
-                        )}
+                                ) : (
+                                    <div className="text-sm opacity-60">
+                                        {t('noEditsYet', { defaultValue: 'No edits yet' })}
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     </div>
                 </div>
             </div>

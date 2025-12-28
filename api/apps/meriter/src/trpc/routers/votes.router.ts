@@ -556,18 +556,11 @@ export const votesRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'publication_withdrawal',
-        input.id,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Publication score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 
@@ -649,18 +642,11 @@ export const votesRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'vote_withdrawal',
-        input.id,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Comment score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 

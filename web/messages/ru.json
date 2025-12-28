@@ -683,6 +683,7 @@
         "publicationDetails": "Детали публикации",
         "beneficiary": "Получатель",
         "editHistory": "История редактирования",
+        "noEditsYet": "Пока нет правок",
         "create": {
             "title": "Создать публикацию",
             "editTitle": "Редактировать публикацию",

@@ -128,16 +128,6 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
   const currentScore = publication.getMetrics.score;
   if (currentScore <= 0) return 0;
 
-  // How much has already been withdrawn from this publication (manual withdrawals)
-  // so we don't double-withdraw during moderation deletion.
-  const alreadyWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-    'publication_withdrawal',
-    publicationId,
-  );
-
-  const availableAmount = currentScore - alreadyWithdrawn;
-  if (availableAmount <= 0) return 0;
-
   const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
   const communityId = publication.getCommunityId.getValue();
 
@@ -145,13 +135,13 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
     beneficiaryId,
     communityId,
     publicationId,
-    availableAmount,
+    currentScore,
     'publication_withdrawal',
     ctx,
   );
 
-  await ctx.publicationService.reduceScore(publicationId, availableAmount);
-  return availableAmount;
+  await ctx.publicationService.reduceScore(publicationId, currentScore);
+  return currentScore;
 }
 
 /**
@@ -268,6 +258,23 @@ export const publicationsRouter = router({
         });
       }
 
+      // Hide deleted publications from non-leads (and non-superadmins).
+      // Leads/superadmins can access deleted publications (e.g. for moderation/audit).
+      const isDeleted = publication.toSnapshot().deleted === true;
+      if (isDeleted && ctx.user?.globalRole !== 'superadmin') {
+        const communityId = publication.getCommunityId.getValue();
+        const role = await ctx.permissionService.getUserRoleInCommunity(
+          ctx.user.id,
+          communityId,
+        );
+        if (role !== 'lead') {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+      }
+
       // Extract IDs for enrichment
       const authorId = publication.getAuthorId.getValue();
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
@@ -282,9 +289,7 @@ export const publicationsRouter = router({
       const editorIds = editHistory.map((entry: any) => entry.editedBy);
       const uniqueEditorIds = [...new Set(editorIds)];
 
-      // Allow deleted publications to be accessed by all users (including unauthenticated).
-      // They will be marked as deleted in the response, but still accessible.
-      // This allows users to see their favorited posts even after deletion, and access posts by direct URL.
+      // Deleted publications are only accessible to leads/superadmins (see gate above).
 
       // Batch fetch users and communities
       const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : []), ...uniqueEditorIds];
@@ -923,18 +928,11 @@ export const publicationsRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'publication_withdrawal',
-        input.publicationId,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Publication score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 

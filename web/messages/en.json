@@ -681,6 +681,7 @@
         "publicationDetails": "Publication Details",
         "beneficiary": "Beneficiary",
         "editHistory": "Edit History",
+        "noEditsYet": "No edits yet",
         "create": {
             "title": "Create Publication",
             "editTitle": "Edit Publication",

@@ -474,7 +474,7 @@ describe('Favorite vote notifications (E2E)', () => {
     })) as unknown as { id: string };
     
     setTestUserId(favoritingUserId);
-    await trpcMutation(app, 'notifications.markAsRead', { notificationId: notification.id });
+    await trpcMutation(app, 'notifications.markAsRead', { id: notification.id });
 
     // Second vote - should create new notification since previous was read
     setTestUserId(voter2Id);

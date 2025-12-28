@@ -21,6 +21,7 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { ForwardPopup } from './ForwardPopup';
 import { ReviewForwardPopup } from './ReviewForwardPopup';
 import { PublicationDetailsPopup } from '@/shared/components/publication-details-popup';
+import { trpc } from '@/lib/trpc/client';
 
 // Local Publication type definition
 interface Publication {
@@ -111,6 +112,15 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   // Get community and user role for forward button
   const { data: community } = useCommunity(communityId || '');
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+  const effectivePublicationId = publicationId || publication.id;
+  const { data: publicationDetails } = trpc.publications.getById.useQuery(
+    { id: effectivePublicationId },
+    {
+      enabled: showDetailsPopup && !!effectivePublicationId,
+      staleTime: 0,
+    },
+  );
   
   // Check if user is a lead
   const isLead = useMemo(() => {
@@ -396,17 +406,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       <PublicationDetailsPopup
         isOpen={showDetailsPopup}
         onClose={() => setShowDetailsPopup(false)}
-        authorName={author.name}
-        authorId={author.id}
-        authorAvatar={author.photoUrl}
+        authorName={publicationDetails?.meta?.author?.name ?? author.name}
+        authorId={publicationDetails?.authorId ?? author.id}
+        authorAvatar={publicationDetails?.meta?.author?.photoUrl ?? author.photoUrl}
         communityName={community?.name}
         communityId={communityId}
         communityAvatar={community?.avatarUrl}
-        beneficiaryName={beneficiary?.name}
-        beneficiaryId={beneficiary ? (publication.meta?.beneficiary as any)?.id : undefined}
-        beneficiaryAvatar={beneficiary?.photoUrl}
-        createdAt={publication.createdAt}
-        editHistory={(publication as any).editHistory}
+        beneficiaryName={publicationDetails?.meta?.beneficiary?.name ?? beneficiary?.name}
+        beneficiaryId={publicationDetails?.beneficiaryId}
+        beneficiaryAvatar={publicationDetails?.meta?.beneficiary?.photoUrl ?? beneficiary?.photoUrl}
+        createdAt={publicationDetails?.createdAt ?? publication.createdAt}
+        editHistory={publicationDetails?.editHistory ?? (publication as any).editHistory}
       />
     </div>
   );
