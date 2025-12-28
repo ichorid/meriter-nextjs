@@ -1025,8 +1025,8 @@
         "cityPlaceholder": "Введите город",
         "website": "Веб-сайт",
         "websitePlaceholder": "https://example.com",
-        "about": "О проекте",
-        "aboutPlaceholder": "Расскажите больше о проекте",
+        "about": "О себе",
+        "aboutPlaceholder": "Расскажите больше о себе",
         "contacts": "Контакты",
         "email": "Email",
         "messenger": "Мессенджер",
@@ -1048,7 +1048,7 @@
         "characters": "символов",
         "errors": {
             "bioTooLong": "О себе должно быть менее {max} символов",
-            "aboutTooLong": "О проекте должно быть менее {max} символов",
+            "aboutTooLong": "О себе должно быть менее {max} символов",
             "educationalInstitutionTooLong": "Образовательное учреждение должно быть не более {max} символов",
             "invalidUrl": "Неверный формат URL",
             "invalidEmail": "Неверный формат email"

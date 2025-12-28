@@ -1022,8 +1022,8 @@
         "cityPlaceholder": "Enter city",
         "website": "Website",
         "websitePlaceholder": "https://example.com",
-        "about": "About project",
-        "aboutPlaceholder": "Tell us more about the project",
+        "about": "About",
+        "aboutPlaceholder": "Tell us more about yourself",
         "contacts": "Contacts",
         "email": "Email",
         "messenger": "Messenger",
@@ -1045,7 +1045,7 @@
         "characters": "characters",
         "errors": {
             "bioTooLong": "Bio must be no more than {max} characters",
-            "aboutTooLong": "About project must be no more than {max} characters",
+            "aboutTooLong": "About must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",
             "invalidUrl": "Invalid URL",
             "invalidEmail": "Invalid email address"
