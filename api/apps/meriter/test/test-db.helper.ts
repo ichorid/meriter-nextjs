@@ -28,13 +28,24 @@ export class TestDatabaseHelper {
       },
     });
 
+    let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        reject(new Error('MongoMemoryServer.create() timed out after 30 seconds. This may indicate network issues or insufficient resources in CI/CD.'));
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(
+            'MongoMemoryServer.create() timed out after 30 seconds. This may indicate network issues or insufficient resources in CI/CD.',
+          ),
+        );
       }, 30000); // 30 second timeout - fail fast
     });
 
-    this.mongod = await Promise.race([createPromise, timeoutPromise]);
+    try {
+      this.mongod = await Promise.race([createPromise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
     const uri = this.mongod.getUri();
     return uri;
   }

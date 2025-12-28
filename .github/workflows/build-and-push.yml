@@ -25,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      E2E_RUNS: 3
+      E2E_MAX_WORKERS: 2
+      E2E_RANDOMIZE: "false"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,8 +48,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run unit tests
         run: pnpm test:ci
-      - name: Run E2E tests
-        run: pnpm --filter @meriter/api test:e2e
+      - name: Run E2E tests (parallel + repeated to detect interference)
+        run: pnpm --filter @meriter/api test:e2e:stress
 
   determine-target:
     name: Select deployment target

@@ -347,14 +347,6 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         createdAt: now,
         updatedAt: now,
       },
-      {
-        id: uid(),
-        userId: testUserId2,
-        communityId: teamCommunityId,
-        role: 'participant', // Author can be participant
-        createdAt: now,
-        updatedAt: now,
-      },
     ]);
 
     (global as any).testUserId = testUserId;

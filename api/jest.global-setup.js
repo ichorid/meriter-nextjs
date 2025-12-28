@@ -11,13 +11,23 @@ module.exports = async () => {
     },
   });
 
+  let timeoutId;
   const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => {
-      reject(new Error('MongoMemoryServer.create() timed out after 30 seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.'));
+    timeoutId = setTimeout(() => {
+      reject(
+        new Error(
+          'MongoMemoryServer.create() timed out after 30 seconds in global setup. This may indicate network issues or insufficient resources in CI/CD.',
+        ),
+      );
     }, 30000); // 30 second timeout - fail fast
   });
 
-  const mongod = await Promise.race([createPromise, timeoutPromise]);
+  let mongod;
+  try {
+    mongod = await Promise.race([createPromise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
   const uri = mongod.getUri();
   global.__MONGOD__ = mongod;
   process.env.MONGO_URL = uri;
