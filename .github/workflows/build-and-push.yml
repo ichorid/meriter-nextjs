@@ -47,7 +47,16 @@ jobs:
       - name: Compute base image hash tag
         id: base_tag
         run: |
-          BASE_HASH=$(sha256sum Dockerfile.base | cut -d' ' -f1 | cut -c1-16)
+          # Hash inputs that affect the base image:
+          # - Dockerfile.base
+          # - pnpm-lock.yaml
+          # - all tracked files under libs/shared-types
+          BASE_HASH=$(
+            (
+              sha256sum Dockerfile.base pnpm-lock.yaml
+              git ls-files -z libs/shared-types | xargs -0 sha256sum
+            ) | sha256sum | cut -d' ' -f1 | cut -c1-16
+          )
           BASE_TAG="base-${BASE_HASH}"
           BASE_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BASE }}:${BASE_TAG}"
           echo "base_tag=${BASE_TAG}" >> "$GITHUB_OUTPUT"
