@@ -542,6 +542,7 @@ export const communitiesRouter = router({
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
+      search: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
       const pagination = PaginationHelper.parseOptions({
@@ -555,6 +556,7 @@ export const communitiesRouter = router({
         input.id,
         pagination.limit || 20,
         skip,
+        input.search,
       );
 
       return PaginationHelper.createResult(

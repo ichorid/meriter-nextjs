@@ -15,6 +15,7 @@ import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { canUseWalletForVoting } from './voting-utils';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -81,7 +82,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
   // Check if wallet can be used for voting
-  const canUseWallet = walletBalance > 0 && community?.votingSettings?.spendsMerits !== false;
+  const canUseWallet = canUseWalletForVoting(walletBalance, community);
 
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;

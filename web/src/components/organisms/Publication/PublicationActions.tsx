@@ -178,11 +178,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     } else if (community?.typeTag === 'marathon-of-good') {
       // Marathon-of-Good: quota-only (Q), no wallet (M)
       mode = 'quota-only';
-    } else if (community?.typeTag === 'team') {
-      // Team groups: quota-only (Q), no wallet (M)
-      mode = 'quota-only';
     } else {
-      // Regular communities: allow spending daily quota first, then overflow into wallet merits
+      // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
       mode = 'standard';
     }
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);

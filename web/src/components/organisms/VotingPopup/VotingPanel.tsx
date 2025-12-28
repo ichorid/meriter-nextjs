@@ -7,6 +7,7 @@ import { ImageGallery } from "@/components/ui/ImageGallery";
 import { useFeaturesConfig } from "@/hooks/useConfig";
 import { Icon } from "@/components/atoms/Icon/Icon";
 import type { Community } from "@meriter/shared-types";
+import { canUseWalletForVoting } from "./voting-utils";
 
 interface VotingPanelProps {
     onClose: () => void;
@@ -73,9 +74,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     // Check if wallet can be used for voting
     const canUseWallet = useMemo(() => {
-        if (!walletBalance || walletBalance <= 0) return false;
-        if (community?.votingSettings?.spendsMerits === false) return false;
-        return true;
+        return canUseWalletForVoting(walletBalance, community);
     }, [walletBalance, community]);
 
     // Calculate vote breakdown: quota vs wallet

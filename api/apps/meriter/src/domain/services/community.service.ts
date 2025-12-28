@@ -602,6 +602,7 @@ export class CommunityService {
     communityId: string,
     limit: number = 50,
     skip: number = 0,
+    search?: string,
   ): Promise<{ members: any[]; total: number }> {
     // 1. Get community to retrieve memberIds, settings, and total count
     const community = await this.communityModel
@@ -612,11 +613,21 @@ export class CommunityService {
     }
 
     const memberIds = community.members || [];
-    const total = memberIds.length;
-    const paginatedIds = memberIds.slice(skip, skip + limit);
 
-    if (paginatedIds.length === 0) {
-      return { members: [], total };
+    // Build search filter if search query is provided
+    const searchFilter: any = { id: { $in: memberIds } };
+    if (search && search.trim()) {
+      // Escape special regex characters and create case-insensitive regex
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      searchFilter.$or = [
+        { username: searchRegex },
+        { displayName: searchRegex },
+      ];
+    }
+
+    if (memberIds.length === 0) {
+      return { members: [], total: 0 };
     }
 
     // Calculate quota start time (needed for quota aggregation)
@@ -631,9 +642,10 @@ export class CommunityService {
     const isMarathonOfGood = community.typeTag === 'marathon-of-good';
 
     // 2. Use aggregation pipeline to join users with roles, wallets, and quota
-    const members = await this.userModel.aggregate([
-      // Match only the paginated user IDs
-      { $match: { id: { $in: paginatedIds } } },
+    // Use $facet to get both filtered results and total count
+    const aggregationResult = await this.userModel.aggregate([
+      // Match users that are members AND match search criteria (if provided)
+      { $match: searchFilter },
       
       // Lookup user community role for this specific community
       {
@@ -842,7 +854,24 @@ export class CommunityService {
           },
         },
       },
+      // Use $facet to get both paginated results and total count
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          totalCount: [
+            { $count: 'count' },
+          ],
+        },
+      },
     ]);
+
+    // Extract results and total from facet
+    const facetResult = aggregationResult[0] || { data: [], totalCount: [] };
+    const members = facetResult.data || [];
+    const total = facetResult.totalCount[0]?.count ?? 0;
 
     // 3. Map to DTO format (handle undefined/null values)
     const mappedMembers = members.map((user) => ({
