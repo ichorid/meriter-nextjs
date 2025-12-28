@@ -20,6 +20,7 @@ import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { setSentryUser, clearSentryUser } from '@/lib/utils/sentry';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
@@ -82,6 +83,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     }
   }, [user, userLoading, isAuthenticated, userError]);
+
+  // Update Sentry user context when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setSentryUser(user);
+    } else {
+      clearSentryUser();
+    }
+  }, [isAuthenticated, user]);
 
   const authenticateFakeUser = useCallback(async () => {
     try {

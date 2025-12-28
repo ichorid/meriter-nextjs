@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 import { ApiErrorResponse } from '../interceptors/api-response.interceptor';
 
 @Catch()
@@ -77,6 +78,57 @@ export class ApiExceptionFilter implements ExceptionFilter {
       exception instanceof Error ? exception.stack : undefined,
     );
 
+    // Capture error to Sentry with request context
+    if (process.env.SENTRY_DSN) {
+      Sentry.withScope((scope) => {
+        // Set request context
+        scope.setContext('request', {
+          method: request.method,
+          url: request.url,
+          headers: {
+            'user-agent': request.headers['user-agent'],
+            'referer': request.headers.referer,
+            'content-type': request.headers['content-type'],
+          },
+          query: request.query,
+          body: this.sanitizeRequestBody(request.body),
+        });
+
+        // Set user context if available
+        if (request.user && (request.user as any).id) {
+          scope.setUser({
+            id: String((request.user as any).id),
+            username: (request.user as any).username,
+            email: (request.user as any).email,
+          });
+        }
+
+        // Set tags
+        scope.setTag('http.status_code', status.toString());
+        scope.setTag('http.method', request.method);
+        scope.setTag('error.code', errorResponse.error.code);
+
+        // Set level based on status code
+        if (status >= 500) {
+          scope.setLevel('error');
+        } else if (status >= 400) {
+          scope.setLevel('warning');
+        } else {
+          scope.setLevel('info');
+        }
+
+        // Capture exception
+        if (exception instanceof Error) {
+          Sentry.captureException(exception);
+        } else {
+          Sentry.captureMessage(
+            `Non-Error exception: ${errorResponse.error.message}`,
+            scope.getLevel(),
+          );
+        }
+      });
+    }
+
     response.status(status).json(errorResponse);
   }
 
@@ -101,5 +153,27 @@ export class ApiExceptionFilter implements ExceptionFilter {
       default:
         return 'UNKNOWN_ERROR';
     }
+  }
+
+  /**
+   * Sanitize request body to remove sensitive information before sending to Sentry
+   */
+  private sanitizeRequestBody(body: any): any {
+    if (!body || typeof body !== 'object') {
+      return body;
+    }
+
+    const sensitiveKeys = ['password', 'token', 'secret', 'authorization', 'jwt', 'cookie'];
+    const sanitized = { ...body };
+
+    for (const key in sanitized) {
+      if (sensitiveKeys.some((sensitive) => key.toLowerCase().includes(sensitive))) {
+        sanitized[key] = '[REDACTED]';
+      } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+        sanitized[key] = this.sanitizeRequestBody(sanitized[key]);
+      }
+    }
+
+    return sanitized;
   }
 }

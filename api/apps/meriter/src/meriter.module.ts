@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { MeriterController } from './meriter.controller';
 import { MeriterService } from './meriter.service';
@@ -14,6 +15,7 @@ import { UpdatesConductorsModule } from './updates-conductors/updates-conductors
 import { QuotaResetModule } from './domain/services/quota-reset.module';
 import { CommonServicesModule } from './common/services/common-services.module';
 import { TgBotsModule } from './tg-bots/tg-bots.module';
+import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 // Import the new domain module
 import { DomainModule } from './domain.module';
@@ -50,6 +52,12 @@ import { TrpcModule } from './trpc/trpc.module';
     TrpcModule, // tRPC for type-safe API
   ],
   controllers: [MeriterController],
-  providers: [MeriterService],
+  providers: [
+    MeriterService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: SentryInterceptor,
+    },
+  ],
 })
 export class MeriterModule {}

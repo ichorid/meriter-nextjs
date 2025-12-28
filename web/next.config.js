@@ -2,6 +2,7 @@ const withNextIntl = require('next-intl/plugin')(
     // This is the default (also the `src` folder is supported out of the box)
     './src/i18n/request.ts'
 );
+const { withSentryConfig } = require('@sentry/nextjs');
 const path = require('path');
 
 /** @type {import('next').NextConfig} */
@@ -108,4 +109,24 @@ const nextConfig = {
     },
 };
 
-module.exports = withNextIntl(nextConfig);
+// Wrap with Sentry configuration
+const sentryWebpackPluginOptions = {
+    // Suppresses source map uploading logs during build
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    // Only upload source maps in production builds
+    hideSourceMaps: true,
+    widenClientFileUpload: true,
+    transpileClientSDK: true,
+    tunnelRoute: '/monitoring',
+    disableLogger: true,
+    automaticVercelMonitors: true,
+};
+
+// Apply Sentry config only if DSN is provided
+const configWithSentry = process.env.NEXT_PUBLIC_SENTRY_DSN
+    ? withSentryConfig(withNextIntl(nextConfig), sentryWebpackPluginOptions)
+    : withNextIntl(nextConfig);
+
+module.exports = configWithSentry;

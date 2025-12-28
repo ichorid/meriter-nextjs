@@ -7,10 +7,46 @@ import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 import { TrpcService } from './trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import * as Sentry from '@sentry/node';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const packageJson = require('../../package.json');
 declare const module: any;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  
+  // Initialize Sentry before creating NestJS app
+  const sentryDsn = process.env.SENTRY_DSN;
+  const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
+  const tracesSampleRate = parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0');
+  const profilesSampleRate = parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '1.0');
+  
+  if (sentryDsn) {
+    const sentryConfig: Sentry.NodeOptions = {
+      dsn: sentryDsn,
+      environment: sentryEnvironment,
+      release: `@meriter/api@${packageJson.version}`,
+      tracesSampleRate,
+      // Capture unhandled promise rejections
+      captureUnhandledRejections: true,
+    };
+    
+    // Add profiling integration if available (optional dependency)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const profilingIntegration = require('@sentry/profiling-node').nodeProfilingIntegration;
+      sentryConfig.profilesSampleRate = profilesSampleRate;
+      sentryConfig.integrations = [profilingIntegration()];
+    } catch {
+      // Profiling package not installed, skip it
+      logger.debug('Sentry profiling not available (optional)');
+    }
+    
+    Sentry.init(sentryConfig);
+    logger.log(`✅ Sentry initialized for environment: ${sentryEnvironment}`);
+  } else {
+    logger.warn('⚠️  Sentry DSN not configured (optional)');
+  }
   
   // Fail fast - validate required environment variables in production
   const nodeEnv = process.env.NODE_ENV || 'development';
