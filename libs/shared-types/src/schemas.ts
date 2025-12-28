@@ -228,7 +228,7 @@ export const PublicationSchema = IdentifiableSchema.merge(
   type: z.enum(["text", "image", "video"]), // Медиа-тип (остается для обратной совместимости)
   hashtags: z.array(z.string()).default([]),
   metrics: PublicationMetricsSchema,
-  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(), // Array of images for gallery
   videoUrl: z.string().url().optional(),
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   authorDisplay: z.string().optional(),
@@ -338,7 +338,7 @@ export const CreatePublicationDtoSchema = z.object({
   type: z.enum(["text", "image", "video"]),
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
-  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
@@ -469,7 +469,7 @@ export const UpdatePublicationDtoSchema = z.object({
   hashtags: z.array(z.string()).optional(),
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
 }).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z

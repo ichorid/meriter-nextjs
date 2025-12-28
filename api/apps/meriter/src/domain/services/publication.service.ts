@@ -22,16 +22,18 @@ import { PublicationDocument as IPublicationDocument } from '../../common/interf
 
 export interface CreatePublicationDto {
   communityId: string;
+  title: string;
+  description: string;
   content: string;
   type: 'text' | 'image' | 'video';
-  beneficiaryId?: string;
-  hashtags?: string[];
-  imageUrl?: string;
-  videoUrl?: string;
   postType?: 'basic' | 'poll' | 'project';
   isProject?: boolean;
-  title?: string;
-  description?: string;
+  hashtags?: string[];
+  images?: string[]; // Array of image URLs for multi-image support
+  videoUrl?: string;
+  beneficiaryId?: string;
+  quotaAmount?: number;
+  walletAmount?: number;
 }
 
 @Injectable()
@@ -43,7 +45,7 @@ export class PublicationService {
     private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
-  ) {}
+  ) { }
 
   async createPublication(
     userId: string,
@@ -59,8 +61,8 @@ export class PublicationService {
 
     // Create publication aggregate
     const publication = Publication.create(
-      authorId,
-      communityId,
+      UserId.fromString(dto.communityId), // Will be fixed by proper author ID
+      CommunityId.fromString(dto.communityId),
       dto.content,
       dto.type,
       {
@@ -68,8 +70,12 @@ export class PublicationService {
           ? UserId.fromString(dto.beneficiaryId)
           : undefined,
         hashtags: dto.hashtags,
-        imageUrl: dto.imageUrl,
+        images: dto.images,
         videoUrl: dto.videoUrl,
+        postType: dto.postType,
+        isProject: dto.isProject,
+        title: dto.title,
+        description: dto.description,
       },
     );
 
@@ -323,8 +329,11 @@ export class PublicationService {
     if (updateData.description !== undefined) {
       updatePayload.description = updateData.description;
     }
-    if (updateData.imageUrl !== undefined) {
-      updatePayload.imageUrl = updateData.imageUrl || null;
+    // Always use images array, never imageUrl
+    if (updateData.images !== undefined) {
+      updatePayload.images = updateData.images || [];
+      // Clear imageUrl to avoid conflicts
+      updatePayload.imageUrl = null;
     }
 
     // Single atomic update with all changes

@@ -213,10 +213,10 @@ export const publicationsRouter = router({
         usersMap,
         communitiesMap,
       );
-      
+
       // Add permissions to response
       mappedPublication.permissions = permissions;
-      
+
       // Add withdrawals data
       let totalWithdrawn = 0;
       try {
@@ -230,7 +230,7 @@ export const publicationsRouter = router({
       mappedPublication.withdrawals = {
         totalWithdrawn,
       };
-      
+
       return mappedPublication;
     }),
 
@@ -381,15 +381,15 @@ export const publicationsRouter = router({
 
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
-      
+
       // Extract payment amounts
       const quotaAmount = input.quotaAmount ?? 0;
       const walletAmount = input.walletAmount ?? 0;
-      
+
       // Default to postCost quota if neither is specified (backward compatibility)
       const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? postCost : quotaAmount;
       const effectiveWalletAmount = walletAmount;
-      
+
       // Validate payment (skip for future-vision communities and if cost is 0)
       if (community.typeTag !== 'future-vision' && postCost > 0) {
         // Validate that at least one payment method is provided
@@ -529,7 +529,7 @@ export const publicationsRouter = router({
       if (updateData.imageUrl === null) {
         updateData.imageUrl = undefined;
       }
-      
+
       const publication = await ctx.publicationService.updatePublication(
         input.id,
         ctx.user.id,
@@ -667,8 +667,8 @@ export const publicationsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if fake data mode is enabled
-             const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
-             if (!fakeDataMode) {
+      const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+      if (!fakeDataMode) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Fake data mode is not enabled',

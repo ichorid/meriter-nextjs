@@ -10,8 +10,8 @@ export class EntityMappers {
    */
   private static formatCommunityForApi(community: any | null):
     | {
-        telegramChatName?: string;
-      }
+      telegramChatName?: string;
+    }
     | undefined {
     if (!community) {
       return undefined;
@@ -36,7 +36,11 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
-    const snapshot = publication.toSnapshot();
+    const images = publication.getImages;
+
+    // DEBUG: Log images data
+    console.log('[DEBUG] Publication ID:', publication.getId.getValue());
+    console.log('[DEBUG] getImages:', images);
 
     return {
       id: publication.getId.getValue(),
@@ -48,13 +52,12 @@ export class EntityMappers {
       content: publication.getContent,
       type: publication.getType,
       hashtags: publication.getHashtags,
-      imageUrl: snapshot.imageUrl || undefined,
-      images: snapshot.images || undefined,
-      videoUrl: snapshot.videoUrl || undefined,
+      images: images && images.length > 0 ? images : undefined,
+      videoUrl: publication.toSnapshot().videoUrl || undefined,
       title: publication.getTitle || undefined,
       description: publication.getDescription || undefined,
-      postType: snapshot.postType || 'basic',
-      isProject: snapshot.isProject || false,
+      postType: publication.toSnapshot().postType || 'basic',
+      isProject: publication.toSnapshot().isProject || false,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
@@ -74,8 +77,8 @@ export class EntityMappers {
           origin: this.formatCommunityForApi(community),
         }),
       },
-      createdAt: snapshot.createdAt.toISOString(),
-      updatedAt: snapshot.updatedAt.toISOString(),
+      createdAt: publication.toSnapshot().createdAt.toISOString(),
+      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
     };
   }
 
@@ -139,12 +142,12 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
 
     // Get images from entity or schema - check multiple sources
-    const images = comment.images || 
-                   comment.getImages?.() || 
-                   (comment.snapshot?.images) || 
-                   (comment.toSnapshot?.()?.images) ||
-                   [];
-    
+    const images = comment.images ||
+      comment.getImages?.() ||
+      (comment.snapshot?.images) ||
+      (comment.toSnapshot?.()?.images) ||
+      [];
+
     const baseComment = {
       id: comment.id || comment.getId?.getValue(),
       _id: comment.id || comment.getId?.getValue(),
@@ -181,7 +184,7 @@ export class EntityMappers {
 
       // Use images from baseComment (already extracted above)
       // Don't duplicate - images are already in baseComment if they exist
-      
+
       return {
         ...baseComment,
         amountTotal: voteAmount,

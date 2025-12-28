@@ -11,16 +11,17 @@ declare const module: any;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+  logger.log('🚀 API VERSION: IMAGES-FIX-V2 (No imageUrl)');
+
   // Fail fast - validate required environment variables in production
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProduction = nodeEnv === 'production';
-  
+
   // Log Google OAuth configuration status (for debugging)
   const googleClientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
   const googleClientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
   const googleRedirectUri = process.env.OAUTH_GOOGLE_REDIRECT_URI || process.env.GOOGLE_REDIRECT_URI;
-  
+
   if (googleClientId && googleClientSecret && googleRedirectUri) {
     logger.log('✅ Google OAuth configured');
     logger.debug(`Google OAuth callback URL: ${googleRedirectUri}`);
@@ -28,11 +29,11 @@ async function bootstrap() {
     logger.warn('⚠️  Google OAuth not configured (optional)');
     logger.debug(`Google OAuth status: clientId=${!!googleClientId}, clientSecret=${!!googleClientSecret}, redirectUri=${!!googleRedirectUri}`);
   }
-  
+
   // Log Telegram bot configuration status (optional)
   const botUsername = process.env.BOT_USERNAME;
   const botToken = process.env.BOT_TOKEN;
-  
+
   if (botUsername && botToken) {
     logger.log('✅ Telegram bot configured');
     logger.debug(`Telegram bot username: ${botUsername}`);
@@ -40,7 +41,7 @@ async function bootstrap() {
     logger.warn('⚠️  Telegram bot not configured (optional)');
     logger.debug(`Telegram bot status: username=${!!botUsername}, token=${!!botToken}`);
   }
-  
+
   // Early validation before DI - use process.env
   // Full validation with ConfigService happens after app creation
   if (isProduction) {
@@ -51,7 +52,7 @@ async function bootstrap() {
       process.exit(1);
     }
   }
-  
+
   const app = await NestFactory.create(MeriterModule, {
     bodyParser: true,
     rawBody: true,
@@ -71,12 +72,12 @@ async function bootstrap() {
   // ---------------------------------------------------------------------------
   try {
     const expressApp = app.getHttpAdapter().getInstance();
-    
+
     // CRITICAL: Mount cookie parser BEFORE tRPC middleware
     // This ensures cookies are parsed and available in req.cookies for tRPC context
     expressApp.use(cookieParser());
     logger.log('✅ Cookie parser middleware mounted (before tRPC)');
-    
+
     const trpcService = app.get(TrpcService);
     const trpcMiddleware = createExpressMiddleware({
       router: trpcService.getRouter(),
@@ -91,14 +92,14 @@ async function bootstrap() {
     logger.error('❌ Failed to mount tRPC middleware at /trpc', error as any);
     throw error;
   }
-  
+
   // CRITICAL: Trust proxy to read X-Forwarded-Proto header from Caddy
   // This is essential for CI/CD dev targets where web is static (same as production)
   // but requests come via HTTPS through Caddy reverse proxy
   // Without this, req.secure will always be false even when requests are HTTPS
   // Trust only the first proxy (Caddy) for better security (defense-in-depth)
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
-  
+
   // Enable CORS for development (when not using Caddy)
   // In production, Caddy handles routing and CORS is not needed
   if (!isProduction) {
@@ -110,7 +111,7 @@ async function bootstrap() {
     });
     logger.log('CORS enabled for development');
   }
-  
+
   const configService = app.get(ConfigService);
 
   // Validate critical configuration after app creation (using ConfigService)
@@ -150,7 +151,7 @@ async function bootstrap() {
   // This second mount is for other routes, but it's redundant - keeping for backward compatibility
   app.use(cookieParser());
   logger.debug('Cookie parser also mounted globally (redundant but safe)');
-  
+
   const port = configService.get<number>('app.port') ?? 8002;
   // Ensure Nest finishes initialization after our early Express middleware mounts.
   await app.init();
