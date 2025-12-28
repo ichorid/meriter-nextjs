@@ -178,6 +178,22 @@ export class PermissionRuleEngine {
       return true;
     }
 
+    // STEP 7.2: Special groups restriction - cannot vote for teammates in FV / MoG
+    // "Teammates" means: voter and author share at least one team-type community.
+    // Applies ONLY to future-vision and marathon-of-good communities.
+    if (
+      action === ActionType.VOTE &&
+      (community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good') &&
+      context?.authorId &&
+      String(context.authorId).trim() !== String(userId).trim() &&
+      (context.sharedTeamCommunities?.length ?? 0) > 0
+    ) {
+      this.logger.debug(
+        `[canPerformAction] DENIED: Cannot vote for teammate in special group (typeTag=${community.typeTag})`,
+      );
+      return false;
+    }
+
     // STEP 7.5: Check if lead is trying to vote for own post (outside team communities)
     if (action === ActionType.VOTE && userRole === 'lead' && context?.isAuthor) {
       // Exception: future-vision allows self-voting
@@ -189,35 +205,6 @@ export class PermissionRuleEngine {
       }
       this.logger.debug(
         `[canPerformAction] DENIED: Lead cannot vote for own post`,
-      );
-      return false;
-    }
-
-    // STEP 7.6: Check if participant is trying to vote for lead from same team
-    // This restriction applies to all communities when participants and leads share a team
-    if (action === ActionType.VOTE && 
-      userRole === 'participant' && 
-      context?.authorRole === 'lead' && 
-      context?.sharedTeamCommunities && 
-      context.sharedTeamCommunities.length > 0) {
-      // Exception: future-vision allows this
-      if (community.typeTag === 'future-vision') {
-        this.logger.debug(
-          `[canPerformAction] ALLOWED: Participant can vote for lead from same team in future-vision`,
-        );
-        return true;
-      }
-      // Check if the condition explicitly allows it (matchingRule is already found above)
-      if (matchingRule?.conditions?.participantsCannotVoteForLead === false) {
-        // Explicitly allowed by rule
-        this.logger.debug(
-          `[canPerformAction] ALLOWED: Rule explicitly allows participant to vote for lead from same team`,
-        );
-        return true;
-      }
-      // Default: deny if they share a team (unless explicitly allowed)
-      this.logger.debug(
-        `[canPerformAction] DENIED: Participant cannot vote for lead from same team`,
       );
       return false;
     }
@@ -397,13 +384,6 @@ export class PermissionRuleEngine {
         if (community.typeTag === 'future-vision') {
           return true;
         }
-        return false;
-      }
-    }
-
-    // Check participantsCannotVoteForLead
-    if (conditions.participantsCannotVoteForLead && action === ActionType.VOTE) {
-      if (context?.authorRole === 'lead' && (context?.sharedTeamCommunities?.length ?? 0) > 0) {
         return false;
       }
     }

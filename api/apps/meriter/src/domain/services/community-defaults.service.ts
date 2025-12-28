@@ -153,14 +153,14 @@ export class CommunityDefaultsService {
     const rules: PermissionRule[] = [];
 
     // Participants can post and create polls (already in base, but ensure it's explicit)
-    // Participants cannot vote for leads from same team
+    // NOTE: teammate voting restrictions (based on shared team communities) are enforced
+    // by the PermissionRuleEngine and apply only to marathon-of-good and future-vision.
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
       conditions: {
         canVoteForOwnPosts: false,
-        participantsCannotVoteForLead: true,
       },
     });
 

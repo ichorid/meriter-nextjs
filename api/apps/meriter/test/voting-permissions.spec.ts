@@ -355,8 +355,8 @@ describe('Voting Permissions', () => {
 
   describe('Outside Team Communities', () => {
     describe('Participants', () => {
-      it('should not allow participant to vote for lead from same team', async () => {
-        // Create a publication by lead1 (same team as participant1)
+      it('should allow participant to vote for lead from same team in regular communities (restriction is special-groups only)', async () => {
+        // Create a publication by lead1 (same team as participant1) in a regular community
         const pub = await publicationService.createPublication(lead1Id, {
           communityId: regularCommunityId,
           content: 'Lead 1 publication',
@@ -364,7 +364,7 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true);
       });
 
       it('should allow participant to vote for lead from different team', async () => {
@@ -401,6 +401,35 @@ describe('Voting Permissions', () => {
         const pub = await publicationService.createPublication(participant2Id, {
           communityId: visionCommunityId,
           content: 'Vision participant publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(true);
+      });
+
+      it('should NOT allow participant to vote for teammate (lead) in marathon-of-good', async () => {
+        // marathonPubId is authored by lead1, and participant1 shares team1 with lead1
+        const canVote = await permissionService.canVote(participant1Id, marathonPubId);
+        expect(canVote).toBe(false);
+      });
+
+      it('should NOT allow participant to vote for teammate (lead) in future-vision', async () => {
+        const pub = await publicationService.createPublication(lead1Id, {
+          communityId: visionCommunityId,
+          content: 'Vision lead publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(false);
+      });
+
+      it('should allow participant to vote for non-teammate in future-vision', async () => {
+        // participant2 is in a different team than participant1 in this test setup
+        const pub = await publicationService.createPublication(participant2Id, {
+          communityId: visionCommunityId,
+          content: 'Vision participant 2 publication',
           type: 'text',
         });
 

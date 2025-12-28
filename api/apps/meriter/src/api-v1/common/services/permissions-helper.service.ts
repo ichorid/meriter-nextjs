@@ -6,6 +6,7 @@ import { PollService } from '../../../domain/services/poll.service';
 import { CommunityService } from '../../../domain/services/community.service';
 import { UserService } from '../../../domain/services/user.service';
 import { VoteService } from '../../../domain/services/vote.service';
+import { PermissionContextService } from '../../../domain/services/permission-context.service';
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
@@ -20,6 +21,7 @@ export class PermissionsHelperService {
 
   constructor(
     private permissionService: PermissionService,
+    private permissionContextService: PermissionContextService,
     private publicationService: PublicationService,
     private commentService: CommentService,
     private pollService: PollService,
@@ -111,19 +113,36 @@ export class PermissionsHelperService {
     // Community should exist here since we checked above - use it directly
     let voteDisabledReason: string | undefined;
     if (!canVote) {
+      const isSpecialGroup =
+        community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good';
+
+      // Special groups rule: cannot vote for teammates (shared team communities)
+      // Apply only when voter is not the author/beneficiary (those have their own reasons)
+      if (isSpecialGroup && !isAuthor && !isBeneficiary) {
+        const context = await this.permissionContextService.buildContextForPublication(
+          userId,
+          publicationId,
+        );
+        if ((context.sharedTeamCommunities?.length ?? 0) > 0) {
+          voteDisabledReason = 'voteDisabled.teammateInSpecialGroup';
+        }
+      }
+
       // Community should always exist here due to check above
       // If it doesn't, something is wrong - but we already returned early if community was null
       // So we can safely use community here
-      voteDisabledReason = this.getVoteDisabledReason(
-        user,
-        userRole,
-        community,
-        isAuthor,
-        isBeneficiary,
-        hasBeneficiary,
-        isProject,
-        publicationId,
-      );
+      if (!voteDisabledReason) {
+        voteDisabledReason = this.getVoteDisabledReason(
+          user,
+          userRole,
+          community,
+          isAuthor,
+          isBeneficiary,
+          hasBeneficiary,
+          isProject,
+          publicationId,
+        );
+      }
     }
 
     return {
