@@ -634,6 +634,203 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
     });
   });
 
+  describe('Search', () => {
+    it('should filter members by username or displayName and return filtered total', async () => {
+      await communityModel.create({
+        id: testCommunityId,
+        name: 'Searchable Community',
+        telegramChatId: `chat_${testCommunityId}_${Date.now()}`,
+        members: [testUserId1, testUserId2, testUserId3],
+        settings: {
+          dailyEmission: 100,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await userModel.create([
+        {
+          id: testUserId1,
+          authProvider: 'telegram',
+          authId: `user_${testUserId1}`,
+          displayName: 'Alice Wonderland',
+          username: 'alice',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId2,
+          authProvider: 'telegram',
+          authId: `user_${testUserId2}`,
+          displayName: 'Bob Builder',
+          username: 'bobby',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId3,
+          authProvider: 'telegram',
+          authId: `user_${testUserId3}`,
+          displayName: 'Charlie',
+          username: 'charlie',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const byDisplayName = await communityService.getCommunityMembers(
+        testCommunityId,
+        50,
+        0,
+        'ali',
+      );
+      expect(byDisplayName.total).toBe(1);
+      expect(byDisplayName.members).toHaveLength(1);
+      expect(byDisplayName.members[0].id).toBe(testUserId1);
+
+      const byUsernameCaseInsensitive = await communityService.getCommunityMembers(
+        testCommunityId,
+        50,
+        0,
+        'BoB',
+      );
+      expect(byUsernameCaseInsensitive.total).toBe(1);
+      expect(byUsernameCaseInsensitive.members).toHaveLength(1);
+      expect(byUsernameCaseInsensitive.members[0].id).toBe(testUserId2);
+    });
+
+    it('should apply pagination after search filtering', async () => {
+      await communityModel.create({
+        id: testCommunityId,
+        name: 'Search Pagination Community',
+        telegramChatId: `chat_${testCommunityId}_${Date.now()}`,
+        members: [testUserId1, testUserId2, testUserId3, testUserId4, testUserId5],
+        settings: {
+          dailyEmission: 100,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await userModel.create([
+        {
+          id: testUserId1,
+          authProvider: 'telegram',
+          authId: `user_${testUserId1}`,
+          displayName: 'Match 1',
+          username: 'match1',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId2,
+          authProvider: 'telegram',
+          authId: `user_${testUserId2}`,
+          displayName: 'Match 2',
+          username: 'match2',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId3,
+          authProvider: 'telegram',
+          authId: `user_${testUserId3}`,
+          displayName: 'Match 3',
+          username: 'match3',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId4,
+          authProvider: 'telegram',
+          authId: `user_${testUserId4}`,
+          displayName: 'Match 4',
+          username: 'match4',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: testUserId5,
+          authProvider: 'telegram',
+          authId: `user_${testUserId5}`,
+          displayName: 'Match 5',
+          username: 'match5',
+          communityMemberships: [testCommunityId],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const page2 = await communityService.getCommunityMembers(
+        testCommunityId,
+        2,
+        2,
+        'match',
+      );
+
+      expect(page2.total).toBe(5);
+      expect(page2.members).toHaveLength(2);
+    });
+
+    it('should escape regex special characters in search queries', async () => {
+      await communityModel.create({
+        id: testCommunityId,
+        name: 'Regex Escape Community',
+        telegramChatId: `chat_${testCommunityId}_${Date.now()}`,
+        members: [testUserId1],
+        settings: {
+          dailyEmission: 100,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await userModel.create({
+        id: testUserId1,
+        authProvider: 'telegram',
+        authId: `user_${testUserId1}`,
+        displayName: 'User (One)',
+        username: 'user(one)',
+        communityMemberships: [testCommunityId],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await communityService.getCommunityMembers(
+        testCommunityId,
+        50,
+        0,
+        '(One)',
+      );
+
+      expect(result.total).toBe(1);
+      expect(result.members).toHaveLength(1);
+      expect(result.members[0].id).toBe(testUserId1);
+    });
+  });
+
   describe('Edge cases', () => {
     it('should return empty array when community has no members', async () => {
       await communityModel.create({
