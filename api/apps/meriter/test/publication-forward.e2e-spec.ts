@@ -347,15 +347,14 @@ describe('Publication Forward E2E', () => {
 
       expect(result.success).toBe(true);
 
-      // Verify quota was consumed
+      // Verify quota was NOT consumed (leads can forward for free)
       const quotaUsage = await connection.db.collection('quota_usage').findOne({
         userId: leadId,
         communityId: teamCommunityId,
         usageType: 'forward',
         referenceId: publicationId,
       });
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(1);
+      expect(quotaUsage).toBeNull();
 
       // Verify original is marked as forwarded
       const original = await publicationService.getPublicationDocument(publicationId);

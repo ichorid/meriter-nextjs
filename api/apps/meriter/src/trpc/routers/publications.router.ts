@@ -1145,32 +1145,9 @@ export const publicationsRouter = router({
         });
       }
 
-      // If not pending, check and consume quota
-      if (!isPending) {
-        const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
-        if (forwardCost > 0) {
-          const remainingQuota = await getRemainingQuota(
-            userId,
-            sourceCommunityId,
-            sourceCommunity,
-            ctx.connection,
-          );
-          if (remainingQuota < forwardCost) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
-            });
-          }
-
-          await ctx.quotaUsageService.consumeQuota(
-            userId,
-            sourceCommunityId,
-            forwardCost,
-            'forward',
-            publicationId,
-          );
-        }
-      }
+      // Leads can forward posts for free from their community (no quota consumption)
+      // Note: This endpoint is already restricted to leads/superadmins only (line 1116),
+      // so we skip quota check/consumption entirely for direct forwards
 
       // Get original publication data
       const originalAuthorId = publication.getAuthorId.getValue();

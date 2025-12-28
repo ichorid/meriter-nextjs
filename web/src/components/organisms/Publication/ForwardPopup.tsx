@@ -102,7 +102,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
             : 'Select a target group to propose forwarding this post to:'}
         </p>
 
-        {forwardCost > 0 && (
+        {forwardCost > 0 && !isLead && (
           <p className="text-sm text-warning mb-4">
             This will cost {forwardCost} quota.
           </p>
