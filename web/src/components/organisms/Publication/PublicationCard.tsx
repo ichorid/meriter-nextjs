@@ -186,8 +186,14 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           title: (pubItem as any).title,
           description: (pubItem as any).description,
           isProject: (pubItem as any).isProject,
-          imageUrl: (pubItem as any).imageUrl,
+          postType: (pubItem as any).postType,
           images: (pubItem as any).images, // Pass images array
+          // Taxonomy fields
+          impactArea: (pubItem as any).impactArea,
+          stage: (pubItem as any).stage,
+          beneficiaries: (pubItem as any).beneficiaries,
+          methods: (pubItem as any).methods,
+          helpNeeded: (pubItem as any).helpNeeded,
           meta: transformedMeta,
         }}
         className="mb-4"

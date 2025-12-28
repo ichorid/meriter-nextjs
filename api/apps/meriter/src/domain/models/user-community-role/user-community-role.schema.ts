@@ -53,6 +53,9 @@ export const UserCommunityRoleSchema =
   SchemaFactory.createForClass(UserCommunityRoleSchemaClass);
 export type UserCommunityRoleDocument = UserCommunityRoleSchemaClass & Document;
 
+// Backwards-compatible runtime alias (some tests use `UserCommunityRole.name`)
+export const UserCommunityRole = UserCommunityRoleSchemaClass;
+
 // Compound unique index: one user = one role per community
 UserCommunityRoleSchema.index({ userId: 1, communityId: 1 }, { unique: true });
 

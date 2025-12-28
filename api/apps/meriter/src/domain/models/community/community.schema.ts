@@ -27,6 +27,7 @@ export interface CommunitySettings {
   language?: 'en' | 'ru';
   postCost?: number;
   pollCost?: number;
+  forwardCost?: number;
   editWindowDays?: number;
 }
 
@@ -232,6 +233,7 @@ export class CommunitySchemaClass implements Community {
       language: { type: String, enum: ['en', 'ru'], default: 'en' },
       postCost: { type: Number, default: 1 },
       pollCost: { type: Number, default: 1 },
+      forwardCost: { type: Number, default: 1 },
       editWindowDays: { type: Number, default: 7 },
     },
     default: {},
@@ -262,6 +264,9 @@ export class CommunitySchemaClass implements Community {
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);
 export type CommunityDocument = CommunitySchemaClass & Document;
+
+// Backwards-compatible runtime alias (many tests use `Community.name`)
+export const Community = CommunitySchemaClass;
 
 // Add indexes for common queries
 // Note: id index is already created by @Prop({ unique: true }) decorator

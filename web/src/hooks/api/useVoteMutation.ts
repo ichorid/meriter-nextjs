@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react-query';
 // votesApiV1 removed - all vote endpoints migrated to tRPC
+import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
@@ -20,7 +21,7 @@ export interface VoteMutationConfig {
 }
 
 export function createVoteMutationConfig(config: VoteMutationConfig) {
-  return (queryClient: ReturnType<typeof useQueryClient>, user: ReturnType<typeof useAuth>['user']) => {
+  return (queryClient: ReturnType<typeof useQueryClient>, user: ReturnType<typeof useAuth>['user'], utils: ReturnType<typeof trpc.useUtils>) => {
     const mutationConfig: UseMutationOptions<any, any, any, OptimisticUpdateContext> = {
       mutationFn: config.mutationFn,
       onMutate: async (variables) => {
@@ -56,25 +57,70 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         
         return context;
       },
-      onSuccess: (result, variables) => {
+      onSuccess: async (result, variables) => {
         const invalidations = config.onSuccessInvalidations || {};
         
-        // Invalidate publications if needed
+        // Invalidate and refetch publications if needed
         if (invalidations.publications) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.publications.all, exact: false });
+          await utils.publications.getAll.invalidate();
+          await utils.publications.getAll.refetch();
+          
+          // CRITICAL FIX: Invalidate and refetch specific publication detail if we have the ID
+          // This ensures the vote count updates on the publication detail page
+          const publicationId = invalidations.specificPublicationId?.(variables);
+          if (publicationId) {
+            await utils.publications.getById.invalidate({ id: publicationId });
+            await utils.publications.getById.refetch({ id: publicationId });
+          }
         }
         
-        // Invalidate communities if needed
+        // Invalidate and refetch communities if needed
         if (invalidations.communities) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.communities.all, exact: false });
+          await utils.communities.getAll.invalidate();
+          await utils.communities.getAll.refetch();
         }
         
-        // Invalidate wallet queries to update balance
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+        // Invalidate and refetch wallet queries to update balance
+        await utils.wallets.getAll.invalidate();
+        await utils.wallets.getAll.refetch();
         
-        // Invalidate quota queries to update remaining quota (for quota votes)
-        queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
+        // Invalidate wallet balance - need to handle with/without communityId
+        const communityId = variables?.communityId;
+        if (communityId) {
+          await utils.wallets.getBalance.invalidate({ communityId });
+          await utils.wallets.getBalance.refetch({ communityId });
+        } else {
+          // Invalidate all balance queries - use queryClient for broad invalidation
+          queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+          queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
+        }
+        
+        // Invalidate and refetch quota queries to update remaining quota (for quota votes)
+        // Quota is accessed via wallets.getQuota, so use tRPC utils
+        if (user?.id && communityId) {
+          await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
+          await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
+        } else if (communityId) {
+          // Broad invalidation for all quota queries in this community
+          queryClient.invalidateQueries({ 
+            queryKey: ['quota'], 
+            predicate: (query) => {
+              const key = query.queryKey;
+              return key.length >= 3 && key[2] === communityId;
+            }
+          });
+          queryClient.refetchQueries({ 
+            queryKey: ['quota'], 
+            predicate: (query) => {
+              const key = query.queryKey;
+              return key.length >= 3 && key[2] === communityId;
+            }
+          });
+        } else {
+          // Broad invalidation for all quota queries
+          queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
+          queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
+        }
         
         // Handle comments invalidation
         if (invalidations.comments) {
@@ -83,25 +129,21 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             : true;
           
           if (shouldInvalidate) {
-            // Invalidate all comment queries (broad invalidation)
-            queryClient.invalidateQueries({ queryKey: queryKeys.comments.all, exact: false });
-            // Also invalidate comment lists
-            queryClient.invalidateQueries({ queryKey: queryKeys.comments.lists(), exact: false });
+            // Invalidate and refetch comment queries by publication if we have publicationId
+            const publicationId = invalidations.specificPublicationId?.(variables);
+            if (publicationId) {
+              await utils.comments.getByPublicationId.invalidate({ publicationId });
+              await utils.comments.getByPublicationId.refetch({ publicationId });
+            } else {
+              // Broad invalidation for all comment queries
+              await utils.comments.getByPublicationId.invalidate();
+              await utils.comments.getByPublicationId.refetch();
+            }
             
             const commentId = invalidations.specificCommentId?.(variables);
             if (commentId) {
-              queryClient.invalidateQueries({ 
-                queryKey: commentsKeys.byComment(commentId),
-                exact: false 
-              });
-            }
-            
-            const publicationId = invalidations.specificPublicationId?.(variables);
-            if (publicationId) {
-              queryClient.invalidateQueries({ 
-                queryKey: commentsKeys.byPublication(publicationId),
-                exact: false 
-              });
+              await utils.comments.getReplies.invalidate({ id: commentId });
+              await utils.comments.getReplies.refetch({ id: commentId });
             }
           }
         }
@@ -114,17 +156,17 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           throw error;
         }
       },
-      onSettled: (_data, _err, vars, ctx) => {
+      onSettled: async (_data, _err, vars, ctx) => {
         const communityId = vars?.communityId;
         if (user?.id && communityId) {
-          queryClient.invalidateQueries({ queryKey: ['quota', user.id, communityId] });
+          await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
         }
         if (ctx?.quotaKey) {
           queryClient.invalidateQueries({ queryKey: ctx.quotaKey });
         }
         if (communityId) {
-          queryClient.invalidateQueries({ queryKey: queryKeys.wallet.wallets() });
-          queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance(communityId) });
+          await utils.wallets.getAll.invalidate();
+          await utils.wallets.getBalance.invalidate({ communityId });
         }
       },
     };
@@ -136,7 +178,8 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
 export function useVoteMutation(config: VoteMutationConfig) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const mutationConfig = createVoteMutationConfig(config)(queryClient, user);
+  const utils = trpc.useUtils();
+  const mutationConfig = createVoteMutationConfig(config)(queryClient, user, utils);
   
   return useMutation(mutationConfig);
 }

@@ -22,8 +22,8 @@ import { PublicationDocument as IPublicationDocument } from '../../common/interf
 
 export interface CreatePublicationDto {
   communityId: string;
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   content: string;
   type: 'text' | 'image' | 'video';
   postType?: 'basic' | 'poll' | 'project';
@@ -34,6 +34,12 @@ export interface CreatePublicationDto {
   beneficiaryId?: string;
   quotaAmount?: number;
   walletAmount?: number;
+  // Merged from dev
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
 }
 
 @Injectable()
@@ -59,6 +65,17 @@ export class PublicationService {
     const authorId = UserId.fromString(userId);
     const communityId = CommunityId.fromString(dto.communityId);
 
+    // Validate array lengths
+    if (dto.beneficiaries && dto.beneficiaries.length > 2) {
+      throw new BadRequestException('beneficiaries array cannot exceed 2 items');
+    }
+    if (dto.methods && dto.methods.length > 3) {
+      throw new BadRequestException('methods array cannot exceed 3 items');
+    }
+    if (dto.helpNeeded && dto.helpNeeded.length > 3) {
+      throw new BadRequestException('helpNeeded array cannot exceed 3 items');
+    }
+
     // Create publication aggregate
     const publication = Publication.create(
       UserId.fromString(dto.communityId), // Will be fixed by proper author ID
@@ -76,6 +93,11 @@ export class PublicationService {
         isProject: dto.isProject,
         title: dto.title,
         description: dto.description,
+        impactArea: dto.impactArea,
+        beneficiaries: dto.beneficiaries,
+        methods: dto.methods,
+        stage: dto.stage,
+        helpNeeded: dto.helpNeeded,
       },
     );
 
@@ -117,13 +139,40 @@ export class PublicationService {
     skip: number = 0,
     sortBy?: 'createdAt' | 'score',
     hashtag?: string,
+    filters?: {
+      impactArea?: string;
+      stage?: string;
+      beneficiaries?: string[];
+      methods?: string[];
+      helpNeeded?: string[];
+    },
   ): Promise<Publication[]> {
-    // Build query
-    const query: any = { communityId };
+    // Build query - exclude deleted items
+    const query: any = { communityId, deleted: { $ne: true } };
 
     // Apply hashtag filter if provided
     if (hashtag) {
       query.hashtags = hashtag;
+    }
+
+    // Apply taxonomy filters with OR semantics for array fields
+    if (filters) {
+      if (filters.impactArea) {
+        query.impactArea = filters.impactArea;
+      }
+      if (filters.stage) {
+        query.stage = filters.stage;
+      }
+      // Array fields: item matches if it has ANY of the selected tags (OR)
+      if (filters.beneficiaries && filters.beneficiaries.length > 0) {
+        query.beneficiaries = { $in: filters.beneficiaries };
+      }
+      if (filters.methods && filters.methods.length > 0) {
+        query.methods = { $in: filters.methods };
+      }
+      if (filters.helpNeeded && filters.helpNeeded.length > 0) {
+        query.helpNeeded = { $in: filters.helpNeeded };
+      }
     }
 
     // Build sort object
@@ -151,9 +200,9 @@ export class PublicationService {
     limit: number = 20,
     skip: number = 0,
   ): Promise<Publication[]> {
-    // Direct Mongoose query
+    // Direct Mongoose query - exclude deleted items
     const docs = await this.publicationModel
-      .find({})
+      .find({ deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ 'metrics.score': -1 })
@@ -226,7 +275,7 @@ export class PublicationService {
     skip: number = 0,
   ): Promise<Publication[]> {
     const docs = await this.publicationModel
-      .find({ authorId })
+      .find({ authorId, deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
@@ -243,10 +292,34 @@ export class PublicationService {
     skip: number = 0,
   ): Promise<Publication[]> {
     const docs = await this.publicationModel
-      .find({ hashtags: hashtag })
+      .find({ hashtags: hashtag, deleted: { $ne: true } })
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
+      .lean();
+
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
+  }
+
+  /**
+   * Get deleted publications by community (for leads only)
+   */
+  async getDeletedPublicationsByCommunity(
+    communityId: string,
+    limit: number = 20,
+    skip: number = 0,
+  ): Promise<Publication[]> {
+    // Build query for deleted items
+    const query: any = { communityId, deleted: true };
+
+    // Direct Mongoose query
+    const docs = await this.publicationModel
+      .find(query)
+      .limit(limit)
+      .skip(skip)
+      .sort({ deletedAt: -1, createdAt: -1 })
       .lean();
 
     return docs.map((doc) =>
@@ -295,6 +368,17 @@ export class PublicationService {
       throw new BadRequestException('Cannot change project status when editing a publication');
     }
 
+    // Validate array lengths
+    if (updateData.beneficiaries && updateData.beneficiaries.length > 2) {
+      throw new BadRequestException('beneficiaries array cannot exceed 2 items');
+    }
+    if (updateData.methods && updateData.methods.length > 3) {
+      throw new BadRequestException('methods array cannot exceed 3 items');
+    }
+    if (updateData.helpNeeded && updateData.helpNeeded.length > 3) {
+      throw new BadRequestException('helpNeeded array cannot exceed 3 items');
+    }
+
     const doc = await this.publicationModel
       .findOne({ id: publicationId })
       .lean();
@@ -335,6 +419,22 @@ export class PublicationService {
       // Clear imageUrl to avoid conflicts
       updatePayload.imageUrl = null;
     }
+    // Taxonomy fields
+    if (updateData.impactArea !== undefined) {
+      updatePayload.impactArea = updateData.impactArea || null;
+    }
+    if (updateData.beneficiaries !== undefined) {
+      updatePayload.beneficiaries = updateData.beneficiaries || [];
+    }
+    if (updateData.methods !== undefined) {
+      updatePayload.methods = updateData.methods || [];
+    }
+    if (updateData.stage !== undefined) {
+      updatePayload.stage = updateData.stage || null;
+    }
+    if (updateData.helpNeeded !== undefined) {
+      updatePayload.helpNeeded = updateData.helpNeeded || [];
+    }
 
     // Single atomic update with all changes
     await this.publicationModel.updateOne(
@@ -342,7 +442,9 @@ export class PublicationService {
       { $set: updatePayload },
     );
 
-    return publication;
+    // Reload to return updated publication
+    const updatedDoc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    return updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
   }
 
   async deletePublication(
@@ -357,7 +459,89 @@ export class PublicationService {
     // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
     // No need for redundant check here
 
-    await this.publicationModel.deleteOne({ id: publicationId });
+    // Soft delete: mark as deleted instead of removing from database
+    // This preserves votes, comments, and all related data
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          deleted: true,
+          deletedAt: new Date(),
+        },
+      },
+    );
     return true;
+  }
+
+  /**
+   * Update forward proposal fields on a publication
+   */
+  async updateForwardProposal(
+    publicationId: string,
+    targetCommunityId: string,
+    proposedBy: string,
+  ): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: 'pending',
+          forwardTargetCommunityId: targetCommunityId,
+          forwardProposedBy: proposedBy,
+          forwardProposedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    );
+  }
+
+  /**
+   * Mark publication as forwarded
+   */
+  async markAsForwarded(
+    publicationId: string,
+    targetCommunityId: string,
+  ): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: 'forwarded',
+          forwardTargetCommunityId: targetCommunityId,
+          updatedAt: new Date(),
+        },
+        $unset: {
+          forwardProposedBy: '',
+          forwardProposedAt: '',
+        },
+      },
+    );
+  }
+
+  /**
+   * Clear forward proposal fields
+   */
+  async clearForwardProposal(publicationId: string): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $set: {
+          forwardStatus: null,
+          updatedAt: new Date(),
+        },
+        $unset: {
+          forwardTargetCommunityId: '',
+          forwardProposedBy: '',
+          forwardProposedAt: '',
+        },
+      },
+    );
+  }
+
+  /**
+   * Get publication document (for accessing raw fields)
+   */
+  async getPublicationDocument(publicationId: string): Promise<any> {
+    return await this.publicationModel.findOne({ id: publicationId }).lean();
   }
 }

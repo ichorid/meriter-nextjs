@@ -16,6 +16,7 @@ import { NotificationService } from '../domain/services/notification.service';
 import { InviteService } from '../domain/services/invite.service';
 import { QuotaUsageService } from '../domain/services/quota-usage.service';
 import { PermissionService } from '../domain/services/permission.service';
+import { FavoriteService } from '../domain/services/favorite.service';
 import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
@@ -48,6 +49,7 @@ export class TrpcService {
     private inviteService: InviteService,
     private quotaUsageService: QuotaUsageService,
     private permissionService: PermissionService,
+    private favoriteService: FavoriteService,
     private userEnrichmentService: UserEnrichmentService,
     private communityEnrichmentService: CommunityEnrichmentService,
     private permissionsHelperService: PermissionsHelperService,
@@ -85,6 +87,7 @@ export class TrpcService {
       inviteService: this.inviteService,
       quotaUsageService: this.quotaUsageService,
       permissionService: this.permissionService,
+      favoriteService: this.favoriteService,
       userEnrichmentService: this.userEnrichmentService,
       communityEnrichmentService: this.communityEnrichmentService,
       permissionsHelperService: this.permissionsHelperService,

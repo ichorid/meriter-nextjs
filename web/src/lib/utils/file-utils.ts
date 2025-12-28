@@ -47,3 +47,7 @@ export function fileToDataURL(file: File): Promise<string> {
   });
 }
 
+
+
+
+

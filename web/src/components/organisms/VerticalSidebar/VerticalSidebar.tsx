@@ -23,7 +23,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 }) => {
   const pathname = usePathname();
   const { user, isAuthenticated } = useAuth();
-  const { data: unreadCount = 0 } = useUnreadCount();
+  const { data } = useUnreadCount();
+  const unreadCount = data?.count ?? 0;
   const t = useTranslations('common');
 
   // Get user's communities with wallets and quotas
@@ -137,7 +138,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               <div className="flex items-center w-full">
                 <Avatar className="w-8 h-8">
                   <AvatarImage src={user.avatarUrl} alt={user.displayName || t('user')} />
-                  <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                  <AvatarFallback userId={user.id} className="font-medium text-xs">
                     {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>

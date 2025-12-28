@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { verify } from 'jsonwebtoken';
-import { AppConfig } from '../config/configuration';
+import { AppConfig } from '../../config/configuration';
 import { UserService } from '../../domain/services/user.service';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { JwtPayload } from '../helpers/jwt';
@@ -97,7 +97,7 @@ export class JwtVerificationService {
    */
   async authenticateFromJwt(jwt: string): Promise<AuthenticationResult> {
     try {
-      const jwtSecret = this.configService.getOrThrow('jwt.secret');
+      const jwtSecret = (this.configService.getOrThrow as any)('jwt.secret') as string;
 
       // Log secret status for debugging (without exposing the actual value)
       this.logger.debug(
@@ -174,7 +174,7 @@ export class JwtVerificationService {
 
         // Log diagnostic info (without exposing secret)
         try {
-          const jwtSecret = this.configService.getOrThrow('jwt.secret');
+          const jwtSecret = (this.configService.getOrThrow as any)('jwt.secret') as string;
           this.logger.debug(
             `[AUTH-DEBUG] Current JWT_SECRET status: configured=true, length=${jwtSecret.length}`,
           );

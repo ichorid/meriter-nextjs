@@ -1,9 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
@@ -16,7 +13,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
 
   let communityModel: Model<CommunityDocument>;
@@ -30,29 +27,17 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
   let futureVisionCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-quota-consumption-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(getModelToken(QuotaUsage.name));
 
     testUserId = uid();
     testAuthorId = uid(); // Different user to author publications
@@ -157,8 +142,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Publication Creation Quota Consumption', () => {

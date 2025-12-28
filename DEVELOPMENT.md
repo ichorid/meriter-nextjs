@@ -385,7 +385,9 @@ Access via: `http://localhost` (Caddy on port 80)
 - `BOT_TOKEN` - Telegram bot token (from @BotFather)
 - `BOT_USERNAME` - Telegram bot username
 - `APP_URL` - Application URL for bot messages
-- `S3_*` - S3 credentials (optional, for avatar caching)
+- `S3_*` - S3 credentials (optional, for image uploads and avatar caching)
+  - When using Docker Compose, MinIO is automatically configured
+  - See [MinIO Setup](#minio-setup) section below for details
 
 ### Frontend (`web/.env`)
 - `MONGO_URL` - MongoDB connection string (for SSR)
@@ -466,9 +468,105 @@ docker compose -f docker-compose.local.yml down
 - ✅ MongoDB container (no local MongoDB needed)
 - ✅ Web container (Next.js)
 - ✅ API container (NestJS)
+- ✅ MinIO container (S3-compatible storage for image uploads)
 - ✅ Caddy reverse proxy
 - ✅ Automatic health checks
-- ✅ Persistent MongoDB data
+- ✅ Persistent MongoDB and MinIO data
 
 **Note**: Use `docker-compose.local.yml` for local development (builds images from source). The default `docker-compose.yml` is for production deployment (pulls pre-built images from GitHub Container Registry).
+
+---
+
+## MinIO Setup
+
+MinIO is an S3-compatible object storage service included in the Docker Compose setup. It enables image uploads and avatar caching without requiring real S3 credentials.
+
+### Automatic Setup (Docker Compose)
+
+When using `docker-compose.local.yml`, MinIO is automatically started and configured:
+
+1. **MinIO Service**: Runs on port 9000 (API) and 9001 (Console)
+2. **Default Credentials**: `minioadmin` / `minioadmin`
+3. **Default Bucket**: `meriter` (created automatically)
+4. **Default Endpoint**: `http://minio:9000` (from Docker network) or `http://localhost:9000` (from host)
+
+### Accessing MinIO Console
+
+1. Start the services:
+   ```bash
+   docker compose -f docker-compose.local.yml up -d
+   ```
+
+2. Access MinIO Console at: **http://localhost:9001**
+   - Username: `minioadmin`
+   - Password: `minioadmin`
+
+3. In the console, you can:
+   - View uploaded files
+   - Manage buckets
+   - Configure bucket policies
+   - Monitor storage usage
+
+### Manual Bucket Setup
+
+If the bucket is not created automatically:
+
+1. Access MinIO Console at http://localhost:9001
+2. Login with `minioadmin` / `minioadmin`
+3. Click "Create Bucket"
+4. Name it `meriter` (or match your `S3_BUCKET_NAME` env var)
+5. Set bucket policy to "public" for read access (required for serving images)
+
+Alternatively, use the initialization script:
+
+```bash
+# Set environment variables
+export MINIO_ENDPOINT=http://localhost:9000
+export MINIO_ROOT_USER=minioadmin
+export MINIO_ROOT_PASSWORD=minioadmin
+export S3_BUCKET_NAME=meriter
+
+# Run initialization script
+./minio-init/init-minio.sh
+```
+
+**Note**: The script requires MinIO Client (`mc`) to be installed. If not available, use the Console method above.
+
+### Configuration
+
+MinIO configuration is handled via environment variables in your `.env` file:
+
+```bash
+# MinIO defaults (used automatically in Docker Compose)
+S3_ENDPOINT=http://minio:9000
+S3_BUCKET_NAME=meriter
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_REGION=us-east-1
+```
+
+**For local development without Docker**, use:
+```bash
+S3_ENDPOINT=http://localhost:9000
+```
+
+### Testing Image Uploads
+
+After MinIO is set up:
+
+1. Start all services: `docker compose -f docker-compose.local.yml up -d`
+2. Verify MinIO is running: Check logs with `docker compose -f docker-compose.local.yml logs minio`
+3. Access the application and try uploading an image
+4. Check MinIO Console to see the uploaded file
+5. Verify the image URL is accessible in your browser
+
+### Production Considerations
+
+⚠️ **Important**: The default MinIO credentials (`minioadmin`/`minioadmin`) are for **local development only**.
+
+For production or shared environments:
+- Change MinIO credentials via `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD` environment variables
+- Use proper S3 credentials or secure MinIO with strong passwords
+- Configure bucket policies appropriately
+- Consider using real S3 (AWS, Mail.ru Cloud, etc.) for production
 

@@ -257,7 +257,9 @@ export type NotificationType =
     | "comment"
     | "publication"
     | "poll"
-    | "system";
+    | "favorite_update"
+    | "system"
+    | "forward_proposal";
 
 export interface Notification {
     id: string;

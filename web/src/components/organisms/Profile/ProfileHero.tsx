@@ -2,10 +2,11 @@
 
 import React, { useState, memo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User as UserIcon, Edit, Pencil } from 'lucide-react';
+import { User as UserIcon, Edit, Pencil, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ interface ProfileHeroProps {
 function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, userRoles = [] }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
+  const router = useRouter();
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false);
   const { mutateAsync: updateUser } = useUpdateUser();
   const addToast = useToastStore((state) => state.addToast);
@@ -96,9 +98,9 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
     <div className="relative bg-base-100 rounded-2xl overflow-hidden border border-base-content/5">
       {/* Cover Section */}
       <div className="relative h-24 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent">
-        {/* Edit button */}
-        {showEdit && onEdit && (
-          <div className="absolute top-3 right-3">
+        {/* Edit and Settings buttons */}
+        {(showEdit && onEdit) && (
+          <div className="absolute top-3 right-3 flex items-center gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -107,6 +109,15 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
             >
               <Edit size={14} className="mr-1.5" />
               <span className="text-xs">Edit</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/meriter/settings')}
+              aria-label={tCommon('settings')}
+              className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 w-8 p-0"
+            >
+              <Settings size={18} />
             </Button>
           </div>
         )}
@@ -121,7 +132,7 @@ function ProfileHeroComponent({ user, stats: _stats, onEdit, showEdit = false, u
               {avatarUrl && (
                 <AvatarImage src={avatarUrl} alt={displayName} />
               )}
-              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              <AvatarFallback userId={user.id} className="font-medium uppercase">
                 {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
               </AvatarFallback>
             </Avatar>

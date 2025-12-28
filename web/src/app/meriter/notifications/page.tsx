@@ -179,6 +179,8 @@ export default function NotificationsPage() {
         return '📊';
       case 'system':
         return '🔔';
+      case 'forward_proposal':
+        return '➡️';
       default:
         return '🔔';
     }
@@ -210,6 +212,7 @@ export default function NotificationsPage() {
     { value: 'reply', label: t('filters.reply') },
     { value: 'vote', label: t('filters.vote') },
     { value: 'invite', label: t('filters.invite') },
+    { value: 'forward_proposal', label: t('filters.forward_proposal') },
   ], [t]);
 
   return (
@@ -305,22 +308,31 @@ export default function NotificationsPage() {
                           {notification.actor.avatarUrl && (
                             <AvatarImage src={notification.actor.avatarUrl} alt={notification.actor.name} />
                           )}
-                          <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                          <AvatarFallback userId={notification.actor.id} className="font-medium uppercase">
                             {notification.actor.name ? notification.actor.name.slice(0, 2).toUpperCase() : <User size={14} />}
                           </AvatarFallback>
                         </Avatar>
                       )}
                       {!notification.read && (
-                        <button
+                        <div
                           onClick={(e) => {
                             e.stopPropagation();
                             markAsRead.mutate({ id: notification.id });
                           }}
-                          className="p-1 hover:bg-base-200 rounded-full transition-colors"
+                          className="p-1 hover:bg-base-200 rounded-full transition-colors cursor-pointer"
+                          role="button"
+                          tabIndex={0}
                           aria-label={t('ariaLabels.markAsRead')}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              markAsRead.mutate({ id: notification.id });
+                            }
+                          }}
                         >
                           <Check size={16} className="text-base-content/60" />
-                        </button>
+                        </div>
                       )}
                     </div>
                   }
@@ -370,6 +382,7 @@ function NotificationPreferencesPanel() {
     publications: true,
     polls: true,
     system: true,
+    forward_proposal: true,
   });
 
   React.useEffect(() => {

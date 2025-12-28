@@ -12,11 +12,13 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { cn } from '@/lib/utils';
-import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Settings, Info } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, Search, X, ArrowLeft, Coins } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { SortToggle } from '@/components/ui/SortToggle';
+import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
+import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -67,134 +69,15 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asStickyHeader = false }) => {
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [showSearchModal, setShowSearchModal] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Determine current tab from pathname
-  const currentTab = pathname?.includes('/profile/comments')
-    ? 'comments'
-    : pathname?.includes('/profile/polls')
-      ? 'polls'
-      : 'publications';
-
-  const { sortByTab, setSortByTab } = useProfileTabState();
-
-  // Sync sort from URL params
-  React.useEffect(() => {
-    const sortParam = searchParams?.get('sort');
-    if (sortParam === 'voted' || sortParam === 'recent') {
-      setSortByTab((prev) => ({
-        ...prev,
-        [currentTab]: sortParam,
-      }));
-    }
-  }, [searchParams, currentTab, setSortByTab]);
-
-  const handleBackClick = () => {
-    router.push('/meriter/profile');
-  };
-
-  const handleSortClick = (sort: 'recent' | 'voted') => {
-    // Update sort for the current active tab
-    setSortByTab((prev: TabSortState) => ({
-      ...prev,
-      [currentTab]: sort,
-    }));
-
-    const basePath = '/meriter/profile';
-    const tabPath = currentTab === 'publications' ? basePath : `${basePath}/${currentTab}`;
-
-    const urlParams = new URLSearchParams();
-    urlParams.set('sort', sort);
-
-    router.push(`${tabPath}?${urlParams.toString()}`);
-  };
-
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) {
-      router.push(`/meriter/search?q=${encodeURIComponent(value.trim())}`);
-      setShowSearchModal(false);
-    }
-  };
-
-  const handleSearchClear = () => {
-    setSearchQuery('');
-  };
-
-  const rightAction = (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => setShowSearchModal(true)}
-        aria-label={tCommon('search')}
-        className="rounded-xl active:scale-[0.98] px-2"
-      >
-        <Search size={18} className="text-base-content/70" />
-      </Button>
-
-      <SortToggle
-        value={sortByTab[currentTab]}
-        onChange={handleSortClick}
-        compact={true}
-      />
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => router.push('/meriter/settings')}
-        aria-label={tCommon('settings')}
-        className="rounded-xl active:scale-[0.98] px-2"
-      >
-        <Settings size={20} className="text-base-content/70" />
-      </Button>
-    </div>
-  );
 
   return (
-    <>
-      <SimpleStickyHeader
-        title={tCommon('profile')}
-        showBack={true}
-        onBack={() => router.push('/meriter/profile')}
-        rightAction={rightAction}
-        asStickyHeader={asStickyHeader}
-      />
-
-      {/* Search Modal Portal - only render when open */}
-      {showSearchModal && (
-        <BottomActionSheet
-          isOpen={showSearchModal}
-          onClose={() => setShowSearchModal(false)}
-          title={tCommon('search')}
-        >
-          <div className="space-y-4">
-            <div className="relative w-full">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-              <Input
-                type="text"
-                placeholder={tCommon('searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                className={cn('h-11 rounded-xl pl-10', searchQuery && 'pr-10')}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={handleSearchClear}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                  aria-label={tCommon('clearSearch')}
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-          </div>
-        </BottomActionSheet>
-      )}
-    </>
+    <SimpleStickyHeader
+      title={tCommon('profile')}
+      showBack={false}
+      onBack={() => router.push('/meriter/profile')}
+      asStickyHeader={asStickyHeader}
+    />
   );
 };
 
@@ -270,7 +153,7 @@ export const SimpleStickyHeader: React.FC<{
   };
 
 // Community Top Bar
-export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean }> = ({ communityId, asStickyHeader = false }) => {
+export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: boolean; activeTab?: string; futureVisionCommunityId?: string | null }> = ({ communityId, asStickyHeader = false, activeTab = 'publications', futureVisionCommunityId = null }) => {
   const { data: community, isLoading: communityLoading } = useCommunity(communityId);
   const { user } = useAuth();
   const router = useRouter();
@@ -294,6 +177,7 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   const fakeDataMode = isFakeDataMode();
   const [generatingUserPosts, setGeneratingUserPosts] = React.useState(false);
   const [generatingBeneficiaryPosts, setGeneratingBeneficiaryPosts] = React.useState(false);
+  const [addingMerits, setAddingMerits] = React.useState(false);
   const [fakeDataMessage, setFakeDataMessage] = React.useState('');
 
   // Get sortBy from URL params
@@ -356,6 +240,8 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
 
   // Handle fake data generation
   const generateFakeDataMutation = trpc.publications.generateFakeData.useMutation();
+  const addMeritsMutation = trpc.wallets.addMerits.useMutation();
+  const utils = trpc.useUtils();
 
   const handleGenerateUserPosts = async () => {
     setGeneratingUserPosts(true);
@@ -399,6 +285,29 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
     }
   };
 
+  const handleAddMerits = async () => {
+    setAddingMerits(true);
+    setFakeDataMessage('');
+
+    try {
+      const result = await addMeritsMutation.mutateAsync({
+        communityId,
+        amount: 100,
+      });
+      setFakeDataMessage(result.message);
+      setTimeout(() => setFakeDataMessage(''), 3000);
+      // Invalidate wallets to refresh the balance
+      utils.wallets.getAll.invalidate();
+      utils.wallets.getBalance.invalidate({ communityId });
+    } catch (error) {
+      console.error('Add merits error:', error);
+      setFakeDataMessage('Failed to add merits');
+      setTimeout(() => setFakeDataMessage(''), 3000);
+    } finally {
+      setAddingMerits(false);
+    }
+  };
+
 
   const isMobile = !useMediaQuery('(min-width: 768px)');
   // Left nav is hidden below lg breakpoint (1024px), so show back button when nav is hidden
@@ -436,11 +345,6 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
   }
 
   const hashtags = community.hashtags || [];
-  // Determine admin rights
-  const isAdmin = Boolean(
-    user?.globalRole === 'superadmin' ||
-    community.isAdmin
-  );
 
   const handleBack = () => {
     router.push('/meriter/communities');
@@ -454,33 +358,14 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
       asStickyHeader={asStickyHeader}
       rightAction={
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Search Button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowSearchModal(true)}
-            className="rounded-xl active:scale-[0.98] px-2"
-          >
-            <Search size={18} className="text-base-content/70" />
-          </Button>
-
-          {/* Sort Toggle */}
-          <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
-            <SortToggle
-              value={sortBy}
-              onChange={handleSortChange}
-              compact={true}
-            />
-          </div>
-
-          {/* Fake Data Buttons - dev only */}
+          {/* Fake Data Buttons - dev only - LEFT SIDE */}
           {fakeDataMode && (
             <>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateUserPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
                 className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate user post"
               >
@@ -490,11 +375,21 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
                 variant="ghost"
                 size="sm"
                 onClick={handleGenerateBeneficiaryPosts}
-                disabled={generatingUserPosts || generatingBeneficiaryPosts}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
                 className="rounded-xl active:scale-[0.98] px-2"
                 title="Generate post with beneficiary"
               >
                 {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAddMerits}
+                disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
+                className="rounded-xl active:scale-[0.98] px-2"
+                title="Add 100 wallet merits"
+              >
+                {addingMerits ? <Loader2 className="animate-spin" size={16} /> : <Coins size={16} className="text-base-content/70" />}
               </Button>
               {fakeDataMessage && (
                 <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
@@ -504,31 +399,40 @@ export const CommunityTopBar: React.FC<{ communityId: string; asStickyHeader?: b
             </>
           )}
 
-          {/* Info Button - Community Rules */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push(`/meriter/communities/${communityId}/rules`)}
-            aria-label={safeTranslate('info', 'Community info')}
-            className="rounded-xl active:scale-[0.98] px-2"
-          >
-            <Info size={18} className="text-base-content/70" />
-          </Button>
-
-          {/* Admin Settings */}
-          {isAdmin && (
+          {/* Search Button - only show on publications tab */}
+          {activeTab === 'publications' && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push(`/meriter/communities/${communityId}/settings`)}
+              onClick={() => setShowSearchModal(true)}
               className="rounded-xl active:scale-[0.98] px-2"
-              aria-label="Community admin settings"
             >
-              <svg className="w-5 h-5 text-base-content/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              <Search size={18} className="text-base-content/70" />
             </Button>
+          )}
+
+          {/* Sort Toggle - only show on publications tab */}
+          {activeTab === 'publications' && (
+            <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
+              <SortToggle
+                value={sortBy}
+                onChange={handleSortChange}
+                compact={true}
+              />
+            </div>
+          )}
+
+          {/* Create Menu - for publications and vision tabs - RIGHTMOST */}
+          {activeTab === 'publications' && (
+            <CreateMenu communityId={communityId} />
+          )}
+          {activeTab === 'vision' && futureVisionCommunityId && (
+            <CreateMenu communityId={futureVisionCommunityId} />
+          )}
+
+          {/* Invite Menu - for members tab - RIGHTMOST */}
+          {activeTab === 'members' && (
+            <InviteMenu communityId={communityId} />
           )}
         </div>
       }

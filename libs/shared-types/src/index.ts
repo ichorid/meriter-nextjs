@@ -5,6 +5,7 @@
 export {
     TimestampsSchema,
     IdentifiableSchema,
+    IdInputSchema,
     VotableMetricsSchema,
     PolymorphicReferenceSchema,
     CurrencySchema,
@@ -69,6 +70,20 @@ export {
     PollFeedItemSchema,
     FeedItemSchema,
 } from './schemas';
+
+// Export taxonomy constants
+export {
+    IMPACT_AREAS,
+    BENEFICIARIES,
+    METHODS,
+    STAGES,
+    HELP_NEEDED,
+    type ImpactArea,
+    type Beneficiary,
+    type Method,
+    type Stage,
+    type HelpNeeded,
+} from './taxonomy';
 
 // Export inferred types explicitly (type-only to reduce memory usage)
 export type {

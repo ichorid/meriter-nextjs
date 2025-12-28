@@ -11,6 +11,7 @@ export const CardWithAvatar = ({
     children,
     onClick,
     userName,
+    userId,
 }: {
     avatarUrl?: string;
     iconUrl?: string;
@@ -19,6 +20,7 @@ export const CardWithAvatar = ({
     onClick?: () => any;
     avatarUrlUpd?: (userId: string) => any;
     userName?: string;
+    userId?: string;
 }) => {
     const [retryCount, setRetryCount] = useState(0);
     
@@ -70,7 +72,7 @@ export const CardWithAvatar = ({
                       }
                     }}
                   />
-                  <AvatarFallback className="bg-muted text-muted-foreground font-medium text-sm">
+                  <AvatarFallback userId={userId || userName} className="font-medium text-sm">
                     {userName ? userName.charAt(0).toUpperCase() : 'U'}
                   </AvatarFallback>
                 </Avatar>

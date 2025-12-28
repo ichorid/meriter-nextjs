@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 /**
  * Helper function to process withdrawal and credit wallet
@@ -184,7 +185,7 @@ export const publicationsRouter = router({
    * Get publication by ID
    */
   getById: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const publication = await ctx.publicationService.getPublication(input.id);
 
@@ -199,6 +200,29 @@ export const publicationsRouter = router({
       const authorId = publication.getAuthorId.getValue();
       const beneficiaryId = publication.getBeneficiaryId?.getValue();
       const communityId = publication.getCommunityId.getValue();
+
+      // Hide deleted publications from non-leads (and unauthenticated users).
+      // Leads and superadmins can still access deleted items for moderation.
+      const snapshot = publication.toSnapshot();
+      if (snapshot.deleted) {
+        if (!ctx.user) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+
+        const userRole = await ctx.permissionService.getUserRoleInCommunity(
+          ctx.user.id,
+          communityId,
+        );
+        if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+      }
 
       // Batch fetch users and communities
       const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
@@ -243,6 +267,7 @@ export const publicationsRouter = router({
       authorId: z.string().optional(),
       hashtag: z.string().optional(),
       page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
@@ -250,6 +275,8 @@ export const publicationsRouter = router({
     .query(async ({ ctx, input }) => {
       const query = input || {};
       // Support both pagination formats: limit/skip and page/pageSize
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const page = query.cursor ?? query.page;
       let parsedLimit = 20;
       let parsedSkip = 0;
 
@@ -259,8 +286,8 @@ export const publicationsRouter = router({
         parsedLimit = query.limit;
       }
 
-      if (query.page && query.pageSize) {
-        parsedSkip = (query.page - 1) * parsedLimit;
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
       } else if (query.skip !== undefined) {
         parsedSkip = query.skip;
       }
@@ -370,6 +397,9 @@ export const publicationsRouter = router({
   create: protectedProcedure
     .input(CreatePublicationDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'create', 'publication', input);
+
       // Get community to check payment requirements
       const community = await ctx.communityService.getCommunity(input.communityId);
       if (!community) {
@@ -512,17 +542,8 @@ export const publicationsRouter = router({
       data: UpdatePublicationDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
-      // Check permissions before updating
-      const canEdit = await ctx.permissionService.canEditPublication(
-        ctx.user.id,
-        input.id,
-      );
-      if (!canEdit) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to edit this publication',
-        });
-      }
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'publication', input);
 
       // Clean up null values from update data
       const updateData: any = { ...input.data };
@@ -562,10 +583,136 @@ export const publicationsRouter = router({
    * Delete publication
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
       return { success: true };
+    }),
+
+  /**
+   * Get deleted publications (leads only)
+   */
+  getDeleted: protectedProcedure
+    .input(z.object({
+      communityId: z.string(),
+      page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Check if user is a lead in the community
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can view deleted publications',
+        });
+      }
+
+      // Parse pagination
+      const query = input;
+      const page = query.cursor ?? query.page;
+      let parsedLimit = 20;
+      let parsedSkip = 0;
+
+      if (query.pageSize) {
+        parsedLimit = query.pageSize;
+      } else if (query.limit) {
+        parsedLimit = query.limit;
+      }
+
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
+      } else if (query.skip !== undefined) {
+        parsedSkip = query.skip;
+      }
+
+      // Get deleted publications
+      const publications = await ctx.publicationService.getDeletedPublicationsByCommunity(
+        input.communityId,
+        parsedLimit,
+        parsedSkip,
+      );
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      const mappedPublications = publications.map((publication) =>
+        EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+        ),
+      );
+
+      // Batch calculate permissions for all publications
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+        ctx.user?.id || null,
+        publicationIds,
+      );
+
+      // Batch fetch withdrawals data for all publications
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+                'publication_withdrawal',
+                id,
+              );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // Log but don't fail
+      }
+
+      // Add permissions and withdrawals to each publication
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
+      return {
+        data: mappedPublications,
+        total: mappedPublications.length,
+        skip: parsedSkip,
+        limit: parsedLimit,
+      };
     }),
 
   /**
@@ -667,7 +814,7 @@ export const publicationsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if fake data mode is enabled
-      const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+      const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
       if (!fakeDataMode) {
         throw new TRPCError({
           code: 'FORBIDDEN',
@@ -790,5 +937,318 @@ export const publicationsRouter = router({
         publications: createdPublications,
         count: createdPublications.length,
       };
+    }),
+
+  /**
+   * Propose to forward a publication (for non-leads)
+   */
+  proposeForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId, targetCommunityId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+      const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
+
+      // Validate: must be in a team group
+      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Can only forward posts from team groups',
+        });
+      }
+
+      // Validate: post type must be 'basic' or 'project' (not 'poll')
+      const postType = (publication as any).postType || 'basic';
+      if (postType === 'poll') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward polls',
+        });
+      }
+
+      // Validate: user is not a lead
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole === 'lead' || userRole === 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Leads should use the forward endpoint directly',
+        });
+      }
+
+      // Validate: target community supports the post type
+      const targetSupports = await ctx.permissionService.targetCommunitySupportsPostType(
+        targetCommunityId,
+        postType as 'basic' | 'project',
+        userId,
+      );
+      if (!targetSupports) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not support this post type',
+        });
+      }
+
+      // Check quota
+      const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
+      if (forwardCost > 0) {
+        const remainingQuota = await getRemainingQuota(
+          userId,
+          sourceCommunityId,
+          sourceCommunity,
+          ctx.connection,
+        );
+        if (remainingQuota < forwardCost) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
+          });
+        }
+      }
+
+      // Consume quota
+      if (forwardCost > 0) {
+        await ctx.quotaUsageService.consumeQuota(
+          userId,
+          sourceCommunityId,
+          forwardCost,
+          'forward_proposal',
+          publicationId,
+        );
+      }
+
+      // Update publication with forward proposal
+      await ctx.publicationService.updateForwardProposal(
+        publicationId,
+        targetCommunityId,
+        userId,
+      );
+
+      // Get all leads of source community
+      const leadRoles = await ctx.userCommunityRoleService.getUsersByRole(
+        sourceCommunityId,
+        'lead',
+      );
+
+      // Create notification for each lead
+      const targetCommunity = await ctx.communityService.getCommunity(targetCommunityId);
+      const proposer = await ctx.userService.getUser(userId);
+      const proposerName = proposer?.displayName || 'Someone';
+
+      for (const leadRole of leadRoles) {
+        const leadId = leadRole.userId;
+        await ctx.notificationService.createNotification({
+          userId: leadId,
+          type: 'forward_proposal',
+          source: 'user',
+          sourceId: userId,
+          metadata: {
+            publicationId,
+            communityId: sourceCommunityId,
+            forwardProposedBy: userId,
+            forwardTargetCommunityId: targetCommunityId,
+            targetCommunityName: targetCommunity?.name || targetCommunityId,
+          },
+          title: 'Forward proposal',
+          message: `${proposerName} proposed to forward a post to ${targetCommunity?.name || targetCommunityId}`,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  /**
+   * Forward a publication (for leads - immediate forward or confirm proposal)
+   */
+  forward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId, targetCommunityId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+      const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
+
+      // Validate: must be in a team group
+      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Can only forward posts from team groups',
+        });
+      }
+
+      // Validate: post type must be 'basic' or 'project' (not 'poll')
+      const postType = (publication as any).postType || 'basic';
+      if (postType === 'poll') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward polls',
+        });
+      }
+
+      // Validate: user is a lead or superadmin
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole !== 'lead' && userRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can forward posts',
+        });
+      }
+
+      // Get publication document to check forward status
+      const publicationDoc = await ctx.publicationService.getPublicationDocument(publicationId);
+      const isPending = publicationDoc?.forwardStatus === 'pending';
+
+      // If pending, validate target matches
+      if (isPending && publicationDoc?.forwardTargetCommunityId !== targetCommunityId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not match the proposal',
+        });
+      }
+
+      // Validate: target community supports the post type
+      const targetSupports = await ctx.permissionService.targetCommunitySupportsPostType(
+        targetCommunityId,
+        postType as 'basic' | 'project',
+        userId,
+      );
+      if (!targetSupports) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Target community does not support this post type',
+        });
+      }
+
+      // If not pending, check and consume quota
+      if (!isPending) {
+        const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
+        if (forwardCost > 0) {
+          const remainingQuota = await getRemainingQuota(
+            userId,
+            sourceCommunityId,
+            sourceCommunity,
+            ctx.connection,
+          );
+          if (remainingQuota < forwardCost) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
+            });
+          }
+
+          await ctx.quotaUsageService.consumeQuota(
+            userId,
+            sourceCommunityId,
+            forwardCost,
+            'forward',
+            publicationId,
+          );
+        }
+      }
+
+      // Get original publication data
+      const originalAuthorId = publication.getAuthorId.getValue();
+      const originalBeneficiaryId = publication.getBeneficiaryId?.getValue();
+
+      // Create new publication in target community
+      const newPublication = await ctx.publicationService.createPublication(
+        originalAuthorId, // Keep original author
+        {
+          communityId: targetCommunityId,
+          // Publication aggregate getters already return primitive values
+          content: publication.getContent,
+          type: publication.getType,
+          postType: postType as 'basic' | 'project',
+          isProject: postType === 'project',
+          title: (publicationDoc as any)?.title,
+          description: (publicationDoc as any)?.description,
+          hashtags: (publicationDoc as any)?.hashtags || [],
+          images: (publicationDoc as any)?.images,
+          videoUrl: (publicationDoc as any)?.videoUrl,
+          beneficiaryId: originalBeneficiaryId,
+          impactArea: (publicationDoc as any)?.impactArea,
+          beneficiaries: (publicationDoc as any)?.beneficiaries,
+          methods: (publicationDoc as any)?.methods,
+          stage: (publicationDoc as any)?.stage,
+          helpNeeded: (publicationDoc as any)?.helpNeeded,
+        },
+      );
+
+      // Update original publication: mark as forwarded
+      await ctx.publicationService.markAsForwarded(publicationId, targetCommunityId);
+
+      return { success: true, forwardedPublicationId: newPublication.getId.getValue() };
+    }),
+
+  /**
+   * Reject a forward proposal (for leads)
+   */
+  rejectForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      const { publicationId } = input;
+
+      // Get publication
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      const sourceCommunityId = publication.getCommunityId.getValue();
+
+      // Get publication document to check forward status
+      const publicationDoc = await ctx.publicationService.getPublicationDocument(publicationId);
+      if (!publicationDoc || publicationDoc.forwardStatus !== 'pending') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Publication is not pending forward approval',
+        });
+      }
+
+      // Validate: user is a lead or superadmin
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(userId, sourceCommunityId);
+      if (userRole !== 'lead' && userRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can reject forward proposals',
+        });
+      }
+
+      // Clear forward fields
+      await ctx.publicationService.clearForwardProposal(publicationId);
+
+      return { success: true };
     }),
 });

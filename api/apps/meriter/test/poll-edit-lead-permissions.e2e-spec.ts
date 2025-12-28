@@ -1,18 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MeriterModule } from '../src/meriter.module';
-import { TestDatabaseHelper } from './test-db.helper';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { createTestPoll, createTestPublication, createTestComment } from './helpers/fixtures';
 import { trpcMutation, trpcMutationWithError, trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PollSchemaClass, PollDocument } from '../src/domain/models/poll/poll.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 
@@ -20,8 +16,8 @@ describe('Poll Edit and Lead Permissions E2E', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
   let connection: Connection;
+  let testDb: any;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -39,34 +35,22 @@ describe('Poll Edit and Lead Permissions E2E', () => {
   let otherCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-poll-edit-lead-permissions';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(mongoUri), MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
-
-    // Wait for onModuleInit
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
-    
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    const _pollModel = connection.model<PollDocument>(Poll.name);
-    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
-    const _commentModel = connection.model<CommentDocument>(Comment.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    // Ensure these models are registered (used by tRPC handlers in this suite)
+    app.get<Model<PollDocument>>(getModelToken(PollSchemaClass.name));
+    app.get<Model<PublicationDocument>>(getModelToken(PublicationSchemaClass.name));
+    app.get<Model<CommentDocument>>(getModelToken(CommentSchemaClass.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(
+      getModelToken(UserCommunityRoleSchemaClass.name),
+    );
 
     // Initialize test IDs
     authorId = uid();
@@ -166,15 +150,17 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      // Author/participant must exist in other community for cross-community permission tests
+      { id: uid(), userId: authorId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId: communityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: participantId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
   });
 
   afterAll(async () => {
-    if (app) await app.close();
-    if (testDb) await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Poll Edit Permissions - Zero Votes', () => {
@@ -215,8 +201,8 @@ describe('Poll Edit and Lead Permissions E2E', () => {
         pollId,
         data: {
           optionId,
-          walletAmount: 1,
-          quotaAmount: 0,
+          quotaAmount: 1,
+          walletAmount: 0,
         },
       });
 
@@ -271,10 +257,12 @@ describe('Poll Edit and Lead Permissions E2E', () => {
       (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: publicationId });
 
-      // Verify post was deleted
-      const result = await trpcQueryWithError(app, 'publications.getById', { id: publicationId });
-
-      expect(result.error?.code).toBe('NOT_FOUND');
+      // Verify post was soft-deleted (it should appear in the deleted list for leads)
+      const deleted = await trpcQuery(app, 'publications.getDeleted', {
+        communityId,
+        pageSize: 50,
+      });
+      expect(deleted.data.some((p: any) => p.id === publicationId)).toBe(true);
     });
 
     it('should NOT allow lead to edit post in different community', async () => {
@@ -327,14 +315,14 @@ describe('Poll Edit and Lead Permissions E2E', () => {
 
       const pollId = created.id;
 
-      // Lead should be able to delete (though delete functionality not implemented)
+      // Lead should be able to delete
       (global as any).testUserId = leadId;
-      // Note: Delete throws "not implemented" error, but permission check should pass
-      const result = await trpcMutationWithError(app, 'polls.delete', { id: pollId });
+      const result = await trpcMutation(app, 'polls.delete', { id: pollId });
+      expect(result.success).toBe(true);
 
-      // Verify the error message indicates it's not a permission issue
-      // (The actual implementation throws "not implemented" which is NOT_IMPLEMENTED)
-      expect(result.error?.code).toBe('NOT_IMPLEMENTED');
+      // Verify poll was deleted
+      const pollResult = await trpcQueryWithError(app, 'polls.getById', { id: pollId });
+      expect(pollResult.error?.code).toBe('NOT_FOUND');
     });
 
     it('should NOT allow lead to edit poll in different community', async () => {

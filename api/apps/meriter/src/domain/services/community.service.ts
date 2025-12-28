@@ -385,6 +385,21 @@ export class CommunityService {
       if (dto.settings.dailyEmission !== undefined) {
         settingsUpdate['settings.dailyEmission'] = dto.settings.dailyEmission;
       }
+      if (dto.settings.postCost !== undefined) {
+        settingsUpdate['settings.postCost'] = dto.settings.postCost;
+      }
+      if (dto.settings.pollCost !== undefined) {
+        settingsUpdate['settings.pollCost'] = dto.settings.pollCost;
+      }
+      if (dto.settings.forwardCost !== undefined) {
+        settingsUpdate['settings.forwardCost'] = dto.settings.forwardCost;
+      }
+      if (dto.settings.editWindowDays !== undefined) {
+        settingsUpdate['settings.editWindowDays'] = dto.settings.editWindowDays;
+      }
+      if (dto.settings.language !== undefined) {
+        settingsUpdate['settings.language'] = dto.settings.language;
+      }
 
       // Merge settings into updateData
       Object.assign(updateData, settingsUpdate);

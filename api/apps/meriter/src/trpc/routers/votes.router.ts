@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
+import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 
@@ -216,6 +217,18 @@ async function createVoteLogic(
     images?: string[];
   },
 ) {
+  // Check permissions if voting on a publication
+  // Note: Comment voting (targetType 'vote') permissions are handled separately if needed
+  if (input.targetType === 'publication') {
+    const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
+    if (!canVote) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to vote on this publication',
+      });
+    }
+  }
+
   // Get communityId from target
   const communityId = await getCommunityIdFromTarget(
     input.targetType,
@@ -246,7 +259,65 @@ async function createVoteLogic(
   }
 
   // Determine direction
-  const direction: 'up' | 'down' = input.direction || (quotaAmount > 0 ? 'up' : 'down');
+  // Default to "up" when not specified. Downvotes must be explicit.
+  const direction: 'up' | 'down' = input.direction ?? 'up';
+
+  // Role-specific and community-specific voting rules should be enforced BEFORE balance/quota checks
+  // so we don't mask the real reason with "Insufficient quota/balance" errors.
+  const userRole = await ctx.permissionService.getUserRoleInCommunity(
+    ctx.user.id,
+    communityId,
+  );
+
+  // Viewers can only vote with quota (no wallet voting) in all communities.
+  if (userRole === COMMUNITY_ROLE_VIEWER && walletAmount > 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Viewers can only vote using daily quota, not wallet merits.',
+    });
+  }
+
+  // Special case: Marathon of Good blocks wallet voting (quota only) for posts/comments.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    community?.typeTag === 'marathon-of-good' &&
+    walletAmount > 0 &&
+    userRole !== COMMUNITY_ROLE_VIEWER
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+    });
+  }
+
+  // Special case: Future Vision blocks quota voting (wallet only) for posts/comments.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    community?.typeTag === 'future-vision' &&
+    quotaAmount > 0
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+    });
+  }
+
+  // General rule: wallet voting is only allowed in special groups.
+  // Currently, Future Vision is the only group that allows wallet voting on posts/comments.
+  // This must run BEFORE wallet-balance checks so we don't mask the real reason.
+  if (
+    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    walletAmount > 0 &&
+    community?.typeTag !== 'future-vision'
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Voting with permanent wallet merits is only allowed in special groups',
+    });
+  }
 
   // Validate quota cannot be used for downvotes
   if (direction === 'down' && quotaAmount > 0) {
@@ -390,7 +461,7 @@ export const votesRouter = router({
    * Delete vote
    */
   delete: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     .mutation(async ({ ctx, input }) => {
       // TODO: Implement vote deletion logic
@@ -427,7 +498,7 @@ export const votesRouter = router({
    * Note: This endpoint is not fully implemented in REST controller
    */
   getDetails: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const vote = await ctx.voteService.getVoteById(input.id);
       if (!vote) {

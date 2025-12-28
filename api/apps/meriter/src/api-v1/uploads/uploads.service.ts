@@ -72,17 +72,17 @@ export class UploadsService {
   private readonly s3Endpoint?: string;
 
   constructor(private configService: ConfigService<AppConfig>) {
-    const s3Endpoint = this.configService.get('storage.s3.endpoint');
-    const bucketName = this.configService.get('storage.s3.bucketName');
-    const s3AccessKeyId = this.configService.get('storage.s3.accessKeyId');
-    const s3SecretAccessKey = this.configService.get('storage.s3.secretAccessKey');
+    const s3Endpoint = (this.configService.get as any)('storage.s3.endpoint') as string | undefined;
+    const bucketName = (this.configService.get as any)('storage.s3.bucketName') as string | undefined;
+    const s3AccessKeyId = (this.configService.get as any)('storage.s3.accessKeyId') as string | undefined;
+    const s3SecretAccessKey = (this.configService.get as any)('storage.s3.secretAccessKey') as string | undefined;
 
     const isS3Configured = !!(s3Endpoint && bucketName && s3AccessKeyId && s3SecretAccessKey);
 
     if (isS3Configured) {
       this.logger.log('✅ S3 storage is configured for uploads');
       this.s3Client = new S3Client({
-        region: this.configService.get('storage.s3.region', 'us-east-1'),
+        region: ((this.configService.get as any)('storage.s3.region') ?? 'us-east-1') as string,
         endpoint: s3Endpoint,
         credentials: {
           accessKeyId: s3AccessKeyId,
@@ -129,8 +129,16 @@ export class UploadsService {
     quality: number,
     outputFormat: 'jpeg' | 'png',
     fit: 'inside' | 'cover' = 'inside',
+    skipRotation: boolean = false, // Skip rotation if already rotated
   ): Promise<{ buffer: Buffer; metadata: sharp.Metadata }> {
-    let sharpInstance = sharp(buffer).resize(width, height, {
+    let sharpInstance = sharp(buffer);
+    
+    // Only rotate if not already rotated (EXIF orientation handling)
+    if (!skipRotation) {
+      sharpInstance = sharpInstance.rotate(); // Auto-rotate based on EXIF orientation and strip EXIF data
+    }
+    
+    sharpInstance = sharpInstance.resize(width, height, {
       fit,
       withoutEnlargement: true,
       position: 'center',
@@ -189,8 +197,16 @@ export class UploadsService {
 
     try {
       let imageBuffer = file.buffer;
+      let isRotated = false;
       
-      // Apply crop if provided
+      // Rotate image based on EXIF orientation first (before any processing)
+      // This ensures correct orientation for cropping and resizing
+      imageBuffer = await sharp(imageBuffer)
+        .rotate() // Auto-rotate based on EXIF orientation and strip EXIF data
+        .toBuffer();
+      isRotated = true;
+      
+      // Apply crop if provided (image is already rotated)
       if (crop) {
         imageBuffer = await sharp(imageBuffer)
           .extract({
@@ -219,6 +235,7 @@ export class UploadsService {
           quality,
           outputFormat,
           'cover',
+          isRotated, // Skip rotation since already rotated
         );
 
         const key = `${folder}/${baseFileName}.${fileExtension}`;
@@ -251,6 +268,8 @@ export class UploadsService {
         maxHeight,
         quality,
         outputFormat,
+        'inside',
+        isRotated, // Skip rotation since already rotated
       );
       const largeKey = `${folder}/${baseFileName}.${fileExtension}`;
       await this.uploadToS3(largeBuffer, largeKey, contentType);
@@ -264,6 +283,7 @@ export class UploadsService {
           IMAGE_SIZES.thumbnail.quality,
           outputFormat,
           'cover',
+          isRotated, // Skip rotation since already rotated
         );
         const thumbKey = `${folder}/${baseFileName}_thumb.${fileExtension}`;
         await this.uploadToS3(thumbBuffer, thumbKey, contentType);
@@ -283,6 +303,8 @@ export class UploadsService {
           IMAGE_SIZES.medium.height,
           IMAGE_SIZES.medium.quality,
           outputFormat,
+          'inside',
+          isRotated, // Skip rotation since already rotated
         );
         const mediumKey = `${folder}/${baseFileName}_medium.${fileExtension}`;
         await this.uploadToS3(mediumBuffer, mediumKey, contentType);

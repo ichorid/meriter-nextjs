@@ -87,7 +87,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
               {user.avatarUrl && (
                 <AvatarImage src={user.avatarUrl} alt={user.displayName || user.username || tCommon('user')} />
               )}
-              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              <AvatarFallback userId={user.id} className="font-medium uppercase">
                 {(user.displayName || user.username) ? (user.displayName || user.username).slice(0, 2).toUpperCase() : <User size={24} />}
               </AvatarFallback>
             </Avatar>

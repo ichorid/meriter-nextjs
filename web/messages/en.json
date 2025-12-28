@@ -94,7 +94,7 @@
             "subtitle": "Here's your activity overview",
             "stats": {
                 "publications": "Publications",
-                "comments": "Comments",
+                "comments": "Votes",
                 "polls": "Polls",
                 "updates": "Updates",
                 "projects": "Projects"
@@ -105,7 +105,8 @@
                 "browseCommunities": "Browse Communities",
                 "search": "Search",
                 "createPost": "Create Post",
-                "createPoll": "Create Poll"
+                "createPoll": "Create Poll",
+                "createProject": "Create Project"
             }
         },
         "tip1": "Transfer points from publications and comments to your available balance to use them",
@@ -114,7 +115,7 @@
         "myCommunities": "My Communities",
         "tabs": {
             "publications": "My Publications",
-            "comments": "My Comments",
+            "comments": "My Votes",
             "polls": "Polls",
             "updates": "Updates"
         },
@@ -129,8 +130,8 @@
                 "message": "You haven't created any publications yet."
             },
             "comments": {
-                "title": "No Comments",
-                "message": "You haven't written any comments yet."
+                "title": "No Votes",
+                "message": "You haven't voted on any posts yet."
             },
             "polls": {
                 "title": "No Polls",
@@ -528,15 +529,20 @@
             "searchPlaceholder": "Search publications...",
             "noAccess": "No access",
             "createPoll": "Create Poll",
+            "createProject": "Create Project",
             "byDate": "By Date",
             "byRating": "By Rating",
             "loadMore": "Load more",
             "createPost": "Create Post",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
+            "deleted": "Deleted",
+            "noDeletedPublications": "No deleted publications",
             "members": {
                 "title": "Members",
-                "empty": "No members found"
+                "empty": "No members found",
+                "remove": "Remove member",
+                "confirmRemove": "Remove {name} from community?"
             },
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
@@ -548,6 +554,10 @@
             "breadcrumb": "Settings",
             "settingsTitle": "Settings: {communityName}",
             "subtitle": "Manage settings for {communityName}",
+            "tabs": {
+                "general": "General",
+                "rules": "Rules"
+            },
             "communityProfile": "Community Profile",
             "name": "Name",
             "namePlaceholder": "Community Name",
@@ -577,6 +587,8 @@
             "postCostHelp": "Cost in quota/merits to create a post. Set to 0 to make posts free.",
             "pollCost": "Poll Creation Cost",
             "pollCostHelp": "Cost in quota/merits to create a poll. Set to 0 to make polls free.",
+            "forwardCost": "Forward Cost",
+            "forwardCostHelp": "Cost in quota/merits to forward a post. Set to 0 to make forwarding free.",
             "currencyNames": "Currency Names",
             "singular": "Singular",
             "plural": "Plural",
@@ -720,7 +732,79 @@
                 "descriptionRequired": "Description is required",
                 "descriptionTooLong": "Description must be no more than {max} characters",
                 "invalidUrl": "Invalid URL",
-                "submitFailed": "Failed to create publication"
+                "submitFailed": "Failed to create publication",
+                "impactAreaRequired": "Impact area is required for project posts",
+                "stageRequired": "Stage is required for project posts"
+            },
+            "taxonomy": {
+                "requiredForProjects": "Required fields for project posts",
+                "optionalFacets": "Optional facets (folded by default). Add them only if they help discovery.",
+                "impactArea": "Impact Area",
+                "selectImpactArea": "Choose one",
+                "stage": "Stage",
+                "selectStage": "Choose one",
+                "beneficiaries": "Beneficiaries",
+                "beneficiariesHint": "Who benefits directly?",
+                "methods": "What you do",
+                "methodsHint": "How does the project create impact?",
+                "helpNeeded": "Help needed",
+                "helpNeededHint": "What are you collecting right now?",
+                "clear": "Clear",
+                "values": {
+                    "impactArea": {
+                        "Community & Mutual Aid": "Community & Mutual Aid",
+                        "Education & Youth": "Education & Youth",
+                        "Health & Wellbeing": "Health & Wellbeing",
+                        "Environment & Climate": "Environment & Climate",
+                        "Animals & Nature Protection": "Animals & Nature Protection",
+                        "Inclusion & Accessibility": "Inclusion & Accessibility",
+                        "Humanitarian Aid & Crisis Response": "Humanitarian Aid & Crisis Response",
+                        "Civic Engagement & Democracy": "Civic Engagement & Democracy",
+                        "Culture, Arts & Heritage": "Culture, Arts & Heritage",
+                        "Economic Empowerment": "Economic Empowerment",
+                        "Public Space & Local Infrastructure": "Public Space & Local Infrastructure",
+                        "Research, Advocacy & Awareness": "Research, Advocacy & Awareness"
+                    },
+                    "stage": {
+                        "Idea / looking for team": "Idea / looking for team",
+                        "Active / ongoing": "Active / ongoing",
+                        "Needs volunteers now": "Needs volunteers now",
+                        "Fundraising / collecting resources": "Fundraising / collecting resources",
+                        "Completed (showcase results)": "Completed (showcase results)"
+                    },
+                    "beneficiaries": {
+                        "Children & teens": "Children & teens",
+                        "Elderly": "Elderly",
+                        "People with disabilities": "People with disabilities",
+                        "Low-income families": "Low-income families",
+                        "Migrants & refugees": "Migrants & refugees",
+                        "Patients & caregivers": "Patients & caregivers",
+                        "Local community (general)": "Local community (general)",
+                        "Animals / wildlife": "Animals / wildlife",
+                        "Everyone (public-interest)": "Everyone (public-interest)"
+                    },
+                    "methods": {
+                        "Direct service": "Direct service",
+                        "Events & community building": "Events & community building",
+                        "Education & training": "Education & training",
+                        "Building / restoration": "Building / restoration",
+                        "Donations & distribution": "Donations & distribution",
+                        "Tech / tools / platforms": "Tech / tools / platforms",
+                        "Research & data": "Research & data",
+                        "Advocacy & campaigning": "Advocacy & campaigning",
+                        "Emergency response": "Emergency response"
+                    },
+                    "helpNeeded": {
+                        "Volunteers (time)": "Volunteers (time)",
+                        "Money": "Money",
+                        "Materials / equipment": "Materials / equipment",
+                        "Expertise": "Expertise",
+                        "Partnerships": "Partnerships",
+                        "Venue / space": "Venue / space",
+                        "Visibility / PR": "Visibility / PR",
+                        "Logistics / transport": "Logistics / transport"
+                    }
+                }
             },
             "cancel": "Cancel",
             "creating": "Creating...",
@@ -756,6 +840,11 @@
     },
     "communities": {
         "other": "Other",
+        "localGroups": {
+            "title": "Local",
+            "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
+            "contactNote": "If you want to become a Participant, contact one of the Leads."
+        },
         "create": {
             "title": "Create Community",
             "creating": "Creating...",
@@ -764,6 +853,7 @@
         },
         "createPost": "Create Post",
         "createPoll": "Create Poll",
+        "createProject": "Create Project",
         "rules": {
             "title": "Community Rules",
             "communityNotFound": "Community not found",
@@ -790,6 +880,7 @@
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",
             "remove": "Remove",
+            "save": "Save",
             "saveRules": "Save Rules",
             "saving": "Saving...",
             "showPreview": "Show Preview",
@@ -842,7 +933,7 @@
         "title": "Registration",
         "authTitle": "Authentication",
         "inviteDescription": "Enter your invite code to begin registration (optional)",
-        "inviteCodeLabel": "Invite Code",
+        "inviteCodeLabel": "Invite Code (optional)",
         "inviteCodePlaceholder": "Enter invite code",
         "continue": "Continue",
         "checkingInvite": "Checking invite...",
@@ -1083,7 +1174,8 @@
             "mention": "Mentions",
             "reply": "Replies",
             "vote": "Votes",
-            "invite": "Invites"
+            "invite": "Invites",
+            "forward_proposal": "Forward Proposals"
         },
         "preferences": {
             "title": "Notification Preferences",
@@ -1094,7 +1186,8 @@
             "comments": "Comments",
             "publications": "Publications",
             "polls": "Polls",
-            "system": "System"
+            "system": "System",
+            "forward_proposal": "Forward Proposals"
         },
         "ariaLabels": {
             "markAsRead": "Mark as read",

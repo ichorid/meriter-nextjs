@@ -36,6 +36,7 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
+    const snapshot = publication.toSnapshot();
     const images = publication.getImages;
 
     // DEBUG: Log images data
@@ -53,11 +54,26 @@ export class EntityMappers {
       type: publication.getType,
       hashtags: publication.getHashtags,
       images: images && images.length > 0 ? images : undefined,
-      videoUrl: publication.toSnapshot().videoUrl || undefined,
+      videoUrl: snapshot.videoUrl || undefined,
       title: publication.getTitle || undefined,
       description: publication.getDescription || undefined,
-      postType: publication.toSnapshot().postType || 'basic',
-      isProject: publication.toSnapshot().isProject || false,
+      postType: snapshot.postType || 'basic',
+      isProject: snapshot.isProject || false,
+      // Project taxonomy (needed for edit prefill + cards outside community feed)
+      impactArea: snapshot.impactArea || undefined,
+      stage: snapshot.stage || undefined,
+      beneficiaries:
+        snapshot.beneficiaries && snapshot.beneficiaries.length > 0
+          ? snapshot.beneficiaries
+          : undefined,
+      methods:
+        snapshot.methods && snapshot.methods.length > 0
+          ? snapshot.methods
+          : undefined,
+      helpNeeded:
+        snapshot.helpNeeded && snapshot.helpNeeded.length > 0
+          ? snapshot.helpNeeded
+          : undefined,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
@@ -77,8 +93,10 @@ export class EntityMappers {
           origin: this.formatCommunityForApi(community),
         }),
       },
-      createdAt: publication.toSnapshot().createdAt.toISOString(),
-      updatedAt: publication.toSnapshot().updatedAt.toISOString(),
+      deleted: snapshot.deleted ?? false,
+      deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
+      createdAt: snapshot.createdAt.toISOString(),
+      updatedAt: snapshot.updatedAt.toISOString(),
     };
   }
 

@@ -158,6 +158,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
               <CommunityAvatar
                 avatarUrl={community.avatarUrl}
                 communityName={community.name}
+                communityId={community.id}
                 size={46}
                 needsSetup={community.needsSetup}
                 className="bg-base-300"
@@ -247,6 +248,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           <CommunityAvatar
             avatarUrl={community.avatarUrl}
             communityName={community.name}
+            communityId={community.id}
             size={44}
             needsSetup={community.needsSetup}
           />

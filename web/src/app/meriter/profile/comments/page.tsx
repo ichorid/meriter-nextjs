@@ -1,20 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useProfileData } from '@/hooks/useProfileData';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
-import { ProfileCommentsTab } from '@/components/organisms/Profile/ProfileCommentsTab';
+import { ProfileVotesTab } from '@/components/organisms/Profile/ProfileVotesTab';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfileCommentsPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const {
@@ -66,7 +63,7 @@ export default function ProfileCommentsPage() {
       myId={user?.id}
     >
       <div className="space-y-4">
-        <ProfileCommentsTab
+        <ProfileVotesTab
           comments={myComments}
           isLoading={commentsLoading}
           sortOrder={sortOrder}

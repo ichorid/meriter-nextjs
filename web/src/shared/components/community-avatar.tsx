@@ -6,6 +6,7 @@ import { Settings } from 'lucide-react';
 interface CommunityAvatarProps {
   avatarUrl?: string;
   communityName: string;
+  communityId?: string;
   size?: number;
   className?: string;
   onError?: () => void;
@@ -20,6 +21,7 @@ interface CommunityAvatarProps {
 export const CommunityAvatar = ({
   avatarUrl,
   communityName,
+  communityId,
   size = 48,
   className = '',
   onError,
@@ -32,7 +34,7 @@ export const CommunityAvatar = ({
     <div className="relative inline-block">
       <Avatar className={`${sizeClass} ${className}`} style={!hasPredefinedSize ? { width: size, height: size } : undefined}>
         <AvatarImage src={avatarUrl} alt={communityName} onError={onError} className="object-cover" />
-        <AvatarFallback className="bg-muted text-muted-foreground font-medium">
+        <AvatarFallback communityId={communityId || communityName} className="font-medium">
           {communityName ? communityName.charAt(0).toUpperCase() : '?'}
         </AvatarFallback>
       </Avatar>

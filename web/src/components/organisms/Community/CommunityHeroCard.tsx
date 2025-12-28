@@ -125,7 +125,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
             {community.avatarUrl && (
               <AvatarImage src={community.avatarUrl} alt={community.name} />
             )}
-            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+            <AvatarFallback communityId={community.id} className="font-medium uppercase">
               {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={18} />}
             </AvatarFallback>
           </Avatar>
@@ -205,7 +205,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               {community.avatarUrl && (
                 <AvatarImage src={community.avatarUrl} alt={community.name} />
               )}
-              <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              <AvatarFallback communityId={community.id} className="font-medium uppercase">
                 {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={32} />}
               </AvatarFallback>
             </Avatar>

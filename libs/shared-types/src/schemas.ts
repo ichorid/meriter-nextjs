@@ -6,6 +6,13 @@ import {
   PolymorphicReferenceSchema,
   CurrencySchema,
 } from "./base-schemas";
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+} from "./taxonomy";
 
 // Metrics schemas extending base VotableMetricsSchema
 export const PublicationMetricsSchema = VotableMetricsSchema.extend({
@@ -75,6 +82,7 @@ export const CommunitySettingsSchema = z.object({
   language: z.enum(["en", "ru"]).default("en"),
   postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
+  forwardCost: z.number().int().min(0).default(1), // Cost in quota/merits to forward a post (0 = free)
   editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
 });
 
@@ -232,6 +240,19 @@ export const PublicationSchema = IdentifiableSchema.merge(
   videoUrl: z.string().url().optional(),
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   authorDisplay: z.string().optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).default([]),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).default([]),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).default([]),
+  // Forward fields
+  forwardStatus: z.enum(["pending", "forwarded"]).nullable().optional(),
+  forwardTargetCommunityId: z.string().optional(),
+  forwardProposedBy: z.string().optional(),
+  forwardProposedAt: z.date().optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -343,6 +364,12 @@ export const CreatePublicationDtoSchema = z.object({
   authorDisplay: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),
+  // Taxonomy fields
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
 }).refine(
   (data) => {
     const quota = data.quotaAmount ?? 0;
@@ -353,7 +380,31 @@ export const CreatePublicationDtoSchema = z.object({
   {
     message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
   }
-);
+)
+  .refine(
+    (data) => {
+      // Require impactArea and stage when postType is 'project'
+      if (data.postType === 'project') {
+        return !!data.impactArea && !!data.stage;
+      }
+      return true;
+    },
+    {
+      message: "impactArea and stage are required when postType is 'project'",
+    }
+  )
+  .refine(
+    (data) => {
+      // Validate array lengths
+      if (data.beneficiaries && data.beneficiaries.length > 2) return false;
+      if (data.methods && data.methods.length > 3) return false;
+      if (data.helpNeeded && data.helpNeeded.length > 3) return false;
+      return true;
+    },
+    {
+      message: "beneficiaries max 2, methods max 3, helpNeeded max 3",
+    }
+  );
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -470,6 +521,12 @@ export const UpdatePublicationDtoSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
   images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
+  // Taxonomy fields (can be updated)
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
 }).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z
@@ -661,10 +718,24 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   beneficiaryId: z.string().optional(),
   content: z.string().min(1),
   slug: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  postType: z.enum(["basic", "poll", "project"]).optional(),
+  isProject: z.boolean().optional(),
   hashtags: z.array(z.string()).default([]),
+  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(),
   metrics: PublicationMetricsSchema,
   meta: FeedItemMetaSchema,
   permissions: ResourcePermissionsSchema.optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

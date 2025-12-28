@@ -532,5 +532,131 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(result.error?.code).toBe('FORBIDDEN');
     });
   });
+
+  describe('Team Group Edit Permissions', () => {
+    let teamCommunityId: string;
+    let teamParticipant1Id: string;
+    let teamParticipant2Id: string;
+
+    beforeEach(async () => {
+      // Create team community
+      teamCommunityId = uid();
+      teamParticipant1Id = uid();
+      teamParticipant2Id = uid();
+
+      await communityModel.create({
+        id: teamCommunityId,
+        name: 'Test Team',
+        typeTag: 'team',
+        members: [],
+        settings: {
+          editWindowDays: 7,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          dailyEmission: 10,
+        },
+        postingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant'],
+          requiresTeamMembership: false,
+          onlyTeamLead: false,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create team participants
+      await userModel.create([
+        {
+          id: teamParticipant1Id,
+          authProvider: 'telegram',
+          authId: `tg-${teamParticipant1Id}`,
+          displayName: 'Team Participant 1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: teamParticipant2Id,
+          authProvider: 'telegram',
+          authId: `tg-${teamParticipant2Id}`,
+          displayName: 'Team Participant 2',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      // Create user community roles for team members
+      const now = new Date();
+      await userCommunityRoleModel.create([
+        { id: uid(), userId: teamParticipant1Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+        { id: uid(), userId: teamParticipant2Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      ]);
+    });
+
+    it('should allow team participant to edit another team participant\'s publication', async () => {
+      // Create publication as team participant 1
+      (global as any).testUserId = teamParticipant1Id;
+      const pubDto = createTestPublication(teamCommunityId, teamParticipant1Id, {});
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
+
+      // Team participant 2 should be able to edit
+      (global as any).testUserId = teamParticipant2Id;
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated by team participant 2' },
+      });
+
+      expect(updated.content).toBe('Updated by team participant 2');
+    });
+
+    it('should allow team participant to edit another team participant\'s publication even with votes', async () => {
+      // Create publication as team participant 1
+      (global as any).testUserId = teamParticipant1Id;
+      const pubDto = createTestPublication(teamCommunityId, teamParticipant1Id, {});
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
+
+      // Add a vote (use another team member or create a lead in the team)
+      // Create a lead in the team for voting
+      const teamLeadId = uid();
+      await userModel.create({
+        id: teamLeadId,
+        authProvider: 'telegram',
+        authId: `tg-${teamLeadId}`,
+        displayName: 'Team Lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await userCommunityRoleModel.create({
+        id: uid(),
+        userId: teamLeadId,
+        communityId: teamCommunityId,
+        role: 'lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Vote on the publication
+      (global as any).testUserId = teamLeadId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+      });
+
+      // Team participant 2 should still be able to edit even with votes
+      (global as any).testUserId = teamParticipant2Id;
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated by team participant 2 after vote' },
+      });
+
+      expect(updated.content).toBe('Updated by team participant 2 after vote');
+    });
+  });
 });
 

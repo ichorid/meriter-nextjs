@@ -1,15 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { UserDocument } from '../src/domain/models/user/user.schema';
-import { UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { CommunityDocument } from '../src/domain/models/community/community.schema';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { User, UserDocument } from '../src/domain/models/user/user.schema';
+import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { trpcQuery } from './helpers/trpc-test-helper';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
@@ -18,8 +14,8 @@ describe('Users - Get All Leads', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let testDb: any;
+  let _connection: Connection;
 
   let _userService: UserService;
   let _communityService: CommunityService;
@@ -40,36 +36,18 @@ describe('Users - Get All Leads', () => {
   let community3Id: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-leads';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
-
-    // Wait for onModuleInit to complete
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     _userService = app.get<UserService>(UserService);
-    const _userCommunityRoleService = app.get<UserCommunityRoleService>(
-      UserCommunityRoleService,
-    );
     _communityService = app.get<CommunityService>(CommunityService);
 
-    connection = app.get<Connection>(getConnectionToken());
-    userModel = connection.model('User');
-    userCommunityRoleModel = connection.model('UserCommunityRole');
-    communityModel = connection.model('Community');
+    _connection = app.get<Connection>(getConnectionToken());
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(getModelToken(UserCommunityRole.name));
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
 
     // Generate test IDs
     lead1Id = uid();
@@ -83,12 +61,7 @@ describe('Users - Get All Leads', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   beforeEach(async () => {
@@ -96,6 +69,10 @@ describe('Users - Get All Leads', () => {
     await userModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
+
+    // Authenticate tRPC calls in tests (protectedProcedure requires an authenticated user)
+    (global as any).testUserId = viewerId;
+    (global as any).testUserGlobalRole = undefined;
   });
 
   describe('GET /api/v1/users/leads', () => {

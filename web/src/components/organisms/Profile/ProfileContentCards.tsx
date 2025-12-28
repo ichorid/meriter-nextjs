@@ -3,8 +3,9 @@
 import React, { useMemo, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, MessageSquare, BarChart3 } from 'lucide-react';
+import { FileText, MessageSquare, BarChart3, Star } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
+import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 
 interface ProfileContentCardsProps {
   stats: {
@@ -12,6 +13,7 @@ interface ProfileContentCardsProps {
     comments: number;
     polls: number;
     projects?: number;
+    favorites?: number;
   };
   isLoading?: boolean;
 }
@@ -23,8 +25,20 @@ function ProfileContentCardsComponent({
   const t = useTranslations('home');
   const tProfile = useTranslations('profile');
   const router = useRouter();
+  const { data: unreadFavorites } = useUnreadFavoritesCount();
+  const unreadFavoritesCount = unreadFavorites?.count ?? 0;
 
-  const statCards = useMemo(() => [
+  type StatCard = {
+    label: string;
+    value: number;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    bgColor: string;
+    route: string;
+    isHighlighted?: boolean;
+  };
+
+  const statCards: StatCard[] = useMemo(() => [
     {
       label: t('hero.stats.publications'),
       value: stats.publications,
@@ -49,7 +63,16 @@ function ProfileContentCardsComponent({
       bgColor: 'bg-base-200/50',
       route: `${routes.profile}/polls`,
     },
-  ], [t, stats.publications, stats.comments, stats.polls]);
+    {
+      label: 'Favorites',
+      value: stats.favorites ?? 0,
+      icon: Star,
+      color: 'text-base-content',
+      bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-base-200/50',
+      route: `${routes.profile}/favorites`,
+      isHighlighted: unreadFavoritesCount > 0,
+    },
+  ], [t, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount]);
 
   const handleCardClick = (route: string) => {
     router.push(route);
@@ -70,7 +93,9 @@ function ProfileContentCardsComponent({
             <button
               key={index}
               onClick={() => handleCardClick(stat.route)}
-              className={`${stat.bgColor} rounded-xl p-4 border border-base-content/5 transition-all hover:bg-base-200 cursor-pointer text-left`}
+              className={`${stat.bgColor} rounded-xl p-4 border ${
+                stat.isHighlighted ? 'border-warning/40' : 'border-base-content/5'
+              } transition-all hover:bg-base-200 cursor-pointer text-left`}
             >
               <div className="flex items-center justify-between mb-2">
                 <Icon className="text-base-content/40 w-5 h-5" />

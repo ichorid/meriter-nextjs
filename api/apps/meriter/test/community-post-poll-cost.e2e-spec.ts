@@ -1,9 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
@@ -20,7 +17,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
 
   let communityModel: Model<CommunityDocument>;
@@ -34,33 +31,22 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   let testCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-cost-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     walletService = app.get<WalletService>(WalletService);
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    const _publicationModel = connection.model<PublicationDocument>(Publication.name);
-    const _pollModel = connection.model<PollDocument>(Poll.name);
-    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
-    const _walletModel = connection.model<WalletDocument>(Wallet.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    // Ensure these models are registered (used by procedures/services)
+    app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
+    app.get<Model<PollDocument>>(getModelToken(Poll.name));
+    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(getModelToken(QuotaUsage.name));
+    app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
 
     testUserId = uid();
     testLeadId = uid();
@@ -140,9 +126,18 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     await userCommunityRoleService.setRole(testUserId, testCommunityId, 'participant');
     await userCommunityRoleService.setRole(testLeadId, testCommunityId, 'lead');
 
-    // Create wallet for test user
+    // Create wallets for both users (lead wallet is needed for wallet-payment tests)
     await walletService.createOrGetWallet(
       testUserId,
+      testCommunityId,
+      {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+    );
+    await walletService.createOrGetWallet(
+      testLeadId,
       testCommunityId,
       {
         singular: 'merit',
@@ -153,14 +148,13 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Community Settings - Post/Poll Cost', () => {
     it('should allow lead to update postCost and pollCost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = undefined;
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -183,7 +177,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow superadmin to update postCost and pollCost', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'superadmin';
+      (global as any).testUserGlobalRole = 'superadmin';
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -201,7 +195,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject non-admin users from updating costs', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       const result = await trpcMutationWithError(app, 'communities.update', {
         id: testCommunityId,
@@ -218,7 +212,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow setting cost to 0 (free posts/polls)', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       const updated = await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
@@ -238,7 +232,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Post Creation with Configurable Cost', () => {
     it('should charge configured postCost when creating a post', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 3
       await trpcMutation(app, 'communities.update', {
@@ -295,7 +289,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow free posts when postCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 0
       await trpcMutation(app, 'communities.update', {
@@ -350,7 +344,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject post creation when quota is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 15 (more than daily quota of 10)
       await trpcMutation(app, 'communities.update', {
@@ -380,7 +374,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Poll Creation with Configurable Cost', () => {
     it('should charge configured pollCost when creating a poll', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 4
       await trpcMutation(app, 'communities.update', {
@@ -442,7 +436,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow free polls when pollCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 0
       await trpcMutation(app, 'communities.update', {
@@ -502,7 +496,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject poll creation when quota is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 15 (more than daily quota of 10)
       await trpcMutation(app, 'communities.update', {
@@ -537,7 +531,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   describe('Payment with Wallet when Cost > 0', () => {
     it('should charge configured postCost from wallet when quota is insufficient', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 2
       await trpcMutation(app, 'communities.update', {
@@ -570,24 +564,21 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       expect(quotaCheck.remaining).toBeLessThanOrEqual(0);
 
       // Add wallet balance
-      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
-      if (wallet) {
-        await walletService.addTransaction(
-          testLeadId,
-          testCommunityId,
-          'credit',
-          5,
-          'personal',
-          'test',
-          'test',
-          {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-          'Test credit',
-        );
-      }
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        5,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
       // Get wallet balance before
       const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);

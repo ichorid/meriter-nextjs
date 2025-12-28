@@ -3,10 +3,8 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
-import { FabMenu } from "@/components/molecules/FabMenu/FabMenu";
-import { CommunityMembersFab } from "@/components/molecules/FabMenu/CommunityMembersFab";
 import { MembersTab } from "@/components/organisms/Community/MembersTab";
 import { Tabs } from "@/components/ui/Tabs";
 import { useTranslations } from 'next-intl';
@@ -17,13 +15,39 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, FileText, Users, Eye } from 'lucide-react';
+import { Loader2, FileText, Users, Eye, Filter, X, ChevronDown, Trash2 } from 'lucide-react';
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+  type ImpactArea,
+  type Beneficiary,
+  type Method,
+  type Stage,
+  type HelpNeeded,
+} from '@/lib/constants/taxonomy';
+import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { Separator } from '@/components/ui/shadcn/separator';
+import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/shadcn/select';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
+import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -32,12 +56,21 @@ interface CommunityPageClientProps {
 export function CommunityPageClient({ communityId: chatId }: CommunityPageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const {
+      translateImpactArea,
+      translateStage,
+      translateBeneficiary,
+      translateMethod,
+      translateHelpNeeded,
+    } = useTaxonomyTranslations();
 
     // Get the post parameter from URL for deep linking
     const targetPostSlug = searchParams?.get('post');
     const targetPollId = searchParams?.get('poll');
+    const highlightPostSlug = searchParams?.get('highlight');
 
     // Get sort state from URL params
     const sortBy = searchParams?.get('sort') || 'voted';
@@ -49,6 +82,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const [paginationEnd, setPaginationEnd] = useState(false);
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
+    const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
+    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    // Taxonomy filter state
+    const [fImpactArea, setFImpactArea] = useState<ImpactArea | 'any'>('any');
+    const [fStage, setFStage] = useState<Stage | 'any'>('any');
+    const [fBeneficiaries, setFBeneficiaries] = useState<Beneficiary[]>([]);
+    const [fMethods, setFMethods] = useState<Method[]>([]);
+    const [fHelpNeeded, setFHelpNeeded] = useState<HelpNeeded[]>([]);
+    const [bOpenFilters, setBOpenFilters] = useState(false);
+    const [bOpenBeneficiaries, setBOpenBeneficiaries] = useState(false);
+    const [bOpenMethods, setBOpenMethods] = useState(false);
+    const [bOpenHelp, setBOpenHelp] = useState(false);
 
     // Handle tab change
     const handleTabChange = (tabId: string) => {
@@ -108,10 +153,26 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         tag: selectedTag || undefined,
     });
 
+    // Fetch deleted publications (will only return data if user is lead)
+    // Hook is called here so it's available for useEffect/useMemo below
+    const {
+        data: deletedData,
+        fetchNextPage: fetchNextDeletedPage,
+        hasNextPage: hasNextDeletedPage,
+        isFetchingNextPage: isFetchingNextDeletedPage,
+        error: _deletedErr
+    } = useInfiniteDeletedPublications(chatId, 20);
+
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
         if (activeTab === 'vision') {
             if (!hasNextVisionPage) {
+                setPaginationEnd(true);
+            } else {
+                setPaginationEnd(false);
+            }
+        } else if (activeTab === 'deleted') {
+            if (!hasNextDeletedPage) {
                 setPaginationEnd(true);
             } else {
                 setPaginationEnd(false);
@@ -123,7 +184,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 setPaginationEnd(false);
             }
         }
-    }, [hasNextPage, hasNextVisionPage, activeTab]);
+    }, [hasNextPage, hasNextVisionPage, hasNextDeletedPage, activeTab]);
 
     // Memoize feed items array (can contain both publications and polls)
     const publications = useMemo(() => {
@@ -177,16 +238,41 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             );
     }, [visionData?.pages]); // Only recalculate when visionData.pages changes
 
+    // Memoize deleted publications array
+    const deletedPublications = useMemo(() => {
+        return (deletedData?.pages ?? [])
+            .flatMap((page: any) => {
+                if (page?.data && Array.isArray(page.data)) {
+                    return page.data;
+                }
+                return [];
+            })
+            .map((p: any) => ({
+                ...p,
+                slug: p.slug || p.id,
+                beneficiaryId: p.beneficiaryId || p.meta?.beneficiary?.username,
+                beneficiaryName: p.meta?.beneficiary?.name,
+                beneficiaryPhotoUrl: p.meta?.beneficiary?.photoUrl,
+                beneficiaryUsername: p.meta?.beneficiary?.username,
+                type: p.type || (p.content ? 'publication' : 'poll'),
+            }))
+            .filter((p: FeedItem, index: number, self: FeedItem[]) =>
+                index === self.findIndex((t: FeedItem) => t?.id === p?.id)
+            );
+    }, [deletedData?.pages]);
+
     // Handle deep linking to specific post or poll
     useEffect(() => {
         const postsToSearch = activeTab === 'vision' ? visionPublications : publications;
-        if ((targetPostSlug || targetPollId) && postsToSearch.length > 0) {
+        if ((targetPostSlug || targetPollId || highlightPostSlug) && postsToSearch.length > 0) {
             let targetPost: FeedItem | undefined;
 
             if (targetPollId) {
                 targetPost = postsToSearch.find((p: FeedItem) => p.id === targetPollId && p.type === 'poll');
             } else if (targetPostSlug) {
                 targetPost = postsToSearch.find((p: FeedItem) => p.slug === targetPostSlug);
+            } else if (highlightPostSlug) {
+                targetPost = postsToSearch.find((p: FeedItem) => p.slug === highlightPostSlug);
             }
 
             if (targetPost) {
@@ -199,11 +285,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         postElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Remove highlight after 3 seconds
                         setTimeout(() => setHighlightedPostId(null), 3000);
+                        // Remove highlight parameter from URL after scrolling
+                        if (highlightPostSlug && pathname) {
+                            const params = new URLSearchParams(searchParams?.toString() || '');
+                            params.delete('highlight');
+                            const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                            router.replace(newUrl);
+                        }
                     }
                 }, 500);
             }
         }
-    }, [targetPostSlug, targetPollId, publications, visionPublications, activeTab]);
+    }, [targetPostSlug, targetPollId, highlightPostSlug, publications, visionPublications, activeTab, searchParams, pathname, router]);
 
     const error =
         (publications ?? [])?.[0]?.error || err
@@ -233,6 +326,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         const role = userRoles.find(r => r.communityId === chatId);
         return role?.role || null;
     }, [user?.globalRole, userRoles, chatId]);
+
+    // Check if user is a lead (for deleted tab visibility)
+    const isLead = userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin';
 
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits = useMemo(() => {
@@ -324,10 +420,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use community data for chat info (same as comms)
     const _chatUrl = comms?.description;
 
-    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
-    // Declare all state hooks unconditionally at the top level
-    const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
-    const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
+    // Helper function to toggle items in array
+    const toggleInArray = <T,>(arr: T[], value: T): T[] => {
+      return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+    };
 
     // Filter publications by tag and search query
     // This useMemo MUST be called before any conditional returns
@@ -371,8 +467,37 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             });
         }
 
+        // Filter by taxonomy fields (OR semantics for array fields)
+        filtered = filtered.filter((p: FeedItem) => {
+            if (p.type !== 'publication') return true; // Only filter publications
+            
+            const pub = p as PublicationFeedItem & { impactArea?: string; stage?: string; beneficiaries?: string[]; methods?: string[]; helpNeeded?: string[] };
+            
+            if (fImpactArea !== 'any' && pub.impactArea !== fImpactArea) return false;
+            if (fStage !== 'any' && pub.stage !== fStage) return false;
+            
+            // OR semantics across selected facets - item matches if it has ANY of the selected tags
+            if (fBeneficiaries.length > 0) {
+                const pubBeneficiaries = pub.beneficiaries || [];
+                const hasAnyBeneficiary = fBeneficiaries.some(b => pubBeneficiaries.includes(b));
+                if (!hasAnyBeneficiary) return false;
+            }
+            if (fMethods.length > 0) {
+                const pubMethods = pub.methods || [];
+                const hasAnyMethod = fMethods.some(m => pubMethods.includes(m));
+                if (!hasAnyMethod) return false;
+            }
+            if (fHelpNeeded.length > 0) {
+                const pubHelpNeeded = pub.helpNeeded || [];
+                const hasAnyHelpNeeded = fHelpNeeded.some(h => pubHelpNeeded.includes(h));
+                if (!hasAnyHelpNeeded) return false;
+            }
+            
+            return true;
+        });
+
         return filtered;
-    }, [publications, selectedTag, searchQuery]);
+    }, [publications, selectedTag, searchQuery, fImpactArea, fStage, fBeneficiaries, fMethods, fHelpNeeded]);
 
     // Filter vision publications by tag and search query
     const filteredVisionPublications = useMemo(() => {
@@ -431,7 +556,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             activeCommentHook={[activeCommentHook, setActiveCommentHook]}
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
-            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} />}
+            stickyHeader={<CommunityTopBar communityId={chatId} asStickyHeader={true} activeTab={activeTab} futureVisionCommunityId={futureVisionCommunityId} />}
         >
             {/* Community Hero Card - Twitter-style with cover */}
             {comms && (
@@ -488,6 +613,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         label: tCommunities('members.title') || 'Members',
                         icon: <Users size={16} />,
                     },
+                    ...(isLead ? [{
+                        id: 'deleted',
+                        label: tCommunities('deleted') || 'Deleted',
+                        icon: <Trash2 size={16} />,
+                    }] : []),
                 ]}
                 activeTab={activeTab}
                 onChange={handleTabChange}
@@ -540,6 +670,195 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {/* Tab Content */}
             {activeTab === 'publications' ? (
                 <div className="space-y-4">
+                    {/* Taxonomy Filters */}
+                    <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <Filter className="h-4 w-4" />
+                                <span className="text-sm font-medium">Filters</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setFImpactArea('any');
+                                            setFStage('any');
+                                            setFBeneficiaries([]);
+                                            setFMethods([]);
+                                            setFHelpNeeded([]);
+                                            setBOpenFilters(false);
+                                            setBOpenBeneficiaries(false);
+                                            setBOpenMethods(false);
+                                            setBOpenHelp(false);
+                                        }}
+                                        className="gap-2"
+                                    >
+                                        <X className="h-4 w-4" /> Reset
+                                    </Button>
+                                )}
+                                <Button
+                                    variant={bOpenFilters ? 'secondary' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setBOpenFilters((s) => !s)}
+                                >
+                                    {bOpenFilters ? 'Hide' : 'Show'}
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Compact active filters summary when collapsed */}
+                        {!bOpenFilters && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                                {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
+                                {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
+                                {fBeneficiaries.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {fMethods.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {fHelpNeeded.slice(0, 2).map((x) => (
+                                    <Badge key={x} variant="secondary">{x}</Badge>
+                                ))}
+                                {(fBeneficiaries.length > 2 || fMethods.length > 2 || fHelpNeeded.length > 2) && (
+                                    <Badge variant="outline" className="font-normal">+more</Badge>
+                                )}
+                            </div>
+                        )}
+
+                        {bOpenFilters && (
+                            <>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label>Impact Area</Label>
+                                        <Select
+                                            value={fImpactArea}
+                                            onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="any">Any</SelectItem>
+                                                {(IMPACT_AREAS || []).map((x) => (
+                                                    <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Stage</Label>
+                                        <Select
+                                            value={fStage}
+                                            onValueChange={(v) => setFStage(v as Stage | 'any')}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="any">Any</SelectItem>
+                                                {(STAGES || []).map((x) => (
+                                                    <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
+
+                                <Separator />
+
+                                <CollapsibleSection
+                                    title={`Beneficiaries (${fBeneficiaries.length})`}
+                                    open={bOpenBeneficiaries}
+                                    setOpen={setBOpenBeneficiaries}
+                                    summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFBeneficiaries([]);
+                                            }}
+                                            disabled={!fBeneficiaries.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
+                                            selected={fBeneficiaries}
+                                            translateValue={translateBeneficiary}
+                                            onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection
+                                    title={`Methods (${fMethods.length})`}
+                                    open={bOpenMethods}
+                                    setOpen={setBOpenMethods}
+                                    summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFMethods([]);
+                                            }}
+                                            disabled={!fMethods.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={Array.isArray(METHODS) ? [...METHODS] : []}
+                                            selected={fMethods}
+                                            translateValue={translateMethod}
+                                            onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+
+                                <CollapsibleSection
+                                    title={`Help needed (${fHelpNeeded.length})`}
+                                    open={bOpenHelp}
+                                    setOpen={setBOpenHelp}
+                                    summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
+                                    right={
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setFHelpNeeded([]);
+                                            }}
+                                            disabled={!fHelpNeeded.length}
+                                        >
+                                            Clear
+                                        </Button>
+                                    }
+                                >
+                                    <div className="pt-1">
+                                        <Checklist
+                                            options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
+                                            selected={fHelpNeeded}
+                                            translateValue={translateHelpNeeded}
+                                            onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
+                                        />
+                                    </div>
+                                </CollapsibleSection>
+                            </>
+                        )}
+                    </div>
+
                     {isAuthenticated &&
                         filteredPublications
                             .filter((p: FeedItem) => {
@@ -667,14 +986,74 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         </div>
                     )}
                 </div>
+            ) : activeTab === 'deleted' ? (
+                <div className="space-y-4">
+                    {isLead ? (
+                        <>
+                            {deletedPublications.map((p) => {
+                                const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                    || !!(targetPollId && p.id === targetPollId);
+
+                                return (
+                                    <div
+                                        key={p.id}
+                                        id={`post-${p.id}`}
+                                        className={
+                                            highlightedPostId === p.id
+                                                ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
+                                                : isSelected
+                                                    ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                    : 'hover:shadow-md transition-all duration-200 rounded-lg opacity-75'
+                                        }
+                                    >
+                                        <div className="relative">
+                                            {/* Deleted indicator badge */}
+                                            <div className="absolute -top-2 -right-2 z-10 bg-error text-error-content rounded-full px-2 py-1 text-xs font-semibold shadow-lg">
+                                                Deleted
+                                            </div>
+                                            <PublicationCard
+                                                publication={p}
+                                                wallets={Array.isArray(wallets) ? wallets : []}
+                                                showCommunityAvatar={false}
+                                                isSelected={isSelected}
+                                            />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {isFetchingNextDeletedPage && (
+                                <div className="flex justify-center py-4">
+                                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                                </div>
+                            )}
+
+                            {!paginationEnd && deletedPublications.length > 0 && !isFetchingNextDeletedPage && (
+                                <Button
+                                    variant="default"
+                                    onClick={() => fetchNextDeletedPage()}
+                                    className="rounded-xl active:scale-[0.98] w-full sm:w-auto mx-auto block"
+                                >
+                                    {t('communities.loadMore')}
+                                </Button>
+                            )}
+
+                            {deletedPublications.length === 0 && !isFetchingNextDeletedPage && (
+                                <div className="text-center py-8 text-base-content/60">
+                                    <p>{tCommunities('noDeletedPublications') || 'No deleted publications'}</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="text-center py-8 text-base-content/60">
+                            <p>{tCommunities('accessDenied') || 'Access denied'}</p>
+                        </div>
+                    )}
+                </div>
             ) : (
                 <MembersTab communityId={chatId} />
             )}
 
-            {/* Conditional FABs */}
-            {activeTab === 'publications' && <FabMenu communityId={chatId} />}
-            {activeTab === 'vision' && futureVisionCommunityId && <FabMenu communityId={futureVisionCommunityId} />}
-            {activeTab === 'members' && <CommunityMembersFab communityId={chatId} />}
         </AdaptiveLayout>
     );
 }

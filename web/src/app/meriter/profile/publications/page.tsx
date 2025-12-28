@@ -20,6 +20,7 @@ export default function ProfilePublicationsPage() {
   const {
     myPublications,
     publicationsLoading,
+    publicationsFetching,
     fetchNextPublications,
     hasNextPublications,
     isFetchingNextPublications,
@@ -69,6 +70,7 @@ export default function ProfilePublicationsPage() {
         <ProfilePublicationsTab
           publications={myPublications}
           isLoading={publicationsLoading}
+          isFetching={publicationsFetching}
           wallets={wallets}
           sortOrder={sortOrder}
           fetchNextPage={fetchNextPublications}

@@ -93,7 +93,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                     {avatarUrl && (
                         <AvatarImage src={avatarUrl} alt={displayName || username || 'User'} />
                     )}
-                    <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                    <AvatarFallback userId={id} className="font-medium uppercase">
                         {(displayName || username) ? (displayName || username).slice(0, 2).toUpperCase() : <User size={18} />}
                     </AvatarFallback>
                 </Avatar>

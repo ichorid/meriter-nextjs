@@ -27,7 +27,8 @@ export interface BottomNavigationProps {
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
     const router = useRouter();
-    const { data: unreadCount = 0 } = useUnreadCount();
+    const { data } = useUnreadCount();
+    const unreadCount = data?.count ?? 0;
 
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();

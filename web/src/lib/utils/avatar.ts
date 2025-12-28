@@ -53,7 +53,7 @@ export function getInitials(name: string): string {
 
 /**
  * Generate a consistent color from a string using a simple hash
- * @param str - The input string (e.g., user's name)
+ * @param str - The input string (e.g., user's name or user ID)
  * @returns A hex color string
  */
 export function getColorFromString(str: string): string {
@@ -85,4 +85,28 @@ export function getColorFromString(str: string): string {
   
   const index = Math.abs(hash) % colors.length;
   return colors[index] ?? colors[0] ?? '#6B7280';
+}
+
+/**
+ * Determine if text should be white or black based on background color for optimal contrast
+ * Uses relative luminance calculation (WCAG guidelines)
+ * @param hexColor - The background color in hex format (e.g., '#EF4444')
+ * @returns 'white' or 'black' for best contrast
+ */
+export function getContrastTextColor(hexColor: string): 'white' | 'black' {
+  if (!hexColor || !hexColor.startsWith('#')) {
+    return 'white'; // Default to white for invalid colors
+  }
+  
+  // Remove # and convert to RGB
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  
+  // Calculate relative luminance (WCAG formula)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // Return white for dark backgrounds, black for light backgrounds
+  return luminance > 0.5 ? 'black' : 'white';
 }

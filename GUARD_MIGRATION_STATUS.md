@@ -94,3 +94,4 @@ This document tracks NestJS guards that are still used in REST API routes and ha
 - `api/apps/meriter/src/user.guard.ts` - Still needed for REST endpoints
 - `api/apps/meriter/src/permission.guard.ts` - Not used, could be removed
 
+

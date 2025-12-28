@@ -1,17 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MeriterModule } from '../src/meriter.module';
-import { TestDatabaseHelper } from './test-db.helper';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { createTestPublication, createTestComment } from './helpers/fixtures';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
-import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument, CommunitySchema } from '../src/domain/models/community/community.schema';
-import { User, UserDocument, UserSchema } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument, PublicationSchema } from '../src/domain/models/publication/publication.schema';
-import { Comment, CommentDocument, CommentSchema } from '../src/domain/models/comment/comment.schema';
-import { UserCommunityRole, UserCommunityRoleDocument, UserCommunityRoleSchema } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 
@@ -19,8 +15,8 @@ describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
   let connection: Connection;
+  let testDb: any;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -40,50 +36,25 @@ describe('Publication and Comment Edit Permissions', () => {
   let otherCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-publication-edit-permissions';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(mongoUri), MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
-
-    // Wait for onModuleInit
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
-    
-    // Register schemas if not already registered
-    if (!connection.models[Community.name]) {
-      connection.model(Community.name, CommunitySchema);
-    }
-    if (!connection.models[User.name]) {
-      connection.model(User.name, UserSchema);
-    }
-    if (!connection.models[Publication.name]) {
-      connection.model(Publication.name, PublicationSchema);
-    }
-    if (!connection.models[Comment.name]) {
-      connection.model(Comment.name, CommentSchema);
-    }
-    if (!connection.models[UserCommunityRole.name]) {
-      connection.model(UserCommunityRole.name, UserCommunityRoleSchema);
-    }
-    
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
-    userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRole.name);
+
+    // Use models registered by Nest's MongooseModule.forFeature()
+    communityModel = app.get<Model<CommunityDocument>>(
+      getModelToken(CommunitySchemaClass.name),
+    );
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    publicationModel = app.get<Model<PublicationDocument>>(
+      getModelToken(PublicationSchemaClass.name),
+    );
+    commentModel = app.get<Model<CommentDocument>>(getModelToken(CommentSchemaClass.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(
+      getModelToken(UserCommunityRoleSchemaClass.name),
+    );
 
     // Initialize test IDs
     authorId = uid();
@@ -201,6 +172,8 @@ describe('Publication and Comment Edit Permissions', () => {
     const now = new Date();
     await userCommunityRoleModel.create([
       { id: uid(), userId: authorId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
+      // Author must also exist in other community for cross-community edit tests
+      { id: uid(), userId: authorId, communityId: otherCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId: communityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
@@ -208,8 +181,7 @@ describe('Publication and Comment Edit Permissions', () => {
   });
 
   afterAll(async () => {
-    if (app) await app.close();
-    if (testDb) await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Author Edit Permissions - Publications', () => {
@@ -241,8 +213,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Author should NOT be able to edit
@@ -289,8 +260,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Add a comment
@@ -317,9 +287,10 @@ describe('Publication and Comment Edit Permissions', () => {
       // Update createdAt to 8 days ago (outside 7-day window)
       const eightDaysAgo = new Date();
       eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      await publicationModel.updateOne(
+      // Mongoose timestamps often mark createdAt as immutable; update using the raw collection.
+      await connection.db.collection('publications').updateOne(
         { id: publicationId },
-        { $set: { createdAt: eightDaysAgo } }
+        { $set: { createdAt: eightDaysAgo } },
       );
 
       // Author should NOT be able to edit
@@ -345,8 +316,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Lead should be able to edit even with votes
@@ -415,8 +385,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Superadmin should be able to edit even with votes
@@ -478,8 +447,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Author should NOT be able to delete
@@ -520,8 +488,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Add a comment
@@ -549,8 +516,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Lead should be able to delete even with votes
@@ -593,8 +559,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: publicationId,
-        amount: 1,
-        direction: 'up',
+        quotaAmount: 1,
       });
 
       // Superadmin should be able to delete even with votes

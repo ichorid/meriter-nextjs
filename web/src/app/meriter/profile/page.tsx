@@ -10,6 +10,7 @@ import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
+import { FoldableInviteInput } from '@/components/organisms/Profile/FoldableInviteInput';
 import { useProfileData } from '@/hooks/useProfileData';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
@@ -17,7 +18,6 @@ import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { LogoutBlock } from '@/components/organisms/LogoutBlock';
 
 function ProfilePageComponent() {
   const t = useTranslations('profile');
@@ -35,6 +35,7 @@ function ProfilePageComponent() {
     commentsLoading,
     myPolls,
     pollsLoading,
+    favoritesCount,
   } = useProfileData();
 
   const { data: meritStatsData, isLoading: meritStatsLoading } = useMeritStats();
@@ -54,7 +55,8 @@ function ProfilePageComponent() {
     publications: myPublications.length,
     comments: myComments.length,
     polls: myPolls.length,
-  }), [myPublications.length, myComments.length, myPolls.length]);
+    favorites: favoritesCount,
+  }), [myPublications.length, myComments.length, myPolls.length, favoritesCount]);
 
   // Memoize loading state for content cards
   const contentCardsLoading = useMemo(() => 
@@ -130,13 +132,11 @@ function ProfilePageComponent() {
           isLoading={contentCardsLoading}
         />
 
+        {/* Foldable Invite Input Section */}
+        <FoldableInviteInput />
+
         {/* Use Invite Section (for viewers) */}
         <UseInvite />
-
-        {/* Logout Block */}
-        <div className="pt-4 pb-8">
-          <LogoutBlock />
-        </div>
       </div>
     </AdaptiveLayout>
   );

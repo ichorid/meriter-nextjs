@@ -18,12 +18,15 @@ interface CommentDetailsPopupProps {
     downvotes?: number;
     isUpvote: boolean;
     authorName?: string;
+    authorId?: string;
     authorAvatar?: string;
     commentContent?: string;
     timestamp?: string;
     communityName?: string;
+    communityId?: string;
     communityAvatar?: string;
     beneficiaryName?: string;
+    beneficiaryId?: string;
     beneficiaryAvatar?: string;
     isVoteTransaction?: boolean;
     totalScore?: number;
@@ -42,12 +45,15 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
     downvotes,
     isUpvote,
     authorName,
+    authorId,
     authorAvatar,
     commentContent,
     timestamp,
     communityName,
+    communityId,
     communityAvatar,
     beneficiaryName,
+    beneficiaryId,
     beneficiaryAvatar,
     isVoteTransaction = false,
     totalScore,
@@ -101,7 +107,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-10 h-10">
                                       <AvatarImage src={authorAvatar} alt={authorName} />
-                                      <AvatarFallback className="bg-muted text-muted-foreground font-medium text-sm">
+                                      <AvatarFallback userId={authorId || authorName} className="font-medium text-sm">
                                         {authorName ? authorName.charAt(0).toUpperCase() : '?'}
                                       </AvatarFallback>
                                     </Avatar>
@@ -122,6 +128,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                     <CommunityAvatar
                                         avatarUrl={communityAvatar}
                                         communityName={communityName}
+                                        communityId={communityId}
                                         size={32}
                                     />
                                     <div className="text-sm font-medium">{communityName}</div>
@@ -141,7 +148,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
                                       <AvatarImage src={beneficiaryAvatar} alt={beneficiaryName} />
-                                      <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                                      <AvatarFallback userId={beneficiaryId || beneficiaryName} className="font-medium text-xs">
                                         {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
                                       </AvatarFallback>
                                     </Avatar>

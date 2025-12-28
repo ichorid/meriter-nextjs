@@ -95,7 +95,7 @@
             "subtitle": "Обзор вашей активности",
             "stats": {
                 "publications": "Публикации",
-                "comments": "Комментарии",
+                "comments": "Голоса",
                 "polls": "Опросы",
                 "updates": "Обновления",
                 "projects": "Проекты"
@@ -106,7 +106,8 @@
                 "browseCommunities": "Найти сообщества",
                 "search": "Поиск",
                 "createPost": "Создать пост",
-                "createPoll": "Создать опрос"
+                "createPoll": "Создать опрос",
+                "createProject": "Создать проект"
             }
         },
         "tip1": "переводите баллы из публикаций и комментариев на доступный баланс, чтобы пользоваться ими",
@@ -115,7 +116,7 @@
         "myCommunities": "Мои сообщества",
         "tabs": {
             "publications": "Мои публикации",
-            "comments": "Мои комментарии",
+            "comments": "Мои голоса",
             "polls": "Опросы",
             "updates": "Обновления"
         },
@@ -130,8 +131,8 @@
                 "message": "Вы еще не создали ни одной публикации."
             },
             "comments": {
-                "title": "Нет комментариев",
-                "message": "Вы еще не написали ни одного комментария."
+                "title": "Нет голосов",
+                "message": "Вы еще не проголосовали ни за один пост."
             },
             "polls": {
                 "title": "Нет опросов",
@@ -529,16 +530,20 @@
             "searchPlaceholder": "Поиск публикаций...",
             "noAccess": "Нет доступа",
             "createPoll": "Создать опрос",
-            "createPost": "Создать пост",
+            "createProject": "Создать проект",
             "byDate": "По дате",
             "byRating": "По рейтингу",
             "loadMore": "Загрузить еще",
             "createPost": "Создать пост",
             "joinByInvite": "Или присоединиться по приглашению",
             "publications": "Публикации",
+            "deleted": "Удаленные",
+            "noDeletedPublications": "Нет удаленных публикаций",
             "members": {
                 "title": "Участники",
-                "empty": "Участники не найдены"
+                "empty": "Участники не найдены",
+                "remove": "Удалить участника",
+                "confirmRemove": "Удалить {name} из сообщества?"
             },
             "vision": "Будущее",
             "noVisionPosts": "Пока нет постов будущего",
@@ -550,6 +555,10 @@
             "breadcrumb": "Настройки",
             "settingsTitle": "Настройки: {communityName}",
             "subtitle": "Управление настройками для {communityName}",
+            "tabs": {
+                "general": "Общие",
+                "rules": "Правила"
+            },
             "communityProfile": "Профиль сообщества",
             "name": "Название",
             "namePlaceholder": "Название сообщества",
@@ -579,6 +588,8 @@
             "postCostHelp": "Стоимость в квоте/меритах для создания поста. Установите 0, чтобы сделать посты бесплатными.",
             "pollCost": "Стоимость создания опроса",
             "pollCostHelp": "Стоимость в квоте/меритах для создания опроса. Установите 0, чтобы сделать опросы бесплатными.",
+            "forwardCost": "Стоимость пересылки",
+            "forwardCostHelp": "Стоимость в квоте/меритах для пересылки поста. Установите 0, чтобы сделать пересылку бесплатной.",
             "currencyNames": "Названия валюты",
             "singular": "Единственное",
             "plural": "Множественное",
@@ -700,6 +711,7 @@
             "postTypes": {
                 "basic": "Обычный",
                 "poll": "Опрос",
+                "project": "Проект",
                 "project": "Проект"
             },
             "pollCreatePrompt": "Опросы создаются в отдельной форме с вариантами ответов и настройками голосования.",
@@ -722,7 +734,79 @@
                 "descriptionRequired": "Описание обязательно",
                 "descriptionTooLong": "Описание должно быть не более {max} символов",
                 "invalidUrl": "Неверный URL",
-                "submitFailed": "Не удалось создать публикацию"
+                "submitFailed": "Не удалось создать публикацию",
+                "impactAreaRequired": "Область воздействия обязательна для проектных постов",
+                "stageRequired": "Стадия обязательна для проектных постов"
+            },
+            "taxonomy": {
+                "requiredForProjects": "Обязательные поля для проектных постов",
+                "optionalFacets": "Дополнительные аспекты (свернуты по умолчанию). Добавляйте их только если они помогают в поиске.",
+                "impactArea": "Область воздействия",
+                "selectImpactArea": "Выберите одну",
+                "stage": "Стадия",
+                "selectStage": "Выберите одну",
+                "beneficiaries": "Бенефициары",
+                "beneficiariesHint": "Кто получает прямую выгоду?",
+                "methods": "Что вы делаете",
+                "methodsHint": "Как проект создает воздействие?",
+                "helpNeeded": "Нужна помощь",
+                "helpNeededHint": "Что вы собираете прямо сейчас?",
+                "clear": "Очистить",
+                "values": {
+                    "impactArea": {
+                        "Community & Mutual Aid": "Сообщество и взаимопомощь",
+                        "Education & Youth": "Образование и молодежь",
+                        "Health & Wellbeing": "Здоровье и благополучие",
+                        "Environment & Climate": "Окружающая среда и климат",
+                        "Animals & Nature Protection": "Защита животных и природы",
+                        "Inclusion & Accessibility": "Инклюзия и доступность",
+                        "Humanitarian Aid & Crisis Response": "Гуманитарная помощь и реагирование на кризисы",
+                        "Civic Engagement & Democracy": "Гражданская активность и демократия",
+                        "Culture, Arts & Heritage": "Культура, искусство и наследие",
+                        "Economic Empowerment": "Экономическая поддержка",
+                        "Public Space & Local Infrastructure": "Общественное пространство и локальная инфраструктура",
+                        "Research, Advocacy & Awareness": "Исследования, адвокация и просвещение"
+                    },
+                    "stage": {
+                        "Idea / looking for team": "Идея / поиск команды",
+                        "Active / ongoing": "Активный / в процессе",
+                        "Needs volunteers now": "Нужны волонтеры сейчас",
+                        "Fundraising / collecting resources": "Сбор средств / ресурсов",
+                        "Completed (showcase results)": "Завершен (демонстрация результатов)"
+                    },
+                    "beneficiaries": {
+                        "Children & teens": "Дети и подростки",
+                        "Elderly": "Пожилые люди",
+                        "People with disabilities": "Люди с ограниченными возможностями",
+                        "Low-income families": "Малообеспеченные семьи",
+                        "Migrants & refugees": "Мигранты и беженцы",
+                        "Patients & caregivers": "Пациенты и ухаживающие",
+                        "Local community (general)": "Местное сообщество (общее)",
+                        "Animals / wildlife": "Животные / дикая природа",
+                        "Everyone (public-interest)": "Все (общественный интерес)"
+                    },
+                    "methods": {
+                        "Direct service": "Прямая помощь",
+                        "Events & community building": "События и создание сообщества",
+                        "Education & training": "Образование и обучение",
+                        "Building / restoration": "Строительство / восстановление",
+                        "Donations & distribution": "Пожертвования и распределение",
+                        "Tech / tools / platforms": "Технологии / инструменты / платформы",
+                        "Research & data": "Исследования и данные",
+                        "Advocacy & campaigning": "Адвокация и кампании",
+                        "Emergency response": "Экстренное реагирование"
+                    },
+                    "helpNeeded": {
+                        "Volunteers (time)": "Волонтеры (время)",
+                        "Money": "Деньги",
+                        "Materials / equipment": "Материалы / оборудование",
+                        "Expertise": "Экспертиза",
+                        "Partnerships": "Партнерства",
+                        "Venue / space": "Помещение / пространство",
+                        "Visibility / PR": "Видимость / PR",
+                        "Logistics / transport": "Логистика / транспорт"
+                    }
+                }
             },
             "cancel": "Отмена",
             "creating": "Создание...",
@@ -758,6 +842,11 @@
     },
     "communities": {
         "other": "Другое",
+        "localGroups": {
+            "title": "Локальные",
+            "viewerNote": "Ваша текущая роль в проекте Зритель. Локальные группы доступны только Участникам проекта.",
+            "contactNote": "Если вы хотите стать Участником, свяжитесь с одним из Представителей."
+        },
         "create": {
             "title": "Создать сообщество",
             "creating": "Создание...",
@@ -766,6 +855,7 @@
         },
         "createPost": "Создать пост",
         "createPoll": "Создать опрос",
+        "createProject": "Создать проект",
         "rules": {
             "title": "Правила сообщества",
             "communityNotFound": "Сообщество не найдено",
@@ -792,6 +882,7 @@
             "enterCurrencyId": "Введите ID валюты",
             "add": "Добавить",
             "remove": "Удалить",
+            "save": "Сохранить",
             "saveRules": "Сохранить правила",
             "saving": "Сохранение...",
             "showPreview": "Показать предпросмотр",
@@ -844,7 +935,7 @@
         "title": "Регистрация",
         "authTitle": "Авторизация",
         "inviteDescription": "Введите код приглашения для начала регистрации (необязательно)",
-        "inviteCodeLabel": "Код приглашения",
+        "inviteCodeLabel": "Код приглашения (необязательно)",
         "inviteCodePlaceholder": "Введите код приглашения",
         "continue": "Продолжить",
         "checkingInvite": "Проверка приглашения...",
@@ -1085,7 +1176,8 @@
             "mention": "Упоминания",
             "reply": "Ответы",
             "vote": "Голоса",
-            "invite": "Приглашения"
+            "invite": "Приглашения",
+            "forward_proposal": "Предложения пересылки"
         },
         "preferences": {
             "title": "Настройки уведомлений",
@@ -1096,7 +1188,8 @@
             "comments": "Комментарии",
             "publications": "Публикации",
             "polls": "Опросы",
-            "system": "Системные"
+            "system": "Системные",
+            "forward_proposal": "Предложения пересылки"
         },
         "ariaLabels": {
             "markAsRead": "Отметить как прочитанное",

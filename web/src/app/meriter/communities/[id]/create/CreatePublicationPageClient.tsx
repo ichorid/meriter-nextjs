@@ -5,9 +5,10 @@ import { PublicationCreateForm } from '@/features/publications/components/Public
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import type { PublicationPostType } from '@/features/publications/components/PublicationCreateForm';
 
 interface CreatePublicationPageClientProps {
   communityId: string;
@@ -15,8 +16,15 @@ interface CreatePublicationPageClientProps {
 
 export function CreatePublicationPageClient({ communityId }: CreatePublicationPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const t = useTranslations('publications.create');
   const { isAuthenticated, isLoading: userLoading } = useAuth();
+  
+  // Get postType from URL params (e.g., ?postType=project)
+  const postTypeParam = searchParams?.get('postType');
+  const defaultPostType = (postTypeParam === 'project' || postTypeParam === 'poll' || postTypeParam === 'basic') 
+    ? postTypeParam as PublicationPostType 
+    : 'basic';
 
   useEffect(() => {
     if (!userLoading && !isAuthenticated) {
@@ -43,9 +51,10 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
       <div className="space-y-6">
         <PublicationCreateForm
           communityId={communityId}
+          defaultPostType={defaultPostType}
           onSuccess={(publication) => {
             const postIdentifier = publication.slug || publication.id;
-            router.push(`/meriter/communities/${communityId}?post=${postIdentifier}`);
+            router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
           }}
           onCancel={() => {
             router.push(`/meriter/communities/${communityId}`);

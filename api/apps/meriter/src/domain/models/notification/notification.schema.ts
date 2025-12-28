@@ -9,8 +9,10 @@ export type NotificationType =
   | 'comment'
   | 'publication'
   | 'poll'
+  | 'favorite_update'
   | 'system'
-  | 'quota';
+  | 'quota'
+  | 'forward_proposal';
 
 export type NotificationSource = 'user' | 'system' | 'community';
 
@@ -43,7 +45,7 @@ export class NotificationSchemaClass implements Notification {
 
   @Prop({
     required: true,
-    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'system', 'quota'],
+    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal'],
     index: true,
   })
   type!: NotificationType;
@@ -81,6 +83,9 @@ export class NotificationSchemaClass implements Notification {
 
 export const NotificationSchema = SchemaFactory.createForClass(NotificationSchemaClass);
 export type NotificationDocument = NotificationSchemaClass & Document;
+
+// Backwards-compatible runtime alias (many tests use `Notification.name`)
+export const Notification = NotificationSchemaClass;
 
 // Compound indexes for efficient queries
 NotificationSchema.index({ userId: 1, createdAt: -1 });

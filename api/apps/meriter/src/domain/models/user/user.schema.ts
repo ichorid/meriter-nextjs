@@ -158,6 +158,9 @@ export class UserSchemaClass implements User {
 export const UserSchema = SchemaFactory.createForClass(UserSchemaClass);
 export type UserDocument = UserSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `User.name`)
+export const User = UserSchemaClass;
+
 // Add indexes for common queries
 // Note: authProvider + authId index is created below
 UserSchema.index({ authProvider: 1, authId: 1 }, { unique: true });

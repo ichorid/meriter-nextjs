@@ -1,71 +1,40 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule, getModelToken } from '@nestjs/mongoose';
-import { MeriterModule } from '../src/meriter.module';
-import { TestDatabaseHelper } from './test-db.helper';
-import { trpcQuery } from './helpers/trpc-test-helper';
+import { INestApplication } from '@nestjs/common';
+import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { id: 'test-user-id' };
-    return true;
-  }
-}
+import { uid } from 'uid';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { trpcQuery } from './helpers/trpc-test-helper';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 
 describe('Wallets Communities E2E (filtering by membership)', () => {
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
+
   let userModel: Model<UserDocument>;
   let communityModel: Model<CommunityDocument>;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
-    await testDb.connect(uri);
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
-    })
-      .overrideGuard((MeriterModule as any).prototype?.UserGuard || ({} as any))
-      .useClass(AllowAllGuard as any)
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
-    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get(getModelToken(UserSchemaClass.name));
+    communityModel = app.get(getModelToken(CommunitySchemaClass.name));
   });
 
   beforeEach(async () => {
-    await testDb.clearDatabase();
+    await userModel.deleteMany({});
+    await communityModel.deleteMany({});
   });
 
   afterAll(async () => {
-    if (app) await app.close();
-    if (testDb) await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   it('user sees only their communities', async () => {
+    const userId = 'test-user-id';
 
-    // Create user with membership in communities 1 and 2
-    await userModel.create({
-      id: 'test-user-id',
-      telegramId: '123456789',
-      username: 'testuser',
-      firstName: 'Test',
-      lastName: 'User',
-      displayName: 'Test User',
-      communityMemberships: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Create 3 communities
     await communityModel.create([
       {
         id: 'community-1',
@@ -76,6 +45,7 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
           dailyEmission: 10,
         },
         hashtags: [],
+        hashtagDescriptions: {},
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -88,6 +58,7 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
           dailyEmission: 10,
         },
         hashtags: [],
+        hashtagDescriptions: {},
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -100,34 +71,40 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
           dailyEmission: 10,
         },
         hashtags: [],
+        hashtagDescriptions: {},
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     ]);
 
-    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
-
-    expect(wallets.data).toHaveLength(2);
-    const communityIds = wallets.data.map((w: any) => w.communityId).sort();
-    expect(communityIds).toEqual(['community-1', 'community-2']);
-  });
-
-  it('new user with no communities sees empty list', async () => {
-    // Create user with no communities
     await userModel.create({
-      id: 'test-user-id',
-      telegramId: '123456789',
+      id: userId,
+      telegramId: `tg_${uid()}`,
+      authProvider: 'telegram',
+      authId: `auth_${uid()}`,
       username: 'testuser',
       firstName: 'Test',
       lastName: 'User',
       displayName: 'Test User',
+      avatarUrl: 'https://example.com/u.jpg',
       communityTags: [],
-      communityMemberships: [],
+      communityMemberships: ['community-1', 'community-2'],
+      profile: {},
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    // Create a community
+    (global as any).testUserId = userId;
+
+    const wallets = await trpcQuery(app, 'wallets.getAll');
+    expect(wallets).toHaveLength(2);
+    const communityIds = wallets.map((w: any) => w.communityId).sort();
+    expect(communityIds).toEqual(['community-1', 'community-2']);
+  });
+
+  it('new user with no communities sees empty list', async () => {
+    const userId = 'test-user-id';
+
     await communityModel.create({
       id: 'community-1',
       name: 'Community 1',
@@ -137,31 +114,37 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
         dailyEmission: 10,
       },
       hashtags: [],
+      hashtagDescriptions: {},
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
-
-    expect(wallets.data).toHaveLength(0);
-  });
-
-  it('inactive communities are excluded', async () => {
-
-    // Create user with membership in both communities
     await userModel.create({
-      id: 'test-user-id',
-      telegramId: '123456789',
+      id: userId,
+      telegramId: `tg_${uid()}`,
+      authProvider: 'telegram',
+      authId: `auth_${uid()}`,
       username: 'testuser',
       firstName: 'Test',
       lastName: 'User',
       displayName: 'Test User',
+      avatarUrl: 'https://example.com/u.jpg',
+      communityTags: [],
       communityMemberships: [],
+      profile: {},
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    // Create active and inactive communities
+    (global as any).testUserId = userId;
+
+    const wallets = await trpcQuery(app, 'wallets.getAll');
+    expect(wallets).toHaveLength(0);
+  });
+
+  it('inactive communities are excluded', async () => {
+    const userId = 'test-user-id';
+
     await communityModel.create([
       {
         id: 'community-1',
@@ -172,6 +155,7 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
           dailyEmission: 10,
         },
         hashtags: [],
+        hashtagDescriptions: {},
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -184,15 +168,35 @@ describe('Wallets Communities E2E (filtering by membership)', () => {
           dailyEmission: 10,
         },
         hashtags: [],
+        hashtagDescriptions: {},
         createdAt: new Date(),
         updatedAt: new Date(),
       },
     ]);
 
-    const wallets = await trpcQuery(app, 'wallets.getAll', { userId: 'test-user-id' });
+    await userModel.create({
+      id: userId,
+      telegramId: `tg_${uid()}`,
+      authProvider: 'telegram',
+      authId: `auth_${uid()}`,
+      username: 'testuser',
+      firstName: 'Test',
+      lastName: 'User',
+      displayName: 'Test User',
+      avatarUrl: 'https://example.com/u.jpg',
+      communityTags: [],
+      communityMemberships: ['community-1', 'community-2'],
+      profile: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
-    expect(wallets.data).toHaveLength(1);
-    expect(wallets.data[0].communityId).toBe('community-1');
+    (global as any).testUserId = userId;
+
+    const wallets = await trpcQuery(app, 'wallets.getAll');
+    expect(wallets).toHaveLength(1);
+    expect(wallets[0].communityId).toBe('community-1');
   });
 });
+
 

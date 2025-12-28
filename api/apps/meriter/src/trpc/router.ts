@@ -12,6 +12,7 @@ import { notificationsRouter } from './routers/notifications.router';
 import { invitesRouter } from './routers/invites.router';
 import { searchRouter } from './routers/search.router';
 import { uploadsRouter } from './routers/uploads.router';
+import { favoritesRouter } from './routers/favorites.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -31,6 +32,7 @@ export const appRouter = router({
   invites: invitesRouter,
   search: searchRouter,
   uploads: uploadsRouter,
+  favorites: favoritesRouter,
 });
 
 export type AppRouter = typeof appRouter;

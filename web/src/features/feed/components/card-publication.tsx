@@ -22,6 +22,7 @@ interface CardPublicationProps {
     showCommunityAvatar?: any;
     communityAvatarUrl?: any;
     communityName?: any;
+    communityId?: string;
     communityIconUrl?: any;
     onCommunityClick?: any;
     communityNeedsSetup?: any;
@@ -48,6 +49,7 @@ export const CardPublication = ({
     showCommunityAvatar,
     communityAvatarUrl,
     communityName,
+    communityId,
     communityIconUrl,
     onCommunityClick,
     communityNeedsSetup,
@@ -107,6 +109,7 @@ export const CardPublication = ({
                                 <CommunityAvatar
                                     avatarUrl={communityAvatarUrl}
                                     communityName={communityName}
+                                    communityId={communityId}
                                     size={24}
                                     needsSetup={communityNeedsSetup}
                                 />
@@ -131,7 +134,7 @@ export const CardPublication = ({
                             onClick={authorId ? handleAuthorAvatarClick : undefined}
                         >
                           <AvatarImage src={avatarUrl} alt={title} onError={onAvatarUrlNotFound} />
-                          <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                          <AvatarFallback userId={authorId} className="font-medium text-xs">
                             {title ? title.charAt(0).toUpperCase() : '?'}
                           </AvatarFallback>
                         </Avatar>
@@ -147,7 +150,7 @@ export const CardPublication = ({
                                 onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
                             >
                               <AvatarImage src={beneficiaryAvatarUrl} alt={beneficiaryName} />
-                              <AvatarFallback className="bg-muted text-muted-foreground font-medium text-xs">
+                              <AvatarFallback userId={beneficiaryId} className="font-medium text-xs">
                                 {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
                               </AvatarFallback>
                             </Avatar>

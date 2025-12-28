@@ -10,6 +10,7 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 interface ProfilePublicationsTabProps {
   publications: any[];
   isLoading: boolean;
+  isFetching?: boolean;
   wallets: any[];
   sortOrder: SortOrder;
   fetchNextPage?: () => void;
@@ -20,6 +21,7 @@ interface ProfilePublicationsTabProps {
 export function ProfilePublicationsTab({
   publications,
   isLoading,
+  isFetching = false,
   wallets,
   sortOrder,
   fetchNextPage,
@@ -36,7 +38,10 @@ export function ProfilePublicationsTab({
     threshold: 200,
   });
 
-  if (isLoading) {
+  // Show loading state if initial loading OR fetching with no data
+  const showLoading = isLoading || (isFetching && publications.length === 0);
+
+  if (showLoading) {
     return (
       <div className="space-y-4">
         <CardSkeleton />

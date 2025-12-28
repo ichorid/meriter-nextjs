@@ -15,6 +15,7 @@ import { NotificationService } from '../domain/services/notification.service';
 import { InviteService } from '../domain/services/invite.service';
 import { QuotaUsageService } from '../domain/services/quota-usage.service';
 import { PermissionService } from '../domain/services/permission.service';
+import { FavoriteService } from '../domain/services/favorite.service';
 import { UserEnrichmentService } from '../api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../api-v1/common/services/permissions-helper.service';
@@ -45,6 +46,7 @@ export interface CreateContextOptions {
   inviteService: InviteService;
   quotaUsageService: QuotaUsageService;
   permissionService: PermissionService;
+  favoriteService: FavoriteService;
   userEnrichmentService: UserEnrichmentService;
   communityEnrichmentService: CommunityEnrichmentService;
   permissionsHelperService: PermissionsHelperService;
@@ -84,6 +86,7 @@ export async function createContext(opts: CreateContextOptions) {
     inviteService,
     quotaUsageService,
     permissionService,
+    favoriteService,
     userEnrichmentService,
     communityEnrichmentService,
     permissionsHelperService,
@@ -172,6 +175,7 @@ export async function createContext(opts: CreateContextOptions) {
     inviteService,
     quotaUsageService,
     permissionService,
+    favoriteService,
     userEnrichmentService,
     communityEnrichmentService,
     permissionsHelperService,

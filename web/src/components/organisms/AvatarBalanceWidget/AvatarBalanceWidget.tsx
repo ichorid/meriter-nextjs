@@ -20,6 +20,7 @@ interface AvatarBalanceWidgetProps {
   onAvatarUrlNotFound?: () => void;
   onClick?: () => void;
   userName?: string;
+  userId?: string;
   className?: string;
 }
 
@@ -30,6 +31,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
   onAvatarUrlNotFound,
   onClick,
   userName,
+  userId,
   className = ''
 }) => {
   const t = useTranslations('shared');
@@ -72,7 +74,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
                 alt={userName || 'User'}
                 onError={onAvatarUrlNotFound}
               />
-              <AvatarFallback className="bg-muted text-muted-foreground font-medium">
+              <AvatarFallback userId={userId || userName} className="font-medium">
                 {userName ? userName.charAt(0).toUpperCase() : 'U'}
               </AvatarFallback>
             </Avatar>

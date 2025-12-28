@@ -5,11 +5,14 @@
 
 // Stale time constants (in milliseconds)
 export const STALE_TIME = {
+    // Very short-lived data that changes frequently (votes, comments, real-time data)
+    VERY_SHORT: 0, // Always consider stale - refetch immediately after invalidation
+    
     // Short-lived data that changes frequently
-    SHORT: 1 * 60 * 1000, // 1 minute
+    SHORT: 30 * 1000, // 30 seconds (reduced from 1 minute)
     
     // Medium-lived data (most common)
-    MEDIUM: 2 * 60 * 1000, // 2 minutes
+    MEDIUM: 1 * 60 * 1000, // 1 minute (reduced from 2 minutes)
     
     // Long-lived data that rarely changes
     LONG: 5 * 60 * 1000, // 5 minutes

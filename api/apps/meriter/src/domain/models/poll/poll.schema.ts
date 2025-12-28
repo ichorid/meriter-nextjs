@@ -100,6 +100,9 @@ export class PollSchemaClass implements Poll {
 export const PollSchema = SchemaFactory.createForClass(PollSchemaClass);
 export type PollDocument = PollSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `Poll.name`)
+export const Poll = PollSchemaClass;
+
 // Add indexes for common queries
 PollSchema.index({ communityId: 1, createdAt: -1 });
 PollSchema.index({ authorId: 1 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
 
 export const walletsRouter = router({
   /**
@@ -134,8 +135,17 @@ export const walletsRouter = router({
         });
       }
 
-      // Calculate quota (similar to publications router)
-      const dailyQuota = community.settings?.dailyEmission || 0;
+      // Calculate effective daily quota with special-group + viewer rules
+      const baseDailyQuota = community.settings?.dailyEmission || 0;
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        actualUserId,
+        input.communityId,
+      );
+      const dailyQuota =
+        community.typeTag === 'future-vision' ||
+        (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good')
+          ? 0
+          : baseDailyQuota;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const quotaStartTime = community.lastQuotaResetAt
@@ -209,8 +219,9 @@ export const walletsRouter = router({
       const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
       const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
       const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-      const used = votesTotal + pollCastsTotal + quotaUsageTotal;
-      const remaining = Math.max(0, dailyQuota - used);
+      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
+      const used = dailyQuota === 0 ? 0 : usedRaw;
+      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
 
       // Calculate resetAt: next midnight or next reset time
       const resetAt = new Date(quotaStartTime);
@@ -372,8 +383,17 @@ export const walletsRouter = router({
         });
       }
 
-      // Calculate quota (same logic as getQuota)
-      const dailyQuota = community.settings?.dailyEmission || 0;
+      // Calculate effective daily quota with special-group + viewer rules
+      const baseDailyQuota = community.settings?.dailyEmission || 0;
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        userId,
+        input.communityId,
+      );
+      const dailyQuota =
+        community.typeTag === 'future-vision' ||
+        (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good')
+          ? 0
+          : baseDailyQuota;
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const quotaStartTime = community.lastQuotaResetAt
@@ -447,8 +467,9 @@ export const walletsRouter = router({
       const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
       const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
       const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-      const used = votesTotal + pollCastsTotal + quotaUsageTotal;
-      const remaining = Math.max(0, dailyQuota - used);
+      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
+      const used = dailyQuota === 0 ? 0 : usedRaw;
+      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
 
       return remaining;
     }),
@@ -514,5 +535,62 @@ export const walletsRouter = router({
         code: 'NOT_IMPLEMENTED',
         message: 'Transfer functionality not implemented',
       });
+    }),
+
+  /**
+   * Add wallet merits (fake data mode only)
+   */
+  addMerits: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        amount: z.number().positive().default(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if fake data mode is enabled
+      const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+      if (!fakeDataMode) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Fake data mode is not enabled',
+        });
+      }
+
+      // Get community to get currency settings
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Get currency settings
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Add transaction to credit the wallet (creates wallet if it doesn't exist)
+      await ctx.walletService.addTransaction(
+        ctx.user.id,
+        input.communityId,
+        'credit',
+        input.amount,
+        'personal',
+        'fake_data_add',
+        `fake_add_${Date.now()}`,
+        currency,
+        'Added via fake data mode',
+      );
+
+      const updatedWallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+      return {
+        success: true,
+        balance: updatedWallet?.getBalance() || 0,
+        message: `Added ${input.amount} ${input.amount === 1 ? currency.singular : currency.plural}`,
+      };
     }),
 });

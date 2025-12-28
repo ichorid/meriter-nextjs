@@ -1,8 +1,4 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommunityService } from '../src/domain/services/community.service';
@@ -24,8 +20,10 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let _connection: Connection;
+
+  let originalEnableCommentVoting: string | undefined;
   
   let _communityService: CommunityService;
   let voteService: VoteService;
@@ -50,21 +48,12 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   let visionPubId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-voting-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
-    })
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    
-    // Setup tRPC middleware for tRPC tests
-    TestSetupHelper.setupTrpcMiddleware(app);
-    
-    await app.init();
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     _communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
@@ -379,12 +368,8 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    await TestSetupHelper.cleanup({ app, testDb });
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
   });
 
   describe('Non-Special Groups - Wallet Voting Restriction', () => {
@@ -530,6 +515,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
           regularPubId,
           0, // quotaAmount
           10, // walletAmount
+          'up',
           'Test comment',
           regularCommunityId
         )
@@ -544,6 +530,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
           marathonPubId,
           0, // quotaAmount
           10, // walletAmount
+          'up',
           'Test comment',
           marathonCommunityId
         )
@@ -557,6 +544,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         visionPubId,
         0, // quotaAmount
         10, // walletAmount
+        'up',
         'Test comment',
         visionCommunityId
       );
@@ -573,6 +561,7 @@ describe('Non-Special Groups Wallet Voting Restriction (e2e)', () => {
         regularPubId,
         5, // quotaAmount
         0, // walletAmount
+        'up',
         'Test comment',
         regularCommunityId
       );

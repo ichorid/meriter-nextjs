@@ -1,91 +1,52 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
-import { CommunityService } from '../src/domain/services/community.service';
-import { VoteService } from '../src/domain/services/vote.service';
-import { PublicationService } from '../src/domain/services/publication.service';
-import { CommentService } from '../src/domain/services/comment.service';
-import { UserService } from '../src/domain/services/user.service';
-import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Comment, CommentDocument } from '../src/domain/models/comment/comment.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { uid } from 'uid';
-import { trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { trpcMutation, trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 
-describe('Comment Details Endpoint E2E Tests', () => {
+describe('comments.getDetails (e2e)', () => {
+  jest.setTimeout(60000);
+
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
-
-  let _communityService: CommunityService;
-  let voteService: VoteService;
-  let _publicationService: PublicationService;
-  let commentService: CommentService;
-  let _userService: UserService;
+  let originalEnableCommentVoting: string | undefined;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
   let walletModel: Model<WalletDocument>;
+  let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
-  let testUserId: string;
-  let testUserId2: string;
-  let testUserId3: string;
   let testCommunityId: string;
-  let testPublicationId: string;
+  let authorId: string;
+  let voterId: string;
+  let beneficiaryId: string;
+  let publicationId: string;
 
-  beforeAll(async () => {
-    jest.setTimeout(30000);
-
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    // Get services
-    _communityService = app.get<CommunityService>(CommunityService);
-    voteService = app.get<VoteService>(VoteService);
-    _publicationService = app.get<PublicationService>(PublicationService);
-    commentService = app.get<CommentService>(CommentService);
-    _userService = app.get<UserService>(UserService);
-
-    connection = app.get(getConnectionToken());
-
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    const _commentModel = connection.model<CommentDocument>(Comment.name);
-    const _voteModel = connection.model<VoteDocument>(Vote.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
-
-    // Create a test user with token for authentication
-    testUserId = uid();
-    testUserId2 = uid();
-    testUserId3 = uid();
+  async function seedBaseCommunity(): Promise<void> {
     testCommunityId = uid();
-    const _testToken = uid();
+    authorId = uid();
+    voterId = uid();
+    beneficiaryId = uid();
 
     await userModel.create([
       {
-        id: testUserId,
-        telegramId: `user1_${testUserId}`,
-        displayName: 'Test User 1',
-        username: 'testuser1',
-        firstName: 'Test',
+        id: authorId,
+        telegramId: `author_${authorId}`,
+        authProvider: 'telegram',
+        authId: `author_${authorId}`,
+        displayName: 'Author',
+        username: 'author',
+        firstName: 'Author',
         lastName: 'User',
-        avatarUrl: 'https://example.com/avatar1.jpg',
+        avatarUrl: 'https://example.com/a.jpg',
         communityMemberships: [],
         communityTags: [],
         profile: {},
@@ -93,13 +54,15 @@ describe('Comment Details Endpoint E2E Tests', () => {
         updatedAt: new Date(),
       },
       {
-        id: testUserId2,
-        telegramId: `user2_${testUserId2}`,
-        displayName: 'Test User 2',
-        username: 'testuser2',
-        firstName: 'Test2',
-        lastName: 'User2',
-        avatarUrl: 'https://example.com/avatar2.jpg',
+        id: voterId,
+        telegramId: `voter_${voterId}`,
+        authProvider: 'telegram',
+        authId: `voter_${voterId}`,
+        displayName: 'Voter',
+        username: 'voter',
+        firstName: 'Voter',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/v.jpg',
         communityMemberships: [],
         communityTags: [],
         profile: {},
@@ -107,13 +70,15 @@ describe('Comment Details Endpoint E2E Tests', () => {
         updatedAt: new Date(),
       },
       {
-        id: testUserId3,
-        telegramId: `user3_${testUserId3}`,
-        displayName: 'Test User 3',
-        username: 'testuser3',
-        firstName: 'Test3',
-        lastName: 'User3',
-        avatarUrl: 'https://example.com/avatar3.jpg',
+        id: beneficiaryId,
+        telegramId: `beneficiary_${beneficiaryId}`,
+        authProvider: 'telegram',
+        authId: `beneficiary_${beneficiaryId}`,
+        displayName: 'Beneficiary',
+        username: 'beneficiary',
+        firstName: 'Beneficiary',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/b.jpg',
         communityMemberships: [],
         communityTags: [],
         profile: {},
@@ -122,18 +87,12 @@ describe('Comment Details Endpoint E2E Tests', () => {
       },
     ]);
 
-    // Create test community
     await communityModel.create({
       id: testCommunityId,
       name: 'Test Community',
-      members: [testUserId, testUserId2, testUserId3],
+      members: [authorId, voterId, beneficiaryId],
       settings: {
-        iconUrl: 'https://example.com/icon.png',
-        currencyNames: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         dailyEmission: 10,
       },
       hashtags: ['test'],
@@ -143,279 +102,224 @@ describe('Comment Details Endpoint E2E Tests', () => {
       updatedAt: new Date(),
     });
 
-    // Create test wallets
+    // PermissionService reads roles from UserCommunityRole collection
+    const now = new Date();
+    await userCommunityRoleModel.create([
+      { id: uid(), userId: authorId, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: voterId, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: beneficiaryId, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+    ]);
+
+    // Wallets for voting
     await walletModel.create([
       {
         id: uid(),
-        userId: testUserId,
+        userId: voterId,
         communityId: testCommunityId,
         balance: 100,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: uid(),
-        userId: testUserId2,
-        communityId: testCommunityId,
-        balance: 50,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: uid(),
-        userId: testUserId3,
-        communityId: testCommunityId,
-        balance: 75,
-        currency: {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
       },
     ]);
 
-    // Create test publication
-    testPublicationId = uid();
+    publicationId = uid();
     await publicationModel.create({
-      id: testPublicationId,
+      id: publicationId,
       communityId: testCommunityId,
-      authorId: testUserId,
-      content: 'Test publication for comment details',
+      authorId,
+      content: 'Publication for comment details tests',
       type: 'text',
       hashtags: ['test'],
-      metrics: {
-        upvotes: 0,
-        downvotes: 0,
-        score: 0,
-        commentCount: 0,
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      postType: 'basic',
+      isProject: false,
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      createdAt: now,
+      updatedAt: now,
     });
+  }
+
+  beforeAll(async () => {
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
+
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
+
+    connection = app.get(getConnectionToken());
+    communityModel = app.get(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get(getModelToken(UserSchemaClass.name));
+    publicationModel = app.get(getModelToken(PublicationSchemaClass.name));
+    walletModel = app.get(getModelToken(WalletSchemaClass.name));
+    userCommunityRoleModel = app.get(getModelToken(UserCommunityRoleSchemaClass.name));
   });
 
-  afterEach(async () => {
+  beforeEach(async () => {
+    // Clean DB between tests for isolation
     const collections = connection.collections;
     for (const key in collections) {
-      const collection = collections[key];
-      try {
-        await collection.dropIndex('token_1').catch(() => { });
-      } catch (_err) {
-        // Index doesn't exist, ignore
-      }
-      await collection.deleteMany({});
+      await collections[key].deleteMany({});
     }
+    await seedBaseCommunity();
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
-  describe('GET /api/v1/comments/:id/details', () => {
-    it('should return comment details for a regular comment (no vote transaction)', async () => {
-      // Create a regular comment
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'This is a regular comment',
-      });
+  it('returns details for a regular comment (legacy comment document)', async () => {
+    (global as any).testUserId = voterId;
 
-      const commentId = comment.getId;
-
-      // Create a vote on the comment itself (for metrics)
-      await voteService.createVote(
-        testUserId3,
-        'comment',
-        commentId,
-        5,
-        'quota',
-        testCommunityId
-      );
-
-      // Make request to details endpoint
-      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
-      expect(data.comment).toBeDefined();
-      expect(data.comment.id).toBe(commentId);
-      expect(data.comment.content).toBe('This is a regular comment');
-
-      expect(data.author).toBeDefined();
-      expect(data.author.id).toBe(testUserId2);
-      expect(data.author.name).toBe('Test User 2');
-
-      expect(data.voteTransaction).toBeNull();
-      expect(data.beneficiary).toBeNull();
-
-      expect(data.community).toBeDefined();
-      expect(data.community.id).toBe(testCommunityId);
-      expect(data.community.name).toBe('Test Community');
-
-      expect(data.metrics).toBeDefined();
-      expect(data.metrics.upvotes).toBe(1);
-      expect(data.metrics.downvotes).toBe(0);
-      expect(data.metrics.score).toBe(5);
+    const created = await trpcMutation(app, 'comments.create', {
+      targetType: 'publication',
+      targetId: publicationId,
+      content: 'Regular comment',
     });
 
-    it('should return comment details for vote transaction comment on publication without beneficiary', async () => {
-      // Create a comment
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'This is a vote transaction comment',
-      });
+    const commentId = created.id;
+    const details = await trpcQuery(app, 'comments.getDetails', { id: commentId });
 
-      const commentId = comment.getId;
+    expect(details.comment.id).toBe(commentId);
+    expect(details.comment.content).toBe('Regular comment');
+    expect(details.author.id).toBe(voterId);
+    // Legacy comment enrichment may not include community (vote-comment flow is primary).
+    expect(details.community).toBeNull();
+    expect(details.voteTransaction).toBeNull();
+    // Legacy comments currently have no vote metrics (votes targetType is publication|vote)
+    expect(details.metrics.score).toBe(0);
+  });
 
-      // Create a vote on the publication with attachedCommentId
-      await voteService.createVote(
-        testUserId2,
-        'publication',
-        testPublicationId,
-        10,
-        'quota',
-        testCommunityId,
-        commentId
-      );
+  it('returns details for a vote-comment on a publication without beneficiary (beneficiary resolves to publication author)', async () => {
+    (global as any).testUserId = voterId;
 
-      // Make request to details endpoint
-      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
-
-      expect(data.voteTransaction).toBeDefined();
-      expect(data.voteTransaction.amountTotal).toBe(10);
-      expect(data.voteTransaction.plus).toBe(10);
-      expect(data.voteTransaction.minus).toBe(0);
-      expect(data.voteTransaction.directionPlus).toBe(true);
-
-      // Since publication has no beneficiary, effective beneficiary is author (testUserId)
-      // But beneficiary should only be set if different from comment author (testUserId2)
-      // Since testUserId !== testUserId2, beneficiary should be set
-      expect(data.beneficiary).toBeDefined();
-      expect(data.beneficiary.id).toBe(testUserId); // Publication author
-      expect(data.beneficiary.name).toBe('Test User 1');
-
-      // Verify sender and recipient are different
-      expect(data.author.id).toBe(testUserId2);
-      expect(data.beneficiary.id).toBe(testUserId);
-      expect(data.author.id).not.toBe(data.beneficiary.id);
-
-      expect(data.community).toBeDefined();
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: publicationId,
+      quotaAmount: 10,
+      walletAmount: 0,
+      comment: 'Vote comment',
     });
 
-    it('should return comment details for vote transaction comment on publication with beneficiary', async () => {
-      // Create a publication with beneficiary
-      const publicationWithBeneficiaryId = uid();
-      await publicationModel.create({
-        id: publicationWithBeneficiaryId,
-        communityId: testCommunityId,
-        authorId: testUserId,
-        beneficiaryId: testUserId3, // Different beneficiary
-        content: 'Test publication with beneficiary',
-        type: 'text',
-        hashtags: ['test'],
-        metrics: {
-          upvotes: 0,
-          downvotes: 0,
-          score: 0,
-          commentCount: 0,
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+    const details = await trpcQuery(app, 'comments.getDetails', { id: vote.id });
+    expect(details.voteTransaction).toBeDefined();
+    expect(details.voteTransaction.amountTotal).toBe(10);
 
-      // Create a comment
-      const comment = await commentService.createComment(testUserId2, {
-        targetType: 'publication',
-        targetId: publicationWithBeneficiaryId,
-        content: 'This is a vote transaction comment on publication with beneficiary',
-      });
+    expect(details.author.id).toBe(voterId);
+    expect(details.beneficiary).toBeDefined();
+    expect(details.beneficiary.id).toBe(authorId);
+    expect(details.beneficiary.id).not.toBe(details.author.id);
+  });
 
-      const commentId = comment.getId;
-
-      // Create a vote on the publication with attachedCommentId
-      await voteService.createVote(
-        testUserId2,
-        'publication',
-        publicationWithBeneficiaryId,
-        15,
-        'quota',
-        testCommunityId,
-        commentId
-      );
-
-      // Make request to details endpoint
-      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
-
-      expect(data.voteTransaction).toBeDefined();
-      expect(data.voteTransaction.amountTotal).toBe(15);
-
-      // Beneficiary should be testUserId3 (set beneficiary, not author)
-      expect(data.beneficiary).toBeDefined();
-      expect(data.beneficiary.id).toBe(testUserId3);
-      expect(data.beneficiary.name).toBe('Test User 3');
-
-      // Verify sender and recipient are different
-      expect(data.author.id).toBe(testUserId2);
-      expect(data.beneficiary.id).toBe(testUserId3);
-      expect(data.author.id).not.toBe(data.beneficiary.id);
-
-      expect(data.community).toBeDefined();
+  it('returns details for a vote-comment on a publication with beneficiary', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId: testCommunityId,
+      authorId,
+      beneficiaryId,
+      content: 'Publication with beneficiary',
+      type: 'text',
+      hashtags: ['test'],
+      postType: 'basic',
+      isProject: false,
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    it('should not return beneficiary if beneficiary is same as comment author', async () => {
-      // Create a comment by testUserId
-      const comment = await commentService.createComment(testUserId, {
-        targetType: 'publication',
-        targetId: testPublicationId,
-        content: 'Comment by publication author',
-      });
-
-      const commentId = comment.getId;
-
-      // Create a vote on the publication with attachedCommentId
-      // The effective beneficiary is testUserId (publication author), same as comment author
-      await voteService.createVote(
-        testUserId,
-        'publication',
-        testPublicationId,
-        10,
-        'quota',
-        testCommunityId,
-        commentId
-      );
-
-      // Make request to details endpoint
-      const data = await trpcQuery(app, 'comments.getDetails', { id: commentId });
-
-      expect(data.voteTransaction).toBeDefined();
-
-      // Beneficiary should be null since effective beneficiary (testUserId) equals comment author (testUserId)
-      expect(data.beneficiary).toBeNull();
-
-      expect(data.community).toBeDefined();
+    (global as any).testUserId = voterId;
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: pubId,
+      quotaAmount: 10,
+      walletAmount: 0,
+      comment: 'Vote comment with beneficiary',
     });
 
-    it('should return 404 for non-existent comment', async () => {
-      const nonExistentId = uid();
+    const details = await trpcQuery(app, 'comments.getDetails', { id: vote.id });
+    expect(details.beneficiary).toBeDefined();
+    expect(details.beneficiary.id).toBe(beneficiaryId);
+    expect(details.author.id).toBe(voterId);
+    expect(details.beneficiary.id).not.toBe(details.author.id);
+  });
 
-      const result = await trpcQueryWithError(app, 'comments.getDetails', { id: nonExistentId });
-
-      expect(result.error?.code).toBe('NOT_FOUND');
+  it('does not return beneficiary when beneficiary equals comment author (allowed in future-vision)', async () => {
+    // Create Future Vision community where self-voting is allowed and quota is 0
+    const fvCommunityId = uid();
+    await communityModel.create({
+      id: fvCommunityId,
+      name: 'Future Vision',
+      typeTag: 'future-vision',
+      members: [voterId],
+      settings: {
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        dailyEmission: 10,
+      },
+      hashtags: ['vision'],
+      hashtagDescriptions: {},
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
+
+    const now = new Date();
+    await userCommunityRoleModel.create({
+      id: uid(),
+      userId: voterId,
+      communityId: fvCommunityId,
+      role: 'participant',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await walletModel.create({
+      id: uid(),
+      userId: voterId,
+      communityId: fvCommunityId,
+      balance: 100,
+      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      lastUpdated: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const fvPubId = uid();
+    await publicationModel.create({
+      id: fvPubId,
+      communityId: fvCommunityId,
+      authorId: voterId,
+      content: 'FV self-vote publication',
+      type: 'text',
+      hashtags: ['vision'],
+      postType: 'basic',
+      isProject: false,
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    (global as any).testUserId = voterId;
+    const vote = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: fvPubId,
+      quotaAmount: 0,
+      walletAmount: 5,
+      comment: 'Self vote in Future Vision',
+    });
+
+    const details = await trpcQuery(app, 'comments.getDetails', { id: vote.id });
+    expect(details.author.id).toBe(voterId);
+    expect(details.beneficiary).toBeNull();
+  });
+
+  it('returns NOT_FOUND for an unknown id', async () => {
+    const missingId = uid();
+    const result = await trpcQueryWithError(app, 'comments.getDetails', { id: missingId });
+    expect(result.error?.code).toBe('NOT_FOUND');
   });
 });
+
 

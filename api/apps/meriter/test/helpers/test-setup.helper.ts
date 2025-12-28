@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { MeriterModule } from '../../src/meriter.module';
 import { TestDatabaseHelper } from '../test-db.helper';
 import { TrpcService } from '../../src/trpc/trpc.service';
@@ -25,8 +24,13 @@ export class TestSetupHelper {
     const testDb = new TestDatabaseHelper();
     const uri = await testDb.start();
 
+    // Ensure DatabaseModule (inside MeriterModule) uses the same in-memory DB
+    // (otherwise Nest can end up with multiple mongoose connections and missing models).
+    process.env.MONGO_URL = uri;
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-jwt-secret-key';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
+      imports: [MeriterModule],
     })
       .compile();
 

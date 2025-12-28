@@ -2,6 +2,26 @@
  * Query invalidation helpers
  * Centralized functions for invalidating React Query caches
  * Reduces duplication and ensures consistent cache invalidation patterns
+ * 
+ * @deprecated IMPORTANT: For tRPC queries, prefer using `trpc.useUtils()` instead of these helpers.
+ * 
+ * **When to use these helpers:**
+ * - Non-tRPC queries (REST endpoints like auth, uploads, etc.)
+ * - Custom query keys that don't map to tRPC procedures
+ * - Legacy code that hasn't been migrated to tRPC yet
+ * - Broad invalidations where specific tRPC utils aren't available
+ * 
+ * **When to use tRPC utils instead:**
+ * - For any tRPC query (publications, comments, communities, wallets, votes, etc.)
+ * - Example: `utils.publications.getById.invalidate({ id })` instead of `invalidatePublications(queryClient, { detail: id })`
+ * - Example: `utils.comments.getByPublicationId.invalidate({ publicationId })` instead of `invalidateComments(queryClient, { byPublication: publicationId })`
+ * 
+ * **Why prefer tRPC utils:**
+ * - Type-safe: Ensures correct query key structure matching tRPC's internal keys
+ * - Idiomatic: Follows tRPC's recommended patterns
+ * - Reliable: Guarantees cache invalidation works correctly with tRPC queries
+ * 
+ * @see {@link https://trpc.io/docs/reactjs/useUtils} tRPC useUtils documentation
  */
 
 import { QueryClient } from '@tanstack/react-query';
@@ -9,6 +29,12 @@ import { queryKeys } from '@/lib/constants/queryKeys';
 
 /**
  * Invalidate wallet-related queries
+ * 
+ * @deprecated For tRPC wallet queries, use `utils.wallets.getAll.invalidate()` and `utils.wallets.getBalance.invalidate({ communityId })` instead.
+ * 
+ * Use this helper only for:
+ * - Non-tRPC wallet queries
+ * - Legacy code that hasn't been migrated
  */
 export function invalidateWallet(
     queryClient: QueryClient,
@@ -42,6 +68,16 @@ export function invalidateWallet(
 
 /**
  * Invalidate publication-related queries
+ * 
+ * @deprecated For tRPC publication queries, use `utils.publications.*.invalidate()` instead.
+ * - Lists: `utils.publications.getAll.invalidate()`
+ * - Detail: `utils.publications.getById.invalidate({ id })`
+ * - Community: Use `utils.publications.getAll.invalidate()` or invalidate specific community queries
+ * 
+ * Use this helper only for:
+ * - Non-tRPC publication queries
+ * - Legacy code that hasn't been migrated
+ * - Infinite queries that don't have direct tRPC utils (use queryClient with tRPC query key pattern)
  */
 export function invalidatePublications(
     queryClient: QueryClient,
@@ -89,6 +125,16 @@ export function invalidatePublications(
 
 /**
  * Invalidate comment-related queries
+ * 
+ * @deprecated For tRPC comment queries, use `utils.comments.*.invalidate()` instead.
+ * - By publication: `utils.comments.getByPublicationId.invalidate({ publicationId })`
+ * - Replies: `utils.comments.getReplies.invalidate({ id })`
+ * - Detail: `utils.comments.getById.invalidate({ id })`
+ * - Details (enriched): `utils.comments.getDetails.invalidate({ id })`
+ * 
+ * Use this helper only for:
+ * - Non-tRPC comment queries
+ * - Legacy code that hasn't been migrated
  */
 export function invalidateComments(
     queryClient: QueryClient,
@@ -137,6 +183,14 @@ export function invalidateComments(
 
 /**
  * Invalidate community-related queries
+ * 
+ * @deprecated For tRPC community queries, use `utils.communities.*.invalidate()` instead.
+ * - Lists: `utils.communities.getAll.invalidate()`
+ * - Detail: `utils.communities.getById.invalidate({ id })`
+ * 
+ * Use this helper only for:
+ * - Non-tRPC community queries
+ * - Legacy code that hasn't been migrated
  */
 export function invalidateCommunities(
     queryClient: QueryClient,

@@ -1,9 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema } from '@meriter/shared-types';
+import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 /**
  * Helper to calculate remaining quota for a user in a community (including poll casts)
@@ -108,7 +109,7 @@ export const pollsRouter = router({
    * Get poll by ID
    */
   getById: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const poll = await ctx.pollService.getPoll(input.id);
       if (!poll) {
@@ -149,12 +150,16 @@ export const pollsRouter = router({
       communityId: z.string().optional(),
       authorId: z.string().optional(),
       page: z.number().int().min(1).optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
-      const pagination = PaginationHelper.parseOptions(input || {});
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const query = input || {};
+      const page = query.cursor ?? query.page;
+      const pagination = PaginationHelper.parseOptions({ ...query, page });
       const skip = PaginationHelper.getSkip(pagination);
       const limit = pagination.limit || 20;
 
@@ -221,6 +226,9 @@ export const pollsRouter = router({
   create: protectedProcedure
     .input(CreatePollDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'create', 'poll', input);
+
       // Prevent poll creation in future-vision communities
       const community = await ctx.communityService.getCommunity(input.communityId);
       if (!community) {
@@ -357,6 +365,9 @@ export const pollsRouter = router({
       data: UpdatePollDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'poll', input);
+
       const poll = await ctx.pollService.updatePoll(input.id, ctx.user.id, input.data);
       const snapshot = poll.toSnapshot();
       
@@ -373,10 +384,23 @@ export const pollsRouter = router({
     }),
 
   /**
+   * Delete poll
+   */
+  delete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'poll', input);
+
+      await ctx.pollService.deletePoll(input.id);
+      return { success: true };
+    }),
+
+  /**
    * Get poll results
    */
   getResults: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const results = await ctx.pollService.getPollResults(input.id);
       return results;
@@ -386,7 +410,7 @@ export const pollsRouter = router({
    * Get current user's casts for a poll
    */
   getMyCasts: protectedProcedure
-    .input(z.object({ id: z.string() }))
+    .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
       const casts = await ctx.pollService.getUserCasts(input.id, ctx.user.id);
       return casts;

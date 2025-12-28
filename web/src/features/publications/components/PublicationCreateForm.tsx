@@ -11,6 +11,7 @@ import { useWallet } from '@/hooks/api/useWallet';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Loader2 } from 'lucide-react';
 import {
   Select,
@@ -27,6 +28,20 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { FileText } from 'lucide-react';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { ImageGallery } from '@/components/ui/ImageGallery';
+import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+  type ImpactArea,
+  type Beneficiary,
+  type Method,
+  type Stage,
+  type HelpNeeded,
+} from '@/lib/constants/taxonomy';
+import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -38,6 +53,12 @@ interface PublicationDraft {
   imageUrl?: string; // Legacy support
   images?: string[]; // New multi-image support
   isProject: boolean;
+  // Taxonomy fields
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
   savedAt: string;
 }
 
@@ -52,6 +73,11 @@ interface PublicationCreateFormProps {
 
 const getDraftKey = (communityId: string) => `publication_draft_${communityId}`;
 
+// Helper function to toggle items in array
+function toggleInArray<T>(arr: T[], value: T): T[] {
+  return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+}
+
 export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   communityId,
   onSuccess,
@@ -61,6 +87,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   initialData,
 }) => {
   const t = useTranslations('publications.create');
+  const {
+    translateImpactArea,
+    translateStage,
+    translateBeneficiary,
+    translateMethod,
+    translateHelpNeeded,
+  } = useTaxonomyTranslations();
   const router = useRouter();
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
@@ -80,9 +113,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const effectivePublicationId = publicationId || initialData?.id;
   const normalizedPublicationId = normalizeEntityId(effectivePublicationId);
 
-  // Check if this is Good Deeds Marathon community
+  // Check if this is Good Deeds Marathon or Team community (both allow project creation)
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
-
+  const isTeamCommunity = community?.typeTag === 'team';
+  const isFutureVision = community?.typeTag === 'future-vision';
+  const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
 
@@ -97,16 +132,34 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
   const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
 
+  const initialPostType: PublicationPostType =
+    initialData?.postType === 'project' || initialData?.isProject
+      ? 'project'
+      : (initialData?.postType || defaultPostType);
+
   const [title, setTitle] = useState(initialData?.title || '');
-  const [description, setDescription] = useState(initialData?.description || initialData?.content || '');
-  const [postType, setPostType] = useState<PublicationPostType>(initialData?.postType || defaultPostType);
+  const [description, setDescription] = useState(
+    initialData?.description || initialData?.content || '',
+  );
+  const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
     : ((initialData as any)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
-  const [isProject, setIsProject] = useState(initialData?.isProject || false);
+  // Derive isProject from postType instead of separate checkbox
+  const isProject = postType === 'project' || initialData?.isProject || false;
+  // Taxonomy fields
+  const [impactArea, setImpactArea] = useState<ImpactArea | ''>((initialData as any)?.impactArea || '');
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>((initialData as any)?.beneficiaries || []);
+  const [methods, setMethods] = useState<Method[]>((initialData as any)?.methods || []);
+  const [stage, setStage] = useState<Stage | ''>((initialData as any)?.stage || '');
+  const [helpNeeded, setHelpNeeded] = useState<HelpNeeded[]>((initialData as any)?.helpNeeded || []);
+  // Collapsible sections state (folded by default)
+  const [openBeneficiaries, setOpenBeneficiaries] = useState(false);
+  const [openMethods, setOpenMethods] = useState(false);
+  const [openHelp, setOpenHelp] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -130,6 +183,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       newErrors.description = t('errors.descriptionTooLong', { max: 5000 });
     }
 
+    // Validate taxonomy fields for project posts
+    const finalPostType = isProject ? 'project' : postType;
+    if (finalPostType === 'project') {
+      if (!impactArea) {
+        newErrors.impactArea = t('errors.impactAreaRequired') || 'Impact area is required for project posts';
+      }
+      if (!stage) {
+        newErrors.stage = t('errors.stageRequired') || 'Stage is required for project posts';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -146,10 +210,16 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draft: PublicationDraft = JSON.parse(savedDraft);
         setTitle(draft.title || '');
         setDescription(draft.description || '');
-        setPostType(draft.postType || defaultPostType);
+        // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
+        const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
+        setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
-        setIsProject(draft.isProject || false);
+        setImpactArea((draft.impactArea as ImpactArea) || '');
+        setBeneficiaries(draft.beneficiaries || []);
+        setMethods(draft.methods || []);
+        setStage((draft.stage as Stage) || '');
+        setHelpNeeded(draft.helpNeeded || []);
         setHasDraft(true);
         setShowDraftAlert(true);
       } catch (error) {
@@ -175,12 +245,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       hashtags,
       images,
       isProject,
+      impactArea: impactArea || undefined,
+      beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+      methods: methods.length > 0 ? methods : undefined,
+      stage: stage || undefined,
+      helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
       savedAt: new Date().toISOString(),
     };
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, images, isProject, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -190,6 +265,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       hashtags,
       images,
       isProject,
+      impactArea: impactArea || undefined,
+      beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+      methods: methods.length > 0 ? methods : undefined,
+      stage: stage || undefined,
+      helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
       savedAt: new Date().toISOString(),
     };
 
@@ -207,10 +287,16 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draft: PublicationDraft = JSON.parse(savedDraft);
         setTitle(draft.title || '');
         setDescription(draft.description || '');
-        setPostType(draft.postType || defaultPostType);
+        // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
+        const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
+        setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
-        setIsProject(draft.isProject || false);
+        setImpactArea((draft.impactArea as ImpactArea) || '');
+        setBeneficiaries(draft.beneficiaries || []);
+        setMethods(draft.methods || []);
+        setStage((draft.stage as Stage) || '');
+        setHelpNeeded(draft.helpNeeded || []);
         addToast(t('draftLoaded'), 'success');
       } catch (error) {
         console.error('Failed to load draft:', error);
@@ -227,7 +313,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setDescription('');
     setHashtags([]);
     setImages([]);
-    setIsProject(false);
+    setPostType(defaultPostType);
+    setImpactArea('');
+    setBeneficiaries([]);
+    setMethods([]);
+    setStage('');
+    setHelpNeeded([]);
     addToast(t('draftCleared'), 'success');
   };
 
@@ -256,8 +347,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setErrors({});
 
     try {
-      // Ensure postType is 'project' if isProject is true
-      const finalPostType = isProject ? 'project' : postType;
+      // Use postType directly (isProject is derived from it)
+      const finalPostType = postType;
 
       let publication;
       if (isEditMode) {
@@ -280,6 +371,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags,
             images: images.length > 0 ? images : [], // Always send array, even if empty
+            // Taxonomy fields (editable)
+            impactArea: impactArea || undefined,
+            beneficiaries,
+            methods,
+            stage: stage || undefined,
+            helpNeeded,
           },
         });
       } else {
@@ -294,12 +391,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           content: description.trim(), // Оставляем для обратной совместимости
           type: 'text',
           postType: finalPostType,
-          isProject: isProject,
+          isProject: finalPostType === 'project',
           hashtags,
           images: images.length > 0 ? images : undefined, // Always use array
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
-        });
+          impactArea: impactArea || undefined,
+          beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+          methods: methods.length > 0 ? methods : undefined,
+          stage: stage || undefined,
+          helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
+        } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
         const draftKey = getDraftKey(communityId);
@@ -311,10 +413,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       if (onSuccess) {
         onSuccess({ id: publication.id, slug: publication.slug });
       } else {
-        // Redirect to post detail page
+        // Redirect to community list with highlight to show the post in the list
         // Use slug if available, otherwise fall back to id
         const postIdentifier = publication.slug || publication.id;
-        router.push(`/meriter/communities/${communityId}/posts/${postIdentifier}`);
+        router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
       }
 
       // Don't reset state here - navigation will unmount component
@@ -332,15 +434,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     }
   };
 
-  // Handle PROJECT checkbox change
-  const handleProjectChange = (checked: boolean) => {
-    setIsProject(checked);
-    if (checked) {
-      setPostType('project');
-    } else {
-      setPostType('basic');
-    }
-  };
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -422,62 +515,158 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           </BrandFormControl>
 
-          {/* PROJECT checkbox - only for Good Deeds Marathon */}
-          {isGoodDeedsMarathon && (
-            <BrandFormControl helperText={t('fields.markAsProjectHelp')}>
-              <div className="flex items-center gap-2.5">
-                <Checkbox
-                  id="isProject"
-                  checked={isProject}
-                  onCheckedChange={handleProjectChange}
-                  disabled={isSubmitting}
-                />
-                <Label htmlFor="isProject" className="text-sm cursor-pointer">
-                  {t('fields.markAsProject')}
-                </Label>
+          {/* Taxonomy fields - show for project posts */}
+          {postType === 'project' && (
+            <>
+              <div className="text-xs text-muted-foreground mb-2">
+                {t('taxonomy.requiredForProjects') || 'Required fields for project posts'}
               </div>
-            </BrandFormControl>
-          )}
 
-          {/* Post Type selector - hide if PROJECT checkbox is checked (in marathon communities) or when editing */}
-          {!isProject && !isEditMode && (
-            <BrandFormControl
-              label={t('fields.postType')}
-              helperText={t('fields.postTypeHelp')}
-            >
-              <Select
-                value={postType}
-                onValueChange={(value) => {
-                  const newType = value as PublicationPostType;
-                  setPostType(newType);
-                }}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
-                  <SelectValue placeholder={t('fields.postTypePlaceholder')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="basic">{t('postTypes.basic')}</SelectItem>
-                  <SelectItem value="poll">{t('postTypes.poll')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </BrandFormControl>
-          )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <BrandFormControl
+                  label={t('taxonomy.impactArea') || 'Impact Area'}
+                  error={errors.impactArea}
+                  required
+                >
+                  <Select
+                    value={impactArea}
+                    onValueChange={(value) => setImpactArea(value as ImpactArea)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                      <SelectValue placeholder={t('taxonomy.selectImpactArea') || 'Choose one'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Array.isArray(IMPACT_AREAS) ? [...IMPACT_AREAS] : []).map((area: ImpactArea) => (
+                        <SelectItem key={area} value={area}>
+                          {translateImpactArea(area)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </BrandFormControl>
 
-          {/* Show poll creation prompt when poll type is selected */}
-          {postType === 'poll' && !isProject && (
-            <div className="p-4 bg-info/10 border border-info/20 rounded-xl">
-              <p className="text-sm text-base-content mb-3">
-                {t('pollCreatePrompt')}
-              </p>
-              <Button
-                variant="default"
-                onClick={() => router.push(`/meriter/communities/${communityId}/create-poll`)}
-                className="rounded-xl active:scale-[0.98]"
+                <BrandFormControl
+                  label={t('taxonomy.stage') || 'Stage'}
+                  error={errors.stage}
+                  required
+                >
+                  <Select
+                    value={stage}
+                    onValueChange={(value) => setStage(value as Stage)}
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                      <SelectValue placeholder={t('taxonomy.selectStage') || 'Choose one'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(Array.isArray(STAGES) ? [...STAGES] : []).map((s: Stage) => (
+                        <SelectItem key={s} value={s}>
+                          {translateStage(s)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </BrandFormControl>
+              </div>
+
+              <div className="text-xs text-muted-foreground mt-4 mb-2">
+                {t('taxonomy.optionalFacets') || 'Optional facets (folded by default). Add them only if they help discovery.'}
+              </div>
+
+              <CollapsibleSection
+                title={`${t('taxonomy.beneficiaries') || 'Beneficiaries'} (≤2)${beneficiaries.length ? ` • ${beneficiaries.length}` : ''}`}
+                open={openBeneficiaries}
+                setOpen={setOpenBeneficiaries}
+                summary={beneficiaries.length ? beneficiaries.map(translateBeneficiary).join(', ') : t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                right={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setBeneficiaries([]);
+                    }}
+                    disabled={!beneficiaries.length || isSubmitting}
+                  >
+                    {t('taxonomy.clear') || 'Clear'}
+                  </Button>
+                }
               >
-                {t('goToPollCreate')}
-              </Button>
-            </div>
+                <div className="pt-1">
+                  <Checklist
+                    options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
+                    selected={beneficiaries}
+                    cap={2}
+                    hint={t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                    translateValue={translateBeneficiary}
+                    onToggle={(v: Beneficiary) => setBeneficiaries((s) => toggleInArray(s, v))}
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title={`${t('taxonomy.methods') || 'What you do'} (≤3)${methods.length ? ` • ${methods.length}` : ''}`}
+                open={openMethods}
+                setOpen={setOpenMethods}
+                summary={methods.length ? methods.map(translateMethod).join(', ') : t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                right={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMethods([]);
+                    }}
+                    disabled={!methods.length || isSubmitting}
+                  >
+                    {t('taxonomy.clear') || 'Clear'}
+                  </Button>
+                }
+              >
+                <div className="pt-1">
+                  <Checklist
+                    options={Array.isArray(METHODS) ? [...METHODS] : []}
+                    selected={methods}
+                    cap={3}
+                    hint={t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                    translateValue={translateMethod}
+                    onToggle={(v) => setMethods((s) => toggleInArray(s, v))}
+                  />
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title={`${t('taxonomy.helpNeeded') || 'Help needed'} (≤3)${helpNeeded.length ? ` • ${helpNeeded.length}` : ''}`}
+                open={openHelp}
+                setOpen={setOpenHelp}
+                summary={helpNeeded.length ? helpNeeded.map(translateHelpNeeded).join(', ') : t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                right={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHelpNeeded([]);
+                    }}
+                    disabled={!helpNeeded.length || isSubmitting}
+                  >
+                    {t('taxonomy.clear') || 'Clear'}
+                  </Button>
+                }
+              >
+                <div className="pt-1">
+                  <Checklist
+                    options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
+                    selected={helpNeeded}
+                    cap={3}
+                    hint={t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                    translateValue={translateHelpNeeded}
+                    onToggle={(v: HelpNeeded) => setHelpNeeded((s) => toggleInArray(s, v))}
+                  />
+                </div>
+              </CollapsibleSection>
+            </>
           )}
 
           <BrandFormControl
@@ -529,6 +718,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     content: description,
                     images: images.length > 0 ? images : undefined,
                     isProject,
+                    postType: postType,
+                    impactArea: impactArea && impactArea.trim() ? impactArea : undefined,
+                    stage: stage && stage.trim() ? stage : undefined,
+                    beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+                    methods: methods.length > 0 ? methods : undefined,
+                    helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
                     meta: {},
                   }}
                 />
@@ -580,7 +775,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   isSubmitting ||
                   isSubmittingRef.current ||
                   hasInsufficientPayment ||
-                  (isEditMode && !normalizedPublicationId)
+                  (isEditMode && !normalizedPublicationId) ||
+                  (postType === 'project' && (!impactArea || !stage))
                 }
                 className="rounded-xl active:scale-[0.98]"
               >

@@ -14,6 +14,7 @@ import { useCommunity } from '@/hooks/api';
 import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -35,6 +36,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     closeVotingPopup,
     updateVotingFormData,
   } = useUIStore();
+  
+  const addToast = useToastStore((state) => state.addToast);
 
   // Use shared hook for community data
   const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
@@ -77,6 +80,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
+  // Check if wallet can be used for voting
+  const canUseWallet = walletBalance > 0 && community?.votingSettings?.spendsMerits !== false;
+
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
   if (effectiveVotingMode === 'wallet-only') {
@@ -84,7 +90,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   } else if (effectiveVotingMode === 'quota-only') {
     maxPlus = freePlusAmount;
   } else {
-    maxPlus = freePlusAmount + (walletBalance || 0);
+    // In mixed mode, include wallet only if it can be used
+    maxPlus = freePlusAmount + (canUseWallet ? (walletBalance || 0) : 0);
   }
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
@@ -281,11 +288,16 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       'walletAmount value': walletAmount,
     });
 
+    // Close popup immediately to prevent flash of updated progress bars
+    // The optimistic updates will happen in onMutate, but the popup will already be closed
+    const targetId = activeVotingTarget;
+    const commentText = formData.comment.trim();
+    const imagesToSubmit = enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined;
+    
+    // Close popup and reset form immediately
+    handleClose();
+
     try {
-      updateVotingFormData({ error: '' });
-
-      const targetId = activeVotingTarget;
-
       // For publications, use the combined endpoint that creates comment and vote atomically
       if (votingTargetType === 'publication') {
         const mutationPayload = {
@@ -293,9 +305,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           data: {
             quotaAmount,
             walletAmount,
-            comment: formData.comment.trim() || undefined,
+            comment: commentText || undefined,
             direction: isUpvote ? 'up' : 'down' as const,
-            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: imagesToSubmit,
           },
           communityId: targetCommunityId,
         };
@@ -312,9 +324,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           data: {
             quotaAmount,
             walletAmount,
-            comment: formData.comment.trim() || undefined,
+            comment: commentText || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: imagesToSubmit,
           },
           communityId: targetCommunityId,
         });
@@ -325,7 +337,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           voteId: targetId,
           quotaAmount,
           walletAmount,
-          comment: formData.comment?.trim() || undefined,
+          comment: commentText || undefined,
           direction: isUpvote ? 'up' : 'down',
         });
         await voteOnVoteMutation.mutateAsync({
@@ -333,22 +345,26 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           data: {
             quotaAmount,
             walletAmount,
-            comment: formData.comment.trim() || undefined,
+            comment: commentText || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: imagesToSubmit,
           },
           communityId: targetCommunityId,
         });
       }
 
-      // Close popup and reset form
+      // Popup already closed, mutation successful
       console.log('[VotingPopup] Vote submitted successfully');
-      handleClose();
+      
+      // Show success toast
+      addToast('Vote submitted successfully', 'success');
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
       console.error('[VotingPopup] Error submitting vote:', err);
       const message = err instanceof Error ? err.message : t('errorCommenting');
-      updateVotingFormData({ error: message });
+      
+      // Show error in toast notification
+      addToast(message, 'error');
     }
   };
 
@@ -375,6 +391,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           quotaRemaining={quotaRemaining}
           dailyQuota={dailyQuota}
           usedToday={usedToday}
+          walletBalance={walletBalance}
+          community={community}
           error={formData.error}
           isViewer={isViewer}
           images={enableCommentImageUploads ? (formData.images || []) : []}
