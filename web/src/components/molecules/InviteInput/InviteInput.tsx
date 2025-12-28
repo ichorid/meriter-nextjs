@@ -88,7 +88,7 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
                         onClick={handleSubmit}
                         disabled={!inviteCode.trim() || useInviteMutation.isPending}
                         size="md"
-                        className="rounded-xl active:scale-[0.98]"
+                        className="rounded-xl active:scale-[0.98] px-6 shrink-0 whitespace-nowrap"
                     >
                         {useInviteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         {useInviteMutation.isPending ? t('checkingInvite') : t('continue')}
