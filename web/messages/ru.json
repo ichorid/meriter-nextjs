@@ -52,6 +52,7 @@
         "userNotFoundDescription": "Профиль пользователя, который вы ищете, не существует",
         "contactInformation": "Контактная информация",
         "about": "О себе",
+        "aboutProject": "О проекте",
         "noProfileInformation": "Информация о профиле недоступна",
         "noProfileInformationDescription": "Этот пользователь еще не добавил информацию о профиле",
         "closeModal": "Закрыть модальное окно",

@@ -175,7 +175,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               {isExpanded ? (
                 <div className="flex items-center w-full">
                   <Info className="w-5 h-5" />
-                  <span className="ml-2 text-sm font-medium">{t('about')}</span>
+                  <span className="ml-2 text-sm font-medium">{t('aboutProject')}</span>
                 </div>
               ) : (
                 <Info className="w-6 h-6" />

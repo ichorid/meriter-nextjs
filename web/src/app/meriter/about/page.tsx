@@ -11,7 +11,7 @@ const AboutPage = () => {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<SimpleStickyHeader title={t('about')} showBack={false} asStickyHeader={true} />}
+            stickyHeader={<SimpleStickyHeader title={t('aboutProject')} showBack={false} asStickyHeader={true} />}
         >
             <div className="space-y-6">
                 <div className="space-y-4">
