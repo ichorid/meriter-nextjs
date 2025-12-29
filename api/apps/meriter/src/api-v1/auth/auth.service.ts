@@ -435,6 +435,78 @@ export class AuthProviderService {
   }
 
   /**
+   * Authenticate user with SMS (phone number)
+   * Similar to OAuth flow: creates user if doesn't exist, returns JWT
+   */
+  async authenticateSms(phoneNumber: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+  }> {
+    this.logger.log(`Authenticating with SMS: ${phoneNumber}`);
+
+    // Validate E.164 format (must start with +)
+    if (!phoneNumber.startsWith('+')) {
+      throw new Error('Phone number must be in E.164 format (start with +)');
+    }
+
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('sms', phoneNumber);
+    const isNewUser = !existingUser;
+
+    // Extract last 6 digits for username
+    const phoneDigits = phoneNumber.replace(/\D/g, '');
+    const last6Digits = phoneDigits.slice(-6);
+    const username = `sms_${last6Digits}`;
+
+    // Mask phone for display: +7 953 *** 96-61
+    const maskedPhone = phoneNumber.replace(/(\+\d{1,3})(\d{3})(\d+)(\d{2})(\d{2})/, '$1 $2 *** $4-$5');
+    const displayName = `User ${maskedPhone}`;
+
+    // Last 4 digits for lastName
+    const last4Digits = phoneDigits.slice(-4);
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'sms',
+      authId: phoneNumber, // Store in E.164 format
+      username,
+      firstName: 'User',
+      lastName: last4Digits,
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'sms',
+        authId: phoneNumber,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for SMS user ${phoneNumber}, isNewUser: ${isNewUser}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+    };
+  }
+
+  /**
    * Authenticate user with any OAuth provider
    * Supports multiple providers: google, github, etc.
    * Provider data comes from Passport strategy validation
@@ -748,10 +820,10 @@ export class AuthProviderService {
 
     this.logger.log(`clientDataJSON type: ${typeof clientDataJSON}, length: ${clientDataJSON?.length}`);
 
-    const bodyForLib = { 
-      id, 
-      rawId, 
-      response: { clientDataJSON, attestationObject }, 
+    const bodyForLib = {
+      id,
+      rawId,
+      response: { clientDataJSON, attestationObject },
       type,
       clientExtensionResults: {}
     };
@@ -1137,24 +1209,24 @@ export class AuthProviderService {
         const { registrationInfo } = verification;
         const info: any = registrationInfo;
         const credential = info.credential;
-        
+
         // Extract values from the nested credential object or root if fallback
         const credentialID = credential?.id || info.credentialID;
         const credentialPublicKey = credential?.publicKey || info.credentialPublicKey;
         const counter = credential?.counter || info.counter;
-        
+
         const finalCredentialID = credentialID
           ? Buffer.from(credentialID).toString('base64url')
           : body.id;
-        
+
         const finalPublicKey = credentialPublicKey
           ? Buffer.from(credentialPublicKey).toString('base64url')
           : '';
-        
+
         if (!finalPublicKey) {
           throw new Error('Missing credentialPublicKey from verification result');
         }
-        
+
         authenticator = {
           credentialID: finalCredentialID,
           credentialPublicKey: finalPublicKey,

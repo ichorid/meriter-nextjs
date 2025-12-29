@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthProviderService } from './auth.service';
+import { SmsProviderService } from './sms-provider.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
@@ -72,6 +73,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthProviderService,
+    private readonly smsProviderService: SmsProviderService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
   ) { }
@@ -407,7 +409,7 @@ export class AuthController {
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      
+
       // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
       // The callback page will retry users.getMe until cookie is available, then redirect to final destination
       const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
@@ -517,7 +519,7 @@ export class AuthController {
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      
+
       // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
       // The callback page will retry users.getMe until cookie is available, then redirect to final destination
       const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
@@ -692,6 +694,111 @@ export class AuthController {
     } catch (error) {
       this.logger.error('Passkey authentication error', error);
       throw new InternalServerError('Failed to authenticate with passkey');
+    }
+  }
+
+  // --- SMS Authentication Endpoints ---
+
+  /**
+   * Send OTP to phone number
+   * POST /api/v1/auth/sms/send
+   */
+  @Post('sms/send')
+  async sendSmsOtp(@Body() body: { phoneNumber: string }, @Res() res: any) {
+    try {
+      const { phoneNumber } = body;
+
+      if (!phoneNumber) {
+        throw new Error('Phone number is required');
+      }
+
+      // Validate E.164 format
+      if (!phoneNumber.startsWith('+')) {
+        throw new Error('Phone number must be in E.164 format (start with +)');
+      }
+
+      // Check if SMS is enabled
+      const smsEnabled = this.configService.get('sms')?.enabled ?? false;
+      if (!smsEnabled) {
+        throw new ForbiddenException('SMS authentication is not enabled');
+      }
+
+      this.logger.log(`SMS OTP send request for ${phoneNumber}`);
+
+      const result = await this.smsProviderService.sendOtp(phoneNumber);
+
+      this.logger.log(`OTP sent successfully to ${phoneNumber}`);
+
+      return res.json({
+        success: true,
+        expiresIn: result.expiresIn,
+        canResendAt: result.canResendAt,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send SMS';
+      this.logger.error(`SMS send error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Verify OTP and authenticate user
+   * POST /api/v1/auth/sms/verify
+   */
+  @Post('sms/verify')
+  async verifySmsOtp(@Body() body: { phoneNumber: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { phoneNumber, otpCode } = body;
+
+      if (!phoneNumber || !otpCode) {
+        throw new Error('Phone number and OTP code are required');
+      }
+
+      // Validate E.164 format
+      if (!phoneNumber.startsWith('+')) {
+        throw new Error('Phone number must be in E.164 format (start with +)');
+      }
+
+      // Check if SMS is enabled
+      const smsEnabled = this.configService.get('sms')?.enabled ?? false;
+      if (!smsEnabled) {
+        throw new ForbiddenException('SMS authentication is not enabled');
+      }
+
+      this.logger.log(`SMS OTP verify request for ${phoneNumber}`);
+
+      // Verify OTP
+      await this.smsProviderService.verifyOtp(phoneNumber, otpCode);
+
+      // Authenticate user (create or login)
+      const result = await this.authService.authenticateSms(phoneNumber);
+
+      // Set JWT cookie
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      this.logger.log(`SMS authentication successful for ${phoneNumber}, isNewUser: ${result.isNewUser}`);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify SMS';
+      this.logger.error(`SMS verify error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
     }
   }
 }

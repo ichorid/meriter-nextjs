@@ -315,7 +315,32 @@
         "usernameRequired": "Имя пользователя обязательно",
         "passkeyLoginFailed": "Ошибка входа с Passkey",
         "registrationSuccessSignIn": "Регистрация успешна! Пожалуйста, войдите с помощью вашего Passkey.",
-        "passkeyRegistrationFailed": "Ошибка регистрации Passkey"
+        "passkeyRegistrationFailed": "Ошибка регистрации Passkey",
+        "signInWithSms": "Войти по SMS",
+        "orContinueWith": "Или продолжить с",
+        "or": "Или",
+        "smsDialog": {
+            "title": "Вход по номеру телефона",
+            "description": "Введите номер телефона для получения кода подтверждения",
+            "otpDescription": "Введите код, который мы отправили на ваш телефон",
+            "phoneLabel": "Номер телефона",
+            "phonePlaceholder": "+79001234567",
+            "phoneHint": "Номер телефона должен начинаться с + и включать код страны (например, +79001234567)",
+            "sendCode": "Отправить код",
+            "sending": "Отправка...",
+            "otpLabel": "Код подтверждения",
+            "otpPlaceholder": "000000",
+            "verify": "Подтвердить",
+            "verifying": "Проверка...",
+            "resendCode": "Отправить повторно",
+            "resendIn": "Повтор через {seconds}с",
+            "sentTo": "Код отправлен на",
+            "invalidPhone": "Неверный формат номера телефона",
+            "mustStartWithPlus": "Номер телефона должен начинаться с + (требуется код страны)",
+            "invalidOtp": "Неверный код подтверждения. Введите 6 цифр.",
+            "sendFailed": "Не удалось отправить SMS. Попробуйте снова.",
+            "verifyFailed": "Не удалось проверить код. Попробуйте снова."
+        }
     },
     "polls": {
         "createTitle": "Создать опрос",

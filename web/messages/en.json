@@ -314,7 +314,32 @@
         "usernameRequired": "Username is required",
         "passkeyLoginFailed": "Passkey login failed",
         "registrationSuccessSignIn": "Registration successful! Please sign in with your Passkey.",
-        "passkeyRegistrationFailed": "Passkey registration failed"
+        "passkeyRegistrationFailed": "Passkey registration failed",
+        "signInWithSms": "Sign in with SMS",
+        "orContinueWith": "Or continue with",
+        "or": "Or",
+        "smsDialog": {
+            "title": "Sign in with Phone",
+            "description": "Enter your phone number to receive a verification code",
+            "otpDescription": "Enter the code we sent to your phone",
+            "phoneLabel": "Phone Number",
+            "phonePlaceholder": "+79001234567",
+            "phoneHint": "Phone number must start with + and include country code (e.g., +79001234567)",
+            "sendCode": "Send Code",
+            "sending": "Sending...",
+            "otpLabel": "Verification Code",
+            "otpPlaceholder": "000000",
+            "verify": "Verify",
+            "verifying": "Verifying...",
+            "resendCode": "Resend Code",
+            "resendIn": "Resend in {seconds}s",
+            "sentTo": "Code sent to",
+            "invalidPhone": "Invalid phone number format",
+            "mustStartWithPlus": "Phone number must start with + (country code required)",
+            "invalidOtp": "Invalid verification code. Please enter 6 digits.",
+            "sendFailed": "Failed to send SMS. Please try again.",
+            "verifyFailed": "Failed to verify code. Please try again."
+        }
     },
     "polls": {
         "createTitle": "Create Poll",

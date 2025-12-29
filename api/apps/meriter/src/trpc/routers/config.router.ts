@@ -11,7 +11,7 @@ export const configRouter = router({
       throw new Error('ConfigService is not available in context');
     }
     const configService = ctx.configService;
-    
+
     // Get BOT_USERNAME from environment (optional)
     const botUsername = ((configService.get as any)('bot.username') as string | undefined)?.trim() || null;
 
@@ -33,6 +33,11 @@ export const configRouter = router({
       enabled: ((configService.get as any)('authn.enabled') ?? false) as boolean,
     };
 
+    // SMS authentication flag
+    const sms = {
+      enabled: ((configService.get as any)('sms.enabled') ?? false) as boolean,
+    };
+
     // Feature flags - use typed ConfigService
     const features = {
       analytics: ((configService.get as any)('features.analytics') ?? false) as boolean,
@@ -46,6 +51,7 @@ export const configRouter = router({
       botUsername,
       oauth,
       authn,
+      sms,
       features,
     };
   }),

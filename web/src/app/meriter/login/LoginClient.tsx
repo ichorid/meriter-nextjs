@@ -23,6 +23,7 @@ export default function PageMeriterLogin() {
     const oauthSber = runtimeConfig?.oauth?.sber ?? false;
     const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
     const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
+    const smsEnabled = runtimeConfig?.sms?.enabled ?? false;
 
     // Memoize enabled providers using primitive dependencies
     // This ensures we only recompute when oauth config values actually change
@@ -62,7 +63,11 @@ export default function PageMeriterLogin() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 px-4 py-12 flex items-center justify-center">
             <div className="w-full max-w-md">
-                <LoginForm enabledProviders={enabledProviders} authnEnabled={authnEnabled} />
+                <LoginForm
+                    enabledProviders={enabledProviders}
+                    authnEnabled={authnEnabled}
+                    smsEnabled={smsEnabled}
+                />
 
                 <div className="mt-8 flex justify-center">
                     <VersionDisplay showBuildInfo />
