@@ -223,6 +223,8 @@ export const favoritesRouter = router({
               origin: { telegramChatName: community.name },
             }),
           },
+          deleted: snapshot.deleted ?? false,
+          deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
         };

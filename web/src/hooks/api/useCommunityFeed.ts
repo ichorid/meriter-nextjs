@@ -5,6 +5,7 @@ interface FeedQueryParams {
   pageSize?: number;
   sort?: 'recent' | 'score';
   tag?: string;
+  search?: string;
   impactArea?: string;
   stage?: string;
   beneficiaries?: string[];
@@ -16,7 +17,7 @@ export function useCommunityFeed(
   communityId: string,
   params: FeedQueryParams = {}
 ) {
-  const { pageSize = 5, sort = 'score', tag, impactArea, stage, beneficiaries, methods, helpNeeded } = params;
+  const { pageSize = 5, sort = 'score', tag, search, impactArea, stage, beneficiaries, methods, helpNeeded } = params;
   
   return trpc.communities.getFeed.useInfiniteQuery(
     {
@@ -25,6 +26,7 @@ export function useCommunityFeed(
       pageSize,
       sort,
       tag,
+      search,
       impactArea,
       stage,
       beneficiaries,

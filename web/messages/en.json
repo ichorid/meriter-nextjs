@@ -26,6 +26,9 @@
         "add": "Add",
         "createCommunity": "Create Community",
         "about": "About",
+        "aboutProject": "About Project",
+        "favorites": "Favorites",
+        "communities": "Communities",
         "allCommunities": "All Communities",
         "copy": "Copy",
         "copied": "Copied!",
@@ -229,7 +232,8 @@
         "editDisabled": {
             "hasVotes": "Cannot edit: post has votes",
             "hasComments": "Cannot edit: post has comments",
-            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions"
+            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions",
+            "deleted": "Cannot edit: this post has been deleted"
         },
         "deleteDisabled": {
             "hasVotes": "Cannot delete: post has votes",
@@ -247,6 +251,7 @@
             "roleNotAllowed": "Your role does not have permission to vote in this community",
             "ownPostNotAllowed": "Voting on your own posts is not allowed in this community",
             "viewerNotMarathon": "Viewers can only vote in marathon-of-good communities",
+            "teammateInSpecialGroup": "You cannot vote for your teammates in this community",
             "commentVotingDisabled": "Voting on comments is disabled. You can only vote on posts/publications."
         },
         "loggingOut": "Logging out...",
@@ -261,6 +266,8 @@
         "addCommentOptional": "Add a comment (optional)",
         "submitting": "Submitting...",
         "pleaseAdjustSlider": "Please adjust the slider",
+        "pleaseChooseWithdrawAmount": "Please choose an amount to withdraw",
+        "withdrewMerits": "Withdrew {amount} merits",
         "errorSubmitting": "Failed to submit",
         "timeAgo": {
             "seconds": "{count}s ago",
@@ -644,7 +651,6 @@
             "hashtagDescription": "Any message with this hashtag in the community chat will automatically appear on the site",
             "delete": "Delete",
             "addValue": "+ Add Value",
-            "cancel": "Cancel",
             "saveSettings": "Save Settings",
             "settingsSaved": "Settings saved successfully!",
             "error": "Error",
@@ -673,6 +679,10 @@
         }
     },
     "publications": {
+        "publicationDetails": "Publication Details",
+        "beneficiary": "Beneficiary",
+        "editHistory": "Edit History",
+        "noEditsYet": "No edits yet",
         "create": {
             "title": "Create Publication",
             "editTitle": "Edit Publication",
@@ -845,6 +855,8 @@
             "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
             "contactNote": "If you want to become a Participant, contact one of the Leads."
         },
+        "joinTeam": "Join a Team",
+        "joinTeamDescription": "To join a team, contact one of the leads below for an invite.",
         "create": {
             "title": "Create Community",
             "creating": "Creating...",
@@ -876,6 +888,9 @@
             "quotaRecipients": "Quota Recipients",
             "canEarn": "Can Earn",
             "canSpend": "Can Spend",
+            "editWindowMinutes": "Post editing window (minutes)",
+            "editWindowMinutesHelp": "How many minutes after publishing participants can edit a post (0 = no limit).",
+            "allowEditByOthers": "Allow participants to edit other people's posts",
             "linkedCurrencies": "Linked Currencies",
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",
@@ -932,8 +947,8 @@
     "registration": {
         "title": "Registration",
         "authTitle": "Authentication",
-        "inviteDescription": "Enter your invite code to begin registration (optional)",
-        "inviteCodeLabel": "Invite Code (optional)",
+        "inviteDescription": "Enter your invite code to begin registration",
+        "inviteCodeLabel": "Invite Code",
         "inviteCodePlaceholder": "Enter invite code",
         "continue": "Continue",
         "checkingInvite": "Checking invite...",
@@ -970,7 +985,7 @@
         "newUserDescription": "Please complete your profile to continue.",
         "generalInformation": "General",
         "generalInformationSubtitle": "Please fill in the following information to complete your profile.",
-        "aboutInformation": "About project",
+        "aboutInformation": "About",
         "avatarUrl": "Avatar URL",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Add an avatar URL to your profile",
@@ -1018,8 +1033,8 @@
         "cityPlaceholder": "Enter city",
         "website": "Website",
         "websitePlaceholder": "https://example.com",
-        "about": "About project",
-        "aboutPlaceholder": "Tell us more about the project",
+        "about": "About",
+        "aboutPlaceholder": "Tell us more about yourself",
         "contacts": "Contacts",
         "email": "Email",
         "messenger": "Messenger",
@@ -1041,7 +1056,7 @@
         "characters": "characters",
         "errors": {
             "bioTooLong": "Bio must be no more than {max} characters",
-            "aboutTooLong": "About project must be no more than {max} characters",
+            "aboutTooLong": "About must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",
             "invalidUrl": "Invalid URL",
             "invalidEmail": "Invalid email address"
@@ -1054,9 +1069,9 @@
             "superadmin": "Superadmin"
         },
         "contactInformattion": "Contacts",
-        "aboutInformattion": "About project",
+        "aboutInformattion": "About",
         "hint": {
-            "about": "Here you can tell a little bit about the project and what is important to you."
+            "about": "Tell us a little bit about yourself and what is important to you."
         },
         "useInvite": {
             "title": "Join community by invite"

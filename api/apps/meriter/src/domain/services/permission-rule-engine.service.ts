@@ -178,6 +178,22 @@ export class PermissionRuleEngine {
       return true;
     }
 
+    // STEP 7.2: Special groups restriction - cannot vote for teammates in FV / MoG
+    // "Teammates" means: voter and author share at least one team-type community.
+    // Applies ONLY to future-vision and marathon-of-good communities.
+    if (
+      action === ActionType.VOTE &&
+      (community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good') &&
+      context?.authorId &&
+      String(context.authorId).trim() !== String(userId).trim() &&
+      (context.sharedTeamCommunities?.length ?? 0) > 0
+    ) {
+      this.logger.debug(
+        `[canPerformAction] DENIED: Cannot vote for teammate in special group (typeTag=${community.typeTag})`,
+      );
+      return false;
+    }
+
     // STEP 7.5: Check if lead is trying to vote for own post (outside team communities)
     if (action === ActionType.VOTE && userRole === 'lead' && context?.isAuthor) {
       // Exception: future-vision allows self-voting
@@ -193,50 +209,30 @@ export class PermissionRuleEngine {
       return false;
     }
 
-    // STEP 7.6: Check if participant is trying to vote for lead from same team
-    // This restriction applies to all communities when participants and leads share a team
-    if (action === ActionType.VOTE && 
-      userRole === 'participant' && 
-      context?.authorRole === 'lead' && 
-      context?.sharedTeamCommunities && 
-      context.sharedTeamCommunities.length > 0) {
-      // Exception: future-vision allows this
-      if (community.typeTag === 'future-vision') {
-        this.logger.debug(
-          `[canPerformAction] ALLOWED: Participant can vote for lead from same team in future-vision`,
-        );
-        return true;
-      }
-      // Check if the condition explicitly allows it (matchingRule is already found above)
-      if (matchingRule?.conditions?.participantsCannotVoteForLead === false) {
-        // Explicitly allowed by rule
-        this.logger.debug(
-          `[canPerformAction] ALLOWED: Rule explicitly allows participant to vote for lead from same team`,
-        );
-        return true;
-      }
-      // Default: deny if they share a team (unless explicitly allowed)
-      this.logger.debug(
-        `[canPerformAction] DENIED: Participant cannot vote for lead from same team`,
-      );
-      return false;
-    }
+    // STEP 8: Author requirement for edit/delete actions for participants
+    if (userRole === 'participant') {
+      const isEditOrDelete =
+        action === ActionType.EDIT_PUBLICATION ||
+        action === ActionType.DELETE_PUBLICATION ||
+        action === ActionType.EDIT_POLL ||
+        action === ActionType.DELETE_POLL ||
+        action === ActionType.EDIT_COMMENT ||
+        action === ActionType.DELETE_COMMENT;
 
-    // STEP 8: Check author requirement for edit/delete actions (participants can only edit/delete their own resources)
-    // Exception: In team groups, participants can edit each other's posts
-    if ((action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION ||
-         action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL ||
-         action === ActionType.EDIT_COMMENT || action === ActionType.DELETE_COMMENT) &&
-        userRole === 'participant') {
-      if (!context?.isAuthor) {
-        // Allow editing publications in team groups even if not the author
-        if (action === ActionType.EDIT_PUBLICATION && 
-            community.typeTag === 'team' && 
-            context?.isTeamMember) {
-          this.logger.debug(
-            `[canPerformAction] ALLOWED: Participant can edit other team member's post in team group`,
-          );
-          // Continue to condition evaluation (e.g., canEditWithVotes)
+      if (isEditOrDelete && !context?.isAuthor) {
+        // Special case: allow participant to edit publications created by others only if explicitly enabled in community settings.
+        if (action === ActionType.EDIT_PUBLICATION) {
+          const allowEditByOthers = community.settings?.allowEditByOthers ?? false;
+          if (allowEditByOthers) {
+            this.logger.debug(
+              `[canPerformAction] ALLOWED: Participant can edit other user's publication because allowEditByOthers=true`,
+            );
+          } else {
+            this.logger.debug(
+              `[canPerformAction] DENIED: Participant cannot edit other user's publication (allowEditByOthers=false)`,
+            );
+            return false;
+          }
         } else {
           this.logger.debug(
             `[canPerformAction] DENIED: Participant can only ${action} their own resources`,
@@ -392,57 +388,30 @@ export class PermissionRuleEngine {
       }
     }
 
-    // Check participantsCannotVoteForLead
-    if (conditions.participantsCannotVoteForLead && action === ActionType.VOTE) {
-      if (context?.authorRole === 'lead' && (context?.sharedTeamCommunities?.length ?? 0) > 0) {
-        return false;
-      }
-    }
+    // Publication editing is NOT based on votes/comments anymore. Ignore canEditWithVotes/canEditWithComments.
 
-    // Check canEditWithVotes
-    // Exception: In team groups, participants can edit each other's posts even with votes
-    if (conditions.canEditWithVotes !== undefined) {
-      if (context?.hasVotes && !conditions.canEditWithVotes) {
-        // Allow editing in team groups even if post has votes
-        if (action === ActionType.EDIT_PUBLICATION &&
-            community.typeTag === 'team' &&
-            context?.isTeamMember) {
-          this.logger.debug(
-            `[evaluateConditions] ALLOWED: Team group participant can edit post with votes`,
-          );
-          // Continue to other condition checks
-        } else {
+    // Check canEditAfterMinutes (publications only)
+    // If canEditAfterMinutes is set in conditions, use it; otherwise check community settings
+    if (action === ActionType.EDIT_PUBLICATION && context?.minutesSinceCreation !== undefined) {
+      // Only enforce time window for participants. Leads/superadmins can still edit if allowed by rule.
+      const editorRole = await this.permissionService.getUserRoleInCommunity(
+        userId,
+        community.id,
+      );
+      if (editorRole === 'participant') {
+        const editWindowMinutes =
+          conditions.canEditAfterMinutes !== undefined
+            ? conditions.canEditAfterMinutes
+            : (community.settings?.editWindowMinutes ?? 30);
+
+        if (editWindowMinutes === 0) {
+          // 0 means no time limit
+          return true;
+        }
+
+        if (context.minutesSinceCreation >= editWindowMinutes) {
           return false;
         }
-      }
-    }
-
-    // Check canEditWithComments
-    if (conditions.canEditWithComments !== undefined) {
-      if (context?.hasComments && !conditions.canEditWithComments) {
-        return false;
-      }
-    }
-
-    // Check canEditAfterDays
-    // If canEditAfterDays is set in conditions, use it; otherwise check community settings
-    if (context?.daysSinceCreation !== undefined) {
-      let editWindowDays: number;
-      if (conditions.canEditAfterDays !== undefined) {
-        editWindowDays = conditions.canEditAfterDays;
-      } else {
-        // Get from community settings (default is 7)
-        editWindowDays = community.settings?.editWindowDays ?? 7;
-      }
-
-      if (editWindowDays === 0) {
-        // 0 means no time limit
-        return true;
-      }
-      // Use < to match original logic: can edit for editWindowDays days (days 0 to editWindowDays-1)
-      // If daysSinceCreation is 8 and editWindowDays is 7, should return false
-      if (context.daysSinceCreation >= editWindowDays) {
-        return false;
       }
     }
 

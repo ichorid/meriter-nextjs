@@ -321,5 +321,80 @@ describe('Publication Soft Delete Service Methods', () => {
       expect(publication?.getId.getValue()).toBe(publicationId3);
     });
   });
+
+  describe('restorePublication', () => {
+    it('should restore a deleted publication by unsetting deleted flags', async () => {
+      // First delete a publication
+      await publicationService.deletePublication(publicationId1, authorId);
+      
+      // Verify it's deleted
+      const deletedPublication = await publicationModel.findOne({ id: publicationId1 }).lean();
+      expect(deletedPublication?.deleted).toBe(true);
+      expect(deletedPublication?.deletedAt).toBeDefined();
+
+      // Restore the publication
+      await publicationService.restorePublication(publicationId1, authorId);
+
+      // Verify it's restored
+      const restoredPublication = await publicationModel.findOne({ id: publicationId1 }).lean();
+      expect(restoredPublication?.deleted).toBeUndefined();
+      expect(restoredPublication?.deletedAt).toBeUndefined();
+    });
+
+    it('should preserve all publication data when restoring', async () => {
+      // Get publication before deletion
+      const beforeDelete = await publicationModel.findOne({ id: publicationId2 }).lean();
+      
+      // Delete the publication
+      await publicationService.deletePublication(publicationId2, authorId);
+      
+      // Restore the publication
+      await publicationService.restorePublication(publicationId2, authorId);
+
+      // Verify all original data is preserved
+      const afterRestore = await publicationModel.findOne({ id: publicationId2 }).lean();
+      expect(afterRestore?.id).toBe(beforeDelete?.id);
+      expect(afterRestore?.content).toBe(beforeDelete?.content);
+      expect(afterRestore?.title).toBe(beforeDelete?.title);
+      expect(afterRestore?.metrics).toEqual(beforeDelete?.metrics);
+      expect(afterRestore?.hashtags).toEqual(beforeDelete?.hashtags);
+      expect(afterRestore?.communityId).toBe(beforeDelete?.communityId);
+      expect(afterRestore?.authorId).toBe(beforeDelete?.authorId);
+      
+      // Verify deleted flags are removed
+      expect(afterRestore?.deleted).toBeUndefined();
+      expect(afterRestore?.deletedAt).toBeUndefined();
+    });
+
+    it('should throw NotFoundException if publication does not exist', async () => {
+      const nonExistentId = uid();
+      
+      await expect(
+        publicationService.restorePublication(nonExistentId, authorId)
+      ).rejects.toThrow('Publication not found');
+    });
+
+    it('should throw BadRequestException if publication is not deleted', async () => {
+      // Create a new non-deleted publication for this test
+      const nonDeletedId = uid();
+      await publicationModel.create({
+        id: nonDeletedId,
+        communityId: communityId1,
+        authorId,
+        content: 'Non-deleted publication',
+        type: 'text',
+        postType: 'basic',
+        metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+        hashtags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Try to restore a publication that is not deleted
+      await expect(
+        publicationService.restorePublication(nonDeletedId, authorId)
+      ).rejects.toThrow('Publication is not deleted');
+    });
+  });
 });
 

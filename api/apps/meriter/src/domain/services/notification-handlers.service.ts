@@ -4,6 +4,7 @@ import { Connection } from 'mongoose';
 import { EventBus } from '../events/event-bus';
 import {
   PublicationCreatedEvent,
+  PublicationUpdatedEvent,
   PublicationVotedEvent,
   CommentAddedEvent,
   CommentVotedEvent,
@@ -39,6 +40,9 @@ export class NotificationHandlersService implements OnModuleInit {
     // Subscribe to domain events
     this.eventBus.subscribe('PublicationCreated', (event) =>
       this.handlePublicationCreated(event as PublicationCreatedEvent),
+    );
+    this.eventBus.subscribe('PublicationUpdated', (event) =>
+      this.handlePublicationUpdated(event as PublicationUpdatedEvent),
     );
     this.eventBus.subscribe('PublicationVoted', (event) =>
       this.handlePublicationVoted(event as PublicationVotedEvent),
@@ -145,12 +149,107 @@ export class NotificationHandlersService implements OnModuleInit {
     }
   }
 
+  async handlePublicationUpdated(event: PublicationUpdatedEvent): Promise<void> {
+    try {
+      const publicationId = event.getAggregateId();
+      const editorId = event.getEditorId();
+      const authorId = event.getAuthorId();
+      const communityId = event.getCommunityId();
+
+      // Get publication to get title for notification message
+      const publication = await this.publicationService.getPublication(publicationId);
+      if (!publication) {
+        this.logger.warn(`Publication ${publicationId} not found for notification`);
+        return;
+      }
+
+      // Get editor info for notification message
+      const editor = await this.userService.getUser(editorId);
+      const editorName = editor?.displayName || 'Someone';
+
+      // Get publication title for message
+      const publicationSnapshot = publication.toSnapshot();
+      const postTitle = publicationSnapshot.title || 'your post';
+
+      // Create notification with deduplication
+      const notificationDto: CreateNotificationDto = {
+        userId: authorId,
+        type: 'publication',
+        source: 'user',
+        sourceId: editorId,
+        metadata: {
+          publicationId,
+          communityId,
+          editorId,
+          authorId,
+          targetType: 'publication_edit',
+          targetId: publicationId,
+        },
+        title: 'Post edited',
+        message: `${editorName} edited ${postTitle}`,
+      };
+
+      await this.notificationService.createOrReplaceByEditorAndPost(notificationDto, {
+        publicationId,
+        editorId,
+      });
+
+      this.logger.log(
+        `Created publication edit notification for user ${authorId} from editor ${editorId} on publication ${publicationId}`,
+      );
+
+      // Notify users who favorited this publication
+      const favUserIds = await this.favoriteService.getFavoriteUserIdsForTarget(
+        'publication',
+        publicationId,
+      );
+
+      // Filter out editor and author (they already have notifications or don't need them)
+      const usersToNotify = favUserIds.filter(
+        (userId) => userId !== editorId && userId !== authorId,
+      );
+
+      await Promise.all(
+        usersToNotify.map(async (userId) => {
+          const favoriteNotificationDto: CreateNotificationDto = {
+            userId,
+            type: 'publication',
+            source: 'user',
+            sourceId: editorId,
+            metadata: {
+              publicationId,
+              communityId,
+              editorId,
+              authorId,
+              targetType: 'publication_edit',
+              targetId: publicationId,
+            },
+            title: 'Post edited',
+            message: `${editorName} edited a favorite post: ${postTitle}`,
+          };
+
+          await this.notificationService.createOrReplaceByEditorAndPost(favoriteNotificationDto, {
+            publicationId,
+            editorId,
+          });
+
+          this.logger.log(
+            `Created publication edit notification for favoriting user ${userId} from editor ${editorId} on publication ${publicationId}`,
+          );
+        }),
+      );
+    } catch (error) {
+      this.logger.error(`Error handling PublicationUpdated event:`, error);
+    }
+  }
+
   async handlePublicationVoted(event: PublicationVotedEvent): Promise<void> {
     try {
       const publicationId = event.getAggregateId();
       const voterId = event.getVoterId();
       const amount = event.getAmount();
       const direction = event.getDirection();
+      const activityAt = new Date();
 
       // Get publication to find author
       const publication = await this.publicationService.getPublication(publicationId);
@@ -168,9 +267,14 @@ export class NotificationHandlersService implements OnModuleInit {
       // Don't notify if user voted on their own content
       if (authorId === voterId) {
         // Still update favorites activity (other users may have favorited it)
-        await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+        await this.favoriteService.touchFavoritesForTarget(
+          'publication',
+          publicationId,
+          activityAt,
+          voterId,
+        );
         if (isProject) {
-          await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+          await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, voterId);
         }
         return;
       }
@@ -221,37 +325,99 @@ export class NotificationHandlersService implements OnModuleInit {
         `Created vote notification for user ${authorId} from vote on publication ${publicationId}`,
       );
 
-      // Favorites: mark as updated + notify favoriting users (dedup)
-      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      // Favorites: mark as updated + notify favoriting users with aggregated vote notifications
+      await this.favoriteService.touchFavoritesForTarget('publication', publicationId, activityAt, voterId);
       const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
         'publication',
         publicationId,
       );
-      await this.notifyFavoriteUpdate({
-        actorId: voterId,
-        userIds: favUserIdsPublication,
-        targetType: 'publication',
-        targetId: publicationId,
-        communityId,
-        publicationId,
-        message: direction === 'up' ? `upvoted a favorite post` : `downvoted a favorite post`,
-      });
+
+      // Filter out voter (they don't need notification for their own vote)
+      const usersToNotifyPublication = favUserIdsPublication.filter((userId) => userId !== voterId);
+
+      await Promise.all(
+        usersToNotifyPublication.map(async (userId) => {
+          const voteNotificationDto: CreateNotificationDto = {
+            userId,
+            type: 'vote',
+            source: 'user',
+            sourceId: voterId,
+            metadata: {
+              publicationId,
+              communityId,
+              targetType: 'publication',
+              targetId: publicationId,
+              voteId,
+              amount,
+              direction,
+            },
+            title: 'New vote',
+            message: '', // Will be set by aggregation method
+          };
+
+          await this.notificationService.createOrReplaceAndAggregateVotes(
+            voteNotificationDto,
+            { publicationId },
+            {
+              voterId,
+              voterName,
+              amount,
+              direction,
+            },
+          );
+
+          this.logger.log(
+            `Created aggregated vote notification for favoriting user ${userId} on publication ${publicationId}`,
+          );
+        }),
+      );
 
       if (isProject) {
-        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, voterId);
         const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
           'project',
           publicationId,
         );
-        await this.notifyFavoriteUpdate({
-          actorId: voterId,
-          userIds: favUserIdsProject,
-          targetType: 'project',
-          targetId: publicationId,
-          communityId,
-          publicationId,
-          message: direction === 'up' ? `upvoted a favorite project` : `downvoted a favorite project`,
-        });
+
+        // Filter out voter
+        const usersToNotifyProject = favUserIdsProject.filter((userId) => userId !== voterId);
+
+        await Promise.all(
+          usersToNotifyProject.map(async (userId) => {
+            const voteNotificationDto: CreateNotificationDto = {
+              userId,
+              type: 'vote',
+              source: 'user',
+              sourceId: voterId,
+              metadata: {
+                publicationId,
+                communityId,
+                targetType: 'publication',
+                targetId: publicationId,
+                voteId,
+                amount,
+                direction,
+              },
+              title: 'New vote',
+              message: '', // Will be set by aggregation method
+            };
+
+            await this.notificationService.createOrReplaceAndAggregateVotes(
+              voteNotificationDto,
+              { publicationId },
+              {
+                voterId,
+                voterName,
+                amount,
+                direction,
+              },
+            );
+
+            this.logger.log(
+              `Created aggregated vote notification for favoriting user ${userId} on project ${publicationId}`,
+            );
+          }),
+        );
       }
     } catch (error) {
       this.logger.error(`Error handling PublicationVoted event:`, error);
@@ -262,6 +428,7 @@ export class NotificationHandlersService implements OnModuleInit {
     try {
       const publicationId = event.getTargetId();
       const commenterId = event.getAuthorId();
+      const activityAt = new Date();
 
       const publication = await this.publicationService.getPublication(publicationId);
       if (!publication) {
@@ -272,7 +439,12 @@ export class NotificationHandlersService implements OnModuleInit {
       const isProject =
         publicationSnapshot.isProject === true || publicationSnapshot.postType === 'project';
 
-      await this.favoriteService.touchFavoritesForTarget('publication', publicationId);
+      await this.favoriteService.touchFavoritesForTarget(
+        'publication',
+        publicationId,
+        activityAt,
+        commenterId,
+      );
       const favUserIdsPublication = await this.favoriteService.getFavoriteUserIdsForTarget(
         'publication',
         publicationId,
@@ -288,7 +460,7 @@ export class NotificationHandlersService implements OnModuleInit {
       });
 
       if (isProject) {
-        await this.favoriteService.touchFavoritesForTarget('project', publicationId);
+        await this.favoriteService.touchFavoritesForTarget('project', publicationId, activityAt, commenterId);
         const favUserIdsProject = await this.favoriteService.getFavoriteUserIdsForTarget(
           'project',
           publicationId,
@@ -312,6 +484,7 @@ export class NotificationHandlersService implements OnModuleInit {
     try {
       const pollId = event.getAggregateId();
       const casterId = event.getUserId();
+      const activityAt = new Date();
 
       const poll = await this.pollService.getPoll(pollId);
       if (!poll) {
@@ -321,7 +494,7 @@ export class NotificationHandlersService implements OnModuleInit {
       const snapshot = poll.toSnapshot();
       const communityId = snapshot.communityId;
 
-      await this.favoriteService.touchFavoritesForTarget('poll', pollId);
+      await this.favoriteService.touchFavoritesForTarget('poll', pollId, activityAt, casterId);
       const favUserIds = await this.favoriteService.getFavoriteUserIdsForTarget('poll', pollId);
       await this.notifyFavoriteUpdate({
         actorId: casterId,

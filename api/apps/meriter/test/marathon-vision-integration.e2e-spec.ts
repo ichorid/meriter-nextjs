@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
@@ -191,15 +192,17 @@ describe('Marathon/Future Vision integration (e2e)', () => {
     expect(quota.remaining).toBe(7);
 
     // voter: cannot vote with wallet in marathon
-    const walletVoteInMarathon = await trpcMutationWithError(app, 'votes.createWithComment', {
-      targetType: 'publication',
-      targetId: marathonPub.id,
-      quotaAmount: 0,
-      walletAmount: 5,
-      comment: 'Wallet vote attempt',
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const walletVoteInMarathon = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPub.id,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet vote attempt',
+      });
+      expect(walletVoteInMarathon.error?.code).toBe('BAD_REQUEST');
+      expect(walletVoteInMarathon.error?.message).toContain('Marathon of Good only allows quota voting');
     });
-    expect(walletVoteInMarathon.error?.code).toBe('BAD_REQUEST');
-    expect(walletVoteInMarathon.error?.message).toContain('Viewers can only vote using daily quota');
 
     // Create a publication in future-vision by author
     (global as any).testUserId = authorId;
@@ -223,15 +226,17 @@ describe('Marathon/Future Vision integration (e2e)', () => {
     expect(fvQuota.remaining).toBe(0);
 
     // voter: quota voting rejected in future-vision
-    const quotaVoteInVision = await trpcMutationWithError(app, 'votes.createWithComment', {
-      targetType: 'publication',
-      targetId: visionPub.id,
-      quotaAmount: 3,
-      walletAmount: 0,
-      comment: 'Quota vote attempt',
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const quotaVoteInVision = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPub.id,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Quota vote attempt',
+      });
+      expect(quotaVoteInVision.error?.code).toBe('BAD_REQUEST');
+      expect(quotaVoteInVision.error?.message).toContain('Future Vision only allows wallet voting');
     });
-    expect(quotaVoteInVision.error?.code).toBe('BAD_REQUEST');
-    expect(quotaVoteInVision.error?.message).toContain('Future Vision only allows wallet voting');
 
     // voter: wallet voting allowed in future-vision
     const walletVoteInVision = await trpcMutation(app, 'votes.createWithComment', {
@@ -243,6 +248,17 @@ describe('Marathon/Future Vision integration (e2e)', () => {
     });
     expect(walletVoteInVision.amountWallet).toBe(5);
     expect(walletVoteInVision.direction).toBe('up');
+
+    // author: withdrawals are forbidden in future-vision (output group)
+    (global as any).testUserId = authorId;
+    await withSuppressedErrors(['FORBIDDEN'], async () => {
+      const withdraw = await trpcMutationWithError(app, 'publications.withdraw', {
+        publicationId: visionPub.id,
+        amount: 1,
+      });
+      expect(withdraw.error?.code).toBe('FORBIDDEN');
+      expect(withdraw.error?.message).toContain('Withdrawals are not allowed in Future Vision');
+    });
   });
 });
 

@@ -51,15 +51,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
-    // Check global superadmin role first
-    if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
-    }
-
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
 
-    // Only show badge for lead, participant, and superadmin (not viewer)
+    // Only show badge for lead and participant (not viewer, not superadmin)
     if (role?.role === 'lead') {
       return { role: 'lead', label: t('lead'), variant: 'accent' as const };
     }
@@ -68,7 +63,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     }
 
     return null;
-  }, [user?.globalRole, user?.id, userRoles, communityId, t]);
+  }, [user?.id, userRoles, communityId, t]);
 
   // Get user's role for this community to check merit rules
   const userRole = React.useMemo(() => {
@@ -184,8 +179,23 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 {/* Merits/Quota indicators */}
                 {showIndicators && (
                   <div className="flex flex-row items-center gap-2.5 w-full min-w-0">
+                    {/* Quota cell - always reserve space */}
+                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                      {showQuota && (
+                        <DailyQuotaRing
+                          remaining={remainingQuota}
+                          max={dailyQuota}
+                          className="w-5 h-5 flex-shrink-0"
+                          asDiv={true}
+                          variant={isMarathonOfGood ? 'golden' : 'default'}
+                        />
+                      )}
+                    </div>
+                    {/* Permanent merits cell */}
                     {showMerits && (
                       <div className="flex items-center gap-1 min-w-0 flex-shrink">
+                        <span className={`font-semibold whitespace-nowrap ${hasCover && !isActive ? 'text-white' : 'text-base-content'
+                          }`}>{balance}</span>
                         {currencyIconUrl && (
                           <img
                             src={currencyIconUrl}
@@ -195,19 +205,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         )}
                         <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
                           }`}>
-                          <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${hasCover && !isActive ? 'text-white' : 'text-base-content'
-                            }`}>{balance}</span>
+                          <span className="truncate">{t('permanentMerits')}</span>
                         </span>
                       </div>
-                    )}
-                    {showQuota && (
-                      <DailyQuotaRing
-                        remaining={remainingQuota}
-                        max={dailyQuota}
-                        className="w-5 h-5 flex-shrink-0"
-                        asDiv={true}
-                        variant={isMarathonOfGood ? 'golden' : 'default'}
-                      />
                     )}
                   </div>
                 )}

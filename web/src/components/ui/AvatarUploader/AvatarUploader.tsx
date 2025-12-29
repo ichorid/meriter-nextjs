@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { Camera, X, Loader2, RotateCcw, ZoomIn, ZoomOut, Check } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import {
@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { cn } from '@/lib/utils';
-import { useUploadAvatar } from '@/hooks/api/useUploads';
+import { useUploadAvatar, useUploadCommunityAvatar } from '@/hooks/api/useUploads';
 import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -67,6 +67,8 @@ export interface AvatarUploaderProps {
   uploadEndpoint?: string;
   /** Custom labels */
   labels?: AvatarUploaderLabels;
+  /** Community ID - if provided, uses community avatar upload instead of user avatar */
+  communityId?: string;
 }
 
 export function AvatarUploader({
@@ -77,9 +79,12 @@ export function AvatarUploader({
   className = '',
   uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   labels: customLabels,
+  communityId,
 }: AvatarUploaderProps) {
   const labels = { ...DEFAULT_LABELS, ...customLabels };
-  const uploadMutation = useUploadAvatar();
+  const userAvatarMutation = useUploadAvatar();
+  const communityAvatarMutation = useUploadCommunityAvatar();
+  const uploadMutation = communityId ? communityAvatarMutation : userAvatarMutation;
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -97,7 +102,7 @@ export function AvatarUploader({
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const validateFile = useCallback((file: File): string | null => {
+  const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return labels.invalidType;
     }
@@ -105,9 +110,9 @@ export function AvatarUploader({
       return labels.tooLarge;
     }
     return null;
-  }, [labels.invalidType, labels.tooLarge]);
+  };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -126,9 +131,9 @@ export function AvatarUploader({
     
     // Reset input
     e.target.value = '';
-  }, [validateFile]);
+  };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setIsModalOpen(false);
     setSelectedFile(null);
     if (previewUrl) {
@@ -138,9 +143,9 @@ export function AvatarUploader({
     setZoom(1);
     setPosition({ x: 0, y: 0 });
     setError(null);
-  }, [previewUrl]);
+  };
 
-  const handleUpload = useCallback(async () => {
+  const handleUpload = async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
@@ -167,12 +172,20 @@ export function AvatarUploader({
 
       const base64 = await fileToBase64(selectedFile);
       
-      const result = await uploadMutation.mutateAsync({
-        fileData: base64,
-        fileName: selectedFile.name,
-        mimeType: selectedFile.type,
-        crop,
-      });
+      const result = communityId
+        ? await uploadMutation.mutateAsync({
+            communityId,
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          })
+        : await uploadMutation.mutateAsync({
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          });
       
       onUpload(result.url);
       handleClose();
@@ -185,23 +198,23 @@ export function AvatarUploader({
     } finally {
       setIsUploading(false);
     }
-  }, [selectedFile, uploadMutation, onUpload, zoom, position, labels.uploadFailed, handleClose]);
+  };
 
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.1, 3));
-  }, []);
+  };
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = () => {
     setZoom(prev => Math.max(prev - 0.1, 0.5));
-  }, []);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setZoom(1);
     setPosition({ x: 0, y: 0 });
-  }, []);
+  };
 
   // Touch/mouse drag handlers
-  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     setIsDragging(true);
     
@@ -209,9 +222,9 @@ export function AvatarUploader({
     const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? 0) : e.clientY;
     
     setDragStart({ x: clientX - position.x, y: clientY - position.y });
-  }, [position]);
+  };
 
-  const handleDragMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
     e.preventDefault();
     
@@ -223,18 +236,18 @@ export function AvatarUploader({
     const newY = Math.max(-maxOffset, Math.min(maxOffset, clientY - dragStart.y));
     
     setPosition({ x: newX, y: newY });
-  }, [isDragging, dragStart, zoom]);
+  };
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = () => {
     setIsDragging(false);
-  }, []);
+  };
 
   // Handle wheel zoom
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom(prev => Math.max(0.5, Math.min(3, prev + delta)));
-  }, []);
+  };
 
   return (
     <div className={className}>

@@ -15,6 +15,7 @@ import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { canUseWalletForVoting } from './voting-utils';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -81,7 +82,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
   // Check if wallet can be used for voting
-  const canUseWallet = walletBalance > 0 && community?.votingSettings?.spendsMerits !== false;
+  const canUseWallet = canUseWalletForVoting(walletBalance, community);
 
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
@@ -204,51 +205,48 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       'absoluteAmount value': absoluteAmount,
     });
 
-    // Calculate vote breakdown
+    // Calculate vote breakdown for submission (quota first, then wallet overflow).
+    // IMPORTANT: Use `freePlusAmount` (quotaRemaining fallback) as the quota budget we allow in UI.
     let quotaAmount = 0;
     let walletAmount = 0;
 
     if (isUpvote) {
       console.log('[VotingPopup] Calculating upvote amounts, effectiveVotingMode:', effectiveVotingMode);
+
       if (effectiveVotingMode === 'wallet-only') {
-        walletAmount = absoluteAmount;
+        if (!canUseWallet) {
+          updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+          return;
+        }
         quotaAmount = 0;
-        console.log('[VotingPopup] Wallet-only mode:', { quotaAmount, walletAmount });
+        walletAmount = absoluteAmount;
       } else if (effectiveVotingMode === 'quota-only') {
-        // If quotaRemaining is 0 (might be stale), still try quota - server will validate
-        quotaAmount = quotaRemaining > 0 ? Math.min(absoluteAmount, quotaRemaining) : absoluteAmount;
+        quotaAmount = absoluteAmount;
         walletAmount = 0;
-        console.log('[VotingPopup] Quota-only mode:', {
-          quotaAmount,
-          walletAmount,
-          quotaRemaining,
-          absoluteAmount,
-          'quotaAmount type': typeof quotaAmount,
-          'calculation': `quotaRemaining > 0 ? Math.min(${absoluteAmount}, ${quotaRemaining}) : ${absoluteAmount}`,
-        });
       } else {
-        // Use quota first, then wallet
-        // If quotaRemaining is 0 (might be stale), still try quota first - server will validate
-        if (quotaRemaining > 0) {
-          quotaAmount = Math.min(absoluteAmount, quotaRemaining);
-          walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
-          console.log('[VotingPopup] Mixed mode (quota available):', { quotaAmount, walletAmount, quotaRemaining });
-        } else {
-          // Quota appears 0 (might be stale) - try quota first anyway, server will validate
-          quotaAmount = absoluteAmount;
-          walletAmount = 0;
-          console.log('[VotingPopup] Mixed mode (quota appears 0, using absoluteAmount):', { quotaAmount, walletAmount });
+        // Standard (mixed): spend quota first, then overflow into wallet (if enabled).
+        const quotaBudget = freePlusAmount;
+        quotaAmount = Math.min(absoluteAmount, quotaBudget);
+        walletAmount = Math.max(0, absoluteAmount - quotaAmount);
+
+        if (walletAmount > 0 && !canUseWallet) {
+          updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+          return;
         }
       }
     } else {
-      // Downvotes use wallet only (but viewers can't downvote since they can't use wallet)
+      // Downvotes use wallet only (viewers cannot downvote).
       console.log('[VotingPopup] Calculating downvote amounts');
       if (isViewer) {
         updateVotingFormData({ error: 'Viewers can only vote using daily quota. Downvotes require wallet merits.' });
         return;
       }
+      if (!canUseWallet) {
+        updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+        return;
+      }
+      quotaAmount = 0;
       walletAmount = absoluteAmount;
-      console.log('[VotingPopup] Downvote mode:', { quotaAmount, walletAmount });
     }
 
     // Validate that at least one amount is non-zero before submission

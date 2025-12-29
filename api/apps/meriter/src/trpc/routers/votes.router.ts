@@ -269,25 +269,24 @@ async function createVoteLogic(
     communityId,
   );
 
-  // Viewers can only vote with quota (no wallet voting) in all communities.
-  if (userRole === COMMUNITY_ROLE_VIEWER && walletAmount > 0) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Viewers can only vote using daily quota, not wallet merits.',
-    });
-  }
-
-  // Special case: Marathon of Good blocks wallet voting (quota only) for posts/comments.
+  // Special case: Marathon of Good is quota-only for posts/comments (for everyone, including viewers).
   if (
     (input.targetType === 'publication' || input.targetType === 'vote') &&
     community?.typeTag === 'marathon-of-good' &&
-    walletAmount > 0 &&
-    userRole !== COMMUNITY_ROLE_VIEWER
+    walletAmount > 0
   ) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message:
         'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
+    });
+  }
+
+  // Viewers can only vote with quota (no wallet voting) in all communities.
+  if (userRole === COMMUNITY_ROLE_VIEWER && walletAmount > 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Viewers can only vote using daily quota, not wallet merits.',
     });
   }
 
@@ -304,20 +303,7 @@ async function createVoteLogic(
     });
   }
 
-  // General rule: wallet voting is only allowed in special groups.
-  // Currently, Future Vision is the only group that allows wallet voting on posts/comments.
-  // This must run BEFORE wallet-balance checks so we don't mask the real reason.
-  if (
-    (input.targetType === 'publication' || input.targetType === 'vote') &&
-    walletAmount > 0 &&
-    community?.typeTag !== 'future-vision'
-  ) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message:
-        'Voting with permanent wallet merits is only allowed in special groups',
-    });
-  }
+  // Default rule: both quota and wallet voting are allowed in all other communities.
 
   // Validate quota cannot be used for downvotes
   if (direction === 'down' && quotaAmount > 0) {
@@ -534,6 +520,18 @@ export const votesRouter = router({
         throw new NotFoundError('Publication', input.id);
       }
 
+      // Future Vision: users can't withdraw merits from posts.
+      {
+        const communityId = publication.getCommunityId.getValue();
+        const community = await ctx.communityService.getCommunity(communityId);
+        if (community?.typeTag === 'future-vision') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Withdrawals are not allowed in Future Vision',
+          });
+        }
+      }
+
       // Validate user can withdraw
       const canWithdraw = await ctx.voteService.canUserWithdraw(
         userId,
@@ -556,18 +554,11 @@ export const votesRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'publication_withdrawal',
-        input.id,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Publication score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 
@@ -649,18 +640,11 @@ export const votesRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'vote_withdrawal',
-        input.id,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Comment score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 
@@ -692,6 +676,17 @@ export const votesRouter = router({
       }
 
       const communityId = publication.getCommunityId.getValue();
+
+      // Future Vision: users can't withdraw merits from posts/comments.
+      {
+        const community = await ctx.communityService.getCommunity(communityId);
+        if (community?.typeTag === 'future-vision') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Withdrawals are not allowed in Future Vision',
+          });
+        }
+      }
 
       // Get effective beneficiary (comment author)
       const beneficiaryId = comment.getAuthorId.getValue();

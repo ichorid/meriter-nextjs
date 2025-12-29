@@ -137,12 +137,6 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 {/* Permanent Merits and Quota */}
                 {(permanentMerits !== undefined || quota) && (
                     <div className="flex items-center gap-2 mt-1">
-                        {permanentMerits !== undefined && (
-                            <div className="text-xs leading-[120%] text-base-content/60">
-                                <span className="text-base-content/60">{tCommon('permanentMerits')}: </span>
-                                <span className="font-semibold text-base-content">{permanentMerits.toLocaleString()}</span>
-                            </div>
-                        )}
                         {quota && quota.dailyQuota > 0 && (
                             <div className="flex items-center gap-1">
                                 <DailyQuotaRing
@@ -154,6 +148,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                                 <span className="text-xs leading-[120%] text-base-content/60">
                                     {quota.remainingToday}/{quota.dailyQuota}
                                 </span>
+                            </div>
+                        )}
+                        {permanentMerits !== undefined && (
+                            <div className="flex items-center gap-1 text-xs leading-[120%] text-base-content/60">
+                                <span className="font-semibold text-base-content">{permanentMerits.toLocaleString()}</span>
+                                <span className="text-base-content/60">{t('permanentMerits')}</span>
                             </div>
                         )}
                     </div>

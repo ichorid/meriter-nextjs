@@ -16,7 +16,7 @@ import {
   UserId,
   CommunityId,
 } from '../value-objects';
-import { PublicationCreatedEvent } from '../events';
+import { PublicationCreatedEvent, PublicationUpdatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 
@@ -146,9 +146,23 @@ export class PublicationService {
       methods?: string[];
       helpNeeded?: string[];
     },
+    search?: string,
   ): Promise<Publication[]> {
     // Build query - exclude deleted items
     const query: any = { communityId, deleted: { $ne: true } };
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      // Escape special regex characters for security
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { content: searchRegex },
+        { title: searchRegex },
+        { description: searchRegex },
+        { hashtags: searchRegex },
+      ];
+    }
 
     // Apply hashtag filter if provided
     if (hashtag) {
@@ -388,6 +402,10 @@ export class PublicationService {
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
 
+    // Get author ID before update for event publishing
+    const authorId = publication.getAuthorId.getValue();
+    const communityId = publication.getCommunityId.getValue();
+
     // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
     // PermissionService already checks vote count and time window for authors
     // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
@@ -437,14 +455,40 @@ export class PublicationService {
     }
 
     // Single atomic update with all changes
+    // Record edit history entry
+    const editHistoryEntry = {
+      editedBy: userId,
+      editedAt: new Date(),
+    };
+
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
-      { $set: updatePayload },
+      {
+        $set: updatePayload,
+        $push: { editHistory: editHistoryEntry },
+      },
     );
 
     // Reload to return updated publication
     const updatedDoc = await this.publicationModel.findOne({ id: publicationId }).lean();
-    return updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
+    const updatedPublication = updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
+
+    // Publish domain event if editor is not the author
+    if (userId !== authorId) {
+      await this.eventBus.publish(
+        new PublicationUpdatedEvent(
+          publicationId,
+          userId,
+          authorId,
+          communityId,
+        ),
+      );
+      this.logger.log(
+        `Publication updated event published: ${publicationId} by editor ${userId} (author: ${authorId})`,
+      );
+    }
+
+    return updatedPublication;
   }
 
   async deletePublication(
@@ -467,6 +511,41 @@ export class PublicationService {
         $set: {
           deleted: true,
           deletedAt: new Date(),
+        },
+      },
+    );
+    return true;
+  }
+
+  /**
+   * Restore a deleted publication
+   * Only leads and superadmins can restore publications
+   */
+  async restorePublication(
+    publicationId: string,
+    _userId: string,
+  ): Promise<boolean> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    // Check if publication is actually deleted
+    const snapshot = publication.toSnapshot();
+    if (!snapshot.deleted) {
+      throw new BadRequestException('Publication is not deleted');
+    }
+
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // Restore uses the same permissions as delete (leads/superadmins only)
+
+    // Restore: unmark as deleted
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      {
+        $unset: {
+          deleted: '',
+          deletedAt: '',
         },
       },
     );
@@ -543,5 +622,72 @@ export class PublicationService {
    */
   async getPublicationDocument(publicationId: string): Promise<any> {
     return await this.publicationModel.findOne({ id: publicationId }).lean();
+  }
+
+  /**
+   * Permanently delete a publication (hard delete)
+   * This removes the publication, all its votes, and all its comments from the database
+   * Only leads and superadmins can permanently delete publications
+   * 
+   * NOTE: This method does NOT handle auto-withdrawal of balances.
+   * The caller should handle that before calling this method if needed.
+   * 
+   * WARNING: This is a destructive operation that cannot be undone.
+   */
+  async permanentDeletePublication(
+    publicationId: string,
+    _userId: string,
+  ): Promise<boolean> {
+    const publication = await this.getPublication(publicationId);
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
+    // No need for redundant check here
+
+    // Use a helper function to recursively delete all comments on this publication
+    // and their replies
+    const deleteCommentsRecursively = async (targetId: string, targetType: 'publication' | 'comment') => {
+      if (!this.mongoose.db) {
+        throw new Error('Database connection not available');
+      }
+
+      // Find all comments on this publication or comment
+      const comments = await this.mongoose.db
+        .collection('comments')
+        .find({ targetType, targetId })
+        .toArray();
+
+      // Recursively delete replies first
+      for (const comment of comments) {
+        await deleteCommentsRecursively(comment.id, 'comment');
+      }
+
+      // Delete all comments found
+      if (comments.length > 0) {
+        const commentIds = comments.map(c => c.id);
+        await this.mongoose.db
+          .collection('comments')
+          .deleteMany({ id: { $in: commentIds } });
+      }
+    };
+
+    // Delete all votes on this publication
+    // (Votes on comments will be deleted when comments are deleted)
+    if (this.mongoose.db) {
+      await this.mongoose.db
+        .collection('votes')
+        .deleteMany({ targetType: 'publication', targetId: publicationId });
+    }
+
+    // Delete all comments on this publication (and their replies recursively)
+    await deleteCommentsRecursively(publicationId, 'publication');
+
+    // Finally, delete the publication itself
+    await this.publicationModel.deleteOne({ id: publicationId });
+
+    this.logger.log(`Permanently deleted publication: ${publicationId}`);
+    return true;
   }
 }

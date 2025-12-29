@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, memo } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText, MessageSquare, BarChart3, Star } from 'lucide-react';
@@ -23,6 +23,7 @@ function ProfileContentCardsComponent({
   isLoading = false,
 }: ProfileContentCardsProps) {
   const t = useTranslations('home');
+  const tCommon = useTranslations('common');
   const tProfile = useTranslations('profile');
   const router = useRouter();
   const { data: unreadFavorites } = useUnreadFavoritesCount();
@@ -64,7 +65,7 @@ function ProfileContentCardsComponent({
       route: `${routes.profile}/polls`,
     },
     {
-      label: 'Favorites',
+      label: tCommon('favorites'),
       value: stats.favorites ?? 0,
       icon: Star,
       color: 'text-base-content',
@@ -72,7 +73,7 @@ function ProfileContentCardsComponent({
       route: `${routes.profile}/favorites`,
       isHighlighted: unreadFavoritesCount > 0,
     },
-  ], [t, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount]);
+  ], [t, tCommon, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount]);
 
   const handleCardClick = (route: string) => {
     router.push(route);
@@ -114,6 +115,5 @@ function ProfileContentCardsComponent({
   );
 }
 
-// Memoize ProfileContentCards to prevent unnecessary re-renders
-export const ProfileContentCards = memo(ProfileContentCardsComponent);
+export const ProfileContentCards = ProfileContentCardsComponent;
 

@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, User, Bell, Info } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
@@ -27,6 +28,7 @@ export interface BottomNavigationProps {
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
     const router = useRouter();
+    const t = useTranslations('common');
     const { data } = useUnreadCount();
     const unreadCount = data?.count ?? 0;
 
@@ -113,33 +115,33 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
         }
     };
 
-    const defaultTabs: NavTab[] = [
+    const defaultTabs: NavTab[] = useMemo(() => [
         {
-            name: 'Communities',
+            name: t('communities'),
             icon: Users,
             path: '/meriter/communities',
             isActive: (path: string) => path.startsWith('/meriter/communities'),
         },
         {
-            name: 'Notifications',
+            name: t('notifications'),
             icon: Bell,
             path: '/meriter/notifications',
             isActive: (path: string) => path.startsWith('/meriter/notifications'),
             badge: unreadCount > 0 ? unreadCount : undefined,
         },
         {
-            name: 'Profile',
+            name: t('profile'),
             icon: User,
             path: '/meriter/profile',
             isActive: (path: string) => path.startsWith('/meriter/profile'),
         },
         {
-            name: 'About',
+            name: t('aboutProject'),
             icon: Info,
             path: routes.about,
             isActive: (path: string) => path === routes.about,
         },
-    ];
+    ], [t, unreadCount]);
 
     const tabs = customTabs || defaultTabs;
 

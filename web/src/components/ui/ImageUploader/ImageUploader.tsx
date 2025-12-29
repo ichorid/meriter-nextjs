@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ImagePlus, X, Loader2, AlertCircle } from 'lucide-react';
 import { useUploadImage } from '@/hooks/api/useUploads';
 import { fileToBase64 } from '@/lib/utils/file-utils';
@@ -110,7 +110,7 @@ export function ImageUploader({
     setPreview(value || null);
   }, [value]);
 
-  const validateFile = useCallback((file: File): string | null => {
+  const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return labels.invalidType;
     }
@@ -118,9 +118,9 @@ export function ImageUploader({
       return labels.tooLarge;
     }
     return null;
-  }, [labels.invalidType, labels.tooLarge]);
+  };
 
-  const handleFileUpload = useCallback(async (file: File) => {
+  const handleFileUpload = async (file: File) => {
     const validationError = validateFile(file);
     if (validationError) {
       setError(validationError);
@@ -163,28 +163,28 @@ export function ImageUploader({
       setIsUploading(false);
       URL.revokeObjectURL(localPreview);
     }
-  }, [uploadMutation, onUpload, onUploadComplete, validateFile, labels.uploadFailed, maxWidth, maxHeight]);
+  };
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
+  const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (!disabled && !isUploading) {
       setIsDragging(true);
     }
-  }, [disabled, isUploading]);
+  };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
+  const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-  }, []);
+  };
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-  }, []);
+  };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -195,29 +195,29 @@ export function ImageUploader({
     if (file) {
       handleFileUpload(file);
     }
-  }, [disabled, isUploading, handleFileUpload]);
+  };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       handleFileUpload(file);
     }
     // Reset input so same file can be selected again
     e.target.value = '';
-  }, [handleFileUpload]);
+  };
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (!disabled && !isUploading) {
       fileInputRef.current?.click();
     }
-  }, [disabled, isUploading]);
+  };
 
-  const handleRemove = useCallback((e: React.MouseEvent) => {
+  const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPreview(null);
     setError(null);
     onRemove?.();
-  }, [onRemove]);
+  };
 
   const displayError = externalError || error;
 

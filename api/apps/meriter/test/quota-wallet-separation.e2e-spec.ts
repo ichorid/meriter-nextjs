@@ -13,6 +13,7 @@ import { Publication, PublicationDocument } from '../src/domain/models/publicati
 import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Quota Wallet Separation (e2e)', () => {
   jest.setTimeout(60000);
@@ -312,18 +313,20 @@ describe('Quota Wallet Separation (e2e)', () => {
     it('should reject combined quota+wallet voting in Future Vision (wallet-only)', async () => {
       (global as any).testUserId = testUserId;
 
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: futureVisionPublicationId,
-        communityId: futureVisionCommunityId,
-        quotaAmount: 7,
-        walletAmount: 5,
-        comment: 'Test comment',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: futureVisionPublicationId,
+          communityId: futureVisionCommunityId,
+          quotaAmount: 7,
+          walletAmount: 5,
+          comment: 'Test comment',
+        });
 
-      // Future Vision forbids quota voting
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+        // Future Vision forbids quota voting
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+      });
     });
 
     it('should validate wallet balance for walletAmount in Future Vision', async () => {
@@ -334,17 +337,19 @@ describe('Quota Wallet Separation (e2e)', () => {
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBe(0);
 
-      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: futureVisionPublicationId,
-        communityId: futureVisionCommunityId,
-        quotaAmount: 0,
-        walletAmount: 5,
-        comment: 'Test comment',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: futureVisionPublicationId,
+          communityId: futureVisionCommunityId,
+          quotaAmount: 0,
+          walletAmount: 5,
+          comment: 'Test comment',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient wallet balance');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient wallet balance');
+      });
     });
   });
 

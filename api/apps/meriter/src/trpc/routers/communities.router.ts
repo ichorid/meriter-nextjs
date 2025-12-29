@@ -37,7 +37,8 @@ export const communitiesRouter = router({
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+          editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+          allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -198,14 +199,15 @@ export const communitiesRouter = router({
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
-        settings: {
+          settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,
           iconUrl: community.settings?.iconUrl,
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -259,14 +261,15 @@ export const communitiesRouter = router({
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
-        settings: {
+          settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,
           iconUrl: community.settings?.iconUrl,
           language: community.settings?.language ?? 'en',
           postCost: community.settings?.postCost ?? 1,
           pollCost: community.settings?.pollCost ?? 1,
-          editWindowDays: community.settings?.editWindowDays ?? 7,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -291,6 +294,7 @@ export const communitiesRouter = router({
         pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
+        search: z.string().optional(),
         // Taxonomy filters
         impactArea: z.string().optional(),
         stage: z.string().optional(),
@@ -314,6 +318,7 @@ export const communitiesRouter = router({
           pageSize: pagination.limit,
           sort: input.sort,
           tag: input.tag,
+          search: input.search,
           impactArea: input.impactArea,
           stage: input.stage,
           beneficiaries: input.beneficiaries,
@@ -539,6 +544,7 @@ export const communitiesRouter = router({
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
+      search: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
       const pagination = PaginationHelper.parseOptions({
@@ -552,6 +558,7 @@ export const communitiesRouter = router({
         input.id,
         pagination.limit || 20,
         skip,
+        input.search,
       );
 
       return PaginationHelper.createResult(

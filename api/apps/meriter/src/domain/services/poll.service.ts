@@ -66,8 +66,23 @@ export class PollService {
     communityId: string, 
     limit: number = 20, 
     skip: number = 0,
-    sortBy?: 'createdAt' | 'score'
+    sortBy?: 'createdAt' | 'score',
+    search?: string,
   ): Promise<Poll[]> {
+    // Build query
+    const query: any = { communityId, isActive: true };
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      // Escape special regex characters for security
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { question: searchRegex },
+        { description: searchRegex },
+      ];
+    }
+
     // Build sort object
     const sort: any = {};
     if (sortBy === 'score') {
@@ -77,7 +92,7 @@ export class PollService {
     }
     
     const docs = await this.pollModel
-      .find({ communityId, isActive: true })
+      .find(query)
       .limit(limit)
       .skip(skip)
       .sort(sort)

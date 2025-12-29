@@ -12,6 +12,7 @@ import { UserCommunityRoleService } from '../src/domain/services/user-community-
 import { WalletService } from '../src/domain/services/wallet.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Community Post/Poll Cost Configuration (e2e)', () => {
   jest.setTimeout(60000);
@@ -197,17 +198,19 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       (global as any).testUserId = testUserId;
       (global as any).testUserGlobalRole = 'participant';
 
-      const result = await trpcMutationWithError(app, 'communities.update', {
-        id: testCommunityId,
-        data: {
-          settings: {
-            postCost: 2,
-            pollCost: 3,
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'communities.update', {
+          id: testCommunityId,
+          data: {
+            settings: {
+              postCost: 2,
+              pollCost: 3,
+            },
           },
-        },
-      });
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
 
     it('should allow setting cost to 0 (free posts/polls)', async () => {
@@ -357,17 +360,19 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       });
 
       // Try to create publication - should fail
-      const result = await trpcMutationWithError(app, 'publications.create', {
-        communityId: testCommunityId,
-        title: 'Should Fail',
-        description: 'Test content',
-        content: 'Test content',
-        type: 'text',
-        postType: 'basic',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.create', {
+          communityId: testCommunityId,
+          title: 'Should Fail',
+          description: 'Test content',
+          content: 'Test content',
+          type: 'text',
+          postType: 'basic',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
   });
 
@@ -512,19 +517,21 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const result = await trpcMutationWithError(app, 'polls.create', {
-        communityId: testCommunityId,
-        question: 'Should Fail',
-        description: 'Test description',
-        options: [
-          { id: '1', text: 'Option 1' },
-          { id: '2', text: 'Option 2' },
-        ],
-        expiresAt: expiresAt.toISOString(),
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.create', {
+          communityId: testCommunityId,
+          question: 'Should Fail',
+          description: 'Test description',
+          options: [
+            { id: '1', text: 'Option 1' },
+            { id: '2', text: 'Option 2' },
+          ],
+          expiresAt: expiresAt.toISOString(),
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
   });
 

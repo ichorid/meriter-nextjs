@@ -90,9 +90,14 @@ export class FavoriteService {
     targetType: FavoriteTargetType,
     targetId: string,
     activityAt: Date = new Date(),
+    excludeUserId?: string,
   ): Promise<void> {
+    const filter: Record<string, unknown> = { targetType, targetId };
+    if (excludeUserId) {
+      filter.userId = { $ne: excludeUserId };
+    }
     await this.favoriteModel.updateMany(
-      { targetType, targetId },
+      filter,
       { $set: { lastActivityAt: activityAt } },
     );
   }

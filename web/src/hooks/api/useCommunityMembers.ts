@@ -25,9 +25,9 @@ export interface CommunityMembersResponse {
 
 export const useCommunityMembers = (
     communityId: string,
-    options: { limit?: number; skip?: number; page?: number; pageSize?: number } = {}
+    options: { limit?: number; skip?: number; page?: number; pageSize?: number; search?: string } = {}
 ) => {
-    const { limit = 50, skip = 0, page, pageSize } = options;
+    const { limit = 50, skip = 0, page, pageSize, search } = options;
 
     return trpc.communities.getMembers.useQuery(
         {
@@ -36,6 +36,7 @@ export const useCommunityMembers = (
             skip,
             page,
             pageSize,
+            search,
         },
         { enabled: !!communityId }
     );

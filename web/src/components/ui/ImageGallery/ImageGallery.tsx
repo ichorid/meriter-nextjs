@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { ImageViewer } from '../ImageViewer/ImageViewer';
-import { ImageUploader, UploadResult } from '../ImageUploader/ImageUploader';
 import { useUploadImage } from '@/hooks/api/useUploads';
 import { fileToBase64 } from '@/lib/utils/file-utils';
 
@@ -36,12 +35,12 @@ export function ImageGallery({
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = useCallback((url: string) => {
+  const handleUpload = (url: string) => {
     if (images.length >= MAX_IMAGES) return;
     onImagesChange([...images, url]);
-  }, [images, onImagesChange]);
+  };
 
-  const handleRemove = useCallback((index: number) => {
+  const handleRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     onImagesChange(newImages);
     if (viewingIndex !== null) {
@@ -51,9 +50,9 @@ export function ImageGallery({
         setViewingIndex(viewingIndex - 1);
       }
     }
-  }, [images, onImagesChange, viewingIndex]);
+  };
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
@@ -91,37 +90,21 @@ export function ImageGallery({
       setIsUploading(false);
       e.target.value = '';
     }
-  }, [images, uploadMutation, onImagesChange]);
+  };
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (!disabled && !isUploading && images.length < MAX_IMAGES) {
       fileInputRef.current?.click();
     }
-  }, [disabled, isUploading, images.length]);
+  };
 
-  const handleImageClick = useCallback((index: number) => {
+  const handleImageClick = (index: number) => {
     setViewingIndex(index);
-  }, []);
+  };
 
-  const handleViewerClose = useCallback(() => {
+  const handleViewerClose = () => {
     setViewingIndex(null);
-  }, []);
-
-  const handleViewerNext = useCallback(() => {
-    if (viewingIndex !== null && viewingIndex < images.length - 1) {
-      setViewingIndex(viewingIndex + 1);
-    } else if (viewingIndex !== null && viewingIndex === images.length - 1) {
-      setViewingIndex(0); // Loop to first
-    }
-  }, [viewingIndex, images.length]);
-
-  const handleViewerPrev = useCallback(() => {
-    if (viewingIndex !== null && viewingIndex > 0) {
-      setViewingIndex(viewingIndex - 1);
-    } else if (viewingIndex !== null && viewingIndex === 0) {
-      setViewingIndex(images.length - 1); // Loop to last
-    }
-  }, [viewingIndex, images.length]);
+  };
 
   return (
     <div className={className}>

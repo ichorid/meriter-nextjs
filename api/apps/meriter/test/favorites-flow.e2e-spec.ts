@@ -56,7 +56,7 @@ describe('Favorites flow E2E (favorites + notifications dedup)', () => {
     (globalThis as unknown as { testUserId?: string }).testUserId = userId;
   }
 
-  it('deduplicates favorite_update notifications for a favorited publication (vote spam -> single notif; comment replaces)', async () => {
+  it('deduplicates vote notifications for a favorited publication (vote spam -> single aggregated vote notif; comment creates favorite_update)', async () => {
     const now = new Date();
     const communityId = uid();
     const authorId = uid();
@@ -165,7 +165,7 @@ describe('Favorites flow E2E (favorites + notifications dedup)', () => {
     setTestUserId(favoriteUserId);
     await trpcMutation(app, 'favorites.add', { targetType: 'publication', targetId: publicationId });
 
-    // Spam votes (quota-only) -> should still create single favorite_update notification
+    // Spam votes (quota-only) -> should create a single aggregated vote notification
     await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote1', communityId);
     await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote2', communityId);
     await voteService.createVote(actorId, 'publication', publicationId, 1, 0, 'up', 'vote3', communityId);
@@ -174,22 +174,21 @@ describe('Favorites flow E2E (favorites + notifications dedup)', () => {
     const afterVotes = (await trpcQuery(app, 'notifications.getAll', { unreadOnly: true, pageSize: 50 })) as {
       data: Array<{ type: string; message: string }>;
     };
-    const favoriteUpdatesAfterVotes = (afterVotes.data || []).filter(
-      (n) => n.type === 'favorite_update',
-    );
-    expect(favoriteUpdatesAfterVotes.length).toBe(1);
+    const voteNotifsAfterVotes = (afterVotes.data || []).filter((n) => n.type === 'vote');
+    expect(voteNotifsAfterVotes.length).toBe(1);
 
-    // Add a comment -> should replace the unread notification for the same target
+    // Add a comment -> should create a favorite_update notification (vote notification remains separate)
     await commentService.createComment(actorId, { targetType: 'publication', targetId: publicationId, content: 'hello' });
 
     const afterComment = (await trpcQuery(app, 'notifications.getAll', { unreadOnly: true, pageSize: 50 })) as {
       data: Array<{ type: string; message: string }>;
     };
-    const favoriteUpdatesAfterComment = (afterComment.data || []).filter(
-      (n) => n.type === 'favorite_update',
-    );
+    const favoriteUpdatesAfterComment = (afterComment.data || []).filter((n) => n.type === 'favorite_update');
     expect(favoriteUpdatesAfterComment.length).toBe(1);
     expect(favoriteUpdatesAfterComment[0].message).toContain('commented');
+
+    const voteNotifsAfterComment = (afterComment.data || []).filter((n) => n.type === 'vote');
+    expect(voteNotifsAfterComment.length).toBe(1);
   });
 
   it('deduplicates favorite_update notifications for a favorited poll (cast spam -> single notif)', async () => {

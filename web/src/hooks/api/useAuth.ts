@@ -4,8 +4,15 @@ import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 import { authApiV1 } from '@/lib/api/v1';
+import type { User } from '@/types/api-v1';
 
 export const useMe = () => {
+  // Stabilize `data` reference to avoid unnecessary re-renders when React Query/tRPC
+  // surfaces equivalent objects with new references (e.g. after transformations).
+  // We keep the FULL user object stable only when it's deeply equivalent.
+  const stableUserRef = React.useRef<User | null>(null);
+  const stableUserKeyRef = React.useRef<string | null>(null);
+
   // Use tRPC for getMe - provides automatic type safety
   // Use throwOnError: false to handle errors in AuthContext instead of throwing
   const query = trpc.users.getMe.useQuery(undefined, {
@@ -29,6 +36,36 @@ export const useMe = () => {
     // AuthContext handles 401 errors appropriately
     meta: {
       skipErrorToast: true,
+    },
+    select: (data) => {
+      if (!data) {
+        stableUserRef.current = null;
+        stableUserKeyRef.current = null;
+        return data;
+      }
+
+      // Keep the key stable across Dates/BigInts and avoid crashes on unexpected values.
+      let key: string;
+      try {
+        key = JSON.stringify(data, (_k, v) => {
+          if (typeof v === 'bigint') return v.toString();
+          if (v instanceof Date) return v.toISOString();
+          return v;
+        });
+      } catch {
+        // Conservative fallback: if we can't safely stringify, don't attempt to stabilize.
+        stableUserRef.current = data;
+        stableUserKeyRef.current = null;
+        return data;
+      }
+
+      if (stableUserKeyRef.current === key && stableUserRef.current) {
+        return stableUserRef.current;
+      }
+
+      stableUserKeyRef.current = key;
+      stableUserRef.current = data;
+      return data;
     },
   });
 

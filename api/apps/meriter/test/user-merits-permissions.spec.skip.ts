@@ -138,7 +138,8 @@ describe('User Merits Permissions', () => {
         language: 'en',
         postCost: 1,
         pollCost: 1,
-        editWindowDays: 7,
+        editWindowMinutes: 30,
+        allowEditByOthers: false,
       },
     });
 

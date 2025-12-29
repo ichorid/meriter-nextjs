@@ -14,6 +14,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { ApiResponseInterceptor } from '../src/common/interceptors/api-response.interceptor';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -87,7 +88,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await collection.deleteMany({});
     }
 
-    // Create Communities with editWindowDays setting
+    // Create Communities with editWindowMinutes setting
     await communityModel.create([
       {
         id: communityId,
@@ -95,7 +96,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -117,7 +119,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -268,7 +271,7 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(updated).toBeDefined();
     });
 
-    it('should NOT allow author to edit own publication with votes', async () => {
+    it('should allow author to edit own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -284,43 +287,42 @@ describe('Publication and Comment Edit Permissions', () => {
         walletAmount: 0,
       });
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
+      const updated = await trpcMutation(app, 'publications.update', {
         id: publicationId,
         data: { content: 'Updated content' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated content');
     });
 
     it('should NOT allow author to edit own publication after edit window expires', async () => {
-      // Create publication as author with old date (8 days ago)
+      // Create publication as author with old date (outside edit window)
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
       const created = await trpcMutation(app, 'publications.create', pubDto);
       const publicationId = created.id;
 
-      // Update createdAt to 8 days ago (outside 7-day window)
+      // Update createdAt to 31 minutes ago (outside 30-minute window)
       // Use raw MongoDB collection to bypass Mongoose's timestamp management
-      const eightDaysAgo = new Date();
-      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      eightDaysAgo.setHours(0, 0, 0, 0); // Set to midnight for consistent day calculation
+      const oldDate = new Date(Date.now() - 31 * 60 * 1000);
       await connection.db.collection('publications').updateOne(
         { id: publicationId },
-        { $set: { createdAt: eightDaysAgo } }
+        { $set: { createdAt: oldDate } }
       );
 
       // Small delay to ensure database update is committed
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Author should NOT be able to edit
-      const result = await trpcMutationWithError(app, 'publications.update', {
-        id: publicationId,
-        data: { content: 'Updated content' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -358,10 +360,9 @@ describe('Publication and Comment Edit Permissions', () => {
       const created = await trpcMutation(app, 'publications.create', pubDto);
       const publicationId = created.id;
 
-      // Update createdAt to 8 days ago
+      // Update createdAt to 31 minutes ago (outside 30-minute window)
       // Use raw MongoDB collection to bypass Mongoose's timestamp management
-      const eightDaysAgo = new Date();
-      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+      const eightDaysAgo = new Date(Date.now() - 31 * 60 * 1000);
       await connection.db.collection('publications').updateOne(
         { id: publicationId },
         { $set: { createdAt: eightDaysAgo } }
@@ -386,12 +387,14 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
-        id: publicationId,
-        data: { content: 'Updated content' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -445,7 +448,7 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(updated.content).toBe('Updated comment');
     });
 
-    it('should NOT allow author to edit own comment with votes', async () => {
+    it('should allow author to edit own comment with votes', async () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -468,14 +471,13 @@ describe('Publication and Comment Edit Permissions', () => {
         }
       );
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'comments.update', {
+      const updated = await trpcMutation(app, 'comments.update', {
         id: commentId,
         data: { content: 'Updated comment' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated comment');
     });
   });
 
@@ -524,12 +526,14 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Participant should NOT be able to edit
       (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
-        id: publicationId,
-        data: { content: 'Updated content' },
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -550,7 +554,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'team',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: true,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',

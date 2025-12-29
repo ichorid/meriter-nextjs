@@ -3,11 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Users } from 'lucide-react';
+import { Info, Users, Star } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
+import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
@@ -25,6 +26,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { user, isAuthenticated } = useAuth();
   const { data } = useUnreadCount();
   const unreadCount = data?.count ?? 0;
+  const { data: unreadFavoritesData } = useUnreadFavoritesCount();
+  const unreadFavoritesCount = unreadFavoritesData?.count ?? 0;
   const t = useTranslations('common');
 
   // Get user's communities with wallets and quotas
@@ -129,7 +132,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={paddingClass}>
         <Link href={routes.profile}>
           <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.profile || pathname?.startsWith(`${routes.profile}/`)
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
               ? 'bg-primary text-primary-content'
               : 'hover:bg-base-300 text-base-content'
               }`}
@@ -149,9 +152,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     </div>
                   </div>
                 </div>
-                <svg className="w-5 h-5 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
               </div>
             ) : (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,10 +175,61 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               {isExpanded ? (
                 <div className="flex items-center w-full">
                   <Info className="w-5 h-5" />
-                  <span className="ml-2 text-sm font-medium">{t('about')}</span>
+                  <span className="ml-2 text-sm font-medium">{t('aboutProject')}</span>
                 </div>
               ) : (
                 <Info className="w-6 h-6" />
+              )}
+            </button>
+          </Link>
+        </div>
+      )}
+
+      {/* Favorites Button */}
+      {isAuthenticated && (
+        <div className={paddingClass}>
+          <Link href={`${routes.profile}/favorites`}>
+            <button
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
+                ? 'bg-primary text-primary-content'
+                : 'hover:bg-base-300 text-base-content'
+                }`}
+            >
+              {isExpanded ? (
+                <div className="flex items-center w-full">
+                  <div className="relative">
+                    <Star className="w-5 h-5" />
+                    {unreadFavoritesCount > 0 && (
+                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
+                        ? 'bg-primary-content text-primary'
+                        : 'bg-warning text-warning-content'
+                        }`}>
+                        {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="ml-2 text-sm font-medium">{t('favorites')}</span>
+                  {unreadFavoritesCount > 0 && (
+                    <span className={`ml-auto text-xs font-semibold ${pathname === `${routes.profile}/favorites`
+                      ? 'text-primary-content'
+                      : 'text-warning'
+                      }`}>
+                      {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <Star className="w-6 h-6" />
+                  {unreadFavoritesCount > 0 && (
+                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
+                      ? 'bg-primary-content text-primary'
+                      : 'bg-warning text-warning-content'
+                      }`}>
+                      {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                    </span>
+                  )}
+                </div>
               )}
             </button>
           </Link>

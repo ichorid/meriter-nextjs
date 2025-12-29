@@ -33,14 +33,6 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
                 {communityName || communityId}
             </h3>
             <div className="flex items-center gap-4 flex-wrap">
-                {wallet?.balance !== undefined && (
-                    <div className="text-sm">
-                        <span className="text-brand-text-secondary">{tCommon('permanentMerits')}: </span>
-                        <span className="font-semibold text-brand-text-primary">
-                            {wallet.balance.toLocaleString()}
-                        </span>
-                    </div>
-                )}
                 {quota && quota.dailyQuota > 0 && (
                     <div className="flex items-center gap-2">
                         <DailyQuotaRing
@@ -54,6 +46,14 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
                             {' / '}
                             <span className="text-brand-text-secondary">{quota.dailyQuota}</span>
                         </span>
+                    </div>
+                )}
+                {wallet?.balance !== undefined && (
+                    <div className="flex items-center gap-1 text-sm">
+                        <span className="font-semibold text-brand-text-primary">
+                            {wallet.balance.toLocaleString()}
+                        </span>
+                        <span className="text-brand-text-secondary">{tCommon('permanentMerits')}</span>
                     </div>
                 )}
             </div>

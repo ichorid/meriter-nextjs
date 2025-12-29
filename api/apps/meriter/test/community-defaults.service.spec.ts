@@ -148,13 +148,12 @@ describe('CommunityDefaultsService', () => {
   });
 
   describe('Marathon-of-Good Override Tests', () => {
-    it('should override participant:VOTE rule with participantsCannotVoteForLead: true', () => {
+    it('should override participant:VOTE rule (marathon-of-good)', () => {
       const rules = service.getDefaultPermissionRules('marathon-of-good');
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.participantsCannotVoteForLead).toBe(true);
       expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
     });
 
@@ -332,7 +331,8 @@ describe('CommunityDefaultsService', () => {
       // Test marathon-of-good
       const marathonRules = service.getDefaultPermissionRules('marathon-of-good');
       const marathonParticipantVote = findRule(marathonRules, 'participant', ActionType.VOTE);
-      expect(marathonParticipantVote?.conditions?.participantsCannotVoteForLead).toBe(true);
+      expect(marathonParticipantVote?.allowed).toBe(true);
+      expect(marathonParticipantVote?.conditions?.canVoteForOwnPosts).toBe(false);
       const marathonViewerVote = findRule(marathonRules, 'viewer', ActionType.VOTE);
       expect(marathonViewerVote?.allowed).toBe(true);
 

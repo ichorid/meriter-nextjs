@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useCallback } from "react";
 import { etv } from '@shared/lib/input-utils';
 import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@/components/ui/slider';
 import { classList } from '@lib/classList';
@@ -20,7 +20,7 @@ interface FormWithdrawVerticalProps {
     currencyIconUrl?: string;
 }
 
-export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
+export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
     comment,
     setComment,
     amount,
@@ -39,7 +39,6 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
     const maxAmount = isWithdrawal ? maxWithdrawAmount : maxTopUpAmount;
     const disabled = !amount || amount <= 0;
 
-    // Memoize onChange handler to prevent unnecessary re-renders
     const handleSliderChange = useCallback((value: number) => {
         setAmount(Math.max(0, Math.min(value, maxAmount)));
     }, [maxAmount, setAmount]);
@@ -159,7 +158,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
             </div>
         </div>
     );
-});
+};
 
 FormWithdrawVertical.displayName = 'FormWithdrawVertical';
 

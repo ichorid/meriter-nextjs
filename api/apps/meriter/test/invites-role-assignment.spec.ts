@@ -15,6 +15,7 @@ import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/w
 import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Invites - New Role Assignment Logic', () => {
   jest.setTimeout(60000);
@@ -441,12 +442,14 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Try to create invite without communityId - should fail
-      const result = await trpcMutationWithError(app, 'invites.create', {
-        type: 'lead-to-participant',
-      });
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
+          type: 'lead-to-participant',
+        });
 
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('No team community found');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('No team community found');
+      });
     });
 
     it('should allow explicit communityId to be provided for lead invites', async () => {
@@ -467,13 +470,15 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Try to create invite with marathon community (not a team)
-      const result = await trpcMutationWithError(app, 'invites.create', {
-        type: 'lead-to-participant',
-        communityId: marathonCommunityId,
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
+          type: 'lead-to-participant',
+          communityId: marathonCommunityId,
+        });
 
-      // The error should indicate permission issue
-      expect(result.error?.code).toBe('FORBIDDEN');
+        // The error should indicate permission issue
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -493,12 +498,14 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserId = leadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const result = await trpcMutationWithError(app, 'invites.create', {
-        type: 'superadmin-to-lead',
-      });
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
+          type: 'superadmin-to-lead',
+        });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
-      expect(result.error?.message).toContain('Only superadmin');
+        expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.message).toContain('Only superadmin');
+      });
     });
   });
 });

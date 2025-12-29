@@ -1,5 +1,6 @@
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import * as request from 'supertest';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Auth Router - clearCookies', () => {
   let app: any;
@@ -46,12 +47,14 @@ describe('Auth Router - clearCookies', () => {
       // First, try to access a protected endpoint to get a 401
       // users.getMe is a query, not a mutation
       // Use a direct HTTP request to handle 401 status properly
-      const response = await request(app.getHttpServer())
-        .get('/trpc/users.getMe')
-        .expect(401); // Expect 401 for unauthenticated request
-      
-      // Verify it's a 401 error
-      expect(response.status).toBe(401);
+      await withSuppressedErrors(['UNAUTHORIZED'], async () => {
+        const response = await request(app.getHttpServer())
+          .get('/trpc/users.getMe')
+          .expect(401); // Expect 401 for unauthenticated request
+        
+        // Verify it's a 401 error
+        expect(response.status).toBe(401);
+      });
       
       // Now clearCookies should work without authentication
       // This is the key test - clearCookies must be public

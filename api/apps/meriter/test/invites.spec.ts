@@ -17,6 +17,7 @@ import { TrpcService } from '../src/trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Invites - Superadmin-to-Lead', () => {
   jest.setTimeout(60000);
@@ -606,13 +607,15 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserGlobalRole = undefined;
 
     // Try to create invite without team community - should fail
-    const result = await trpcMutationWithError(app, 'invites.create', {
-      type: 'lead-to-participant',
-      // No communityId - will try to auto-detect but participant has no team
-    });
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const result = await trpcMutationWithError(app, 'invites.create', {
+        type: 'lead-to-participant',
+        // No communityId - will try to auto-detect but participant has no team
+      });
 
-    expect(result.error?.code).toBe('BAD_REQUEST');
-    expect(result.error?.message).toContain('No team community found');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('No team community found');
+    });
   });
 
   it('should block viewer from creating invites when they have no team community', async () => {
@@ -620,13 +623,15 @@ describe('Invites - Role Restrictions', () => {
     (global as any).testUserGlobalRole = undefined;
 
     // Try to create invite without team community - should fail
-    const result = await trpcMutationWithError(app, 'invites.create', {
-      type: 'lead-to-participant',
-      // No communityId - will try to auto-detect but viewer has no team
-    });
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const result = await trpcMutationWithError(app, 'invites.create', {
+        type: 'lead-to-participant',
+        // No communityId - will try to auto-detect but viewer has no team
+      });
 
-    expect(result.error?.code).toBe('BAD_REQUEST');
-    expect(result.error?.message).toContain('No team community found');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('No team community found');
+    });
   });
 
   it('should allow user with both participant and lead roles to create invites', async () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { Component, ReactNode } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import { ErrorDisplay } from './atoms/ErrorDisplay';
 import { ErrorBoundaryContent } from './ErrorBoundaryContent';
 
@@ -81,6 +82,33 @@ export class ErrorBoundary extends Component<Props, State> {
       }, 1000);
     } else {
       console.error('Error caught by boundary:', error, errorInfo);
+    }
+
+    // Capture error to Sentry with component stack
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      Sentry.withScope((scope) => {
+        // Set component stack as context
+        scope.setContext('react', {
+          componentStack: errorInfo.componentStack,
+        });
+
+        // Set tags
+        scope.setTag('platform', 'frontend');
+        scope.setTag('error.boundary', 'true');
+        if (isInfiniteRenderError) {
+          scope.setTag('error.type', 'infinite_render');
+        } else if (isChunkLoadError) {
+          scope.setTag('error.type', 'chunk_load');
+        } else {
+          scope.setTag('error.type', 'react_error');
+        }
+
+        // User context is already set by AuthContext via setSentryUser
+        // No need to set it here as it's managed globally
+
+        // Capture the exception
+        Sentry.captureException(error);
+      });
     }
   }
 

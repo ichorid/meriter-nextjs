@@ -72,8 +72,8 @@ export class PermissionContextService {
       ? snapshot.createdAt
       : new Date(snapshot.createdAt);
     const now = new Date();
-    const daysSinceCreation = Math.floor(
-      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+    const minutesSinceCreation = Math.floor(
+      (now.getTime() - createdAt.getTime()) / (1000 * 60)
     );
 
     // Get author role
@@ -103,7 +103,7 @@ export class PermissionContextService {
       sharedTeamCommunities,
       hasVotes,
       hasComments,
-      daysSinceCreation,
+      minutesSinceCreation,
     };
   }
 
@@ -135,12 +135,11 @@ export class PermissionContextService {
     const metricsSnapshot = metrics.toSnapshot();
     const hasVotes = (metricsSnapshot.upvotes || 0) + (metricsSnapshot.downvotes || 0) > 0;
 
-    // Calculate days since creation
+    // Comment edit window is not used; keep timestamps out of context for comments.
     const createdAt = comment.toSnapshot().createdAt;
     const now = new Date();
-    const daysSinceCreation = Math.floor(
-      (now.getTime() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24)
-    );
+    void createdAt;
+    void now;
 
     // Get author role
     const authorRole = await this.permissionService.getUserRoleInCommunity(
@@ -164,7 +163,6 @@ export class PermissionContextService {
       isTeamCommunity,
       authorRole,
       hasVotes,
-      daysSinceCreation,
     };
   }
 

@@ -225,15 +225,16 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 />
             </BrandFormControl>
 
-            <BrandFormControl
-                label={t("avatarUrl")}
-                helperText={t("generateAvatarHelp")}
-            >
-                <div className="flex items-center gap-4">
+            <div className="space-y-2">
+                <label className="block text-sm font-medium text-base-content">
+                    {t("avatarUrl")}
+                </label>
+                <div className="flex flex-col items-center gap-4">
                     <AvatarUploader
                         value={avatarUrl}
                         onUpload={(url) => setAvatarUrl(url)}
-                        size={80}
+                        size={120}
+                        communityId={isEditMode ? communityId : undefined}
                         labels={{
                             upload: t("changeAvatar"),
                             cropTitle: t("cropAvatar"),
@@ -251,7 +252,12 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                         {t("generateAvatar")}
                     </Button>
                 </div>
-            </BrandFormControl>
+                {t("generateAvatarHelp") && (
+                    <p className="text-xs text-base-content/50 text-center">
+                        {t("generateAvatarHelp")}
+                    </p>
+                )}
+            </div>
 
             <BrandFormControl
                 label={t("coverImage")}

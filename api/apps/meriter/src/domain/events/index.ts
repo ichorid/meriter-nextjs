@@ -82,6 +82,42 @@ export class PublicationVotedEvent extends VotableEvent {
   }
 }
 
+export class PublicationUpdatedEvent extends DomainEvent {
+  constructor(
+    private readonly publicationId: string,
+    private readonly editorId: string,
+    private readonly authorId: string,
+    private readonly communityId: string,
+    private readonly timestamp: Date = new Date()
+  ) {
+    super();
+  }
+
+  getEventName(): string {
+    return 'PublicationUpdated';
+  }
+
+  getAggregateId(): string {
+    return this.publicationId;
+  }
+
+  getTimestamp(): Date {
+    return this.timestamp;
+  }
+
+  getEditorId(): string {
+    return this.editorId;
+  }
+
+  getAuthorId(): string {
+    return this.authorId;
+  }
+
+  getCommunityId(): string {
+    return this.communityId;
+  }
+}
+
 export class CommentAddedEvent extends DomainEvent {
   constructor(
     private readonly commentId: string,

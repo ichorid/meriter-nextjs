@@ -127,7 +127,10 @@ export function useInfinitePublicationsByCommunity(
 
 export function useInfiniteDeletedPublications(
     communityId: string,
-    pageSize: number = 20
+    pageSize: number = 20,
+    options?: {
+        enabled?: boolean;
+    }
 ) {
     return trpc.publications.getDeleted.useInfiniteQuery(
         {
@@ -149,7 +152,7 @@ export function useInfiniteDeletedPublications(
                 return undefined;
             },
             initialPageParam: 1,
-            enabled: !!communityId, // Ensure query only runs when communityId is available
+            enabled: !!communityId && (options?.enabled ?? true),
             staleTime: STALE_TIME.VERY_SHORT, // Always refetch when invalidated
             retry: false, // Don't retry on 403 errors
         },
@@ -407,6 +410,65 @@ export const useDeletePublication = () => {
             utils.publications.getById.setData({ id: variables.id }, undefined);
 
             // Invalidate infinite queries (publication might have been in a community feed)
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+            queryClient.refetchQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+        },
+    });
+};
+
+export const useRestorePublication = () => {
+    const utils = trpc.useUtils();
+    const queryClient = useQueryClient();
+    
+    return trpc.publications.restore.useMutation({
+        onSuccess: async (_result, variables) => {
+            // Invalidate and refetch publications lists
+            await utils.publications.getAll.invalidate();
+            await utils.publications.getAll.refetch();
+            
+            // Invalidate deleted publications query (so restored publication disappears from deleted list)
+            await utils.publications.getDeleted.invalidate();
+            
+            // Invalidate the specific publication to refetch it (now it should be visible)
+            await utils.publications.getById.invalidate({ id: variables.id });
+            await utils.publications.getById.refetch({ id: variables.id });
+            
+            // Invalidate infinite queries (publication should appear in community feed)
+            queryClient.invalidateQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+            queryClient.refetchQueries({
+                queryKey: queryKeys.publications.all,
+                exact: false,
+            });
+        },
+    });
+};
+
+export const usePermanentDeletePublication = () => {
+    const utils = trpc.useUtils();
+    const queryClient = useQueryClient();
+    
+    return trpc.publications.permanentDelete.useMutation({
+        onSuccess: async (_result, variables) => {
+            // Invalidate and refetch publications lists
+            await utils.publications.getAll.invalidate();
+            await utils.publications.getAll.refetch();
+            
+            // Invalidate deleted publications query (so permanently deleted publication disappears from deleted list)
+            await utils.publications.getDeleted.invalidate();
+            
+            // Remove the permanently deleted publication from cache completely
+            utils.publications.getById.setData({ id: variables.id }, undefined);
+            
+            // Invalidate infinite queries (publication should disappear from all feeds)
             queryClient.invalidateQueries({
                 queryKey: queryKeys.publications.all,
                 exact: false,

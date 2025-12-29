@@ -309,7 +309,16 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         <div className="mb-4">
                             <button
                                 onClick={() => {
-                                    useUIStore.getState().openVotingPopup(slug, 'publication', 'quota-only');
+                                    // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+                                    // Special groups preserve their restrictions.
+                                    const typeTag = community?.typeTag;
+                                    const mode: 'standard' | 'wallet-only' | 'quota-only' =
+                                        typeTag === 'future-vision'
+                                            ? 'wallet-only'
+                                            : typeTag === 'marathon-of-good'
+                                              ? 'quota-only'
+                                              : 'standard';
+                                    useUIStore.getState().openVotingPopup(slug, 'publication', mode);
                                 }}
                                 className="w-full py-3 px-4 bg-base-200 hover:bg-base-300 rounded-xl text-base-content/70 hover:text-base-content transition-colors text-sm font-medium"
                             >

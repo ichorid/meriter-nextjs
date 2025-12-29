@@ -1,28 +1,31 @@
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { uid } from 'uid';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
-import { PublicationService } from '../src/domain/services/publication.service';
 
 describe('Publication Forward E2E', () => {
   jest.setTimeout(120000);
 
-  async function waitForNotification(
-    filter: Record<string, unknown>,
-    timeoutMs = 3000,
+  function setTestUserId(userId: string) {
+    (global as any).testUserId = userId;
+  }
+
+  async function waitFor<T>(
+    fn: () => Promise<T>,
+    predicate: (value: T) => boolean,
+    timeoutMs = 5000,
     intervalMs = 100,
-  ): Promise<any | null> {
+  ): Promise<T> {
     const startedAt = Date.now();
     // eslint-disable-next-line no-constant-condition
     while (true) {
-      const notification = await connection.db.collection('notifications').findOne(filter);
-      if (notification) {
-        return notification;
-      }
+      const value = await fn();
+      if (predicate(value)) return value;
       if (Date.now() - startedAt > timeoutMs) {
-        return null;
+        throw new Error('Timed out waiting for condition');
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
@@ -33,7 +36,6 @@ describe('Publication Forward E2E', () => {
   let connection: any;
   let communityService: CommunityService;
   let userService: UserService;
-  let publicationService: PublicationService;
   // (unused) keep available for future assertions:
   // let userCommunityRoleService: UserCommunityRoleService;
   // let quotaUsageService: QuotaUsageService;
@@ -57,7 +59,6 @@ describe('Publication Forward E2E', () => {
     
     communityService = app.get(CommunityService);
     userService = app.get(UserService);
-    publicationService = app.get(PublicationService);
     // userCommunityRoleService = app.get(UserCommunityRoleService);
     // quotaUsageService = app.get(QuotaUsageService);
     // notificationService = app.get(NotificationService);
@@ -166,6 +167,14 @@ describe('Publication Forward E2E', () => {
       },
       {
         id: uid(),
+        userId: authorId,
+        communityId: teamCommunityId,
+        role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
         userId: participantId,
         communityId: marathonCommunityId,
         role: 'participant',
@@ -191,6 +200,22 @@ describe('Publication Forward E2E', () => {
       {
         id: uid(),
         userId: leadId,
+        communityId: futureVisionCommunityId,
+        role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: authorId,
+        communityId: marathonCommunityId,
+        role: 'participant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: authorId,
         communityId: futureVisionCommunityId,
         role: 'participant',
         createdAt: new Date(),
@@ -209,13 +234,15 @@ describe('Publication Forward E2E', () => {
     await connection.db.collection('publications').deleteMany({});
     await connection.db.collection('quota_usage').deleteMany({});
     await connection.db.collection('notifications').deleteMany({});
+    await connection.db.collection('votes').deleteMany({});
+    await connection.db.collection('poll_casts').deleteMany({});
   });
 
   describe('Non-lead propose forward flow', () => {
     it('should allow participant to propose forward, lead to confirm, and create copy in target', async () => {
-      // Create a post in team community
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      // Author creates a post (as in real UI: create -> view -> someone else proposes forward)
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post to forward',
         type: 'text',
@@ -223,20 +250,27 @@ describe('Publication Forward E2E', () => {
         title: 'Test Post',
         description: 'Test description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
+
+      // Participant opens the post details page (should not be pending yet)
+      setTestUserId(participantId);
+      const beforePropose = await trpcQuery(app, 'publications.getById', { id: publicationId });
+      expect(beforePropose.id).toBe(publicationId);
+      expect(beforePropose.forwardStatus ?? null).toBeNull();
 
       // Participant proposes forward
-      (global as any).testUserId = participantId;
       await trpcMutation(app, 'publications.proposeForward', {
         publicationId,
         targetCommunityId: marathonCommunityId,
       });
 
-      // Verify publication is marked as pending
-      const pendingPub = await publicationService.getPublicationDocument(publicationId);
-      expect(pendingPub?.forwardStatus).toBe('pending');
-      expect(pendingPub?.forwardTargetCommunityId).toBe(marathonCommunityId);
-      expect(pendingPub?.forwardProposedBy).toBe(participantId);
+      // Participant re-opens the post details page and sees "pending forward"
+      const pendingPub = await waitFor(
+        () => trpcQuery(app, 'publications.getById', { id: publicationId }),
+        (pub) => pub.forwardStatus === 'pending',
+      );
+      expect(pendingPub.forwardTargetCommunityId).toBe(marathonCommunityId);
+      expect(pendingPub.forwardProposedBy).toBe(participantId);
 
       // Verify quota was consumed
       const quotaUsage = await connection.db.collection('quota_usage').findOne({
@@ -248,20 +282,26 @@ describe('Publication Forward E2E', () => {
       expect(quotaUsage).toBeDefined();
       expect(quotaUsage?.amountQuota).toBe(1);
 
-      // Verify notification was created for lead
-      const notification = await waitForNotification({
-        userId: leadId,
-        type: 'forward_proposal',
-      });
-      expect(notification).not.toBeNull();
-      expect(notification?.type).toBe('forward_proposal');
-      expect(notification?.metadata?.publicationId).toBe(publicationId);
-      expect(notification?.metadata?.communityId).toBe(teamCommunityId);
-      expect(notification?.metadata?.forwardProposedBy).toBe(participantId);
-      expect(notification?.metadata?.forwardTargetCommunityId).toBe(marathonCommunityId);
+      // Lead opens notifications page and sees the forward proposal notification (unread)
+      setTestUserId(leadId);
+      const notifList = await waitFor(
+        () => trpcQuery(app, 'notifications.getAll', { unreadOnly: true, type: 'forward_proposal', pageSize: 50 }),
+        (res) => Array.isArray(res.data) && res.data.length > 0,
+      );
+      const forwardNotif = (notifList.data as any[]).find((n) => n.type === 'forward_proposal');
+      expect(forwardNotif).toBeDefined();
+      // notifications.getAll returns an enriched shape (no raw metadata)
+      expect(forwardNotif.relatedId).toBe(publicationId);
+      expect(forwardNotif.community?.id).toBe(teamCommunityId);
+      expect(forwardNotif.actor?.id).toBe(participantId);
 
-      // Lead confirms forward
-      (global as any).testUserId = leadId;
+      // Lead opens the post details page and sees it is pending review
+      const leadView = await trpcQuery(app, 'publications.getById', { id: publicationId });
+      expect(leadView.forwardStatus).toBe('pending');
+      expect(leadView.forwardTargetCommunityId).toBe(marathonCommunityId);
+      expect(leadView.forwardProposedBy).toBe(participantId);
+
+      // Lead confirms forward (review popup -> confirm)
       const result = await trpcMutation(app, 'publications.forward', {
         publicationId,
         targetCommunityId: marathonCommunityId,
@@ -270,63 +310,86 @@ describe('Publication Forward E2E', () => {
       expect(result.success).toBe(true);
       expect(result.forwardedPublicationId).toBeDefined();
 
-      // Verify original publication is marked as forwarded
-      const forwardedPub = await publicationService.getPublicationDocument(publicationId);
-      expect(forwardedPub?.forwardStatus).toBe('forwarded');
-      expect(forwardedPub?.forwardTargetCommunityId).toBe(marathonCommunityId);
-      expect(forwardedPub?.forwardProposedBy).toBeUndefined();
+      // Lead marks notification as read after handling it
+      await trpcMutation(app, 'notifications.markAsRead', { id: forwardNotif.id });
+      const unreadAfter = await trpcQuery(app, 'notifications.getUnreadCount');
+      expect(unreadAfter.count).toBe(0);
+
+      // Verify original publication is marked as forwarded (as seen by API)
+      const forwardedPub = await trpcQuery(app, 'publications.getById', { id: publicationId });
+      expect(forwardedPub.forwardStatus).toBe('forwarded');
+      expect(forwardedPub.forwardTargetCommunityId).toBe(marathonCommunityId);
+      expect(forwardedPub.forwardProposedBy).toBeUndefined();
 
       // Verify new publication was created in target community
-      const newPub = await publicationService.getPublicationDocument(result.forwardedPublicationId);
+      const forwardedPublicationId = result.forwardedPublicationId as string;
+      const newPub = await trpcQuery(app, 'publications.getById', { id: forwardedPublicationId });
       expect(newPub).toBeDefined();
-      expect(newPub?.communityId).toBe(marathonCommunityId);
-      expect(newPub?.authorId).toBe(authorId); // Original author
-      expect(newPub?.content).toBe('Test post to forward');
-      expect(newPub?.title).toBe('Test Post');
-      expect(newPub?.description).toBe('Test description');
-      expect(newPub?.metrics?.score).toBe(0); // Metrics reset
-      expect(newPub?.metrics?.upvotes).toBe(0);
+      expect(newPub.communityId).toBe(marathonCommunityId);
+      expect(newPub.authorId).toBe(authorId); // original author preserved
+      expect(newPub.content).toBe('Test post to forward');
+      expect(newPub.title).toBe('Test Post');
+      expect(newPub.description).toBe('Test description');
+      expect(newPub.metrics?.score).toBe(0); // metrics reset
+      expect(newPub.metrics?.upvotes).toBe(0);
+
+      // Target community feed now includes the forwarded copy (what users would see)
+      const targetFeed = await trpcQuery(app, 'publications.getAll', { communityId: marathonCommunityId, pageSize: 50 });
+      const ids = (targetFeed.data as any[]).map((p) => p.id);
+      expect(ids).toContain(forwardedPublicationId);
     });
 
     it('should allow lead to reject forward proposal and clear status', async () => {
-      // Create a post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      // Author creates a post
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post',
         type: 'text',
         postType: 'basic',
+        title: 'Reject Test Post',
+        description: 'Reject test description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Participant proposes forward
-      (global as any).testUserId = participantId;
+      setTestUserId(participantId);
       await trpcMutation(app, 'publications.proposeForward', {
         publicationId,
         targetCommunityId: marathonCommunityId,
       });
 
-      // Lead rejects
-      (global as any).testUserId = leadId;
+      // Lead sees notification and rejects from review flow
+      setTestUserId(leadId);
+      const notifList = await waitFor(
+        () => trpcQuery(app, 'notifications.getAll', { unreadOnly: true, type: 'forward_proposal', pageSize: 50 }),
+        (res) => Array.isArray(res.data) && res.data.length > 0,
+      );
+      const forwardNotif = (notifList.data as any[]).find((n) => n.type === 'forward_proposal');
+      expect(forwardNotif).toBeDefined();
+
       const result = await trpcMutation(app, 'publications.rejectForward', {
         publicationId,
       });
 
       expect(result.success).toBe(true);
 
-      // Verify status is cleared
-      const pub = await publicationService.getPublicationDocument(publicationId);
-      expect(pub?.forwardStatus).toBeNull();
-      expect(pub?.forwardTargetCommunityId).toBeUndefined();
-      expect(pub?.forwardProposedBy).toBeUndefined();
+      // Lead marks notification as read after rejecting
+      await trpcMutation(app, 'notifications.markAsRead', { id: forwardNotif.id });
+
+      // Verify status is cleared (as seen by API)
+      const pub = await trpcQuery(app, 'publications.getById', { id: publicationId });
+      expect(pub.forwardStatus ?? null).toBeNull();
+      expect(pub.forwardTargetCommunityId).toBeUndefined();
+      expect(pub.forwardProposedBy).toBeUndefined();
     });
   });
 
   describe('Lead direct forward flow', () => {
     it('should allow lead to forward directly without proposal', async () => {
-      // Create a post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      // Author creates a post
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post for direct forward',
         type: 'text',
@@ -335,10 +398,10 @@ describe('Publication Forward E2E', () => {
         description: 'Description',
         hashtags: ['test'],
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Lead forwards directly
-      (global as any).testUserId = leadId;
+      setTestUserId(leadId);
       const result = await trpcMutation(app, 'publications.forward', {
         publicationId,
         targetCommunityId: futureVisionCommunityId,
@@ -346,32 +409,32 @@ describe('Publication Forward E2E', () => {
 
       expect(result.success).toBe(true);
 
-      // Verify quota was consumed
+      // Verify quota was NOT consumed (leads can forward for free)
       const quotaUsage = await connection.db.collection('quota_usage').findOne({
         userId: leadId,
         communityId: teamCommunityId,
         usageType: 'forward',
         referenceId: publicationId,
       });
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(1);
+      expect(quotaUsage).toBeNull();
 
       // Verify original is marked as forwarded
-      const original = await publicationService.getPublicationDocument(publicationId);
-      expect(original?.forwardStatus).toBe('forwarded');
+      const original = await trpcQuery(app, 'publications.getById', { id: publicationId });
+      expect(original.forwardStatus).toBe('forwarded');
 
       // Verify copy was created
-      const copy = await publicationService.getPublicationDocument(result.forwardedPublicationId);
-      expect(copy?.communityId).toBe(futureVisionCommunityId);
-      expect(copy?.content).toBe('Test post for direct forward');
-      expect(copy?.title).toBe('Direct Forward Test');
-      expect(copy?.hashtags).toEqual(['test']);
+      const forwardedPublicationId = result.forwardedPublicationId as string;
+      const copy = await trpcQuery(app, 'publications.getById', { id: forwardedPublicationId });
+      expect(copy.communityId).toBe(futureVisionCommunityId);
+      expect(copy.content).toBe('Test post for direct forward');
+      expect(copy.title).toBe('Direct Forward Test');
+      expect(copy.hashtags).toEqual(['test']);
     });
 
     it('should forward project posts with all taxonomy fields', async () => {
       // Create a project post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Project content',
         type: 'text',
@@ -379,30 +442,30 @@ describe('Publication Forward E2E', () => {
         isProject: true,
         title: 'Test Project',
         description: 'Project description',
-        impactArea: 'education',
-        stage: 'planning',
-        beneficiaries: ['children'],
-        methods: ['volunteering'],
-        helpNeeded: ['funding'],
+        impactArea: 'Education & Youth',
+        stage: 'Idea / looking for team',
+        beneficiaries: ['Children & teens'],
+        methods: ['Direct service'],
+        helpNeeded: ['Money'],
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Lead forwards
-      (global as any).testUserId = leadId;
+      setTestUserId(leadId);
       const result = await trpcMutation(app, 'publications.forward', {
         publicationId,
         targetCommunityId: marathonCommunityId,
       });
 
       // Verify project fields are copied
-      const copy = await publicationService.getPublicationDocument(result.forwardedPublicationId);
-      expect(copy?.postType).toBe('project');
-      expect(copy?.isProject).toBe(true);
-      expect(copy?.impactArea).toBe('education');
-      expect(copy?.stage).toBe('planning');
-      expect(copy?.beneficiaries).toEqual(['children']);
-      expect(copy?.methods).toEqual(['volunteering']);
-      expect(copy?.helpNeeded).toEqual(['funding']);
+      const copy = await trpcQuery(app, 'publications.getById', { id: result.forwardedPublicationId as string });
+      expect(copy.postType).toBe('project');
+      expect(copy.isProject).toBe(true);
+      expect(copy.impactArea).toBe('Education & Youth');
+      expect(copy.stage).toBe('Idea / looking for team');
+      expect(copy.beneficiaries).toEqual(['Children & teens']);
+      expect(copy.methods).toEqual(['Direct service']);
+      expect(copy.helpNeeded).toEqual(['Money']);
     });
   });
 
@@ -423,84 +486,104 @@ describe('Publication Forward E2E', () => {
         },
       });
 
-      // Create post in regular community
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      // Make author/participant members (so the create/view steps match real flow)
+      await connection.db.collection('user_community_roles').insertMany([
+        { id: uid(), userId: authorId, communityId: regularCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
+        { id: uid(), userId: participantId, communityId: regularCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
+      ]);
+
+      // Author creates post in regular community
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: regularCommunityId,
         content: 'Test post',
         type: 'text',
         postType: 'basic',
+        title: 'Regular Community Post',
+        description: 'Regular community description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Try to propose forward (should fail)
-      (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      setTestUserId(participantId);
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('team groups');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('team groups');
+      });
     });
 
     it('should reject forward proposal for poll posts', async () => {
       // Create a poll post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Poll content',
         type: 'text',
         postType: 'poll',
+        title: 'Poll Post',
+        description: 'Poll post description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Try to propose forward (should fail)
-      (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      setTestUserId(participantId);
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('polls');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('polls');
+      });
     });
 
     it('should reject forward proposal when lead tries to use proposeForward', async () => {
       // Create a post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post',
         type: 'text',
         postType: 'basic',
+        title: 'Lead Propose Test',
+        description: 'Lead propose description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Lead tries to propose (should fail - should use forward directly)
-      (global as any).testUserId = leadId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      setTestUserId(leadId);
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('FORBIDDEN');
-      expect(result.error?.message).toContain('Leads should use the forward endpoint');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.message).toContain('Leads should use the forward endpoint');
+      });
     });
 
     it('should reject forward when insufficient quota', async () => {
       // Create a post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post',
         type: 'text',
         postType: 'basic',
+        title: 'Insufficient Quota Test',
+        description: 'Insufficient quota description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Consume all quota
       await connection.db.collection('quota_usage').insertOne({
@@ -514,15 +597,17 @@ describe('Publication Forward E2E', () => {
       });
 
       // Try to propose forward (should fail)
-      (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: marathonCommunityId,
-      });
+      setTestUserId(participantId);
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: marathonCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
 
     it('should reject forward when target community does not support post type', async () => {
@@ -542,25 +627,29 @@ describe('Publication Forward E2E', () => {
       });
 
       // Create a post
-      (global as any).testUserId = authorId;
-      const publication = await publicationService.createPublication(authorId, {
+      setTestUserId(authorId);
+      const created = await trpcMutation(app, 'publications.create', {
         communityId: teamCommunityId,
         content: 'Test post',
         type: 'text',
         postType: 'basic',
+        title: 'Restricted Target Test',
+        description: 'Restricted target description',
       });
-      const publicationId = publication.getId.getValue();
+      const publicationId = created.id as string;
 
       // Try to forward to restricted community (should fail)
-      (global as any).testUserId = participantId;
-      const result = await trpcMutationWithError(app, 'publications.proposeForward', {
-        publicationId,
-        targetCommunityId: restrictedCommunityId,
-      });
+      setTestUserId(participantId);
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.proposeForward', {
+          publicationId,
+          targetCommunityId: restrictedCommunityId,
+        });
 
-      expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('BAD_REQUEST');
-      expect(result.error?.message).toContain('does not support');
+        expect(result.error).toBeDefined();
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('does not support');
+      });
     });
   });
 });

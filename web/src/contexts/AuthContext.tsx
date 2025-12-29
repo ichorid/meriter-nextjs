@@ -20,6 +20,7 @@ import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
 import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { setSentryUser, clearSentryUser } from '@/lib/utils/sentry';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
@@ -62,46 +63,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
 
-  // Stabilize user object reference to prevent unnecessary re-renders
-  // React Query might return new object references even when values are the same
-  const prevUserRef = useRef<{ user: typeof user; serialized: string } | null>(null);
-  const stableUser = useMemo(() => {
-    if (!user) {
-      prevUserRef.current = null;
-      return null;
-    }
-    
-    // Serialize key fields to detect actual changes
-    const serialized = JSON.stringify({
-      id: user.id,
-      globalRole: user.globalRole,
-      inviteCode: user.inviteCode,
-      username: user.username,
-    });
-    
-    // Return previous reference if values haven't changed
-    if (prevUserRef.current && prevUserRef.current.serialized === serialized) {
-      return prevUserRef.current.user;
-    }
-    
-    // Values changed, update ref and return new user
-    prevUserRef.current = { user, serialized };
-    return user;
-  }, [user]);
-
-  // Memoize derived values to prevent unnecessary recalculations
-  const isLoading = useMemo(() => userLoading || isAuthenticating, [userLoading, isAuthenticating]);
-
-  // Check if we have a 401 error (unauthorized) - memoized
-  const is401Error = useMemo(() => {
-    return isUnauthorizedError(userError);
-  }, [userError]);
-
-  // User is authenticated ONLY if:
-  // 1. We have a user object (not null/undefined)
-  // 2. There's no error OR the error is not a 401 (401 means not authenticated)
-  // Use stableUser to prevent re-renders from object reference changes
-  const isAuthenticated = useMemo(() => !!stableUser && !is401Error, [stableUser, is401Error]);
+  const isLoading = userLoading || isAuthenticating;
+  const is401Error = isUnauthorizedError(userError);
+  const isAuthenticated = !!user && !is401Error;
 
   // DEBUG: Log authentication state changes
   useEffect(() => {
@@ -119,6 +83,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
     }
   }, [user, userLoading, isAuthenticated, userError]);
+
+  // Update Sentry user context when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setSentryUser(user);
+    } else {
+      clearSentryUser();
+    }
+  }, [isAuthenticated, user]);
 
   const authenticateFakeUser = useCallback(async () => {
     try {
@@ -183,11 +156,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setIsAuthenticating(false);
     }
   }, [logoutMutation, clearCookiesMutation, tCommon]);
-
-  // Memoize setAuthError wrapper to ensure stable reference
-  const setAuthErrorMemoized = useCallback((error: string | null) => {
-    setAuthError(error);
-  }, []);
 
   // Track successful authentication to distinguish first-time users from returning users
   useEffect(() => {
@@ -273,9 +241,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   // Only recreate when actual values change, not object references
-  // Use stableUser instead of user to prevent re-renders from object reference changes
   const contextValue: AuthContextType = useMemo(() => ({
-    user: stableUser || null,
+    user: user || null,
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
@@ -283,9 +250,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     handleDeepLink,
     authError,
-    setAuthError: setAuthErrorMemoized,
+    setAuthError,
   }), [
-    stableUser,
+    user,
     isLoading,
     isAuthenticated,
     authenticateFakeUser,
@@ -293,7 +260,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     handleDeepLink,
     authError,
-    setAuthErrorMemoized,
+    setAuthError,
   ]);
 
   return (

@@ -75,7 +75,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await collection.deleteMany({});
     }
 
-    // Create Communities with editWindowDays setting
+    // Create Communities with editWindowMinutes setting
     await communityModel.create([
       {
         id: communityId,
@@ -83,7 +83,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -105,7 +106,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -201,7 +203,7 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(updated.content).toBe('Updated content');
     });
 
-    it('should NOT allow author to edit own publication with votes', async () => {
+    it('should allow author to edit own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -216,17 +218,16 @@ describe('Publication and Comment Edit Permissions', () => {
         quotaAmount: 1,
       });
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
+      const updated = await trpcMutation(app, 'publications.update', {
         id: publicationId,
         data: { content: 'Updated content' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated content');
     });
 
-    it('should NOT allow author to edit own publication with comments', async () => {
+    it('should allow author to edit own publication with comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -238,17 +239,16 @@ describe('Publication and Comment Edit Permissions', () => {
       const commentDto = createTestComment('publication', publicationId);
       await trpcMutation(app, 'comments.create', commentDto);
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
+      const updated = await trpcMutation(app, 'publications.update', {
         id: publicationId,
         data: { content: 'Updated content' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated content');
     });
 
-    it('should NOT allow author to edit own publication with both votes and comments', async () => {
+    it('should allow author to edit own publication with both votes and comments', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -267,30 +267,28 @@ describe('Publication and Comment Edit Permissions', () => {
       const commentDto = createTestComment('publication', publicationId);
       await trpcMutation(app, 'comments.create', commentDto);
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'publications.update', {
+      const updated = await trpcMutation(app, 'publications.update', {
         id: publicationId,
         data: { content: 'Updated content' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated content');
     });
 
     it('should NOT allow author to edit own publication after edit window expires', async () => {
-      // Create publication as author with old date (8 days ago)
+      // Create publication as author with old date (outside edit window)
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
       const created = await trpcMutation(app, 'publications.create', pubDto);
       const publicationId = created.id;
 
-      // Update createdAt to 8 days ago (outside 7-day window)
-      const eightDaysAgo = new Date();
-      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+      // Update createdAt to 31 minutes ago (outside 30-minute window)
+      const oldDate = new Date(Date.now() - 31 * 60 * 1000);
       // Mongoose timestamps often mark createdAt as immutable; update using the raw collection.
-      await connection.db.collection('publications').updateOne(
+      await connection.db!.collection('publications').updateOne(
         { id: publicationId },
-        { $set: { createdAt: eightDaysAgo } },
+        { $set: { createdAt: oldDate } },
       );
 
       // Author should NOT be able to edit
@@ -611,7 +609,7 @@ describe('Publication and Comment Edit Permissions', () => {
       expect(updated.content).toBe('Updated comment');
     });
 
-    it('should NOT allow author to edit own comment with votes', async () => {
+    it('should allow author to edit own comment with votes', async () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
@@ -634,14 +632,13 @@ describe('Publication and Comment Edit Permissions', () => {
         }
       );
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const result = await trpcMutationWithError(app, 'comments.update', {
+      const updated = await trpcMutation(app, 'comments.update', {
         id: commentId,
         data: { content: 'Updated comment' },
       });
 
-      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(updated.content).toBe('Updated comment');
     });
   });
 
@@ -696,6 +693,34 @@ describe('Publication and Comment Edit Permissions', () => {
       });
 
       expect(result.error?.code).toBe('FORBIDDEN');
+    });
+
+    it('should allow participant to edit other user\'s publication when allowEditByOthers is enabled', async () => {
+      // Enable allowEditByOthers as lead (admin)
+      (global as any).testUserId = leadId;
+      await trpcMutation(app, 'communities.update', {
+        id: communityId,
+        data: {
+          settings: {
+            allowEditByOthers: true,
+          },
+        },
+      });
+
+      // Create publication as author
+      (global as any).testUserId = authorId;
+      const pubDto = createTestPublication(communityId, authorId, {});
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
+
+      // Participant should be able to edit now
+      (global as any).testUserId = participantId;
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
+
+      expect(updated.content).toBe('Updated content');
     });
   });
 });

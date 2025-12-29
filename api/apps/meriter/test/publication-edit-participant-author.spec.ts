@@ -72,7 +72,7 @@ describe('Publication Edit - Participant Author Scenario', () => {
       await collection.deleteMany({});
     }
 
-    // Create Community with editWindowDays setting (7 days)
+    // Create Community with editWindowMinutes setting (30 minutes)
     await communityModel.create([
       {
         id: communityId,
@@ -80,7 +80,8 @@ describe('Publication Edit - Participant Author Scenario', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -155,14 +156,14 @@ describe('Publication Edit - Participant Author Scenario', () => {
       expect(totalVotes).toBe(0);
       console.log('[TEST] Total votes:', totalVotes);
 
-      // Verify publication is within edit window (just created, so should be day 0)
+      // Verify publication is within edit window (just created)
       const createdAt = new Date(created.createdAt);
       const now = new Date();
-      const daysSinceCreation = Math.floor(
-        (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24)
+      const minutesSinceCreation = Math.floor(
+        (now.getTime() - createdAt.getTime()) / (1000 * 60)
       );
-      expect(daysSinceCreation).toBeLessThan(7);
-      console.log('[TEST] Days since creation:', daysSinceCreation);
+      expect(minutesSinceCreation).toBeLessThan(30);
+      console.log('[TEST] Minutes since creation:', minutesSinceCreation);
 
       // Attempt to edit the publication - this should succeed
       console.log('[TEST] Attempting to edit publication...');

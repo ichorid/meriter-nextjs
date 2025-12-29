@@ -197,22 +197,29 @@ export function UserForm({
                     </h3>
 
                     {/* Avatar Row */}
-                    <BrandFormControl
-                        label={t("avatarUrl")}
-                        helperText={t("avatarUrlHelper")}
-                    >
-                        <AvatarUploader
-                            value={avatarUrl}
-                            onUpload={(url) => setAvatarUrl(url)}
-                            size={80}
-                            labels={{
-                                upload: t("changeAvatar") || "Change avatar",
-                                cropTitle: t("cropAvatar") || "Crop avatar",
-                                cancel: tCommon("cancel") || "Cancel",
-                                save: t("save") || "Save",
-                            }}
-                        />
-                    </BrandFormControl>
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-base-content">
+                            {t("avatarUrl")}
+                        </label>
+                        <div className="flex justify-center">
+                            <AvatarUploader
+                                value={avatarUrl}
+                                onUpload={(url) => setAvatarUrl(url)}
+                                size={120}
+                                labels={{
+                                    upload: t("changeAvatar") || "Change avatar",
+                                    cropTitle: t("cropAvatar") || "Crop avatar",
+                                    cancel: tCommon("cancel") || "Cancel",
+                                    save: t("save") || "Save",
+                                }}
+                            />
+                        </div>
+                        {t("avatarUrlHelper") && (
+                            <p className="text-xs text-base-content/50 text-center">
+                                {t("avatarUrlHelper")}
+                            </p>
+                        )}
+                    </div>
 
                     {/* Display Name */}
                     <BrandFormControl

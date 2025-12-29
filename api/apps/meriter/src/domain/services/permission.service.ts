@@ -193,6 +193,12 @@ export class PermissionService {
       return false;
     }
 
+    // Deleted publications cannot be edited by anyone
+    const snapshot = publication.toSnapshot();
+    if (snapshot.deleted) {
+      return false;
+    }
+
     const communityId = publication.getCommunityId.getValue();
     
     // Build context for editing
@@ -201,13 +207,8 @@ export class PermissionService {
       publicationId,
     );
 
-    // Get community to check editWindowDays
-    const community = await this.communityService.getCommunity(communityId);
-    if (community && context.daysSinceCreation !== undefined) {
-      const _editWindowDays = community.settings?.editWindowDays ?? 7;
-      // Update context with edit window days for condition evaluation
-      // This is handled in the rule engine's condition evaluation
-    }
+    // Edit window enforcement is handled by PermissionRuleEngine.evaluateConditions()
+    // using the publication context (minutesSinceCreation) and community settings.
 
     return this.permissionRuleEngine.canPerformAction(
       userId,
@@ -262,12 +263,7 @@ export class PermissionService {
       commentId,
     );
 
-    // Get community to check editWindowDays
-    const community = await this.communityService.getCommunity(communityId);
-    if (community && context.daysSinceCreation !== undefined) {
-      const _editWindowDays = community.settings?.editWindowDays ?? 7;
-      // Update context with edit window days for condition evaluation
-    }
+    // Comment edit window is not enforced (posts only).
 
     return this.permissionRuleEngine.canPerformAction(
       userId,

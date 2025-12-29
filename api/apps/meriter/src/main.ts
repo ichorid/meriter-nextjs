@@ -7,12 +7,71 @@ import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
 import { TrpcService } from './trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import * as Sentry from '@sentry/node';
 declare const module: any;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  logger.log('🚀 API VERSION: IMAGES-FIX-V2 (No imageUrl)');
+  // Initialize Sentry before creating NestJS app
+  const sentryDsn = process.env.SENTRY_DSN;
+  const sentryEnvironment = process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
+  const sentryRelease = process.env.SENTRY_RELEASE;
+  const tracesSampleRate = parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '1.0');
+  const profilesSampleRate = parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '1.0');
 
+  if (sentryDsn) {
+    const sentryConfig: Sentry.NodeOptions = {
+      dsn: sentryDsn,
+      environment: sentryEnvironment,
+      ...(sentryRelease ? { release: sentryRelease } : {}),
+      tracesSampleRate,
+      // Enable logging
+      enableLogs: true,
+      // Capture unhandled promise rejections
+      captureUnhandledRejections: true,
+      // Set platform tag to distinguish backend from frontend
+      initialScope: {
+        tags: {
+          platform: 'backend',
+        },
+      },
+    };
+
+    // Build integrations array
+    // Note: consoleLoggingIntegration is only available in @sentry/nextjs, not @sentry/node
+    // For Node.js backend, console logs are typically handled via logger or can be manually captured
+    const integrations: Sentry.Integration[] = [];
+
+    // HTTP instrumentation is enabled by default in Sentry v8, but we can explicitly add it
+    // to ensure Express routes are tracked
+    try {
+      // HTTP integration is automatically included, but we ensure it's enabled
+      // Sentry v8 automatically instruments HTTP requests when tracesSampleRate > 0
+    } catch {
+      // Ignore
+    }
+
+    // Add profiling integration if available (optional dependency)
+    try {
+      const profilingModule = await import('@sentry/profiling-node');
+      const profilingIntegration = profilingModule.nodeProfilingIntegration;
+      sentryConfig.profilesSampleRate = profilesSampleRate;
+      integrations.push(profilingIntegration());
+    } catch {
+      // Profiling package not installed, skip it
+      logger.debug('Sentry profiling not available (optional)');
+    }
+
+    // Only set integrations if we have any
+    if (integrations.length > 0) {
+      sentryConfig.integrations = integrations;
+    }
+
+    Sentry.init(sentryConfig);
+    logger.log(`✅ Sentry initialized for environment: ${sentryEnvironment}`);
+  } else {
+    logger.warn('⚠️  Sentry DSN not configured (optional)');
+  }
   // Fail fast - validate required environment variables in production
   const nodeEnv = process.env.NODE_ENV || 'development';
   const isProduction = nodeEnv === 'production';

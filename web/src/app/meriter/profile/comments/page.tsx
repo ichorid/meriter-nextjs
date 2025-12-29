@@ -2,9 +2,9 @@ import { Metadata } from 'next';
 import ProfileCommentsPage from './CommentsClient';
 
 export const metadata: Metadata = {
-    title: 'Comments',
+  title: 'Comments',
 };
 
 export default function Page() {
-    return <ProfileCommentsPage />;
+  return <ProfileCommentsPage />;
 }

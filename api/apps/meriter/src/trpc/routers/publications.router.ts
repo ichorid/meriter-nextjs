@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
+import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+
+const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
@@ -80,6 +82,74 @@ async function processWithdrawal(
     targetCommunityId: publicationCommunityId,
     currency,
   };
+}
+
+type CurrencyNames = { singular: string; plural: string; genitive: string };
+
+type PublicationForAutoWithdraw = {
+  getMetrics: { score: number };
+  getCommunityId: { getValue(): string };
+  getEffectiveBeneficiary(): { getValue(): string };
+};
+
+type AutoWithdrawContext = {
+  communityService: {
+    getCommunity(communityId: string): Promise<{ id: string; typeTag?: string; settings?: { currencyNames?: CurrencyNames } } | null>;
+    getCommunityByTypeTag(typeTag: string): Promise<{ id: string; settings?: { currencyNames?: CurrencyNames } } | null>;
+  };
+  walletService: {
+    getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number>;
+    addTransaction(
+      userId: string,
+      communityId: string,
+      type: 'credit' | 'debit',
+      amount: number,
+      sourceType: 'personal' | 'quota',
+      referenceType: string,
+      referenceId: string,
+      currency: CurrencyNames,
+      description?: string,
+    ): Promise<unknown>;
+  };
+  publicationService: {
+    reduceScore(publicationId: string, amount: number): Promise<unknown>;
+  };
+};
+
+/**
+ * Auto-withdraw all available positive balance from a publication into the effective beneficiary's wallet.
+ * This mirrors the manual `publications.withdraw` logic, but is used during moderation deletion.
+ *
+ * Returns the amount that was withdrawn (0 if nothing was available).
+ */
+export async function autoWithdrawPublicationBalanceBeforeDelete(
+  publicationId: string,
+  publication: PublicationForAutoWithdraw,
+  ctx: AutoWithdrawContext,
+): Promise<number> {
+  const currentScore = publication.getMetrics.score;
+  if (currentScore <= 0) return 0;
+
+  const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
+  const communityId = publication.getCommunityId.getValue();
+
+  // Future Vision: withdrawals from posts are not allowed; skip auto-withdraw during deletion.
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (community?.typeTag === 'future-vision') {
+    return 0;
+  }
+
+  await processWithdrawal(
+    beneficiaryId,
+    communityId,
+    publicationId,
+    currentScore,
+    'publication_withdrawal',
+    ctx,
+  );
+
+  await ctx.publicationService.reduceScore(publicationId, currentScore);
+  return currentScore;
 }
 
 /**
@@ -196,27 +266,16 @@ export const publicationsRouter = router({
         });
       }
 
-      // Extract IDs for enrichment
-      const authorId = publication.getAuthorId.getValue();
-      const beneficiaryId = publication.getBeneficiaryId?.getValue();
-      const communityId = publication.getCommunityId.getValue();
-
-      // Hide deleted publications from non-leads (and unauthenticated users).
-      // Leads and superadmins can still access deleted items for moderation.
-      const snapshot = publication.toSnapshot();
-      if (snapshot.deleted) {
-        if (!ctx.user) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Publication not found',
-          });
-        }
-
-        const userRole = await ctx.permissionService.getUserRoleInCommunity(
+      // Hide deleted publications from non-leads (and non-superadmins).
+      // Leads/superadmins can access deleted publications (e.g. for moderation/audit).
+      const isDeleted = publication.toSnapshot().deleted === true;
+      if (isDeleted && ctx.user?.globalRole !== 'superadmin') {
+        const communityId = publication.getCommunityId.getValue();
+        const role = await ctx.permissionService.getUserRoleInCommunity(
           ctx.user.id,
           communityId,
         );
-        if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+        if (role !== 'lead') {
           throw new TRPCError({
             code: 'NOT_FOUND',
             message: 'Publication not found',
@@ -224,10 +283,26 @@ export const publicationsRouter = router({
         }
       }
 
+      // Extract IDs for enrichment
+      const authorId = publication.getAuthorId.getValue();
+      const beneficiaryId = publication.getBeneficiaryId?.getValue();
+      const communityId = publication.getCommunityId.getValue();
+
+      // Fetch document to get editHistory
+      const doc = await ctx.connection.db!
+        .collection('publications')
+        .findOne({ id: input.id });
+
+      const editHistory = (doc as any)?.editHistory || [];
+      const editorIds = editHistory.map((entry: any) => entry.editedBy);
+      const uniqueEditorIds = [...new Set(editorIds)];
+
+      // Deleted publications are only accessible to leads/superadmins (see gate above).
+
       // Batch fetch users and communities
-      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : []), ...uniqueEditorIds];
       const [usersMap, communitiesMap, permissions] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
+        ctx.userEnrichmentService.batchFetchUsers(userIds as string[]),
         ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
         ctx.permissionsHelperService.calculatePublicationPermissions(ctx.user?.id || null, input.id),
       ]);
@@ -238,6 +313,41 @@ export const publicationsRouter = router({
         communitiesMap,
       );
 
+      // Forward fields currently live on the persisted document; enrich response from Mongo doc
+      // (the domain aggregate snapshot may not include these).
+      mappedPublication.forwardStatus = (doc as any)?.forwardStatus ?? null;
+      mappedPublication.forwardTargetCommunityId = (doc as any)?.forwardTargetCommunityId || undefined;
+      mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
+      mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
+
+      // Enrich edit history with user data
+      if (editHistory && editHistory.length > 0) {
+        mappedPublication.editHistory = editHistory.map((entry: any) => {
+          const editor = usersMap.get(entry.editedBy);
+          // Handle date conversion - MongoDB may return Date objects or ISO strings
+          let editedAtString: string;
+          if (entry.editedAt instanceof Date) {
+            editedAtString = entry.editedAt.toISOString();
+          } else if (typeof entry.editedAt === 'string') {
+            editedAtString = entry.editedAt;
+          } else {
+            // Fallback: try to parse as date
+            editedAtString = new Date(entry.editedAt).toISOString();
+          }
+
+          return {
+            editedBy: entry.editedBy,
+            editedAt: editedAtString,
+            editor: editor ? {
+              id: entry.editedBy,
+              name: editor.name || editor.displayName || 'Unknown',
+              photoUrl: editor.photoUrl || editor.avatarUrl,
+            } : undefined,
+          };
+        }).reverse(); // Reverse to show newest first
+      } else {
+        mappedPublication.editHistory = [];
+      }
       // Add permissions to response
       mappedPublication.permissions = permissions;
 
@@ -344,6 +454,26 @@ export const publicationsRouter = router({
           communitiesMap,
         ),
       );
+
+      // Enrich forward fields from Mongo documents (needed for pending/forwarded badges in UI).
+      if (ctx.connection?.db && mappedPublications.length > 0) {
+        const ids = mappedPublications.map((p) => p.id);
+        const docs = await ctx.connection.db
+          .collection('publications')
+          .find(
+            { id: { $in: ids } },
+            { projection: { id: 1, forwardStatus: 1, forwardTargetCommunityId: 1, forwardProposedBy: 1, forwardProposedAt: 1 } },
+          )
+          .toArray();
+        const forwardMap = new Map<string, any>(docs.map((d: any) => [d.id, d]));
+        mappedPublications.forEach((pub) => {
+          const d = forwardMap.get(pub.id);
+          pub.forwardStatus = d?.forwardStatus ?? null;
+          pub.forwardTargetCommunityId = d?.forwardTargetCommunityId || undefined;
+          pub.forwardProposedBy = d?.forwardProposedBy || undefined;
+          pub.forwardProposedAt = d?.forwardProposedAt || undefined;
+        });
+      }
 
       // Batch calculate permissions for all publications
       const publicationIds = mappedPublications.map((pub) => pub.id);
@@ -588,7 +718,54 @@ export const publicationsRouter = router({
       // Check permissions
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);
 
+      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
+      // exactly as if they withdrew everything just before deletion.
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
+
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Restore a deleted publication
+   * Only leads and superadmins can restore publications
+   */
+  restore: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - restore uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      await ctx.publicationService.restorePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a publication (hard delete)
+   * This removes the publication, all its votes, and all its comments from the database
+   * Only leads and superadmins can permanently delete publications
+   * 
+   * WARNING: This is a destructive operation that cannot be undone.
+   */
+  permanentDelete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - permanent delete uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
+      // exactly as if they withdrew everything just before deletion.
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
+
+      await ctx.publicationService.permanentDeletePublication(input.id, ctx.user.id);
       return { success: true };
     }),
 
@@ -736,6 +913,18 @@ export const publicationsRouter = router({
         throw new NotFoundError('Publication', input.publicationId);
       }
 
+      // Future Vision: users can't withdraw merits from their posts.
+      {
+        const communityId = publication.getCommunityId.getValue();
+        const community = await ctx.communityService.getCommunity(communityId);
+        if (community?.typeTag === 'future-vision') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Withdrawals are not allowed in Future Vision',
+          });
+        }
+      }
+
       // Validate user can withdraw
       const canWithdraw = await ctx.voteService.canUserWithdraw(
         userId,
@@ -758,18 +947,11 @@ export const publicationsRouter = router({
         });
       }
 
-      // Check total already withdrawn
-      const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
-        'publication_withdrawal',
-        input.publicationId,
-      );
-
-      // Calculate available amount
-      const availableAmount = currentScore - totalWithdrawn;
-      if (amount > availableAmount) {
+      // Publication score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${availableAmount}, Requested: ${amount}`,
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
         });
       }
 
@@ -1145,32 +1327,9 @@ export const publicationsRouter = router({
         });
       }
 
-      // If not pending, check and consume quota
-      if (!isPending) {
-        const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
-        if (forwardCost > 0) {
-          const remainingQuota = await getRemainingQuota(
-            userId,
-            sourceCommunityId,
-            sourceCommunity,
-            ctx.connection,
-          );
-          if (remainingQuota < forwardCost) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
-            });
-          }
-
-          await ctx.quotaUsageService.consumeQuota(
-            userId,
-            sourceCommunityId,
-            forwardCost,
-            'forward',
-            publicationId,
-          );
-        }
-      }
+      // Leads can forward posts for free from their community (no quota consumption)
+      // Note: This endpoint is already restricted to leads/superadmins only (line 1116),
+      // so we skip quota check/consumption entirely for direct forwards
 
       // Get original publication data
       const originalAuthorId = publication.getAuthorId.getValue();

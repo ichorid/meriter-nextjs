@@ -111,7 +111,6 @@ export class CommunityDefaultsService {
         conditions: {
           canEditWithVotes: false,
           canEditWithComments: false,
-          canEditAfterDays: 7, // Default 7 days
         },
       },
       {
@@ -138,7 +137,6 @@ export class CommunityDefaultsService {
         allowed: true,
         conditions: {
           canEditWithVotes: false,
-          canEditAfterDays: 7,
         },
       },
       { role: 'participant', action: ActionType.EDIT_POLL, allowed: true },
@@ -162,14 +160,14 @@ export class CommunityDefaultsService {
     const rules: PermissionRule[] = [];
 
     // Participants can post and create polls (already in base, but ensure it's explicit)
-    // Participants cannot vote for leads from same team
+    // NOTE: teammate voting restrictions (based on shared team communities) are enforced
+    // by the PermissionRuleEngine and apply only to marathon-of-good and future-vision.
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
       conditions: {
         canVoteForOwnPosts: false,
-        participantsCannotVoteForLead: true,
       },
     });
 

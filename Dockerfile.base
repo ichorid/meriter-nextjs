@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1.7
+#
+# Shared build base image for CI Docker builds.
+# Contents include stable tooling + shared-types build so web/api builds reuse it.
+#
+# This image is published to GHCR with a content-hash tag so CI can pin it.
+#
+FROM node:22.11-alpine AS base
+
+# Install pnpm directly via npm to avoid corepack signature verification issues
+RUN npm install -g pnpm@10.26.2
+
+# Configure pnpm store location (matches component Dockerfiles)
+RUN pnpm config set store-dir /pnpm/store
+
+WORKDIR /repo
+
+# Workspace manifest (dependency graph)
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+
+# Copy patches directory so pnpm can resolve patchedDependencies if needed
+COPY web/patches ./web/patches/
+
+# Shared types are used by both api and web
+COPY libs/shared-types ./libs/shared-types
+
+# Install & build shared-types once in the base image so downstream builds can reuse layers
+RUN --mount=type=cache,target=/pnpm/store \
+    pnpm --filter @meriter/shared-types... install --frozen-lockfile && \
+    pnpm --filter @meriter/shared-types build
+
+
