@@ -10,6 +10,7 @@ interface AuthWrapperProps {
     children: React.ReactNode;
     enabledProviders?: string[];
     authnEnabled?: boolean;
+    smsEnabled?: boolean;
 }
 
 // Set to true to disable AuthWrapper temporarily for debugging
@@ -26,7 +27,7 @@ const DEBUG_MODE = process.env.NODE_ENV === "development";
  * - If authenticated but no invite used (and no roles): shows invite entry page
  * - If authenticated and valid: shows home or requested page
  */
-function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: AuthWrapperProps) {
+function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEnabled }: AuthWrapperProps) {
     // ALL HOOKS MUST BE CALLED FIRST - before any conditional returns
     const router = useRouter();
     const pathname = usePathname();
@@ -38,18 +39,18 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     // Use ref to prevent multiple redirect attempts by tracking both pathname AND isAuthenticated state
     useEffect(() => {
         const targetPath = "/meriter/profile";
-        
+
         // Only redirect if authenticated and on login page
         if (isAuthenticated && pathname === "/meriter/login") {
             // Prevent multiple redirect attempts for the same pathname + auth state combination
-            if (redirectAttemptedRef.current && 
+            if (redirectAttemptedRef.current &&
                 redirectAttemptedRef.current.pathname === pathname &&
                 redirectAttemptedRef.current.isAuthenticated === isAuthenticated) {
                 return;
             }
-            
+
             redirectAttemptedRef.current = { pathname, isAuthenticated };
-            
+
             if (DEBUG_MODE) {
                 console.log("[AuthWrapper] Redirect check:", {
                     isAuthenticated,
@@ -58,10 +59,10 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
                 });
                 console.log("[AuthWrapper] Redirecting to", targetPath);
             }
-            
+
             router.push(targetPath);
         }
-        
+
         // Clear redirect tracking when pathname changes to a different route
         // This allows redirects on new navigation but prevents loops
         if (pathname !== "/meriter/login" && redirectAttemptedRef.current?.pathname === "/meriter/login") {
@@ -89,7 +90,11 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled }: Auth
     if (!isAuthenticated && !pathname?.startsWith("/api")) {
         return (
             <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-between flex-col min-h-screen">
-                <LoginForm enabledProviders={enabledProviders} authnEnabled={authnEnabled} />
+                <LoginForm
+                    enabledProviders={enabledProviders}
+                    authnEnabled={authnEnabled}
+                    smsEnabled={smsEnabled}
+                />
             </div>
         );
     }

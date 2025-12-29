@@ -18,6 +18,9 @@ type PublicRuntimeConfig = {
   authn: {
     enabled: boolean;
   };
+  sms: {
+    enabled: boolean;
+  };
   features: {
     analytics: boolean;
     debug: boolean;
@@ -29,7 +32,7 @@ type PublicRuntimeConfig = {
 
 @Controller('api/v1/config')
 export class ConfigController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly configService: ConfigService) { }
 
   /**
    * Public runtime config for the SPA bootstrap.
@@ -55,6 +58,10 @@ export class ConfigController {
       enabled: this.configService.get('authn.enabled', false),
     } satisfies PublicRuntimeConfig['authn'];
 
+    const sms = {
+      enabled: this.configService.get('sms.enabled', false),
+    } satisfies PublicRuntimeConfig['sms'];
+
     const features = {
       analytics: this.configService.get('features.analytics', false),
       debug: this.configService.get('features.debug', false),
@@ -67,6 +74,7 @@ export class ConfigController {
       botUsername,
       oauth,
       authn,
+      sms,
       features,
     });
   }

@@ -34,21 +34,24 @@ import {
 import { Separator } from "@/components/ui/shadcn/separator";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Phone } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
+import { SmsAuthDialog } from "./SmsAuthDialog";
 
 interface LoginFormProps {
     className?: string;
     enabledProviders?: string[];
     authnEnabled?: boolean;
+    smsEnabled?: boolean;
 }
 
 export function LoginForm({
     className = "",
     enabledProviders,
     authnEnabled = false,
+    smsEnabled = false,
 }: LoginFormProps) {
     const searchParams = useSearchParams();
     const t = useTranslations("login");
@@ -62,6 +65,11 @@ export function LoginForm({
     // State for invite code input
     const [inviteCode, setInviteCode] = useState("");
     const [inviteCodeExpanded, setInviteCodeExpanded] = useState(false);
+
+    console.log("LoginForm", enabledProviders, authnEnabled, smsEnabled);
+
+    // State for SMS dialog
+    const [smsDialogOpen, setSmsDialogOpen] = useState(false);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -81,7 +89,7 @@ export function LoginForm({
     // Helper function to construct redirect URL with invite code if present
     const buildRedirectUrl = (): string => {
         const baseUrl = returnTo || "/meriter/profile";
-        
+
         // If invite code is present, append it as a query parameter
         if (inviteCode.trim()) {
             try {
@@ -96,7 +104,7 @@ export function LoginForm({
                 return `${baseUrl}${separator}invite=${encodeURIComponent(inviteCode.trim())}`;
             }
         }
-        
+
         return baseUrl;
     };
 
@@ -201,6 +209,19 @@ export function LoginForm({
                                                     })}
                                                 />
                                             ))}
+
+                                            {/* SMS Authentication Button */}
+                                            {smsEnabled && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-center"
+                                                    onClick={() => setSmsDialogOpen(true)}
+                                                    disabled={isLoading}
+                                                >
+                                                    <Phone className="mr-2 h-4 w-4" />
+                                                    {t("signInWithSms")}
+                                                </Button>
+                                            )}
                                         </div>
                                     )}
 
@@ -310,6 +331,28 @@ export function LoginForm({
                     </p>
                 </CardFooter>
             </Card>
+
+            {/* SMS Authentication Dialog */}
+            {smsEnabled && (
+                <SmsAuthDialog
+                    open={smsDialogOpen}
+                    onOpenChange={setSmsDialogOpen}
+                    onSuccess={(result) => {
+                        let redirectUrl = buildRedirectUrl();
+
+                        // Force welcome page for new users
+                        if (result?.isNewUser) {
+                            redirectUrl = "/meriter/welcome";
+                        }
+
+                        window.location.href = redirectUrl;
+                    }}
+                    onError={(msg) => {
+                        setAuthError(msg);
+                        addToast(msg, "error");
+                    }}
+                />
+            )}
         </div>
     );
 }

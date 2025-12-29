@@ -52,6 +52,34 @@ export interface AuthnConfig {
 }
 
 /**
+ * SMS Authentication Configuration
+ */
+export interface SmsConfig {
+  /** Whether SMS authentication is enabled (from SMS_ENABLED env var) */
+  enabled: boolean;
+  /** SMS provider (from SMS_PROVIDER env var, default: 'smsru') */
+  provider: string;
+  /** SMS API URL (from SMS_API_URL env var, provider-specific) */
+  apiUrl?: string;
+  /** SMS API ID/Key (from SMS_API_ID env var, provider-specific) */
+  apiId?: string;
+  /** SMS sender name (from SMS_FROM env var, default: 'Meriter') */
+  from?: string;
+  /** SMS test mode (from SMS_TEST_MODE env var or auto-enabled in dev) */
+  testMode?: boolean;
+  /** OTP code length (default: 6) */
+  otpLength: number;
+  /** OTP expiry time in minutes (default: 5) */
+  otpExpiryMinutes: number;
+  /** Maximum verification attempts per OTP (default: 3) */
+  maxAttemptsPerOtp: number;
+  /** Rate limit: max SMS per hour per phone (default: 3) */
+  rateLimitPerHour: number;
+  /** Resend cooldown in seconds (default: 60) */
+  resendCooldownSeconds: number;
+}
+
+/**
  * S3 Storage Configuration
  */
 export interface S3Config {
@@ -146,13 +174,13 @@ export interface AppConfig {
     /** Node environment (from NODE_ENV env var, default: 'development') */
     env: 'development' | 'production' | 'test';
   };
-  
+
   /** JWT authentication settings */
   jwt: {
     /** JWT signing secret (from JWT_SECRET env var, required in production) */
     secret: string;
   };
-  
+
   /** Telegram bot settings */
   bot: {
     /** Bot username (from BOT_USERNAME env var, default: 'meriterbot') */
@@ -160,7 +188,7 @@ export interface AppConfig {
     /** Bot token (from BOT_TOKEN env var) */
     token: string;
   };
-  
+
   /** Database connection settings */
   database: {
     /** Primary MongoDB connection URL (from MONGO_URL env var) */
@@ -168,25 +196,28 @@ export interface AppConfig {
     /** Secondary MongoDB connection URL (from MONGO_URL_SECONDARY env var) */
     mongoUrlSecondary: string;
   };
-  
+
   /** OAuth provider configurations */
   oauth: OAuthConfig;
-  
+
   /** WebAuthn/Passkey authentication settings */
   authn: AuthnConfig;
-  
+
+  /** SMS authentication settings */
+  sms: SmsConfig;
+
   /** Storage service configurations */
   storage: StorageConfig;
-  
+
   /** Telegram-specific settings */
   telegram: TelegramConfig;
-  
+
   /** Feature flags */
   features: FeatureFlagsConfig;
-  
+
   /** Development mode settings */
   dev: DevConfig;
-  
+
   // Flat environment variables (for backward compatibility and direct access)
   /** Node environment (from NODE_ENV env var) */
   NODE_ENV?: 'development' | 'production' | 'test';
@@ -208,25 +239,25 @@ export interface AppConfig {
 function deriveAppUrl(): string {
   const domain = process.env.DOMAIN;
   const nodeEnv = process.env.NODE_ENV || 'development';
-  
+
   if (!domain) {
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
     // However, this should not happen as validation schema requires DOMAIN
     if (process.env.APP_URL) {
       return process.env.APP_URL;
     }
-    
+
     // Allow default for test and development environments
     if (nodeEnv === 'test' || nodeEnv === 'development') {
       return 'http://localhost';
     }
-    
+
     throw new Error(
       'DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).\n' +
       'For local development, you can set DOMAIN=localhost or leave it unset (defaults to http://localhost).'
     );
   }
-  
+
   // Use http:// for localhost, https:// for production
   const protocol = domain === 'localhost' ? 'http://' : 'https://';
   return `${protocol}${domain}`;
@@ -242,7 +273,7 @@ function createOAuthProviderConfig(
   const enabled = env[`OAUTH_${providerName.toUpperCase()}_ENABLED`] === 'true';
   const clientId = env[`OAUTH_${providerName.toUpperCase()}_CLIENT_ID`];
   const clientSecret = env[`OAUTH_${providerName.toUpperCase()}_CLIENT_SECRET`];
-  const redirectUri = 
+  const redirectUri =
     env[`OAUTH_${providerName.toUpperCase()}_REDIRECT_URI`] ||
     env[`OAUTH_${providerName.toUpperCase()}_CALLBACK_URL`] ||
     (providerName === 'google' ? env.GOOGLE_REDIRECT_URI : undefined);
@@ -302,6 +333,19 @@ export default (): AppConfig => {
       rpOrigin: env.RP_ORIGIN || env.APP_URL,
       rpName: env.RP_NAME,
     },
+    sms: {
+      enabled: env.SMS_ENABLED === 'true',
+      provider: env.SMS_PROVIDER || 'smsru',
+      apiUrl: env.SMS_API_URL || 'https://sms.ru',
+      apiId: env.SMS_API_ID,
+      from: env.SMS_FROM || 'Meriter',
+      testMode: env.SMS_TEST_MODE === 'true' || nodeEnv !== 'production',
+      otpLength: 6,
+      otpExpiryMinutes: 5,
+      maxAttemptsPerOtp: 3,
+      rateLimitPerHour: 3,
+      resendCooldownSeconds: 60,
+    },
     storage: {
       s3: {
         endpoint: env.S3_ENDPOINT,
@@ -319,19 +363,19 @@ export default (): AppConfig => {
     features: {
       telegramBotEnabled: env.TELEGRAM_BOT_ENABLED === 'true',
       telegramAuthEnabled: env.OAUTH_TELEGRAM_ENABLED === 'true',
-      commentImageUploadsEnabled: 
+      commentImageUploadsEnabled:
         env.ENABLE_COMMENT_IMAGE_UPLOADS === 'true' ||
         env.NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS === 'true',
-      analytics: 
+      analytics:
         env.ENABLE_ANALYTICS === 'true' ||
         env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
-      debug: 
+      debug:
         env.ENABLE_DEBUG === 'true' ||
         env.NEXT_PUBLIC_ENABLE_DEBUG === 'true',
-      commentVoting: 
+      commentVoting:
         env.ENABLE_COMMENT_VOTING === 'true' ||
         env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
-      loginInviteForm: 
+      loginInviteForm:
         env.ENABLE_LOGIN_INVITE_FORM === 'true' ||
         env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
     },

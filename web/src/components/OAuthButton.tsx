@@ -28,7 +28,7 @@ export function OAuthButton({ provider, onClick, disabled, label }: OAuthButtonP
         <Button
             variant="outline"
             size="default"
-            className="w-full justify-start"
+            className="w-full justify-center"
             onClick={onClick}
             disabled={disabled}
         >

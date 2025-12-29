@@ -20,6 +20,10 @@ export interface AuthnConfig {
   enabled: boolean;
 }
 
+export interface SmsConfig {
+  enabled: boolean;
+}
+
 export interface FeaturesConfig {
   analytics: boolean;
   debug: boolean;
@@ -32,6 +36,7 @@ export interface RuntimeConfig {
   botUsername: string | null;
   oauth: OAuthConfig;
   authn: AuthnConfig;
+  sms: SmsConfig;
   features: FeaturesConfig;
 }
 
