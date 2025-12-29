@@ -86,7 +86,7 @@ export function useInfiniteMyPublications(
 export function usePublication(id: string) {
     return trpc.publications.getById.useQuery(
         { id },
-        { 
+        {
             enabled: !!id,
             staleTime: STALE_TIME.VERY_SHORT, // Always refetch when invalidated
         }
@@ -154,6 +154,7 @@ export function useInfiniteDeletedPublications(
             initialPageParam: 1,
             enabled: !!communityId && (options?.enabled ?? true),
             staleTime: STALE_TIME.VERY_SHORT, // Always refetch when invalidated
+            retry: false, // Don't retry on 403 errors
         },
     );
 }
@@ -162,15 +163,15 @@ export const useCreatePublication = () => {
     const utils = trpc.useUtils();
     const queryClient = useQueryClient();
     const { user } = useAuth();
-    
+
     return trpc.publications.create.useMutation({
         onMutate: async (variables) => {
             // Cancel any outgoing refetches to avoid overwriting optimistic update
             await utils.publications.getAll.cancel();
-            
+
             // Snapshot the previous value
             const previousPublications = utils.publications.getAll.getData();
-            
+
             // Optimistically update the cache with a temporary publication
             const optimisticPublication = {
                 id: `temp-${Date.now()}`,
@@ -194,7 +195,7 @@ export const useCreatePublication = () => {
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
             };
-            
+
             // Optimistically update lists
             utils.publications.getAll.setData(
                 (old) => {
@@ -205,7 +206,7 @@ export const useCreatePublication = () => {
                     };
                 }
             );
-            
+
             return { previousPublications };
         },
         onError: (_err, _variables, context) => {
@@ -218,19 +219,19 @@ export const useCreatePublication = () => {
             // Invalidate and refetch publications lists to get real data
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
-            
+
             // Invalidate and refetch specific publication detail if we have the ID
             if (result?.id) {
                 await utils.publications.getById.invalidate({ id: result.id });
                 await utils.publications.getById.refetch({ id: result.id });
             }
-            
+
             // Invalidate and refetch community feed if we have communityId
             if (result?.communityId) {
                 // Invalidate community-specific queries
                 await utils.communities.getById.invalidate({ id: result.communityId });
                 await utils.communities.getById.refetch({ id: result.communityId });
-                
+
                 // Invalidate infinite queries for this community
                 queryClient.invalidateQueries({
                     queryKey: queryKeys.publications.byCommunity(result.communityId),
@@ -241,22 +242,22 @@ export const useCreatePublication = () => {
                     exact: false,
                 });
             }
-            
+
             // Invalidate quota queries (publication creation uses quota)
             if (user?.id && result?.communityId) {
                 await utils.wallets.getQuota.invalidate({ userId: user.id, communityId: result.communityId });
                 await utils.wallets.getQuota.refetch({ userId: user.id, communityId: result.communityId });
             } else if (result?.communityId) {
                 // Broad invalidation for all quota queries in this community
-                queryClient.invalidateQueries({ 
-                    queryKey: ['quota'], 
+                queryClient.invalidateQueries({
+                    queryKey: ['quota'],
                     predicate: (query) => {
                         const key = query.queryKey;
                         return key.length >= 3 && key[2] === result.communityId;
                     }
                 });
-                queryClient.refetchQueries({ 
-                    queryKey: ['quota'], 
+                queryClient.refetchQueries({
+                    queryKey: ['quota'],
                     predicate: (query) => {
                         const key = query.queryKey;
                         return key.length >= 3 && key[2] === result.communityId;
@@ -274,17 +275,17 @@ export const useCreatePublication = () => {
 export const useUpdatePublication = () => {
     const utils = trpc.useUtils();
     const queryClient = useQueryClient();
-    
+
     return trpc.publications.update.useMutation({
         onMutate: async (variables) => {
             // Cancel any outgoing refetches to avoid overwriting optimistic update
             await utils.publications.getAll.cancel();
             await utils.publications.getById.cancel({ id: variables.id });
-            
+
             // Snapshot the previous values
             const previousPublicationDetail = utils.publications.getById.getData({ id: variables.id });
             const previousPublications = utils.publications.getAll.getData();
-            
+
             // Optimistically update the publication in cache
             if (previousPublicationDetail) {
                 utils.publications.getById.setData(
@@ -296,7 +297,7 @@ export const useUpdatePublication = () => {
                     }
                 );
             }
-            
+
             // Optimistically update in lists
             utils.publications.getAll.setData(
                 (old) => {
@@ -311,7 +312,7 @@ export const useUpdatePublication = () => {
                     };
                 }
             );
-            
+
             return { previousPublicationDetail, previousPublications };
         },
         onError: (_err, variables, context) => {
@@ -327,11 +328,11 @@ export const useUpdatePublication = () => {
             // Invalidate and refetch publications lists to get real data
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
-            
+
             // Invalidate and refetch specific publication
             await utils.publications.getById.invalidate({ id: variables.id });
             await utils.publications.getById.refetch({ id: variables.id });
-            
+
             // Invalidate and refetch community feed if we have communityId
             const communityId = result?.communityId || variables.communityId;
             if (communityId) {
@@ -393,21 +394,21 @@ export const useRejectForward = () => {
 export const useDeletePublication = () => {
     const utils = trpc.useUtils();
     const queryClient = useQueryClient();
-    
+
     return trpc.publications.delete.useMutation({
         onSuccess: async (_result, variables) => {
             // Invalidate and refetch publications lists
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
-            
+
             // Invalidate deleted publications query (so it appears in deleted tab for leads)
             // We need to get the communityId to invalidate the correct query
             // Since we don't have it in variables, we'll do a broad invalidation
             await utils.publications.getDeleted.invalidate();
-            
+
             // Remove the deleted publication from cache (but keep it in deleted query)
             utils.publications.getById.setData({ id: variables.id }, undefined);
-            
+
             // Invalidate infinite queries (publication might have been in a community feed)
             queryClient.invalidateQueries({
                 queryKey: queryKeys.publications.all,

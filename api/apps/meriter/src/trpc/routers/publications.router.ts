@@ -1,7 +1,9 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
+import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+
+const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
@@ -290,7 +292,7 @@ export const publicationsRouter = router({
       const doc = await ctx.connection.db!
         .collection('publications')
         .findOne({ id: input.id });
-      
+
       const editHistory = (doc as any)?.editHistory || [];
       const editorIds = editHistory.map((entry: any) => entry.editedBy);
       const uniqueEditorIds = [...new Set(editorIds)];
@@ -300,7 +302,7 @@ export const publicationsRouter = router({
       // Batch fetch users and communities
       const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : []), ...uniqueEditorIds];
       const [usersMap, communitiesMap, permissions] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
+        ctx.userEnrichmentService.batchFetchUsers(userIds as string[]),
         ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
         ctx.permissionsHelperService.calculatePublicationPermissions(ctx.user?.id || null, input.id),
       ]);
@@ -317,7 +319,7 @@ export const publicationsRouter = router({
       mappedPublication.forwardTargetCommunityId = (doc as any)?.forwardTargetCommunityId || undefined;
       mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
       mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
-      
+
       // Enrich edit history with user data
       if (editHistory && editHistory.length > 0) {
         mappedPublication.editHistory = editHistory.map((entry: any) => {
@@ -332,7 +334,7 @@ export const publicationsRouter = router({
             // Fallback: try to parse as date
             editedAtString = new Date(entry.editedAt).toISOString();
           }
-          
+
           return {
             editedBy: entry.editedBy,
             editedAt: editedAtString,
@@ -346,10 +348,9 @@ export const publicationsRouter = router({
       } else {
         mappedPublication.editHistory = [];
       }
-      
       // Add permissions to response
       mappedPublication.permissions = permissions;
-      
+
       // Add withdrawals data
       let totalWithdrawn = 0;
       try {
@@ -363,7 +364,7 @@ export const publicationsRouter = router({
       mappedPublication.withdrawals = {
         totalWithdrawn,
       };
-      
+
       return mappedPublication;
     }),
 
@@ -540,15 +541,15 @@ export const publicationsRouter = router({
 
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
-      
+
       // Extract payment amounts
       const quotaAmount = input.quotaAmount ?? 0;
       const walletAmount = input.walletAmount ?? 0;
-      
+
       // Default to postCost quota if neither is specified (backward compatibility)
       const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? postCost : quotaAmount;
       const effectiveWalletAmount = walletAmount;
-      
+
       // Validate payment (skip for future-vision communities and if cost is 0)
       if (community.typeTag !== 'future-vision' && postCost > 0) {
         // Validate that at least one payment method is provided
@@ -679,7 +680,7 @@ export const publicationsRouter = router({
       if (updateData.imageUrl === null) {
         updateData.imageUrl = undefined;
       }
-      
+
       const publication = await ctx.publicationService.updatePublication(
         input.id,
         ctx.user.id,
@@ -995,8 +996,8 @@ export const publicationsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if fake data mode is enabled
-             const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
-             if (!fakeDataMode) {
+      const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
+      if (!fakeDataMode) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Fake data mode is not enabled',
@@ -1143,7 +1144,7 @@ export const publicationsRouter = router({
 
       const sourceCommunityId = publication.getCommunityId.getValue();
       const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
-      
+
       // Validate: must be in a team group
       if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
         throw new TRPCError({
@@ -1274,7 +1275,7 @@ export const publicationsRouter = router({
 
       const sourceCommunityId = publication.getCommunityId.getValue();
       const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
-      
+
       // Validate: must be in a team group
       if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
         throw new TRPCError({
@@ -1347,7 +1348,6 @@ export const publicationsRouter = router({
           title: (publicationDoc as any)?.title,
           description: (publicationDoc as any)?.description,
           hashtags: (publicationDoc as any)?.hashtags || [],
-          imageUrl: (publicationDoc as any)?.imageUrl,
           images: (publicationDoc as any)?.images,
           videoUrl: (publicationDoc as any)?.videoUrl,
           beneficiaryId: originalBeneficiaryId,
@@ -1386,7 +1386,7 @@ export const publicationsRouter = router({
       }
 
       const sourceCommunityId = publication.getCommunityId.getValue();
-      
+
       // Get publication document to check forward status
       const publicationDoc = await ctx.publicationService.getPublicationDocument(publicationId);
       if (!publicationDoc || publicationDoc.forwardStatus !== 'pending') {

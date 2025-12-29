@@ -776,7 +776,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           >
             <Button
               variant="outline"
-              size="md"
+              size="default"
               onClick={handleResetDailyQuota}
               disabled={resetDailyQuota.isPending}
               className="rounded-xl active:scale-[0.98]"

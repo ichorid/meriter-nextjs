@@ -35,7 +35,7 @@ export class CommunityFeedService {
     private readonly pollService: PollService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-  ) {}
+  ) { }
 
   async getCommunityFeed(
     communityId: string,
@@ -97,12 +97,13 @@ export class CommunityFeedService {
       isFutureVision
         ? Promise.resolve([])
         : this.pollService.getPollsByCommunity(
-            communityId,
-            fetchLimit,
-            skip,
-            sortBy,
-            search,
-          ),
+
+          communityId,
+          fetchLimit,
+          skip,
+          sortBy,
+          search,
+        ),
     ]);
 
     // Transform to unified feed items
@@ -187,8 +188,7 @@ export class CommunityFeedService {
           postType: snapshot.postType || 'basic',
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
-          imageUrl: snapshot.imageUrl || undefined,
-          images: snapshot.images || undefined,
+          images: pub.getImages && pub.getImages.length > 0 ? pub.getImages : undefined,
           impactArea: snapshot.impactArea || undefined,
           stage: snapshot.stage || undefined,
           beneficiaries: snapshot.beneficiaries && snapshot.beneficiaries.length > 0 ? snapshot.beneficiaries : undefined,

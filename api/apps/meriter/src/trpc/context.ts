@@ -118,7 +118,7 @@ export async function createContext(opts: CreateContextOptions) {
   const cookieHeader = req.headers?.cookie;
   const jwtCookie = req.cookies?.jwt;
   const cookieKeys = req.cookies ? Object.keys(req.cookies) : [];
-  
+
   logger.debug(
     `[AUTH-DEBUG] Cookie parser status: hasCookies=${hasCookies}, cookieHeader exists=${!!cookieHeader}, cookieHeader length=${cookieHeader?.length || 0}, cookieKeys=[${cookieKeys.join(', ')}]`
   );

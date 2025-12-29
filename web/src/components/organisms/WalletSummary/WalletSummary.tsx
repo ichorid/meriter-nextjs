@@ -31,7 +31,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
   currency,
 }) => {
   const total = totalBalance || wallets.reduce((sum, w) => sum + w.balance, 0);
-  
+
   return (
     <Card>
       <CardHeader>
@@ -44,7 +44,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="p-6 pt-0">
         <div className="space-y-3">
           {wallets.length === 0 ? (
@@ -73,7 +73,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2">
                   {onTopup && (
                     <Button

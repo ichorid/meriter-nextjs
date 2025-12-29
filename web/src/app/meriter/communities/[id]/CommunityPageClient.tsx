@@ -16,27 +16,27 @@ import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHer
 import { Loader2, Filter, X, ArrowUp, Coins, Search } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
-  IMPACT_AREAS,
-  BENEFICIARIES,
-  METHODS,
-  STAGES,
-  HELP_NEEDED,
-  type ImpactArea,
-  type Beneficiary,
-  type Method,
-  type Stage,
-  type HelpNeeded,
+    IMPACT_AREAS,
+    BENEFICIARIES,
+    METHODS,
+    STAGES,
+    HELP_NEEDED,
+    type ImpactArea,
+    type Beneficiary,
+    type Method,
+    type Stage,
+    type HelpNeeded,
 } from '@/lib/constants/taxonomy';
 import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from '@/components/ui/shadcn/select';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -48,6 +48,8 @@ import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
+import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
+import { useCommunityPolling } from '@/hooks/useCommunityPolling';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
@@ -64,11 +66,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
     const {
-      translateImpactArea,
-      translateStage,
-      translateBeneficiary,
-      translateMethod,
-      translateHelpNeeded,
+        translateImpactArea,
+        translateStage,
+        translateBeneficiary,
+        translateMethod,
+        translateHelpNeeded,
     } = useTaxonomyTranslations();
 
     // Get the post parameter from URL for deep linking
@@ -221,6 +223,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
+    // Enable periodic polling for this community (refresh content and quota every 30s)
+    useCommunityPolling(chatId);
+
     // Fetch all communities to find the future-vision community when on marathon-of-good
     // This must be called before calculating futureVisionCommunityId
     const { data: communitiesData } = useCommunities();
@@ -274,6 +279,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         helpNeeded: fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
     });
 
+    // Fetch deleted publications (will only return data if user is lead)
+    // Hook is called here so it's available for useEffect/useMemo below
+    // 403 errors are suppressed by retry: false in the hook
+    const {
+        data: deletedData,
+        fetchNextPage: fetchNextDeletedPage,
+        hasNextPage: hasNextDeletedPage,
+        isFetchingNextPage: isFetchingNextDeletedPage,
+        error: _deletedErr
+    } = useInfiniteDeletedPublications(chatId, 20);
     // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
     useEffect(() => {
         if (!hasNextPage) {
@@ -511,7 +526,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Helper function to toggle items in array
     const toggleInArray = <T,>(arr: T[], value: T): T[] => {
-      return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
+        return arr.includes(value) ? arr.filter((x) => x !== value) : [...arr, value];
     };
 
     // Publications are already filtered server-side (tag, search, taxonomy filters)
@@ -540,9 +555,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             stickyHeader={
-                <CommunityTopBar 
-                    communityId={chatId} 
-                    asStickyHeader={true} 
+                <CommunityTopBar
+                    communityId={chatId}
+                    asStickyHeader={true}
                     futureVisionCommunityId={futureVisionCommunityId}
                     showQuotaInHeader={showQuotaInHeader}
                     quotaData={showQuotaInHeader ? {
@@ -568,7 +583,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     />
                     {/* Quota and Permanent Merits Indicators */}
                     {(canEarnPermanentMerits || hasQuota) && (
-                        <div 
+                        <div
                             ref={quotaIndicatorRef}
                             id="quota-indicator"
                             className="flex items-center gap-4 mt-3 px-4 py-2 bg-base-200/50 rounded-lg"
@@ -675,264 +690,264 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             )}
 
             {/* Publications Content */}
-            <div className="space-y-4">
-                    {/* Taxonomy Filters */}
-                    <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                                {/* Search Button */}
+            <div className="space-y-4 pb-24">
+                {/* Taxonomy Filters */}
+                <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            {/* Search Button */}
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowSearchModal(true)}
+                                className="rounded-xl active:scale-[0.98] px-2"
+                                aria-label="Search"
+                                title="Search"
+                            >
+                                <Search size={18} className="text-base-content/70" />
+                            </Button>
+
+                            {/* Sort Toggle */}
+                            <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
+                                <SortToggle
+                                    value={sortBy as 'recent' | 'voted'}
+                                    onChange={handleSortChange}
+                                    compact={true}
+                                />
+                            </div>
+
+                            <Filter className="h-4 w-4" />
+                            <span className="text-sm font-medium">Filters</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setShowSearchModal(true)}
-                                    className="rounded-xl active:scale-[0.98] px-2"
-                                    aria-label="Search"
-                                    title="Search"
+                                    onClick={() => {
+                                        setFImpactArea('any');
+                                        setFStage('any');
+                                        setFBeneficiaries([]);
+                                        setFMethods([]);
+                                        setFHelpNeeded([]);
+                                        setBOpenFilters(false);
+                                        setBOpenBeneficiaries(false);
+                                        setBOpenMethods(false);
+                                        setBOpenHelp(false);
+                                    }}
+                                    className="gap-2"
                                 >
-                                    <Search size={18} className="text-base-content/70" />
+                                    <X className="h-4 w-4" /> Reset
                                 </Button>
-                                
-                                {/* Sort Toggle */}
-                                <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
-                                    <SortToggle
-                                        value={sortBy as 'recent' | 'voted'}
-                                        onChange={handleSortChange}
-                                        compact={true}
-                                    />
-                                </div>
+                            )}
+                            <Button
+                                variant={bOpenFilters ? 'secondary' : 'outline'}
+                                size="sm"
+                                onClick={() => setBOpenFilters((s) => !s)}
+                            >
+                                {bOpenFilters ? 'Hide' : 'Show'}
+                            </Button>
+                        </div>
+                    </div>
 
-                                <Filter className="h-4 w-4" />
-                                <span className="text-sm font-medium">Filters</span>
+                    {/* Compact active filters summary when collapsed */}
+                    {!bOpenFilters && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
+                            {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
+                            {fBeneficiaries.slice(0, 2).map((x) => (
+                                <Badge key={x} variant="secondary">{x}</Badge>
+                            ))}
+                            {fMethods.slice(0, 2).map((x) => (
+                                <Badge key={x} variant="secondary">{x}</Badge>
+                            ))}
+                            {fHelpNeeded.slice(0, 2).map((x) => (
+                                <Badge key={x} variant="secondary">{x}</Badge>
+                            ))}
+                            {(fBeneficiaries.length > 2 || fMethods.length > 2 || fHelpNeeded.length > 2) && (
+                                <Badge variant="outline" className="font-normal">+more</Badge>
+                            )}
+                        </div>
+                    )}
+
+                    {bOpenFilters && (
+                        <>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="space-y-2">
+                                    <Label>Impact Area</Label>
+                                    <Select
+                                        value={fImpactArea}
+                                        onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="any">Any</SelectItem>
+                                            {(IMPACT_AREAS || []).map((x) => (
+                                                <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Stage</Label>
+                                    <Select
+                                        value={fStage}
+                                        onValueChange={(v) => setFStage(v as Stage | 'any')}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="any">Any</SelectItem>
+                                            {(STAGES || []).map((x) => (
+                                                <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+
+                            <Separator />
+
+                            <CollapsibleSection
+                                title={`Beneficiaries (${fBeneficiaries.length})`}
+                                open={bOpenBeneficiaries}
+                                setOpen={setBOpenBeneficiaries}
+                                summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
+                                right={
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => {
-                                            setFImpactArea('any');
-                                            setFStage('any');
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             setFBeneficiaries([]);
-                                            setFMethods([]);
-                                            setFHelpNeeded([]);
-                                            setBOpenFilters(false);
-                                            setBOpenBeneficiaries(false);
-                                            setBOpenMethods(false);
-                                            setBOpenHelp(false);
                                         }}
-                                        className="gap-2"
+                                        disabled={!fBeneficiaries.length}
                                     >
-                                        <X className="h-4 w-4" /> Reset
+                                        Clear
                                     </Button>
-                                )}
-                                <Button
-                                    variant={bOpenFilters ? 'secondary' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setBOpenFilters((s) => !s)}
-                                >
-                                    {bOpenFilters ? 'Hide' : 'Show'}
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Compact active filters summary when collapsed */}
-                        {!bOpenFilters && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
-                            <div className="flex flex-wrap gap-2 pt-1">
-                                {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
-                                {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
-                                {fBeneficiaries.slice(0, 2).map((x) => (
-                                    <Badge key={x} variant="secondary">{x}</Badge>
-                                ))}
-                                {fMethods.slice(0, 2).map((x) => (
-                                    <Badge key={x} variant="secondary">{x}</Badge>
-                                ))}
-                                {fHelpNeeded.slice(0, 2).map((x) => (
-                                    <Badge key={x} variant="secondary">{x}</Badge>
-                                ))}
-                                {(fBeneficiaries.length > 2 || fMethods.length > 2 || fHelpNeeded.length > 2) && (
-                                    <Badge variant="outline" className="font-normal">+more</Badge>
-                                )}
-                            </div>
-                        )}
-
-                        {bOpenFilters && (
-                            <>
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label>Impact Area</Label>
-                                        <Select
-                                            value={fImpactArea}
-                                            onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="any">Any</SelectItem>
-                                                {(IMPACT_AREAS || []).map((x) => (
-                                                    <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Stage</Label>
-                                        <Select
-                                            value={fStage}
-                                            onValueChange={(v) => setFStage(v as Stage | 'any')}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="any">Any</SelectItem>
-                                                {(STAGES || []).map((x) => (
-                                                    <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <Separator />
-
-                                <CollapsibleSection
-                                    title={`Beneficiaries (${fBeneficiaries.length})`}
-                                    open={bOpenBeneficiaries}
-                                    setOpen={setBOpenBeneficiaries}
-                                    summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
-                                    right={
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFBeneficiaries([]);
-                                            }}
-                                            disabled={!fBeneficiaries.length}
-                                        >
-                                            Clear
-                                        </Button>
-                                    }
-                                >
-                                    <div className="pt-1">
-                                        <Checklist
-                                            options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
-                                            selected={fBeneficiaries}
-                                            translateValue={translateBeneficiary}
-                                            onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
-                                        />
-                                    </div>
-                                </CollapsibleSection>
-
-                                <CollapsibleSection
-                                    title={`Methods (${fMethods.length})`}
-                                    open={bOpenMethods}
-                                    setOpen={setBOpenMethods}
-                                    summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
-                                    right={
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFMethods([]);
-                                            }}
-                                            disabled={!fMethods.length}
-                                        >
-                                            Clear
-                                        </Button>
-                                    }
-                                >
-                                    <div className="pt-1">
-                                        <Checklist
-                                            options={Array.isArray(METHODS) ? [...METHODS] : []}
-                                            selected={fMethods}
-                                            translateValue={translateMethod}
-                                            onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
-                                        />
-                                    </div>
-                                </CollapsibleSection>
-
-                                <CollapsibleSection
-                                    title={`Help needed (${fHelpNeeded.length})`}
-                                    open={bOpenHelp}
-                                    setOpen={setBOpenHelp}
-                                    summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
-                                    right={
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setFHelpNeeded([]);
-                                            }}
-                                            disabled={!fHelpNeeded.length}
-                                        >
-                                            Clear
-                                        </Button>
-                                    }
-                                >
-                                    <div className="pt-1">
-                                        <Checklist
-                                            options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
-                                            selected={fHelpNeeded}
-                                            translateValue={translateHelpNeeded}
-                                            onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
-                                        />
-                                    </div>
-                                </CollapsibleSection>
-                            </>
-                        )}
-                    </div>
-
-                    {isAuthenticated &&
-                        filteredPublications
-                            .filter((p: FeedItem) => {
-                                if (p.type === 'publication') {
-                                    return !!p.content;
-                                } else if (p.type === 'poll') {
-                                    // Hide polls in future-vision communities
-                                    return comms?.typeTag !== 'future-vision';
                                 }
-                                return false;
-                            })
-                            .map((p) => {
-                                // Check if this post is selected (for comments or polls)
-                                const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
-                                    || !!(targetPollId && p.id === targetPollId);
+                            >
+                                <div className="pt-1">
+                                    <Checklist
+                                        options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
+                                        selected={fBeneficiaries}
+                                        translateValue={translateBeneficiary}
+                                        onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
+                                    />
+                                </div>
+                            </CollapsibleSection>
 
-                                return (
-                                    <div
-                                        key={p.id}
-                                        id={`post-${p.id}`}
-                                        className={
-                                            highlightedPostId === p.id
-                                                ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
-                                                : isSelected
-                                                    ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
-                                                    : 'hover:shadow-md transition-all duration-200 rounded-lg'
-                                        }
+                            <CollapsibleSection
+                                title={`Methods (${fMethods.length})`}
+                                open={bOpenMethods}
+                                setOpen={setBOpenMethods}
+                                summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
+                                right={
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFMethods([]);
+                                        }}
+                                        disabled={!fMethods.length}
                                     >
-                                        <PublicationCard
-                                            publication={p}
-                                            wallets={Array.isArray(wallets) ? wallets : []}
-                                            showCommunityAvatar={false}
-                                            isSelected={isSelected}
-                                        />
-                                    </div>
-                                );
-                            })}
+                                        Clear
+                                    </Button>
+                                }
+                            >
+                                <div className="pt-1">
+                                    <Checklist
+                                        options={Array.isArray(METHODS) ? [...METHODS] : []}
+                                        selected={fMethods}
+                                        translateValue={translateMethod}
+                                        onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
+                                    />
+                                </div>
+                            </CollapsibleSection>
 
-                    {/* Infinite scroll trigger */}
-                    <div ref={observerTarget} className="h-4" />
-
-                    {isFetchingNextPage && (
-                        <div className="flex justify-center py-4">
-                            <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
-                        </div>
+                            <CollapsibleSection
+                                title={`Help needed (${fHelpNeeded.length})`}
+                                open={bOpenHelp}
+                                setOpen={setBOpenHelp}
+                                summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
+                                right={
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFHelpNeeded([]);
+                                        }}
+                                        disabled={!fHelpNeeded.length}
+                                    >
+                                        Clear
+                                    </Button>
+                                }
+                            >
+                                <div className="pt-1">
+                                    <Checklist
+                                        options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
+                                        selected={fHelpNeeded}
+                                        translateValue={translateHelpNeeded}
+                                        onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
+                                    />
+                                </div>
+                            </CollapsibleSection>
+                        </>
                     )}
                 </div>
+
+                {isAuthenticated &&
+                    filteredPublications
+                        .filter((p: FeedItem) => {
+                            if (p.type === 'publication') {
+                                return !!p.content;
+                            } else if (p.type === 'poll') {
+                                // Hide polls in future-vision communities
+                                return comms?.typeTag !== 'future-vision';
+                            }
+                            return false;
+                        })
+                        .map((p) => {
+                            // Check if this post is selected (for comments or polls)
+                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                || !!(targetPollId && p.id === targetPollId);
+
+                            return (
+                                <div
+                                    key={p.id}
+                                    id={`post-${p.id}`}
+                                    className={
+                                        highlightedPostId === p.id
+                                            ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
+                                            : isSelected
+                                                ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                : 'hover:shadow-md transition-all duration-200 rounded-lg'
+                                    }
+                                >
+                                    <PublicationCard
+                                        publication={p}
+                                        wallets={Array.isArray(wallets) ? wallets : []}
+                                        showCommunityAvatar={false}
+                                        isSelected={isSelected}
+                                    />
+                                </div>
+                            );
+                        })}
+
+                {/* Infinite scroll trigger */}
+                <div ref={observerTarget} className="h-4" />
+
+                {isFetchingNextPage && (
+                    <div className="flex justify-center py-4">
+                        <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                    </div>
+                )}
+            </div>
 
             {/* Search Modal */}
             {showSearchModal && (

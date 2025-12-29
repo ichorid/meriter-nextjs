@@ -237,7 +237,7 @@ export const PublicationSchema = IdentifiableSchema.merge(
   type: z.enum(["text", "image", "video"]), // Медиа-тип (остается для обратной совместимости)
   hashtags: z.array(z.string()).default([]),
   metrics: PublicationMetricsSchema,
-  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(), // Array of images for gallery
   videoUrl: z.string().url().optional(),
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   authorDisplay: z.string().optional(),
@@ -365,8 +365,7 @@ export const CreatePublicationDtoSchema = z.object({
   type: z.enum(["text", "image", "video"]),
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
-  imageUrl: z.string().url().optional(),
-  images: z.array(z.string().url()).optional(),
+  images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
@@ -377,18 +376,17 @@ export const CreatePublicationDtoSchema = z.object({
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
-})
-  .refine(
-    (data) => {
-      const quota = data.quotaAmount ?? 0;
-      const wallet = data.walletAmount ?? 0;
-      // At least one must be >= 1, or both can be 0 for future-vision communities
-      return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
-    },
-    {
-      message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
-    }
-  )
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    // At least one must be >= 1, or both can be 0 for future-vision communities
+    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
+  },
+  {
+    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
+  }
+)
   .refine(
     (data) => {
       // Require impactArea and stage when postType is 'project'
@@ -528,7 +526,8 @@ export const UpdatePublicationDtoSchema = z.object({
   hashtags: z.array(z.string()).optional(),
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
+  imageUrl: z.string().url().optional().nullable(), // For backward compatibility
   // Taxonomy fields (can be updated)
   impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
   beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),

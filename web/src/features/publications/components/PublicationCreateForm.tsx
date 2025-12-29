@@ -14,11 +14,11 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Loader2 } from 'lucide-react';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { cn } from '@/lib/utils';
@@ -107,7 +107,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     return trimmed;
   };
   const isEditMode = !!initialData;
-  
+
   // In edit mode, we must have a publication ID.
   // Prefer the publicationId prop, but if missing, use initialData.id (which should always be present from API)
   const effectivePublicationId = publicationId || initialData?.id;
@@ -118,15 +118,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const isTeamCommunity = community?.typeTag === 'team';
   const isFutureVision = community?.typeTag === 'future-vision';
   const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
-  
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
-  
+
   // Check if payment is required (not future-vision and cost > 0)
   const requiresPayment = community?.typeTag !== 'future-vision' && postCost > 0;
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const walletBalance = wallet?.balance ?? 0;
-  
+
   // Automatic payment method selection: quota first, then wallet
   const willUseQuota = requiresPayment && quotaRemaining >= postCost;
   const willUseWallet = requiresPayment && quotaRemaining < postCost && walletBalance >= postCost;
@@ -145,8 +144,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   // Support both legacy single image and new multi-image
-  const initialImages = initialData?.imageUrl 
-    ? [initialData.imageUrl] 
+  const initialImages = initialData?.imageUrl
+    ? [initialData.imageUrl]
     : ((initialData as any)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
   // Derive isProject from postType instead of separate checkbox
@@ -362,7 +361,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           setIsSubmitting(false);
           return;
         }
-        
+
         // Update existing publication
         publication = await updatePublication.mutateAsync({
           id: normalizedPublicationId,
@@ -371,9 +370,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             description: description.trim(),
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags,
-            imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
-            // NOTE: backend UpdatePublicationDtoSchema is strict and currently does not support `images`.
-            // We intentionally only send `imageUrl` when editing.
+            images: images.length > 0 ? images : [], // Always send array, even if empty
             // Taxonomy fields (editable)
             impactArea: impactArea || undefined,
             beneficiaries,
@@ -386,7 +383,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         // Create new publication with automatic payment (quota first, then wallet)
         const quotaAmount = willUseQuota ? postCost : 0;
         const walletAmount = willUseWallet ? postCost : 0;
-        
+
         publication = await createPublication.mutateAsync({
           communityId,
           title: title.trim(),
@@ -396,8 +393,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           postType: finalPostType,
           isProject: finalPostType === 'project',
           hashtags,
-          imageUrl: images.length > 0 ? images[0] : undefined, // Legacy: use first image
-          images: images.length > 0 ? images : undefined, // New: support multiple images
+          images: images.length > 0 ? images : undefined, // Always use array
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
           impactArea: impactArea || undefined,
@@ -422,7 +418,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const postIdentifier = publication.slug || publication.id;
         router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
       }
-      
+
       // Don't reset state here - navigation will unmount component
       // If navigation doesn't happen, state will remain but that's okay since we're navigating away
     } catch (error: any) {
@@ -440,9 +436,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="flex-1 px-4 flex flex-col min-h-0">
       {/* Scrollable form content */}
-      <div className="flex-1 overflow-y-auto pb-24 min-h-0">
+      <div className="flex-1 overflow-x-visible overflow-y-auto pb-24 min-h-0">
         <div className="space-y-6">
           {/* Draft restore button */}
           {hasDraft && (
@@ -467,26 +463,25 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           )}
 
           {!isEditMode && requiresPayment && (
-            <div className={`p-3 rounded-lg border ${
-              hasInsufficientPayment
-                ? 'bg-red-50 border-red-200'
-                : 'bg-blue-50 border-blue-200'
-            }`}>
-                      {hasInsufficientPayment ? (
-                          <p className="text-red-700 text-sm">
-                              {t('insufficientPayment', { cost: postCost })}
-                          </p>
-                      ) : postCost > 0 ? (
-                          <p className="text-blue-700 text-sm">
-                              {willUseQuota 
-                                  ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
-                                  : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
-                          </p>
-                      ) : (
-                          <p className="text-blue-700 text-sm">
-                              {t('postIsFree')}
-                          </p>
-                      )}
+            <div className={`p-3 rounded-lg border ${hasInsufficientPayment
+              ? 'bg-red-50 border-red-200'
+              : 'bg-blue-50 border-blue-200'
+              }`}>
+              {hasInsufficientPayment ? (
+                <p className="text-red-700 text-sm">
+                  {t('insufficientPayment', { cost: postCost })}
+                </p>
+              ) : postCost > 0 ? (
+                <p className="text-blue-700 text-sm">
+                  {willUseQuota
+                    ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
+                    : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                </p>
+              ) : (
+                <p className="text-blue-700 text-sm">
+                  {t('postIsFree')}
+                </p>
+              )}
             </div>
           )}
 
@@ -721,7 +716,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     title,
                     description,
                     content: description,
-                    imageUrl: images.length > 0 ? images[0] : undefined,
                     images: images.length > 0 ? images : undefined,
                     isProject,
                     postType: postType,
@@ -752,7 +746,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       </div>
 
       {/* Sticky footer with action buttons */}
-      <div className="sticky bottom-0 z-10 bg-base-100 border-t border-brand-border shadow-lg mt-auto">
+      <div className="sticky bottom-0 z-10 pb-24 bg-base-100 border-t border-brand-border mt-auto">
         <div className="px-4 py-4 safe-area-inset-bottom">
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-2">

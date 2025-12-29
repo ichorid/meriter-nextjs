@@ -2,25 +2,34 @@ import type { Viewport } from 'next';
 import './globals.css';
 import { DEFAULT_LOCALE } from '@/i18n/request';
 import ClientRootLayout from './ClientRootLayout';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: {
+    template: 'Meriter / %s',
+    default: 'Meriter',
+  },
+  description: 'Meriter - Community Governance Platform',
+};
 
 export const viewport: Viewport = {
-    width: 'device-width',
-    initialScale: 1.0,
-    maximumScale: 1.0,
-    userScalable: false,
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false,
 };
 
 export default function RootLayout({
-    children,
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    return (
-        <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
-            <head>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
+  return (
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
 (function() {
   try {
     const stored = localStorage.getItem('theme');
@@ -40,11 +49,11 @@ export default function RootLayout({
   }
 })();
                         `,
-                    }}
-                />
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
 // Global chunk loading error handler
 (function() {
   // Handle script loading errors (chunk load failures)
@@ -112,20 +121,20 @@ export default function RootLayout({
   });
 })();
                         `,
-                    }}
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
-                    rel="stylesheet"
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-                    rel="stylesheet"
-                />
-            </head>
-            <body suppressHydrationWarning>
-                <ClientRootLayout>{children}</ClientRootLayout>
-            </body>
-        </html>
-    );
+          }}
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet"
+        />
+      </head>
+      <body suppressHydrationWarning>
+        <ClientRootLayout>{children}</ClientRootLayout>
+      </body>
+    </html>
+  );
 }

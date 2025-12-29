@@ -29,7 +29,7 @@ export class PermissionContextService {
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
-  ) {}
+  ) { }
 
   /**
    * Build context for a publication resource
@@ -45,7 +45,17 @@ export class PermissionContextService {
 
     const communityId = publication.getCommunityId.getValue();
     const authorId = publication.getAuthorId.getValue();
-    const isAuthor = String(authorId).trim() === String(userId).trim();
+
+    // Ensure accurate string comparison for IDs
+    const authorIdStr = (authorId as any) instanceof Object ? authorId.toString() : String(authorId);
+    const userIdStr = (userId as any) instanceof Object ? userId.toString() : String(userId);
+    const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+
+    // console.log(`[DEBUG_CTX] pubId=${publicationId} isAuthor=${isAuthor}`);
+    // console.log(`[DEBUG_CTX] authorId: type=${typeof authorId}, val=${authorId}, str=${authorIdStr}`);
+    // console.log(`[DEBUG_CTX] userId: type=${typeof userId}, val=${userId}, str=${userIdStr}`);
+
+    this.logger.debug(`[buildContextForPublication] pubId=${publicationId} isAuthor=${isAuthor} (${authorIdStr} vs ${userIdStr})`);
 
     const community = await this.communityService.getCommunity(communityId);
     const isTeamCommunity = community?.typeTag === 'team';
@@ -58,8 +68,8 @@ export class PermissionContextService {
 
     // Calculate days since creation
     const snapshot = publication.toSnapshot();
-    const createdAt = snapshot.createdAt instanceof Date 
-      ? snapshot.createdAt 
+    const createdAt = snapshot.createdAt instanceof Date
+      ? snapshot.createdAt
       : new Date(snapshot.createdAt);
     const now = new Date();
     const minutesSinceCreation = Math.floor(
@@ -73,7 +83,7 @@ export class PermissionContextService {
     );
 
     // Check team membership
-    const isTeamMember = isTeamCommunity 
+    const isTeamMember = isTeamCommunity
       ? await this.isUserTeamMember(userId, communityId)
       : false;
 
@@ -110,7 +120,11 @@ export class PermissionContextService {
     }
 
     const authorId = comment.getAuthorId.getValue();
-    const isAuthor = String(authorId).trim() === String(userId).trim();
+
+    // Ensure accurate string comparison for IDs
+    const authorIdStr = String(authorId);
+    const userIdStr = String(userId);
+    const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
 
     const communityId = await this.commentService.resolveCommentCommunityId(commentId);
     const community = await this.communityService.getCommunity(communityId);
@@ -134,7 +148,7 @@ export class PermissionContextService {
     );
 
     // Check team membership
-    const isTeamMember = isTeamCommunity 
+    const isTeamMember = isTeamCommunity
       ? await this.isUserTeamMember(userId, communityId)
       : false;
 
@@ -166,7 +180,11 @@ export class PermissionContextService {
 
     const communityId = poll.getCommunityId;
     const authorId = poll.getAuthorId;
-    const isAuthor = String(authorId).trim() === String(userId).trim();
+
+    // Ensure accurate string comparison for IDs
+    const authorIdStr = String(authorId);
+    const userIdStr = String(userId);
+    const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
 
     const community = await this.communityService.getCommunity(communityId);
     const isTeamCommunity = community?.typeTag === 'team';
@@ -178,7 +196,7 @@ export class PermissionContextService {
     );
 
     // Check team membership
-    const isTeamMember = isTeamCommunity 
+    const isTeamMember = isTeamCommunity
       ? await this.isUserTeamMember(userId, communityId)
       : false;
 
@@ -208,7 +226,7 @@ export class PermissionContextService {
     }
 
     const isTeamCommunity = community.typeTag === 'team';
-    const isTeamMember = isTeamCommunity 
+    const isTeamMember = isTeamCommunity
       ? await this.isUserTeamMember(userId, communityId)
       : false;
 

@@ -22,15 +22,15 @@ import * as cookieParser from 'cookie-parser';
 
 describe('Special Groups Merit Accumulation', () => {
   jest.setTimeout(60000);
-  
+
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let connection: Connection;
-  
+
   let communityService: CommunityService;
   let publicationService: PublicationService;
   let walletService: WalletService;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -66,10 +66,10 @@ describe('Special Groups Merit Accumulation', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    
+
     // Add cookie parser middleware (same as main.ts)
     app.use(cookieParser());
-    
+
     // Register tRPC middleware (same as main.ts)
     const trpcService = app.get(TrpcService);
     const trpcMiddleware = createExpressMiddleware({
@@ -80,7 +80,7 @@ describe('Special Groups Merit Accumulation', () => {
       },
     });
     app.use('/trpc', trpcMiddleware);
-    
+
     await app.init();
 
     // Wait for onModuleInit to complete
@@ -106,6 +106,7 @@ describe('Special Groups Merit Accumulation', () => {
     marathonCommunityId = uid();
     visionCommunityId = uid();
     regularCommunityId = uid();
+
   });
 
   beforeEach(async () => {
@@ -345,7 +346,7 @@ describe('Special Groups Merit Accumulation', () => {
         id: regularPubId,
         amount: 5,
       });
-      
+
       expect(result.amount).toBe(5);
     });
   });
@@ -376,7 +377,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
         expect(fvWallet.getBalance()).toBe(0);
@@ -413,7 +414,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Check that Future Vision wallet was credited
       let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      
+
       if (!fvWallet) {
         await new Promise(resolve => setTimeout(resolve, 500));
         fvWallet = await walletService.getWallet(authorId, fvCommunityId);
@@ -428,7 +429,7 @@ describe('Special Groups Merit Accumulation', () => {
         await new Promise(resolve => setTimeout(resolve, 500));
         fvWallet = await walletService.getWallet(authorId, fvCommunityId);
       }
-      
+
       expect(fvWallet).toBeTruthy();
       const transaction = await transactionModel.findOne({
         walletId: fvWallet.getId.getValue(),
@@ -491,7 +492,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
         expect(fvWallet.getBalance()).toBe(0);
@@ -548,7 +549,7 @@ describe('Special Groups Merit Accumulation', () => {
       const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
       const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
       const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
         expect(fvWallet.getBalance()).toBe(0);
@@ -601,7 +602,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
         expect(fvWallet.getBalance()).toBe(0);
@@ -701,7 +702,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
       const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (fvWallet) {
         expect(fvWallet.getBalance()).toBe(0);
@@ -806,7 +807,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Check that regular community wallet was NOT automatically credited (automatic crediting is disabled)
       const wallet = await walletService.getWallet(authorId, regularCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (wallet) {
         expect(wallet.getBalance()).toBe(0);
@@ -837,7 +838,7 @@ describe('Special Groups Merit Accumulation', () => {
 
       // Check that wallet was NOT automatically credited (automatic crediting is disabled)
       const wallet = await walletService.getWallet(authorId, regularCommunityId);
-      
+
       // Wallet should not exist or have 0 balance (no automatic crediting)
       if (wallet) {
         expect(wallet.getBalance()).toBe(0);

@@ -16,6 +16,7 @@ interface Publication {
   content?: string;
   createdAt: string;
   imageUrl?: string;
+  images?: string[]; // Add images array to interface
   metrics?: {
     score?: number;
   };
@@ -65,8 +66,16 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   const isProject = (publication as any).isProject;
   const coverImageUrl = publication.imageUrl || (publication as any).imageUrl;
   const galleryImages = (publication as any).images || [];
-  
-  const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
+
+  // FRONTEND DEBUG
+  console.log('[PublicationContent DEBUG]', {
+    id: publication.id,
+    hasImages: !!(publication as any).images,
+    imagesLength: ((publication as any).images || []).length,
+    galleryImages,
+    coverImageUrl
+  });
+
   const content = typeof publication.meta?.comment === 'string'
     ? publication.meta.comment
     : typeof publication.content === 'string'
@@ -93,19 +102,13 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         <ImageGalleryDisplay
           images={[coverImageUrl]}
           altPrefix={title ? `${title} - Cover` : 'Publication cover'}
-          initialIndex={viewingImageIndex}
-          onClose={() => setViewingImageIndex(null)}
-          onImageClick={(index) => setViewingImageIndex(index)}
         />
       )}
-      
+
       {galleryImages.length > 0 && (
         <ImageGalleryDisplay
           images={galleryImages}
           altPrefix={title ? `${title} - Image` : 'Publication image'}
-          initialIndex={viewingImageIndex}
-          onClose={() => setViewingImageIndex(null)}
-          onImageClick={(index) => setViewingImageIndex(index)}
         />
       )}
       {isProject && (

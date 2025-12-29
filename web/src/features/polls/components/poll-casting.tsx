@@ -58,7 +58,7 @@ export const PollCasting = ({
     // Get user role to check if quota can be used
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const { data: community } = useCommunity(communityId || '');
-    
+
     // Check if user can use quota (participants/leads/superadmin)
     const canUseQuota = useMemo(() => {
         if (!user?.id || !communityId || !community) return false;
@@ -108,7 +108,7 @@ export const PollCasting = ({
         // Calculate quota and wallet breakdown
         let quotaAmount = 0;
         let walletAmount = 0;
-        
+
         if (canUseQuota && quotaRemaining > 0) {
             // Use quota first, then wallet
             quotaAmount = Math.min(validation.numValue, quotaRemaining);
@@ -356,7 +356,7 @@ export const PollCasting = ({
                     <div className="mt-4">
                         <Button
                             variant="default"
-                            size="md"
+                            size="default"
                             className="rounded-xl active:scale-[0.98] w-full"
                             onClick={handleCastPoll}
                             disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}

@@ -5,6 +5,12 @@ interface CreatePollPageProps {
   params: Promise<{ id: string }>;
 }
 
+export async function generateMetadata() {
+  return {
+    title: 'Create Poll',
+  };
+}
+
 export default async function CreatePollPage({ params }: CreatePollPageProps) {
   const { id } = await params;
   return (
