@@ -336,7 +336,7 @@ export default (): AppConfig => {
     sms: {
       enabled: env.SMS_ENABLED === 'true',
       provider: env.SMS_PROVIDER || 'smsru',
-      apiUrl: env.SMS_API_URL || 'https://sms.ru',
+      apiUrl: env.SMS_API_URL || 'https://sms.ru/sms',
       apiId: env.SMS_API_ID,
       from: env.SMS_FROM || 'Meriter',
       testMode: env.SMS_TEST_MODE === 'true' || nodeEnv !== 'production',

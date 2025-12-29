@@ -9,8 +9,12 @@ import axios from 'axios';
 /**
  * Abstract SMS Provider Interface
  */
+interface SmsProviderOptions {
+    ip?: string;
+}
+
 interface SmsProvider {
-    sendSms(phoneNumber: string, message: string): Promise<void>;
+    sendSms(phoneNumber: string, message: string, options?: SmsProviderOptions): Promise<void>;
 }
 
 /**
@@ -25,27 +29,44 @@ class SmsRuProvider implements SmsProvider {
     private readonly testMode: boolean;
 
     constructor(config: ConfigService<AppConfig>) {
-        this.apiUrl = config.get('sms')?.apiUrl || 'https://sms.ru';
-        this.apiId = config.get('sms')?.apiId || '';
-        this.from = config.get('sms')?.from || 'Meriter';
-        this.testMode = config.get('sms')?.testMode ?? true;
+        const smsConfig = config.get('sms');
+        if (!smsConfig) {
+            throw new Error('SMS configuration is missing');
+        }
+
+        if (!smsConfig.apiUrl) {
+            throw new Error('SMS API URL is not configured');
+        }
+
+        this.apiUrl = smsConfig.apiUrl;
+        this.apiId = smsConfig.apiId || '';
+        this.from = smsConfig.from || '';
+        this.testMode = smsConfig.testMode ?? true;
 
         if (!this.apiId && !this.testMode) {
             throw new Error('SMS.ru API ID is required when not in test mode');
         }
     }
 
-    async sendSms(phoneNumber: string, message: string): Promise<void> {
-        const url = `${this.apiUrl}/sms/send`;
+    async sendSms(phoneNumber: string, message: string, options?: SmsProviderOptions): Promise<void> {
+        // apiUrl is expected to include /sms base (e.g. https://sms.ru/sms)
+        const url = `${this.apiUrl}/send`;
 
-        const params = {
+        const params: Record<string, string> = {
             api_id: this.apiId,
             to: phoneNumber.replace('+', ''), // SMS.ru expects phone without +
             msg: message,
-            from: this.from,
             json: '1', // JSON response
             test: this.testMode ? '1' : '0',
         };
+
+        if (this.from) {
+            params.from = this.from;
+        }
+
+        if (options?.ip) {
+            params.ip = options.ip;
+        }
 
         try {
             const response = await axios.get(url, { params });
@@ -55,27 +76,21 @@ class SmsRuProvider implements SmsProvider {
                 throw new Error(`Failed to send SMS: ${response.data.status_text || 'Unknown error'}`);
             }
 
+            // Check specific status for the phone number
+            // The key in response.data.sms matches the 'to' parameter (without +)
+            const phoneKey = params.to;
+            const smsStatus = response.data.sms?.[phoneKey];
+
+            if (smsStatus && smsStatus.status !== 'OK') {
+                this.logger.error(`SMS.ru delivery failed for ${phoneNumber}: ${JSON.stringify(smsStatus)}`);
+                throw new Error(smsStatus.status_text || 'SMS delivery failed');
+            }
+
             this.logger.log(`SMS sent successfully to ${phoneNumber} (test mode: ${this.testMode})`);
         } catch (error) {
             this.logger.error(`Failed to send SMS via SMS.ru: ${error}`);
             throw error;
         }
-    }
-}
-
-/**
- * Twilio Provider Implementation (placeholder for future)
- */
-class TwilioProvider implements SmsProvider {
-    private readonly logger = new Logger(TwilioProvider.name);
-
-    constructor(_config: ConfigService<AppConfig>) {
-        // TODO: Initialize Twilio client when needed
-        this.logger.warn('Twilio provider not yet implemented');
-    }
-
-    async sendSms(_phoneNumber: string, _message: string): Promise<void> {
-        throw new Error('Twilio provider not yet implemented');
     }
 }
 
@@ -102,15 +117,10 @@ export class SmsProviderService {
         const providerName = smsConfig?.provider || 'smsru';
 
         // Initialize provider based on config
-        switch (providerName) {
-            case 'smsru':
-                this.provider = new SmsRuProvider(this.configService);
-                break;
-            case 'twilio':
-                this.provider = new TwilioProvider(this.configService);
-                break;
-            default:
-                throw new Error(`Unknown SMS provider: ${providerName}`);
+        if (providerName === 'smsru') {
+            this.provider = new SmsRuProvider(this.configService);
+        } else {
+            throw new Error(`Unknown SMS provider: ${providerName}`);
         }
 
         this.otpLength = smsConfig?.otpLength ?? 6;
@@ -169,7 +179,7 @@ export class SmsProviderService {
      * Send OTP to phone number
      * Returns expiration time and next resend time
      */
-    async sendOtp(phoneNumber: string): Promise<{
+    async sendOtp(phoneNumber: string, options?: SmsProviderOptions): Promise<{
         expiresIn: number;
         canResendAt: Date;
     }> {
@@ -199,7 +209,7 @@ export class SmsProviderService {
 
         // Send SMS
         const message = `Your Meriter verification code: ${otpCode}. Valid for ${this.otpExpiryMinutes} minutes.`;
-        await this.provider.sendSms(phoneNumber, message);
+        await this.provider.sendSms(phoneNumber, message, options);
 
         this.logger.log(`OTP sent to ${phoneNumber}, expires at ${expiresAt.toISOString()}`);
 

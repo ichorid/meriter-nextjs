@@ -208,7 +208,7 @@ export function SmsAuthDialog({
                                 size="sm"
                                 onClick={handleBack}
                                 disabled={isLoading}
-                                className="p-0 h-auto hover:bg-transparent absolute left-0"
+                                className="absolute left-0 top-0 p-0 h-auto hover:bg-transparent"
                             >
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
@@ -216,9 +216,7 @@ export function SmsAuthDialog({
                         {t("title")}
                     </DialogTitle>
                     <DialogDescription>
-                        {step === "phone"
-                            ? t("description")
-                            : t("otpDescription")}
+                        {step === "phone" ? t("description") : t("otpDescription")}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -234,27 +232,18 @@ export function SmsAuthDialog({
                                     value={phoneNumber}
                                     onChange={(e) => {
                                         let value = e.target.value;
-
-                                        // Auto-add + prefix if user starts typing without it
-                                        if (value.length > 0 && !value.startsWith('+')) {
-                                            value = '+' + value;
+                                        // E.164 format: only digits and +
+                                        value = value.replace(/[^\d+]/g, '');
+                                        // Auto-format: ensure leading +
+                                        if (value && !value.startsWith('+')) {
+                                            value = '+' + value.replace(/^\+/g, '');
                                         }
-
-                                        // Only allow digits and + at the start
-                                        const cleaned = value.replace(/[^+\d]/g, '');
-
-                                        // Ensure + is only at the start
-                                        if (cleaned.length > 0) {
-                                            const digits = cleaned.replace(/\+/g, '');
-                                            setPhoneNumber('+' + digits);
-                                        } else {
-                                            setPhoneNumber('+');
-                                        }
+                                        setPhoneNumber(value);
                                         setError("");
                                     }}
                                     placeholder={t("phonePlaceholder")}
                                     disabled={isLoading}
-                                    className="h-11 rounded-xl focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
+                                    className="h-11 rounded-xl focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !isLoading) {
@@ -306,7 +295,7 @@ export function SmsAuthDialog({
                                     }}
                                     placeholder={t("otpPlaceholder")}
                                     disabled={isLoading}
-                                    className="h-11 rounded-xl text-center text-2xl tracking-widest"
+                                    className="h-11 rounded-xl text-center text-2xl tracking-widest focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !isLoading && otpCode.length === 6) {
