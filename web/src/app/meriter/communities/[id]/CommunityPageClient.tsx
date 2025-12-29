@@ -674,7 +674,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
             {/* Tab Content */}
             {activeTab === 'publications' ? (
-                <div className="space-y-4">
+                <div className="space-y-4 pb-24">
                     {/* Taxonomy Filters */}
                     <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
                         <div className="flex items-center justify-between gap-2">

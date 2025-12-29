@@ -83,7 +83,12 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     }
 
     // If on community feed page, set query parameter to show side panel
-    if (isOnCommunityFeedPage) {
+    // BUT only if screen is wide enough (adaptive panel logic)
+    // Default limit: 1280px
+    const ADAPTIVE_PANEL_MIN_WIDTH = 1280;
+    const isWideScreen = typeof window !== 'undefined' && window.innerWidth >= ADAPTIVE_PANEL_MIN_WIDTH;
+
+    if (isOnCommunityFeedPage && isWideScreen) {
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('post', postSlug);
       router.push(`${pathname}?${params.toString()}`);

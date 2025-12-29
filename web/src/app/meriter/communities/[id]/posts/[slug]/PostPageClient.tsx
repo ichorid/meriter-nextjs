@@ -19,8 +19,8 @@ import { Loader2 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
 interface PostPageClientProps {
-  communityId: string;
-  slug: string;
+    communityId: string;
+    slug: string;
 }
 
 export function PostPageClient({ communityId: chatId, slug }: PostPageClientProps) {
@@ -85,11 +85,11 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
         // Only check after query has completed and user is authenticated
         if (publicationFetched && !publicationLoading && user?.id) {
             // Check if publication doesn't exist (error with NOT_FOUND code)
-            const isNotFound = 
-                publicationError && 
-                ((publicationError as any)?.data?.code === 'NOT_FOUND' || 
-                 (publicationError as any)?.message?.includes('not found'));
-            
+            const isNotFound =
+                publicationError &&
+                ((publicationError as any)?.data?.code === 'NOT_FOUND' ||
+                    (publicationError as any)?.message?.includes('not found'));
+
             if (isNotFound) {
                 // Redirect to not-found page
                 router.replace('/meriter/not-found');
@@ -222,7 +222,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
             setActiveWithdrawPost={setActiveWithdrawPost}
             stickyHeader={pageHeader}
         >
-            <div className="space-y-4">
+            <div className="space-y-4 pb-24">
                 {/* Publication Header Card with Cover as Background */}
                 {publication && (
                     <article

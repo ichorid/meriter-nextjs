@@ -62,7 +62,7 @@ export default function ProfileCommentsPage() {
       wallets={wallets}
       myId={user?.id}
     >
-      <div className="space-y-4">
+      <div className="space-y-4 pb-24">
         <ProfileVotesTab
           comments={myComments}
           isLoading={commentsLoading}
