@@ -647,7 +647,7 @@
 
 /* Idle subtle pulse animation */
 .daily-quota-ring--pulse {
-  animation: quota-pulse 3s ease-in-out infinite;
+  /* animation: quota-pulse 3s ease-in-out infinite; */
 }
 
 @keyframes quota-pulse {

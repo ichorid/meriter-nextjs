@@ -135,21 +135,19 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
       <Link href={`/meriter/communities/${communityId}`}>
         <div
           className={`w-full min-w-0 rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${isActive
-              ? 'bg-base-300 border-2 border-brand-primary'
-              : hasCover
-                ? 'text-white'
-                : 'bg-base-200 hover:bg-base-300'
-            }`}
-          style={hasCover && !isActive ? {
+            ? 'border-2 border-brand-primary'
+            : ''
+            } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
+          style={hasCover ? {
             backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           } : undefined}
         >
           {/* Left section: Avatar + Content */}
-          <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
+          <div className="flex flex-row items-start gap-3 flex-1 min-w-0 relative">
             {/* Avatar section with badge below */}
-            <div className="flex flex-col items-start gap-2 flex-shrink-0">
+            <div className={`flex flex-col items-start gap-2 flex-shrink-0 relative ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
               <CommunityAvatar
                 avatarUrl={community.avatarUrl}
                 communityName={community.name}
@@ -159,26 +157,28 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 className="bg-base-300"
               />
               {userRoleBadge && (
-                <Badge
-                  variant={userRoleBadge.variant}
-                  size="xs"
-                >
-                  {userRoleBadge.label}
-                </Badge>
+                <div className="absolute bottom-[-24px] left-0 right-0 flex items-center justify-center">
+                  <Badge
+                    variant={userRoleBadge.variant}
+                    size="xs"
+                  >
+                    {userRoleBadge.label}
+                  </Badge>
+                </div>
               )}
             </div>
 
             {/* Content section */}
-            <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
+            <div className={`flex flex-col items-start flex-1 min-w-0 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
               {/* Title section */}
-              <div className="flex flex-col items-start gap-1 w-full">
-                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${hasCover && !isActive ? 'text-white drop-shadow' : 'text-base-content'
+              <div className="flex flex-col items-start w-full">
+                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${hasCover ? 'text-white drop-shadow' : 'text-base-content'
                   }`}>
                   {community.name}
                 </div>
                 {/* Merits/Quota indicators */}
                 {showIndicators && (
-                  <div className="flex flex-row items-center gap-2.5 w-full min-w-0">
+                  <div className="flex flex-row items-center gap-2.5 w-full min-w-0 mt-3">
                     {/* Quota cell - always reserve space */}
                     <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
                       {showQuota && (
@@ -194,7 +194,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                     {/* Permanent merits cell */}
                     {showMerits && (
                       <div className="flex items-center gap-1 min-w-0 flex-shrink">
-                        <span className={`font-semibold whitespace-nowrap ${hasCover && !isActive ? 'text-white' : 'text-base-content'
+                        <span className={`font-semibold whitespace-nowrap ${hasCover ? 'text-white' : 'text-base-content'
                           }`}>{balance}</span>
                         {currencyIconUrl && (
                           <img
@@ -203,7 +203,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                             className="w-3 h-3 flex-shrink-0"
                           />
                         )}
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
+                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover ? 'text-white/70' : 'text-base-content/60'
                           }`}>
                           <span className="truncate">{t('permanentMerits')}</span>
                         </span>
@@ -215,7 +215,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${hasCover && !isActive ? 'text-white/70' : 'text-base-content/60'
+                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full mt-1 ${hasCover ? 'text-white/70' : 'text-base-content/60'
                   }`}>
                   {community.description}
                 </div>
@@ -224,9 +224,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           </div>
 
           {/* Right section: Chevron */}
-          <div className="flex items-start flex-shrink-0 w-6 h-6">
+          <div className={`flex items-start flex-shrink-0 w-6 h-6 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
             <ChevronRight
-              className={`w-6 h-6 ${hasCover && !isActive ? 'text-white/60' : 'text-base-content/60'
+              className={`w-6 h-6 ${hasCover ? 'text-white/60' : 'text-base-content/60'
                 }`}
             />
           </div>
@@ -241,8 +241,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
       <div className="flex flex-col items-center relative py-1">
         <div
           className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${isActive
-              ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
-              : 'hover:ring-2 hover:ring-base-content/10'
+            ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
+            : 'hover:ring-2 hover:ring-base-content/10'
             }`}
         >
           <CommunityAvatar
@@ -255,9 +255,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         </div>
         {userRoleBadge && (
           <div
-            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${userRoleBadge.variant === 'error' ? 'bg-error' :
-                userRoleBadge.variant === 'accent' ? 'bg-accent' :
-                  userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
+            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${userRoleBadge.variant === 'accent' ? 'bg-accent' :
+              userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
               }`}
             title={userRoleBadge.label}
           />
