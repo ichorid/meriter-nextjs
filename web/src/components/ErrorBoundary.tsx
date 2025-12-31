@@ -4,14 +4,15 @@ import React, { Component, ReactNode } from 'react';
 import * as Sentry from '@sentry/nextjs';
 import { ErrorDisplay } from './atoms/ErrorDisplay';
 import { ErrorBoundaryContent } from './ErrorBoundaryContent';
+import config from '@/config';
 
 // Use plain HTML button instead of Gluestack UI Button to avoid SSR issues
 const Button = ({ variant, onClick, children }: { variant?: string; onClick?: () => void; children: ReactNode }) => {
   const baseClasses = 'px-6 py-3 rounded-lg font-medium transition-colors w-full sm:w-auto';
-  const variantClasses = variant === 'primary' 
-    ? 'bg-primary text-primary-content hover:bg-primary/90' 
+  const variantClasses = variant === 'primary'
+    ? 'bg-primary text-primary-content hover:bg-primary/90'
     : 'bg-base-200 text-base-content hover:bg-base-300';
-  
+
   return (
     <button className={`${baseClasses} ${variantClasses}`} onClick={onClick}>
       {children}
@@ -19,38 +20,38 @@ const Button = ({ variant, onClick, children }: { variant?: string; onClick?: ()
   );
 };
 
-interface Props {
+interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
 }
 
-interface State {
+interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Enhanced error logging for React error #310 (Maximum update depth exceeded)
-    const isInfiniteRenderError = error.message.includes('Maximum update depth exceeded') || 
-                                  error.message.includes('310') ||
-                                  error.stack?.includes('310');
-    
+    const isInfiniteRenderError = error.message.includes('Maximum update depth exceeded') ||
+      error.message.includes('310') ||
+      error.stack?.includes('310');
+
     // Check for ChunkLoadError (Next.js chunk loading failures)
-    const isChunkLoadError = error.name === 'ChunkLoadError' || 
-                             error.message.includes('Failed to load chunk') ||
-                             error.message.includes('Loading chunk') ||
-                             error.message.includes('ChunkLoadError');
-    
+    const isChunkLoadError = error.name === 'ChunkLoadError' ||
+      error.message.includes('Failed to load chunk') ||
+      error.message.includes('Loading chunk') ||
+      error.message.includes('ChunkLoadError');
+
     if (isInfiniteRenderError) {
       console.error(
         '🚨 React Error #310 (Infinite Render Loop) caught by boundary:',
@@ -85,7 +86,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     // Capture error to Sentry with component stack
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+    if (config.sentry.enabled) {
       Sentry.withScope((scope) => {
         // Set component stack as context
         scope.setContext('react', {

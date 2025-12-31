@@ -420,7 +420,13 @@ export const CreateCommentDtoSchema = z.object({
   images: z.array(z.string().url()).optional(),
 });
 
-export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
+export const UpdateCommentDtoSchema = z.object({
+  targetType: z.enum(["publication", "comment"]).optional(),
+  targetId: z.string().min(1).optional(),
+  content: z.string().max(5000).optional(),
+  parentCommentId: z.string().optional(),
+  images: z.array(z.string().url()).optional(),
+});
 
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
   quotaAmount: z.number().int().min(0).optional(),
@@ -479,7 +485,20 @@ export const CreatePollDtoSchema = z.object({
   }
 );
 
-export const UpdatePollDtoSchema = CreatePollDtoSchema.partial();
+export const UpdatePollDtoSchema = z.object({
+  communityId: z.string().optional(),
+  question: z.string().min(1).max(1000).optional(),
+  description: z.string().max(2000).optional(),
+  options: z
+    .array(
+      z.object({ id: z.string().optional(), text: z.string().min(1).max(200) })
+    )
+    .min(2)
+    .optional(),
+  expiresAt: z.string().datetime().optional(),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+});
 
 export const CreatePollCastDtoSchema = z
   .object({
@@ -516,8 +535,23 @@ export const UpdateCommunityDtoSchema = z.object({
   coverImageUrl: z.string().url().optional(),
   hashtags: z.array(z.string()).optional(),
   hashtagDescriptions: z.record(z.string(), z.string()).optional(),
-  settings: CommunitySettingsSchema.partial().optional(),
-  votingSettings: CommunityVotingSettingsSchema.partial().optional(),
+  settings: z.object({
+    iconUrl: z.string().url().optional(),
+    currencyNames: CurrencySchema.optional(),
+    dailyEmission: z.number().int().min(0).optional(),
+    language: z.enum(["en", "ru"]).optional(),
+    postCost: z.number().int().min(0).optional(),
+    pollCost: z.number().int().min(0).optional(),
+    forwardCost: z.number().int().min(0).optional(),
+    editWindowMinutes: z.number().int().min(0).optional(),
+    allowEditByOthers: z.boolean().optional(),
+  }).optional(),
+  votingSettings: z.object({
+    spendsMerits: z.boolean().optional(),
+    awardsMerits: z.boolean().optional(),
+    meritConversion: CommunityMeritConversionSchema.optional(),
+    votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
+  }).optional(),
   isPriority: z.boolean().optional(),
 });
 
@@ -571,14 +605,15 @@ export const WithdrawAmountDtoSchema = z.object({
   amount: z.number().int().min(1).optional(),
 });
 
-export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
-  .extend({
-    quotaAmount: z.number().int().min(0).optional(),
-    walletAmount: z.number().int().min(0).optional(),
-    comment: z.string().optional(),
-    direction: z.enum(["up", "down"]).optional(),
-    images: z.array(z.string().url()).optional(),
-  })
+export const VoteWithCommentDtoSchema = z.object({
+  targetType: z.enum(["publication", "comment", "vote"]).optional(),
+  targetId: z.string().optional(),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+  comment: z.string().optional(),
+  direction: z.enum(["up", "down"]).optional(),
+  images: z.array(z.string().url()).optional(),
+})
   .refine(
     (data) => {
       const quota = data.quotaAmount ?? 0;

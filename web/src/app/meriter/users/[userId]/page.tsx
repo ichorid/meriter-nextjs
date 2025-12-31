@@ -1,4 +1,5 @@
 import { UserProfilePageClient } from './UserProfilePageClient';
+import config from '@/config';
 
 interface UserProfilePageProps {
   params: Promise<{ userId: string }>;
@@ -8,7 +9,7 @@ export async function generateMetadata({ params }: UserProfilePageProps) {
   try {
     const { userId } = await params;
     // Fetch user data from API for metadata
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    const apiUrl = config.api.baseUrl || 'http://localhost:8001';
     const response = await fetch(`${apiUrl}/trpc/users.getById?input=${encodeURIComponent(JSON.stringify({ json: { id: userId } }))}`, {
       cache: 'no-store',
     });

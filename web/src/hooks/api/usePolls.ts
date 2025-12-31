@@ -72,7 +72,7 @@ export function usePollResults(id: string) {
 // Create poll
 export const useCreatePoll = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.polls.create.useMutation({
         onSuccess: () => {
             // Invalidate polls lists
@@ -84,21 +84,35 @@ export const useCreatePoll = () => {
 };
 
 // Cast poll
-export function useCastPoll() {
+export function useCastPoll(communityId?: string) {
     const utils = trpc.useUtils();
     const { user } = useAuth();
 
     return trpc.polls.cast.useMutation({
-        onSuccess: (_result, variables) => {
+        onSuccess: async (_result, variables) => {
             // Invalidate poll results to get updated cast counts
-            utils.polls.getById.invalidate({ id: variables.pollId });
+            await utils.polls.getById.invalidate({ id: variables.pollId });
             // Invalidate polls list to ensure consistency
-            utils.polls.getAll.invalidate();
+            await utils.polls.getAll.invalidate();
+
             // Invalidate wallet queries to ensure balance is up to date
-            // Note: wallet router not yet migrated, invalidate manually if needed
+            await utils.wallets.getAll.invalidate();
+            await utils.wallets.getAll.refetch();
+
+            if (communityId) {
+                await utils.wallets.getBalance.invalidate({ communityId });
+                await utils.wallets.getBalance.refetch({ communityId });
+            }
+
             // Invalidate quota queries if quota was used
-            if (variables.data.quotaAmount && variables.data.quotaAmount > 0 && user?.id) {
-                // Note: quota router not yet migrated, invalidate manually if needed
+            if (variables.data.quotaAmount && variables.data.quotaAmount > 0 && user?.id && communityId) {
+                await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
+                await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
+            }
+
+            // Invalidate community feed to show updated poll in feed
+            if (communityId) {
+                await utils.communities.getFeed.invalidate({ communityId });
             }
         },
         onError: (error) => {
@@ -110,7 +124,7 @@ export function useCastPoll() {
 // Update poll
 export const useUpdatePoll = () => {
     const utils = trpc.useUtils();
-    
+
     return trpc.polls.update.useMutation({
         onSuccess: (_result, variables) => {
             // Invalidate polls lists and specific poll
@@ -123,11 +137,11 @@ export const useUpdatePoll = () => {
 // Delete poll - TODO: Add to polls router
 export const useDeletePoll = () => {
     const utils = trpc.useUtils();
-    
+
     // Placeholder - delete endpoint not yet in tRPC router
     return {
-        mutate: () => {},
-        mutateAsync: async () => {},
+        mutate: () => { },
+        mutateAsync: async () => { },
         isLoading: false,
         isError: false,
         error: null,

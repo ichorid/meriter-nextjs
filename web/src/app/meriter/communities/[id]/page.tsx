@@ -1,4 +1,5 @@
 import { CommunityPageClient } from './CommunityPageClient';
+import config from '@/config';
 
 interface CommunityPageProps {
   params: Promise<{ id: string }>;
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }: CommunityPageProps) {
     const headersList = await requestHeaders();
     const cookie = headersList.get('cookie');
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+    const apiUrl = config.api.baseUrl || 'http://localhost:8001';
     const response = await fetch(`${apiUrl}/trpc/communities.getById?input=${encodeURIComponent(JSON.stringify({ json: { id } }))}`, {
       cache: 'no-store',
       headers: cookie ? { cookie } : {},

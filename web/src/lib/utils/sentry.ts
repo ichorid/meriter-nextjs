@@ -6,13 +6,14 @@
 
 import * as Sentry from '@sentry/nextjs';
 import type { User } from '@/types/api-v1';
+import config from '@/config';
 
 /**
  * Set user context in Sentry
  * Call this when user logs in or when user data changes
  */
 export function setSentryUser(user: User | null): void {
-  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (!config.sentry.enabled) {
     return;
   }
 
@@ -32,7 +33,7 @@ export function setSentryUser(user: User | null): void {
  * Call this when user logs out
  */
 export function clearSentryUser(): void {
-  if (!process.env.NEXT_PUBLIC_SENTRY_DSN) {
+  if (!config.sentry.enabled) {
     return;
   }
 

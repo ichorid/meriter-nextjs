@@ -48,7 +48,7 @@ export const PollCasting = ({
     const [amountValidationError, setAmountValidationError] = useState<string | null>(null);
     const [error, setError] = useState<string>("");
 
-    const castPollMutation = useCastPoll();
+    const castPollMutation = useCastPoll(communityId);
 
     // Get quota data
     const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
@@ -124,13 +124,12 @@ export const PollCasting = ({
 
         try {
             await castPollMutation.mutateAsync({
-                id: pollId,
+                pollId: pollId,
                 data: {
                     optionId: selectedOptionId,
                     quotaAmount,
                     walletAmount,
                 },
-                communityId,
             });
 
             // Reset form explicitly
