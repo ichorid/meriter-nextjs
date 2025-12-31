@@ -28,13 +28,13 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         const { data, communityId } = variables || {};
         const shouldOptimistic = !!user?.id && !!communityId;
         if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-        
+
         const context: OptimisticUpdateContext = {};
-        
+
         // Calculate quota and wallet amounts from data
         const quotaAmount = (data as any).quotaAmount ?? 0;
         const walletAmount = (data as any).walletAmount ?? 0;
-        
+
         // Handle quota optimistic update
         if (quotaAmount > 0 && user?.id && communityId) {
           const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
@@ -43,7 +43,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             context.previousQuota = quotaUpdate.previousQuota;
           }
         }
-        
+
         // Handle wallet optimistic update
         if (walletAmount > 0 && communityId) {
           const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
@@ -54,17 +54,18 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             context.previousBalance = walletUpdate.previousBalance;
           }
         }
-        
+
         return context;
       },
       onSuccess: async (result, variables) => {
         const invalidations = config.onSuccessInvalidations || {};
-        
+        const communityId = variables?.communityId;
+
         // Invalidate and refetch publications if needed
         if (invalidations.publications) {
           await utils.publications.getAll.invalidate();
           await utils.publications.getAll.refetch();
-          
+
           // CRITICAL FIX: Invalidate and refetch specific publication detail if we have the ID
           // This ensures the vote count updates on the publication detail page
           const publicationId = invalidations.specificPublicationId?.(variables);
@@ -73,19 +74,25 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             await utils.publications.getById.refetch({ id: publicationId });
           }
         }
-        
+
         // Invalidate and refetch communities if needed
         if (invalidations.communities) {
           await utils.communities.getAll.invalidate();
           await utils.communities.getAll.refetch();
         }
-        
+
+        // CRITICAL: Always invalidate community feed to update vote counters in feed
+        // This ensures vote counts update immediately in the community feed view
+        if (communityId) {
+          await utils.communities.getFeed.invalidate({ communityId });
+          await utils.communities.getFeed.refetch({ communityId });
+        }
+
         // Invalidate and refetch wallet queries to update balance
         await utils.wallets.getAll.invalidate();
         await utils.wallets.getAll.refetch();
-        
+
         // Invalidate wallet balance - need to handle with/without communityId
-        const communityId = variables?.communityId;
         if (communityId) {
           await utils.wallets.getBalance.invalidate({ communityId });
           await utils.wallets.getBalance.refetch({ communityId });
@@ -94,7 +101,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
           queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
         }
-        
+
         // Invalidate and refetch quota queries to update remaining quota (for quota votes)
         // Quota is accessed via wallets.getQuota, so use tRPC utils
         if (user?.id && communityId) {
@@ -102,15 +109,15 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
         } else if (communityId) {
           // Broad invalidation for all quota queries in this community
-          queryClient.invalidateQueries({ 
-            queryKey: ['quota'], 
+          queryClient.invalidateQueries({
+            queryKey: ['quota'],
             predicate: (query) => {
               const key = query.queryKey;
               return key.length >= 3 && key[2] === communityId;
             }
           });
-          queryClient.refetchQueries({ 
-            queryKey: ['quota'], 
+          queryClient.refetchQueries({
+            queryKey: ['quota'],
             predicate: (query) => {
               const key = query.queryKey;
               return key.length >= 3 && key[2] === communityId;
@@ -121,13 +128,13 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
           queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
         }
-        
+
         // Handle comments invalidation
         if (invalidations.comments) {
-          const shouldInvalidate = invalidations.shouldInvalidateComments 
+          const shouldInvalidate = invalidations.shouldInvalidateComments
             ? invalidations.shouldInvalidateComments(result, variables)
             : true;
-          
+
           if (shouldInvalidate) {
             // Invalidate and refetch comment queries by publication if we have publicationId
             const publicationId = invalidations.specificPublicationId?.(variables);
@@ -139,7 +146,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
               await utils.comments.getByPublicationId.invalidate();
               await utils.comments.getByPublicationId.refetch();
             }
-            
+
             const commentId = invalidations.specificCommentId?.(variables);
             if (commentId) {
               await utils.comments.getReplies.invalidate({ id: commentId });
@@ -170,7 +177,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         }
       },
     };
-    
+
     return mutationConfig;
   };
 }
@@ -180,7 +187,7 @@ export function useVoteMutation(config: VoteMutationConfig) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const mutationConfig = createVoteMutationConfig(config)(queryClient, user, utils);
-  
+
   return useMutation(mutationConfig);
 }
 

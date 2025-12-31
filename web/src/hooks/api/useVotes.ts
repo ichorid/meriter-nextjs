@@ -10,9 +10,9 @@ import { queryKeys } from '@/lib/constants/queryKeys';
 // Vote on publication
 export function useVoteOnPublication() {
   const utils = trpc.useUtils();
-  
+
   return useVoteMutation({
-    mutationFn: ({ publicationId, data, communityId }: { publicationId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) => 
+    mutationFn: ({ publicationId, data, communityId }: { publicationId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) =>
       utils.votes.create.mutateAsync({
         targetType: 'publication',
         targetId: publicationId,
@@ -38,9 +38,9 @@ export function useVoteOnPublication() {
 // Vote on vote (comment vote)
 export function useVoteOnVote() {
   const utils = trpc.useUtils();
-  
+
   return useVoteMutation({
-    mutationFn: ({ voteId, data, communityId }: { voteId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) => 
+    mutationFn: ({ voteId, data, communityId }: { voteId: string; data: { quotaAmount?: number; walletAmount?: number; direction?: 'up' | 'down'; comment?: string; images?: string[] }; communityId?: string }) =>
       utils.votes.create.mutateAsync({
         targetType: 'vote',
         targetId: voteId,
@@ -69,21 +69,21 @@ export function useRemovePublicationVote() {
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
-      
+
       // Invalidate and refetch specific publication detail if we have the publicationId
       if (variables.targetType === 'publication' && variables.targetId) {
         await utils.publications.getById.invalidate({ id: variables.targetId });
         await utils.publications.getById.refetch({ id: variables.targetId });
       }
-      
+
       // Invalidate and refetch communities
       await utils.communities.getAll.invalidate();
       await utils.communities.getAll.refetch();
-      
+
       // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
-      
+
       // Invalidate wallet balance - use queryClient for broad invalidation
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
@@ -92,7 +92,7 @@ export function useRemovePublicationVote() {
       console.error('Remove publication vote error:', error);
     },
   });
-  
+
   return {
     ...deleteMutation,
     mutate: (publicationId: string) => deleteMutation.mutate({ targetType: 'publication', targetId: publicationId }),
@@ -112,15 +112,15 @@ export function useRemoveCommentVote() {
         await utils.comments.getReplies.invalidate({ id: variables.targetId });
         await utils.comments.getReplies.refetch({ id: variables.targetId });
       }
-      
+
       // Broad invalidation for all comment queries
       await utils.comments.getByPublicationId.invalidate();
       await utils.comments.getByPublicationId.refetch();
-      
+
       // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
-      
+
       // Invalidate wallet balance - use queryClient for broad invalidation
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
@@ -129,7 +129,7 @@ export function useRemoveCommentVote() {
       console.error('Remove comment vote error:', error);
     },
   });
-  
+
   return {
     ...deleteMutation,
     mutate: (commentId: string) => deleteMutation.mutate({ targetType: 'vote', targetId: commentId }),
@@ -142,7 +142,7 @@ export function useVoteOnPublicationWithComment() {
   const queryClient = useQueryClient();
   const utils = trpc.useUtils();
   const { user } = useAuth();
-  
+
   const mutation = trpc.votes.createWithComment.useMutation({
     onMutate: async (input) => {
       // Input should already be transformed by the wrapper function
@@ -152,9 +152,9 @@ export function useVoteOnPublicationWithComment() {
       const communityId = (input as any).communityId;
       const shouldOptimistic = !!user?.id && !!communityId;
       if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-      
+
       const context: OptimisticUpdateContext = {};
-      
+
       // Handle quota optimistic update
       if (quotaAmount > 0 && user?.id && communityId) {
         const quotaUpdate = await updateQuotaOptimistically(queryClient, user.id, communityId, quotaAmount);
@@ -163,7 +163,7 @@ export function useVoteOnPublicationWithComment() {
           context.previousQuota = quotaUpdate.previousQuota;
         }
       }
-      
+
       // Handle wallet optimistic update
       if (walletAmount > 0 && communityId) {
         const walletUpdate = await updateWalletOptimistically(queryClient, communityId, walletAmount, queryKeys.wallet);
@@ -174,32 +174,32 @@ export function useVoteOnPublicationWithComment() {
           context.previousBalance = walletUpdate.previousBalance;
         }
       }
-      
+
       return context;
     },
     onSuccess: async (result, variables) => {
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
-      
+
       // CRITICAL FIX: Invalidate and refetch specific publication detail if we have the ID
       if (variables.targetId && variables.targetType === 'publication') {
         await utils.publications.getById.invalidate({ id: variables.targetId });
         await utils.publications.getById.refetch({ id: variables.targetId });
       }
-      
+
       // Invalidate and refetch communities
       await utils.communities.getAll.invalidate();
       await utils.communities.getAll.refetch();
-      
+
       // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
-      
+
       // Invalidate wallet balance - use queryClient for broad invalidation
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
-      
+
       // Invalidate and refetch quota queries
       if (user?.id && variables.communityId) {
         await utils.wallets.getQuota.invalidate({ userId: user.id, communityId: variables.communityId });
@@ -209,7 +209,7 @@ export function useVoteOnPublicationWithComment() {
         queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
         queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
       }
-      
+
       // Invalidate and refetch comments if comment or images were provided
       const shouldInvalidateComments = !!(result.comment || variables.comment || variables.images?.length);
       if (shouldInvalidateComments) {
@@ -241,32 +241,32 @@ export function useVoteOnPublicationWithComment() {
       }
     },
   });
-  
+
   return {
     ...mutation,
-    mutateAsync: ({ 
-      publicationId, 
-      data, 
-      communityId 
-    }: { 
-      publicationId: string; 
-      data: { 
+    mutateAsync: ({
+      publicationId,
+      data,
+      communityId
+    }: {
+      publicationId: string;
+      data: {
         quotaAmount?: number;
         walletAmount?: number;
         comment?: string;
         direction?: 'up' | 'down';
         images?: string[];
-      }; 
-      communityId?: string; 
+      };
+      communityId?: string;
     }) => {
       const quotaAmount = data.quotaAmount ?? 0;
       const walletAmount = data.walletAmount ?? 0;
-      
+
       // Validate that at least one amount is non-zero
       if (quotaAmount === 0 && walletAmount === 0) {
         throw new Error('At least one of quotaAmount or walletAmount must be non-zero. Please ensure you have quota or wallet balance.');
       }
-      
+
       const mutationInput = {
         targetType: 'publication' as const,
         targetId: publicationId,
@@ -277,7 +277,7 @@ export function useVoteOnPublicationWithComment() {
         images: data.images,
         communityId: communityId || '',
       };
-      
+
       return mutation.mutateAsync(mutationInput);
     },
   };
@@ -292,19 +292,25 @@ export function useWithdrawFromPublication() {
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
-      
+
       // CRITICAL: Invalidate and refetch specific publication detail
       await utils.publications.getById.invalidate({ id: variables.publicationId });
       await utils.publications.getById.refetch({ id: variables.publicationId });
-      
+
       // Invalidate and refetch communities
       await utils.communities.getAll.invalidate();
       await utils.communities.getAll.refetch();
-      
+
+      // CRITICAL: Invalidate community feed to update vote counters
+      if (variables.communityId) {
+        await utils.communities.getFeed.invalidate({ communityId: variables.communityId });
+        await utils.communities.getFeed.refetch({ communityId: variables.communityId });
+      }
+
       // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
-      
+
       // Invalidate wallet balance - use queryClient for broad invalidation
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
@@ -312,7 +318,7 @@ export function useWithdrawFromPublication() {
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
-      
+
       console.error('Withdraw from publication error:', {
         message: errorMessage,
         code: errorCode,
@@ -321,7 +327,7 @@ export function useWithdrawFromPublication() {
       });
     },
   });
-  
+
   return withdrawMutation;
 }
 
@@ -330,15 +336,21 @@ export function useWithdrawFromVote() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
   const withdrawMutation = trpc.votes.withdrawFromVote.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       // Invalidate and refetch comment queries
       await utils.comments.getByPublicationId.invalidate();
       await utils.comments.getByPublicationId.refetch();
-      
+
+      // CRITICAL: Invalidate community feed to update vote counters
+      if (variables.communityId) {
+        await utils.communities.getFeed.invalidate({ communityId: variables.communityId });
+        await utils.communities.getFeed.refetch({ communityId: variables.communityId });
+      }
+
       // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
-      
+
       // Invalidate wallet balance - use queryClient for broad invalidation
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
@@ -346,7 +358,7 @@ export function useWithdrawFromVote() {
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
-      
+
       console.error('Withdraw from vote error:', {
         message: errorMessage,
         code: errorCode,
@@ -355,6 +367,6 @@ export function useWithdrawFromVote() {
       });
     },
   });
-  
+
   return withdrawMutation;
 }
