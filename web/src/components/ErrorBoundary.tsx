@@ -86,7 +86,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     // Capture error to Sentry with component stack
-    if (config.sentry.enabled) {
+    // Safe access for test environment where config might not be fully initialized
+    if (config?.sentry?.enabled) {
       Sentry.withScope((scope) => {
         // Set component stack as context
         scope.setContext('react', {

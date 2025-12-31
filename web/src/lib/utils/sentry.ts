@@ -13,7 +13,8 @@ import config from '@/config';
  * Call this when user logs in or when user data changes
  */
 export function setSentryUser(user: User | null): void {
-  if (!config.sentry.enabled) {
+  // Safe access for test environment where config might not be fully initialized
+  if (!config?.sentry?.enabled) {
     return;
   }
 
@@ -21,7 +22,7 @@ export function setSentryUser(user: User | null): void {
     Sentry.setUser({
       id: String(user.id),
       username: user.username || undefined,
-      email: user.email || undefined,
+      email: user.profile?.contacts?.email || undefined,
     });
   } else {
     Sentry.setUser(null);
@@ -33,10 +34,10 @@ export function setSentryUser(user: User | null): void {
  * Call this when user logs out
  */
 export function clearSentryUser(): void {
-  if (!config.sentry.enabled) {
+  // Safe access for test environment where config might not be fully initialized
+  if (!config?.sentry?.enabled) {
     return;
   }
 
   Sentry.setUser(null);
 }
-
