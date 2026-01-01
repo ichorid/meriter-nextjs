@@ -13,6 +13,7 @@ import { ProfileContentCards } from '@/components/organisms/Profile/ProfileConte
 import { FoldableInviteInput } from '@/components/organisms/Profile/FoldableInviteInput';
 import { useProfileData } from '@/hooks/useProfileData';
 import { Button } from '@/components/ui/shadcn/button';
+import { Separator } from '@/components/ui/shadcn/separator';
 import { routes } from '@/lib/constants/routes';
 import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
@@ -99,7 +100,7 @@ function ProfilePageComponent() {
       }
     >
       <InviteHandler />
-      <div className="space-y-6">
+      <div className="space-y-0">
         {/* Profile Hero Section */}
         {isEditing ? (
           <div className="w-full">
@@ -120,23 +121,35 @@ function ProfilePageComponent() {
 
         {/* Merit Statistics */}
         {meritStatsData?.meritStats && meritStatsData.meritStats.length > 0 && (
-          <ProfileStats
-            meritStats={meritStatsData.meritStats}
-            isLoading={meritStatsLoading}
-          />
+          <div className="mt-6">
+            <ProfileStats
+              meritStats={meritStatsData.meritStats}
+              isLoading={meritStatsLoading}
+            />
+          </div>
         )}
 
         {/* Content Cards (Publications, Comments, Polls) */}
-        <ProfileContentCards
-          stats={contentCardsStats}
-          isLoading={contentCardsLoading}
-        />
+        <div>
+          <Separator className="bg-base-300" />
+          <ProfileContentCards
+            stats={contentCardsStats}
+            isLoading={contentCardsLoading}
+          />
+        </div>
 
-        {/* Foldable Invite Input Section */}
-        <FoldableInviteInput />
+        {/* Foldable Invite Input Section - Only show if user has lead/participant roles */}
+        {userRolesArray.some(r => r.role === 'lead' || r.role === 'participant') && (
+          <div>
+            <Separator className="bg-base-300" />
+            <FoldableInviteInput />
+          </div>
+        )}
 
         {/* Use Invite Section (for viewers) */}
-        <UseInvite />
+        <div className="mt-6">
+          <UseInvite />
+        </div>
       </div>
     </AdaptiveLayout>
   );
