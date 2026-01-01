@@ -63,8 +63,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     };
 
     const headerClasses = asStickyHeader
-        ? `bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between -mx-4 px-4 h-14 flex-shrink-0 w-[calc(100%+2rem)] ${className}`
-        : `sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between px-4 h-14 flex-shrink-0 w-full ${className}`;
+        ? `bg-base-100/95 backdrop-blur-md border-b border-base-200 px-4 py-2 flex items-center justify-between -mx-4 px-4 h-14 flex-shrink-0 w-[calc(100%+2rem)] ${className}`
+        : `sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-200 px-4 flex items-center justify-between px-4 h-14 flex-shrink-0 w-full ${className}`;
 
     return (
         <>

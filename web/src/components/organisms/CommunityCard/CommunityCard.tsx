@@ -47,6 +47,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('common');
+  const tCommunities = useTranslations('communities');
   const isActive = pathname?.includes(`/communities/${communityId}`);
 
   // Determine user's role per community for badge display
@@ -112,7 +113,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         {isExpanded ? (
           <div className="flex-1">
             <div className="text-sm font-medium truncate text-base-content/50">
-              Loading {communityId}...
+              {t('loading')} {communityId}...
             </div>
           </div>
         ) : (
@@ -134,8 +135,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full min-w-0 rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${isActive
-            ? 'border-2 border-brand-primary'
+          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${isActive
+            ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
             : ''
             } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
           style={hasCover ? {
@@ -157,7 +158,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 className="bg-base-300"
               />
               {userRoleBadge && (
-                <div className="absolute bottom-[-24px] left-0 right-0 flex items-center justify-center">
+                <div className="absolute bottom-[-19px] left-0 right-0 flex items-center justify-center">
                   <Badge
                     variant={userRoleBadge.variant}
                     size="xs"
@@ -199,7 +200,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                         {currencyIconUrl && (
                           <img
                             src={currencyIconUrl}
-                            alt="Currency"
+                            alt={tCommunities('currency')}
                             className="w-3 h-3 flex-shrink-0"
                           />
                         )}
@@ -215,7 +216,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full mt-1 ${hasCover ? 'text-white/70' : 'text-base-content/60'
+                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full mt-4 ${hasCover ? 'text-white/70' : 'text-base-content/60'
                   }`}>
                   {community.description}
                 </div>

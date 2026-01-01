@@ -282,7 +282,7 @@ export default function NotificationsPage() {
             {notifications.map((notification) => (
               <div
                 key={notification.id}
-                className={`relative ${!notification.read ? 'bg-blue-50/50' : ''}`}
+                className={`relative overflow-hidden rounded-xl ${!notification.read ? 'bg-blue-50/50' : ''}`}
               >
                 <InfoCard
                   title={notification.title}
@@ -399,14 +399,14 @@ function NotificationPreferencesPanel() {
 
   if (isLoading) {
     return (
-      <div className="p-4 bg-base-200 rounded-xl border border-base-300">
+      <div className="p-4 bg-base-200 rounded-xl shadow-none">
         <Loader2 className="w-5 h-5 animate-spin text-brand-primary mx-auto" />
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-base-200 rounded-xl border border-base-300 space-y-3">
+    <div className="p-4 bg-base-200 rounded-xl shadow-none space-y-3">
       <h3 className="font-semibold text-brand-text-primary">
         {t('preferences.title')}
       </h3>

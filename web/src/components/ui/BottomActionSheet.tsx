@@ -67,7 +67,7 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
             {/* Sheet */}
             <div
                 className={`
-                    relative w-full max-w-lg bg-base-100 rounded-t-3xl sm:rounded-2xl shadow-2xl
+                    relative w-full max-w-lg bg-base-100 rounded-t-3xl sm:rounded-xl shadow-2xl
                     transform transition-all duration-300 ease-out
                     ${visible ? 'translate-y-0 scale-100' : 'translate-y-full sm:translate-y-10 sm:scale-95'}
                 `}

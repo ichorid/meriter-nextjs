@@ -43,7 +43,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const router = useRouter();
   const t = useTranslations('pages.communitySettings');
   const tCommon = useTranslations('common');
-  
+
   // Generate a gradient background based on community name if no cover image
   const generateGradient = (name: string): [string, string] => {
     const colors: [string, string][] = [
@@ -57,15 +57,15 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
     return colors[index] ?? ['from-blue-600', 'to-purple-600'];
   };
-  
+
   const [gradientFrom, gradientTo] = generateGradient(community.name);
   const hasCoverImage = !!community.coverImageUrl;
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
     return (
-      <div 
-        className={`bg-base-100 rounded-xl overflow-hidden border border-base-content/10 ${onClick ? 'cursor-pointer hover:border-base-content/20 transition-colors' : ''} ${className}`}
+      <div
+        className={`bg-base-100 rounded-xl overflow-hidden shadow-none ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] transition-all duration-300' : ''} ${className}`}
         onClick={onClick}
       >
         <div className="flex items-center gap-3 p-3">
@@ -83,10 +83,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                 {community.name}
               </h3>
               {community.settings?.iconUrl && (
-                <img 
-                  src={community.settings.iconUrl} 
-                  alt="" 
-                  className="w-4 h-4 flex-shrink-0" 
+                <img
+                  src={community.settings.iconUrl}
+                  alt=""
+                  className="w-4 h-4 flex-shrink-0"
                 />
               )}
             </div>
@@ -109,20 +109,20 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
       </div>
     );
   }
-  
+
   return (
-    <div 
-      className={`bg-base-100 rounded-2xl overflow-hidden shadow-lg border border-base-content/10 ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''} ${className}`}
+    <div
+      className={`bg-base-100 rounded-xl overflow-hidden shadow-none ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] transition-all duration-300' : ''} ${className}`}
       onClick={onClick}
     >
       {/* Cover Image / Gradient Background */}
-      <div 
+      <div
         className={`relative h-32 sm:h-40 ${!hasCoverImage ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ''}`}
         style={hasCoverImage ? { backgroundImage: `url(${community.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         {/* Overlay for better text visibility */}
         <div className="absolute inset-0 bg-black/20" />
-        
+
         {/* Settings button for admins */}
         {community.isAdmin && (
           <button
@@ -131,20 +131,20 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               router.push(routes.communitySettings(community.id));
             }}
             className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
-            title="Settings"
+            title={tCommon('settings')}
           >
             <Settings size={18} className="text-white" />
           </button>
         )}
-        
+
         {/* Setup badge */}
         {community.needsSetup && (
           <div className="absolute top-3 left-3 px-2 py-1 rounded-full bg-warning text-warning-content text-xs font-medium">
-            Needs setup
+            {tCommon('needsSetup')}
           </div>
         )}
       </div>
-      
+
       {/* Avatar - overlapping cover */}
       <div className="relative px-4 sm:px-6">
         <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
@@ -159,7 +159,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
             </Avatar>
           </div>
         </div>
-        
+
         {/* Community Info */}
         <div className="pb-4 relative z-0">
           {/* Name and currency icon */}
@@ -168,14 +168,14 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               {community.name}
             </h1>
             {community.settings?.iconUrl && (
-              <img 
-                src={community.settings.iconUrl} 
-                alt="" 
-                className="w-5 h-5 sm:w-6 sm:h-6" 
+              <img
+                src={community.settings.iconUrl}
+                alt=""
+                className="w-5 h-5 sm:w-6 sm:h-6"
               />
             )}
           </div>
-          
+
           {/* Type tag badge */}
           {community.typeTag && (
             <div className="mb-2">
@@ -184,14 +184,14 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               </span>
             </div>
           )}
-          
+
           {/* Description */}
           {community.description && (
             <p className="text-sm text-base-content/70 mb-3 line-clamp-2">
               {community.description}
             </p>
           )}
-          
+
           {/* Stats */}
           <div className="flex items-center gap-4 text-sm text-base-content/60">
             {community.memberCount !== undefined && (

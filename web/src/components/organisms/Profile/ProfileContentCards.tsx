@@ -45,7 +45,7 @@ function ProfileContentCardsComponent({
       value: stats.publications,
       icon: FileText,
       color: 'text-base-content',
-      bgColor: 'bg-base-200/50',
+      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
       route: `${routes.profile}/publications`,
     },
     {
@@ -53,7 +53,7 @@ function ProfileContentCardsComponent({
       value: stats.comments,
       icon: MessageSquare,
       color: 'text-base-content',
-      bgColor: 'bg-base-200/50',
+      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
       route: `${routes.profile}/comments`,
     },
     {
@@ -61,7 +61,7 @@ function ProfileContentCardsComponent({
       value: stats.polls,
       icon: BarChart3,
       color: 'text-base-content',
-      bgColor: 'bg-base-200/50',
+      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
       route: `${routes.profile}/polls`,
     },
     {
@@ -69,7 +69,7 @@ function ProfileContentCardsComponent({
       value: stats.favorites ?? 0,
       icon: Star,
       color: 'text-base-content',
-      bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-base-200/50',
+      bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-gray-100 dark:bg-gray-800/50',
       route: `${routes.profile}/favorites`,
       isHighlighted: unreadFavoritesCount > 0,
     },
@@ -94,9 +94,7 @@ function ProfileContentCardsComponent({
             <button
               key={index}
               onClick={() => handleCardClick(stat.route)}
-              className={`${stat.bgColor} rounded-xl p-4 border ${
-                stat.isHighlighted ? 'border-warning/40' : 'border-base-content/5'
-              } transition-all hover:bg-base-200 cursor-pointer text-left`}
+              className={`${stat.bgColor} rounded-xl p-4 transition-all hover:bg-base-200 cursor-pointer text-left`}
             >
               <div className="flex items-center justify-between mb-2">
                 <Icon className="text-base-content/40 w-5 h-5" />

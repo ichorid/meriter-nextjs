@@ -59,7 +59,7 @@ function ProfilePageComponent() {
   }), [myPublications.length, myComments.length, myPolls.length, favoritesCount]);
 
   // Memoize loading state for content cards
-  const contentCardsLoading = useMemo(() => 
+  const contentCardsLoading = useMemo(() =>
     publicationsLoading || commentsLoading || pollsLoading,
     [publicationsLoading, commentsLoading, pollsLoading]
   );
@@ -102,7 +102,7 @@ function ProfilePageComponent() {
       <div className="space-y-6">
         {/* Profile Hero Section */}
         {isEditing ? (
-          <div className="bg-base-200/50 border border-base-content/5 rounded-2xl p-6">
+          <div className="w-full">
             <ProfileEditForm
               onCancel={handleCancelEdit}
               onSuccess={handleSuccessEdit}

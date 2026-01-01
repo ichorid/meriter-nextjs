@@ -604,7 +604,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
             {/* Dev Tools Bar - only visible in fake data mode */}
             {fakeDataMode && (
-                <div className="mb-4 p-3 bg-base-200/50 rounded-xl border border-base-300">
+                <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl">
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-semibold text-base-content/70 mr-2">Dev Tools:</span>
                         <Button
@@ -652,7 +652,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 isSpecialCommunity &&
                 !canCreatePost.canCreate &&
                 teamChatUrl && (
-                    <div className="bg-info/10 text-base-content p-4 rounded-xl text-sm border border-info/20 mb-4">
+                    <div className="bg-info/10 text-base-content p-4 rounded-xl text-sm shadow-none mb-4">
                         {t('communities.toAddPublication')}{" "}
                         <a href={teamChatUrl} className="underline font-medium hover:opacity-80">
                             {t('communities.writeToLeaderInTeamChat')}
@@ -660,7 +660,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </div>
                 )}
             {error === true && (
-                <div className="bg-error/10 text-error p-4 rounded-xl text-sm border border-error/20 text-center mb-4">
+                <div className="bg-error/10 text-error p-4 rounded-xl text-sm shadow-none text-center mb-4">
                     {t('communities.noAccess')}
                 </div>
             )}
@@ -692,9 +692,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {/* Publications Content */}
             <div className="space-y-4 pb-24">
                 {/* Taxonomy Filters */}
-                <div className="rounded-2xl border bg-base-100 p-4 space-y-4">
+                <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
                     <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             {/* Search Button */}
                             <Button
                                 variant="ghost"
@@ -716,8 +716,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 />
                             </div>
 
-                            <Filter className="h-4 w-4" />
-                            <span className="text-sm font-medium">Filters</span>
+                            <div className="h-4 w-px bg-base-300" />
+                            <Filter className="h-4 w-4 text-base-content/60" />
+                            <span className="text-sm font-medium text-base-content/80">Filters</span>
                         </div>
                         <div className="flex items-center gap-2">
                             {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
@@ -923,10 +924,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     id={`post-${p.id}`}
                                     className={
                                         highlightedPostId === p.id
-                                            ? 'rounded-lg scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
+                                            ? 'rounded-xl scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
                                             : isSelected
-                                                ? 'rounded-lg scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
-                                                : 'hover:shadow-md transition-all duration-200 rounded-lg'
+                                                ? 'rounded-xl scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                : 'hover:shadow-md transition-all duration-200 rounded-xl'
                                     }
                                 >
                                     <PublicationCard

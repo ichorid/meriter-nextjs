@@ -92,7 +92,7 @@ export default function CreateInvitePage() {
     >
       <div className="space-y-6">
         {!communitiesLoading && !hasPermission && (
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+          <div className="p-4 bg-yellow-50 shadow-none rounded-xl">
             <p className="font-bold text-yellow-800 mb-2">{t('noPermission')}</p>
             <p className="text-sm text-yellow-700">{t('noPermissionDescription')}</p>
           </div>
@@ -171,7 +171,7 @@ export default function CreateInvitePage() {
                   {generatedInvites.map((invite) => (
                     <div
                       key={invite.communityId}
-                      className="p-3 bg-green-50 border border-green-200 rounded-lg"
+                      className="p-3 bg-green-50 shadow-none rounded-lg"
                     >
                       <p className="font-bold text-brand-text-primary">{invite.communityId}</p>
                       <p className="font-mono text-sm text-brand-text-secondary">{invite.code}</p>

@@ -9,11 +9,11 @@ import { useCommunities } from '@/hooks/api/useCommunities';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { cn } from '@/lib/utils';
@@ -45,24 +45,24 @@ export function InviteGeneration() {
   const isLead = useMemo(() => {
     return userRoles.some(r => r.role === 'lead') || leadCommunities.length > 0;
   }, [userRoles, leadCommunities]);
-  
+
   // Check if user has any lead role (either from userRoles or leadCommunities)
   const hasLeadRole = useMemo(() => {
     return isSuperadmin || isLead;
   }, [isSuperadmin, isLead]);
 
   // Set default community for lead (first team community) - auto-select
-    useEffect(() => {
-      if (isLead && !isSuperadmin && leadCommunities.length > 0) {
-        // Filter to only team communities
-        const teamCommunities = leadCommunities.filter(c => c.typeTag === 'team');
-        if (teamCommunities.length > 0) {
-          setSelectedCommunityId(teamCommunities[0]?.id ?? '');
-        } else if (leadCommunities.length > 0) {
-          setSelectedCommunityId(leadCommunities[0]?.id ?? '');
-        }
+  useEffect(() => {
+    if (isLead && !isSuperadmin && leadCommunities.length > 0) {
+      // Filter to only team communities
+      const teamCommunities = leadCommunities.filter(c => c.typeTag === 'team');
+      if (teamCommunities.length > 0) {
+        setSelectedCommunityId(teamCommunities[0]?.id ?? '');
+      } else if (leadCommunities.length > 0) {
+        setSelectedCommunityId(leadCommunities[0]?.id ?? '');
       }
-    }, [isLead, isSuperadmin, leadCommunities]);
+    }
+  }, [isLead, isSuperadmin, leadCommunities]);
 
   // Determine invite type
   const inviteType = isSuperadmin ? 'superadmin-to-lead' : 'lead-to-participant';
@@ -135,7 +135,7 @@ export function InviteGeneration() {
   const getCommunityName = (communityId?: string) => {
     if (!communityId) {
       // For superadmin-to-lead invites, communityId is not set (auto-assigned)
-      return inviteType === 'superadmin-to-lead' 
+      return inviteType === 'superadmin-to-lead'
         ? t('autoAssigned')
         : t('notSet');
     }
@@ -154,7 +154,7 @@ export function InviteGeneration() {
   }
 
   return (
-    <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
       <div className="flex items-center space-x-3 mb-6">
         <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
           <UserPlus size={24} />
@@ -165,15 +165,15 @@ export function InviteGeneration() {
       </div>
       <div className="space-y-4">
         {isSuperadmin && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 shadow-none dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              {tInvites('superadminToLeadDescription') || 'Create an invite to make a user a Lead'}
+              {tInvites('superadminToLeadDescription')}
             </p>
           </div>
         )}
 
         {!isSuperadmin && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 shadow-none dark:border-blue-800 rounded-lg">
             <p className="text-sm text-blue-800 dark:text-blue-200">
               {tInvites('leadToParticipantDescription')}
             </p>
@@ -202,14 +202,14 @@ export function InviteGeneration() {
           </BrandFormControl>
         )}
 
-      {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
-        <div className="text-sm text-brand-text-secondary">
-          {t('community')}: <span className="font-medium">{availableCommunities[0]?.name}</span>
-        </div>
-      )}
+        {!isSuperadmin && availableCommunities.length === 1 && selectedCommunityId && (
+          <div className="text-sm text-brand-text-secondary">
+            {t('community')}: <span className="font-medium">{availableCommunities[0]?.name}</span>
+          </div>
+        )}
 
         <BrandFormControl
-          label={tInvites('expiresInDays') || 'Expires in (days)'}
+          label={tInvites('expiresInDays')}
           helperText={tInvites('expiresInDaysHelp')}
         >
           <Input
@@ -219,21 +219,21 @@ export function InviteGeneration() {
               const num = parseInt(e.target.value, 10);
               setInviteExpiresInDays(isNaN(num) ? '' : num);
             }}
-            placeholder={tInvites('expiresInDaysPlaceholder') || '30'}
+            placeholder={tInvites('expiresInDaysPlaceholder')}
             className="h-11 rounded-xl w-full"
           />
         </BrandFormControl>
 
         {generatedInvite && (
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 shadow-none dark:border-green-800 rounded-lg">
             <div className="flex items-center justify-between mb-2">
               <p className="font-bold text-green-800 dark:text-green-200">
-                {tInvites('inviteCode') || 'Invite Code'}
+                {tInvites('inviteCode')}
               </p>
               <button
                 onClick={() => handleCopyInviteCode(generatedInvite.code)}
                 className="p-1 hover:bg-green-100 dark:hover:bg-green-900/40 rounded"
-                title={tCommon('copy') || 'Copy'}
+                title={tCommon('copy')}
               >
                 {inviteCopied ? (
                   <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -247,7 +247,7 @@ export function InviteGeneration() {
             </p>
             {inviteCopied && (
               <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                {tCommon('copied') || 'Copied!'}
+                {tCommon('copied')}
               </p>
             )}
           </div>
@@ -260,16 +260,16 @@ export function InviteGeneration() {
           className="rounded-xl active:scale-[0.98] w-full"
         >
           {createInvite.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {createInvite.isPending ? (tInvites('creating') || 'Creating...') : (tInvites('create') || 'Generate Invite')}
+          {createInvite.isPending ? tInvites('creating') : tInvites('create')}
         </Button>
       </div>
 
       {/* Invite List Dropdown */}
       {invites.length > 0 && (
-        <div className="border-t border-brand-secondary/10 pt-4">
+        <div className="border-t-0 pt-4">
           <button
             onClick={() => setShowInviteList(!showInviteList)}
-            className="flex items-center justify-between w-full p-3 bg-brand-surface border border-brand-secondary/10 rounded-lg hover:bg-brand-secondary/5 transition-colors"
+            className="flex items-center justify-between w-full p-3 bg-brand-surface shadow-none rounded-lg hover:bg-brand-secondary/5 transition-colors"
           >
             <span className="font-medium text-brand-text-primary">
               {t('generatedInvites')} ({invites.length})
@@ -291,17 +291,16 @@ export function InviteGeneration() {
                 invites.map((invite) => {
                   const expired = isInviteExpired(invite);
                   const used = invite.isUsed;
-                  
+
                   return (
                     <div
                       key={invite.id}
-                      className={`p-3 rounded-lg border ${
-                        used
-                          ? 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800'
-                          : expired
-                          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-                          : 'bg-base-100 border-brand-secondary/10'
-                      }`}
+                      className={`p-3 rounded-lg ${used
+                        ? 'bg-gray-50 dark:bg-gray-900/20'
+                        : expired
+                          ? 'bg-yellow-50 dark:bg-yellow-900/20'
+                          : 'bg-base-100'
+                        }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -328,7 +327,7 @@ export function InviteGeneration() {
                           <div className="text-xs text-brand-text-secondary space-y-0.5">
                             <div>
                               <span className="font-medium">{t('type')}:</span>{' '}
-                              {invite.type === 'superadmin-to-lead' 
+                              {invite.type === 'superadmin-to-lead'
                                 ? t('superadminToLead')
                                 : t('leadToParticipant')}
                             </div>
@@ -352,7 +351,7 @@ export function InviteGeneration() {
                           <button
                             onClick={() => handleCopyInviteCode(invite.code)}
                             className="p-1.5 hover:bg-brand-secondary/10 rounded transition-colors flex-shrink-0"
-                            title={tCommon('copy') || 'Copy'}
+                            title={tCommon('copy')}
                           >
                             <Copy className="w-4 h-4 text-brand-text-secondary" />
                           </button>

@@ -80,7 +80,7 @@ export const FormCommentVoteBase = ({
     return (
         <div
             className={classList(
-                "p-5 rounded-2xl shadow-lg",
+                "p-5 rounded-xl shadow-lg",
                 directionPlus
                     ? "bg-success/10"
                     : directionMinus

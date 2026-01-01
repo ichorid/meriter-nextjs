@@ -511,7 +511,7 @@ export const FormPollCreate = ({
 
             {/* Error Alert */}
             {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 shadow-none dark:border-red-800/50 rounded-lg">
                     <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}

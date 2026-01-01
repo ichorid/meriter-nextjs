@@ -39,7 +39,7 @@ export function MeritsAndQuotaSection({ userId, communityIds, userRoles }: Merit
     }
 
     return (
-        <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+        <div className="bg-brand-surface shadow-none rounded-xl p-6">
             <h2 className="text-lg font-bold text-brand-text-primary mb-4">
                 {tCommon('meritsAndQuota') || 'Merits & Quota'}
             </h2>

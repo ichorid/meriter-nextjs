@@ -82,7 +82,7 @@ export const CardPublication = ({
     
     return (
     <div 
-        className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl mb-5 overflow-hidden max-w-full transition-all${clickableClass}`}
+        className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-xl mb-5 overflow-hidden max-w-full transition-all${clickableClass}`}
         onClick={onClick}
     >
         {coverImageUrl && galleryImages.length === 0 && (

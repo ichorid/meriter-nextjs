@@ -169,7 +169,7 @@ export function LoginForm({
                         <>
                             {fakeDataMode ? (
                                 <div className="space-y-4">
-                                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg p-3">
+                                    <div className="bg-amber-50 dark:bg-amber-950/20 shadow-none dark:border-amber-900 rounded-lg p-3">
                                         <p className="text-sm text-amber-800 dark:text-amber-200">
                                             {t("fakeDataModeEnabled")}
                                         </p>
@@ -300,7 +300,7 @@ export function LoginForm({
 
                                     {/* No Auth Providers Warning */}
                                     {displayedProviders.length === 0 && !authnEnabled && (
-                                        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                                        <div className="bg-destructive/10 shadow-none rounded-lg p-4">
                                             <p className="text-sm text-destructive text-center">
                                                 {t("noAuthenticationProviders")}
                                             </p>

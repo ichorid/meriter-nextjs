@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 
 export default function EditProfilePage() {
   const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -37,14 +38,14 @@ export default function EditProfilePage() {
   return (
     <AdaptiveLayout
       stickyHeader={
-        <SimpleStickyHeader 
-          title={t('editProfile') || 'Edit Profile'} 
-          showBack={true} 
-          asStickyHeader={true} 
+        <SimpleStickyHeader
+          title={tCommon('profile')}
+          showBack={true}
+          asStickyHeader={true}
         />
       }
     >
-      <div className="bg-base-200/50 border border-base-content/5 rounded-2xl p-6">
+      <div className="w-full">
         <ProfileEditForm
           onCancel={() => router.push('/meriter/profile')}
           onSuccess={() => router.push('/meriter/profile')}

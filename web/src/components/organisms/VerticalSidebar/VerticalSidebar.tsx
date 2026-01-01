@@ -40,13 +40,13 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   // Determine width based on expanded state
   // When expanded, use CSS variable for dynamic width; when collapsed, use fixed width
-  const widthStyle = isExpanded 
+  const widthStyle = isExpanded
     ? { width: 'var(--left-sidebar-width, 336px)' }
     : { width: '72px' };
   const paddingClass = isExpanded ? 'px-4' : 'px-2';
 
   return (
-    <aside 
+    <aside
       className={`flex fixed lg:sticky left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
       style={widthStyle}
     >
@@ -55,7 +55,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={paddingClass}>
           <Link href={routes.communities}>
             <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.communities
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.communities
                 ? 'bg-primary text-primary-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
@@ -78,7 +78,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={paddingClass}>
           <Link href={routes.notifications}>
             <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
                 ? 'bg-primary text-primary-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
@@ -132,7 +132,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       <div className={paddingClass}>
         <Link href={routes.profile}>
           <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
+            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
               ? 'bg-primary text-primary-content'
               : 'hover:bg-base-300 text-base-content'
               }`}
@@ -167,7 +167,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={paddingClass}>
           <Link href={routes.about}>
             <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 ${pathname === routes.about
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.about
                 ? 'bg-primary text-primary-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
@@ -190,7 +190,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={paddingClass}>
           <Link href={`${routes.profile}/favorites`}>
             <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-lg flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
+              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
                 ? 'bg-primary text-primary-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
@@ -268,7 +268,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 isExpanded={isExpanded}
                 hideDescription={true}
                 wallet={wallet ? { balance: wallet.balance || 0, communityId } : undefined}
-                quota={quota && typeof quota.remainingToday === 'number' ? { 
+                quota={quota && typeof quota.remainingToday === 'number' ? {
                   remainingToday: quota.remainingToday,
                   dailyQuota: quota.dailyQuota ?? 0
                 } : undefined}

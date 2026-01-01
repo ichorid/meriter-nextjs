@@ -105,7 +105,7 @@ export default function AuthnTestPage() {
                 </div>
 
                 {/* Console Output */}
-                <div className="flex-grow bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs p-4 rounded-xl overflow-y-auto shadow-inner border border-base-300">
+                <div className="flex-grow bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs p-4 rounded-xl overflow-y-auto shadow-inner shadow-none">
                     {logs.length === 0 && (
                         <div className="text-gray-500 italic text-center mt-10">
                             Ready... waiting for interaction.

@@ -238,7 +238,7 @@ export function ImageUploader({
             <img
               src={preview}
               alt="Preview"
-              className="w-10 h-10 object-cover rounded-lg border border-base-300"
+              className="w-10 h-10 object-cover rounded-lg shadow-none"
             />
             <button
               type="button"

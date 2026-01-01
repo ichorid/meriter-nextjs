@@ -17,25 +17,26 @@ interface ProfileHeroProps {
   };
   showEdit?: boolean;
   userRoles?: Array<{ role: string }>;
+  onEdit?: () => void;
 }
 
-function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles = [] }: ProfileHeroProps) {
+function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles = [], onEdit }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  
+
   // Determine role type for display (same logic as VerticalSidebar)
   const userRoleDisplay = React.useMemo(() => {
     // Check global superadmin role first
     if (user?.globalRole === 'superadmin') {
       return { role: 'superadmin', label: tCommon('superadmin'), variant: 'error' as const };
     }
-    
+
     // Check community roles (lead > participant > viewer)
     const hasLead = userRoles.some(r => r.role === 'lead');
     const hasParticipant = userRoles.some(r => r.role === 'participant');
     const hasViewer = userRoles.some(r => r.role === 'viewer');
-    
+
     if (hasLead) {
       return { role: 'lead', label: tCommon('lead'), variant: 'accent' as const };
     }
@@ -45,7 +46,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
     if (hasViewer) {
       return { role: 'viewer', label: tCommon('viewer'), variant: 'secondary' as const };
     }
-    
+
     return null;
   }, [user?.globalRole, userRoles, tCommon]);
 
@@ -61,15 +62,15 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
   const contacts = user.profile?.contacts;
 
   // Check if user is Representative (lead) or Member (participant) - show educationalInstitution
-  const isRepresentativeOrMember = user.globalRole === 'superadmin' || 
+  const isRepresentativeOrMember = user.globalRole === 'superadmin' ||
     userRoles.some(r => r.role === 'lead' || r.role === 'participant');
 
   // Check if user is Representative (lead) or Organizer (superadmin) - show contacts
-  const showContacts = user.globalRole === 'superadmin' || 
+  const showContacts = user.globalRole === 'superadmin' ||
     userRoles.some(r => r.role === 'lead');
 
   return (
-    <div className="relative bg-base-100 rounded-2xl overflow-hidden border border-base-content/5">
+    <div className="relative bg-base-100 overflow-hidden mb-6">
       {/* Cover Section */}
       <div className="relative h-24 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent">
         {/* Edit and Settings buttons */}
@@ -78,11 +79,11 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/meriter/profile/edit')}
+              onClick={() => onEdit ? onEdit() : router.push('/meriter/profile/edit')}
               className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
             >
               <Edit size={14} className="mr-1.5" />
-              <span className="text-xs">Edit</span>
+              <span className="text-xs">{tCommon('edit')}</span>
             </Button>
             <Button
               variant="ghost"
@@ -98,7 +99,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
       </div>
 
       {/* Profile Content */}
-      <div className="relative px-5 pb-5">
+      <div className="relative pb-5">
         {/* Avatar */}
         <div className="-mt-10 mb-4">
           <div className="relative inline-block">
@@ -140,7 +141,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
           {about && (
             <div>
               <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                About
+                {t('about')}
               </p>
               <p className="text-sm text-base-content/70 leading-relaxed">
                 {about}
@@ -152,7 +153,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
           {isRepresentativeOrMember && educationalInstitution && (
             <div>
               <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                Education
+                {t('educationalInstitution')}
               </p>
               <p className="text-sm text-base-content/70">
                 {educationalInstitution}
@@ -184,9 +185,9 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
 
           {/* Contacts */}
           {showContacts && contacts && (contacts.email || contacts.messenger) && (
-            <div className="pt-4 border-t border-base-content/5">
+            <div className="pt-4">
               <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-2">
-                Contacts
+                {t('contacts')}
               </p>
               <div className="flex flex-wrap gap-3 text-sm">
                 {contacts.email && (
@@ -207,7 +208,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
 
         {/* Role Badge */}
         {userRoleDisplay && (
-          <div className="mt-5 pt-4 border-t border-base-content/5">
+          <div className="mt-5 pt-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-base-content/40">{t('role')}</span>
               <Badge variant={userRoleDisplay.variant} size="sm">

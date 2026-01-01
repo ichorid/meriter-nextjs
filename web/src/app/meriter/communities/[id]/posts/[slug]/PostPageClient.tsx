@@ -8,6 +8,7 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { SortToggle } from '@/components/ui/SortToggle';
 import { type SortValue } from '@/components/ui/SortTabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Button } from '@/components/ui/shadcn/button';
 import { User } from 'lucide-react';
 import { Comment } from "@features/comments/components/comment";
 import { useUIStore } from '@/stores/ui.store';
@@ -223,91 +224,122 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
             stickyHeader={pageHeader}
         >
             <div className="space-y-4 pb-24">
-                {/* Publication Header Card with Cover as Background */}
+                {/* Publication Header Card */}
                 {publication && (
-                    <article
-                        className="relative rounded-2xl overflow-hidden border border-base-content/5"
-                        style={(publication as any).imageUrl ? {
-                            backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.6)), url(${(publication as any).imageUrl})`,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center',
-                            minHeight: '200px',
-                        } : undefined}
-                    >
-                        <div className={`p-5 h-full flex flex-col justify-end ${(publication as any).imageUrl ? 'text-white min-h-[200px]' : 'bg-base-100'}`}>
-                            {/* Post Type Badge */}
-                            {(publication as any).isProject && (
-                                <div className="mb-3">
-                                    <span className="inline-block px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded">
-                                        ПРОЕКТ
+                    <article className="bg-base-100 rounded-xl py-6 sm:py-8">
+                        {/* Post Type Badge */}
+                        {(publication as any).isProject && (
+                            <div className="mb-4">
+                                <span className="inline-flex items-center px-3 py-1 text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
+                                    ПРОЕКТ
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Title */}
+                        {(publication as any).title && (
+                            <h1 className="text-2xl sm:text-3xl font-bold mb-4 text-base-content leading-tight">
+                                {(publication as any).title}
+                            </h1>
+                        )}
+
+                        {/* Author Info */}
+                        <div className="flex items-center gap-3 mb-6">
+                            <Avatar
+                                className="w-10 h-10 cursor-pointer"
+                                onClick={() => {
+                                    if ((publication as any).authorId) {
+                                        router.push(`/meriter/users/${(publication as any).authorId}`);
+                                    }
+                                }}
+                            >
+                                <AvatarImage
+                                    src={(publication as any).authorAvatarUrl}
+                                    alt={(publication as any).authorName || 'Author'}
+                                />
+                                <AvatarFallback userId={(publication as any).authorId}>
+                                    {(publication as any).authorName?.charAt(0).toUpperCase() || 'A'}
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-base-content">
+                                    {(publication as any).authorName || t('anonymous')}
+                                </div>
+                                <div className="text-xs text-base-content/60">
+                                    {(publication as any).createdAt && new Date((publication as any).createdAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Cover Image */}
+                        {(publication as any).imageUrl && (
+                            <div className="mb-6 -mx-6 sm:-mx-8">
+                                <img
+                                    src={(publication as any).imageUrl}
+                                    alt={(publication as any).title || 'Post cover'}
+                                    className="w-full h-auto max-h-96 object-cover"
+                                />
+                            </div>
+                        )}
+
+                        {/* Content */}
+                        {(publication as any).content && (
+                            <div
+                                className="prose prose-sm sm:prose max-w-none text-base-content/90 leading-relaxed mb-6"
+                                dangerouslySetInnerHTML={{
+                                    __html: DOMPurify.sanitize((publication as any).content)
+                                }}
+                            />
+                        )}
+
+                        {/* Tags */}
+                        {(publication as any).tags && (publication as any).tags.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mb-6">
+                                {(publication as any).tags.map((tag: string, index: number) => (
+                                    <span
+                                        key={index}
+                                        className="inline-flex items-center px-2.5 py-1 text-xs font-medium bg-base-200/50 text-base-content/70 rounded-lg"
+                                    >
+                                        #{tag}
                                     </span>
-                                </div>
-                            )}
+                                ))}
+                            </div>
+                        )}
 
-                            {/* Title */}
-                            {(publication as any).title && (
-                                <h1 className={`text-xl sm:text-2xl font-bold mb-3 ${(publication as any).imageUrl ? 'text-white drop-shadow-lg' : 'text-base-content'}`}>
-                                    {(publication as any).title}
-                                </h1>
-                            )}
-
-                            {/* Author Info */}
-                            <div className={`flex items-center gap-3 ${(publication as any).imageUrl ? '' : 'mt-2 pt-2 border-t border-base-content/10'}`}>
-                                <Avatar className="w-10 h-10 text-sm">
-                                    {author?.avatarUrl && (
-                                        <AvatarImage src={author.avatarUrl} alt={author?.displayName || (publication as any).authorDisplay || 'Author'} />
-                                    )}
-                                    <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
-                                        {(author?.displayName || (publication as any).authorDisplay) ? (author?.displayName || (publication as any).authorDisplay).slice(0, 2).toUpperCase() : <User size={18} />}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                    <div className={`font-medium ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
-                                        {author?.displayName || (publication as any).authorDisplay || 'Author'}
-                                    </div>
-                                    <div className={`text-xs ${(publication as any).imageUrl ? 'text-white/80' : 'text-base-content/60'}`}>
-                                        {new Date(publication.createdAt).toLocaleDateString()}
-                                    </div>
-                                </div>
-
-                                {/* Score */}
-                                {publication.metrics?.score !== undefined && (
-                                    <div className={`ml-auto text-lg font-bold ${(publication as any).imageUrl ? 'text-white drop-shadow' : 'text-base-content'}`}>
-                                        {publication.metrics.score > 0 ? '+' : ''}{publication.metrics.score}
-                                    </div>
-                                )}
+                        {/* Stats Bar */}
+                        <div className="flex items-center gap-4 pt-4 text-sm text-base-content/60">
+                            <div className="flex items-center gap-1.5">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span>{(publication as any).viewCount || 0} views</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                                <span>{comments?.length || 0} comments</span>
                             </div>
                         </div>
                     </article>
                 )}
 
-                {/* Post Content - Outside the card */}
-                {publication && ((publication as any).description || publication.content) && (
-                    <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                            {(() => {
-                                const content = (publication as any).description || publication.content || '';
-                                const isHtml = content.includes('<') && content.includes('>');
-                                if (isHtml && typeof window !== 'undefined') {
-                                    const sanitized = DOMPurify.sanitize(content, {
-                                        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'blockquote', 'code'],
-                                        ALLOWED_ATTR: ['href', 'target', 'rel'],
-                                    });
-                                    return <div dangerouslySetInnerHTML={{ __html: sanitized }} />;
-                                }
-                                return <p className="whitespace-pre-wrap">{content}</p>;
-                            })()}
-                        </div>
-                    </div>
-                )}
-
                 {/* Comments Section */}
                 {publication && showComments && (
-                    <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5">
-                        <h3 className="text-lg font-semibold mb-4">{t('comments')} ({comments?.length || 0})</h3>
+                    <div className="mt-8">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold text-base-content">
+                                {t('comments')}
+                                <span className="ml-2 text-sm font-normal text-base-content/50">
+                                    {comments?.length || 0}
+                                </span>
+                            </h2>
+                        </div>
 
-                        <div className="mb-4">
-                            <button
+                        <div className="mb-6">
+                            <Button
+                                variant="outline"
                                 onClick={() => {
                                     // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
                                     // Special groups preserve their restrictions.
@@ -316,18 +348,18 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         typeTag === 'future-vision'
                                             ? 'wallet-only'
                                             : typeTag === 'marathon-of-good'
-                                              ? 'quota-only'
-                                              : 'standard';
+                                                ? 'quota-only'
+                                                : 'standard';
                                     useUIStore.getState().openVotingPopup(slug, 'publication', mode);
                                 }}
-                                className="w-full py-3 px-4 bg-base-200 hover:bg-base-300 rounded-xl text-base-content/70 hover:text-base-content transition-colors text-sm font-medium"
+                                className="w-full"
                             >
                                 {t('addComment')}
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Comments List */}
-                        <div className="space-y-4">
+                        <div className="flex flex-col gap-3">
                             {comments?.map((c: any, index: number) => (
                                 <Comment
                                     key={c.id || c._id || `comment-${index}`}

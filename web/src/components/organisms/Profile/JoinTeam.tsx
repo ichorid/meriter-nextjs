@@ -12,24 +12,24 @@ interface JoinTeamProps {
   description?: string;
 }
 
-export function JoinTeam({ 
-  className = '', 
+export function JoinTeam({
+  className = '',
   showLocalGroupsNote = false,
-  description 
+  description
 }: JoinTeamProps) {
   const tCommunities = useTranslations('communities');
   const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
 
-  const defaultDescription = tCommunities('joinTeamDescription');
+  const defaultDescription = tCommunities('joinTeam.subtitle');
 
   return (
-    <div className={`bg-base-200/50 border border-base-content/5 rounded-2xl p-6 ${className}`}>
+    <div className={`bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6 ${className}`}>
       <button
         onClick={() => setJoinTeamExpanded(!joinTeamExpanded)}
         className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
       >
         <h3 className="text-lg font-semibold text-base-content">
-          {tCommunities('joinTeam')}
+          {tCommunities('joinTeam.title')}
         </h3>
         {joinTeamExpanded ? (
           <ChevronUp className="w-5 h-5 text-base-content/60" />
@@ -50,10 +50,10 @@ export function JoinTeam({
             </p>
           )}
           <InviteInput />
-          
+
           {/* Local Groups Notification */}
           {showLocalGroupsNote && (
-            <div className="pt-6 border-t border-base-300 mt-2">
+            <div className="pt-6 border-t-0 mt-2">
               <div className="flex flex-col items-start gap-1">
                 {/* Title */}
                 <div className="flex flex-row items-center pb-1.5 pr-5 gap-2.5">

@@ -55,7 +55,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
             wallets.map((wallet) => (
               <div
                 key={wallet.id}
-                className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
+                className="flex items-center justify-between p-3 shadow-none rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   {wallet.currencyIcon && (

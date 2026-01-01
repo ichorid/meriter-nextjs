@@ -132,7 +132,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                 </div>
 
                 {results.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-base-100 shadow-none rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {results.map((result, index) => (
                             <button
                                 key={index}
@@ -147,7 +147,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                 )}
             </div>
 
-            <div className="h-64 w-full rounded-xl overflow-hidden border border-base-300 relative">
+            <div className="h-64 w-full rounded-xl overflow-hidden shadow-none relative">
                 <Map
                     center={center}
                     zoom={zoom}

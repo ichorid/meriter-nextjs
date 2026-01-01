@@ -77,6 +77,8 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
       isSubmitting={isUpdating}
       showContacts={true}
       showEducation={true}
+      title={t('editProfile')}
+      subtitle={t('editProfileSubtitle')}
     />
   );
 }

@@ -23,7 +23,7 @@ export function CollapsibleSection({
   children,
 }: CollapsibleSectionProps) {
   return (
-    <div className="rounded-2xl border">
+    <div className="rounded-xl border">
       <div className="flex w-full items-center justify-between gap-3 px-4 py-3">
         <button
           type="button"

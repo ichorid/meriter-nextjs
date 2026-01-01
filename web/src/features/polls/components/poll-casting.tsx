@@ -156,7 +156,7 @@ export const PollCasting = ({
     if (!isExpanded) {
         return (
             <div
-                className="p-4 bg-accent/5 border-l-4 border-accent cursor-pointer hover:bg-accent/10 transition-all duration-300 ease-in-out"
+                className="p-4 bg-accent/5 border-l-4 border-accent cursor-pointer hover:bg-accent/10 transition-all duration-300 ease-in-out rounded-xl"
                 onClick={() => setIsExpanded(true)}
             >
                 <div className="flex items-start justify-between mb-3">
@@ -195,7 +195,7 @@ export const PollCasting = ({
 
     // Expanded view
     return (
-        <div className="p-5 bg-accent/5 border-l-4 border-accent transition-all duration-300 ease-in-out">
+        <div className="p-5 bg-accent/5 border-l-4 border-accent transition-all duration-300 ease-in-out rounded-xl">
             <div className="mb-5 animate-in fade-in duration-300">
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1">
@@ -238,7 +238,7 @@ export const PollCasting = ({
                     return (
                         <div
                             key={`poll-option-${option.id}`}
-                            className={`card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4 ${isSelected ? "ring-2 ring-primary" : ""
+                            className={`card bg-base-200 shadow-none p-4 rounded-xl ${isSelected ? "ring-2 ring-primary" : ""
                                 } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
                                 }`}
                         >
@@ -284,7 +284,7 @@ export const PollCasting = ({
             </div>
 
             {!isExpired && (
-                <div className="card bg-base-200 shadow-md dark:border dark:border-base-content/20 p-4">
+                <div className="card bg-base-200 shadow-none p-4 rounded-xl">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="cast-amount">
                             <span className="label-text">{t('amountLabel')}</span>
@@ -339,7 +339,7 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
-                            className="input input-bordered w-full"
+                            className="input input-bordered w-full rounded-xl"
                         />
                     </div>
                     {amountValidationError && (
@@ -368,13 +368,13 @@ export const PollCasting = ({
             )}
 
             {userCastSummary && userCastSummary.castCount > 0 && (
-                <div className="text-sm text-info p-3 bg-info/10 rounded-lg">
+                <div className="text-sm text-info p-3 bg-info/10 rounded-xl">
                     <span>{t('youCastSummary', { count: userCastSummary.castCount, amount: userCastSummary.totalAmount })}</span>
                 </div>
             )}
 
             {isExpired && (
-                <div className="text-sm text-warning p-3 bg-warning/10 rounded-lg">
+                <div className="text-sm text-warning p-3 bg-warning/10 rounded-xl">
                     <span>{t('pollExpired')}</span>
                 </div>
             )}

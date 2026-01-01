@@ -148,7 +148,7 @@ export const HashtagInput = ({
                         {value.map((tag) => (
                             <div
                                 key={tag}
-                                className="flex items-center gap-1 px-2 py-1 bg-brand-primary/10 text-brand-primary rounded-md border border-brand-primary/20"
+                                className="flex items-center gap-1 px-2 py-1 bg-brand-primary/10 text-brand-primary rounded-md shadow-none"
                             >
                                 <Hash size={12} />
                                 <span className="text-sm font-medium">{tag}</span>
@@ -190,7 +190,7 @@ export const HashtagInput = ({
                                 <span className="text-base-content/60">
                                     {tCommon('hashtagPreview') || 'Preview:'}
                                 </span>
-                                <div className="flex items-center gap-1 px-2 py-1 bg-base-200 text-base-content rounded-md border border-base-300 opacity-75">
+                                <div className="flex items-center gap-1 px-2 py-1 bg-base-200 text-base-content rounded-md shadow-none opacity-75">
                                     <Hash size={12} />
                                     <span className="text-sm font-medium">{previewTag}</span>
                                 </div>

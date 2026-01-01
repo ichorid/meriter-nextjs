@@ -151,7 +151,7 @@ export const RichTextEditor = ({ content, onChange, placeholder, className, edit
     });
 
     return (
-        <div className={cn("border border-base-300 rounded-xl overflow-hidden bg-base-100 focus-within:ring-2 focus-within:ring-brand-primary/20 transition-shadow", className)}>
+        <div className={cn("shadow-none rounded-xl overflow-hidden bg-base-100 focus-within:ring-2 focus-within:ring-brand-primary/20 transition-shadow", className)}>
             {editable && <MenuBar editor={editor} />}
             <EditorContent editor={editor} />
         </div>

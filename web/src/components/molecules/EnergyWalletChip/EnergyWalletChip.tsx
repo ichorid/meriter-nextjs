@@ -76,7 +76,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                             inverted={inverted}
                         />
                         {/* Balance badge positioned at top-right */}
-                        <div className="absolute -top-1 -right-1 bg-base-100 border border-base-300 rounded-full px-1.5 py-0.5 shadow-sm flex items-center gap-0.5 min-w-[28px] justify-center">
+                        <div className="absolute -top-1 -right-1 bg-base-100 shadow-none rounded-full px-1.5 py-0.5 shadow-sm flex items-center gap-0.5 min-w-[28px] justify-center">
                             {currencyIconUrl && (
                                 <img
                                     src={currencyIconUrl}
@@ -135,7 +135,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                             inverted={inverted}
                         />
                         {/* Balance display beside ring */}
-                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-base-100/50 rounded-md border border-base-300/50">
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-base-100/50 rounded-md shadow-none">
                             {currencyIconUrl && (
                                 <img
                                     src={currencyIconUrl}

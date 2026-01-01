@@ -101,7 +101,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
     return (
         <div className="space-y-4">
             {isSuperadmin && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 shadow-none dark:border-blue-800 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
                         {tInvites('superadminToLeadDescription')}
                     </p>
@@ -109,7 +109,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
             )}
 
             {!isSuperadmin && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 shadow-none dark:border-blue-800 rounded-lg">
                     <p className="text-sm text-blue-800 dark:text-blue-200">
                         {tInvites('leadToParticipantDescription')}
                     </p>
@@ -161,7 +161,7 @@ export const InviteCreationForm: React.FC<InviteCreationFormProps> = ({
             </BrandFormControl>
 
             {generatedInvite && (
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 shadow-none dark:border-green-800 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                         <p className="font-bold text-green-800 dark:text-green-200">
                             {tInvites('inviteCode')}
