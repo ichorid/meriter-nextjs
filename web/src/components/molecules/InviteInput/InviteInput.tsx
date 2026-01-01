@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import Link from 'next/link';
+import { routes } from '@/lib/constants/routes';
 
 interface InviteInputProps {
     className?: string;
@@ -64,10 +66,30 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
         }
     };
 
+    const handleLeadsLinkClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        router.push(`${routes.communities}?scrollToLeads=true`);
+    };
+
+    const helperText = (
+        <>
+            {t('inviteCodeHelperText')}{' '}
+            <Link 
+                href={`${routes.communities}?scrollToLeads=true`}
+                onClick={handleLeadsLinkClick}
+                className="text-primary hover:underline font-medium"
+            >
+                {t('inviteCodeHelperLinkText')}
+            </Link>
+            .
+        </>
+    );
+
     return (
         <div className={`space-y-3 ${className}`}>
             <BrandFormControl
                 label={hideLabel ? undefined : t('inviteCodeLabel')}
+                helperText={hideLabel ? undefined : helperText}
                 error={inviteError}
             >
                 <div className="flex gap-2">

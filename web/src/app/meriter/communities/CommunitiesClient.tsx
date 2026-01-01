@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -21,6 +21,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 export default function CommunitiesPage() {
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isLoading: userLoading } = useAuth();
     const t = useTranslations('common');
     const tSearch = useTranslations('search');
@@ -30,6 +31,25 @@ export default function CommunitiesPage() {
     const [leadsExpanded, setLeadsExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
+
+    // Handle scroll to leads section from URL param
+    useEffect(() => {
+        const scrollToLeads = searchParams?.get('scrollToLeads');
+        if (scrollToLeads === 'true') {
+            setLeadsExpanded(true);
+            setTimeout(() => {
+                const leadsSection = document.getElementById('leads-section');
+                if (leadsSection) {
+                    leadsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Remove query param after scrolling
+                    const params = new URLSearchParams(searchParams?.toString() || '');
+                    params.delete('scrollToLeads');
+                    const newUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+                    router.replace(newUrl);
+                }
+            }, 300);
+        }
+    }, [searchParams, pathname, router]);
 
     // Get user's communities with wallets and quotas (handles both regular users and superadmin)
     const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
@@ -210,7 +230,7 @@ export default function CommunitiesPage() {
 
 
                 {/* Section 4: Leads (Collapsible) */}
-                <section className="pt-6 border-t border-base-300">
+                <section id="leads-section" className="pt-6 border-t border-base-300">
                     <button
                         onClick={() => setLeadsExpanded(!leadsExpanded)}
                         className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"

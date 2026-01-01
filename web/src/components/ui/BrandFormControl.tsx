@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface BrandFormControlProps {
     label?: string;
-    helperText?: string;
+    helperText?: string | React.ReactNode;
     error?: string;
     required?: boolean;
     children: React.ReactNode;
