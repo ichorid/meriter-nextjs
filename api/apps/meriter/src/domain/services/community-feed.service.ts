@@ -72,6 +72,15 @@ export class CommunityFeedService {
     const community = await this.communityService.getCommunity(communityId);
     const isFutureVision = community?.typeTag === 'future-vision';
 
+    // Check if any category filters are active (polls don't have categories, so exclude them)
+    const hasCategoryFilters = !!(
+      impactArea ||
+      stage ||
+      (beneficiaries && beneficiaries.length > 0) ||
+      (methods && methods.length > 0) ||
+      (helpNeeded && helpNeeded.length > 0)
+    );
+
     // Fetch both publications and polls in parallel
     // Fetch more items than needed to ensure we have enough after merging and sorting
     const fetchLimit = limit * 2; // Fetch 2x limit from each source
@@ -93,8 +102,8 @@ export class CommunityFeedService {
         },
         search,
       ),
-      // Don't fetch polls for future-vision communities
-      isFutureVision
+      // Don't fetch polls for future-vision communities or when category filters are active
+      isFutureVision || hasCategoryFilters
         ? Promise.resolve([])
         : this.pollService.getPollsByCommunity(
 
