@@ -285,7 +285,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         {/* Content */}
                         {(publication as any).content && (
                             <div
-                                className="prose prose-sm sm:prose max-w-none text-base-content/90 leading-relaxed mb-6"
+                                className="max-w-none leading-relaxed mb-6"
                                 dangerouslySetInnerHTML={{
                                     __html: DOMPurify.sanitize((publication as any).content)
                                 }}

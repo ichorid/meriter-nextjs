@@ -28,11 +28,11 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     // Only check after query has completed
     if (isFetched && !isLoading) {
       // Check if user doesn't exist (error with NOT_FOUND code)
-      const isNotFound = 
-        error && 
-        ((error as any)?.data?.code === 'NOT_FOUND' || 
-         (error as any)?.message?.includes('not found'));
-      
+      const isNotFound =
+        error &&
+        ((error as any)?.data?.code === 'NOT_FOUND' ||
+          (error as any)?.message?.includes('not found'));
+
       if (isNotFound) {
         // Redirect to not-found page
         router.replace('/meriter/not-found');
@@ -163,7 +163,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         {/* Additional Information */}
         {profile.about && (
           <div className="bg-brand-surface shadow-none rounded-xl p-6">
-            <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('about')}</h2>
+            <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('aboutMe')}</h2>
             <div className="space-y-4">
               {profile.about && (
                 <div>
