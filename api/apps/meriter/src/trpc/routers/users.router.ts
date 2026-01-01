@@ -125,7 +125,18 @@ export const usersRouter = router({
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
       const roles = await ctx.userCommunityRoleService.getUserRoles(actualUserId);
 
-      // Get community names for each role
+      // Get all communities where user is a member (from community.members array)
+      // This catches cases where user is in community.members but doesn't have a role in user_community_roles
+      const user = await ctx.userService.getUserById(actualUserId);
+      const userCommunityIds = user?.communityMemberships || [];
+      
+      // Get all communities where user has a role
+      const roleCommunityIds = new Set(roles.map(r => r.communityId));
+      
+      // Find communities where user is a member but doesn't have a role
+      const missingRoleCommunityIds = userCommunityIds.filter(id => !roleCommunityIds.has(id));
+      
+      // Get community names and typeTags for each role
       const rolesWithCommunities = await Promise.all(
         roles.map(async (role) => {
           const community = await ctx.communityService.getCommunity(role.communityId);
@@ -134,14 +145,44 @@ export const usersRouter = router({
             userId: role.userId,
             communityId: role.communityId,
             communityName: community?.name || role.communityId,
+            communityTypeTag: community?.typeTag,
             role: role.role,
             createdAt: role.createdAt,
             updatedAt: role.updatedAt,
           };
         }),
       );
+      
+      // Add virtual roles for communities where user is a member but doesn't have a role
+      // Default to 'participant' role for team communities, 'viewer' for special communities
+      const virtualRoles = await Promise.all(
+        missingRoleCommunityIds.map(async (communityId) => {
+          const community = await ctx.communityService.getCommunity(communityId);
+          if (!community) return null;
+          
+          // Determine default role based on community type
+          // For team communities (typeTag === 'team' or undefined), default to 'participant'
+          // For special communities, default to 'viewer'
+          const defaultRole = (community.typeTag === 'team' || !community.typeTag) 
+            ? 'participant' 
+            : 'viewer';
+          
+          return {
+            id: `virtual-${communityId}`, // Virtual ID
+            userId: actualUserId,
+            communityId: communityId,
+            communityName: community.name || communityId,
+            communityTypeTag: community.typeTag,
+            role: defaultRole,
+            createdAt: new Date(), // Use current date as fallback
+            updatedAt: new Date(),
+          };
+        }),
+      );
+      
+      const allRoles = [...rolesWithCommunities, ...virtualRoles.filter(Boolean)];
 
-      return rolesWithCommunities;
+      return allRoles;
     }),
 
   /**
