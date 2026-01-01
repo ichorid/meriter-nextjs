@@ -79,8 +79,8 @@ export function UserForm({
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Email is editable only if it wasn't provided initially
-    const isEmailEditable = !initialData?.contacts?.email;
+    // Email is editable only if it wasn't provided initially (non-empty string)
+    const isEmailEditable = !initialData?.contacts?.email || initialData?.contacts?.email.trim() === '';
 
     useEffect(() => {
         if (initialData) {
@@ -285,9 +285,7 @@ export function UserForm({
                             <Input
                                 type="email"
                                 value={email}
-                                onChange={(e) =>
-                                    isEmailEditable && setEmail(e.target.value)
-                                }
+                                onChange={(e) => setEmail(e.target.value)}
                                 disabled={!isEmailEditable}
                                 placeholder={
                                     isEmailEditable

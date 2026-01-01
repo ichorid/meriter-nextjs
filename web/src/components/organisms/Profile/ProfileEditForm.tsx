@@ -56,6 +56,7 @@ export function ProfileEditForm({ onCancel, onSuccess }: ProfileEditFormProps) {
           website: data.website,
           about: data.about,
           contacts: {
+            email: data.contacts?.email,
             messenger: data.contacts?.other,
           },
           educationalInstitution: data.educationalInstitution,
