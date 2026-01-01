@@ -8,6 +8,7 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { SortToggle } from '@/components/ui/SortToggle';
 import { type SortValue } from '@/components/ui/SortTabs';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Button } from '@/components/ui/shadcn/button';
 import { User } from 'lucide-react';
 import { Comment } from "@features/comments/components/comment";
 import { useUIStore } from '@/stores/ui.store';
@@ -337,7 +338,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         </div>
 
                         <div className="mb-6">
-                            <button
+                            <Button
+                                variant="outline"
                                 onClick={() => {
                                     // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
                                     // Special groups preserve their restrictions.
@@ -350,10 +352,10 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                                 : 'standard';
                                     useUIStore.getState().openVotingPopup(slug, 'publication', mode);
                                 }}
-                                className="w-full py-3 px-4 bg-base-200/50 hover:bg-base-200 rounded-xl text-base-content/60 hover:text-base-content transition-all duration-200 text-sm font-medium"
+                                className="w-full"
                             >
                                 {t('addComment')}
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Comments List */}

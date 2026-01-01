@@ -131,7 +131,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           <div className="main pb-24 lg:pb-0">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
             {stickyHeader && !showCommentsInCenter && (
-              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-4">
+              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-0">
                 {stickyHeader}
               </div>
             )}
