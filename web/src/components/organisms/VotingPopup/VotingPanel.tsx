@@ -191,6 +191,22 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 </p>
             )}
 
+            {/* Error message - validation errors shown here to prevent button movement */}
+            {buttonError && (
+                <div
+                    className="text-error text-center"
+                    style={{
+                        fontSize: "12px",
+                        fontFamily: "Roboto, sans-serif",
+                        fontWeight: 400,
+                        lineHeight: "120%",
+                        letterSpacing: "0.374px",
+                    }}
+                >
+                    {buttonError}
+                </div>
+            )}
+
             {/* Voting Section */}
             {!hideQuota && (
                 <div
@@ -590,8 +606,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 >
                     {t("submit")}
                 </Button>
-                {/* Error text when button is disabled or server error */}
-                {(buttonError || error) && (
+                {/* Server error (if any) - validation errors are shown after description */}
+                {error && (
                     <div
                         className="text-error text-center"
                         style={{
@@ -602,7 +618,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             letterSpacing: "0.374px",
                         }}
                     >
-                        {error || buttonError}
+                        {error}
                     </div>
                 )}
             </div>
