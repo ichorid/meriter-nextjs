@@ -41,7 +41,11 @@ export default function ProfilePublicationsPage() {
   }, [searchParams, setSortByTab]);
 
   const pageHeader = (
-    <ProfileTopBar asStickyHeader={true} />
+    <ProfileTopBar 
+      asStickyHeader={true} 
+      title={t('hero.stats.publications')}
+      showBack={true}
+    />
   );
 
   if (userLoading || !isAuthenticated) {

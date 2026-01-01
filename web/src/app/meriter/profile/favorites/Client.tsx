@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,9 +14,16 @@ import type { Wallet } from '@/types/api-v1';
 
 export default function ProfileFavoritesPage() {
   const searchParams = useSearchParams();
+  const tCommon = useTranslations('common');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
 
-  const pageHeader = <ProfileTopBar asStickyHeader={true} />;
+  const pageHeader = (
+    <ProfileTopBar 
+      asStickyHeader={true} 
+      title={tCommon('favorites')}
+      showBack={true}
+    />
+  );
 
   const { data: walletsRaw = [] } = useWallets();
   const wallets = walletsRaw as Wallet[];

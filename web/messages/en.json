@@ -1043,6 +1043,14 @@
         "editProfileSubtitle": "Update your profile information",
         "title": "Profile",
         "notFound": "User not found",
+        "hero": {
+            "stats": {
+                "publications": "Publications",
+                "comments": "Votes",
+                "polls": "Polls",
+                "projects": "Projects"
+            }
+        },
         "roles": "Roles in Communities",
         "projects": "Projects",
         "inviteSection": "Invite Code",

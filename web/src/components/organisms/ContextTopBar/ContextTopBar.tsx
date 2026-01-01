@@ -63,15 +63,20 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 };
 
 // Profile Top Bar with Tabs
-export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asStickyHeader = false }) => {
+export const ProfileTopBar: React.FC<{ 
+  asStickyHeader?: boolean;
+  title?: React.ReactNode;
+  showBack?: boolean;
+}> = ({ asStickyHeader = false, title, showBack = true }) => {
   const tCommon = useTranslations('common');
   const router = useRouter();
 
+  const displayTitle = title ?? tCommon('profile');
 
   return (
     <SimpleStickyHeader
-      title={tCommon('profile')}
-      showBack={false}
+      title={displayTitle}
+      showBack={showBack}
       onBack={() => router.push('/meriter/profile')}
       asStickyHeader={asStickyHeader}
     />

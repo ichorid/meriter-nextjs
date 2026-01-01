@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -12,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function ProfileCommentsPage() {
   const searchParams = useSearchParams();
+  const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const { sortByTab, setSortByTab } = useProfileTabState();
   const {
@@ -37,7 +39,11 @@ export default function ProfileCommentsPage() {
   }, [searchParams, setSortByTab]);
 
   const pageHeader = (
-    <ProfileTopBar asStickyHeader={true} />
+    <ProfileTopBar 
+      asStickyHeader={true} 
+      title={t('hero.stats.comments')}
+      showBack={true}
+    />
   );
 
   if (userLoading || !isAuthenticated) {

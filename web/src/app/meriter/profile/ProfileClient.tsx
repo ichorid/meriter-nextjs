@@ -96,7 +96,7 @@ function ProfilePageComponent() {
   return (
     <AdaptiveLayout
       stickyHeader={
-        <ProfileTopBar asStickyHeader={true} />
+        <ProfileTopBar asStickyHeader={true} showBack={false} />
       }
     >
       <InviteHandler />

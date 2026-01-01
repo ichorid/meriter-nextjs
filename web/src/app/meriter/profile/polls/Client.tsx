@@ -40,7 +40,11 @@ export default function ProfilePollsPage() {
   }, [searchParams, setSortByTab]);
 
   const pageHeader = (
-    <ProfileTopBar asStickyHeader={true} />
+    <ProfileTopBar 
+      asStickyHeader={true} 
+      title={t('hero.stats.polls')}
+      showBack={true}
+    />
   );
 
   if (userLoading || !isAuthenticated) {
