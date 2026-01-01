@@ -200,7 +200,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
     };
 
-    const [paginationEnd, setPaginationEnd] = useState(false);
+
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
     const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
@@ -289,14 +289,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         isFetchingNextPage: isFetchingNextDeletedPage,
         error: _deletedErr
     } = useInfiniteDeletedPublications(chatId, 20);
-    // Derive paginationEnd from hasNextPage instead of setting it in getNextPageParam
-    useEffect(() => {
-        if (!hasNextPage) {
-            setPaginationEnd(true);
-        } else {
-            setPaginationEnd(false);
-        }
-    }, [hasNextPage]);
+
 
     // Infinite scroll trigger
     const observerTarget = useInfiniteScroll({
@@ -501,25 +494,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
     }, [communityFetched, communityLoading, communityError, isAuthenticated, router]);
 
-    const cooldown = useRef(false);
-    useEffect(() => {
-        const fn = () => {
-            if (
-                window.innerHeight + window.scrollY >=
-                document.body.offsetHeight
-            ) {
-                if (!paginationEnd && !cooldown.current) {
-                    fetchNextPage();
-                    cooldown.current = true;
-                    setTimeout(() => {
-                        cooldown.current = false;
-                    }, 500);
-                }
-            }
-        };
-        window.addEventListener("scroll", fn);
-        return () => window.removeEventListener("scroll", fn);
-    }, [paginationEnd, fetchNextPage]);
+
 
     // Use community data for chat info (same as comms)
     const _chatUrl = comms?.description;

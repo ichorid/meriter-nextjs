@@ -4,7 +4,7 @@ import { trpc } from '@/lib/trpc/client';
 import { useVoteMutation } from './useVoteMutation';
 import { useAuth } from '@/contexts/AuthContext';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
-import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
+import { updateQuotaOptimistically, updateWalletOptimistically, withdrawEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
 
 // Vote on publication
@@ -66,14 +66,15 @@ export function useRemovePublicationVote() {
   const queryClient = useQueryClient();
   const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: async (_result, variables) => {
+      const vars = variables as any;
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
 
       // Invalidate and refetch specific publication detail if we have the publicationId
-      if (variables.targetType === 'publication' && variables.targetId) {
-        await utils.publications.getById.invalidate({ id: variables.targetId });
-        await utils.publications.getById.refetch({ id: variables.targetId });
+      if (vars.targetType === 'publication' && vars.targetId) {
+        await utils.publications.getById.invalidate({ id: vars.targetId });
+        await utils.publications.getById.refetch({ id: vars.targetId });
       }
 
       // Invalidate and refetch communities
@@ -106,11 +107,12 @@ export function useRemoveCommentVote() {
   const queryClient = useQueryClient();
   const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: async (_result, variables) => {
+      const vars = variables as any;
       // Invalidate and refetch comment queries
       // If we have a commentId (targetId when targetType is 'vote'), invalidate its replies
-      if (variables.targetType === 'vote' && variables.targetId) {
-        await utils.comments.getReplies.invalidate({ id: variables.targetId });
-        await utils.comments.getReplies.refetch({ id: variables.targetId });
+      if (vars.targetType === 'vote' && vars.targetId) {
+        await utils.comments.getReplies.invalidate({ id: vars.targetId });
+        await utils.comments.getReplies.refetch({ id: vars.targetId });
       }
 
       // Broad invalidation for all comment queries
@@ -178,14 +180,15 @@ export function useVoteOnPublicationWithComment() {
       return context;
     },
     onSuccess: async (result, variables) => {
+      const vars = variables as any;
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
 
       // CRITICAL FIX: Invalidate and refetch specific publication detail if we have the ID
-      if (variables.targetId && variables.targetType === 'publication') {
-        await utils.publications.getById.invalidate({ id: variables.targetId });
-        await utils.publications.getById.refetch({ id: variables.targetId });
+      if (vars.targetId && vars.targetType === 'publication') {
+        await utils.publications.getById.invalidate({ id: vars.targetId });
+        await utils.publications.getById.refetch({ id: vars.targetId });
       }
 
       // Invalidate and refetch communities
@@ -201,9 +204,9 @@ export function useVoteOnPublicationWithComment() {
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
 
       // Invalidate and refetch quota queries
-      if (user?.id && variables.communityId) {
-        await utils.wallets.getQuota.invalidate({ userId: user.id, communityId: variables.communityId });
-        await utils.wallets.getQuota.refetch({ userId: user.id, communityId: variables.communityId });
+      if (user?.id && vars.communityId) {
+        await utils.wallets.getQuota.invalidate({ userId: user.id, communityId: vars.communityId });
+        await utils.wallets.getQuota.refetch({ userId: user.id, communityId: vars.communityId });
       } else {
         // Broad invalidation for all quota queries
         queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
@@ -211,11 +214,11 @@ export function useVoteOnPublicationWithComment() {
       }
 
       // Invalidate and refetch comments if comment or images were provided
-      const shouldInvalidateComments = !!(result.comment || variables.comment || variables.images?.length);
+      const shouldInvalidateComments = !!(result.comment || vars.comment || vars.images?.length);
       if (shouldInvalidateComments) {
-        if (variables.targetId && variables.targetType === 'publication') {
-          await utils.comments.getByPublicationId.invalidate({ publicationId: variables.targetId });
-          await utils.comments.getByPublicationId.refetch({ publicationId: variables.targetId });
+        if (vars.targetId && vars.targetType === 'publication') {
+          await utils.comments.getByPublicationId.invalidate({ publicationId: vars.targetId });
+          await utils.comments.getByPublicationId.refetch({ publicationId: vars.targetId });
         } else {
           // Broad invalidation for all comment queries
           await utils.comments.getByPublicationId.invalidate();
@@ -228,7 +231,7 @@ export function useVoteOnPublicationWithComment() {
       rollbackOptimisticUpdates(queryClient, ctx);
     },
     onSettled: async (_data, _err, vars, ctx) => {
-      const communityId = vars?.communityId;
+      const communityId = (vars as any)?.communityId;
       if (user?.id && communityId) {
         await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
       }
@@ -287,24 +290,39 @@ export function useVoteOnPublicationWithComment() {
 export function useWithdrawFromPublication() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   const withdrawMutation = trpc.publications.withdraw.useMutation({
+    onMutate: async (variables) => {
+      if (!user?.id) return {} as OptimisticUpdateContext;
+      const vars = variables as any;
+
+      return await withdrawEntityVoteOptimistically(
+        queryClient,
+        vars.publicationId,
+        'publication',
+        user,
+        vars.communityId
+      );
+    },
     onSuccess: async (_, variables) => {
+      const vars = variables as any;
       // Invalidate and refetch publications
       await utils.publications.getAll.invalidate();
       await utils.publications.getAll.refetch();
 
       // CRITICAL: Invalidate and refetch specific publication detail
-      await utils.publications.getById.invalidate({ id: variables.publicationId });
-      await utils.publications.getById.refetch({ id: variables.publicationId });
+      await utils.publications.getById.invalidate({ id: vars.publicationId });
+      await utils.publications.getById.refetch({ id: vars.publicationId });
 
       // Invalidate and refetch communities
       await utils.communities.getAll.invalidate();
       await utils.communities.getAll.refetch();
 
       // CRITICAL: Invalidate community feed to update vote counters
-      if (variables.communityId) {
-        await utils.communities.getFeed.invalidate({ communityId: variables.communityId });
-        await utils.communities.getFeed.refetch({ communityId: variables.communityId });
+      if (vars.communityId) {
+        await utils.communities.getFeed.invalidate({ communityId: vars.communityId });
+        await utils.communities.getFeed.refetch({ communityId: vars.communityId });
       }
 
       // Invalidate and refetch wallet queries
@@ -315,7 +333,8 @@ export function useWithdrawFromPublication() {
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, ctx) => {
+      rollbackOptimisticUpdates(queryClient, ctx);
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
 
@@ -335,16 +354,32 @@ export function useWithdrawFromPublication() {
 export function useWithdrawFromVote() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
   const withdrawMutation = trpc.votes.withdrawFromVote.useMutation({
+    onMutate: async (variables) => {
+      if (!user?.id) return {} as OptimisticUpdateContext;
+      const vars = variables as any;
+      const targetId = vars.voteId || vars.id; // handle potential property name mismatch
+
+      return await withdrawEntityVoteOptimistically(
+        queryClient,
+        targetId,
+        'comment', // 'vote' in helper corresponds to comment
+        user,
+        vars.communityId
+      );
+    },
     onSuccess: async (_, variables) => {
+      const vars = variables as any;
       // Invalidate and refetch comment queries
       await utils.comments.getByPublicationId.invalidate();
       await utils.comments.getByPublicationId.refetch();
 
       // CRITICAL: Invalidate community feed to update vote counters
-      if (variables.communityId) {
-        await utils.communities.getFeed.invalidate({ communityId: variables.communityId });
-        await utils.communities.getFeed.refetch({ communityId: variables.communityId });
+      if (vars.communityId) {
+        await utils.communities.getFeed.invalidate({ communityId: vars.communityId });
+        await utils.communities.getFeed.refetch({ communityId: vars.communityId });
       }
 
       // Invalidate and refetch wallet queries
@@ -355,7 +390,8 @@ export function useWithdrawFromVote() {
       queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
       queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
     },
-    onError: (error: any) => {
+    onError: (error: any, _vars, ctx) => {
+      rollbackOptimisticUpdates(queryClient, ctx);
       const errorMessage = extractErrorMessage(error, 'Unknown error');
       const errorCode = error?.data?.code || 'UNKNOWN';
 
