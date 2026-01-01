@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, UseMutationOptions } from '@tanstack/react
 // votesApiV1 removed - all vote endpoints migrated to tRPC
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateQuotaOptimistically, updateWalletOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
+import { updateQuotaOptimistically, updateWalletOptimistically, updateEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { commentsKeys } from './useComments';
 
@@ -52,6 +52,25 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             context.balanceKey = walletUpdate.balanceKey;
             context.previousWallets = walletUpdate.previousWallets;
             context.previousBalance = walletUpdate.previousBalance;
+          }
+        }
+
+        // Handle entity vote count optimistic update (immediate UI feedback)
+        if (user?.id) {
+          const targetType = (variables as any).publicationId ? 'publication' : ((variables as any).voteId ? 'vote' : null);
+          const targetId = (variables as any).publicationId || (variables as any).voteId;
+
+          if (targetType && targetId) {
+            const direction = (data as any).direction || 'up';
+            await updateEntityVoteOptimistically(
+              queryClient,
+              targetId,
+              targetType, // 'vote' here corresponds to comment vote in helper
+              quotaAmount,
+              walletAmount,
+              direction,
+              user
+            );
           }
         }
 
