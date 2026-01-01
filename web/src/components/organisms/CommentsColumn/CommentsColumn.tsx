@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useComments } from '@/shared/hooks/use-comments';
 import { useTranslations } from 'next-intl';
-import { CommentsList } from '@/lib/comments/components/CommentsList';
-import { buildTree } from '@/lib/comments/tree';
-import { transformComments } from '@/lib/comments/utils/transform';
+import { Comment } from '@features/comments/components/comment';
 import { Button } from '@/components/ui/shadcn/button';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { SortToggle } from '@/components/ui/SortToggle';
+import { useUIStore } from '@/stores/ui.store';
+import { useCommunity } from '@/hooks/api';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -43,11 +43,14 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   showBackButton = false,
 }) => {
   const router = useRouter();
-  const t = useTranslations('home');
+  const t = useTranslations('common');
   const tCommon = useTranslations('common');
 
   // Sort state for comments
   const [sortBy, setSortBy] = useState<'recent' | 'voted'>('recent');
+
+  // Get community data for voting mode determination
+  const { data: community } = useCommunity(communityId);
 
   // Get comments data - useComments hook manages comment state
   // API provides enriched data (author, vote transaction fields)
@@ -79,18 +82,30 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     }
   };
 
-  // Transform Meriter comments to template format and build tree
-  const commentTree = useMemo(() => {
-    if (!comments || comments.length === 0) {
-      return [];
-    }
-    // Transform comments from Meriter format to template format
-    const transformedComments = transformComments(comments as any);
+  const handleAddComment = () => {
+    // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+    // Special groups preserve their restrictions.
+    const typeTag = community?.typeTag;
+    const mode: 'standard' | 'wallet-only' | 'quota-only' =
+      typeTag === 'future-vision'
+        ? 'wallet-only'
+        : typeTag === 'marathon-of-good'
+          ? 'quota-only'
+          : 'standard';
+    useUIStore.getState().openVotingPopup(publicationSlug, 'publication', mode);
+  };
 
-    // Build tree structure from flat list
-    const tree = buildTree(transformedComments);
-    return tree;
-  }, [comments]);
+  const addCommentButton = (
+    <div className="mb-6 w-full">
+      <Button
+        variant="outline"
+        onClick={handleAddComment}
+        className="w-full"
+      >
+        {t('addComment')}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden w-full">
@@ -111,25 +126,40 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
         showScrollToTop={true}
       />
 
-      {/* Comments list with tree navigation */}
+      {/* Comments list */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0">
-        {commentTree.length > 0 ? (
-          <CommentsList
-            roots={commentTree}
-            myId={myId}
-            balance={balance}
-            wallets={wallets}
-            communityId={communityId}
-            publicationSlug={publicationSlug}
-            activeCommentHook={activeCommentHook}
-            activeWithdrawPost={activeWithdrawPost}
-            setActiveWithdrawPost={setActiveWithdrawPost}
-            highlightTransactionId={highlightTransactionId}
-            showCommunityAvatar={false}
-            isDetailPage={false}
-          />
+        {comments && comments.length > 0 ? (
+          <>
+            {/* Add a comment button */}
+            {addCommentButton}
+
+            {/* Comments List */}
+            <div className="flex flex-col gap-3">
+              {comments.map((c: any, index: number) => (
+                <Comment
+                  key={c.id || c._id || `comment-${index}`}
+                  {...c}
+                  _id={c._id || c.id || `comment-${index}`}
+                  balance={balance}
+                  updBalance={() => { }}
+                  spaceSlug=""
+                  inPublicationSlug={publicationSlug}
+                  activeCommentHook={activeCommentHook}
+                  myId={myId}
+                  highlightTransactionId={highlightTransactionId}
+                  wallets={wallets}
+                  updateWalletBalance={() => { }}
+                  updateAll={() => { }}
+                  communityId={communityId}
+                  isDetailPage={false}
+                />
+              ))}
+            </div>
+          </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {/* Add a comment button (shown even when no comments) */}
+            {addCommentButton}
             <span className="text-base-content/60">No comments yet</span>
           </div>
         )}
