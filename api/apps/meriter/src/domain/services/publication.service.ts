@@ -63,7 +63,7 @@ export class PublicationService {
 
     // Validate using value objects
     const authorId = UserId.fromString(userId);
-    const communityId = CommunityId.fromString(dto.communityId);
+    const _communityId = CommunityId.fromString(dto.communityId);
 
     // Validate array lengths
     if (dto.beneficiaries && dto.beneficiaries.length > 2) {

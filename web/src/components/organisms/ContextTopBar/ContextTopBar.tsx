@@ -71,7 +71,7 @@ export const ProfileTopBar: React.FC<{ asStickyHeader?: boolean }> = ({ asSticky
   return (
     <SimpleStickyHeader
       title={tCommon('profile')}
-      showBack={true}
+      showBack={false}
       onBack={() => router.push('/meriter/profile')}
       asStickyHeader={asStickyHeader}
     />

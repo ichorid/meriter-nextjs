@@ -21,8 +21,7 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@nestjs/core",
-      "@sentry/cli",
-      "@sentry/profiling-node",
+      "@sentry-internal/node-cpu-profiler",
       "bcrypt",
       "es5-ext",
       "mongodb-memory-server",

@@ -14,6 +14,7 @@ import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { useDebounce } from '@/hooks/useDebounce';
+import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -62,6 +63,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
             onBack={() => router.push(routes.community(communityId))}
             asStickyHeader={true}
             showScrollToTop={true}
+            rightAction={<InviteMenu communityId={communityId} />}
         />
     );
 
