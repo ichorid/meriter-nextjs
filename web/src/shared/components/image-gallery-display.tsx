@@ -253,7 +253,7 @@ export function ImageGalleryDisplay({
                         key={index}
                         className={`
               relative overflow-hidden rounded-xl cursor-pointer group
-              bg-base-200 border border-base-content/10 dark:border-base-content/20
+              bg-base-200 shadow-none dark:border-base-content/20
               shadow-sm hover:shadow-md hover:border-base-content/20 
               transition-all duration-300
               ${getImageAspect(index)}
@@ -289,7 +289,7 @@ export function ImageGalleryDisplay({
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
 
                         {images.length > 1 && (
-                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-md font-semibold shadow-lg border border-white/10">
+                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-md font-semibold shadow-lg shadow-none">
                                 {index + 1}/{images.length}
                             </div>
                         )}

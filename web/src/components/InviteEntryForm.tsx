@@ -62,7 +62,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
 
     return (
         <div className="w-full max-w-md mx-auto">
-            <div className="bg-base-100 rounded-xl shadow-md border border-base-300">
+            <div className="bg-base-100 rounded-xl shadow-md shadow-none">
                 <div className="p-6 border-b border-base-300">
                     <div className="flex justify-center">
                         <h2 className="text-2xl font-bold text-center">

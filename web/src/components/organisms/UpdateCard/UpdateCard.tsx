@@ -76,7 +76,7 @@ export const UpdateCard: React.FC<UpdateCardProps> = ({
 
   return (
     <div
-      className={`p-3 border border-base-300 rounded-lg hover:bg-base-200 transition-colors cursor-pointer ${className}`}
+      className={`p-3 shadow-none rounded-lg hover:bg-base-200 transition-colors cursor-pointer ${className}`}
       onClick={handleClick}
     >
       <div className="flex items-center gap-2">

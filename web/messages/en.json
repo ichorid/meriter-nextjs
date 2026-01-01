@@ -44,6 +44,7 @@
         "open": "Open",
         "comingSoon": "Coming soon",
         "noPermission": "You don't have permission to perform this action",
+        "needsSetup": "Needs setup",
         "user": "User",
         "unknownUser": "Unknown User",
         "createInvite": "Create Invite",
@@ -874,14 +875,20 @@
         }
     },
     "communities": {
+        "title": "Communities",
+        "specialCommunities": "Special Communities",
+        "yourCommunities": "Your Communities",
+        "leads": "Leads",
         "other": "Other",
         "localGroups": {
             "title": "Local",
             "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
             "contactNote": "If you want to become a Participant, contact one of the Leads."
         },
-        "joinTeam": "Join a Team",
-        "joinTeamDescription": "To join a team, contact one of the leads below for an invite.",
+        "joinTeam": {
+            "title": "Join a Team",
+            "subtitle": "To join a team, contact one of the leads below for an invite."
+        },
         "create": {
             "title": "Create Community",
             "creating": "Creating...",
@@ -1026,7 +1033,9 @@
         "contactInformation": "Contacts",
         "outerContacts": "Other Contacts",
         "newProfile": "New User",
-        "newProfileSubtitle": "Fields marked with * are required. Please do not skip them.",
+        "newProfileSubtitle": "Tell us a bit about yourself so others can get to know you",
+        "editProfile": "Edit Profile",
+        "editProfileSubtitle": "Update your profile information",
         "title": "Profile",
         "notFound": "User not found",
         "roles": "Roles in Communities",
@@ -1042,11 +1051,10 @@
         "view": "View",
         "loading": "Loading...",
         "loadMore": "Load More",
-        "edit": "Edit Profile",
+        "edit": "Edit",
         "meritStats": "Merit Statistics",
         "noMeritStats": "No merit statistics available",
         "meritAmount": "{amount} merits",
-        "editProfile": "Edit Profile",
         "save": "Save",
         "cancel": "Cancel",
         "bio": "Bio",

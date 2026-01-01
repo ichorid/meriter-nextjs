@@ -26,7 +26,7 @@ export default function CommunitiesPage() {
     const tSearch = useTranslations('search');
     const tAbout = useTranslations('about');
     const tCommunities = useTranslations('communities');
-    
+
     const [leadsExpanded, setLeadsExpanded] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
@@ -84,7 +84,7 @@ export default function CommunitiesPage() {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<SimpleStickyHeader title="Communities" showBack={false} asStickyHeader={true} />}
+            stickyHeader={<SimpleStickyHeader title={tCommunities('title')} showBack={false} asStickyHeader={true} />}
         >
             {/* Content */}
             <div>
@@ -92,7 +92,7 @@ export default function CommunitiesPage() {
                 {specialCommunities.length > 0 && (
                     <section className="mb-10">
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
-                            Special Communities
+                            {tCommunities('specialCommunities')}
                         </h2>
                         <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
                             {specialCommunities.map((community) => {
@@ -118,13 +118,13 @@ export default function CommunitiesPage() {
 
                 {/* Viewer Notification: Show when user has no non-special communities */}
                 {userCommunities.length === 0 && (
-                    <section className="bg-base-200/50 border border-base-content/5 rounded-2xl p-6 mb-10">
+                    <section className="bg-base-100/50 backdrop-blur-sm shadow-none rounded-xl p-6 mb-10">
                         <button
                             onClick={() => setJoinTeamExpanded(!joinTeamExpanded)}
                             className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
                         >
                             <h3 className="text-lg font-semibold text-base-content">
-                                Join a Team
+                                {tCommunities('joinTeam.title')}
                             </h3>
                             {joinTeamExpanded ? (
                                 <ChevronUp className="w-5 h-5 text-base-content/60" />
@@ -135,10 +135,10 @@ export default function CommunitiesPage() {
                         {joinTeamExpanded && (
                             <div className="flex flex-col gap-4">
                                 <p className="text-sm text-base-content/60">
-                                    To join a team, contact one of the leads below for an invite.
+                                    {tCommunities('joinTeam.subtitle')}
                                 </p>
                                 <InviteInput />
-                                
+
                                 {/* Local Groups Notification */}
                                 <div className="pt-6 border-t border-base-300 mt-2">
                                     <div className="flex flex-col items-start gap-1">
@@ -176,7 +176,7 @@ export default function CommunitiesPage() {
                 {userCommunities.length > 0 && (
                     <section className="mb-10">
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
-                            Your Communities
+                            {tCommunities('yourCommunities')}
                         </h2>
                         {isLoading ? (
                             <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
@@ -216,7 +216,7 @@ export default function CommunitiesPage() {
                         className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
                     >
                         <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide">
-                            Leads
+                            {tCommunities('leads')}
                         </h2>
                         {leadsExpanded ? (
                             <ChevronUp className="w-5 h-5 text-base-content/60" />
@@ -246,7 +246,7 @@ export default function CommunitiesPage() {
                                     <CardSkeleton />
                                 </div>
                             ) : filteredLeads.length > 0 ? (
-                                <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
+                                <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
                                     {filteredLeads.map((lead) => (
                                         <LeadCard
                                             key={lead.id}

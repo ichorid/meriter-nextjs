@@ -192,7 +192,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
         if (!canCreateCommunity) {
             return (
-                <div className="p-6 bg-base-200 rounded-lg border border-base-300">
+                <div className="p-6 bg-base-200 rounded-lg shadow-none">
                     <p className="text-brand-text-primary text-lg font-medium mb-2">
                         Access Restricted
                     </p>

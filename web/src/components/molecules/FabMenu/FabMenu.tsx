@@ -107,7 +107,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         <div className="fabSlot" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && !permissionLoading && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden z-50 pointer-events-auto">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50 pointer-events-auto">
                     <div className="py-2">
                         {canCreate ? (
                             <>

@@ -20,7 +20,7 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
 
   if (isLoading) {
     return (
-      <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+      <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
         <div className="flex items-center space-x-3 mb-4">
           <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
             <Award size={24} />
@@ -46,7 +46,7 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   }
 
   return (
-    <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
       <div className="flex items-center space-x-3 mb-6">
         <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
           <Award size={24} />
@@ -60,7 +60,7 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
         {meritStats.map((stat) => (
           <div
             key={stat.communityId}
-            className="flex items-center justify-between p-4 bg-base-100 border border-brand-secondary/10 rounded-lg hover:border-brand-primary/20 transition-colors"
+            className="flex items-center justify-between p-4 bg-base-100 rounded-lg hover:bg-base-200 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-brand-text-primary truncate">

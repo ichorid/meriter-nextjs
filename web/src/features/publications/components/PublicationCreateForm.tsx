@@ -451,7 +451,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           )}
 
           {showDraftAlert && hasDraft && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4 flex items-center justify-between">
+            <div className="p-3 bg-blue-50 shadow-none rounded-lg mb-4 flex items-center justify-between">
               <p className="text-blue-700">{t('draftRestored')}</p>
               <button
                 onClick={() => setShowDraftAlert(false)}
@@ -690,7 +690,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           />
 
           {errors.submit && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div className="p-3 bg-red-50 shadow-none rounded-lg">
               <p className="text-red-600">{errors.submit}</p>
             </div>
           )}
@@ -706,7 +706,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
           {/* Preview */}
           {showPreview && (title.trim() || description.trim()) && (
-            <div className="border border-brand-border rounded-xl overflow-hidden bg-base-100">
+            <div className="shadow-none rounded-xl overflow-hidden bg-base-100">
               <div className="p-4 space-y-4">
                 <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
                 <PublicationContent

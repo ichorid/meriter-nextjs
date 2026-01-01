@@ -6,6 +6,8 @@ import { classList } from "@/shared/lib/classList";
 import { ImageGallery } from "@/components/ui/ImageGallery";
 import { useFeaturesConfig } from "@/hooks/useConfig";
 import { Icon } from "@/components/atoms/Icon/Icon";
+import { Button } from "@/components/ui/shadcn/button";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import type { Community } from "@meriter/shared-types";
 import { canUseWalletForVoting } from "./voting-utils";
 
@@ -111,7 +113,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     // Calculate if button should be disabled
     const isButtonDisabled = absAmount === 0 || (!hideComment && isPositive && !comment.trim());
-    
+
     // Calculate which error message to show
     const getButtonError = (): string | null => {
         if (!isButtonDisabled) return null;
@@ -124,7 +126,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         if (!hideComment && isPositive && !comment.trim()) return t("requiresComment");
         return null;
     };
-    
+
     const buttonError = getButtonError();
 
     // Calculate bar sizes using sqrt-based proportional sizing
@@ -132,15 +134,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         const quotaBarWidth = Math.sqrt(Math.max(0, dailyQuota));
         const walletBarWidth = canUseWallet ? Math.sqrt(Math.max(0, walletBalance)) : 0;
         const totalWidth = quotaBarWidth + walletBarWidth;
-        
+
         // Available width: 304px minus gap (11px) if wallet bar exists
         const availableWidth = 304 - (walletBarWidth > 0 ? 11 : 0);
-        
-        const quotaBarProportional = totalWidth > 0 
-            ? (quotaBarWidth / totalWidth) * availableWidth 
+
+        const quotaBarProportional = totalWidth > 0
+            ? (quotaBarWidth / totalWidth) * availableWidth
             : (canUseWallet ? 0 : availableWidth);
-        const walletBarProportional = totalWidth > 0 
-            ? (walletBarWidth / totalWidth) * availableWidth 
+        const walletBarProportional = totalWidth > 0
+            ? (walletBarWidth / totalWidth) * availableWidth
             : 0;
 
         return {
@@ -203,8 +205,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {/* Quota Bar */}
                         <div
                             className="flex flex-col gap-[5px] isolation-isolate"
-                            style={{ 
-                                width: `${barSizing.quotaBarWidth}px`, 
+                            style={{
+                                width: `${barSizing.quotaBarWidth}px`,
                                 height: "59px",
                                 flexShrink: 0,
                             }}
@@ -235,8 +237,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                     if (totalQuota <= 0) return null;
 
                                     const usedPercent = (usedToday / totalQuota) * 100;
-                                    const voteQuotaPercent = voteBreakdown.quotaAmount > 0 
-                                        ? (voteBreakdown.quotaAmount / totalQuota) * 100 
+                                    const voteQuotaPercent = voteBreakdown.quotaAmount > 0
+                                        ? (voteBreakdown.quotaAmount / totalQuota) * 100
                                         : 0;
                                     const usedWidth = Math.min(100, usedPercent);
                                     const maxVoteWidth = isPositive
@@ -271,7 +273,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                                     )}
                                                     style={{
                                                         // For upvotes, fill from left (after used quota); for downvotes, fill from right
-                                                        ...(isPositive 
+                                                        ...(isPositive
                                                             ? { left: `${usedWidth}%`, width: `${voteWidth}%` }
                                                             : { right: 0, width: `${voteWidth}%` }
                                                         ),
@@ -293,7 +295,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                         letterSpacing: "0.374px",
                                     }}
                                 >
-                                    {t("available")} {quotaRemaining}
+                                    {quotaRemaining}
                                 </span>
                             </div>
                         </div>
@@ -302,8 +304,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {canUseWallet && (
                             <div
                                 className="flex flex-col gap-[5px] isolation-isolate flex-grow"
-                                style={{ 
-                                    width: `${barSizing.walletBarWidth}px`, 
+                                style={{
+                                    width: `${barSizing.walletBarWidth}px`,
                                     height: "59px",
                                     flexShrink: 0,
                                 }}
@@ -332,10 +334,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                     {(() => {
                                         // For downvotes, always use wallet (wallet only)
                                         // For upvotes, wallet only activates when quota is fully used
-                                        const shouldShowWallet = !isPositive 
+                                        const shouldShowWallet = !isPositive
                                             ? voteBreakdown.walletAmount > 0  // Downvotes always use wallet
                                             : (quotaRemaining === 0 || voteBreakdown.quotaAmount >= quotaRemaining); // Upvotes use wallet when quota exhausted
-                                        
+
                                         const walletPercent = shouldShowWallet && voteBreakdown.walletAmount > 0
                                             ? (voteBreakdown.walletAmount / walletBalance) * 100
                                             : 0;
@@ -351,7 +353,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                                         )}
                                                         style={{
                                                             // For downvotes, fill from right to left; for upvotes, fill from left to right
-                                                            ...(isPositive 
+                                                            ...(isPositive
                                                                 ? { left: 0, width: `${Math.min(100, walletPercent)}%` }
                                                                 : { right: 0, width: `${Math.min(100, walletPercent)}%` }
                                                             ),
@@ -373,7 +375,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                             letterSpacing: "0.374px",
                                         }}
                                     >
-                                        {t("available")} {walletBalance}
+                                        {walletBalance}
                                     </span>
                                 </div>
                             </div>
@@ -383,30 +385,22 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     {/* +/- Buttons Group */}
                     <div
                         className="flex flex-row justify-between items-center"
-                        style={{ 
-                            width: "304px", 
+                        style={{
+                            width: "304px",
                             height: "88px",
                             padding: "24px 0px",
                         }}
                     >
                         {/* Decrease Button */}
-                        <button
+                        <Button
                             onClick={handleDecrease}
                             disabled={amount <= (maxMinus > 0 ? -maxMinus : 0)}
-                            className={classList(
-                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                                "bg-base-100 border-base-content",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                            )}
-                            style={{
-                                width: "70px",
-                                height: "40px",
-                                padding: "11px 15px",
-                                gap: "10px",
-                            }}
+                            variant="outline"
+                            size="icon"
+                            className="w-[70px] h-10"
                         >
                             <Icon name="remove" size={24} />
-                        </button>
+                        </Button>
 
                         {/* Vote Amount Display */}
                         <div
@@ -427,23 +421,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         </div>
 
                         {/* Increase Button */}
-                        <button
+                        <Button
                             onClick={handleIncrease}
                             disabled={amount >= maxPlus}
-                            className={classList(
-                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                                "bg-base-100 border-base-content",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                            )}
-                            style={{
-                                width: "70px",
-                                height: "40px",
-                                padding: "11px 15px",
-                                gap: "10px",
-                            }}
+                            variant="outline"
+                            size="icon"
+                            className="w-[70px] h-10"
                         >
                             <Icon name="add" size={24} />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
@@ -467,8 +453,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     {/* Progress Bar Section */}
                     <div
                         className="flex flex-col gap-[5px]"
-                        style={{ 
-                            width: "304px", 
+                        style={{
+                            width: "304px",
                             height: "59px",
                         }}
                     >
@@ -518,30 +504,22 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     {/* +/- Buttons */}
                     <div
                         className="flex flex-row justify-between items-center"
-                        style={{ 
-                            width: "304px", 
+                        style={{
+                            width: "304px",
                             height: "88px",
                             padding: "24px 0px",
                         }}
                     >
                         {/* Decrease Button */}
-                        <button
+                        <Button
                             onClick={handleDecrease}
                             disabled={amount <= 0}
-                            className={classList(
-                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                                "bg-base-100 border-base-content",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                            )}
-                            style={{
-                                width: "70px",
-                                height: "40px",
-                                padding: "11px 15px",
-                                gap: "10px",
-                            }}
+                            variant="outline"
+                            size="icon"
+                            className="w-[70px] h-10"
                         >
                             <Icon name="remove" size={24} />
-                        </button>
+                        </Button>
 
                         {/* Vote Amount Display */}
                         <div
@@ -559,65 +537,29 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         </div>
 
                         {/* Increase Button */}
-                        <button
+                        <Button
                             onClick={handleIncrease}
                             disabled={amount >= maxPlus}
-                            className={classList(
-                                "box-border flex flex-row justify-center items-center border rounded-[8px]",
-                                "bg-base-100 border-base-content",
-                                "disabled:opacity-50 disabled:cursor-not-allowed"
-                            )}
-                            style={{
-                                width: "70px",
-                                height: "40px",
-                                padding: "11px 15px",
-                                gap: "10px",
-                            }}
+                            variant="outline"
+                            size="icon"
+                            className="w-[70px] h-10"
                         >
                             <Icon name="add" size={24} />
-                        </button>
+                        </Button>
                     </div>
                 </div>
             )}
 
             {/* Comment Input */}
             {!hideComment && (
-            <div className="flex flex-col" style={{ width: "304px", height: "98px", gap: "4px" }}>
-                <label
-                    className="text-base-content opacity-60"
-                    style={{
-                        fontSize: "12px",
-                        fontFamily: "Roboto, sans-serif",
-                        fontWeight: 400,
-                        lineHeight: "120%",
-                        letterSpacing: "0.374px",
-                    }}
-                >
-                    {t("explanationDetails")}
-                </label>
-                <div
-                    className="bg-base-100 border border-base-content rounded-[8px]"
-                    style={{
-                        width: "304px",
-                        height: "80px",
-                        padding: "8px 12px",
-                        boxSizing: "border-box",
-                    }}
-                >
-                    <textarea
+                <div className="flex flex-col w-full max-w-[304px]">
+                    <Textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        className="w-full h-full resize-none outline-none text-base-content placeholder:text-base-content placeholder:opacity-50"
-                        style={{
-                            fontSize: "15px",
-                            fontFamily: "Roboto, sans-serif",
-                            fontWeight: 400,
-                            lineHeight: "120%",
-                        }}
                         placeholder={t("textField")}
+                        className="min-h-[80px] resize-none"
                     />
                 </div>
-            </div>
             )}
 
             {/* Image Gallery */}
@@ -633,8 +575,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             )}
 
             {/* Submit Button */}
-            <div className="flex flex-col gap-1" style={{ width: "304px" }}>
-                <button
+            <div className="flex flex-col gap-1 w-full max-w-[304px]">
+                <Button
                     onClick={() => {
                         if (onSubmitSimple) {
                             onSubmitSimple();
@@ -642,33 +584,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             onSubmit(isPositive);
                         }
                     }}
-                    className={classList(
-                        "flex justify-center items-center border rounded-[8px] sticky bottom-0",
-                        isPositive
-                            ? "border-success bg-success hover:bg-success/90"
-                            : "border-error bg-error hover:bg-error/90",
-                        isButtonDisabled ? "opacity-50 cursor-not-allowed" : ""
-                    )}
-                    style={{
-                        width: "100%",
-                        height: "40px",
-                        padding: "11px 15px",
-                        gap: "10px",
-                        boxSizing: "border-box",
-                    }}
+                    variant={isPositive ? "default" : "destructive"}
+                    className="w-full h-10 sticky bottom-0"
                     disabled={isButtonDisabled}
                 >
-                    <span
-                        className="text-base-100 text-center leading-[120%]"
-                        style={{
-                            fontSize: "15px",
-                            fontFamily: "Roboto, sans-serif",
-                            fontWeight: 400,
-                        }}
-                    >
-                        {t("submit")}
-                    </span>
-                </button>
+                    {t("submit")}
+                </Button>
                 {/* Error text when button is disabled or server error */}
                 {(buttonError || error) && (
                     <div

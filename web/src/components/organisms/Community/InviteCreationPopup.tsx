@@ -226,7 +226,7 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
                     <div className="border-t border-brand-secondary/10 pt-4">
                         <button
                             onClick={() => setShowInviteList(!showInviteList)}
-                            className="flex items-center justify-between w-full p-3 bg-brand-surface border border-brand-secondary/10 rounded-lg hover:bg-brand-secondary/5 transition-colors"
+                            className="flex items-center justify-between w-full p-3 bg-brand-surface shadow-none rounded-lg hover:bg-brand-secondary/5 transition-colors"
                         >
                             <span className="font-medium text-brand-text-primary">
                                 {t('generatedInvites')} ({filteredInvites.length})

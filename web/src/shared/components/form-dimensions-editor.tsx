@@ -22,7 +22,7 @@ export const FormDimensionsEditor = ({dimensions:dimenstionsInitial,dimensionCon
             const dimTagsConfig = dimensionConfig[level] as iDimensionTags;
             const dimCatEnumConfig = dimTagsConfig.dimensions;
             
-            return  <div className="card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-2xl p-5 space-y-4">{Object.entries(dimCatEnumConfig).map(([dimensionSlug,dimensionProto])=>{
+            return  <div className="card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl p-5 space-y-4">{Object.entries(dimCatEnumConfig).map(([dimensionSlug,dimensionProto])=>{
                 const initialValue = dimensions?.[dimensionSlug];
                 
                 return <CatEnum key={dimensionSlug} setDimension={setDimension(dimensionSlug)} 

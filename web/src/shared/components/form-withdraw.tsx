@@ -32,7 +32,7 @@ export const FormWithdraw: React.FC<FormWithdrawProps> = ({
     const [selected, setSelected] = useState(false);
 
     return (
-        <div className="card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl p-5">
+        <div className="card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-xl p-5">
             <div className="border-t-2 border-base-300 dark:border-base-content/20 w-full mb-4"></div>
 
             <div className="text-sm mb-4 opacity-70">{children}</div>

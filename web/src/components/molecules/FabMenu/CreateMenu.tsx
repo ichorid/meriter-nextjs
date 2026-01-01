@@ -135,7 +135,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
 
             {/* Menu Dropdown */}
             {isOpen && !permissionLoading && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden z-50">
+                <div className="absolute right-0 top-full mt-2 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
                     <div className="py-2">
                         {canCreate ? (
                             <>

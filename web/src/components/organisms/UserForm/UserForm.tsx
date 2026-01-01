@@ -39,6 +39,8 @@ interface UserFormProps {
     hideHeader?: boolean;
     hideFooter?: boolean;
     formRef?: React.RefObject<{ submit: () => void } | null>;
+    title?: string;
+    subtitle?: string;
 }
 
 export function UserForm({
@@ -53,6 +55,8 @@ export function UserForm({
     hideHeader = false,
     hideFooter = false,
     formRef,
+    title,
+    subtitle,
 }: UserFormProps) {
     const t = useTranslations("profile");
     const tCommon = useTranslations("common");
@@ -180,10 +184,10 @@ export function UserForm({
             {!hideHeader && (
                 <header className="mb-8">
                     <h2 className="text-xl font-semibold text-base-content mb-2">
-                        {t("newProfile")}
+                        {title || t("newProfile")}
                     </h2>
                     <p className="text-sm text-base-content/60 leading-relaxed">
-                        {t("newProfileSubtitle")}
+                        {subtitle || t("newProfileSubtitle")}
                     </p>
                 </header>
             )}
@@ -191,7 +195,7 @@ export function UserForm({
             {/* Form Sections */}
             <div className="space-y-6">
                 {/* Section 1: General Information */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("generalInformation")}
                     </h3>
@@ -237,7 +241,7 @@ export function UserForm({
                 </section>
 
                 {/* Section 2: Contact Information */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("contactInformation")}
                     </h3>
@@ -314,7 +318,7 @@ export function UserForm({
                 </section>
 
                 {/* Section 3: About */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("aboutInformation")}
                     </h3>

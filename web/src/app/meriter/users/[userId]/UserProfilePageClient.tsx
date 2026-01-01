@@ -81,7 +81,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     >
       <div className="space-y-6">
         {/* Profile Header */}
-        <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+        <div className="bg-brand-surface shadow-none rounded-xl p-6">
           <div className="flex items-start gap-4">
             <Avatar className="w-14 h-14 text-base bg-transparent">
               {user.avatarUrl && (
@@ -107,7 +107,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
 
         {/* Contact Information */}
         {(contacts.email || contacts.messenger || profile.website || profile.location || profile.educationalInstitution) && (
-          <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+          <div className="bg-brand-surface shadow-none rounded-xl p-6">
             <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('contactInformation')}</h2>
             <div className="space-y-3">
               {contacts.email && (
@@ -162,7 +162,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
 
         {/* Additional Information */}
         {profile.about && (
-          <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+          <div className="bg-brand-surface shadow-none rounded-xl p-6">
             <h2 className="text-lg font-bold text-brand-text-primary mb-4">{tCommon('about')}</h2>
             <div className="space-y-4">
               {profile.about && (
@@ -177,7 +177,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
 
         {/* Teams & Roles */}
         {!rolesLoading && userRoles.length > 0 && (
-          <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+          <div className="bg-brand-surface shadow-none rounded-xl p-6">
             <h2 className="text-lg font-bold text-brand-text-primary mb-4 flex items-center gap-2">
               <Users size={20} className="text-brand-primary" />
               {t('teamsAndRoles') || 'Teams & Roles'}

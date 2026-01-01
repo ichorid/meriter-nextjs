@@ -28,7 +28,7 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
     }
 
     return (
-        <div className="border border-brand-secondary/10 rounded-lg p-4">
+        <div className="shadow-none rounded-lg p-4">
             <h3 className="text-sm font-semibold text-brand-text-primary mb-3">
                 {communityName || communityId}
             </h3>

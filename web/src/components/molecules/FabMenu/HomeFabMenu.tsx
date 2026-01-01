@@ -94,7 +94,7 @@ export const HomeFabMenu: React.FC = () => {
         <div className="fabSlot" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl border border-brand-border dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 z-50">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-xl shadow-none dark:border-base-300/50 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-200 z-50">
                     <div className="py-1">
                         {!hasCommunities ? (
                             // No communities - show create community option only if user has permission

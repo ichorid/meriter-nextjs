@@ -70,7 +70,7 @@ export function ProfileFavoritesTab({
             key={fav.favorite.id}
             className={
               isUnread
-                ? 'rounded-lg bg-warning/10 border border-warning/30 p-2'
+                ? 'rounded-lg bg-warning/10 shadow-none p-2'
                 : 'hover:shadow-md transition-all duration-200 rounded-lg'
             }
             onClick={() => {

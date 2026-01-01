@@ -6,11 +6,11 @@ import { useTranslations } from 'next-intl';
 import { Search, X, Filter, Calendar, User, Hash, Users } from 'lucide-react';
 import { Input } from '@/components/ui/shadcn/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/shadcn/select';
 import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
@@ -75,12 +75,12 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   // Save search history
   const saveToHistory = (searchQuery: string) => {
     if (!searchQuery.trim()) return;
-    
+
     const updated = [
       searchQuery,
       ...searchHistory.filter((item) => item !== searchQuery),
     ].slice(0, 10); // Keep last 10 searches
-    
+
     setSearchHistory(updated);
     localStorage.setItem('meriter_search_history', JSON.stringify(updated));
   };
@@ -112,7 +112,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       if (params.tags?.length) searchParams.set('tags', params.tags.join(','));
       if (params.dateFrom) searchParams.set('from', params.dateFrom);
       if (params.dateTo) searchParams.set('to', params.dateTo);
-      
+
       router.push(`/meriter/search?${searchParams.toString()}`);
     }
   };
@@ -194,7 +194,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             }
           }}
           placeholder={t('results.searchPlaceholder')}
-          className={cn('h-11 rounded-xl pl-10 w-full', query && 'pr-10')}
+          className={cn('h-11 rounded-xl pl-10 w-full shadow-none focus-visible:ring-brand-primary', query && 'pr-10')}
         />
         {query && (
           <button
@@ -210,7 +210,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         {showHistory && searchHistory.length > 0 && (
           <div
             ref={historyRef}
-            className="absolute z-50 w-full mt-2 bg-base-100 border border-base-300 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+            className="absolute z-50 w-full mt-2 bg-base-100 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-xl max-h-60 overflow-y-auto"
           >
             {searchHistory.map((item, index) => (
               <button
@@ -247,7 +247,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
       {/* Advanced Filters */}
       {showFilters && (
-        <div className="space-y-4 p-4 bg-base-200 rounded-xl border border-base-300">
+        <div className="space-y-4 p-4 bg-base-100 rounded-xl border border-base-300/50">
           {/* Content Type */}
           <div>
             <label className="block text-sm font-medium text-brand-text-primary mb-2">
@@ -257,7 +257,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               value={contentType}
               onValueChange={(value) => setContentType(value as SearchContentType)}
             >
-              <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+              <SelectTrigger className={cn('h-11 rounded-xl w-full shadow-none')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

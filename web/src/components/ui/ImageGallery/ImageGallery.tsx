@@ -130,7 +130,7 @@ export function ImageGallery({
               src={url}
               alt={`Image ${index + 1}`}
               onClick={() => handleImageClick(index)}
-              className="w-20 h-20 object-cover rounded-lg border border-base-300 cursor-pointer hover:opacity-80 transition-opacity"
+              className="w-20 h-20 object-cover rounded-lg shadow-none cursor-pointer hover:opacity-80 transition-opacity"
             />
             <button
               type="button"

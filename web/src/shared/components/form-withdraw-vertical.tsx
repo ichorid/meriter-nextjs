@@ -44,7 +44,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
     }, [maxAmount, setAmount]);
 
     return (
-        <div className="p-5 rounded-2xl shadow-lg bg-base-100">
+        <div className="p-5 rounded-xl shadow-lg bg-base-100">
             {/* Header */}
             <div className="mb-4">
                 <div className="text-xl font-bold mb-2">

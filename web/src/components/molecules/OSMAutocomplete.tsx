@@ -389,7 +389,7 @@ export function OSMAutocomplete({
                 <div
                     ref={listRef}
                     role="listbox"
-                    className="absolute z-50 w-full mt-1.5 bg-base-100 border border-base-content/10 rounded-xl shadow-lg max-h-64 overflow-y-auto"
+                    className="absolute z-50 w-full mt-1.5 bg-base-100 shadow-none rounded-xl shadow-lg max-h-64 overflow-y-auto"
                 >
                     {/* Loading state */}
                     {searchState === "loading" && results.length === 0 && (

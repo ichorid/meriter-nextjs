@@ -130,7 +130,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                 </Button>
                 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-base-100 shadow-none rounded-lg shadow-lg z-50">
                     <div className="p-2">
                       <div className="px-4 py-2 text-sm border-b border-base-300">
                         <div className="font-medium truncate">{user.displayName}</div>

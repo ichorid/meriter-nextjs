@@ -107,7 +107,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     };
 
     return (
-      <div className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200">
+      <div className="bg-base-100 rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
         <PublicationHeader
           publication={{
             id: pollItem.id,
@@ -162,7 +162,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   return (
     <article
       onClick={handleCardClick}
-      className="bg-base-100 rounded-2xl p-5 border border-base-content/5 hover:border-base-content/10 transition-all duration-200 cursor-pointer"
+      className="bg-base-100 rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
     >
       <PublicationHeader
         publication={{

@@ -104,7 +104,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                             />
                         </div>
                         {members.length > 0 ? (
-                            <div className="bg-base-100 rounded-lg border border-base-300 overflow-hidden">
+                            <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
                                 {members.map((member) => (
                                     <div key={member.id} className="relative group">
                                         <MemberCardWithMerits

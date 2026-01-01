@@ -45,7 +45,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
 
   return (
     <div className={`cursor-pointer ${className}`} onClick={onClick}>
-      <div className="bg-base-100 shadow-md rounded-2xl p-1.5 sm:p-4 flex items-center gap-1.5 sm:gap-3 relative">
+      <div className="bg-base-100 shadow-md rounded-xl p-1.5 sm:p-4 flex items-center gap-1.5 sm:gap-3 relative">
         <div className="flex-1 min-w-0 text-right text-xs sm:text-sm">
           {balance1 && (
             <div className="flex items-center justify-end gap-1 mb-1">

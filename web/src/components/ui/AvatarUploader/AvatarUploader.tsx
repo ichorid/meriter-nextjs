@@ -296,7 +296,7 @@ export function AvatarUploader({
 
       {/* Crop modal */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className={cn('max-w-lg rounded-2xl max-h-[90vh] flex flex-col p-0')}>
+        <DialogContent className={cn('max-w-lg rounded-xl max-h-[90vh] flex flex-col p-0')}>
           <DialogHeader className="p-6 border-b">
             <DialogTitle>{labels.cropTitle}</DialogTitle>
           </DialogHeader>
