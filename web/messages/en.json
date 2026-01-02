@@ -405,6 +405,7 @@
         "casters": "casters",
         "thankers": "casters",
         "amountLabel": "Amount of points:",
+        "quota": "Quota",
         "available": "Available",
         "casting": "Casting...",
         "castPoll": "Cast Poll",
