@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -122,9 +121,7 @@ export default function CommunitiesPage() {
     const isLoading = userLoading || communitiesLoading;
 
     return (
-        <AdaptiveLayout
-            stickyHeader={<SimpleStickyHeader title={tCommunities('title')} showBack={false} asStickyHeader={true} />}
-        >
+        <AdaptiveLayout>
             {/* Content */}
             <div className="space-y-0">
                 {/* Section 1: Special Communities */}
