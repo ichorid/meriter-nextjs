@@ -11,6 +11,7 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { WalletChip } from '@/components/molecules/WalletChip';
+import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { routes } from '@/lib/constants/routes';
 import {
     Dialog,
@@ -189,22 +190,13 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                     );
                 })}
 
-                {/* Wallet Chip - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
-                {/* Nav bar height is 64px (h-16), chip height is ~32px, so bottom = 64 - 16 = 48px */}
-                {/* Only show WalletChip when inside a community */}
-                {!quotaLoading && isInCommunityContext && (
-                    <WalletChip
-                        balance={totalWalletBalance}
-                        quota={totalDailyQuota}
-                        currencyIconUrl={currencyIconUrl}
-                        onClick={handleWalletChipClick}
-                        className="bottom-12"
-                        quotaRemaining={quotaRemaining}
-                        quotaMax={quotaMax}
-                        showRing={true}
-                        flashTrigger={flashTrigger}
-                        variant={isMarathonQuota ? 'golden' : 'default'}
-                    />
+                {/* Create Menu - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
+                {/* Nav bar height is 64px (h-16), so bottom = 64 - 16 = 48px */}
+                {/* Only show CreateMenu when inside a community */}
+                {isInCommunityContext && communityContextId && (
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-12 z-[100]">
+                        <CreateMenu communityId={communityContextId} />
+                    </div>
                 )}
             </div>
 

@@ -122,10 +122,10 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(!isOpen)}
-            className="rounded-xl active:scale-[0.98] px-2"
+            className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-100 shadow-lg hover:bg-base-200"
             aria-label={isOpen ? tCommon('close') : tCommon('open')}
         >
-            <Plus size={18} className="text-base-content/70" />
+            <Plus size={27} className="text-base-content/70" />
         </Button>
     );
 
@@ -135,7 +135,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
 
             {/* Menu Dropdown */}
             {isOpen && !permissionLoading && (
-                <div className="absolute right-0 top-full mt-2 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
+                <div className="absolute right-0 bottom-full mb-2 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
                     <div className="py-2">
                         {canCreate ? (
                             <>

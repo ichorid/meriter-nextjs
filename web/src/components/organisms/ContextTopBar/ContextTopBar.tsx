@@ -9,11 +9,10 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
-import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Users, Trash2 } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Trash2 } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 
@@ -380,21 +379,9 @@ export const CommunityTopBar: React.FC<{
                 showPermanent={quotaData.showPermanent}
                 showDaily={quotaData.showDaily}
                 compact={true}
-                className="mr-2"
+                className="mr-2 -ml-[15px] mt-[5px]"
               />
             )}
-            {/* Members Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(routes.communityMembers(communityId))}
-              className="rounded-xl active:scale-[0.98] px-2"
-              aria-label={t('members.title') || 'Members'}
-              title={t('members.title') || 'Members'}
-            >
-              <Users size={18} className="text-base-content/70" />
-            </Button>
-
             {/* Deleted Button - only for leads/superadmins */}
             {isLead && (
               <Button
@@ -408,11 +395,6 @@ export const CommunityTopBar: React.FC<{
                 <Trash2 size={18} className="text-base-content/70" />
               </Button>
             )}
-
-            {/* Create Menu - RIGHTMOST */}
-            <div className="ml-2">
-              <CreateMenu communityId={communityId} />
-            </div>
           </div>
         }
       />
