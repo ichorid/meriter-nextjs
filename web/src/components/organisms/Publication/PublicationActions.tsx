@@ -260,19 +260,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
       <div className="flex items-center justify-between gap-3">
-        {/* Left side: Comments, Favorite, Share */}
+        {/* Left side: Favorite, Share */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={handleCommentClick}
-            className="flex items-center gap-1.5 text-base-content/60 hover:text-base-content/80 transition-colors"
-            title={t('comments')}
-          >
-            <MessageCircle className="w-4 h-4" />
-            {commentCount > 0 && (
-              <span className="text-xs font-medium">{commentCount}</span>
-            )}
-          </button>
-
           {/* Favorite */}
           {publicationIdForFavorite && (
             <FavoriteStar
@@ -293,26 +282,16 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           )}
         </div>
 
-        {/* Right side: Vote, Score */}
-        <div className="flex items-center gap-2">
-          {/* Vote button */}
-          <button
-            onClick={handleVoteClick}
-            disabled={!canVote}
-            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
-              !canVote
-                ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
-                : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
-            }`}
-            title={voteTooltipText}
-          >
-            {t('vote')}
-          </button>
-
-          {/* Score */}
+        {/* Center: Score (clickable, opens comments) */}
+        <button
+          onClick={handleCommentClick}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
+          title={t('comments')}
+        >
+          <MessageCircle className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
           <div className="flex items-center gap-2">
-            <span className={`text-lg font-semibold tabular-nums ${
-              currentScore > 0 ? "text-success" : currentScore < 0 ? "text-error" : "text-base-content/40"
+            <span className={`text-lg font-semibold tabular-nums transition-colors ${
+              currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
             }`}>
               {currentScore > 0 ? '+' : ''}{currentScore}
             </span>
@@ -323,13 +302,38 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
              !Number.isNaN(currentScore) &&
              totalVotes > currentScore && (
               <span 
-                className="text-base-content/40 text-sm font-medium tabular-nums"
+                className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
                 title={t('totalVotesTooltip')}
               >
                 ({totalVotes > 0 ? '+' : ''}{totalVotes})
               </span>
             )}
+            {commentCount > 0 && (
+              <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
+                · {commentCount}
+              </span>
+            )}
           </div>
+        </button>
+
+        {/* Right side: Vote button */}
+        <div className="flex items-center">
+          {canVote ? (
+            <button
+              onClick={handleVoteClick}
+              className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
+              title={voteTooltipText}
+            >
+              {t('vote')}
+            </button>
+          ) : (
+            <span 
+              className="text-xs font-medium text-base-content/30"
+              title={voteTooltipText}
+            >
+              {t('vote')}
+            </span>
+          )}
         </div>
       </div>
 
