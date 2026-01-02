@@ -218,7 +218,30 @@
         "languageRussian": "Русский",
         "searchUsers": "Поиск пользователей",
         "removeAdmin": "Удалить админа",
-        "makeAdmin": "Сделать админом"
+        "makeAdmin": "Сделать админом",
+        "categories": {
+            "title": "Управление категориями",
+            "description": "Создавайте и управляйте категориями для постов",
+            "createNew": "Создать новую категорию",
+            "categoryNamePlaceholder": "Название категории",
+            "create": "Создать",
+            "existingCategories": "Существующие категории",
+            "noCategories": "Категории пока не созданы",
+            "created": "Категория создана",
+            "updated": "Категория обновлена",
+            "deleted": "Категория удалена",
+            "initialized": "Категории по умолчанию созданы",
+            "initializeDefaults": "Создать 10 категорий по умолчанию",
+            "confirmDelete": "Вы уверены, что хотите удалить эту категорию? Она будет удалена из всех постов.",
+            "confirmInitialize": "Будут созданы 10 категорий по умолчанию. Продолжить?",
+            "errors": {
+                "nameRequired": "Название категории обязательно",
+                "createFailed": "Не удалось создать категорию",
+                "updateFailed": "Не удалось обновить категорию",
+                "deleteFailed": "Не удалось удалить категорию",
+                "initializeFailed": "Не удалось создать категории по умолчанию"
+            }
+        }
     },
     "wallet": {
         "balance": "Баланс",
@@ -594,6 +617,17 @@
             "vision": "Будущее",
             "noVisionPosts": "Пока нет постов будущего",
             "visionCommunityNotFound": "Сообщество будущего не найдено",
+            "filters": {
+                "title": "Фильтры",
+                "show": "Показать",
+                "hide": "Скрыть",
+                "categories": "Категории",
+                "selectCategories": "Выберите категории",
+                "reset": "Сбросить",
+                "apply": "Применить",
+                "categoryHelp": "Выберите категории для фильтрации. Если ничего не выбрано, показываются все посты.",
+                "noCategories": "Категории пока не настроены"
+            },
             "currency": "Валюта"
         },
         "communitySettings": {
@@ -610,6 +644,7 @@
             "namePlaceholder": "Название сообщества",
             "description": "Описание",
             "descriptionPlaceholder": "О чем это сообщество?",
+            "characters": "символов",
             "avatarUrl": "URL аватара",
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Генерировать",
@@ -753,6 +788,11 @@
                 "hashtags": "Хештеги",
                 "hashtagsPlaceholder": "Добавьте хештеги",
                 "hashtagsHelp": "Добавьте до 10 хештегов. Разделители: точка с запятой (;) или запятая (,).",
+                "categories": "Категории",
+                "selectCategories": "Выберите категории",
+                "categoriesHelp": "Выберите одну или несколько категорий для вашего поста",
+                "noCategoriesAvailable": "Категории пока не доступны",
+                "selectedCategories": "Выбрано: {count}",
                 "characters": "символов",
                 "images": "Изображения",
                 "imagesHelp": "Загрузите до 10 изображений для вашего поста"

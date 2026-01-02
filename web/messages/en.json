@@ -216,7 +216,30 @@
         "languageRussian": "Russian",
         "searchUsers": "Search Users",
         "removeAdmin": "Remove Admin",
-        "makeAdmin": "Make Admin"
+        "makeAdmin": "Make Admin",
+        "categories": {
+            "title": "Category Management",
+            "description": "Create and manage categories for posts",
+            "createNew": "Create new category",
+            "categoryNamePlaceholder": "Category name",
+            "create": "Create",
+            "existingCategories": "Existing categories",
+            "noCategories": "No categories created yet",
+            "created": "Category created",
+            "updated": "Category updated",
+            "deleted": "Category deleted",
+            "initialized": "Default categories initialized",
+            "initializeDefaults": "Create 10 default categories",
+            "confirmDelete": "Are you sure you want to delete this category? It will be removed from all posts.",
+            "confirmInitialize": "This will create 10 default categories. Continue?",
+            "errors": {
+                "nameRequired": "Category name is required",
+                "createFailed": "Failed to create category",
+                "updateFailed": "Failed to update category",
+                "deleteFailed": "Failed to delete category",
+                "initializeFailed": "Failed to initialize default categories"
+            }
+        }
     },
     "wallet": {
         "balance": "Balance",
@@ -594,6 +617,17 @@
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
             "visionCommunityNotFound": "Future community not found",
+            "filters": {
+                "title": "Filters",
+                "show": "Show",
+                "hide": "Hide",
+                "categories": "Categories",
+                "selectCategories": "Select categories",
+                "reset": "Reset",
+                "apply": "Apply",
+                "categoryHelp": "Select categories to filter. If nothing is selected, all posts are shown.",
+                "noCategories": "Categories are not configured yet"
+            },
             "currency": "Currency"
         },
         "communitySettings": {
@@ -610,6 +644,7 @@
             "namePlaceholder": "Community Name",
             "description": "Description",
             "descriptionPlaceholder": "What is this community about?",
+            "characters": "characters",
             "avatarUrl": "Avatar URL",
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Generate",
@@ -753,6 +788,11 @@
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
                 "hashtagsHelp": "Add up to 10 hashtags. Separators: semicolon (;) or comma (,).",
+                "categories": "Categories",
+                "selectCategories": "Select categories",
+                "categoriesHelp": "Select one or more categories for your post",
+                "noCategoriesAvailable": "No categories available",
+                "selectedCategories": "Selected: {count}",
                 "characters": "characters",
                 "images": "Images",
                 "imagesHelp": "Upload up to 10 images for your post"
