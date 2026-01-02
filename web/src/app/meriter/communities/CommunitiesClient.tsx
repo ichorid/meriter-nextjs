@@ -17,6 +17,8 @@ import { routes } from '@/lib/constants/routes';
 import type { EnrichedLead } from '@/types/lead';
 import { useTranslations } from 'next-intl';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Separator } from '@/components/ui/shadcn/separator';
+import { DismissibleHint } from '@/components/molecules/DismissibleHint/DismissibleHint';
 
 export default function CommunitiesPage() {
     const pathname = usePathname();
@@ -28,9 +30,11 @@ export default function CommunitiesPage() {
     const tAbout = useTranslations('about');
     const tCommunities = useTranslations('communities');
 
-    const [leadsExpanded, setLeadsExpanded] = useState(false);
+    const [leadsExpanded, setLeadsExpanded] = useLocalStorage<boolean>('communities.leadsExpanded', true);
     const [searchQuery, setSearchQuery] = useState('');
     const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
+    const [specialCommunitiesExpanded, setSpecialCommunitiesExpanded] = useLocalStorage<boolean>('communities.specialCommunitiesExpanded', true);
+    const [yourCommunitiesExpanded, setYourCommunitiesExpanded] = useLocalStorage<boolean>('communities.yourCommunitiesExpanded', true);
 
     // Handle scroll to leads section from URL param
     useEffect(() => {
@@ -93,6 +97,16 @@ export default function CommunitiesPage() {
             }
         });
 
+        // Sort special communities: marathon-of-good, future-vision, support
+        special.sort((a, b) => {
+            const order: Record<string, number> = {
+                'marathon-of-good': 1,
+                'future-vision': 2,
+                'support': 3,
+            };
+            return (order[a.typeTag || ''] || 999) - (order[b.typeTag || ''] || 999);
+        });
+
         return {
             specialCommunities: special,
             userCommunities: userComms,
@@ -107,33 +121,47 @@ export default function CommunitiesPage() {
             stickyHeader={<SimpleStickyHeader title={tCommunities('title')} showBack={false} asStickyHeader={true} />}
         >
             {/* Content */}
-            <div>
+            <div className="space-y-0">
                 {/* Section 1: Special Communities */}
                 {specialCommunities.length > 0 && (
-                    <section className="mb-10">
-                        <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
-                            {tCommunities('specialCommunities')}
-                        </h2>
-                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
-                            {specialCommunities.map((community) => {
-                                const wallet = walletsMap.get(community.id);
-                                const quota = quotasMap.get(community.id);
-                                return (
-                                    <CommunityCard
-                                        key={community.id}
-                                        communityId={community.id}
-                                        pathname={pathname}
-                                        isExpanded={true}
-                                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                        quota={quota && typeof quota.remainingToday === 'number' ? {
-                                            remainingToday: quota.remainingToday,
-                                            dailyQuota: quota.dailyQuota ?? 0
-                                        } : undefined}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </section>
+                    <div className="bg-base-100 py-4 space-y-3">
+                        <button
+                            onClick={() => setSpecialCommunitiesExpanded(!specialCommunitiesExpanded)}
+                            className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
+                        >
+                            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                                {tCommunities('specialCommunities')}
+                            </p>
+                            {specialCommunitiesExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-base-content/40" />
+                            ) : (
+                                <ChevronDown className="w-4 h-4 text-base-content/40" />
+                            )}
+                        </button>
+                        {specialCommunitiesExpanded && (
+                            <div className="animate-in fade-in duration-200">
+                                <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                    {specialCommunities.map((community) => {
+                                        const wallet = walletsMap.get(community.id);
+                                        const quota = quotasMap.get(community.id);
+                                        return (
+                                            <CommunityCard
+                                                key={community.id}
+                                                communityId={community.id}
+                                                pathname={pathname}
+                                                isExpanded={true}
+                                                wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                                quota={quota && typeof quota.remainingToday === 'number' ? {
+                                                    remainingToday: quota.remainingToday,
+                                                    dailyQuota: quota.dailyQuota ?? 0
+                                                } : undefined}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* Viewer Notification: Show when user has no non-special communities */}
@@ -194,107 +222,132 @@ export default function CommunitiesPage() {
 
                 {/* Section 2: User's Communities */}
                 {userCommunities.length > 0 && (
-                    <section className="mb-10">
-                        <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide mb-4">
-                            {tCommunities('yourCommunities')}
-                        </h2>
-                        {isLoading ? (
-                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
-                                <CardSkeleton />
-                                <CardSkeleton />
-                                <CardSkeleton />
-                            </div>
-                        ) : (
-                            <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
-                                {userCommunities.map((community) => {
-                                    const wallet = walletsMap.get(community.id);
-                                    const quota = quotasMap.get(community.id);
-                                    return (
-                                        <CommunityCard
-                                            key={community.id}
-                                            communityId={community.id}
-                                            pathname={pathname}
-                                            isExpanded={true}
-                                            wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                            quota={quota && typeof quota.remainingToday === 'number' ? {
-                                                remainingToday: quota.remainingToday,
-                                                dailyQuota: quota.dailyQuota ?? 0
-                                            } : undefined}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </section>
+                    <>
+                        {specialCommunities.length > 0 && <Separator className="bg-base-300 my-0" />}
+                        <div className="bg-base-100 py-4 space-y-3">
+                            <button
+                                onClick={() => setYourCommunitiesExpanded(!yourCommunitiesExpanded)}
+                                className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
+                            >
+                                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                                    {tCommunities('yourCommunities')}
+                                </p>
+                                {yourCommunitiesExpanded ? (
+                                    <ChevronUp className="w-4 h-4 text-base-content/40" />
+                                ) : (
+                                    <ChevronDown className="w-4 h-4 text-base-content/40" />
+                                )}
+                            </button>
+                            {yourCommunitiesExpanded && (
+                                <div className="animate-in fade-in duration-200">
+                                    {isLoading ? (
+                                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                            <CardSkeleton />
+                                            <CardSkeleton />
+                                            <CardSkeleton />
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                            {userCommunities.map((community) => {
+                                                const wallet = walletsMap.get(community.id);
+                                                const quota = quotasMap.get(community.id);
+                                                return (
+                                                    <CommunityCard
+                                                        key={community.id}
+                                                        communityId={community.id}
+                                                        pathname={pathname}
+                                                        isExpanded={true}
+                                                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                                        quota={quota && typeof quota.remainingToday === 'number' ? {
+                                                            remainingToday: quota.remainingToday,
+                                                            dailyQuota: quota.dailyQuota ?? 0
+                                                        } : undefined}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </>
                 )}
 
 
                 {/* Section 4: Leads (Collapsible) */}
-                <section id="leads-section" className="pt-6 border-t border-base-300">
-                    <button
-                        onClick={() => setLeadsExpanded(!leadsExpanded)}
-                        className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity"
-                    >
-                        <h2 className="text-sm font-medium text-base-content/60 uppercase tracking-wide">
-                            {tCommunities('leads')}
-                        </h2>
-                        {leadsExpanded ? (
-                            <ChevronUp className="w-5 h-5 text-base-content/60" />
-                        ) : (
-                            <ChevronDown className="w-5 h-5 text-base-content/60" />
-                        )}
-                    </button>
-
-                    {leadsExpanded && (
-                        <div className="space-y-4">
-                            {leads.length > 0 && (
-                                <div>
-                                    <SearchInput
-                                        placeholder={tSearch('results.searchLeadsPlaceholder')}
-                                        value={searchQuery}
-                                        onSearch={setSearchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full"
-                                    />
-                                </div>
-                            )}
-
-                            {leadsLoading ? (
-                                <div className="space-y-3">
-                                    <CardSkeleton />
-                                    <CardSkeleton />
-                                    <CardSkeleton />
-                                </div>
-                            ) : filteredLeads.length > 0 ? (
-                                <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
-                                    {filteredLeads.map((lead) => (
-                                        <LeadCard
-                                            key={lead.id}
-                                            id={lead.id}
-                                            displayName={lead.displayName || lead.username || t('unknownUser')}
-                                            username={lead.username}
-                                            avatarUrl={lead.avatarUrl}
-                                            totalMerits={lead.totalMerits}
-                                            leadCommunities={lead.leadCommunities}
-                                            showRoleChip={false}
-                                            onClick={() => router.push(routes.userProfile(lead.id))}
-                                        />
-                                    ))}
-                                </div>
+                <div id="leads-section">
+                    {(specialCommunities.length > 0 || userCommunities.length > 0) && <Separator className="bg-base-300 my-0" />}
+                    <div className="bg-base-100 py-4 space-y-3">
+                        <button
+                            onClick={() => setLeadsExpanded(!leadsExpanded)}
+                            className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
+                        >
+                            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                                {tCommunities('leads')}
+                            </p>
+                            {leadsExpanded ? (
+                                <ChevronUp className="w-4 h-4 text-base-content/40" />
                             ) : (
-                                <div className="text-center py-12 text-base-content/60">
-                                    <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
-                                    <p className="font-medium">
-                                        {searchQuery ? tAbout('noLeadsMatchingSearch') : tAbout('noLeadsFound')}
-                                    </p>
-                                    <p className="text-sm mt-1">
-                                        {searchQuery ? tAbout('tryDifferentSearchTerm') : tAbout('noLeadsAvailable')}
-                                    </p>
-                                </div>
+                                <ChevronDown className="w-4 h-4 text-base-content/40" />
                             )}
-                        </div>
-                    )}
-                </section>
+                        </button>
+
+                        {leadsExpanded && (
+                            <div className="animate-in fade-in duration-200 space-y-4">
+                                {/* Helper text */}
+                                <DismissibleHint storageKey="communities.leadsHelper">
+                                    {tCommunities('leadsHelper')}
+                                </DismissibleHint>
+
+                                {leads.length > 0 && (
+                                    <div>
+                                        <SearchInput
+                                            placeholder={tSearch('results.searchLeadsPlaceholder')}
+                                            value={searchQuery}
+                                            onSearch={setSearchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                )}
+
+                                {leadsLoading ? (
+                                    <div className="space-y-3">
+                                        <CardSkeleton />
+                                        <CardSkeleton />
+                                        <CardSkeleton />
+                                    </div>
+                                ) : filteredLeads.length > 0 ? (
+                                    <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
+                                        {filteredLeads.map((lead) => (
+                                            <LeadCard
+                                                key={lead.id}
+                                                id={lead.id}
+                                                displayName={lead.displayName || lead.username || t('unknownUser')}
+                                                username={lead.username}
+                                                avatarUrl={lead.avatarUrl}
+                                                totalMerits={lead.totalMerits}
+                                                leadCommunities={lead.leadCommunities}
+                                                showRoleChip={false}
+                                                onClick={() => router.push(routes.userProfile(lead.id))}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 text-base-content/60">
+                                        <Users className="w-12 h-12 mx-auto mb-3 text-base-content/40" />
+                                        <p className="font-medium">
+                                            {searchQuery ? tAbout('noLeadsMatchingSearch') : tAbout('noLeadsFound')}
+                                        </p>
+                                        <p className="text-sm mt-1">
+                                            {searchQuery ? tAbout('tryDifferentSearchTerm') : tAbout('noLeadsAvailable')}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
         </AdaptiveLayout>
     );

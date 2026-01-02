@@ -63,8 +63,8 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         };
 
         const roleVariants: Record<string, 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error'> = {
-            lead: 'primary',
-            participant: 'info',
+            lead: 'secondary',
+            participant: 'secondary',
             viewer: 'secondary',
             superadmin: 'error',
         };
@@ -100,36 +100,22 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             </div>
 
             {/* Info Section */}
-            <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                {/* Name and Role Chip */}
-                <div className="flex items-center gap-2">
-                    <div className="text-[15px] font-normal leading-[120%] text-base-content">
-                        {displayName || username || 'Unknown User'}
-                    </div>
-                    {showRoleChip && roleBadge && (
-                        <Badge variant={roleBadge.variant} size="xs">
-                            {roleBadge.label}
-                        </Badge>
-                    )}
+            <div className="flex-1 min-w-0 flex flex-col gap-0.5 items-start">
+                {/* Name */}
+                <div className="text-[15px] font-normal leading-[120%] text-base-content text-left">
+                    {displayName || username || 'Unknown User'}
                 </div>
-                
-                {/* Role text (only show if role chip is not shown) */}
-                {!showRoleChip && (
-                    <div className="text-xs leading-[120%] text-base-content/60">
-                        {t('lead')}
-                    </div>
-                )}
                 
                 {/* Team name */}
                 {!hideTeamInfo && teamName && (
-                    <div className="text-xs leading-[120%] text-base-content/60">
-                        {teamName}
+                    <div className="text-xs leading-[120%] text-base-content/60 text-left">
+                        {tCommon('team')}: "{teamName}"
                     </div>
                 )}
                 
                 {/* Merits info */}
                 {totalMerits !== undefined && (
-                    <div className="text-xs leading-[120%] text-base-content/60">
+                    <div className="text-xs leading-[120%] text-base-content/60 text-left">
                         {meritsDisplay} merits
                     </div>
                 )}

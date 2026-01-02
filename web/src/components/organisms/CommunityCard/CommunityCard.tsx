@@ -52,19 +52,26 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
+    // Don't show role badge for special communities (marathon-of-good, future-vision, support)
+    if (community?.typeTag === 'marathon-of-good' || 
+        community?.typeTag === 'future-vision' || 
+        community?.typeTag === 'support') {
+      return null;
+    }
+
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
 
     // Only show badge for lead and participant (not viewer, not superadmin)
     if (role?.role === 'lead') {
-      return { role: 'lead', label: t('lead'), variant: 'accent' as const };
+      return { role: 'lead', label: t('lead'), variant: 'secondary' as const };
     }
     if (role?.role === 'participant') {
-      return { role: 'participant', label: t('participant'), variant: 'info' as const };
+      return { role: 'participant', label: t('participant'), variant: 'secondary' as const };
     }
 
     return null;
-  }, [user?.id, userRoles, communityId, t]);
+  }, [community?.typeTag, user?.id, userRoles, communityId, t]);
 
   // Get user's role for this community to check merit rules
   const userRole = React.useMemo(() => {
@@ -158,7 +165,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 className="bg-base-300"
               />
               {userRoleBadge && (
-                <div className="absolute bottom-[-19px] left-0 right-0 flex items-center justify-center">
+                <div className="absolute bottom-[-28px] left-0 right-0 flex items-center justify-center">
                   <Badge
                     variant={userRoleBadge.variant}
                     size="xs"
@@ -256,9 +263,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         </div>
         {userRoleBadge && (
           <div
-            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${userRoleBadge.variant === 'accent' ? 'bg-accent' :
-              userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
-              }`}
+            className="absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 bg-base-content/40"
             title={userRoleBadge.label}
           />
         )}
