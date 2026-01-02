@@ -5,8 +5,9 @@ import { useEffect, useState, useMemo } from "react";
 import { CardPublication } from "./card-publication";
 import { useCommunity, usePoll } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
-import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
+import { PublicationActions } from "@/components/organisms/Publication/PublicationActions";
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { WithTelegramEntities } from "@shared/components/with-telegram-entities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
 import { useUIStore } from "@/stores/ui.store";
@@ -285,33 +286,49 @@ export const Publication = (props: any) => {
                                 />
                             );
                         } else {
+                            // Prepare publication object for PublicationActions
+                            const publicationForActions = {
+                                id: postId,
+                                slug: slug,
+                                authorId: authorId,
+                                beneficiaryId: beneficiaryId,
+                                communityId: communityId,
+                                createdAt: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+                                metrics: {
+                                    score: currentScore,
+                                    commentCount: !isDetailPage ? comments?.length || 0 : 0,
+                                },
+                                meta: {
+                                    author: meta?.author,
+                                    beneficiary: hasBeneficiary ? {
+                                        id: beneficiaryId,
+                                        name: beneficiaryName,
+                                        photoUrl: beneficiaryPhotoUrl,
+                                        username: beneficiaryUsername,
+                                    } : undefined,
+                                    origin: meta?.origin,
+                                },
+                                permissions: (originalPublication as any)?.permissions as ResourcePermissions | undefined,
+                                withdrawals: {
+                                    totalWithdrawn: totalWithdrawn,
+                                },
+                                postType: isProject ? 'project' : undefined,
+                                isProject: isProject,
+                            };
+
                             return (
-                                <BarVoteUnified
-                                    score={currentScore}
-                                    onVoteClick={() => {
-                                        useUIStore.getState().openVotingPopup(postId, 'publication');
+                                <PublicationActions
+                                    publication={publicationForActions}
+                                    onVote={(direction, amount) => {
+                                        // Voting is handled by the popup, this is just a placeholder
+                                        // The actual voting logic is in handleVoteClick
                                     }}
-                                    isAuthor={isAuthor}
-                                    isBeneficiary={isBeneficiary}
-                                    hasBeneficiary={hasBeneficiary}
-                                    commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                                    onCommentClick={!isDetailPage ? () => {
-                                        const routingCommunityId = communityInfo?.id || communityId;
-                                        if (!routingCommunityId || !slug) return;
-                                        
-                                        // If on community feed page, set query parameter to show side panel
-                                        if (isOnCommunityFeedPage) {
-                                            const params = new URLSearchParams(searchParams?.toString() || '');
-                                            params.set('post', slug);
-                                            router.push(`${pathname}?${params.toString()}`);
-                                        } else {
-                                            // Otherwise, navigate to detail page
-                                            router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
-                                        }
-                                    } : undefined}
-                                    canVote={canVote}
-                                    disabledReason={voteDisabledReason}
-                                    totalVotes={totalVotes}
+                                    onComment={(comment, amount, directionPlus) => {
+                                        // Commenting is handled by navigation, this is just a placeholder
+                                    }}
+                                    activeCommentHook={activeCommentHook}
+                                    wallets={wallets || []}
+                                    updateAll={updateAll}
                                 />
                             );
                         }
