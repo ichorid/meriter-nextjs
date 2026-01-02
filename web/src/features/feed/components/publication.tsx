@@ -333,6 +333,7 @@ export const Publication = (props: any) => {
                                     activeCommentHook={activeCommentHook}
                                     wallets={wallets || []}
                                     updateAll={updateAll}
+                                    hideVoteAndScore={isProject}
                                 />
                             );
                         }

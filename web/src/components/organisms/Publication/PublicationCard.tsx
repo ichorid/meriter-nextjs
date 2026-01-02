@@ -107,7 +107,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     };
 
     return (
-      <div className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
+      <article className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
         <PublicationHeader
           publication={{
             id: pollItem.id,
@@ -134,9 +134,32 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             // Mutations handle query invalidation automatically
           }}
           communityId={pollItem.communityId}
-          initiallyExpanded={false}
+          noWrapper={true}
         />
-      </div>
+
+        <PublicationActions
+          publication={{
+            id: pollItem.id,
+            createdAt: pollItem.createdAt,
+            authorId: pollItem.authorId,
+            communityId: pollItem.communityId,
+            slug: undefined,
+            content: undefined,
+            permissions: (pollItem as any).permissions,
+            type: 'poll',
+            metrics: pollMetrics,
+            meta: pollItem.meta,
+          }}
+          onVote={() => {}}
+          onComment={() => {}}
+          activeCommentHook={activeCommentHook}
+          isVoting={false}
+          isCommenting={false}
+          maxPlus={0}
+          wallets={wallets}
+          hideVoteAndScore={true}
+        />
+      </article>
     );
   }
 
@@ -229,6 +252,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isCommenting={isCommenting}
         maxPlus={currentBalance}
         wallets={wallets}
+        hideVoteAndScore={(pubItem as any).postType === 'project' || (pubItem as any).isProject === true}
       // maxMinus is calculated in PublicationActions using quota data
       />
     </article>

@@ -65,6 +65,13 @@ export function getPostUrl(communityId: string, slug: string): string {
 }
 
 /**
+ * Construct a poll URL
+ */
+export function getPollUrl(communityId: string, pollId: string): string {
+  return `/meriter/communities/${communityId}?poll=${pollId}`;
+}
+
+/**
  * Construct a comment URL with highlight parameter
  */
 export function getCommentUrl(communityId: string, publicationSlug: string, commentId: string): string {

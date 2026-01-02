@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { ArrowUp } from 'lucide-react';
+import { Button } from '@/components/ui/shadcn/button';
 import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
@@ -12,6 +14,72 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
+
+// Scroll to top button component
+const ScrollToTopButton: React.FC = () => {
+  const [showButton, setShowButton] = useState(false);
+
+  const handleScrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+    if (mainWrap) {
+      mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const checkScroll = () => {
+      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+      let scrollTop = 0;
+      if (mainWrap) {
+        scrollTop = mainWrap.scrollTop;
+      } else {
+        scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      }
+      const windowHeight = window.innerHeight;
+      setShowButton(scrollTop > windowHeight / 2);
+    };
+
+    const timeoutId = setTimeout(checkScroll, 100);
+    const mainWrap = document.querySelector('.mainWrap');
+
+    if (mainWrap) {
+      mainWrap.addEventListener('scroll', checkScroll, { passive: true });
+    } else {
+      window.addEventListener('scroll', checkScroll, { passive: true });
+    }
+
+    window.addEventListener('resize', checkScroll, { passive: true });
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (mainWrap) {
+        mainWrap.removeEventListener('scroll', checkScroll);
+      } else {
+        window.removeEventListener('scroll', checkScroll);
+      }
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, []);
+
+  if (!showButton) return null;
+
+  return (
+    <button
+      onClick={handleScrollToTop}
+      className="fixed bottom-20 right-10 lg:bottom-6 lg:right-3 z-50 p-2.5 rounded-full bg-base-200 shadow-lg hover:bg-base-300 transition-all active:scale-95"
+      aria-label="Scroll to top"
+      title="Scroll to top"
+    >
+      <ArrowUp size={15} />
+    </button>
+  );
+};
 
 export interface AdaptiveLayoutProps {
   children: React.ReactNode;
@@ -157,6 +225,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               children
             )}
           </div>
+          
+          {/* Scroll to top button - fixed position in bottom right */}
+          <ScrollToTopButton />
         </div>
 
         {/* Docked inspector column (only used on ultra-wide) */}

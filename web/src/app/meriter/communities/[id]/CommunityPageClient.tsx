@@ -839,7 +839,25 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             // Check if this post is selected (for comments or polls)
                             const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
                                 || !!(targetPollId && p.id === targetPollId);
+                            
+                            // Check if this is a poll - polls don't need the wrapper div
+                            const isPoll = p.type === 'poll';
 
+                            // For polls, render directly without wrapper
+                            if (isPoll) {
+                                return (
+                                    <div key={p.id} id={`post-${p.id}`}>
+                                        <PublicationCard
+                                            publication={p}
+                                            wallets={Array.isArray(wallets) ? wallets : []}
+                                            showCommunityAvatar={false}
+                                            isSelected={isSelected}
+                                        />
+                                    </div>
+                                );
+                            }
+
+                            // For regular posts, use wrapper with selection styling
                             return (
                                 <div
                                     key={p.id}

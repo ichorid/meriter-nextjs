@@ -12,7 +12,7 @@ import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { ResourcePermissions } from '@/types/api-v1';
-import { shareUrl, getPostUrl } from '@shared/lib/share-utils';
+import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 // Local Publication type definition
@@ -73,6 +73,8 @@ interface PublicationActionsProps {
   wallets?: Wallet[];
   updateAll?: () => void;
   className?: string;
+  /** Hide vote button and score display, show only favorite and share */
+  hideVoteAndScore?: boolean;
 }
 
 export const PublicationActions: React.FC<PublicationActionsProps> = ({
@@ -87,6 +89,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   wallets = [],
   updateAll,
   className = '',
+  hideVoteAndScore = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -225,8 +228,15 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     hapticImpact('light');
-    if (communityId && publication.slug) {
-      const url = getPostUrl(communityId, publication.slug);
+    if (communityId) {
+      let url: string;
+      if (publication.slug) {
+        url = getPostUrl(communityId, publication.slug);
+      } else if (publication.type === 'poll' && publication.id) {
+        url = getPollUrl(communityId, publication.id);
+      } else {
+        return; // No valid URL to share
+      }
       await shareUrl(url, t('urlCopiedToBuffer'));
     }
   };
@@ -271,7 +281,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           )}
 
           {/* Share */}
-          {communityId && publication.slug && (
+          {communityId && (publication.slug || (publication.type === 'poll' && publication.id)) && (
             <button
               onClick={handleShareClick}
               className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80"
@@ -282,59 +292,59 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           )}
         </div>
 
-        {/* Center: Score (clickable, opens comments) */}
-        <button
-          onClick={handleCommentClick}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
-          title={t('comments')}
-        >
-          <MessageCircle className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
-          <div className="flex items-center gap-2">
-            <span className={`text-lg font-semibold tabular-nums transition-colors ${
-              currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
-            }`}>
-              {currentScore > 0 ? '+' : ''}{currentScore}
-            </span>
-            {totalVotes !== undefined && 
-             typeof totalVotes === 'number' && 
-             !Number.isNaN(totalVotes) &&
-             typeof currentScore === 'number' && 
-             !Number.isNaN(currentScore) &&
-             totalVotes > currentScore && (
-              <span 
-                className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
-                title={t('totalVotesTooltip')}
-              >
-                ({totalVotes > 0 ? '+' : ''}{totalVotes})
+        {/* Center: Score (clickable, opens comments) - hidden if hideVoteAndScore */}
+        {!hideVoteAndScore && (
+          <button
+            onClick={handleCommentClick}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
+            title={t('comments')}
+          >
+            <MessageCircle className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
+            <div className="flex items-center gap-2">
+              <span className={`text-lg font-semibold tabular-nums transition-colors ${
+                currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
+              }`}>
+                {currentScore > 0 ? '+' : ''}{currentScore}
               </span>
-            )}
-            {commentCount > 0 && (
-              <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
-                · {commentCount}
-              </span>
-            )}
-          </div>
-        </button>
+              {totalVotes !== undefined && 
+               typeof totalVotes === 'number' && 
+               !Number.isNaN(totalVotes) &&
+               typeof currentScore === 'number' && 
+               !Number.isNaN(currentScore) &&
+               totalVotes > currentScore && (
+                <span 
+                  className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
+                  title={t('totalVotesTooltip')}
+                >
+                  ({totalVotes > 0 ? '+' : ''}{totalVotes})
+                </span>
+              )}
+              {commentCount > 0 && (
+                <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
+                  · {commentCount}
+                </span>
+              )}
+            </div>
+          </button>
+        )}
 
-        {/* Right side: Vote button */}
-        <div className="flex items-center">
-          {canVote ? (
+        {/* Right side: Vote button - hidden if hideVoteAndScore */}
+        {!hideVoteAndScore && (
+          <div className="flex items-center">
             <button
               onClick={handleVoteClick}
-              className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
+              disabled={!canVote}
+              className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
+                canVote
+                  ? 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                  : 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
+              }`}
               title={voteTooltipText}
             >
               {t('vote')}
             </button>
-          ) : (
-            <span 
-              className="text-xs font-medium text-base-content/30"
-              title={voteTooltipText}
-            >
-              {t('vote')}
-            </span>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Withdraw/Topup buttons - show below if applicable */}

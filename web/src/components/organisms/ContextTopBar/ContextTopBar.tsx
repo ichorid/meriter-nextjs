@@ -212,20 +212,9 @@ export const SimpleStickyHeader: React.FC<{
           </div>
 
           {/* Center Action */}
-          {(centerAction || (showScrollToTop && showScrollButton)) && (
+          {centerAction && (
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
-              {centerAction || (showScrollToTop && showScrollButton && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleScrollToTop}
-                  className="rounded-xl active:scale-[0.98] px-2"
-                  aria-label="Scroll to top"
-                  title="Scroll to top"
-                >
-                  <ArrowUp size={18} className="text-base-content/70" />
-                </Button>
-              ))}
+              {centerAction}
             </div>
           )}
 
