@@ -124,31 +124,31 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
         {/* Overlay for better text visibility */}
         <div className="absolute inset-0 bg-black/20" />
 
-        {/* Members button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(routes.communityMembers(community.id));
-          }}
-          className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
-          title={tCommunities('members.title') || 'Members'}
-        >
-          <Users size={18} className="text-white" />
-        </button>
-
-        {/* Settings button for admins */}
+        {/* Settings button for admins - rightmost */}
         {community.isAdmin && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               router.push(routes.communitySettings(community.id));
             }}
-            className="absolute top-3 right-12 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
+            className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
             title={tCommon('settings')}
           >
             <Settings size={18} className="text-white" />
           </button>
         )}
+
+        {/* Members button - left of Settings if Settings is visible, otherwise in Settings position */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(routes.communityMembers(community.id));
+          }}
+          className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${community.isAdmin ? 'right-[51px]' : 'right-3'}`}
+          title={tCommunities('members.title') || 'Members'}
+        >
+          <Users size={18} className="text-white" />
+        </button>
 
         {/* Setup badge */}
         {community.needsSetup && (

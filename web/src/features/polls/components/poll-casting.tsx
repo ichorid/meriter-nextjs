@@ -25,7 +25,8 @@ interface IPollCastingProps {
     balance: number;
     onCastSuccess?: () => void;
     communityId?: string;
-    initiallyExpanded?: boolean;
+    /** Remove wrapper styling for inline display in publication cards */
+    noWrapper?: boolean;
 }
 
 export const PollCasting = ({
@@ -36,12 +37,11 @@ export const PollCasting = ({
     balance,
     onCastSuccess,
     communityId,
-    initiallyExpanded = false,
+    noWrapper = false,
 }: IPollCastingProps) => {
     const t = useTranslations('polls');
     const addToast = useToastStore((state) => state.addToast);
     const { user } = useAuth();
-    const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
     const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
     const [amountInputValue, setAmountInputValue] = useState<string>("1");
     const [castAmount, setCastAmount] = useState<number>(1);
@@ -151,67 +151,14 @@ export const PollCasting = ({
         if (totalVotes === 0) return 0;
         return (votes / totalVotes) * 100;
     };
-
-    // Collapsed view
-    if (!isExpanded) {
-        return (
-            <div
-                className="p-4 bg-accent/5 border-l-4 border-accent cursor-pointer hover:bg-accent/10 transition-all duration-300 ease-in-out rounded-xl"
-                onClick={() => setIsExpanded(true)}
-            >
-                <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-lg"></span>
-                            <h3 className="text-base font-bold">{pollData.title}</h3>
-                        </div>
-                        {pollData.description && (
-                            <p className="text-sm opacity-70 line-clamp-2">{pollData.description}</p>
-                        )}
-                    </div>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                    <span className={`badge badge-sm ${isExpired ? "badge-error" : "badge-success"}`}>
-                        {isExpired ? t('finished') : t('active')}
-                    </span>
-                    <span className="badge badge-sm badge-ghost">
-                        {isExpired ? t('pollFinished') : `${t('timeRemaining')} ${timeRemaining}`}
-                    </span>
-                    <span className="badge badge-sm badge-ghost">
-                        {pollData.totalCasts} {t('casts')}
-                    </span>
-                    {userCastSummary && userCastSummary.castCount > 0 && (
-                        <span className="badge badge-sm badge-primary">
-                            {t('youCast')}
-                        </span>
-                    )}
-                </div>
-                <div className="text-xs opacity-50 mt-2 text-center">
-                    {t('clickToView')}
-                </div>
-            </div>
-        );
-    }
-
-    // Expanded view
-    return (
-        <div className="p-5 bg-accent/5 border-l-4 border-accent transition-all duration-300 ease-in-out rounded-xl">
+    const content = (
+        <>
             <div className="mb-5 animate-in fade-in duration-300">
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2 flex-1">
                         <span className="text-lg"></span>
                         <h3 className="text-lg font-bold">{pollData.title}</h3>
                     </div>
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsExpanded(false);
-                        }}
-                        className="btn btn-ghost btn-sm btn-circle hover:bg-accent/20"
-                        aria-label={t('collapseAria')}
-                    >
-                        ▲
-                    </button>
                 </div>
                 {pollData.description && (
                     <p className="text-sm opacity-70 mb-3">{pollData.description}</p>
@@ -287,13 +234,7 @@ export const PollCasting = ({
                 <div className="card bg-base-200 shadow-none p-4 rounded-xl">
                     <div className="form-control mb-3">
                         <label className="label" htmlFor="cast-amount">
-                            <span className="label-text">{t('amountLabel')}</span>
-                            <span className="label-text-alt">
-                                {canUseQuota && quotaRemaining > 0 && (
-                                    <span className="mr-2">{t('quota')}: {quotaRemaining}</span>
-                                )}
-                                {t('available')}: {maxAmount}
-                            </span>
+                            <span className="label-text text-base font-medium">{t('amountLabel')}</span>
                         </label>
                         <input
                             id="cast-amount"
@@ -339,8 +280,13 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
-                            className="input input-bordered w-full rounded-xl"
+                            className="flex border border-input bg-background px-3 py-2 text-base h-11 rounded-xl w-full transition-colors focus-visible:outline-none disabled:opacity-50"
                         />
+                        <label className="label">
+                            <span className="label-text-alt text-xs text-base-content/60">
+                                {t('available')}: <span className="font-semibold">{quotaRemaining + balance}</span> меритов, из которых <span className="font-semibold">{canUseQuota && quotaRemaining > 0 ? quotaRemaining : 0}</span> – {t('quota')}{canUseQuota && quotaRemaining > 0 && balance > 0 ? <> и <span className="font-semibold">{balance}</span> – {t('points')}</> : balance > 0 && (!canUseQuota || quotaRemaining === 0) ? <> и <span className="font-semibold">{balance}</span> – {t('points')}</> : null}
+                            </span>
+                        </label>
                     </div>
                     {amountValidationError && (
                         <div className="label">
@@ -353,16 +299,19 @@ export const PollCasting = ({
                         </div>
                     )}
                     <div className="mt-4">
-                        <Button
-                            variant="default"
-                            size="default"
-                            className="rounded-xl active:scale-[0.98] w-full"
+                        <button
+                            type="button"
                             onClick={handleCastPoll}
                             disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
+                            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all w-full ${
+                                isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0
+                                    ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
+                                    : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                            }`}
                         >
-                            {isCasting && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {isCasting && <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />}
                             {isCasting ? t('casting') : t('castPoll')}
-                        </Button>
+                        </button>
                     </div>
                 </div>
             )}
@@ -378,6 +327,17 @@ export const PollCasting = ({
                     <span>{t('pollExpired')}</span>
                 </div>
             )}
+        </>
+    );
+
+    // Return with or without wrapper based on noWrapper prop
+    if (noWrapper) {
+        return content;
+    }
+
+    return (
+        <div className="p-5 bg-accent/5 border-l-4 border-accent transition-all duration-300 ease-in-out rounded-xl">
+            {content}
         </div>
     );
 };

@@ -142,7 +142,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${isActive
+          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 pb-6 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
             ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
             : ''
             } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
