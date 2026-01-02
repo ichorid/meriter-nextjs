@@ -94,11 +94,7 @@ function ProfilePageComponent() {
   }
 
   return (
-    <AdaptiveLayout
-      stickyHeader={
-        <ProfileTopBar asStickyHeader={true} showBack={false} />
-      }
-    >
+    <AdaptiveLayout>
       <InviteHandler />
       <div className="space-y-0">
         {/* Profile Hero Section */}

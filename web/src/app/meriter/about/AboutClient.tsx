@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
-import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
 
@@ -11,7 +10,6 @@ const AboutPage = () => {
 
     return (
         <AdaptiveLayout
-            stickyHeader={<SimpleStickyHeader title={t('about')} showBack={false} asStickyHeader={true} />}
         >
             <div className="space-y-6">
                 <div className="space-y-4">
