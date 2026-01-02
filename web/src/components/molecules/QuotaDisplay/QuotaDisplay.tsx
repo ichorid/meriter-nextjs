@@ -53,6 +53,7 @@ export function QuotaDisplay({
         )}
         {hasPermanent && (
           <div className="flex items-center gap-1">
+            <span className="text-base-content/60">{tCommon('yourMerits')}:</span>
             <span className="font-semibold text-base-content">{balance}</span>
             {currencyIconUrl && (
               <img
@@ -61,7 +62,6 @@ export function QuotaDisplay({
                 className="w-3 h-3 flex-shrink-0"
               />
             )}
-            <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
           </div>
         )}
       </div>
@@ -83,6 +83,7 @@ export function QuotaDisplay({
       )}
       {hasPermanent && (
         <div className="flex items-center gap-1.5 text-sm">
+          <span className="text-base-content/60">{tCommon('yourMerits')}:</span>
           <span className="font-semibold text-base-content">{balance}</span>
           {currencyIconUrl && (
             <img
@@ -91,7 +92,6 @@ export function QuotaDisplay({
               className="w-4 h-4 flex-shrink-0"
             />
           )}
-          <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
         </div>
       )}
     </div>

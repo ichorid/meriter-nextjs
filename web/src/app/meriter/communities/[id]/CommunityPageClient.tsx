@@ -44,7 +44,6 @@ import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
-import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
@@ -214,8 +213,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [bOpenBeneficiaries, setBOpenBeneficiaries] = useState(false);
     const [bOpenMethods, setBOpenMethods] = useState(false);
     const [bOpenHelp, setBOpenHelp] = useState(false);
-    const [showQuotaInHeader, setShowQuotaInHeader] = useState(false);
-    const quotaIndicatorRef = useRef<HTMLDivElement>(null);
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -424,45 +421,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         comms.meritSettings.dailyQuota > 0 &&
         comms.meritSettings.quotaRecipients.includes(userRoleInCommunity);
 
+    // Always show quota in header when available
+    const showQuotaInHeader = (canEarnPermanentMerits || hasQuota);
+
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
 
-    // Reset quota header state when pathname changes (e.g., navigating back)
-    useEffect(() => {
-        setShowQuotaInHeader(false);
-    }, [pathname]);
-
-    // Intersection observer to detect when quota indicator scrolls out of view
-    useEffect(() => {
-        if (!quotaIndicatorRef.current || (!canEarnPermanentMerits && !hasQuota)) {
-            setShowQuotaInHeader(false);
-            return;
-        }
-
-        // Reset state initially
-        setShowQuotaInHeader(false);
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const entry = entries[0];
-                if (entry) {
-                    // Show in header when quota indicator is not visible (scrolled past)
-                    setShowQuotaInHeader(!entry.isIntersecting);
-                }
-            },
-            {
-                threshold: 0,
-                rootMargin: '-60px 0px 0px 0px', // Account for header height
-            }
-        );
-
-        observer.observe(quotaIndicatorRef.current);
-
-        return () => {
-            observer.disconnect();
-        };
-    }, [canEarnPermanentMerits, hasQuota, pathname]);
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const _userTeamCommunityId = null;
@@ -556,24 +521,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             id: comms.id || chatId,
                         }}
                     />
-                    {/* Quota and Permanent Merits Indicators */}
-                    {(canEarnPermanentMerits || hasQuota) && (
-                        <div
-                            ref={quotaIndicatorRef}
-                            id="quota-indicator"
-                            className="flex items-center gap-4 mt-3 px-4 py-2 bg-base-200/50 rounded-lg"
-                        >
-                            <QuotaDisplay
-                                balance={canEarnPermanentMerits ? balance : undefined}
-                                quotaRemaining={hasQuota ? quotaRemaining : undefined}
-                                quotaMax={hasQuota ? quotaMax : undefined}
-                                currencyIconUrl={currencyIconUrl}
-                                isMarathonOfGood={isMarathonOfGood}
-                                showPermanent={canEarnPermanentMerits}
-                                showDaily={hasQuota}
-                            />
-                        </div>
-                    )}
                 </div>
             )}
 
