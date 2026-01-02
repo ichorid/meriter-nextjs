@@ -63,7 +63,7 @@ export const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
           case 'primary':
             return 'bg-primary text-primary-foreground border-transparent';
           case 'secondary':
-            return 'bg-secondary text-secondary-foreground border-transparent';
+            return 'bg-base-200 text-base-content border-transparent';
           case 'accent':
             return 'bg-accent text-accent-foreground border-transparent';
           case 'info':
