@@ -107,7 +107,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     };
 
     return (
-      <div className="bg-base-100 rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
+      <div className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
         <PublicationHeader
           publication={{
             id: pollItem.id,
@@ -162,7 +162,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   return (
     <article
       onClick={handleCardClick}
-      className="bg-base-100 rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
+      className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
     >
       <PublicationHeader
         publication={{
@@ -210,6 +210,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           id: pubItem.id,
           createdAt: pubItem.createdAt,
           authorId: pubItem.authorId,
+          beneficiaryId: pubItem.beneficiaryId,
           communityId: pubItem.communityId,
           slug: pubItem.slug,
           content: pubItem.content,
@@ -219,6 +220,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           meta: transformedMeta,
           postType: (pubItem as any).postType,
           isProject: (pubItem as any).isProject,
+          withdrawals: (pubItem as any).withdrawals || { totalWithdrawn: 0 },
         }}
         onVote={handleVote}
         onComment={handleComment}
