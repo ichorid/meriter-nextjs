@@ -33,6 +33,7 @@ export interface Publication {
   type: 'text' | 'image' | 'video';
   authorDisplay?: string;
   hashtags: string[];
+  categories?: string[]; // Array of category IDs
   metrics: PublicationMetrics;
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
@@ -101,6 +102,10 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop({ type: [String], default: [] })
   hashtags!: string[];
+
+  // Categories (predefined tags managed by superadmin)
+  @Prop({ type: [String], default: [] })
+  categories?: string[]; // Array of category IDs
 
   @Prop({
     type: {

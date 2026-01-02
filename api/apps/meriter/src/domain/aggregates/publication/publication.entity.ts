@@ -48,6 +48,7 @@ export class Publication implements EditableEntity {
     private content: PublicationContent,
     private readonly type: 'text' | 'image' | 'video',
     private hashtags: string[],
+    private categories: string[],
     private metrics: Metrics,
     private readonly imageUrl: string | null,
     private readonly images: string[],
@@ -75,6 +76,7 @@ export class Publication implements EditableEntity {
     options: {
       beneficiaryId?: UserId;
       hashtags?: string[];
+      categories?: string[];
       imageUrl?: string;
       images?: string[];
       videoUrl?: string;
@@ -101,6 +103,7 @@ export class Publication implements EditableEntity {
       publicationContent,
       type,
       options.hashtags || [],
+      options.categories || [],
       Metrics.zero(),
       options.imageUrl || null,
       images,
@@ -132,7 +135,8 @@ export class Publication implements EditableEntity {
       snapshot.beneficiaryId ? UserId.fromString(snapshot.beneficiaryId) : null,
       PublicationContent.create(snapshot.content),
       snapshot.type,
-      snapshot.hashtags,
+      snapshot.hashtags || [],
+      snapshot.categories || [],
       Metrics.fromSnapshot(snapshot.metrics),
       snapshot.imageUrl || null,
       images,
@@ -187,6 +191,11 @@ export class Publication implements EditableEntity {
     this.updatedAt = new Date();
   }
 
+  updateCategories(categories: string[]): void {
+    this.categories = [...categories];
+    this.updatedAt = new Date();
+  }
+
   hasBeneficiary(): boolean {
     return this.beneficiaryId !== null;
   }
@@ -225,6 +234,10 @@ export class Publication implements EditableEntity {
 
   get getHashtags(): readonly string[] {
     return this.hashtags;
+  }
+
+  get getCategories(): readonly string[] {
+    return this.categories;
   }
 
   get getMetrics(): Metrics {
@@ -289,6 +302,7 @@ export class Publication implements EditableEntity {
       content: this.content.getValue(),
       type: this.type,
       hashtags: [...this.hashtags],
+      categories: this.categories.length > 0 ? [...this.categories] : undefined,
       metrics: this.metrics.toSnapshot(),
       imageUrl: this.imageUrl || undefined,
       images: this.images.length > 0 ? this.images : undefined,

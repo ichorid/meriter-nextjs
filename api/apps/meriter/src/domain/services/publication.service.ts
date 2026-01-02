@@ -29,6 +29,7 @@ export interface CreatePublicationDto {
   postType?: 'basic' | 'poll' | 'project';
   isProject?: boolean;
   hashtags?: string[];
+  categories?: string[]; // Array of category IDs
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
   beneficiaryId?: string;
@@ -86,7 +87,8 @@ export class PublicationService {
         beneficiaryId: dto.beneficiaryId
           ? UserId.fromString(dto.beneficiaryId)
           : undefined,
-        hashtags: dto.hashtags,
+        hashtags: dto.hashtags || [],
+        categories: dto.categories || [],
         images: dto.images,
         videoUrl: dto.videoUrl,
         postType: dto.postType,
@@ -110,6 +112,7 @@ export class PublicationService {
       isProject: dto.isProject || false,
       title: dto.title,
       description: dto.description,
+      categories: dto.categories || [],
     });
 
     // Publish domain event
@@ -145,6 +148,7 @@ export class PublicationService {
       beneficiaries?: string[];
       methods?: string[];
       helpNeeded?: string[];
+      categories?: string[]; // Array of category IDs
     },
     search?: string,
   ): Promise<Publication[]> {
@@ -186,6 +190,10 @@ export class PublicationService {
       }
       if (filters.helpNeeded && filters.helpNeeded.length > 0) {
         query.helpNeeded = { $in: filters.helpNeeded };
+      }
+      // Category filter: publication must have at least one of the selected categories
+      if (filters.categories && filters.categories.length > 0) {
+        query.categories = { $in: filters.categories };
       }
     }
 
@@ -417,6 +425,9 @@ export class PublicationService {
     if (updateData.hashtags) {
       publication.updateHashtags(updateData.hashtags);
     }
+    if (updateData.categories !== undefined) {
+      publication.updateCategories(updateData.categories || []);
+    }
 
     // Build combined update object
     // Start with snapshot (contains entity-managed fields: content, hashtags, metrics, etc.)
@@ -452,6 +463,10 @@ export class PublicationService {
     }
     if (updateData.helpNeeded !== undefined) {
       updatePayload.helpNeeded = updateData.helpNeeded || [];
+    }
+    // Categories field
+    if (updateData.categories !== undefined) {
+      updatePayload.categories = updateData.categories || [];
     }
 
     // Single atomic update with all changes

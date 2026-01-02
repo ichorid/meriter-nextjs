@@ -9,6 +9,7 @@ export interface PublicationDocument {
   content: string;
   type: 'text' | 'image' | 'video';
   hashtags: string[];
+  categories?: string[]; // Array of category IDs
   metrics: {
     upvotes: number;
     downvotes: number;
