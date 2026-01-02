@@ -60,16 +60,30 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
         }
       } else {
         // Log actual errors at error level
+        // Safely extract headers
+        const headersObj: Record<string, string> = {};
+        try {
+          response.headers.forEach((value, key) => {
+            headersObj[key] = value;
+          });
+        } catch (e) {
+          console.warn('Failed to extract headers:', e);
+        }
+        
         const errorDetails = {
           url: String(url),
           status: response.status,
           statusText: response.statusText || 'Unknown',
-          headers: Object.fromEntries(response.headers.entries()),
+          headers: headersObj,
           errorBody: errorBody ? (typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody, null, 2)) : null,
         };
         // Log both as object (for console inspection) and as JSON (for guaranteed serialization)
         console.error('tRPC request failed:', errorDetails);
-        console.error('tRPC request failed (JSON):', JSON.stringify(errorDetails, null, 2));
+        try {
+          console.error('tRPC request failed (JSON):', JSON.stringify(errorDetails, null, 2));
+        } catch (e) {
+          console.error('tRPC request failed (failed to stringify):', e, errorDetails);
+        }
       }
     } else if (response.status === 207) {
       // Log batch request success for debugging (207 = Multi-Status for batch)
