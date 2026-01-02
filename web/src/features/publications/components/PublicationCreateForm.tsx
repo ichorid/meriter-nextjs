@@ -42,6 +42,8 @@ import {
   type HelpNeeded,
 } from '@/lib/constants/taxonomy';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
+import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
+import { CategorySelector } from '@/shared/components/category-selector';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -50,6 +52,7 @@ interface PublicationDraft {
   description: string;
   postType: PublicationPostType;
   hashtags: string[];
+  categories?: string[]; // Array of category IDs
   imageUrl?: string; // Legacy support
   images?: string[]; // New multi-image support
   isProject: boolean;
@@ -114,10 +117,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const normalizedPublicationId = normalizeEntityId(effectivePublicationId);
 
   // Check if this is Good Deeds Marathon or Team community (both allow project creation)
+  // Feature flag: projects are currently disabled
   const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
   const isTeamCommunity = community?.typeTag === 'team';
   const isFutureVision = community?.typeTag === 'future-vision';
-  const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
+  const canCreateProjects = ENABLE_PROJECT_POSTS && (isGoodDeedsMarathon || isTeamCommunity);
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
 
@@ -132,10 +136,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
   const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
 
+  // If project type is requested but projects are disabled, fallback to basic
+  const requestedPostType = initialData?.postType === 'project' || initialData?.isProject
+    ? 'project'
+    : (initialData?.postType || defaultPostType);
   const initialPostType: PublicationPostType =
-    initialData?.postType === 'project' || initialData?.isProject
-      ? 'project'
-      : (initialData?.postType || defaultPostType);
+    (requestedPostType === 'project' && !ENABLE_PROJECT_POSTS) ? 'basic' : requestedPostType;
 
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(
@@ -143,13 +149,15 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   );
   const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
+  const [categories, setCategories] = useState<string[]>((initialData as any)?.categories || []);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
     : ((initialData as any)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
   // Derive isProject from postType instead of separate checkbox
-  const isProject = postType === 'project' || initialData?.isProject || false;
+  // Feature flag: projects are currently disabled
+  const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
   // Taxonomy fields
   const [impactArea, setImpactArea] = useState<ImpactArea | ''>((initialData as any)?.impactArea || '');
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>((initialData as any)?.beneficiaries || []);
@@ -214,6 +222,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
         setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
+        setCategories(draft.categories || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
@@ -243,6 +252,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
+      categories,
       images,
       isProject,
       impactArea: impactArea || undefined,
@@ -255,7 +265,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, categories, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -263,6 +273,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
+      categories,
       images,
       isProject,
       impactArea: impactArea || undefined,
@@ -291,6 +302,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
         setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
+        setCategories(draft.categories || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
@@ -312,6 +324,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setTitle('');
     setDescription('');
     setHashtags([]);
+    setCategories([]);
     setImages([]);
     setPostType(defaultPostType);
     setImpactArea('');
@@ -369,7 +382,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             title: title.trim(),
             description: description.trim(),
             content: description.trim(), // Оставляем для обратной совместимости
-            hashtags,
+            hashtags: ENABLE_HASHTAGS ? hashtags : [],
+            categories: ENABLE_HASHTAGS ? [] : categories,
             images: images.length > 0 ? images : [], // Always send array, even if empty
             // Taxonomy fields (editable)
             impactArea: impactArea || undefined,
@@ -390,9 +404,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           description: description.trim(),
           content: description.trim(), // Оставляем для обратной совместимости
           type: 'text',
-          postType: finalPostType,
-          isProject: finalPostType === 'project',
-          hashtags,
+          postType: finalPostType === 'project' && !ENABLE_PROJECT_POSTS ? 'basic' : finalPostType,
+          isProject: ENABLE_PROJECT_POSTS && finalPostType === 'project',
+          hashtags: ENABLE_HASHTAGS ? hashtags : [],
+          categories: ENABLE_HASHTAGS ? [] : categories,
           images: images.length > 0 ? images : undefined, // Always use array
           quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
@@ -681,13 +696,22 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           </BrandFormControl>
 
-          <HashtagInput
-            value={hashtags}
-            onChange={setHashtags}
-            label={t('fields.hashtags')}
-            placeholder={t('fields.hashtagsPlaceholder')}
-            helperText={t('fields.hashtagsHelp')}
-          />
+          {ENABLE_HASHTAGS ? (
+            <HashtagInput
+              value={hashtags}
+              onChange={setHashtags}
+              label={t('fields.hashtags')}
+              placeholder={t('fields.hashtagsPlaceholder')}
+              helperText={t('fields.hashtagsHelp')}
+            />
+          ) : (
+            <CategorySelector
+              value={categories}
+              onChange={setCategories}
+              label={t('fields.categories') || 'Категории'}
+              helperText={t('fields.categoriesHelp') || 'Выберите одну или несколько категорий для вашего поста'}
+            />
+          )}
 
           {errors.submit && (
             <div className="p-3 bg-red-50 shadow-none rounded-lg">
@@ -724,21 +748,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
                     methods: methods.length > 0 ? methods : undefined,
                     helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
+                    categories: ENABLE_HASHTAGS ? [] : categories,
                     meta: {},
                   }}
                 />
-                {hashtags.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {hashtags.map((tag) => (
-                      <div
-                        key={tag}
-                        className="px-2 py-1 bg-blue-100 rounded-md text-sm text-blue-600"
-                      >
-                        #{tag}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
           )}

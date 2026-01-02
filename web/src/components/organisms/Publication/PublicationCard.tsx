@@ -217,6 +217,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           postType: (pubItem as any).postType,
           images: (pubItem as any).images, // Pass images array
           hashtags: (pubItem as any).hashtags || [], // Pass hashtags array
+          categories: (pubItem as any).categories || [], // Pass categories array
           // Taxonomy fields
           impactArea: (pubItem as any).impactArea,
           stage: (pubItem as any).stage,
@@ -252,7 +253,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isCommenting={isCommenting}
         maxPlus={currentBalance}
         wallets={wallets}
-        hideVoteAndScore={(pubItem as any).postType === 'project' || (pubItem as any).isProject === true}
+        hideVoteAndScore={false} // Projects are disabled via feature flag
       // maxMinus is calculated in PublicationActions using quota data
       />
     </article>

@@ -9,6 +9,8 @@ import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { useTranslations } from 'next-intl';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
+import { ENABLE_HASHTAGS } from '@/lib/constants/features';
+import { useCategories } from '@/hooks/api/useCategories';
 
 interface Publication {
   id: string;
@@ -18,6 +20,7 @@ interface Publication {
   imageUrl?: string;
   images?: string[]; // Add images array to interface
   hashtags?: string[]; // Add hashtags array to interface
+  categories?: string[]; // Add categories array to interface (category IDs)
   metrics?: {
     score?: number;
   };
@@ -61,6 +64,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
     translateMethod,
     translateHelpNeeded,
   } = useTaxonomyTranslations();
+  const { data: allCategories } = useCategories();
 
   const title = (publication as any).title;
   const description = (publication as any).description;
@@ -180,19 +184,39 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         )
       )}
       
-      {/* Hashtags - show if they exist */}
-      {publication.hashtags && Array.isArray(publication.hashtags) && publication.hashtags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
-          {publication.hashtags.map((tag, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center px-2 py-0.5 rounded-sm text-base-content/70 text-xs font-normal"
-              style={{ backgroundColor: '#E0E0E0' }}
-            >
-              #{tag}
-            </span>
-          ))}
-        </div>
+      {/* Hashtags or Categories - show if they exist */}
+      {ENABLE_HASHTAGS ? (
+        publication.hashtags && Array.isArray(publication.hashtags) && publication.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {publication.hashtags.map((tag, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
+                style={{ backgroundColor: '#E0E0E0' }}
+              >
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )
+      ) : (
+        publication.categories && Array.isArray(publication.categories) && publication.categories.length > 0 && allCategories && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {publication.categories.map((categoryId) => {
+              const category = allCategories.find(c => c.id === categoryId);
+              if (!category) return null;
+              return (
+                <span
+                  key={categoryId}
+                  className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
+                  style={{ backgroundColor: '#E0E0E0' }}
+                >
+                  {category.name}
+                </span>
+              );
+            })}
+          </div>
+        )
       )}
     </div>
   );
