@@ -176,18 +176,9 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
             )}
           </div>
 
-          {/* Type tag badge */}
-          {community.typeTag && (
-            <div className="mb-2">
-              <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                {community.typeTag}
-              </span>
-            </div>
-          )}
-
           {/* Description */}
           {community.description && (
-            <p className="text-sm text-base-content/70 mb-3 line-clamp-2">
+            <p className="text-sm text-base-content/70 mb-3">
               {community.description}
             </p>
           )}

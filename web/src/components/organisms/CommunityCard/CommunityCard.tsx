@@ -154,16 +154,30 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         >
           {/* Left section: Avatar + Content */}
           <div className="flex flex-row items-start gap-3 flex-1 min-w-0 relative">
-            {/* Avatar section with badge below */}
+            {/* Avatar section with badge below and quota on top-right */}
             <div className={`flex flex-col items-start gap-2 flex-shrink-0 relative ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
-              <CommunityAvatar
-                avatarUrl={community.avatarUrl}
-                communityName={community.name}
-                communityId={community.id}
-                size={46}
-                needsSetup={community.needsSetup}
-                className="bg-base-300"
-              />
+              <div className="relative">
+                <CommunityAvatar
+                  avatarUrl={community.avatarUrl}
+                  communityName={community.name}
+                  communityId={community.id}
+                  size={46}
+                  needsSetup={community.needsSetup}
+                  className="bg-base-300"
+                />
+                {/* Quota counter on top-right corner of avatar */}
+                {showQuota && (
+                  <div className="absolute -top-2 z-10 bg-base-200 rounded-full p-0.5" style={{ transform: 'scale(0.76)', right: '-8px' }}>
+                    <DailyQuotaRing
+                      remaining={remainingQuota}
+                      max={dailyQuota}
+                      className="w-5 h-5 flex-shrink-0"
+                      asDiv={true}
+                      variant={isMarathonOfGood ? 'golden' : 'default'}
+                    />
+                  </div>
+                )}
+              </div>
               {userRoleBadge && (
                 <div className="absolute bottom-[-28px] left-0 right-0 flex items-center justify-center">
                   <Badge
@@ -184,38 +198,21 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                   }`}>
                   {community.name}
                 </div>
-                {/* Merits/Quota indicators */}
-                {showIndicators && (
-                  <div className="flex flex-row items-center gap-2.5 w-full min-w-0 mt-3">
-                    {/* Quota cell - always reserve space */}
-                    <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
-                      {showQuota && (
-                        <DailyQuotaRing
-                          remaining={remainingQuota}
-                          max={dailyQuota}
-                          className="w-5 h-5 flex-shrink-0"
-                          asDiv={true}
-                          variant={isMarathonOfGood ? 'golden' : 'default'}
-                        />
-                      )}
-                    </div>
-                    {/* Permanent merits cell */}
-                    {showMerits && (
-                      <div className="flex items-center gap-1 min-w-0 flex-shrink">
-                        <span className={`font-semibold whitespace-nowrap ${hasCover ? 'text-white' : 'text-base-content'
-                          }`}>{balance}</span>
-                        {currencyIconUrl && (
-                          <img
-                            src={currencyIconUrl}
-                            alt={tCommunities('currency')}
-                            className="w-3 h-3 flex-shrink-0"
-                          />
-                        )}
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${hasCover ? 'text-white/70' : 'text-base-content/60'
-                          }`}>
-                          <span className="truncate">{t('permanentMerits')}</span>
-                        </span>
-                      </div>
+                {/* Merits indicator - right below name */}
+                {showMerits && (
+                  <div className="flex items-center gap-1 min-w-0 flex-shrink mt-0.5">
+                    <span className={`text-[11px] leading-[14px] tracking-[0.374px] min-w-0 ${hasCover ? 'text-white/70' : 'text-base-content/60'
+                      }`}>
+                      {t('yourMerits')}:{' '}
+                    </span>
+                    <span className={`text-xs font-medium whitespace-nowrap ${hasCover ? 'text-white/80' : 'text-base-content/70'
+                      }`}>{balance}</span>
+                    {currencyIconUrl && (
+                      <img
+                        src={currencyIconUrl}
+                        alt={tCommunities('currency')}
+                        className="w-2.5 h-2.5 flex-shrink-0"
+                      />
                     )}
                   </div>
                 )}
@@ -223,7 +220,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full mt-4 ${hasCover ? 'text-white/70' : 'text-base-content/60'
+                <div className={`text-xs leading-[14px] tracking-[0.374px] w-full mt-4 ${hasCover ? 'text-white/70' : 'text-base-content/60'
                   }`}>
                   {community.description}
                 </div>
