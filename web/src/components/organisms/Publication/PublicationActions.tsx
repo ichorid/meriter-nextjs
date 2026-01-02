@@ -102,7 +102,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
 
   // Check if this is a PROJECT post (no voting allowed)
-  const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
+  // Feature flag: projects are currently disabled
+  const isProject = false; // ENABLE_PROJECT_POSTS && ((publication as any).postType === 'project' || (publication as any).isProject === true);
 
   // Extract beneficiary information
   const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;

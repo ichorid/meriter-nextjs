@@ -119,7 +119,8 @@ export const Publication = (props: any) => {
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
     // Check if this is a PROJECT post (no voting allowed)
-    const isProject = type === 'project' || (meta as any)?.isProject === true;
+    // Feature flag: projects are currently disabled - filter them out
+    const isProject = false; // ENABLE_PROJECT_POSTS && (type === 'project' || (meta as any)?.isProject === true);
     
     // Use API permissions instead of calculating on frontend
     const canVote = (originalPublication as any).permissions?.canVote ?? false;
@@ -318,6 +319,7 @@ export const Publication = (props: any) => {
                                 },
                                 postType: isProject ? 'project' : undefined,
                                 isProject: isProject,
+                                categories: (originalPublication as any)?.categories || [],
                             };
 
                             return (

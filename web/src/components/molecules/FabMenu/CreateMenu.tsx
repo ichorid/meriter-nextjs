@@ -10,6 +10,7 @@ import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUIStore } from '@/stores/ui.store';
 import { Button } from '@/components/ui/shadcn/button';
 import { Plus } from 'lucide-react';
+import { ENABLE_PROJECT_POSTS } from '@/lib/constants/features';
 
 interface CreateMenuProps {
     communityId: string;
@@ -34,9 +35,10 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
     const isFutureVision = community?.typeTag === 'future-vision';
     
     // Check if community supports project creation (marathon-of-good or team)
+    // Feature flag: projects are currently disabled
     const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
     const isTeamCommunity = community?.typeTag === 'team';
-    const canCreateProjects = isGoodDeedsMarathon || isTeamCommunity;
+    const canCreateProjects = ENABLE_PROJECT_POSTS && (isGoodDeedsMarathon || isTeamCommunity);
 
     // Calculate available actions
     const hasAvailableActions = canCreate === true;

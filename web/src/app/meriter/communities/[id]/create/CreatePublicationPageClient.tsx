@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import type { PublicationPostType } from '@/features/publications/components/PublicationCreateForm';
+import { ENABLE_PROJECT_POSTS } from '@/lib/constants/features';
 
 interface CreatePublicationPageClientProps {
   communityId: string;
@@ -21,10 +22,15 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   const { isAuthenticated, isLoading: userLoading } = useAuth();
   
   // Get postType from URL params (e.g., ?postType=project)
+  // Feature flag: projects are currently disabled
   const postTypeParam = searchParams?.get('postType');
-  const defaultPostType = (postTypeParam === 'project' || postTypeParam === 'poll' || postTypeParam === 'basic') 
-    ? postTypeParam as PublicationPostType 
-    : 'basic';
+  let requestedPostType: PublicationPostType = 'basic';
+  if (postTypeParam === 'poll' || postTypeParam === 'basic') {
+    requestedPostType = postTypeParam as PublicationPostType;
+  } else if (postTypeParam === 'project' && ENABLE_PROJECT_POSTS) {
+    requestedPostType = 'project';
+  }
+  const defaultPostType = requestedPostType;
 
   useEffect(() => {
     if (!userLoading && !isAuthenticated) {
