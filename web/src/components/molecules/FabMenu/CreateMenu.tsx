@@ -122,7 +122,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(!isOpen)}
-            className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-100 shadow-lg hover:bg-base-200"
+            className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-200 dark:bg-base-300 shadow-lg hover:bg-base-300 dark:hover:bg-base-400"
             aria-label={isOpen ? tCommon('close') : tCommon('open')}
         >
             <Plus size={27} className="text-base-content/70" />
