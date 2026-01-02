@@ -1218,7 +1218,7 @@
             "tryDifferent": "Попробуйте другие поисковые запросы или фильтры",
             "loading": "Поиск...",
             "searchPlaceholder": "Поиск...",
-            "searchLeadsPlaceholder": "Найти представителя",
+            "searchLeadsPlaceholder": "Найти по имени или названию команды",
             "searchMembersPlaceholder": "Поиск участников по имени или username...",
             "searchLocationPlaceholder": "Поиск города или региона...",
             "searchUsersPlaceholder": "Поиск пользователей по имени, username или email...",

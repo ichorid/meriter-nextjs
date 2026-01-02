@@ -1212,7 +1212,7 @@
             "tryDifferent": "Try different search terms or filters",
             "loading": "Searching...",
             "searchPlaceholder": "Search...",
-            "searchLeadsPlaceholder": "Search leads by name, username, or bio...",
+            "searchLeadsPlaceholder": "Find by name or team name",
             "searchMembersPlaceholder": "Search members by name or username...",
             "searchLocationPlaceholder": "Search city or region...",
             "searchUsersPlaceholder": "Search users by name, username or email...",

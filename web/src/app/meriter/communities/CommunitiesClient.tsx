@@ -76,10 +76,15 @@ export default function CommunitiesPage() {
             const displayName = (lead.displayName || '').toLowerCase();
             const username = (lead.username || '').toLowerCase();
             const bio = (lead.profile?.bio || '').toLowerCase();
+            
+            // Search in team names (leadCommunities array)
+            const teamNames = (lead.leadCommunities || []).map(team => team.toLowerCase());
+            const matchesTeamName = teamNames.some(teamName => teamName.includes(query));
 
             return displayName.includes(query) ||
                 username.includes(query) ||
-                bio.includes(query);
+                bio.includes(query) ||
+                matchesTeamName;
         });
     }, [leads, searchQuery]);
 
