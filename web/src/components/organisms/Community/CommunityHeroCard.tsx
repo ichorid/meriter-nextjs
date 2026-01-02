@@ -42,6 +42,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
 }) => {
   const router = useRouter();
   const t = useTranslations('pages.communitySettings');
+  const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
 
   // Generate a gradient background based on community name if no cover image
@@ -123,6 +124,18 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
         {/* Overlay for better text visibility */}
         <div className="absolute inset-0 bg-black/20" />
 
+        {/* Members button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(routes.communityMembers(community.id));
+          }}
+          className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
+          title={tCommunities('members.title') || 'Members'}
+        >
+          <Users size={18} className="text-white" />
+        </button>
+
         {/* Settings button for admins */}
         {community.isAdmin && (
           <button
@@ -130,7 +143,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               e.stopPropagation();
               router.push(routes.communitySettings(community.id));
             }}
-            className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
+            className="absolute top-3 right-12 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
             title={tCommon('settings')}
           >
             <Settings size={18} className="text-white" />
