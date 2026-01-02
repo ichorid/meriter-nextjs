@@ -287,13 +287,17 @@ export const Publication = (props: any) => {
                             );
                         } else {
                             // Prepare publication object for PublicationActions
+                            // Use internal community ID if available, otherwise fall back to communityId
+                            const routingCommunityId = communityInfo?.id || communityId;
+                            
                             const publicationForActions = {
                                 id: postId,
                                 slug: slug,
                                 authorId: authorId,
                                 beneficiaryId: beneficiaryId,
-                                communityId: communityId,
+                                communityId: routingCommunityId, // Use internal ID for proper community type detection
                                 createdAt: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+                                content: content || messageText,
                                 metrics: {
                                     score: currentScore,
                                     commentCount: !isDetailPage ? comments?.length || 0 : 0,

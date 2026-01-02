@@ -640,7 +640,7 @@
             },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",
-            "hashtagsHelp": "Add hashtags to categorize your community content",
+            "hashtagsHelp": "Add hashtags to categorize your community content. Separators: semicolon (;) or comma (,).",
             "administrators": "Administrators",
             "noAdmins": "No additional admins.",
             "remove": "Remove",
@@ -743,7 +743,7 @@
                 "imageUploadFailed": "Upload failed. Please try again.",
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
-                "hashtagsHelp": "Add up to 10 hashtags",
+                "hashtagsHelp": "Add up to 10 hashtags. Separators: semicolon (;) or comma (,).",
                 "characters": "characters",
                 "images": "Images",
                 "imagesHelp": "Upload up to 10 images for your post"
