@@ -1,17 +1,45 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/shadcn/button';
+import { Settings } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { CategoryManagement } from '@/components/settings/CategoryManagement';
 
 const AboutPage = () => {
     const t = useTranslations('common');
+    const { user } = useAuth();
+    const [showSettings, setShowSettings] = useState(false);
+    
+    const isSuperadmin = user?.globalRole === 'superadmin';
 
     return (
         <AdaptiveLayout
         >
-            <div className="space-y-6">
+            <div className="space-y-6 relative">
+                {/* Superadmin Settings Button */}
+                {isSuperadmin && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowSettings(true)}
+                        className="absolute top-0 right-0 p-2 rounded-full"
+                        aria-label="Settings"
+                        title="Settings"
+                    >
+                        <Settings className="w-5 h-5 text-base-content/70" />
+                    </Button>
+                )}
+
                 <div className="space-y-4">
                     <h2 className="text-xl font-semibold text-brand-text-primary dark:text-base-content">
                         About
@@ -40,6 +68,20 @@ const AboutPage = () => {
                     <VersionDisplay className="justify-start" />
                 </div>
             </div>
+
+            {/* Superadmin Settings Dialog */}
+            {isSuperadmin && (
+                <Dialog open={showSettings} onOpenChange={setShowSettings}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>{t('settings.title') || 'Настройки платформы'}</DialogTitle>
+                        </DialogHeader>
+                        <div className="pt-4">
+                            <CategoryManagement />
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
         </AdaptiveLayout>
     );
 };
