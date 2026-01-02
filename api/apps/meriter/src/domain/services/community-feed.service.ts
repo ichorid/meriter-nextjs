@@ -24,6 +24,7 @@ export interface FeedOptions {
   beneficiaries?: string[];
   methods?: string[];
   helpNeeded?: string[];
+  categories?: string[]; // Array of category IDs to filter by
 }
 
 @Injectable()
@@ -62,6 +63,7 @@ export class CommunityFeedService {
       beneficiaries,
       methods,
       helpNeeded,
+      categories,
     } = options;
 
     // Use skip/limit if provided, otherwise calculate from page/pageSize
@@ -78,7 +80,8 @@ export class CommunityFeedService {
       stage ||
       (beneficiaries && beneficiaries.length > 0) ||
       (methods && methods.length > 0) ||
-      (helpNeeded && helpNeeded.length > 0)
+      (helpNeeded && helpNeeded.length > 0) ||
+      (categories && categories.length > 0)
     );
 
     // Fetch both publications and polls in parallel
@@ -99,6 +102,7 @@ export class CommunityFeedService {
           beneficiaries,
           methods,
           helpNeeded,
+          categories,
         },
         search,
       ),
@@ -197,6 +201,7 @@ export class CommunityFeedService {
           postType: snapshot.postType || 'basic',
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
+          categories: snapshot.categories || [],
           images: pub.getImages && pub.getImages.length > 0 ? pub.getImages : undefined,
           impactArea: snapshot.impactArea || undefined,
           stage: snapshot.stage || undefined,
@@ -224,6 +229,8 @@ export class CommunityFeedService {
               },
             }),
           },
+          deleted: snapshot.deleted || false,
+          deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
         };

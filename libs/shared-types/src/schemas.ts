@@ -365,6 +365,7 @@ export const CreatePublicationDtoSchema = z.object({
   type: z.enum(["text", "image", "video"]),
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
+  categories: z.array(z.string()).optional(), // Array of category IDs
   images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
@@ -558,6 +559,7 @@ export const UpdateCommunityDtoSchema = z.object({
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
+  categories: z.array(z.string()).optional(), // Array of category IDs
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
   images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
@@ -765,6 +767,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   postType: z.enum(["basic", "poll", "project"]).optional(),
   isProject: z.boolean().optional(),
   hashtags: z.array(z.string()).default([]),
+  categories: z.array(z.string()).default([]), // Array of category IDs
   imageUrl: z.string().url().optional(),
   images: z.array(z.string().url()).optional(),
   metrics: PublicationMetricsSchema,

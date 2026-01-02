@@ -53,6 +53,7 @@ export class EntityMappers {
       content: publication.getContent,
       type: publication.getType,
       hashtags: publication.getHashtags,
+      categories: snapshot.categories || [],
       images: images && images.length > 0 ? images : undefined,
       videoUrl: snapshot.videoUrl || undefined,
       title: publication.getTitle || undefined,

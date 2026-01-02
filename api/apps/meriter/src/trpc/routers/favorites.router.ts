@@ -186,6 +186,7 @@ export const favoritesRouter = router({
           postType: snapshot.postType || 'basic',
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
+          categories: snapshot.categories || [],
           imageUrl: snapshot.imageUrl || undefined,
           images: snapshot.images || undefined,
           impactArea: snapshot.impactArea || undefined,
