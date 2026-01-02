@@ -32,8 +32,6 @@ export default function CommunitiesPage() {
     const [leadsExpanded, setLeadsExpanded] = useLocalStorage<boolean>('communities.leadsExpanded', true);
     const [searchQuery, setSearchQuery] = useState('');
     const [joinTeamExpanded, setJoinTeamExpanded] = useLocalStorage<boolean>('communities.joinTeamExpanded', true);
-    const [specialCommunitiesExpanded, setSpecialCommunitiesExpanded] = useLocalStorage<boolean>('communities.specialCommunitiesExpanded', true);
-    const [yourCommunitiesExpanded, setYourCommunitiesExpanded] = useLocalStorage<boolean>('communities.yourCommunitiesExpanded', true);
 
     // Handle scroll to leads section from URL param
     useEffect(() => {
@@ -127,42 +125,28 @@ export default function CommunitiesPage() {
                 {/* Section 1: Special Communities */}
                 {specialCommunities.length > 0 && (
                     <div className="bg-base-100 py-4 space-y-3">
-                        <button
-                            onClick={() => setSpecialCommunitiesExpanded(!specialCommunitiesExpanded)}
-                            className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
-                        >
-                            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                                {tCommunities('specialCommunities')}
-                            </p>
-                            {specialCommunitiesExpanded ? (
-                                <ChevronUp className="w-4 h-4 text-base-content/40" />
-                            ) : (
-                                <ChevronDown className="w-4 h-4 text-base-content/40" />
-                            )}
-                        </button>
-                        {specialCommunitiesExpanded && (
-                            <div className="animate-in fade-in duration-200">
-                                <div className="flex flex-col gap-1">
-                                    {specialCommunities.map((community) => {
-                                        const wallet = walletsMap.get(community.id);
-                                        const quota = quotasMap.get(community.id);
-                                        return (
-                                            <CommunityCard
-                                                key={community.id}
-                                                communityId={community.id}
-                                                pathname={pathname}
-                                                isExpanded={true}
-                                                wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                                quota={quota && typeof quota.remainingToday === 'number' ? {
-                                                    remainingToday: quota.remainingToday,
-                                                    dailyQuota: quota.dailyQuota ?? 0
-                                                } : undefined}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+                        <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                            {tCommunities('specialCommunities')}
+                        </p>
+                        <div className="flex flex-col gap-1">
+                            {specialCommunities.map((community) => {
+                                const wallet = walletsMap.get(community.id);
+                                const quota = quotasMap.get(community.id);
+                                return (
+                                    <CommunityCard
+                                        key={community.id}
+                                        communityId={community.id}
+                                        pathname={pathname}
+                                        isExpanded={true}
+                                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                        quota={quota && typeof quota.remainingToday === 'number' ? {
+                                            remainingToday: quota.remainingToday,
+                                            dailyQuota: quota.dailyQuota ?? 0
+                                        } : undefined}
+                                    />
+                                );
+                            })}
+                        </div>
                     </div>
                 )}
 
@@ -227,48 +211,34 @@ export default function CommunitiesPage() {
                     <>
                         {specialCommunities.length > 0 && <Separator className="bg-base-300 my-0" />}
                         <div className="bg-base-100 py-4 space-y-3">
-                            <button
-                                onClick={() => setYourCommunitiesExpanded(!yourCommunitiesExpanded)}
-                                className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
-                            >
-                                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                                    {tCommunities('yourCommunities')}
-                                </p>
-                                {yourCommunitiesExpanded ? (
-                                    <ChevronUp className="w-4 h-4 text-base-content/40" />
-                                ) : (
-                                    <ChevronDown className="w-4 h-4 text-base-content/40" />
-                                )}
-                            </button>
-                            {yourCommunitiesExpanded && (
-                                <div className="animate-in fade-in duration-200">
-                                    {isLoading ? (
-                                        <div className="flex flex-col gap-1">
-                                            <CardSkeleton />
-                                            <CardSkeleton />
-                                            <CardSkeleton />
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col gap-1">
-                                            {userCommunities.map((community) => {
-                                                const wallet = walletsMap.get(community.id);
-                                                const quota = quotasMap.get(community.id);
-                                                return (
-                                                    <CommunityCard
-                                                        key={community.id}
-                                                        communityId={community.id}
-                                                        pathname={pathname}
-                                                        isExpanded={true}
-                                                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                                                        quota={quota && typeof quota.remainingToday === 'number' ? {
-                                                            remainingToday: quota.remainingToday,
-                                                            dailyQuota: quota.dailyQuota ?? 0
-                                                        } : undefined}
-                                                    />
-                                                );
-                                            })}
-                                        </div>
-                                    )}
+                            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+                                {tCommunities('yourCommunities')}
+                            </p>
+                            {isLoading ? (
+                                <div className="flex flex-col gap-1">
+                                    <CardSkeleton />
+                                    <CardSkeleton />
+                                    <CardSkeleton />
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {userCommunities.map((community) => {
+                                        const wallet = walletsMap.get(community.id);
+                                        const quota = quotasMap.get(community.id);
+                                        return (
+                                            <CommunityCard
+                                                key={community.id}
+                                                communityId={community.id}
+                                                pathname={pathname}
+                                                isExpanded={true}
+                                                wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                                                quota={quota && typeof quota.remainingToday === 'number' ? {
+                                                    remainingToday: quota.remainingToday,
+                                                    dailyQuota: quota.dailyQuota ?? 0
+                                                } : undefined}
+                                            />
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
