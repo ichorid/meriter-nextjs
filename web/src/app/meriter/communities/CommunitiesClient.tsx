@@ -142,7 +142,7 @@ export default function CommunitiesPage() {
                         </button>
                         {specialCommunitiesExpanded && (
                             <div className="animate-in fade-in duration-200">
-                                <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                <div className="flex flex-col gap-1">
                                     {specialCommunities.map((community) => {
                                         const wallet = walletsMap.get(community.id);
                                         const quota = quotasMap.get(community.id);
@@ -243,13 +243,13 @@ export default function CommunitiesPage() {
                             {yourCommunitiesExpanded && (
                                 <div className="animate-in fade-in duration-200">
                                     {isLoading ? (
-                                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                        <div className="flex flex-col gap-1">
                                             <CardSkeleton />
                                             <CardSkeleton />
                                             <CardSkeleton />
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col gap-4" style={{ gap: '1rem' }}>
+                                        <div className="flex flex-col gap-1">
                                             {userCommunities.map((community) => {
                                                 const wallet = walletsMap.get(community.id);
                                                 const quota = quotasMap.get(community.id);
