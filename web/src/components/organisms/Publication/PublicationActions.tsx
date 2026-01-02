@@ -2,7 +2,7 @@
 'use client';
 
 import React from 'react';
-import { MessageCircle, Share2, Star } from 'lucide-react';
+import { Hand, Share2, Star } from 'lucide-react';
 import { FavoriteStar } from '@/components/atoms';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
@@ -297,9 +297,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           <button
             onClick={handleCommentClick}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
-            title={t('comments')}
+            title="Голоса"
           >
-            <MessageCircle className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
+            <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
             <div className="flex items-center gap-2">
               <span className={`text-lg font-semibold tabular-nums transition-colors ${
                 currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"

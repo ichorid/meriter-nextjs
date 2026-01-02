@@ -330,33 +330,42 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                     <div className="mt-8">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-base-content">
-                                {t('comments')}
+                                Голоса
                                 <span className="ml-2 text-sm font-normal text-base-content/50">
                                     {comments?.length || 0}
                                 </span>
                             </h2>
                         </div>
 
-                        <div className="mb-6">
-                            <Button
-                                variant="outline"
-                                onClick={() => {
-                                    // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
-                                    // Special groups preserve their restrictions.
-                                    const typeTag = community?.typeTag;
-                                    const mode: 'standard' | 'wallet-only' | 'quota-only' =
-                                        typeTag === 'future-vision'
-                                            ? 'wallet-only'
-                                            : typeTag === 'marathon-of-good'
-                                                ? 'quota-only'
-                                                : 'standard';
-                                    useUIStore.getState().openVotingPopup(slug, 'publication', mode);
-                                }}
-                                className="w-full"
-                            >
-                                {t('addComment')}
-                            </Button>
-                        </div>
+                        {(() => {
+                            // Check if user has already voted (has a comment/vote)
+                            const hasUserVoted = user?.id && comments?.some((c: any) => 
+                                c.authorId === user.id || c.meta?.author?.id === user.id
+                            );
+                            
+                            return !hasUserVoted && (
+                                <div className="mb-6">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+                                            // Special groups preserve their restrictions.
+                                            const typeTag = community?.typeTag;
+                                            const mode: 'standard' | 'wallet-only' | 'quota-only' =
+                                                typeTag === 'future-vision'
+                                                    ? 'wallet-only'
+                                                    : typeTag === 'marathon-of-good'
+                                                        ? 'quota-only'
+                                                        : 'standard';
+                                            useUIStore.getState().openVotingPopup(slug, 'publication', mode);
+                                        }}
+                                        className="w-full"
+                                    >
+                                        {t('vote')}
+                                    </Button>
+                                </div>
+                            );
+                        })()}
 
                         {/* Comments List */}
                         <div className="flex flex-col gap-3">

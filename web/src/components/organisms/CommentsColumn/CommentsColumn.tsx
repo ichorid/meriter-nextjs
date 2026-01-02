@@ -95,14 +95,20 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     useUIStore.getState().openVotingPopup(publicationSlug, 'publication', mode);
   };
 
-  const addCommentButton = (
+  // Check if user has already voted (has a comment/vote)
+  const hasUserVoted = React.useMemo(() => {
+    if (!myId || !comments) return false;
+    return comments.some((c: any) => c.authorId === myId || c.meta?.author?.id === myId);
+  }, [myId, comments]);
+
+  const addCommentButton = hasUserVoted ? null : (
     <div className="mb-6 w-full">
       <Button
         variant="outline"
         onClick={handleAddComment}
         className="w-full"
       >
-        {t('addComment')}
+        {t('vote')}
       </Button>
     </div>
   );
@@ -111,7 +117,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden w-full">
       {/* Header with close/back button and sort toggle */}
       <SimpleStickyHeader
-        title={tCommon('comments')}
+        title="Голоса"
         showBack={!!(showBackButton || onBack)}
         onBack={handleBack}
         rightAction={
@@ -160,7 +166,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
           <div className="flex-1 flex flex-col items-center justify-center">
             {/* Add a comment button (shown even when no comments) */}
             {addCommentButton}
-            <span className="text-base-content/60">No comments yet</span>
+            <span className="text-base-content/60">{t('noVotesYet')}</span>
           </div>
         )}
       </div>
