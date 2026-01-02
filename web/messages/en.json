@@ -884,6 +884,7 @@
         "leads": "Leads",
         "leadsHelper": "This is a list of all Team Leads registered on the platform. If you want to join one of the teams, offer your help, or share something important, please contact its Lead: their contacts are available in their profile.",
         "dontShowAgain": "Don't show again",
+        "quotaHelper": "Every day you receive merits that you can use to rate posts in this community, encouraging authors or expressing your dissatisfaction. This is called a quota, and this counter shows how many quota merits you have now.",
         "other": "Other",
         "localGroups": {
             "title": "Local",
