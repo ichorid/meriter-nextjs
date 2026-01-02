@@ -45,6 +45,10 @@ import {
   QuotaUsageSchema,
 } from './domain/models/quota-usage/quota-usage.schema';
 import { PasskeyChallenge, PasskeyChallengeSchema } from './domain/models/auth/passkey-challenge.schema';
+import {
+  CategorySchemaClass,
+  CategorySchema,
+} from './domain/models/category/category.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -70,6 +74,7 @@ import { NotificationHandlersService } from './domain/services/notification-hand
 import { FavoriteService } from './domain/services/favorite.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
+import { CategoryService } from './domain/services/category.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
 
@@ -96,6 +101,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: FavoriteSchemaClass.name, schema: FavoriteSchema },
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
+      { name: CategorySchemaClass.name, schema: CategorySchema },
     ]),
   ],
   providers: [
@@ -125,6 +131,7 @@ import { EventBus } from './domain/events/event-bus';
     NotificationHandlersService,
     FavoriteService,
     QuotaUsageService,
+    CategoryService,
 
     // Event bus
     EventBus,
@@ -156,6 +163,7 @@ import { EventBus } from './domain/events/event-bus';
     NotificationHandlersService,
     FavoriteService,
     QuotaUsageService,
+    CategoryService,
 
     // Export event bus
     EventBus,

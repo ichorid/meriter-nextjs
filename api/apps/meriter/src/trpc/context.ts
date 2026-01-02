@@ -29,6 +29,7 @@ import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
 import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { Connection } from 'mongoose';
 import { JwtVerificationService } from '../common/services/authentication.service';
+import { CategoryService } from '../domain/services/category.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -57,6 +58,7 @@ export interface CreateContextOptions {
   voteCommentResolverService: VoteCommentResolverService;
   commentEnrichmentService: CommentEnrichmentService;
   uploadsService: UploadsService;
+  categoryService: CategoryService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -97,6 +99,7 @@ export async function createContext(opts: CreateContextOptions) {
     voteCommentResolverService,
     commentEnrichmentService,
     uploadsService,
+    categoryService,
     connection,
     configService,
     cookieManager,
@@ -186,6 +189,7 @@ export async function createContext(opts: CreateContextOptions) {
     voteCommentResolverService,
     commentEnrichmentService,
     uploadsService,
+    categoryService,
     connection,
     configService,
     cookieManager,
