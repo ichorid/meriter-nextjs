@@ -91,7 +91,9 @@
         "meritsAndQuotaDescription": "Merits are the currency of Meriter, needed to rate and comment on posts.\nIn each community, you have your own merits of two types:",
         "quotaExplanation": "Merits you receive daily. If you don't use them by the end of the day, they expire.",
         "permanentMeritsExplanation": "Permanent merits you received from other community members through your posts. They don't expire, you can use them whenever you want.",
-        "andMoreMerits": "and {count} more merits"
+        "andMoreMerits": "and {count} more merits",
+        "youHave": "You have",
+        "youHaveMerits": "You have {count} merits"
     },
     "home": {
         "breadcrumb": "Home",

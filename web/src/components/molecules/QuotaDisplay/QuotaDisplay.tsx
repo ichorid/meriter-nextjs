@@ -58,34 +58,56 @@ export function QuotaDisplay({
           className={`flex items-center gap-2 text-xs cursor-pointer hover:opacity-80 transition-opacity ${className}`}
           onClick={handleClick}
         >
-          <span className="text-base-content/70">У вас</span>
-          {hasDaily && (
-            <DailyQuotaRing
-              remaining={quotaRemaining}
-              max={quotaMax}
-              className="w-4 h-4 flex-shrink-0"
-              asDiv={true}
-              variant={isMarathonOfGood ? 'golden' : 'default'}
-            />
-          )}
-          {hasPermanent && balance !== undefined && (
-            <span className="text-base-content/70">
-              {(() => {
-                const text = tCommon('andMoreMerits', { count: balance });
-                // Replace the number with a bold version
-                const parts = text.split(String(balance));
-                if (parts.length === 2) {
-                  return (
-                    <>
-                      {parts[0]}
-                      <span className="font-semibold">{balance}</span>
-                      {parts[1]}
-                    </>
-                  );
-                }
-                return text;
-              })()}
-            </span>
+          {hasDaily ? (
+            <>
+              <span className="text-base-content/70">{tCommon('youHave')}</span>
+              <DailyQuotaRing
+                remaining={quotaRemaining}
+                max={quotaMax}
+                className="w-4 h-4 flex-shrink-0"
+                asDiv={true}
+                variant={isMarathonOfGood ? 'golden' : 'default'}
+              />
+              {hasPermanent && balance !== undefined && (
+                <span className="text-base-content/70">
+                  {(() => {
+                    const text = tCommon('andMoreMerits', { count: balance });
+                    // Replace the number with a bold version
+                    const parts = text.split(String(balance));
+                    if (parts.length === 2) {
+                      return (
+                        <>
+                          {parts[0]}
+                          <span className="font-semibold">{balance}</span>
+                          {parts[1]}
+                        </>
+                      );
+                    }
+                    return text;
+                  })()}
+                </span>
+              )}
+            </>
+          ) : (
+            hasPermanent && balance !== undefined && (
+              <span className="text-base-content/70">
+                {(() => {
+                  const text = tCommon('youHaveMerits', { count: balance });
+                  // Replace the number with a bold version
+                  const parts = text.split(String(balance));
+                  if (parts.length === 2) {
+                    return (
+                      <>
+                        {parts[0]}
+                        <span className="font-semibold">{balance}</span>
+                        {parts[1]}
+                      </>
+                    );
+                  }
+                  return text;
+                })()}
+              </span>
+            )
           )}
         </div>
         {/* Merits and Quota Hint Dialog */}
