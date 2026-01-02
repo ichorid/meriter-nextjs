@@ -17,6 +17,7 @@ interface Publication {
   createdAt: string;
   imageUrl?: string;
   images?: string[]; // Add images array to interface
+  hashtags?: string[]; // Add hashtags array to interface
   metrics?: {
     score?: number;
   };
@@ -177,6 +178,21 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
             {content}
           </WithTelegramEntities>
         )
+      )}
+      
+      {/* Hashtags - show if they exist */}
+      {publication.hashtags && Array.isArray(publication.hashtags) && publication.hashtags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {publication.hashtags.map((tag, index) => (
+            <span
+              key={index}
+              className="inline-flex items-center px-2 py-0.5 rounded-sm text-base-content/70 text-xs font-normal"
+              style={{ backgroundColor: '#E0E0E0' }}
+            >
+              #{tag}
+            </span>
+          ))}
+        </div>
       )}
     </div>
   );

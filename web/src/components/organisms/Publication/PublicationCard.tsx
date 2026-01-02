@@ -193,6 +193,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           isProject: (pubItem as any).isProject,
           postType: (pubItem as any).postType,
           images: (pubItem as any).images, // Pass images array
+          hashtags: (pubItem as any).hashtags || [], // Pass hashtags array
           // Taxonomy fields
           impactArea: (pubItem as any).impactArea,
           stage: (pubItem as any).stage,

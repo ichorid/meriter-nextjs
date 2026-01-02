@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit, Trash2, ArrowRight, Eye } from 'lucide-react';
-import { Badge, FavoriteStar } from '@/components/atoms';
+import { Badge } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { dateVerbose } from '@shared/lib/date';
@@ -264,19 +264,6 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       
       {/* Tags & Badges & Action Buttons */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        {/* Favorites */}
-        {(publicationId || publication.id) && (
-          <FavoriteStar
-            targetType={
-              isPoll
-                ? 'poll'
-                : (publication as any).postType === 'project' || (publication as any).isProject
-                  ? 'project'
-                  : 'publication'
-            }
-            targetId={(publicationId || publication.id) as string}
-          />
-        )}
         {showEditButton && (
           <Button
             variant="ghost"

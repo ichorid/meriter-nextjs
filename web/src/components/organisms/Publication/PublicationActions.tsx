@@ -2,8 +2,8 @@
 'use client';
 
 import React from 'react';
-import { BarVoteUnified } from '@shared/components/bar-vote-unified';
-import { BarWithdraw } from '@shared/components/bar-withdraw';
+import { MessageCircle, Share2, Star } from 'lucide-react';
+import { FavoriteStar } from '@/components/atoms';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
@@ -12,6 +12,8 @@ import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { ResourcePermissions } from '@/types/api-v1';
+import { shareUrl, getPostUrl } from '@shared/lib/share-utils';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 // Local Publication type definition
 interface Publication {
@@ -90,7 +92,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations('feed');
+  const t = useTranslations('shared');
   const myId = user?.id;
   
   // Check if we're on the community feed page (not the detail page)
@@ -219,38 +221,143 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     );
   };
 
+  // Handle share click
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticImpact('light');
+    if (communityId && publication.slug) {
+      const url = getPostUrl(communityId, publication.slug);
+      await shareUrl(url, t('urlCopiedToBuffer'));
+    }
+  };
+
+  // Get tooltip text for disabled vote button
+  const getVoteTooltipText = (): string | undefined => {
+    if (canVote) {
+      return undefined;
+    }
+    if (voteDisabledReason) {
+      try {
+        const translated = t(voteDisabledReason);
+        if (translated === voteDisabledReason) {
+          return t('voteDisabled.default');
+        }
+        return translated;
+      } catch {
+        return t('voteDisabled.default');
+      }
+    }
+    return t('voteDisabled.default');
+  };
+
+  const voteTooltipText = getVoteTooltipText();
+  const commentCount = publication.metrics?.commentCount || 0;
+  const publicationIdForFavorite = publicationId || publication.id;
+  const targetType = (publication as any).postType === 'project' || (publication as any).isProject
+    ? 'project'
+    : 'publication';
+
   return (
-    <div className={`space-y-4 ${className}`}>
-      <div className="flex items-center justify-between">
-        {showWithdraw ? (
-          <BarWithdraw
-            balance={maxWithdrawAmount}
-            score={currentScore}
-            totalVotes={totalVotes}
-            onWithdraw={handleWithdrawClick}
-            onTopup={handleTopupClick}
-            showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
-            isLoading={false}
-            commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentClick}
-          />
-        ) : (
-          <BarVoteUnified
-            score={currentScore}
-            onVoteClick={handleVoteClick}
-            isAuthor={isAuthor}
-            isBeneficiary={isBeneficiary}
-            hasBeneficiary={hasBeneficiary}
-            commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentClick}
-            canVote={canVote}
-            disabledReason={voteDisabledReason}
-            communityId={communityId}
-            slug={publication.slug}
-            totalVotes={totalVotes}
-          />
-        )}
+    <div className={`pt-3 border-t border-base-300 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side: Comments, Favorite, Share */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleCommentClick}
+            className="flex items-center gap-1.5 text-base-content/60 hover:text-base-content/80 transition-colors"
+            title={t('comments')}
+          >
+            <MessageCircle className="w-4 h-4" />
+            {commentCount > 0 && (
+              <span className="text-xs font-medium">{commentCount}</span>
+            )}
+          </button>
+
+          {/* Favorite */}
+          {publicationIdForFavorite && (
+            <FavoriteStar
+              targetType={targetType}
+              targetId={publicationIdForFavorite}
+            />
+          )}
+
+          {/* Share */}
+          {communityId && publication.slug && (
+            <button
+              onClick={handleShareClick}
+              className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80"
+              title={t('share')}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Right side: Vote, Score */}
+        <div className="flex items-center gap-2">
+          {/* Vote button */}
+          <button
+            onClick={handleVoteClick}
+            disabled={!canVote}
+            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
+              !canVote
+                ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
+                : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+            }`}
+            title={voteTooltipText}
+          >
+            {t('vote')}
+          </button>
+
+          {/* Score */}
+          <div className="flex items-center gap-2">
+            <span className={`text-lg font-semibold tabular-nums ${
+              currentScore > 0 ? "text-success" : currentScore < 0 ? "text-error" : "text-base-content/40"
+            }`}>
+              {currentScore > 0 ? '+' : ''}{currentScore}
+            </span>
+            {totalVotes !== undefined && 
+             typeof totalVotes === 'number' && 
+             !Number.isNaN(totalVotes) &&
+             typeof currentScore === 'number' && 
+             !Number.isNaN(currentScore) &&
+             totalVotes > currentScore && (
+              <span 
+                className="text-base-content/40 text-sm font-medium tabular-nums"
+                title={t('totalVotesTooltip')}
+              >
+                ({totalVotes > 0 ? '+' : ''}{totalVotes})
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Withdraw/Topup buttons - show below if applicable */}
+      {showWithdraw && (
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-base-300">
+          <button
+            onClick={handleWithdrawClick}
+            disabled={maxWithdrawAmount <= 0}
+            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
+              maxWithdrawAmount <= 0
+                ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
+                : 'bg-base-content/10 text-base-content hover:bg-base-content/20 active:scale-95'
+            }`}
+            title={maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined}
+          >
+            {t('withdraw')}
+          </button>
+          {maxTopUpAmount > 0 && (
+            <button
+              onClick={handleTopupClick}
+              className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content/10 text-base-content hover:bg-base-content/20 active:scale-95"
+            >
+              {t('addMerits', { amount: Math.floor(maxTopUpAmount * 10) / 10 })}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };
