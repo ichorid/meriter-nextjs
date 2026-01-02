@@ -216,11 +216,15 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 />
             </BrandFormControl>
 
-            <BrandFormControl label={t("description")}>
+            <BrandFormControl 
+                label={t("description")}
+                helperText={`${description.length}/180 ${t("characters")}`}
+            >
                 <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t("descriptionPlaceholder")}
+                    maxLength={180}
                     className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
