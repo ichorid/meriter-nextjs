@@ -11,13 +11,14 @@ interface FeedQueryParams {
   beneficiaries?: string[];
   methods?: string[];
   helpNeeded?: string[];
+  categories?: string[]; // Array of category IDs
 }
 
 export function useCommunityFeed(
   communityId: string,
   params: FeedQueryParams = {}
 ) {
-  const { pageSize = 5, sort = 'score', tag, search, impactArea, stage, beneficiaries, methods, helpNeeded } = params;
+  const { pageSize = 5, sort = 'score', tag, search, impactArea, stage, beneficiaries, methods, helpNeeded, categories } = params;
   
   return trpc.communities.getFeed.useInfiniteQuery(
     {
@@ -32,6 +33,7 @@ export function useCommunityFeed(
       beneficiaries,
       methods,
       helpNeeded,
+      categories,
     },
     {
       getNextPageParam: (lastPage) => {

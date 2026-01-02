@@ -30,7 +30,10 @@ import {
 import { Checklist, CollapsibleSection } from '@/components/ui/taxonomy';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Separator } from '@/components/ui/shadcn/separator';
+import { cn } from '@/lib/utils';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
+import { useCategories } from '@/hooks/api/useCategories';
+import { ENABLE_HASHTAGS } from '@/lib/constants/features';
 import {
     Select,
     SelectContent,
@@ -203,13 +206,17 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [highlightedPostId, setHighlightedPostId] = useState<string | null>(null);
     const [activeCommentHook, setActiveCommentHook] = useState<string | null>(null);
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
-    // Taxonomy filter state
+    // Category filter state (replaces taxonomy filters)
+    const { data: allCategories } = useCategories();
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [bOpenFilters, setBOpenFilters] = useState(false);
+    
+    // Legacy taxonomy filter state (kept for backwards compatibility, but disabled when ENABLE_HASHTAGS is false)
     const [fImpactArea, setFImpactArea] = useState<ImpactArea | 'any'>('any');
     const [fStage, setFStage] = useState<Stage | 'any'>('any');
     const [fBeneficiaries, setFBeneficiaries] = useState<Beneficiary[]>([]);
     const [fMethods, setFMethods] = useState<Method[]>([]);
     const [fHelpNeeded, setFHelpNeeded] = useState<HelpNeeded[]>([]);
-    const [bOpenFilters, setBOpenFilters] = useState(false);
     const [bOpenBeneficiaries, setBOpenBeneficiaries] = useState(false);
     const [bOpenMethods, setBOpenMethods] = useState(false);
     const [bOpenHelp, setBOpenHelp] = useState(false);
@@ -249,11 +256,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
         search: debouncedSearchQuery.trim() || undefined,
-        impactArea: fImpactArea !== 'any' ? fImpactArea : undefined,
-        stage: fStage !== 'any' ? fStage : undefined,
-        beneficiaries: fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
-        methods: fMethods.length > 0 ? fMethods : undefined,
-        helpNeeded: fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
+        impactArea: ENABLE_HASHTAGS && fImpactArea !== 'any' ? fImpactArea : undefined,
+        stage: ENABLE_HASHTAGS && fStage !== 'any' ? fStage : undefined,
+        beneficiaries: ENABLE_HASHTAGS && fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
+        methods: ENABLE_HASHTAGS && fMethods.length > 0 ? fMethods : undefined,
+        helpNeeded: ENABLE_HASHTAGS && fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
+        categories: !ENABLE_HASHTAGS && selectedCategories.length > 0 ? selectedCategories : undefined,
     });
 
 
@@ -269,11 +277,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
         search: debouncedSearchQuery.trim() || undefined,
-        impactArea: fImpactArea !== 'any' ? fImpactArea : undefined,
-        stage: fStage !== 'any' ? fStage : undefined,
-        beneficiaries: fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
-        methods: fMethods.length > 0 ? fMethods : undefined,
-        helpNeeded: fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
+        impactArea: ENABLE_HASHTAGS && fImpactArea !== 'any' ? fImpactArea : undefined,
+        stage: ENABLE_HASHTAGS && fStage !== 'any' ? fStage : undefined,
+        beneficiaries: ENABLE_HASHTAGS && fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
+        methods: ENABLE_HASHTAGS && fMethods.length > 0 ? fMethods : undefined,
+        helpNeeded: ENABLE_HASHTAGS && fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
+        categories: !ENABLE_HASHTAGS && selectedCategories.length > 0 ? selectedCategories : undefined,
     });
 
     // Fetch deleted publications (will only return data if user is lead)
@@ -640,10 +649,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
                             <div className="h-4 w-px bg-base-300" />
                             <Filter className="h-4 w-4 text-base-content/60" />
-                            <span className="text-sm font-medium text-base-content/80">Filters</span>
+                            <span className="text-sm font-medium text-base-content/80">{tCommunities('filters.title') || 'Фильтры'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            {(fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                            {!ENABLE_HASHTAGS && selectedCategories.length > 0 && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setSelectedCategories([]);
+                                        setBOpenFilters(false);
+                                    }}
+                                    className="gap-2"
+                                >
+                                    <X className="h-4 w-4" /> {tCommunities('filters.reset') || 'Сбросить'}
+                                </Button>
+                            )}
+                            {ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -668,13 +690,26 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 size="sm"
                                 onClick={() => setBOpenFilters((s) => !s)}
                             >
-                                {bOpenFilters ? 'Hide' : 'Show'}
+                                {bOpenFilters ? (tCommunities('filters.hide') || 'Скрыть') : (tCommunities('filters.show') || 'Показать')}
                             </Button>
                         </div>
                     </div>
 
                     {/* Compact active filters summary when collapsed */}
-                    {!bOpenFilters && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                    {!bOpenFilters && !ENABLE_HASHTAGS && selectedCategories.length > 0 && allCategories && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                            {selectedCategories.slice(0, 5).map((categoryId) => {
+                                const category = allCategories.find(c => c.id === categoryId);
+                                return category ? (
+                                    <Badge key={categoryId} variant="secondary">{category.name}</Badge>
+                                ) : null;
+                            })}
+                            {selectedCategories.length > 5 && (
+                                <Badge variant="outline" className="font-normal">+{selectedCategories.length - 5} more</Badge>
+                            )}
+                        </div>
+                    )}
+                    {!bOpenFilters && ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
                         <div className="flex flex-wrap gap-2 pt-1">
                             {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
                             {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
@@ -695,131 +730,205 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
                     {bOpenFilters && (
                         <>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label>Impact Area</Label>
-                                    <Select
-                                        value={fImpactArea}
-                                        onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="any">Any</SelectItem>
-                                            {(IMPACT_AREAS || []).map((x) => (
-                                                <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Stage</Label>
-                                    <Select
-                                        value={fStage}
-                                        onValueChange={(v) => setFStage(v as Stage | 'any')}
-                                    >
-                                        <SelectTrigger>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="any">Any</SelectItem>
-                                            {(STAGES || []).map((x) => (
-                                                <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                            {ENABLE_HASHTAGS ? (
+                                // Legacy taxonomy filters (when hashtags are enabled)
+                                <>
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label>Impact Area</Label>
+                                            <Select
+                                                value={fImpactArea}
+                                                onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="any">Any</SelectItem>
+                                                    {(IMPACT_AREAS || []).map((x) => (
+                                                        <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Stage</Label>
+                                            <Select
+                                                value={fStage}
+                                                onValueChange={(v) => setFStage(v as Stage | 'any')}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="any">Any</SelectItem>
+                                                    {(STAGES || []).map((x) => (
+                                                        <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
 
-                            <Separator />
+                                    <Separator />
 
-                            <CollapsibleSection
-                                title={`Beneficiaries (${fBeneficiaries.length})`}
-                                open={bOpenBeneficiaries}
-                                setOpen={setBOpenBeneficiaries}
-                                summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
-                                right={
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setFBeneficiaries([]);
-                                        }}
-                                        disabled={!fBeneficiaries.length}
+                                    <CollapsibleSection
+                                        title={`Beneficiaries (${fBeneficiaries.length})`}
+                                        open={bOpenBeneficiaries}
+                                        setOpen={setBOpenBeneficiaries}
+                                        summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
+                                        right={
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFBeneficiaries([]);
+                                                }}
+                                                disabled={!fBeneficiaries.length}
+                                            >
+                                                Clear
+                                            </Button>
+                                        }
                                     >
-                                        Clear
-                                    </Button>
-                                }
-                            >
-                                <div className="pt-1">
-                                    <Checklist
-                                        options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
-                                        selected={fBeneficiaries}
-                                        translateValue={translateBeneficiary}
-                                        onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
-                                    />
-                                </div>
-                            </CollapsibleSection>
+                                        <div className="pt-1">
+                                            <Checklist
+                                                options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
+                                                selected={fBeneficiaries}
+                                                translateValue={translateBeneficiary}
+                                                onToggle={(v) => setFBeneficiaries((s) => toggleInArray(s, v))}
+                                            />
+                                        </div>
+                                    </CollapsibleSection>
 
-                            <CollapsibleSection
-                                title={`Methods (${fMethods.length})`}
-                                open={bOpenMethods}
-                                setOpen={setBOpenMethods}
-                                summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
-                                right={
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setFMethods([]);
-                                        }}
-                                        disabled={!fMethods.length}
+                                    <CollapsibleSection
+                                        title={`Methods (${fMethods.length})`}
+                                        open={bOpenMethods}
+                                        setOpen={setBOpenMethods}
+                                        summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
+                                        right={
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFMethods([]);
+                                                }}
+                                                disabled={!fMethods.length}
+                                            >
+                                                Clear
+                                            </Button>
+                                        }
                                     >
-                                        Clear
-                                    </Button>
-                                }
-                            >
-                                <div className="pt-1">
-                                    <Checklist
-                                        options={Array.isArray(METHODS) ? [...METHODS] : []}
-                                        selected={fMethods}
-                                        translateValue={translateMethod}
-                                        onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
-                                    />
-                                </div>
-                            </CollapsibleSection>
+                                        <div className="pt-1">
+                                            <Checklist
+                                                options={Array.isArray(METHODS) ? [...METHODS] : []}
+                                                selected={fMethods}
+                                                translateValue={translateMethod}
+                                                onToggle={(v) => setFMethods((s) => toggleInArray(s, v))}
+                                            />
+                                        </div>
+                                    </CollapsibleSection>
 
-                            <CollapsibleSection
-                                title={`Help needed (${fHelpNeeded.length})`}
-                                open={bOpenHelp}
-                                setOpen={setBOpenHelp}
-                                summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
-                                right={
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setFHelpNeeded([]);
-                                        }}
-                                        disabled={!fHelpNeeded.length}
+                                    <CollapsibleSection
+                                        title={`Help needed (${fHelpNeeded.length})`}
+                                        open={bOpenHelp}
+                                        setOpen={setBOpenHelp}
+                                        summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
+                                        right={
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setFHelpNeeded([]);
+                                                }}
+                                                disabled={!fHelpNeeded.length}
+                                            >
+                                                Clear
+                                            </Button>
+                                        }
                                     >
-                                        Clear
-                                    </Button>
-                                }
-                            >
-                                <div className="pt-1">
-                                    <Checklist
-                                        options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
-                                        selected={fHelpNeeded}
-                                        translateValue={translateHelpNeeded}
-                                        onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
-                                    />
-                                </div>
-                            </CollapsibleSection>
+                                        <div className="pt-1">
+                                            <Checklist
+                                                options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
+                                                selected={fHelpNeeded}
+                                                translateValue={translateHelpNeeded}
+                                                onToggle={(v) => setFHelpNeeded((s) => toggleInArray(s, v))}
+                                            />
+                                        </div>
+                                    </CollapsibleSection>
+                                </>
+                            ) : (
+                                // Category filters (when hashtags are disabled)
+                                <>
+                                    <div className="space-y-3">
+                                        <p className="text-sm text-base-content/70">
+                                            {tCommunities('filters.categoryHelp') || 'Выберите категории для фильтрации. Если ничего не выбрано, показываются все посты.'}
+                                        </p>
+                                        {allCategories && allCategories.length > 0 ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {allCategories
+                                                    .sort((a, b) => {
+                                                        if (a.order !== b.order) return a.order - b.order;
+                                                        return a.name.localeCompare(b.name);
+                                                    })
+                                                    .map((category) => {
+                                                        const isSelected = selectedCategories.includes(category.id);
+                                                        return (
+                                                            <button
+                                                                key={category.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (isSelected) {
+                                                                        setSelectedCategories(selectedCategories.filter(id => id !== category.id));
+                                                                    } else {
+                                                                        setSelectedCategories([...selectedCategories, category.id]);
+                                                                    }
+                                                                }}
+                                                                className={cn(
+                                                                    'px-3 py-2 rounded-lg border transition-colors text-sm font-medium',
+                                                                    isSelected
+                                                                        ? 'bg-primary/10 border-primary text-primary'
+                                                                        : 'bg-base-200 border-base-300 hover:bg-base-300 text-base-content'
+                                                                )}
+                                                            >
+                                                                {category.name}
+                                                            </button>
+                                                        );
+                                                    })}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-base-content/60">
+                                                {tCommunities('filters.noCategories') || 'Категории пока не настроены'}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2 pt-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedCategories([]);
+                                                setBOpenFilters(false);
+                                            }}
+                                            className="flex-1"
+                                        >
+                                            {tCommunities('filters.reset') || 'Сбросить'}
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setBOpenFilters(false);
+                                            }}
+                                            className="flex-1 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
+                                        >
+                                            {tCommunities('filters.apply') || 'Применить'}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </>
                     )}
                 </div>
@@ -828,7 +937,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     filteredPublications
                         .filter((p: FeedItem) => {
                             if (p.type === 'publication') {
-                                return !!p.content;
+                                // Filter out project posts (feature flag: projects are disabled)
+                                const isProject = (p as any).postType === 'project' || (p as any).isProject === true;
+                                return !!p.content && !isProject;
                             } else if (p.type === 'poll') {
                                 // Hide polls in future-vision communities
                                 return comms?.typeTag !== 'future-vision';
