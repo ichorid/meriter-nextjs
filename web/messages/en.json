@@ -882,6 +882,8 @@
         "specialCommunities": "Special Communities",
         "yourCommunities": "Your Communities",
         "leads": "Leads",
+        "leadsHelper": "This is a list of all Team Leads registered on the platform. If you want to join one of the teams, offer your help, or share something important, please contact its Lead: their contacts are available in their profile.",
+        "dontShowAgain": "Don't show again",
         "other": "Other",
         "localGroups": {
             "title": "Local",
