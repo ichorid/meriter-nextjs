@@ -34,17 +34,21 @@ import {
 import { Separator } from "@/components/ui/shadcn/separator";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
-import { ChevronDown, ChevronUp, Phone } from "lucide-react";
+import { ChevronDown, ChevronUp, Phone, Mail } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
 import { SmsAuthDialog } from "./SmsAuthDialog";
+import { CallCheckAuthDialog } from "./CallCheckAuthDialog";
+import { EmailAuthDialog } from "./EmailAuthDialog";
 
 interface LoginFormProps {
     className?: string;
     enabledProviders?: string[];
     authnEnabled?: boolean;
     smsEnabled?: boolean;
+    phoneEnabled?: boolean;
+    emailEnabled?: boolean;
 }
 
 export function LoginForm({
@@ -52,6 +56,8 @@ export function LoginForm({
     enabledProviders,
     authnEnabled = false,
     smsEnabled = false,
+    phoneEnabled = false,
+    emailEnabled = false,
 }: LoginFormProps) {
     const searchParams = useSearchParams();
     const t = useTranslations("login");
@@ -68,8 +74,10 @@ export function LoginForm({
 
     console.log("LoginForm", enabledProviders, authnEnabled, smsEnabled);
 
-    // State for SMS dialog
+    // State for auth dialogs
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
+    const [callDialogOpen, setCallDialogOpen] = useState(false);
+    const [emailDialogOpen, setEmailDialogOpen] = useState(false);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -210,7 +218,6 @@ export function LoginForm({
                                                 />
                                             ))}
 
-                                            {/* SMS Authentication Button */}
                                             {smsEnabled && (
                                                 <Button
                                                     variant="outline"
@@ -220,6 +227,30 @@ export function LoginForm({
                                                 >
                                                     <Phone className="mr-2 h-4 w-4" />
                                                     {t("signInWithSms")}
+                                                </Button>
+                                            )}
+
+                                            {phoneEnabled && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-center"
+                                                    onClick={() => setCallDialogOpen(true)}
+                                                    disabled={isLoading}
+                                                >
+                                                    <Phone className="mr-2 h-4 w-4" />
+                                                    {t("signInWithCall")}
+                                                </Button>
+                                            )}
+
+                                            {emailEnabled && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-center"
+                                                    onClick={() => setEmailDialogOpen(true)}
+                                                    disabled={isLoading}
+                                                >
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    {t("signInWithEmail")}
                                                 </Button>
                                             )}
                                         </div>
@@ -345,6 +376,38 @@ export function LoginForm({
                             redirectUrl = "/meriter/welcome";
                         }
 
+                        window.location.href = redirectUrl;
+                    }}
+                    onError={(msg) => {
+                        setAuthError(msg);
+                        addToast(msg, "error");
+                    }}
+                />
+            )}
+
+            {phoneEnabled && (
+                <CallCheckAuthDialog
+                    open={callDialogOpen}
+                    onOpenChange={setCallDialogOpen}
+                    onSuccess={(result) => {
+                        let redirectUrl = buildRedirectUrl();
+                        if (result?.isNewUser) redirectUrl = "/meriter/welcome";
+                        window.location.href = redirectUrl;
+                    }}
+                    onError={(msg) => {
+                        setAuthError(msg);
+                        addToast(msg, "error");
+                    }}
+                />
+            )}
+
+            {emailEnabled && (
+                <EmailAuthDialog
+                    open={emailDialogOpen}
+                    onOpenChange={setEmailDialogOpen}
+                    onSuccess={(result) => {
+                        let redirectUrl = buildRedirectUrl();
+                        if (result?.isNewUser) redirectUrl = "/meriter/welcome";
                         window.location.href = redirectUrl;
                     }}
                     onError={(msg) => {

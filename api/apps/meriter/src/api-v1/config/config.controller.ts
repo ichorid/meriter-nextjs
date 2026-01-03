@@ -21,6 +21,12 @@ type PublicRuntimeConfig = {
   sms: {
     enabled: boolean;
   };
+  phone: {
+    enabled: boolean;
+  };
+  email: {
+    enabled: boolean;
+  };
   features: {
     analytics: boolean;
     debug: boolean;
@@ -62,6 +68,14 @@ export class ConfigController {
       enabled: this.configService.get('sms.enabled', false),
     } satisfies PublicRuntimeConfig['sms'];
 
+    const phone = {
+      enabled: this.configService.get('phone.enabled', false),
+    } satisfies PublicRuntimeConfig['phone'];
+
+    const email = {
+      enabled: this.configService.get('email.enabled', false),
+    } satisfies PublicRuntimeConfig['email'];
+
     const features = {
       analytics: this.configService.get('features.analytics', false),
       debug: this.configService.get('features.debug', false),
@@ -75,6 +89,8 @@ export class ConfigController {
       oauth,
       authn,
       sms,
+      phone,
+      email,
       features,
     });
   }

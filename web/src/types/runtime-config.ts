@@ -32,11 +32,21 @@ export interface FeaturesConfig {
   loginInviteForm: boolean;
 }
 
+export interface PhoneConfig {
+  enabled: boolean;
+}
+
+export interface EmailConfig {
+  enabled: boolean;
+}
+
 export interface RuntimeConfig {
   botUsername: string | null;
   oauth: OAuthConfig;
   authn: AuthnConfig;
   sms: SmsConfig;
+  phone: PhoneConfig;
+  email: EmailConfig;
   features: FeaturesConfig;
 }
 

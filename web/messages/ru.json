@@ -376,7 +376,43 @@
             "invalidOtp": "Неверный код подтверждения. Введите 6 цифр.",
             "sendFailed": "Не удалось отправить SMS. Попробуйте снова.",
             "verifyFailed": "Не удалось проверить код. Попробуйте снова."
-        }
+        },
+        "callDialog": {
+            "title": "Вход по звонку",
+            "description": "Введите номер телефона. Вам нужно будет позвонить на указанный номер.",
+            "callDescription": "Пожалуйста, позвоните на номер ниже для подтверждения.",
+            "phoneLabel": "Номер телефона",
+            "phonePlaceholder": "+79001234567",
+            "callButton": "Позвонить для проверки",
+            "calling": "Инициализация...",
+            "waiting": "Ждем вашего звонка...",
+            "success": "Подтверждено!",
+            "expired": "Срок действия истек",
+            "failed": "Ошибка проверки",
+            "sentTo": "Номер для звонка:"
+        },
+        "emailDialog": {
+            "title": "Вход по Email",
+            "description": "Введите ваш email для получения кода входа",
+            "otpDescription": "Введите код, отправленный на ваш email",
+            "emailLabel": "Email",
+            "emailPlaceholder": "vasya@example.com",
+            "otpLabel": "Код подтверждения",
+            "otpPlaceholder": "000000",
+            "sendCode": "Отправить код",
+            "sending": "Отправка...",
+            "verify": "Подтвердить",
+            "verifying": "Проверка...",
+            "resendCode": "Отправить снова",
+            "resendIn": "Повтор через {seconds}с",
+            "sentTo": "Код отправлен на",
+            "invalidEmail": "Некорректный адрес email",
+            "invalidOtp": "Неверный код",
+            "sendFailed": "Не удалось отправить письмо",
+            "verifyFailed": "Ошибка проверки"
+        },
+        "signInWithCall": "Вход по звонку",
+        "signInWithEmail": "Вход по Email"
     },
     "polls": {
         "createTitle": "Создать опрос",

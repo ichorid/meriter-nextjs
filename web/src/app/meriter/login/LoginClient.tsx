@@ -24,6 +24,8 @@ export default function PageMeriterLogin() {
     const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
     const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
     const smsEnabled = runtimeConfig?.sms?.enabled ?? false;
+    const phoneEnabled = runtimeConfig?.phone?.enabled ?? false;
+    const emailEnabled = runtimeConfig?.email?.enabled ?? false;
 
     // Memoize enabled providers using primitive dependencies
     // This ensures we only recompute when oauth config values actually change
@@ -67,6 +69,8 @@ export default function PageMeriterLogin() {
                     enabledProviders={enabledProviders}
                     authnEnabled={authnEnabled}
                     smsEnabled={smsEnabled}
+                    phoneEnabled={phoneEnabled}
+                    emailEnabled={emailEnabled}
                 />
 
                 <div className="mt-8 flex justify-center">

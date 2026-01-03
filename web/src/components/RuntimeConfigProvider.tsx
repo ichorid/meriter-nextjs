@@ -49,6 +49,18 @@ export function RuntimeConfigProvider({
         [runtimeConfig?.sms?.enabled]
     );
 
+    // Memoize phoneEnabled to ensure stable reference
+    const phoneEnabled = useMemo(
+        () => runtimeConfig?.phone?.enabled ?? false,
+        [runtimeConfig?.phone?.enabled]
+    );
+
+    // Memoize emailEnabled to ensure stable reference
+    const emailEnabled = useMemo(
+        () => runtimeConfig?.email?.enabled ?? false,
+        [runtimeConfig?.email?.enabled]
+    );
+
     console.log("RuntimeConfigProvider", runtimeConfig);
 
     // Store previous array to compare by value and maintain stable reference
@@ -92,6 +104,8 @@ export function RuntimeConfigProvider({
             enabledProviders={enabledProviders}
             authnEnabled={authnEnabled}
             smsEnabled={smsEnabled}
+            phoneEnabled={phoneEnabled}
+            emailEnabled={emailEnabled}
         >
             {children}
         </AuthWrapper>

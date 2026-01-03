@@ -507,6 +507,69 @@ export class AuthProviderService {
   }
 
   /**
+   * Authenticate user with Email
+   * Uses email as authId
+   */
+  async authenticateEmail(email: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+  }> {
+    this.logger.log(`Authenticating with Email: ${email}`);
+
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('email', email);
+    const isNewUser = !existingUser;
+
+    // Generate username from email part or random if taken (userService handles uniqueness if logic exists, but let's provide a good candidate)
+    // For simplicity, we match SMS pattern somewhat or OAuth pattern
+    const emailPrefix = email.split('@')[0];
+    const username = `${emailPrefix}_${Math.floor(Math.random() * 1000)}`;
+
+    // Display name based on email
+    const displayName = emailPrefix;
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'email',
+      authId: email,
+      username,
+      firstName: 'User', // Generic first/last for email auth if we don't ask
+      lastName: '',
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'email',
+        authId: email,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for Email user ${email}, isNewUser: ${isNewUser}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+    };
+  }
+
+  /**
    * Authenticate user with any OAuth provider
    * Supports multiple providers: google, github, etc.
    * Provider data comes from Passport strategy validation
