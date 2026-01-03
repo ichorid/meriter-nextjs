@@ -15,6 +15,8 @@ interface SmsProviderOptions {
 
 interface SmsProvider {
     sendSms(phoneNumber: string, message: string, options?: SmsProviderOptions): Promise<void>;
+    initCallCheck?(phoneNumber: string): Promise<{ checkId: string; callPhone: string; callPhonePretty: string }>;
+    checkCallStatus?(checkId: string): Promise<{ status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'ERROR'; serverStatus: number }>;
 }
 
 /**
@@ -40,7 +42,7 @@ class SmsRuProvider implements SmsProvider {
 
         this.apiUrl = smsConfig.apiUrl;
         this.apiId = smsConfig.apiId || '';
-        this.from = smsConfig.from || '';
+        //this.from = smsConfig.from || '';
         this.testMode = smsConfig.testMode ?? true;
 
         if (!this.apiId && !this.testMode) {
@@ -89,6 +91,79 @@ class SmsRuProvider implements SmsProvider {
             this.logger.log(`SMS sent successfully to ${phoneNumber} (test mode: ${this.testMode})`);
         } catch (error) {
             this.logger.error(`Failed to send SMS via SMS.ru: ${error}`);
+            throw error;
+        }
+    }
+
+    async initCallCheck(phoneNumber: string): Promise<{ checkId: string; callPhone: string; callPhonePretty: string }> {
+        // Construct URL based on apiUrl (e.g. from https://sms.ru/sms to https://sms.ru/callcheck/add)
+        const baseUrl = this.apiUrl.replace(/\/sms\/?$/, '');
+        const url = `${baseUrl}/callcheck/add`;
+
+        const params: Record<string, string> = {
+            api_id: this.apiId,
+            phone: phoneNumber.replace('+', ''),
+            json: '1',
+        };
+
+        try {
+            const response = await axios.get(url, { params });
+
+            if (response.data.status !== 'OK') {
+                this.logger.error(`SMS.ru Call Check init error: ${JSON.stringify(response.data)}`);
+                throw new Error(`Failed to initiate call check: ${response.data.status_text || 'Unknown error'}`);
+            }
+
+            return {
+                checkId: response.data.check_id,
+                callPhone: response.data.call_phone,
+                callPhonePretty: response.data.call_phone_pretty,
+            };
+        } catch (error) {
+            this.logger.error(`Failed to initiate call check via SMS.ru: ${error}`);
+            throw error;
+        }
+    }
+
+    async checkCallStatus(checkId: string): Promise<{ status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'ERROR'; serverStatus: number }> {
+        // Construct URL based on apiUrl
+        const baseUrl = this.apiUrl.replace(/\/sms\/?$/, '');
+        const url = `${baseUrl}/callcheck/status`;
+
+        const params: Record<string, string> = {
+            api_id: this.apiId,
+            check_id: checkId,
+            json: '1',
+        };
+
+        try {
+            const response = await axios.get(url, { params });
+
+            if (response.data.status !== 'OK') {
+                // API request itself failed, not the check status
+                this.logger.error(`SMS.ru Call Check status error: ${JSON.stringify(response.data)}`);
+                return { status: 'ERROR', serverStatus: 0 };
+            }
+
+            const checkStatus = parseInt(response.data.check_status, 10);
+
+            // Map status codes from docbyphone.md:
+            // 400: Pending
+            // 401: Confirmed
+            // 402: Expired/Error
+
+            if (checkStatus === 401) {
+                return { status: 'CONFIRMED', serverStatus: checkStatus };
+            } else if (checkStatus === 400) {
+                return { status: 'PENDING', serverStatus: checkStatus };
+            } else if (checkStatus === 402) {
+                return { status: 'EXPIRED', serverStatus: checkStatus };
+            } else {
+                return { status: 'ERROR', serverStatus: checkStatus };
+            }
+
+        } catch (error) {
+            this.logger.error(`Failed to check call status via SMS.ru: ${error}`);
             throw error;
         }
     }
@@ -258,5 +333,46 @@ export class SmsProviderService {
 
         this.logger.log(`OTP verified successfully for ${phoneNumber}`);
         return true;
+    }
+    /**
+     * Initiate Call Check verification
+     * Returns the phone number the user needs to call and the check ID
+     */
+    async initiateCallVerification(phoneNumber: string): Promise<{
+        checkId: string;
+        callPhone: string;
+        callPhonePretty: string;
+        expiresIn: number;
+    }> {
+        if (!this.provider.initCallCheck) {
+            throw new Error('Call verification is not supported by the current SMS provider');
+        }
+
+        // Check rate limiting (reuse existing logic)
+        await this.checkRateLimit(phoneNumber);
+
+        // Initiate call check
+        const result = await this.provider.initCallCheck(phoneNumber);
+
+        // We can optionally store this in DB if we want to track it via our own IDs or enforce rate limits strictly on our side vs params.
+        // For now, mirroring `sendOtp`, let's just log and return. 
+        // Note: The `docbyphone.md` says the check is valid for 5 minutes.
+
+        return {
+            ...result,
+            expiresIn: 300, // 5 minutes standard for this service
+        };
+    }
+
+    /**
+     * Check status of Call Check verification
+     */
+    async verifyCallStatus(checkId: string): Promise<{ status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'ERROR' }> {
+        if (!this.provider.checkCallStatus) {
+            throw new Error('Call verification is not supported by the current SMS provider');
+        }
+
+        const result = await this.provider.checkCallStatus(checkId);
+        return result;
     }
 }

@@ -80,6 +80,30 @@ export interface SmsConfig {
 }
 
 /**
+ * Phone Call Authentication Configuration
+ */
+export interface PhoneConfig {
+  /** Whether Call Check authentication is enabled (from PHONE_ENABLED env var) */
+  enabled: boolean;
+}
+
+/**
+ * Email Authentication Configuration
+ */
+export interface EmailConfig {
+  /** Whether Email authentication is enabled (from EMAIL_ENABLED env var) */
+  enabled: boolean;
+  /** SMTP Server Configuration */
+  smtp: {
+    host: string;
+    port: number;
+    user: string;
+    pass: string;
+    secure: boolean;
+  };
+}
+
+/**
  * S3 Storage Configuration
  */
 export interface S3Config {
@@ -205,6 +229,12 @@ export interface AppConfig {
 
   /** SMS authentication settings */
   sms: SmsConfig;
+
+  /** Phone Call authentication settings */
+  phone: PhoneConfig;
+
+  /** Email authentication settings */
+  email: EmailConfig;
 
   /** Storage service configurations */
   storage: StorageConfig;
@@ -345,6 +375,19 @@ export default (): AppConfig => {
       maxAttemptsPerOtp: 3,
       rateLimitPerHour: 3,
       resendCooldownSeconds: 60,
+    },
+    phone: {
+      enabled: env.PHONE_ENABLED === 'true',
+    },
+    email: {
+      enabled: env.EMAIL_ENABLED === 'true',
+      smtp: {
+        host: env.EMAIL_SMTP_HOST || '',
+        port: parseInt(env.EMAIL_SMTP_PORT || '587', 10),
+        user: env.EMAIL_SMTP_USERNAME || '',
+        pass: env.EMAIL_SMTP_PASSWORD || '',
+        secure: env.EMAIL_SMTP_IS_SECURE === 'true',
+      },
     },
     storage: {
       s3: {

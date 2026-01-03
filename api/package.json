@@ -19,8 +19,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=50%"
-    ,
+    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=50%",
     "test:e2e:ci": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=100%"
   },
   "dependencies": {
@@ -35,10 +34,11 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.20",
     "@nestjs/schedule": "^4.1.2",
-    "@simplewebauthn/server": "^13.2.2",
     "@sentry/node": "^8.45.0",
     "@sentry/profiling-node": "^8.45.0",
+    "@simplewebauthn/server": "^13.2.2",
     "@trpc/server": "^11.0.0",
+    "@types/nodemailer": "^7.0.4",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
@@ -51,6 +51,7 @@
     "mongoose": "^8.20.1",
     "nestjs-telegram": "^1.2.0",
     "node-xlsx": "^0.24.0",
+    "nodemailer": "^7.0.12",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",

@@ -9,6 +9,8 @@ import { ApiV1CommonModule } from '../common/common.module';
 import { CommunitySchemaClass, CommunitySchema } from '../../domain/models/community/community.schema';
 import { PasskeyChallenge, PasskeyChallengeSchema } from '../../domain/models/auth/passkey-challenge.schema';
 import { SmsOtp, SmsOtpSchema } from '../../domain/models/auth/sms-otp.schema';
+import { EmailProviderService } from './email-provider.service';
+import { EmailOtp, EmailOtpSchema } from '../../domain/models/auth/email-otp.schema';
 
 // Conditionally import GoogleStrategy only if Google OAuth is configured
 // Google is one of many possible auth providers - it's optional
@@ -63,12 +65,14 @@ const GoogleStrategy = getGoogleStrategy();
       { name: CommunitySchemaClass.name, schema: CommunitySchema },
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
       { name: SmsOtp.name, schema: SmsOtpSchema },
+      { name: EmailOtp.name, schema: EmailOtpSchema },
     ]),
   ],
   controllers: [AuthController],
   providers: [
     AuthProviderService,
     SmsProviderService,
+    EmailProviderService,
     // Conditionally register GoogleStrategy only if Google OAuth is configured
     ...(GoogleStrategy ? [GoogleStrategy] : []),
   ],

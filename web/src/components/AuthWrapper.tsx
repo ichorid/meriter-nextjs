@@ -11,6 +11,8 @@ interface AuthWrapperProps {
     enabledProviders?: string[];
     authnEnabled?: boolean;
     smsEnabled?: boolean;
+    phoneEnabled?: boolean;
+    emailEnabled?: boolean;
 }
 
 // Set to true to disable AuthWrapper temporarily for debugging
@@ -27,7 +29,7 @@ const DEBUG_MODE = process.env.NODE_ENV === "development";
  * - If authenticated but no invite used (and no roles): shows invite entry page
  * - If authenticated and valid: shows home or requested page
  */
-function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEnabled }: AuthWrapperProps) {
+function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEnabled, phoneEnabled, emailEnabled }: AuthWrapperProps) {
     // ALL HOOKS MUST BE CALLED FIRST - before any conditional returns
     const router = useRouter();
     const pathname = usePathname();
@@ -94,6 +96,8 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEna
                     enabledProviders={enabledProviders}
                     authnEnabled={authnEnabled}
                     smsEnabled={smsEnabled}
+                    phoneEnabled={phoneEnabled}
+                    emailEnabled={emailEnabled}
                 />
             </div>
         );

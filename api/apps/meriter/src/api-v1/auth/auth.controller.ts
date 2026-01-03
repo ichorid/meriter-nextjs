@@ -12,6 +12,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthProviderService } from './auth.service';
 import { SmsProviderService } from './sms-provider.service';
+import { EmailProviderService } from './email-provider.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
@@ -74,6 +75,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthProviderService,
     private readonly smsProviderService: SmsProviderService,
+    private readonly emailProviderService: EmailProviderService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
   ) { }
@@ -798,6 +800,156 @@ export class AuthController {
       }
       const errorMessage = error instanceof Error ? error.message : 'Failed to verify SMS';
       this.logger.error(`SMS verify error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Initiate Call Check (Flash Call / Call by User)
+   * POST /api/v1/auth/call/init
+   */
+  @Post('call/init')
+  async initCallCheck(@Body() body: { phoneNumber: string }, @Res() res: any) {
+    try {
+      const { phoneNumber } = body;
+      if (!phoneNumber) throw new Error('Phone number is required');
+
+      // Check if Phone/Call Check is enabled
+      const enabled = this.configService.get('phone')?.enabled ?? false;
+      if (!enabled) {
+        throw new ForbiddenException('Call authentication is not enabled');
+      }
+
+      const result = await this.smsProviderService.initiateCallVerification(phoneNumber);
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to init call check';
+      this.logger.error(`Call check init error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Check Call Status and Authenticate
+   * POST /api/v1/auth/call/status
+   */
+  @Post('call/status')
+  async checkCallStatus(@Body() body: { checkId: string; phoneNumber: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { checkId, phoneNumber } = body;
+      if (!checkId || !phoneNumber) throw new Error('checkId and phoneNumber are required');
+
+      // Check if Phone/Call Check is enabled
+      const enabled = this.configService.get('phone')?.enabled ?? false;
+      if (!enabled) {
+        throw new ForbiddenException('Call authentication is not enabled');
+      }
+
+      // Check status
+      const statusResult = await this.smsProviderService.verifyCallStatus(checkId);
+
+      if (statusResult.status === 'CONFIRMED') {
+        // Authenticate User
+        const result = await this.authService.authenticateSms(phoneNumber);
+
+        // Set JWT
+        const cookieDomain = this.cookieManager.getCookieDomain();
+        const isSecure = this.isHttpsRequest(req);
+        const nodeEnv = this.configService.get('NODE_ENV', 'development');
+        const isProduction = nodeEnv === 'production' || isSecure;
+
+        this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+        return res.json({
+          success: true,
+          status: 'CONFIRMED',
+          user: result.user,
+          isNewUser: result.isNewUser,
+        });
+      }
+
+      // If not confirmed yet, just return status
+      return res.json({
+        success: true,
+        status: statusResult.status,
+      });
+
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to check call status';
+      // Don't log expected pending/error checking noise too loudly? 
+      // Actually errors here might be real API errors.
+      this.logger.error(`Call check status error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  // --- Email Authentication Endpoints ---
+
+  @Post('email/send')
+  async sendEmailOtp(@Body() body: { email: string }, @Res() res: any) {
+    try {
+      const { email } = body;
+      if (!email) throw new Error('Email is required');
+
+      const enabled = this.configService.get('email')?.enabled ?? false;
+      if (!enabled) throw new ForbiddenException('Email authentication is not enabled');
+
+      this.logger.log(`Email OTP send request for ${email}`);
+      const result = await this.emailProviderService.sendOtp(email);
+
+      return res.json({
+        success: true,
+        expiresIn: result.expiresIn,
+        canResendAt: result.canResendAt,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send Email';
+      this.logger.error(`Email send error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  @Post('email/verify')
+  async verifyEmailOtp(@Body() body: { email: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { email, otpCode } = body;
+      if (!email || !otpCode) throw new Error('Email and Code are required');
+
+      const enabled = this.configService.get('email')?.enabled ?? false;
+      if (!enabled) throw new ForbiddenException('Email authentication is not enabled');
+
+      // Verify OTP
+      await this.emailProviderService.verifyOtp(email, otpCode);
+
+      // Authenticate
+      const result = await this.authService.authenticateEmail(email);
+
+      // Set JWT
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify Email';
+      this.logger.error(`Email verify error: ${errorMessage}`, error);
       throw new InternalServerError(errorMessage);
     }
   }

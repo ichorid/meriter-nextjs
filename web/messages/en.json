@@ -376,7 +376,43 @@
             "invalidOtp": "Invalid verification code. Please enter 6 digits.",
             "sendFailed": "Failed to send SMS. Please try again.",
             "verifyFailed": "Failed to verify code. Please try again."
-        }
+        },
+        "callDialog": {
+            "title": "Login via Call",
+            "description": "Enter your phone number. You will see a number to call.",
+            "callDescription": "Please call the number below to verify your identity.",
+            "phoneLabel": "Phone Number",
+            "phonePlaceholder": "+1234567890",
+            "callButton": "Call to Verify",
+            "calling": "Initiating...",
+            "waiting": "Waiting for your call...",
+            "success": "Verified!",
+            "expired": "Verification expired",
+            "failed": "Verification failed",
+            "sentTo": "Calling number:"
+        },
+        "emailDialog": {
+            "title": "Sign in with Email",
+            "description": "Enter your email address to receive a login code",
+            "otpDescription": "Enter the code sent to your email",
+            "emailLabel": "Email",
+            "emailPlaceholder": "your@email.com",
+            "otpLabel": "Verification Code",
+            "otpPlaceholder": "000000",
+            "sendCode": "Send Code",
+            "sending": "Sending...",
+            "verify": "Verify",
+            "verifying": "Verifying...",
+            "resendCode": "Resend Code",
+            "resendIn": "Resend in {seconds}s",
+            "sentTo": "Code sent to",
+            "invalidEmail": "Invalid email address",
+            "invalidOtp": "Invalid verification code",
+            "sendFailed": "Failed to send email",
+            "verifyFailed": "Verification failed"
+        },
+        "signInWithCall": "Login via Call",
+        "signInWithEmail": "Sign in with Email"
     },
     "polls": {
         "createTitle": "Create Poll",
