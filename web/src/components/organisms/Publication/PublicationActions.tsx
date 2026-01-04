@@ -227,16 +227,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     );
   };
 
-  // Handle topup button click - opens popup for adding votes
-  const handleTopupClick = () => {
-    useUIStore.getState().openWithdrawPopup(
-      publicationId,
-      'publication-topup',
-      maxWithdrawAmount,
-      maxTopUpAmount
-    );
-  };
-
   // Handle dev add positive vote button click (test mode only, superadmin only)
   const handleDevAddPositiveVote = async () => {
     if (!testAuthMode || !isSuperadmin || !publicationId || !communityId) return;
@@ -473,18 +463,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           </div>
         )}
       </div>
-
-      {/* Topup button - show below if applicable (only if withdraw is not shown) */}
-      {!showWithdraw && maxTopUpAmount > 0 && (
-        <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-base-300">
-          <button
-            onClick={handleTopupClick}
-            className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
-          >
-            {t('addMerits', { amount: Math.floor(maxTopUpAmount * 10) / 10 })}
-          </button>
-        </div>
-      )}
     </div>
   );
 };
