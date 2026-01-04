@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
 import { Loader2, Mail, ArrowLeft } from "lucide-react";
+import { isTestAuthMode } from "@/config";
+import { mockEmailAuth } from "@/lib/utils/mock-auth";
 
 interface EmailAuthDialogProps {
     open: boolean;
@@ -138,7 +140,25 @@ export function EmailAuthDialog({
         setIsLoading(true);
         setError("");
 
+        const testAuthMode = isTestAuthMode();
+
         try {
+            if (testAuthMode) {
+                // In test auth mode, use mock authentication
+                const result = await mockEmailAuth(email);
+                
+                // Set JWT cookie manually
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                
+                onSuccess({
+                    isNewUser: result.isNewUser,
+                    user: result.user,
+                });
+                onOpenChange(false);
+                setIsLoading(false);
+                return;
+            }
+
             const response = await fetch("/api/v1/auth/email/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

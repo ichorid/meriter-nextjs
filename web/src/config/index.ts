@@ -90,6 +90,7 @@ const envSchema = z.object({
 
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
+  NEXT_PUBLIC_TEST_AUTH_MODE: z.string().optional(),
 
   // Monitoring
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
@@ -114,6 +115,7 @@ const env = envSchema.parse({
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING,
   NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: process.env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM,
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
+  NEXT_PUBLIC_TEST_AUTH_MODE: process.env.NEXT_PUBLIC_TEST_AUTH_MODE,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 
@@ -264,6 +266,7 @@ export const config = {
   // Development Mode
   development: {
     fakeDataMode: env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true',
+    testAuthMode: env.NEXT_PUBLIC_TEST_AUTH_MODE === 'true',
   },
 
   // Monitoring
@@ -325,6 +328,7 @@ export const isDevelopment = () => config.app.isDevelopment;
 export const isProduction = () => config.app.isProduction;
 export const isTest = () => config.app.isTest;
 export const isFakeDataMode = () => config.development.fakeDataMode;
+export const isTestAuthMode = () => config.development.testAuthMode;
 
 // Legacy exports for backward compatibility
 // Note: BOT_USERNAME is no longer available from config - use BotConfigContext instead

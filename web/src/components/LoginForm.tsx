@@ -16,7 +16,8 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingState } from "@/components/atoms/LoadingState";
 import { getErrorMessage } from "@/lib/api/errors";
-import { isFakeDataMode } from "@/config";
+import { isFakeDataMode, isTestAuthMode } from "@/config";
+import { mockOAuthAuth } from "@/lib/utils/mock-auth";
 import {
     OAUTH_PROVIDERS,
     getOAuthUrl,
@@ -63,10 +64,14 @@ export function LoginForm({
     const t = useTranslations("login");
     const tReg = useTranslations("registration");
     const fakeDataMode = isFakeDataMode();
+    const testAuthMode = isTestAuthMode();
 
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
+
+    // Local loading state for OAuth authentication
+    const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
     // State for invite code input
     const [inviteCode, setInviteCode] = useState("");
@@ -145,10 +150,37 @@ export function LoginForm({
     };
 
     // Handle OAuth provider authentication
-    const handleOAuthAuth = (providerId: string) => {
-        const returnToPath = buildRedirectUrl();
-        const oauthUrl = getOAuthUrl(providerId, returnToPath);
-        window.location.href = oauthUrl;
+    const handleOAuthAuth = async (providerId: string) => {
+        if (testAuthMode) {
+            // In test auth mode, use mock authentication
+            try {
+                setIsOAuthLoading(true);
+                setAuthError(null);
+                const result = await mockOAuthAuth(providerId);
+                
+                // Set JWT cookie manually (in test mode, backend will accept mock tokens)
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                
+                // Redirect based on isNewUser
+                let redirectUrl = buildRedirectUrl();
+                if (result.isNewUser) {
+                    redirectUrl = "/meriter/welcome";
+                }
+                
+                // Reload to trigger auth context update
+                window.location.href = redirectUrl;
+            } catch (error: unknown) {
+                const message = getErrorMessage(error);
+                setAuthError(message);
+                addToast(message, "error");
+                setIsOAuthLoading(false);
+            }
+        } else {
+            // Normal OAuth flow
+            const returnToPath = buildRedirectUrl();
+            const oauthUrl = getOAuthUrl(providerId, returnToPath);
+            window.location.href = oauthUrl;
+        }
     };
 
     return (
@@ -171,38 +203,76 @@ export function LoginForm({
                 </CardHeader>
 
                 <CardContent className="space-y-6">
-                    {isLoading && <LoadingState text={t("authenticating")} />}
+                    {(isLoading || isOAuthLoading) && <LoadingState text={t("authenticating")} />}
 
-                    {!isLoading && (
+                    {!(isLoading || isOAuthLoading) && (
                         <>
-                            {fakeDataMode ? (
-                                <div className="space-y-4">
-                                    <div className="bg-amber-50 dark:bg-amber-950/20 shadow-none dark:border-amber-900 rounded-lg p-3">
-                                        <p className="text-sm text-amber-800 dark:text-amber-200">
-                                            {t("fakeDataModeEnabled")}
-                                        </p>
+                            <div className="space-y-4">
+                                {/* In test auth mode, show all providers for testing */}
+                                {testAuthMode ? (
+                                    <div className="space-y-2">
+                                        {/* Show all OAuth providers in test mode */}
+                                        {OAUTH_PROVIDERS.map((provider) => (
+                                            <OAuthButton
+                                                key={provider.id}
+                                                provider={provider}
+                                                onClick={() => handleOAuthAuth(provider.id)}
+                                                disabled={isLoading}
+                                                label={t("signInWith", {
+                                                    provider: provider.name,
+                                                })}
+                                            />
+                                        ))}
+                                        
+                                        {/* Show all auth methods in test mode */}
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-center"
+                                            onClick={() => setSmsDialogOpen(true)}
+                                            disabled={isLoading || isOAuthLoading}
+                                        >
+                                            <Phone className="mr-2 h-4 w-4" />
+                                            {t("signInWithSms")}
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-center"
+                                            onClick={() => setCallDialogOpen(true)}
+                                            disabled={isLoading || isOAuthLoading}
+                                        >
+                                            <Phone className="mr-2 h-4 w-4" />
+                                            {t("signInWithCall")}
+                                        </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            className="w-full justify-center"
+                                            onClick={() => setEmailDialogOpen(true)}
+                                            disabled={isLoading || isOAuthLoading}
+                                        >
+                                            <Mail className="mr-2 h-4 w-4" />
+                                            {t("signInWithEmail")}
+                                        </Button>
+
+                                        {/* Passkey in test mode */}
+                                        <PasskeySection
+                                            isLoading={isLoading || isOAuthLoading}
+                                            onSuccess={(result) => {
+                                                let redirectUrl = buildRedirectUrl();
+                                                if (result?.isNewUser) {
+                                                    redirectUrl = "/meriter/welcome";
+                                                }
+                                                window.location.href = redirectUrl;
+                                            }}
+                                            onError={(msg) => {
+                                                setAuthError(msg);
+                                                addToast(msg, "error");
+                                            }}
+                                        />
                                     </div>
-                                    <Button
-                                        variant="default"
-                                        size="default"
-                                        className="w-full"
-                                        onClick={handleFakeAuth}
-                                        disabled={isLoading}
-                                    >
-                                        {t("fakeLogin")}
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="default"
-                                        className="w-full"
-                                        onClick={handleFakeSuperadminAuth}
-                                        disabled={isLoading}
-                                    >
-                                        {t("superadminLogin")}
-                                    </Button>
-                                </div>
-                            ) : (
-                                <div className="space-y-4">
+                                ) : (
+                                    <>
                                     {/* OAuth Providers */}
                                     {displayedProviders.length > 0 && (
                                         <div className="space-y-2">
@@ -211,7 +281,7 @@ export function LoginForm({
                                                     key={provider.id}
                                                     provider={provider}
                                                     onClick={() => handleOAuthAuth(provider.id)}
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || isOAuthLoading}
                                                     label={t("signInWith", {
                                                         provider: provider.name,
                                                     })}
@@ -223,7 +293,7 @@ export function LoginForm({
                                                     variant="outline"
                                                     className="w-full justify-center"
                                                     onClick={() => setSmsDialogOpen(true)}
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || isOAuthLoading}
                                                 >
                                                     <Phone className="mr-2 h-4 w-4" />
                                                     {t("signInWithSms")}
@@ -235,7 +305,7 @@ export function LoginForm({
                                                     variant="outline"
                                                     className="w-full justify-center"
                                                     onClick={() => setCallDialogOpen(true)}
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || isOAuthLoading}
                                                 >
                                                     <Phone className="mr-2 h-4 w-4" />
                                                     {t("signInWithCall")}
@@ -247,7 +317,7 @@ export function LoginForm({
                                                     variant="outline"
                                                     className="w-full justify-center"
                                                     onClick={() => setEmailDialogOpen(true)}
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || isOAuthLoading}
                                                 >
                                                     <Mail className="mr-2 h-4 w-4" />
                                                     {t("signInWithEmail")}
@@ -255,44 +325,6 @@ export function LoginForm({
                                             )}
                                         </div>
                                     )}
-
-                                    {/* Collapsible Invite Code Input */}
-                                    <div className="border rounded-lg overflow-hidden">
-                                        <button
-                                            type="button"
-                                            onClick={() => setInviteCodeExpanded(!inviteCodeExpanded)}
-                                            className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                                        >
-                                            <div>
-                                                <div className="text-sm font-medium">{tReg("inviteCodeLabel")}</div>
-                                                <div className="text-xs text-muted-foreground mt-0.5">
-                                                    {tReg("inviteDescription")}
-                                                </div>
-                                            </div>
-                                            {inviteCodeExpanded ? (
-                                                <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                                            ) : (
-                                                <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                                            )}
-                                        </button>
-                                        {inviteCodeExpanded && (
-                                            <div className="px-4 pb-4 pt-2 border-t">
-                                                <BrandFormControl
-                                                    label={undefined}
-                                                    error={undefined}
-                                                >
-                                                    <Input
-                                                        value={inviteCode}
-                                                        onChange={(e) => setInviteCode(e.target.value)}
-                                                        placeholder={tReg("inviteCodePlaceholder")}
-                                                        autoCapitalize="none"
-                                                        autoComplete="off"
-                                                        className="h-11 rounded-xl w-full"
-                                                    />
-                                                </BrandFormControl>
-                                            </div>
-                                        )}
-                                    </div>
 
                                     {/* Separator between OAuth and Passkey */}
                                     {displayedProviders.length > 0 && authnEnabled && (
@@ -311,7 +343,7 @@ export function LoginForm({
                                     {/* Passkey Authentication */}
                                     {authnEnabled && (
                                         <PasskeySection
-                                            isLoading={isLoading}
+                                            isLoading={isLoading || isOAuthLoading}
                                             onSuccess={(result) => {
                                                 let redirectUrl = buildRedirectUrl();
 
@@ -329,16 +361,53 @@ export function LoginForm({
                                         />
                                     )}
 
-                                    {/* No Auth Providers Warning */}
-                                    {displayedProviders.length === 0 && !authnEnabled && (
-                                        <div className="bg-destructive/10 shadow-none rounded-lg p-4">
-                                            <p className="text-sm text-destructive text-center">
-                                                {t("noAuthenticationProviders")}
+                                        {/* No Auth Providers Warning */}
+                                        {displayedProviders.length === 0 && !authnEnabled && (
+                                            <div className="bg-destructive/10 shadow-none rounded-lg p-4">
+                                                <p className="text-sm text-destructive text-center">
+                                                    {t("noAuthenticationProviders")}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Collapsible Invite Code Input - always visible */}
+                                <div className="border rounded-lg overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setInviteCodeExpanded(!inviteCodeExpanded)}
+                                        className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
+                                    >
+                                        <div className="text-sm font-medium">{tReg("inviteCodeLabel")}</div>
+                                        {inviteCodeExpanded ? (
+                                            <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                                        ) : (
+                                            <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                                        )}
+                                    </button>
+                                    {inviteCodeExpanded && (
+                                        <div className="px-4 pb-4 pt-2 border-t space-y-3">
+                                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                                {tReg("inviteDescription")}
                                             </p>
+                                            <BrandFormControl
+                                                label={undefined}
+                                                error={undefined}
+                                            >
+                                                <Input
+                                                    value={inviteCode}
+                                                    onChange={(e) => setInviteCode(e.target.value)}
+                                                    placeholder={tReg("inviteCodePlaceholder")}
+                                                    autoCapitalize="none"
+                                                    autoComplete="off"
+                                                    className="h-11 rounded-xl w-full"
+                                                />
+                                            </BrandFormControl>
                                         </div>
                                     )}
                                 </div>
-                            )}
+                            </div>
                         </>
                     )}
                 </CardContent>
@@ -363,8 +432,8 @@ export function LoginForm({
                 </CardFooter>
             </Card>
 
-            {/* SMS Authentication Dialog */}
-            {smsEnabled && (
+            {/* SMS Authentication Dialog - always available in test mode */}
+            {(smsEnabled || testAuthMode) && (
                 <SmsAuthDialog
                     open={smsDialogOpen}
                     onOpenChange={setSmsDialogOpen}
@@ -385,7 +454,8 @@ export function LoginForm({
                 />
             )}
 
-            {phoneEnabled && (
+            {/* Phone/Call Authentication Dialog - always available in test mode */}
+            {(phoneEnabled || testAuthMode) && (
                 <CallCheckAuthDialog
                     open={callDialogOpen}
                     onOpenChange={setCallDialogOpen}
@@ -401,7 +471,8 @@ export function LoginForm({
                 />
             )}
 
-            {emailEnabled && (
+            {/* Email Authentication Dialog - always available in test mode */}
+            {(emailEnabled || testAuthMode) && (
                 <EmailAuthDialog
                     open={emailDialogOpen}
                     onOpenChange={setEmailDialogOpen}

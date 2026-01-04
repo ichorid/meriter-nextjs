@@ -23,6 +23,8 @@ import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
 import { Loader2, PhoneCall, ArrowLeft, Phone } from "lucide-react";
 import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+import { isTestAuthMode } from "@/config";
+import { mockPhoneAuth } from "@/lib/utils/mock-auth";
 
 interface CallCheckAuthDialogProps {
     open: boolean;
@@ -111,7 +113,33 @@ export function CallCheckAuthDialog({
         setIsLoading(true);
         setError("");
 
+        const testAuthMode = isTestAuthMode();
+
         try {
+            if (testAuthMode) {
+                // In test auth mode, use mock authentication
+                // Simulate call check flow
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const mockCheckId = `mock_check_${Date.now()}`;
+                setCheckId(mockCheckId);
+                setCallPhonePretty(phoneNumber);
+                setStep("call");
+                
+                // Auto-confirm after 2 seconds in test mode
+                setTimeout(async () => {
+                    const result = await mockPhoneAuth(phoneNumber);
+                    document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                    onSuccess({
+                        isNewUser: result.isNewUser,
+                        user: result.user,
+                    });
+                    onOpenChange(false);
+                }, 2000);
+                
+                setIsLoading(false);
+                return;
+            }
+
             const response = await fetch("/api/v1/auth/call/init", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

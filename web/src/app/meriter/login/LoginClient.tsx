@@ -63,7 +63,7 @@ export default function PageMeriterLogin() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 px-4 py-12 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 px-4 py-12 flex items-center justify-center pt-20">
             <div className="w-full max-w-md">
                 <LoginForm
                     enabledProviders={enabledProviders}

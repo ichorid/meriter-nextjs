@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/shadcn/button";
 import { Loader2 } from "lucide-react";
 import { usePasskeys } from "@/hooks/usePasskeys";
+import { isTestAuthMode } from "@/config";
+import { mockPasskeyAuth } from "@/lib/utils/mock-auth";
 
 interface PasskeySectionProps {
     isLoading: boolean;
@@ -24,6 +26,23 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
     const handleAuthenticate = async () => {
         setLocalLoading(true);
         try {
+            const testAuthMode = isTestAuthMode();
+            
+            if (testAuthMode) {
+                // In test auth mode, use mock authentication
+                const result = await mockPasskeyAuth();
+                
+                // Set JWT cookie manually
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                
+                onSuccess({
+                    isNewUser: result.isNewUser,
+                    user: result.user,
+                });
+                setLocalLoading(false);
+                return;
+            }
+
             const result = await authenticateWithPasskey();
 
             // Do not redirect here. Let the parent handle it based on isNewUser flag.

@@ -22,6 +22,8 @@ import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
 import { Loader2, Smartphone, ArrowLeft } from "lucide-react";
 import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+import { isTestAuthMode } from "@/config";
+import { mockSmsAuth } from "@/lib/utils/mock-auth";
 
 interface SmsAuthDialogProps {
     open: boolean;
@@ -108,7 +110,18 @@ export function SmsAuthDialog({
         setIsLoading(true);
         setError("");
 
+        const testAuthMode = isTestAuthMode();
+
         try {
+            if (testAuthMode) {
+                // In test auth mode, skip OTP sending and go directly to verification
+                // Simulate a short delay
+                await new Promise(resolve => setTimeout(resolve, 500));
+                setStep("otp");
+                setIsLoading(false);
+                return;
+            }
+
             const response = await fetch("/api/v1/auth/sms/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -146,7 +159,25 @@ export function SmsAuthDialog({
         setIsLoading(true);
         setError("");
 
+        const testAuthMode = isTestAuthMode();
+
         try {
+            if (testAuthMode) {
+                // In test auth mode, use mock authentication
+                const result = await mockSmsAuth(phoneNumber);
+                
+                // Set JWT cookie manually
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                
+                onSuccess({
+                    isNewUser: result.isNewUser,
+                    user: result.user,
+                });
+                onOpenChange(false);
+                setIsLoading(false);
+                return;
+            }
+
             const response = await fetch("/api/v1/auth/sms/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
