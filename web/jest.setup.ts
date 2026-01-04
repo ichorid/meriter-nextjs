@@ -210,7 +210,7 @@ jest.mock('@/shared/lib/deep-link-handler', () => ({
 }));
 
 // Mock config
-jest.mock('./src/config/index.ts', () => ({
+jest.mock('@/config', () => ({
   config: {
     app: {
       isDevelopment: true,
@@ -226,9 +226,11 @@ jest.mock('./src/config/index.ts', () => ({
     },
     development: {
       fakeDataMode: false,
+      testAuthMode: false,
     },
   },
   isFakeDataMode: jest.fn(() => false),
+  isTestAuthMode: jest.fn(() => false),
   isDevelopment: jest.fn(() => true),
   isProduction: jest.fn(() => false),
   isTest: jest.fn(() => true),
