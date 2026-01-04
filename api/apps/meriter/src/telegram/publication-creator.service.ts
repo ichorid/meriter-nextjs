@@ -99,7 +99,7 @@ export class TelegramPublicationCreatorService {
         type: messageType,
         beneficiaryId,
         hashtags: parsedMessage.hashtags,
-        imageUrl: message.photo?.[0], // Use first photo if available
+        images: message.photo ? [message.photo[0]] : undefined, // Use first photo if available
         videoUrl: message.video,
       });
 

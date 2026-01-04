@@ -259,6 +259,10 @@ export interface AppConfig {
   APP_URL?: string;
   /** Google OAuth redirect URI (legacy env var, optional) */
   GOOGLE_REDIRECT_URI?: string;
+  /** Disable axios calls (for testing, from NO_AXIOS env var) */
+  noAxios?: boolean;
+  /** Admin mode flag (from ADMIN env var) */
+  admin?: string;
 }
 
 /**
@@ -434,5 +438,7 @@ export default (): AppConfig => {
     DOMAIN: env.DOMAIN,
     APP_URL: env.APP_URL,
     GOOGLE_REDIRECT_URI: env.GOOGLE_REDIRECT_URI,
+    noAxios: env.NO_AXIOS === 'true',
+    admin: env.ADMIN,
   };
 };

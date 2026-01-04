@@ -110,6 +110,10 @@ export const favoritesRouter = router({
         }
       }
 
+      if (!ctx.connection.db) {
+        return { items: [], total: 0 };
+      }
+
       const [publicationDocs, pollDocs] = await Promise.all([
         publicationIds.length > 0
           ? ctx.connection.db
@@ -126,9 +130,9 @@ export const favoritesRouter = router({
       ]);
 
       const publications = publicationDocs.map((doc) =>
-        Publication.fromSnapshot(doc as PublicationSnapshot),
+        Publication.fromSnapshot(doc as unknown as PublicationSnapshot),
       );
-      const polls = pollDocs.map((doc) => Poll.fromSnapshot(doc as PollSnapshot));
+      const polls = pollDocs.map((doc) => Poll.fromSnapshot(doc as unknown as PollSnapshot));
 
       // Collect IDs for enrichment
       const userIds = new Set<string>();
@@ -225,7 +229,7 @@ export const favoritesRouter = router({
             }),
           },
           deleted: snapshot.deleted ?? false,
-          deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
+          deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
         };

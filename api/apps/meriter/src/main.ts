@@ -25,10 +25,6 @@ async function bootstrap() {
       environment: sentryEnvironment,
       ...(sentryRelease ? { release: sentryRelease } : {}),
       tracesSampleRate,
-      // Enable logging
-      enableLogs: true,
-      // Capture unhandled promise rejections
-      captureUnhandledRejections: true,
       // Set platform tag to distinguish backend from frontend
       initialScope: {
         tags: {
@@ -40,7 +36,7 @@ async function bootstrap() {
     // Build integrations array
     // Note: consoleLoggingIntegration is only available in @sentry/nextjs, not @sentry/node
     // For Node.js backend, console logs are typically handled via logger or can be manually captured
-    const integrations: Sentry.Integration[] = [];
+    const integrations: any[] = [];
 
     // HTTP instrumentation is enabled by default in Sentry v8, but we can explicitly add it
     // to ensure Express routes are tracked

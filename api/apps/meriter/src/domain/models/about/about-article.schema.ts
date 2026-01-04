@@ -27,6 +27,9 @@ export class AboutArticleSchemaClass implements AboutArticle {
 
   @Prop({ required: true, default: 0 })
   order!: number;
+
+  createdAt!: Date;
+  updatedAt!: Date;
 }
 
 export type AboutArticleDocument = AboutArticle & Document;

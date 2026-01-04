@@ -288,7 +288,7 @@ export const commentsRouter = router({
     .input(CreateCommentDtoSchema)
     .mutation(async ({ ctx, input }) => {
       // Check feature flag for image uploads
-      const commentImageUploadsEnabled = ctx.configService.get('features.commentImageUploadsEnabled', false);
+      const commentImageUploadsEnabled = (ctx.configService.get as any)('features.commentImageUploadsEnabled', false);
       if (!commentImageUploadsEnabled && input.images && input.images.length > 0) {
         throw new TRPCError({
           code: 'BAD_REQUEST',

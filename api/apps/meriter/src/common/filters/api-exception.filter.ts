@@ -124,7 +124,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         } else {
           Sentry.captureMessage(
             `Non-Error exception: ${errorResponse.error.message}`,
-            scope.getLevel(),
+            'error',
           );
         }
       });

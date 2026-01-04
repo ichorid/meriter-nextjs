@@ -23,6 +23,9 @@ export class AboutCategorySchemaClass implements AboutCategory {
 
   @Prop({ required: true, default: 0 })
   order!: number;
+
+  createdAt!: Date;
+  updatedAt!: Date;
 }
 
 export type AboutCategoryDocument = AboutCategory & Document;

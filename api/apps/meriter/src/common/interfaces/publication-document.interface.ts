@@ -28,6 +28,11 @@ export interface PublicationDocument {
   methods?: string[];
   stage?: string;
   helpNeeded?: string[];
+  // Forward fields
+  forwardStatus?: 'pending' | 'forwarded' | null;
+  forwardTargetCommunityId?: string;
+  forwardProposedBy?: string;
+  forwardProposedAt?: Date;
   deleted?: boolean;
   deletedAt?: Date;
   editHistory?: Array<{

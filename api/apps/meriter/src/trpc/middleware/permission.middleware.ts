@@ -391,7 +391,7 @@ export function requirePermission(
   _resource: PermissionResource,
 ) {
   // Return a procedure builder that validates input first, then checks permissions
-  return protectedProcedure.use(async ({ _ctx, _input, _next }) => {
+  return protectedProcedure.use(async ({ ctx, input, next }) => {
     // This will run before input validation, so input will be undefined
     // We need to defer the permission check
     // For now, throw an error to indicate this pattern doesn't work

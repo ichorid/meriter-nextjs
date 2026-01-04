@@ -70,6 +70,12 @@ export interface UpdateCommunityDto {
       genitive: string;
     };
     dailyEmission?: number;
+    postCost?: number;
+    pollCost?: number;
+    forwardCost?: number;
+    editWindowMinutes?: number;
+    allowEditByOthers?: boolean;
+    language?: 'en' | 'ru';
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-own' | 'not-same-group';
@@ -874,7 +880,7 @@ export class CommunityService {
     const total = facetResult.totalCount[0]?.count ?? 0;
 
     // 3. Map to DTO format (handle undefined/null values)
-    const mappedMembers = members.map((user) => ({
+    const mappedMembers = members.map((user: any) => ({
       id: user.id,
       username: user.username,
       displayName: user.displayName,
