@@ -30,6 +30,7 @@ import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { Connection } from 'mongoose';
 import { JwtVerificationService } from '../common/services/authentication.service';
 import { CategoryService } from '../domain/services/category.service';
+import { AboutService } from '../domain/services/about.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -59,6 +60,7 @@ export interface CreateContextOptions {
   commentEnrichmentService: CommentEnrichmentService;
   uploadsService: UploadsService;
   categoryService: CategoryService;
+  aboutService: AboutService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -100,6 +102,7 @@ export async function createContext(opts: CreateContextOptions) {
     commentEnrichmentService,
     uploadsService,
     categoryService,
+    aboutService,
     connection,
     configService,
     cookieManager,
@@ -190,6 +193,7 @@ export async function createContext(opts: CreateContextOptions) {
     commentEnrichmentService,
     uploadsService,
     categoryService,
+    aboutService,
     connection,
     configService,
     cookieManager,

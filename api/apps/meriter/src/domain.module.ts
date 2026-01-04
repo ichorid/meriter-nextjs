@@ -49,6 +49,14 @@ import {
   CategorySchemaClass,
   CategorySchema,
 } from './domain/models/category/category.schema';
+import {
+  AboutCategorySchemaClass,
+  AboutCategorySchema,
+} from './domain/models/about/about-category.schema';
+import {
+  AboutArticleSchemaClass,
+  AboutArticleSchema,
+} from './domain/models/about/about-article.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -75,6 +83,7 @@ import { FavoriteService } from './domain/services/favorite.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
 import { CategoryService } from './domain/services/category.service';
+import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
 
@@ -102,6 +111,8 @@ import { EventBus } from './domain/events/event-bus';
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
       { name: CategorySchemaClass.name, schema: CategorySchema },
+      { name: AboutCategorySchemaClass.name, schema: AboutCategorySchema },
+      { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
     ]),
   ],
   providers: [
@@ -132,6 +143,7 @@ import { EventBus } from './domain/events/event-bus';
     FavoriteService,
     QuotaUsageService,
     CategoryService,
+    AboutService,
 
     // Event bus
     EventBus,
@@ -164,6 +176,7 @@ import { EventBus } from './domain/events/event-bus';
     FavoriteService,
     QuotaUsageService,
     CategoryService,
+    AboutService,
 
     // Export event bus
     EventBus,
