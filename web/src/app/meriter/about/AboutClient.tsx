@@ -28,32 +28,37 @@ const AboutPage = () => {
 
     return (
         <AdaptiveLayout>
-            <div className="space-y-6 relative">
-                {/* Superadmin Settings Buttons */}
-                {isSuperadmin && (
-                    <div className="absolute top-0 right-0 flex gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowAboutAdmin(true)}
-                            className="p-2 rounded-full"
-                            aria-label="Manage About Content"
-                            title="Управление контентом"
-                        >
-                            <FileText className="w-5 h-5 text-base-content/70" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowSettings(true)}
-                            className="p-2 rounded-full"
-                            aria-label="Settings"
-                            title="Настройки"
-                        >
-                            <Settings className="w-5 h-5 text-base-content/70" />
-                        </Button>
-                    </div>
-                )}
+            <div className="space-y-6">
+                {/* Header with title and admin buttons */}
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-brand-text-primary dark:text-base-content">
+                        О проекте
+                    </h2>
+                    {isSuperadmin && (
+                        <div className="flex gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowAboutAdmin(true)}
+                                className="p-2 rounded-full"
+                                aria-label="Manage About Content"
+                                title="Управление контентом"
+                            >
+                                <FileText className="w-5 h-5 text-base-content/70" />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowSettings(true)}
+                                className="p-2 rounded-full"
+                                aria-label="Settings"
+                                title="Настройки"
+                            >
+                                <Settings className="w-5 h-5 text-base-content/70" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
 
                 {/* About Content */}
                 <AboutContent />
