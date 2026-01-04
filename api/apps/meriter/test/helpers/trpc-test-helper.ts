@@ -25,17 +25,17 @@ export async function trpcQuery(
   // Use superjson.stringify to properly serialize the input
   const queryString = input ? `?input=${encodeURIComponent(superjson.stringify(input))}` : '';
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-  
+
   const response = await request(app.getHttpServer())
     .get(`/trpc/${path}${queryString}`)
     .set('Cookie', cookieHeader)
     .expect(200);
-  
+
   // tRPC returns { result: { data: ... } } or { result: { error: ... } }
   if (response.body.result?.error) {
     throw new Error(`tRPC error: ${JSON.stringify(response.body.result.error)}`);
   }
-  
+
   // Parse response data with superjson (tRPC v11 uses superjson transformer)
   const rawData = response.body.result?.data;
   if (rawData && typeof rawData === 'object' && 'json' in rawData) {
@@ -56,23 +56,23 @@ export async function trpcMutation(
   cookies: Record<string, string> = {}
 ) {
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-  
+
   // tRPC v11 with superjson transformer expects input in body as { json: input }
   // The superjson.stringify wraps input in { json: ... } format
   const body = input ? superjson.stringify(input) : '{}';
-  
+
   const response = await request(app.getHttpServer())
     .post(`/trpc/${path}`)
     .send(body)
     .set('Content-Type', 'application/json')
     .set('Cookie', cookieHeader)
     .expect(200);
-  
+
   // tRPC returns { result: { data: ... } } or { result: { error: ... } }
   if (response.body.result?.error) {
     throw new Error(`tRPC error: ${JSON.stringify(response.body.result.error)}`);
   }
-  
+
   // Parse response data with superjson (tRPC v11 uses superjson transformer)
   const rawData = response.body.result?.data;
   if (rawData && typeof rawData === 'object' && 'json' in rawData) {
@@ -95,11 +95,11 @@ export async function trpcQueryWithError(
   // Use superjson.stringify for consistency
   const queryString = input ? `?input=${encodeURIComponent(superjson.stringify(input))}` : '';
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-  
+
   const response = await request(app.getHttpServer())
     .get(`/trpc/${path}${queryString}`)
     .set('Cookie', cookieHeader);
-  
+
   // tRPC returns { result: { data: ... } } or { result: { error: ... } }
   if (response.body.result?.error) {
     const error = response.body.result.error;
@@ -134,14 +134,14 @@ export async function trpcQueryWithError(
       },
     };
   }
-  
+
   // Parse response data with superjson
   const rawData = response.body.result?.data;
   let parsedData = rawData;
   if (rawData && typeof rawData === 'object' && 'json' in rawData) {
     parsedData = superjson.parse(JSON.stringify(rawData));
   }
-  
+
   return { data: parsedData };
 }
 
@@ -157,16 +157,16 @@ export async function trpcMutationWithError(
   cookies: Record<string, string> = {}
 ): Promise<{ data?: any; error?: { code: string; message: string; httpStatus?: number } }> {
   const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ');
-  
+
   // tRPC v11 with superjson transformer expects input in body as superjson format
   const body = input ? superjson.stringify(input) : '{}';
-  
+
   const response = await request(app.getHttpServer())
     .post(`/trpc/${path}`)
     .send(body)
     .set('Content-Type', 'application/json')
     .set('Cookie', cookieHeader);
-  
+
   // tRPC returns { result: { data: ... } } or { result: { error: ... } } for HTTP 200
   // For non-200 status codes, NestJS wraps it as { error: { json: { data: { code: ... } } } }
   // Check for tRPC error structure first (HTTP 200 case)
@@ -182,7 +182,7 @@ export async function trpcMutationWithError(
       },
     };
   }
-  
+
   // Check for NestJS-wrapped error structure (non-200 status codes)
   if (response.body?.error?.json?.data?.code) {
     const error = response.body.error.json;
@@ -194,7 +194,7 @@ export async function trpcMutationWithError(
       },
     };
   }
-  
+
   // Fallback: check for error at top level
   if (response.body?.error) {
     const error = response.body.error;
@@ -206,7 +206,7 @@ export async function trpcMutationWithError(
       },
     };
   }
-  
+
   // If status is not 200 and no error structure found, return generic error
   if (response.status !== 200) {
     return {
@@ -217,14 +217,14 @@ export async function trpcMutationWithError(
       },
     };
   }
-  
+
   // Parse response data with superjson
   const rawData = response.body.result?.data;
   let parsedData = rawData;
   if (rawData && typeof rawData === 'object' && 'json' in rawData) {
     parsedData = superjson.parse(JSON.stringify(rawData));
   }
-  
+
   return { data: parsedData };
 }
 
@@ -246,7 +246,7 @@ function mapTrpcErrorCodeToHttpStatus(code?: string): number {
     TOO_MANY_REQUESTS: 429,
     CLIENT_CLOSED_REQUEST: 499,
   };
-  
+
   return codeMap[code || ''] || 500;
 }
 
