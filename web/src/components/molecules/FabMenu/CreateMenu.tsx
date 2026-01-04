@@ -110,29 +110,23 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
     }, [isOpen]);
 
     // Hide when any popup is active (unless the menu itself is open)
-    if (hasActivePopup && !isOpen) {
-        return null;
-    }
-
-    // Don't show if no actions available (after loading)
-    if (!permissionLoading && !hasAvailableActions) {
-        return null;
-    }
+    const shouldHide = (hasActivePopup && !isOpen) || (!permissionLoading && !hasAvailableActions);
 
     const defaultTrigger = (
         <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(!isOpen)}
-            className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-200 dark:bg-base-300 shadow-lg hover:bg-base-300 dark:hover:bg-base-400"
+            className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-200 dark:bg-base-100 shadow-lg hover:bg-base-300 dark:hover:bg-base-100/90"
             aria-label={isOpen ? tCommon('close') : tCommon('open')}
         >
-            <Plus size={27} className="text-base-content/70" />
+            <Plus size={27} className="text-base-content/70 dark:text-base-content/90" />
         </Button>
     );
 
+    // Always render, but hide with CSS when needed
     return (
-        <div className="relative" ref={menuRef}>
+        <div className={`relative ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
             {trigger || defaultTrigger}
 
             {/* Menu Dropdown */}

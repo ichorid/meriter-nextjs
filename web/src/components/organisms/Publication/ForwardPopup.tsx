@@ -104,7 +104,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
 
         {forwardCost > 0 && !isLead && (
           <p className="text-sm text-warning mb-4">
-            This will cost {forwardCost} quota.
+            This will cost {forwardCost} wallet merit{forwardCost !== 1 ? 's' : ''}.
           </p>
         )}
 

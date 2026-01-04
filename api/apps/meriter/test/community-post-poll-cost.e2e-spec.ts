@@ -233,7 +233,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   });
 
   describe('Post Creation with Configurable Cost', () => {
-    it('should charge configured postCost when creating a post', async () => {
+    it('should charge configured postCost from wallet when creating a post', async () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
 
@@ -247,15 +247,29 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         },
       });
 
-      // Get initial quota
-      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
-      expect(quotaBefore.remaining).toBe(10);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(3);
 
-      // Create publication (should consume 3 quota)
+      // Create publication (should consume 3 wallet merits)
       const created = await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Test Publication',
@@ -267,27 +281,28 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
       const publicationId = created.id;
 
-      // Verify quota was consumed (3 instead of 1)
-      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
+      // Verify wallet balance was decreased by 3
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 3);
 
-      expect(quotaAfter.used).toBe(3);
-      expect(quotaAfter.remaining).toBe(7);
+      // Verify wallet transaction was created
+      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'publication_creation',
+            referenceId: publicationId,
+          })
+          .toArray();
 
-      // Verify quota_usage record shows 3
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          usageType: 'publication_creation',
-          referenceId: publicationId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(3);
+        expect(transactions.length).toBeGreaterThan(0);
+        const transaction = transactions.find(t => t.type === 'withdrawal');
+        expect(transaction).toBeDefined();
+        expect(transaction?.amount).toBe(3);
+      }
     });
 
     it('should allow free posts when postCost is 0', async () => {
@@ -304,15 +319,11 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         },
       });
 
-      // Get initial quota
-      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
-      const initialQuota = quotaBefore.remaining;
-
-      // Create publication (should not consume quota)
+      // Create publication (should not consume wallet)
       const created = await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Free Post',
@@ -324,32 +335,32 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
       const publicationId = created.id;
 
-      // Verify quota was NOT consumed
-      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
+      // Verify wallet balance was NOT changed
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore);
 
-      expect(quotaAfter.remaining).toBe(initialQuota);
+      // Verify no wallet transaction was created
+      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'publication_creation',
+            referenceId: publicationId,
+          })
+          .toArray();
 
-      // Verify no quota_usage record was created
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          usageType: 'publication_creation',
-          referenceId: publicationId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeNull();
+        expect(transactions.length).toBe(0);
+      }
     });
 
-    it('should reject post creation when quota is insufficient for configured cost', async () => {
+    it('should reject post creation when wallet merits are insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
 
-      // Set postCost to 15 (more than daily quota of 10)
+      // Set postCost to 15
       await trpcMutation(app, 'communities.update', {
         id: testCommunityId,
         data: {
@@ -358,6 +369,11 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
           },
         },
       });
+
+      // Ensure wallet has insufficient balance (should be 0 or less than 15)
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeLessThan(15);
 
       // Try to create publication - should fail
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
@@ -371,7 +387,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.message).toContain('Insufficient wallet merits');
       });
     });
   });
@@ -535,79 +551,5 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     });
   });
 
-  describe('Payment with Wallet when Cost > 0', () => {
-    it('should charge configured postCost from wallet when quota is insufficient', async () => {
-      (global as any).testUserId = testLeadId;
-      (global as any).testUserGlobalRole = 'participant';
-
-      // Set postCost to 2
-      await trpcMutation(app, 'communities.update', {
-        id: testCommunityId,
-        data: {
-          settings: {
-            postCost: 2,
-          },
-        },
-      });
-
-      // Use up all quota (10 posts * 2 cost = 20 quota used, but we only have 10)
-      // So we can only create 5 posts before running out
-      for (let i = 0; i < 5; i++) {
-        await trpcMutation(app, 'publications.create', {
-          communityId: testCommunityId,
-          title: `Post ${i}`,
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        });
-      }
-
-      // Verify quota is exhausted (5 posts * 2 cost = 10 quota used)
-      const quotaCheck = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
-      expect(quotaCheck.remaining).toBeLessThanOrEqual(0);
-
-      // Add wallet balance
-      await walletService.addTransaction(
-        testLeadId,
-        testCommunityId,
-        'credit',
-        5,
-        'personal',
-        'test',
-        'test',
-        {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        'Test credit',
-      );
-
-      // Get wallet balance before
-      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
-      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
-      expect(balanceBefore).toBeGreaterThanOrEqual(2);
-
-      // Create publication with wallet payment (should consume 2 from wallet)
-      await trpcMutation(app, 'publications.create', {
-        communityId: testCommunityId,
-        title: 'Wallet Post',
-        description: 'Test content',
-        content: 'Test content',
-        type: 'text',
-        postType: 'basic',
-        walletAmount: 2,
-      });
-
-      // Verify wallet balance decreased by 2
-      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
-      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
-      expect(balanceAfter).toBe(balanceBefore - 2);
-    });
-  });
 });
 

@@ -80,9 +80,9 @@ export const CommunitySettingsSchema = z.object({
   currencyNames: CurrencySchema,
   dailyEmission: z.number().int().min(0).default(10),
   language: z.enum(["en", "ru"]).default("en"),
-  postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
+  postCost: z.number().int().min(0).default(1), // Cost in wallet merits to create a post (0 = free)
   pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
-  forwardCost: z.number().int().min(0).default(1), // Cost in quota/merits to forward a post (0 = free)
+  forwardCost: z.number().int().min(0).default(1), // Cost in wallet merits to forward a post (0 = free)
   editWindowMinutes: z.number().int().min(0).default(30), // Number of minutes after creation that participants can edit publications (0 = no time limit)
   allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
 });

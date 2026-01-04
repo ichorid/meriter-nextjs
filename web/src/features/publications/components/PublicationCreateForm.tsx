@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { useCreatePublication, useUpdatePublication } from '@/hooks/api/usePublications';
 import type { Publication } from '@/types/api-v1';
 import { useCommunity } from '@/hooks/api/useCommunities';
-import { useUserQuota } from '@/hooks/api/useQuota';
 import { useWallet } from '@/hooks/api/useWallet';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -101,7 +100,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
-  const { data: quotaData } = useUserQuota(communityId);
   const { data: wallet } = useWallet(communityId);
 
   const normalizeEntityId = (id: string | undefined): string | null => {
@@ -125,16 +123,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
 
-  // Check if payment is required (not future-vision and cost > 0)
-  const requiresPayment = community?.typeTag !== 'future-vision' && postCost > 0;
-  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  // Check if payment is required (cost > 0)
+  const requiresPayment = postCost > 0;
   const walletBalance = wallet?.balance ?? 0;
 
-  // Automatic payment method selection: quota first, then wallet
-  const willUseQuota = requiresPayment && quotaRemaining >= postCost;
-  const willUseWallet = requiresPayment && quotaRemaining < postCost && walletBalance >= postCost;
-  const hasInsufficientPayment = requiresPayment && quotaRemaining < postCost && walletBalance < postCost;
-  const paymentMethod = willUseQuota ? 'quota' : (willUseWallet ? 'wallet' : null);
+  // Posts now require wallet merits only
+  const hasInsufficientPayment = requiresPayment && walletBalance < postCost;
 
   // If project type is requested but projects are disabled, fallback to basic
   const requestedPostType = initialData?.postType === 'project' || initialData?.isProject
@@ -394,9 +388,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           },
         });
       } else {
-        // Create new publication with automatic payment (quota first, then wallet)
-        const quotaAmount = willUseQuota ? postCost : 0;
-        const walletAmount = willUseWallet ? postCost : 0;
+        // Create new publication with wallet payment
+        const walletAmount = requiresPayment ? postCost : 0;
 
         publication = await createPublication.mutateAsync({
           communityId,
@@ -409,7 +402,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           hashtags: ENABLE_HASHTAGS ? hashtags : [],
           categories: ENABLE_HASHTAGS ? [] : categories,
           images: images.length > 0 ? images : undefined, // Always use array
-          quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
           walletAmount: walletAmount > 0 ? walletAmount : undefined,
           impactArea: impactArea || undefined,
           beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
@@ -488,9 +480,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 </p>
               ) : postCost > 0 ? (
                 <p className="text-blue-700 text-sm">
-                  {willUseQuota
-                    ? t('willPayWithQuota', { remaining: quotaRemaining, cost: postCost })
-                    : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                  {t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
                 </p>
               ) : (
                 <p className="text-blue-700 text-sm">

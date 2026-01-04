@@ -542,52 +542,17 @@ export const publicationsRouter = router({
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
 
-      // Extract payment amounts
-      const quotaAmount = input.quotaAmount ?? 0;
-      const walletAmount = input.walletAmount ?? 0;
+      // Posts now require wallet merits only (no quota)
+      // Validate payment if cost > 0
+      if (postCost > 0) {
+        const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+        const walletBalance = wallet ? wallet.getBalance() : 0;
 
-      // Default to postCost quota if neither is specified (backward compatibility)
-      const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? postCost : quotaAmount;
-      const effectiveWalletAmount = walletAmount;
-
-      // Validate payment (skip for future-vision communities and if cost is 0)
-      if (community.typeTag !== 'future-vision' && postCost > 0) {
-        // Validate that at least one payment method is provided
-        if (effectiveQuotaAmount === 0 && effectiveWalletAmount === 0) {
+        if (walletBalance < postCost) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `You must pay with either quota or wallet merits to create a post. The cost is ${postCost}. At least one of quotaAmount or walletAmount must be at least ${postCost}.`,
+            message: `Insufficient wallet merits. Available: ${walletBalance}, Required: ${postCost}`,
           });
-        }
-
-        // Check quota if using quota
-        if (effectiveQuotaAmount > 0) {
-          const remainingQuota = await getRemainingQuota(
-            ctx.user.id,
-            input.communityId,
-            community,
-            ctx.connection,
-          );
-
-          if (remainingQuota < effectiveQuotaAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient quota. Available: ${remainingQuota}, Requested: ${effectiveQuotaAmount}`,
-            });
-          }
-        }
-
-        // Check wallet balance if using wallet
-        if (effectiveWalletAmount > 0) {
-          const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
-          const walletBalance = wallet ? wallet.getBalance() : 0;
-
-          if (walletBalance < effectiveWalletAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${effectiveWalletAmount}`,
-            });
-          }
         }
       }
 
@@ -603,46 +568,28 @@ export const publicationsRouter = router({
       const communityId = publication.getCommunityId.getValue();
       const publicationId = publication.getId.getValue();
 
-      // Process payment after successful creation (skip for future-vision communities)
-      if (community.typeTag !== 'future-vision') {
-        // Record quota usage if quota was used
-        if (effectiveQuotaAmount > 0) {
-          try {
-            await ctx.quotaUsageService.consumeQuota(
-              ctx.user.id,
-              communityId,
-              effectiveQuotaAmount,
-              'publication_creation',
-              publicationId,
-            );
-          } catch (_error) {
-            // Don't fail the request if quota consumption fails - publication is already created
-          }
-        }
+      // Process payment after successful creation (deduct wallet merits)
+      if (postCost > 0) {
+        try {
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
 
-        // Deduct from wallet if wallet was used
-        if (effectiveWalletAmount > 0) {
-          try {
-            const currency = community.settings?.currencyNames || {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            };
-
-            await ctx.walletService.addTransaction(
-              ctx.user.id,
-              communityId,
-              'debit',
-              effectiveWalletAmount,
-              'personal',
-              'publication_creation',
-              publicationId,
-              currency,
-              `Payment for creating publication`,
-            );
-          } catch (_error) {
-            // Don't fail the request if wallet deduction fails - publication is already created
-          }
+          await ctx.walletService.addTransaction(
+            ctx.user.id,
+            communityId,
+            'debit',
+            postCost,
+            'personal',
+            'publication_creation',
+            publicationId,
+            currency,
+            `Payment for creating publication`,
+          );
+        } catch (_error) {
+          // Don't fail the request if wallet deduction fails - publication is already created
         }
       }
 
@@ -1184,32 +1131,42 @@ export const publicationsRouter = router({
         });
       }
 
-      // Check quota
+      // Check wallet balance (forwarding now requires wallet merits)
       const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
       if (forwardCost > 0) {
-        const remainingQuota = await getRemainingQuota(
-          userId,
-          sourceCommunityId,
-          sourceCommunity,
-          ctx.connection,
-        );
-        if (remainingQuota < forwardCost) {
+        const wallet = await ctx.walletService.getWallet(userId, sourceCommunityId);
+        const walletBalance = wallet ? wallet.getBalance() : 0;
+        if (walletBalance < forwardCost) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `Insufficient quota. Required: ${forwardCost}, available: ${remainingQuota}`,
+            message: `Insufficient wallet merits. Required: ${forwardCost}, available: ${walletBalance}`,
           });
         }
       }
 
-      // Consume quota
+      // Deduct from wallet
       if (forwardCost > 0) {
-        await ctx.quotaUsageService.consumeQuota(
-          userId,
-          sourceCommunityId,
-          forwardCost,
-          'forward_proposal',
-          publicationId,
-        );
+        try {
+          const currency = sourceCommunity.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+
+          await ctx.walletService.addTransaction(
+            userId,
+            sourceCommunityId,
+            'debit',
+            forwardCost,
+            'personal',
+            'forward_proposal',
+            publicationId,
+            currency,
+            `Payment for forwarding proposal`,
+          );
+        } catch (_error) {
+          // Don't fail the request if wallet deduction fails - proposal is already created
+        }
       }
 
       // Update publication with forward proposal

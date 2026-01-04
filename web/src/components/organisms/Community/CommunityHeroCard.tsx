@@ -3,10 +3,12 @@
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User } from 'lucide-react';
-import { Users, FileText, Settings } from 'lucide-react';
+import { Users, FileText, Settings, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 
 interface CommunityHeroCardProps {
   community: {
@@ -41,9 +43,15 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   onClick,
 }) => {
   const router = useRouter();
+  const { user } = useAuth();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('pages.communitySettings');
   const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
+
+  // Check if user is a lead (for deleted button visibility)
+  const isLead = user?.globalRole === 'superadmin' ||
+    !!userRoles.find((r) => r.communityId === community.id && r.role === 'lead');
 
   // Generate a gradient background based on community name if no cover image
   const generateGradient = (name: string): [string, string] => {
@@ -138,17 +146,40 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           </button>
         )}
 
-        {/* Members button - left of Settings if Settings is visible, otherwise in Settings position */}
+        {/* Members button - positioned based on which buttons are visible */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             router.push(routes.communityMembers(community.id));
           }}
-          className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${community.isAdmin ? 'right-[51px]' : 'right-3'}`}
+          className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${
+            community.isAdmin
+              ? 'right-[51px]'
+              : 'right-3'
+          }`}
           title={tCommunities('members.title') || 'Members'}
         >
           <Users size={18} className="text-white" />
         </button>
+
+        {/* Deleted button for leads/superadmins - left of Members */}
+        {isLead && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(routes.communityDeleted(community.id));
+            }}
+            className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${
+              community.isAdmin
+                ? 'right-[102px]'
+                : 'right-[51px]'
+            }`}
+            aria-label={tCommunities('deleted') || 'Deleted'}
+            title={tCommunities('deleted') || 'Deleted'}
+          >
+            <Trash2 size={18} className="text-white" />
+          </button>
+        )}
 
         {/* Setup badge */}
         {community.needsSetup && (

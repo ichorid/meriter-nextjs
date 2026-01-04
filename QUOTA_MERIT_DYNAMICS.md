@@ -98,7 +98,7 @@ This document describes the quota and merit dynamics across different group type
 
 | Post Type | Regular Groups | Marathon of Good | Future Vision |
 |-----------|----------------|------------------|---------------|
-| Basic/Report | Quota only | Quota only | Wallet only |
+| Basic/Report | Wallet merits only | Wallet merits only | Wallet merits only |
 | Project | Wallet only | Wallet only | Wallet only |
 
 ## Merit Movement Rules

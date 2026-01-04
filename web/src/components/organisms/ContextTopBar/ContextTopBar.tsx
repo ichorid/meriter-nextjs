@@ -2,14 +2,12 @@
 
 import React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCommunity, useWallets } from '@/hooks/api';
 import { useUserQuota } from '@/hooks/api/useQuota';
-import { useUserRoles } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
-import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Trash2 } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -262,16 +260,10 @@ export const CommunityTopBar: React.FC<{
   quotaData,
 }) => {
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
-    const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('pages.communities');
     const tCommon = useTranslations('common');
-    const { data: userRoles = [] } = useUserRoles(user?.id || '');
-
-    // Check if user is a lead (for deleted button visibility)
-    const isLead = user?.globalRole === 'superadmin' ||
-      !!userRoles.find((r) => r.communityId === communityId && r.role === 'lead');
 
     // Safe translation helper to prevent MISSING_MESSAGE errors
     const safeTranslate = (key: string, fallback: string): string => {
@@ -370,19 +362,6 @@ export const CommunityTopBar: React.FC<{
                 compact={true}
                 className="mr-2 -ml-[15px] mt-[5px]"
               />
-            )}
-            {/* Deleted Button - only for leads/superadmins */}
-            {isLead && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(routes.communityDeleted(communityId))}
-                className="rounded-xl active:scale-[0.98] px-2"
-                aria-label={t('deleted') || 'Deleted'}
-                title={t('deleted') || 'Deleted'}
-              >
-                <Trash2 size={18} className="text-base-content/70" />
-              </Button>
             )}
           </div>
         }

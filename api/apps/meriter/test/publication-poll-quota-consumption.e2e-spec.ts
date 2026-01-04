@@ -6,6 +6,7 @@ import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import { WalletService } from '../src/domain/services/wallet.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
@@ -21,6 +22,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
   let userModel: Model<UserDocument>;
   let quotaUsageModel: Model<QuotaUsageDocument>;
   let userCommunityRoleService: UserCommunityRoleService;
+  let walletService: WalletService;
 
   let testUserId: string;
   let testAuthorId: string; // Different user to author publications
@@ -35,6 +37,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
     connection = app.get(getConnectionToken());
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
+    walletService = app.get<WalletService>(WalletService);
 
     communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
     userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
@@ -146,17 +149,31 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     await TestSetupHelper.cleanup({ app, testDb });
   });
 
-  describe('Publication Creation Quota Consumption', () => {
-    it('should consume 1 quota when creating a publication', async () => {
+  describe('Publication Creation Wallet Payment', () => {
+    it('should deduct wallet merits when creating a publication', async () => {
       (global as any).testUserId = testUserId;
 
-      // Get initial quota
-      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testUserId,
-        communityId: testCommunityId,
-      });
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testUserId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
-      expect(quotaBefore.remaining).toBe(10);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(1);
 
       // Create publication
       const created = await trpcMutation(app, 'publications.create', {
@@ -170,53 +187,39 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const publicationId = created.id;
 
-      // Verify quota was consumed
-      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testUserId,
-        communityId: testCommunityId,
-      });
+      // Verify wallet balance was decreased by 1
+      const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 1);
 
-      expect(quotaAfter.used).toBe(1);
-      expect(quotaAfter.remaining).toBe(9);
+      // Verify wallet transaction was created
+      const wallet = await walletService.getWallet(testUserId, testCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'publication_creation',
+            referenceId: publicationId,
+          })
+          .toArray();
 
-      // Verify quota_usage record was created
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testUserId,
-          communityId: testCommunityId,
-          usageType: 'publication_creation',
-          referenceId: publicationId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(1);
+        expect(transactions.length).toBeGreaterThan(0);
+        const transaction = transactions.find(t => t.type === 'withdrawal');
+        expect(transaction).toBeDefined();
+        expect(transaction?.amount).toBe(1);
+      }
     });
 
-    it('should reject publication creation when quota is insufficient', async () => {
+    it('should reject publication creation when wallet merits are insufficient', async () => {
       (global as any).testUserId = testUserId;
 
-      // Use up all quota by creating 10 publications
-      for (let i = 0; i < 10; i++) {
-        await trpcMutation(app, 'publications.create', {
-          communityId: testCommunityId,
-          title: `Test Publication ${i}`,
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        });
-      }
+      // Ensure wallet has insufficient balance (should be 0 or less than 1)
+      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeLessThan(1);
 
-      // Verify quota is exhausted
-      const quota = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testUserId,
-        communityId: testCommunityId,
-      });
-
-      expect(quota.remaining).toBe(0);
-
-      // Try to create another publication - should fail
+      // Try to create publication - should fail
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
         const result = await trpcMutationWithError(app, 'publications.create', {
           communityId: testCommunityId,
@@ -228,12 +231,34 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.message).toContain('Insufficient wallet merits');
       });
     });
 
-    it('should not consume quota for future-vision communities', async () => {
+    it('should use wallet merits for future-vision communities', async () => {
       (global as any).testUserId = testUserId;
+
+      // Add wallet balance for future-vision community
+      await walletService.addTransaction(
+        testUserId,
+        futureVisionCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(1);
 
       // Create publication in future-vision community
       const created = await trpcMutation(app, 'publications.create', {
@@ -247,7 +272,12 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const publicationId = created.id;
 
-      // Verify no quota_usage record was created
+      // Verify wallet balance was decreased
+      const walletAfter = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 1);
+
+      // Verify no quota_usage record was created (posts don't use quota anymore)
       const quotaUsage = await quotaUsageModel
         .findOne({
           userId: testUserId,
@@ -260,10 +290,31 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expect(quotaUsage).toBeNull();
     });
 
-    it('should track quota consumption correctly with votes', async () => {
+    it('should use wallet for posting and quota for voting', async () => {
       (global as any).testUserId = testUserId;
 
-      // Create a publication by testUserId (consumes 1 quota for testUserId)
+      // Add wallet balance for posting
+      await walletService.addTransaction(
+        testUserId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+
+      // Create a publication by testUserId (uses wallet, not quota)
       const createdPub = await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Test Publication',
@@ -275,8 +326,29 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const _publicationId = createdPub.id;
 
+      // Verify wallet decreased by 1
+      const walletAfterPost = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceAfterPost = walletAfterPost ? walletAfterPost.getBalance() : 0;
+      expect(balanceAfterPost).toBe(balanceBefore - 1);
+
       // Create a publication by testAuthorId for voting
       (global as any).testUserId = testAuthorId;
+      // Add wallet for author too
+      await walletService.addTransaction(
+        testAuthorId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
       const createdAuthorPub = await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Author Publication',
@@ -288,7 +360,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const authorPublicationId = createdAuthorPub.id;
 
-      // Switch back to testUserId and vote on author's publication (consumes 2 quota)
+      // Switch back to testUserId and vote on author's publication (uses quota, not wallet)
       (global as any).testUserId = testUserId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
@@ -298,14 +370,19 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         comment: 'Test comment',
       });
 
-      // Verify total quota used by testUserId is 3 (1 for publication + 2 for vote)
+      // Verify quota was used for voting (2 quota)
       const quota = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
 
-      expect(quota.used).toBe(3);
-      expect(quota.remaining).toBe(7);
+      expect(quota.used).toBe(2);
+      expect(quota.remaining).toBe(8);
+
+      // Verify wallet balance didn't change for voting (still balanceAfterPost)
+      const walletAfterVote = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceAfterVote = walletAfterVote ? walletAfterVote.getBalance() : 0;
+      expect(balanceAfterVote).toBe(balanceAfterPost);
     });
   });
 
@@ -476,7 +553,41 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     it('should track quota from publications, polls, votes, and poll casts together', async () => {
       (global as any).testUserId = testUserId;
 
-      // Create publication by testUserId (1 quota)
+      // Add wallet balance for testUserId
+      await walletService.addTransaction(
+        testUserId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
+      // Add wallet balance for testAuthorId
+      await walletService.addTransaction(
+        testAuthorId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
+      // Create publication by testUserId (uses wallet, not quota)
       await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Test Publication',
@@ -536,14 +647,15 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         },
       });
 
-      // Verify total quota used by testUserId is 5 (1 + 1 + 2 + 1)
+      // Verify total quota used by testUserId is 3 (0 for publications + 1 for poll + 2 for vote + 1 for poll cast)
+      // Publications now use wallet, not quota
       const quota = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
 
-      expect(quota.used).toBe(5);
-      expect(quota.remaining).toBe(5);
+      expect(quota.used).toBe(3);
+      expect(quota.remaining).toBe(7);
     });
   });
 });
