@@ -79,6 +79,13 @@ describe('Poll Edit and Lead Permissions E2E', () => {
         name: 'Test Community',
         typeTag: 'custom',
         members: [],
+        settings: {
+          // Keep this suite focused on edit/delete permissions, not payment/quota economics.
+          postCost: 0,
+          pollCost: 0,
+          currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          dailyEmission: 10,
+        },
         postingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
           requiresTeamMembership: false,
@@ -92,6 +99,13 @@ describe('Poll Edit and Lead Permissions E2E', () => {
         name: 'Other Community',
         typeTag: 'custom',
         members: [],
+        settings: {
+          // Keep this suite focused on edit/delete permissions, not payment/quota economics.
+          postCost: 0,
+          pollCost: 0,
+          currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          dailyEmission: 10,
+        },
         postingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
           requiresTeamMembership: false,

@@ -104,6 +104,9 @@ describe('Favorite vote notifications (E2E)', () => {
       settings: {
         editWindowMinutes: 30,
         allowEditByOthers: true,
+        // This suite focuses on vote/favorite notification aggregation, not publication payment.
+        // publications.create defaults postCost to 1 when unset, which requires author wallet funding.
+        postCost: 0,
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         dailyEmission: 10,
       },

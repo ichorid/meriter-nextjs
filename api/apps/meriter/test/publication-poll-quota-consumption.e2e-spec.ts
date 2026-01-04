@@ -647,15 +647,15 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         },
       });
 
-      // Verify total quota used by testUserId is 3 (0 for publications + 1 for poll + 2 for vote + 1 for poll cast)
+      // Verify total quota used by testUserId is 4 (0 for publications + 1 for poll + 2 for vote + 1 for poll cast)
       // Publications now use wallet, not quota
       const quota = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
 
-      expect(quota.used).toBe(3);
-      expect(quota.remaining).toBe(7);
+      expect(quota.used).toBe(4);
+      expect(quota.remaining).toBe(6);
     });
   });
 });

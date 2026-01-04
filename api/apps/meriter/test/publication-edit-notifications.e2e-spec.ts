@@ -97,6 +97,8 @@ describe('Publication edit notifications (E2E)', () => {
       settings: {
         editWindowMinutes: 30,
         allowEditByOthers: true,
+        // Notifications tests shouldn't depend on wallet funding. publications.create defaults postCost to 1 when unset.
+        postCost: 0,
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         dailyEmission: 10,
       },

@@ -85,6 +85,9 @@ describe('Publication and Comment Edit Permissions', () => {
         settings: {
           editWindowMinutes: 30,
           allowEditByOthers: false,
+          // Permission tests shouldn't be coupled to payment mechanics.
+          // publications.create defaults postCost to 1 when unset, which requires wallet funding.
+          postCost: 0,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -108,6 +111,8 @@ describe('Publication and Comment Edit Permissions', () => {
         settings: {
           editWindowMinutes: 30,
           allowEditByOthers: false,
+          // Keep this suite focused on edit/delete permissions, not wallet funding.
+          postCost: 0,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',

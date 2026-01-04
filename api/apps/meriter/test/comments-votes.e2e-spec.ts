@@ -110,16 +110,30 @@ describe('Comments and Votes Integration (e2e)', () => {
       { id: uid(), userId: voterId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    await walletModel.create({
-      id: uid(),
-      userId: voterId,
-      communityId,
-      balance: 100,
-      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-      lastUpdated: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // publications.create charges community.settings.postCost from the author's wallet.
+    // This suite focuses on vote-comments listing, so seed wallets to keep setup unblocked.
+    await walletModel.create([
+      {
+        id: uid(),
+        userId: voterId,
+        communityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId: authorId,
+        communityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
 
     (global as any).testUserId = authorId;
     const publication = await trpcMutation(app, 'publications.create', {

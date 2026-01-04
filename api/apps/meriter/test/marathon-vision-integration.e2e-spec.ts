@@ -150,17 +150,43 @@ describe('Marathon/Future Vision integration (e2e)', () => {
       { id: uid(), userId: authorId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // Wallet for voter in future-vision (wallet voting)
-    await walletModel.create({
-      id: uid(),
-      userId: voterId,
-      communityId: visionCommunityId,
-      balance: 100,
-      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-      lastUpdated: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    // publications.create now requires wallet merits when community.settings.postCost is unset
+    // (defaults to 1). This test focuses on special-group voting semantics, so we seed wallets
+    // to keep publication creation unblocked without changing community settings.
+    await walletModel.create([
+      // Wallet for voter in future-vision (wallet voting)
+      {
+        id: uid(),
+        userId: voterId,
+        communityId: visionCommunityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      // Wallets for author so they can create publications in both communities
+      {
+        id: uid(),
+        userId: authorId,
+        communityId: marathonCommunityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId: authorId,
+        communityId: visionCommunityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
 
     // Create a publication in marathon-of-good by author
     (global as any).testUserId = authorId;
