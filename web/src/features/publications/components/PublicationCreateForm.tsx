@@ -710,6 +710,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               onChange={setCategories}
               label={t('fields.categories')}
               helperText={t('fields.categoriesHelp')}
+              maxCategories={2}
             />
           )}
 

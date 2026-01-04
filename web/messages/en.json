@@ -843,7 +843,7 @@
                 "hashtagsHelp": "Add up to 10 hashtags. Separators: semicolon (;) or comma (,).",
                 "categories": "Categories",
                 "selectCategories": "Select categories",
-                "categoriesHelp": "Select one or more categories for your post",
+                "categoriesHelp": "Select up to two categories for your post",
                 "noCategoriesAvailable": "No categories available",
                 "selectedCategories": "Selected: {count}",
                 "characters": "characters",
