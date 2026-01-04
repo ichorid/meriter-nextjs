@@ -13,6 +13,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Post edit time window (minutes)', () => {
   jest.setTimeout(60000);
@@ -24,6 +25,7 @@ describe('Post edit time window (minutes)', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   let communityId: string;
   let authorId: string;
@@ -50,6 +52,7 @@ describe('Post edit time window (minutes)', () => {
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletService = app.get(WalletService);
 
     communityId = uid();
     authorId = uid();
@@ -99,6 +102,10 @@ describe('Post edit time window (minutes)', () => {
       createdAt: now,
       updatedAt: now,
     });
+
+    // Set up wallet balance for author
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {

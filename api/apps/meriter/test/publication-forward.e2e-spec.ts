@@ -5,6 +5,7 @@ import { uid } from 'uid';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Publication Forward E2E', () => {
   jest.setTimeout(120000);
@@ -36,6 +37,7 @@ describe('Publication Forward E2E', () => {
   let connection: any;
   let communityService: CommunityService;
   let userService: UserService;
+  let walletService: WalletService;
   // (unused) keep available for future assertions:
   // let userCommunityRoleService: UserCommunityRoleService;
   // let quotaUsageService: QuotaUsageService;
@@ -59,6 +61,7 @@ describe('Publication Forward E2E', () => {
     
     communityService = app.get(CommunityService);
     userService = app.get(UserService);
+    walletService = app.get(WalletService);
     // userCommunityRoleService = app.get(UserCommunityRoleService);
     // quotaUsageService = app.get(QuotaUsageService);
     // notificationService = app.get(NotificationService);
@@ -229,17 +232,52 @@ describe('Publication Forward E2E', () => {
   });
 
   beforeEach(async () => {
-    // Clear publications, quota usage, and notifications between tests
+    // Clear publications, quota usage, notifications, and transactions between tests
     // Use connection directly to access collections
     await connection.db.collection('publications').deleteMany({});
     await connection.db.collection('quota_usage').deleteMany({});
     await connection.db.collection('notifications').deleteMany({});
     await connection.db.collection('votes').deleteMany({});
     await connection.db.collection('poll_casts').deleteMany({});
+    await connection.db.collection('transactions').deleteMany({});
   });
 
   describe('Non-lead propose forward flow', () => {
     it('should allow participant to propose forward, lead to confirm, and create copy in target', async () => {
+      // Add wallet balances BEFORE creating publications
+      // Author needs wallet balance to create publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+      // Participant needs wallet balance to propose forward
+      await walletService.addTransaction(
+        participantId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Author creates a post (as in real UI: create -> view -> someone else proposes forward)
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -272,15 +310,23 @@ describe('Publication Forward E2E', () => {
       expect(pendingPub.forwardTargetCommunityId).toBe(marathonCommunityId);
       expect(pendingPub.forwardProposedBy).toBe(participantId);
 
-      // Verify quota was consumed
-      const quotaUsage = await connection.db.collection('quota_usage').findOne({
-        userId: participantId,
-        communityId: teamCommunityId,
-        usageType: 'forward_proposal',
-        referenceId: publicationId,
-      });
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(1);
+      // Verify wallet transaction was created (forwarding now uses wallet)
+      const wallet = await walletService.getWallet(participantId, teamCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'forward_proposal',
+            referenceId: publicationId,
+          })
+          .toArray();
+
+        expect(transactions.length).toBeGreaterThan(0);
+        const transaction = transactions.find(t => t.type === 'withdrawal');
+        expect(transaction).toBeDefined();
+        expect(transaction?.amount).toBe(1);
+      }
 
       // Lead opens notifications page and sees the forward proposal notification (unread)
       setTestUserId(leadId);
@@ -340,6 +386,38 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should allow lead to reject forward proposal and clear status', async () => {
+      // Add wallet balances BEFORE creating publications
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+      await walletService.addTransaction(
+        participantId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Author creates a post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -387,6 +465,23 @@ describe('Publication Forward E2E', () => {
 
   describe('Lead direct forward flow', () => {
     it('should allow lead to forward directly without proposal', async () => {
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Author creates a post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -432,6 +527,23 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should forward project posts with all taxonomy fields', async () => {
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Create a project post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -492,6 +604,23 @@ describe('Publication Forward E2E', () => {
         { id: uid(), userId: participantId, communityId: regularCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
       ]);
 
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        regularCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Author creates post in regular community
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -519,6 +648,23 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should reject forward proposal for poll posts', async () => {
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Create a poll post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -546,6 +692,23 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should reject forward proposal when lead tries to use proposeForward', async () => {
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Create a post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -572,7 +735,24 @@ describe('Publication Forward E2E', () => {
       });
     });
 
-    it('should reject forward when insufficient quota', async () => {
+    it('should reject forward when insufficient wallet merits', async () => {
+      // Add wallet balance for author to create publication (participant intentionally has no balance)
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
       // Create a post
       setTestUserId(authorId);
       const created = await trpcMutation(app, 'publications.create', {
@@ -580,21 +760,20 @@ describe('Publication Forward E2E', () => {
         content: 'Test post',
         type: 'text',
         postType: 'basic',
-        title: 'Insufficient Quota Test',
-        description: 'Insufficient quota description',
+        title: 'Insufficient Wallet Test',
+        description: 'Insufficient wallet description',
       });
       const publicationId = created.id as string;
 
-      // Consume all quota
-      await connection.db.collection('quota_usage').insertOne({
-        id: uid(),
+      // Ensure wallet has insufficient balance (should be 0 or less than forwardCost which is 1)
+      // Clear any existing wallet balance for participant by deleting the wallet
+      await connection.db.collection('wallets').deleteMany({
         userId: participantId,
         communityId: teamCommunityId,
-        amountQuota: 100, // Use all quota
-        usageType: 'vote',
-        referenceId: uid(),
-        createdAt: new Date(),
       });
+      const walletBefore = await walletService.getWallet(participantId, teamCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeLessThan(1);
 
       // Try to propose forward (should fail)
       setTestUserId(participantId);
@@ -606,7 +785,7 @@ describe('Publication Forward E2E', () => {
 
         expect(result.error).toBeDefined();
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.message).toContain('Insufficient wallet merits');
       });
     });
 
@@ -625,6 +804,23 @@ describe('Publication Forward E2E', () => {
           allowedRoles: ['lead'], // Only leads can post
         },
       });
+
+      // Add wallet balance for author BEFORE creating publication
+      await walletService.addTransaction(
+        authorId,
+        teamCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
       // Create a post
       setTestUserId(authorId);

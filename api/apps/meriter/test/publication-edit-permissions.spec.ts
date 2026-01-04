@@ -15,6 +15,7 @@ import { ApiResponseInterceptor } from '../src/common/interceptors/api-response.
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -27,6 +28,7 @@ describe('Publication and Comment Edit Permissions', () => {
   let userModel: Model<UserDocument>;
   let commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   // Test user IDs
   let authorId: string;
@@ -68,6 +70,7 @@ describe('Publication and Comment Edit Permissions', () => {
     const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     commentModel = connection.model<CommentDocument>(CommentSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletService = app.get(WalletService);
 
     // Initialize test IDs
     authorId = uid();
@@ -192,6 +195,17 @@ describe('Publication and Comment Edit Permissions', () => {
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
+
+    // Set up wallet balances for all users to allow publication creation
+    // Publication creation requires 1 wallet merit
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(authorId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherLeadId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
@@ -598,6 +612,11 @@ describe('Publication and Comment Edit Permissions', () => {
         { id: uid(), userId: teamParticipant1Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
         { id: uid(), userId: teamParticipant2Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       ]);
+
+      // Set up wallet balances for team participants
+      const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+      await walletService.addTransaction(teamParticipant1Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+      await walletService.addTransaction(teamParticipant2Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
     });
 
     it('should allow team participant to edit another team participant\'s publication', async () => {
@@ -643,6 +662,10 @@ describe('Publication and Comment Edit Permissions', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
+
+      // Set up wallet balance for team lead to allow voting
+      const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+      await walletService.addTransaction(teamLeadId, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
 
       // Vote on the publication
       (global as any).testUserId = teamLeadId;

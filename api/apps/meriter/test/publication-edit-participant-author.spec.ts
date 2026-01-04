@@ -12,6 +12,7 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Publication Edit - Participant Author Scenario', () => {
   jest.setTimeout(60000);
@@ -23,6 +24,7 @@ describe('Publication Edit - Participant Author Scenario', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   // Test user IDs
   let participantAuthorId: string;
@@ -58,6 +60,7 @@ describe('Publication Edit - Participant Author Scenario', () => {
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
     const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletService = app.get(WalletService);
 
     // Initialize test IDs
     participantAuthorId = uid();
@@ -123,6 +126,10 @@ describe('Publication Edit - Participant Author Scenario', () => {
         updatedAt: now 
       },
     ]);
+
+    // Set up wallet balance for participant author
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(participantAuthorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {

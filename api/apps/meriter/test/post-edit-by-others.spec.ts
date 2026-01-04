@@ -13,6 +13,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Post editing by other participants (allowEditByOthers)', () => {
   jest.setTimeout(60000);
@@ -24,6 +25,7 @@ describe('Post editing by other participants (allowEditByOthers)', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   let communityId: string;
   let authorId: string;
@@ -52,6 +54,7 @@ describe('Post editing by other participants (allowEditByOthers)', () => {
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletService = app.get(WalletService);
 
     communityId = uid();
     authorId = uid();
@@ -118,6 +121,12 @@ describe('Post editing by other participants (allowEditByOthers)', () => {
       { id: uid(), userId: otherParticipantId, communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: leadId, communityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
+
+    // Set up wallet balances for all users
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherParticipantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {

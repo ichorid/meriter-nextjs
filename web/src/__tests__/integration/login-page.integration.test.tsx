@@ -132,6 +132,7 @@ jest.mock('@/config', () => ({
     },
   },
   isFakeDataMode: jest.fn(() => false),
+  isTestAuthMode: jest.fn(() => false),
 }));
 
 // Mock OAuth providers

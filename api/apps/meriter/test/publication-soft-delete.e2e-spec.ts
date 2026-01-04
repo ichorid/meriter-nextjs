@@ -223,6 +223,14 @@ describe('Publication Soft Delete E2E', () => {
         updatedAt: new Date(),
       },
     ]);
+
+    // Set up wallet balances for all users to allow publication creation
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherLeadId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
@@ -291,9 +299,10 @@ describe('Publication Soft Delete E2E', () => {
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Wallet should be credited to author (effective beneficiary when no explicit beneficiary is set)
+      // Balance: 10 initial - 1 (publication creation) + 5 (withdrawal) = 14
       const wallet = await walletService.getWallet(authorId, communityId);
       expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(5);
+      expect(wallet?.getBalance()).toBe(14);
 
       // Withdrawal total should match the original positive balance
       const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
@@ -331,12 +340,16 @@ describe('Publication Soft Delete E2E', () => {
       (global as any).testUserId = superadminId;
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
+      // Beneficiary wallet: 10 initial (from beforeEach) + 7 (withdrawal) = 17
       const beneficiaryWallet = await walletService.getWallet(participantId, communityId);
       expect(beneficiaryWallet).toBeTruthy();
-      expect(beneficiaryWallet?.getBalance()).toBe(7);
+      expect(beneficiaryWallet?.getBalance()).toBe(17);
 
+      // Author wallet exists because publication creation required 1 merit
+      // Balance should be 9 (10 initial - 1 for publication creation), not credited with withdrawal
       const authorWallet = await walletService.getWallet(authorId, communityId);
-      expect(authorWallet?.getBalance() || 0).toBe(0);
+      expect(authorWallet).toBeTruthy();
+      expect(authorWallet?.getBalance()).toBe(9);
     });
 
     it('should only auto-withdraw remaining balance when some amount was withdrawn manually before deletion', async () => {
@@ -362,9 +375,10 @@ describe('Publication Soft Delete E2E', () => {
       (global as any).testUserId = leadId;
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
+      // Balance calculation: 10 initial - 1 (publication creation) + 3 (manual withdrawal) + 7 (auto-withdrawal) = 19
       const wallet = await walletService.getWallet(authorId, communityId);
       expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(10);
+      expect(wallet?.getBalance()).toBe(19);
 
       const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
         'publication_withdrawal',
@@ -388,8 +402,11 @@ describe('Publication Soft Delete E2E', () => {
       );
       expect(totalWithdrawn).toBe(0);
 
+      // Wallet exists because publication creation required 1 merit, but no withdrawal occurred
+      // Balance should be 9 (10 initial - 1 for publication creation)
       const wallet = await walletService.getWallet(authorId, communityId);
-      expect(wallet).toBeNull();
+      expect(wallet).toBeTruthy();
+      expect(wallet?.getBalance()).toBe(9);
     });
 
     it('should auto-withdraw marathon-of-good publication to Future Vision wallet', async () => {
@@ -437,6 +454,10 @@ describe('Publication Soft Delete E2E', () => {
         { id: uid(), userId: participantId, communityId: marathonCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
       ]);
 
+      // Add wallet balance for author in marathon community to allow publication creation
+      const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+      await walletService.addTransaction(authorId, marathonCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+
       // Create publication in marathon community
       (global as any).testUserId = authorId;
       const created = await trpcMutation(app, 'publications.create', createTestPublication(marathonCommunityId, authorId));
@@ -460,8 +481,11 @@ describe('Publication Soft Delete E2E', () => {
       expect(fvWallet).toBeTruthy();
       expect(fvWallet?.getBalance()).toBe(5);
 
+      // Marathon wallet should exist (was created for publication creation) but balance should not increase
+      // Publication creation cost 1 merit, so balance should be 9 (10 - 1), not credited with withdrawal
       const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
-      expect(marathonWallet).toBeNull();
+      expect(marathonWallet).toBeTruthy();
+      expect(marathonWallet?.getBalance()).toBe(9); // 10 initial - 1 for publication creation, withdrawal went to Future Vision
     });
 
     it('should exclude deleted publications from getAll query', async () => {
