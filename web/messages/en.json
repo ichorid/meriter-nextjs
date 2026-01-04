@@ -88,12 +88,17 @@
         "account": "Account",
         "info": "Info",
         "meritsAndQuota": "Merits & Quota",
-        "meritsAndQuotaDescription": "Merits are the currency of Meriter, needed to rate and comment on posts.\nIn each community, you have your own merits of two types:",
+        "meritsAndQuotaDescription": "Merits are the currency of Meriter, needed to rate and comment on posts. In each community, merits are separate.\nThere is an exception: Marathon of Good merits can be used in Image of the Future (see game rules on the \"About\" page).\nIn this community, you have access to the following types of merits:",
         "quotaExplanation": "Merits you receive daily. If you don't use them by the end of the day, they expire.",
         "permanentMeritsExplanation": "Permanent merits you received from other community members through your posts. They don't expire, you can use them whenever you want.",
+        "permanentMeritsWallet": "Permanent merits (wallet)",
         "andMoreMerits": "and {count} more merits",
         "youHave": "You have",
-        "youHaveMerits": "You have {count} merits"
+        "youHaveMerits": "You have {count} merits",
+        "sort": {
+            "recent": "By Date",
+            "voted": "By Rating"
+        }
     },
     "home": {
         "breadcrumb": "Home",
@@ -253,6 +258,10 @@
     "shared": {
         "balance": "Balance:",
         "withdraw": "Withdraw merits",
+        "withdrawButton": "Withdraw",
+        "withdrawHint": "Withdrawing merits from a post reduces its rating. The merits will be added to your wallet and can be used for voting.",
+        "availableMore": "Available more",
+        "addMerits": "Add {amount} merits",
         "vote": "Vote",
         "share": "Share",
         "comments": "Votes",
@@ -339,7 +348,7 @@
         "hint": {
             "agreeToTerms": "By clicking the button and confirming login, I agree to the",
             "termsOfService": "Terms of Service",
-            "and": "and",
+            "and": "and consent to the",
             "personalData": "processing of personal data"
         },
         "fillProfile": "Fill Profile",
@@ -1080,9 +1089,9 @@
     "registration": {
         "title": "Registration",
         "authTitle": "Authentication",
-        "inviteDescription": "Enter your invite code to begin registration",
-        "inviteCodeLabel": "Invite Code",
-        "inviteCodePlaceholder": "Enter invite code",
+        "inviteDescription": "Invite code is optional. It is used to assign a role (e.g., Participant or Team Lead). You can register without it. If you receive this code later and want to change your role, you can always enter it on your profile page.",
+        "inviteCodeLabel": "Invite Code (if available)",
+        "inviteCodePlaceholder": "Enter code (optional)",
         "inviteCodeHelperText": "To change your role in the project, enter an invite code. For example, to become a team participant, request a code from its ",
         "inviteCodeHelperLinkText": "Lead",
         "continue": "Continue",
@@ -1228,6 +1237,7 @@
         },
         "invites": {
             "title": "Invite Generation",
+            "description": "Create and manage invitation codes",
             "selectCommunity": "Select Community",
             "community": "Community",
             "inviteGenerated": "Invite generated successfully",
@@ -1243,7 +1253,8 @@
             "superadminToLead": "Superadmin to Lead",
             "leadToParticipant": "Lead to Participant",
             "expires": "Expires",
-            "usedAt": "Used at"
+            "usedAt": "Used at",
+            "noActiveInvites": "No active invites"
         },
         "teamsAndRoles": "Teams & Roles",
         "changeAvatar": "Change avatar",
@@ -1256,7 +1267,7 @@
             "leadToParticipant": "Lead to Participant",
             "superadminToLead": "Superadmin to Lead",
             "leadToParticipantDescription": "Create an invite to add a participant to this team community",
-            "superadminToLeadDescription": "Create an invite to make a user a Lead of this community",
+            "superadminToLeadDescription": "Create an invite to make a user a Lead and create a community that they will manage",
             "targetUserId": "Target User ID",
             "targetUserIdPlaceholder": "Enter target user ID (optional)",
             "targetUserName": "User Name",
