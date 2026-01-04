@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { classList } from "@/shared/lib/classList";
 import { ImageGallery } from "@/components/ui/ImageGallery";
 import { useFeaturesConfig } from "@/hooks/useConfig";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Input } from "@/components/ui/shadcn/input";
@@ -79,9 +79,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     // Sync inputValue when amount changes externally
     React.useEffect(() => {
-        setInputValue(absAmount.toString());
+        if (hideQuota) {
+            // In withdraw mode, use amount directly (always positive)
+            setInputValue(amount.toString());
+        } else {
+            setInputValue(absAmount.toString());
+        }
         setInputSign('');
-    }, [absAmount]);
+    }, [absAmount, amount, hideQuota]);
 
     // Check if wallet can be used for voting
     const canUseWallet = useMemo(() => {
@@ -126,7 +131,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         };
     }, [absAmount, isPositive, quotaRemaining, walletBalance]);
 
-    // Handle input change
+    // Handle input change for text input (voting mode)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         
@@ -231,6 +236,33 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         }
     };
 
+    // Handle input change for number input (withdraw mode)
+    const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        
+        // Allow empty input - reset to 0
+        if (value === '' || value === null || value === undefined) {
+            setInputValue('');
+            setAmount(0);
+            return;
+        }
+        
+        // Parse number
+        const numValue = Number(value);
+        
+        // Handle NaN or invalid values
+        if (isNaN(numValue)) {
+            setInputValue('');
+            setAmount(0);
+            return;
+        }
+        
+        // Clamp to valid range [0, maxPlus]
+        const clampedValue = Math.max(0, Math.min(maxPlus, numValue));
+        setAmount(clampedValue);
+        setInputValue(clampedValue.toString());
+    };
+
     // Handle input focus - clear if zero
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
         if (absAmount === 0) {
@@ -242,25 +274,61 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     // Handle input blur - sync with amount
     const handleInputBlur = () => {
-        setInputValue(absAmount.toString());
+        // For number input (withdraw mode), ensure value is set
+        if (hideQuota) {
+            setInputValue(amount.toString());
+        } else {
+            setInputValue(absAmount.toString());
+        }
     };
 
     // Button handlers
     const handleDecrease = () => {
-        // Can't decrease if no wallet balance (downvotes require wallet merits)
-        if (walletBalance === 0) {
+        // In withdraw mode (hideQuota), only allow positive values
+        if (hideQuota) {
+            const newAmount = Math.max(0, amount - 1);
+            setAmount(newAmount);
+            setInputValue(newAmount.toString());
             return;
         }
+        
         const newAmount = amount - 1;
-        const maxByMerits = -maxAvailableMerits;
-        const minLimit = maxMinus > 0 ? Math.max(-maxMinus, maxByMerits) : maxByMerits;
+        
+        // If going negative, check wallet balance (downvotes require wallet merits)
+        if (newAmount < 0 && walletBalance === 0) {
+            // Can't go negative without wallet balance, but allow decreasing positive values to 0
+            if (amount > 0) {
+                setAmount(0);
+                setInputValue('0');
+                setInputSign('');
+            }
+            return;
+        }
+        
+        // Calculate limits
+        // For positive values, minimum is 0
+        // For negative values, minimum is -maxMinus (if set) or -walletBalance
+        const minLimit = newAmount < 0 
+            ? (maxMinus > 0 ? -maxMinus : -walletBalance)
+            : 0;
+        
         const clampedAmount = Math.max(minLimit, newAmount);
         setAmount(clampedAmount);
         setInputValue(Math.abs(clampedAmount).toString());
+        setInputSign(clampedAmount < 0 ? '-' : '');
     };
 
     const handleIncrease = () => {
         const newAmount = amount + 1;
+        
+        // In withdraw mode (hideQuota), use maxPlus as limit
+        if (hideQuota) {
+            const clampedAmount = Math.min(maxPlus, newAmount);
+            setAmount(clampedAmount);
+            setInputValue(clampedAmount.toString());
+            return;
+        }
+        
         // For upvotes, always use maxAvailableMerits (quota + wallet)
         const maxLimit = isPositive ? maxAvailableMerits : (maxPlus > 0 ? maxPlus : maxAvailableMerits);
         const clampedAmount = Math.min(maxLimit, newAmount);
@@ -275,13 +343,24 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     return (
         <div
             className={classList(
-                "w-full max-w-[400px] bg-base-100 flex flex-col gap-4 shadow-xl overflow-y-auto",
+                "w-full max-w-[400px] bg-base-100 flex flex-col gap-4 shadow-xl overflow-y-auto border border-base-300/50",
                 inline
-                    ? "rounded-xl mx-auto"
-                    : "fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-xl z-50 max-h-[90vh]"
+                    ? "rounded-xl mx-auto relative"
+                    : "rounded-xl max-h-[90vh]"
             )}
             style={{ padding: "20px" }}
         >
+            {/* Close button */}
+            {!inline && (
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-2 text-base-content/50 hover:text-base-content rounded-full hover:bg-base-content/5 transition-colors z-10"
+                    aria-label={tShared("close") || "Close"}
+                >
+                    <X size={20} />
+                </button>
+            )}
+            
             {/* Header */}
             <div className="flex flex-col gap-1">
                 <h2 className="text-xl font-bold text-base-content">
@@ -304,7 +383,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             {/* Decrease Button */}
                             <Button
                                 onClick={handleDecrease}
-                                disabled={maxMinus > 0 && amount <= -maxMinus}
+                                disabled={
+                                    // Disable if:
+                                    // 1. Amount is 0 and no wallet balance (can't go negative)
+                                    // 2. Amount is negative and already at minimum (-maxMinus or -walletBalance)
+                                    (amount === 0 && walletBalance === 0) ||
+                                    (amount < 0 && maxMinus > 0 && amount <= -maxMinus) ||
+                                    (amount < 0 && maxMinus === 0 && amount <= -walletBalance)
+                                }
                                 variant="outline"
                                 size="icon"
                                 className="h-12 w-12 shrink-0"
@@ -381,50 +467,58 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Withdraw Progress Bar (when hideQuota is true) */}
             {hideQuota && (
                 <div className="flex flex-col gap-4">
-                    <div className="bg-base-200 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-base-content/70">
-                                {t("available")}
-                            </span>
-                            <span className="text-sm font-semibold text-base-content">
-                                {maxPlus}
+                    {/* Hint text */}
+                    <p className="text-xs text-base-content/60 leading-relaxed">
+                        {tShared("withdrawHint")}
+                    </p>
+
+                    {/* Amount input with buttons */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2">
+                            <Button
+                                onClick={handleDecrease}
+                                disabled={amount <= 0}
+                                variant="outline"
+                                size="icon"
+                                className="h-12 w-12 shrink-0 border-base-300 hover:bg-base-200 hover:border-base-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Minus className="h-5 w-5" />
+                            </Button>
+
+                            <div className="flex-1">
+                                <Input
+                                    type="number"
+                                    value={inputValue || ''}
+                                    onChange={handleNumberInputChange}
+                                    onFocus={handleInputFocus}
+                                    onBlur={handleInputBlur}
+                                    className={classList(
+                                        "h-12 text-center text-lg font-semibold rounded-xl border-base-300 focus:border-base-content/50",
+                                        "[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
+                                        amount > 0 ? "text-base-content" : "text-base-content/50"
+                                    )}
+                                    min={0}
+                                    max={maxPlus}
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <Button
+                                onClick={handleIncrease}
+                                disabled={absAmount >= maxPlus}
+                                variant="outline"
+                                size="icon"
+                                className="h-12 w-12 shrink-0 border-base-300 hover:bg-base-200 hover:border-base-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Plus className="h-5 w-5" />
+                            </Button>
+                        </div>
+                        {/* Available amount hint - small but noticeable */}
+                        <div className="flex justify-center">
+                            <span className="text-xs font-medium text-base-content/70 bg-base-200/80 px-2 py-0.5 rounded shadow-sm">
+                                {tShared("availableMore")}: {Math.max(0, maxPlus - amount)}
                             </span>
                         </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={handleDecrease}
-                            disabled={amount <= 0 || walletBalance === 0}
-                            variant="outline"
-                            size="icon"
-                            className="h-12 w-12 shrink-0"
-                        >
-                            <Minus className="h-5 w-5" />
-                        </Button>
-
-                        <div className="flex-1 relative">
-                            <Input
-                                type="number"
-                                value={inputValue}
-                                onChange={handleInputChange}
-                                onBlur={handleInputBlur}
-                                className="h-12 text-center text-lg font-semibold"
-                                min={0}
-                                max={maxPlus}
-                                placeholder="0"
-                            />
-                        </div>
-
-                        <Button
-                            onClick={handleIncrease}
-                            disabled={isPositive ? absAmount >= maxAvailableMerits : absAmount >= maxPlus}
-                            variant="outline"
-                            size="icon"
-                            className="h-12 w-12 shrink-0"
-                        >
-                            <Plus className="h-5 w-5" />
-                        </Button>
                     </div>
                 </div>
             )}
@@ -483,17 +577,17 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     }}
                     disabled={isButtonDisabled}
                     className={classList(
-                        "w-full h-8 px-4 text-xs font-medium rounded-lg transition-all active:scale-95",
+                        "w-full h-10 px-4 text-sm font-medium rounded-lg transition-all active:scale-95 shadow-sm",
                         isButtonDisabled
-                            ? "bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed"
-                            : "bg-base-content text-base-100 hover:bg-base-content/90"
+                            ? "bg-base-200 text-base-content/50 cursor-not-allowed border border-base-300"
+                            : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {t("submit")}
+                    {hideQuota ? tShared("withdrawButton") : t("submit")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
-                    <div className="text-error text-sm text-center bg-error/10 rounded-lg p-2">
+                    <div className="text-error text-sm text-center bg-error/10 rounded-lg p-2 border border-error/20">
                         {error}
                     </div>
                 )}

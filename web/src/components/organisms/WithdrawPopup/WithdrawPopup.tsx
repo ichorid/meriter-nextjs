@@ -147,12 +147,13 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
   return (
     <BottomPortal>
-      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
           onClick={handleClose}
         />
-        <VotingPanel
+        <div className="relative z-10">
+          <VotingPanel
           onClose={handleClose}
           amount={formData.amount}
           setAmount={handleAmountChange}
@@ -172,6 +173,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
           hideImages={true}
           title={popupTitle}
         />
+        </div>
       </div>
     </BottomPortal>
   );
