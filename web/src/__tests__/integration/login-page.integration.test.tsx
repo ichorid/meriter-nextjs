@@ -117,10 +117,6 @@ jest.mock('@/config', () => ({
       isTest: true,
       url: 'http://localhost:3000',
     },
-    development: {
-      fakeDataMode: false,
-      testAuthMode: false,
-    },
     telegram: {
       botToken: undefined,
       apiUrl: 'https://api.telegram.org',
@@ -136,7 +132,6 @@ jest.mock('@/config', () => ({
     },
   },
   isFakeDataMode: jest.fn(() => false),
-  isTestAuthMode: jest.fn(() => false),
 }));
 
 // Mock OAuth providers

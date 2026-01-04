@@ -135,7 +135,7 @@ export const BarVoteUnified: React.FC<BarVoteUnifiedProps> = ({
                 <button
                     className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
                         !canVote 
-                            ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed' 
+                            ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed' 
                             : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
                     }`}
                     onClick={handleVoteClick}

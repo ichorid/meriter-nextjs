@@ -585,6 +585,7 @@ export class AuthProviderService {
   }): Promise<{
     user: User;
     hasPendingCommunities: boolean;
+    isNewUser: boolean;
     jwt: string;
   }> {
     this.logger.log(
@@ -606,6 +607,7 @@ export class AuthProviderService {
 
     // Find or create user by provider ID
     let user = await this.userService.getUserByAuthId(provider, providerId);
+    const isNewUser = !user;
 
     if (!user) {
       // Create new user
@@ -657,6 +659,7 @@ export class AuthProviderService {
     return {
       user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
       jwt: jwtToken,
     };
   }

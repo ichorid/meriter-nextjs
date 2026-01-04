@@ -42,7 +42,7 @@ class SmsRuProvider implements SmsProvider {
 
         this.apiUrl = smsConfig.apiUrl;
         this.apiId = smsConfig.apiId || '';
-        //this.from = smsConfig.from || '';
+        this.from = smsConfig.from || '';
         this.testMode = smsConfig.testMode ?? true;
 
         if (!this.apiId && !this.testMode) {

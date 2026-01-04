@@ -549,7 +549,7 @@ export const walletsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       // Check if fake data mode is enabled
-      const fakeDataMode = ctx.configService.get('dev.fakeDataMode', false);
+      const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
       if (!fakeDataMode) {
         throw new TRPCError({
           code: 'FORBIDDEN',

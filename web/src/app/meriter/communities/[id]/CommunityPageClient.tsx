@@ -931,33 +931,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             </p>
                                         )}
                                     </div>
-                                    <div className="flex gap-2 pt-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => {
-                                                setSelectedCategories([]);
-                                                setBOpenFilters(false);
-                                                // Update URL
-                                                const params = new URLSearchParams(searchParams?.toString() ?? '');
-                                                params.delete('categories');
-                                                router.push(`${pathname}?${params.toString()}`);
-                                            }}
-                                            className="flex-1"
-                                        >
-                                            {tCommunities('filters.reset')}
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setBOpenFilters(false);
-                                            }}
-                                            className="flex-1 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
-                                        >
-                                            {tCommunities('filters.apply')}
-                                        </Button>
-                                    </div>
                                 </>
                             )}
                         </>
