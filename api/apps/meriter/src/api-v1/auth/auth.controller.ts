@@ -5,6 +5,7 @@ import {
   Body,
   Res,
   Req,
+  Param,
   UseGuards,
   Logger,
   ForbiddenException,
@@ -134,10 +135,11 @@ export class AuthController {
   @Post('fake')
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode is enabled
+      // Check if fake data mode or test auth mode is enabled
       const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
-      if (!fakeDataMode) {
-        throw new ForbiddenException('Fake data mode is not enabled');
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!fakeDataMode && !testAuthMode) {
+        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
       }
 
       this.logger.log('Fake authentication request received');
@@ -207,13 +209,118 @@ export class AuthController {
     }
   }
 
+  /**
+   * Mock authentication endpoints for test auth mode
+   * These endpoints create real users in the database but bypass OAuth/SMS/Email flows
+   */
+  @Post('mock/:provider')
+  async authenticateMock(
+    @Param('provider') provider: string,
+    @Req() req: any,
+    @Res() res: any,
+    @Body() body: any,
+  ) {
+    try {
+      // Check if test auth mode is enabled
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!testAuthMode) {
+        throw new ForbiddenException('Test auth mode is not enabled');
+      }
+      this.logger.log(`Mock authentication request for provider: ${provider}`);
+
+      let result: {
+        user: any;
+        hasPendingCommunities: boolean;
+        isNewUser: boolean;
+        jwt: string;
+      };
+
+      switch (provider) {
+        case 'google':
+        case 'yandex':
+        case 'vk':
+        case 'telegram':
+        case 'apple':
+        case 'twitter':
+        case 'instagram':
+        case 'sber':
+        case 'mailru': {
+          const identifier = body.identifier || `mock_${provider}_user@example.com`;
+          const displayName = body.displayName || identifier.split('@')[0];
+          result = await this.authService.authenticateWithProvider({
+            provider,
+            providerId: identifier,
+            email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
+            firstName: displayName.split(' ')[0] || 'User',
+            lastName: displayName.split(' ').slice(1).join(' ') || '',
+            displayName,
+            avatarUrl: undefined,
+          });
+          break;
+        }
+        case 'sms': {
+          const phoneNumber = body.phoneNumber;
+          if (!phoneNumber) {
+            throw new Error('Phone number is required');
+          }
+          result = await this.authService.authenticateSms(phoneNumber);
+          break;
+        }
+        case 'email': {
+          const email = body.email;
+          if (!email) {
+            throw new Error('Email is required');
+          }
+          result = await this.authService.authenticateEmail(email);
+          break;
+        }
+        case 'phone': {
+          const phoneNumber = body.phoneNumber;
+          if (!phoneNumber) {
+            throw new Error('Phone number is required');
+          }
+          result = await this.authService.authenticateSms(phoneNumber); // Reuse SMS logic
+          break;
+        }
+        case 'passkey': {
+          const credentialId = body.credentialId || `passkey_${Date.now()}`;
+          // For passkey, we'll use a mock identifier
+          result = await this.authService.authenticateEmail(`passkey_${credentialId}@example.com`);
+          break;
+        }
+        default:
+          throw new Error(`Unsupported provider: ${provider}`);
+      }
+
+      // Set JWT cookie
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+        jwt: result.jwt,
+      });
+    } catch (error: any) {
+      this.logger.error(`Mock authentication error: ${error.message}`, error.stack);
+      throw new UnauthorizedError(error.message || 'Mock authentication failed');
+    }
+  }
+
   @Post('fake/superadmin')
   async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode is enabled
+      // Check if fake data mode or test auth mode is enabled
       const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
-      if (!fakeDataMode) {
-        throw new ForbiddenException('Fake data mode is not enabled');
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!fakeDataMode && !testAuthMode) {
+        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
       }
 
       this.logger.log('Fake superadmin authentication request received');

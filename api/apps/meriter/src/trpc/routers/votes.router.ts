@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
+import { Logger } from '@nestjs/common';
+import { COMMUNITY_ROLE_VIEWER, GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
+
+const logger = new Logger('VotesRouter');
 
 /**
  * Helper function to process withdrawal and credit wallet
@@ -220,12 +224,27 @@ async function createVoteLogic(
   // Check permissions if voting on a publication
   // Note: Comment voting (targetType 'vote') permissions are handled separately if needed
   if (input.targetType === 'publication') {
-    const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
-    if (!canVote) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You do not have permission to vote on this publication',
-      });
+    // Allow superadmin to vote on own posts in test auth mode (for testing withdrawal functionality)
+    // Use dot notation like in wallets.router.ts
+    const testAuthMode = ctx.configService?.get('dev.testAuthMode', false) ?? false;
+    const userGlobalRole = ctx.user?.globalRole;
+    const isSuperadmin = userGlobalRole === GLOBAL_ROLE_SUPERADMIN || userGlobalRole === 'superadmin';
+    const skipPermissionCheck = testAuthMode && isSuperadmin;
+    
+    // Debug logging
+    logger.debug(`[createVoteLogic] testAuthMode=${testAuthMode}, isSuperadmin=${isSuperadmin}, userGlobalRole=${userGlobalRole}, skipPermissionCheck=${skipPermissionCheck}, userId=${ctx.user?.id}`);
+    
+    if (!skipPermissionCheck) {
+      const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
+      logger.debug(`[createVoteLogic] canVote=${canVote} for userId=${ctx.user.id}, targetId=${input.targetId}`);
+      if (!canVote) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to vote on this publication',
+        });
+      }
+    } else {
+      logger.debug(`[createVoteLogic] Skipping permission check for superadmin in test auth mode`);
     }
   }
 
@@ -456,6 +475,148 @@ export const votesRouter = router({
         code: 'NOT_IMPLEMENTED',
         message: 'Vote deletion not implemented yet',
       });
+    }),
+
+  /**
+   * Create vote from fake user (dev mode only, superadmin only)
+   * Creates a vote from a fake user for testing purposes
+   */
+  createFromFakeUser: protectedProcedure
+    .input(VoteWithCommentDtoSchema.merge(z.object({
+      publicationId: z.string(),
+      communityId: z.string(),
+    })))
+    .mutation(async ({ ctx, input }) => {
+      // Check if test auth mode is enabled and user is superadmin
+      // Use dot notation like in createVoteLogic
+      const testAuthMode = ctx.configService?.get('dev.testAuthMode', false) ?? false;
+      const fakeDataMode = ctx.configService?.get('dev.fakeDataMode', false) ?? false;
+      const userGlobalRole = ctx.user?.globalRole;
+      const isSuperadmin = userGlobalRole === GLOBAL_ROLE_SUPERADMIN || userGlobalRole === 'superadmin';
+      
+      // Debug logging
+      logger.debug(`[createFromFakeUser] testAuthMode=${testAuthMode}, fakeDataMode=${fakeDataMode}, isSuperadmin=${isSuperadmin}, userGlobalRole=${userGlobalRole}, userId=${ctx.user?.id}`);
+      
+      // Allow if either testAuthMode or fakeDataMode is enabled (for compatibility)
+      const isDevModeEnabled = testAuthMode || fakeDataMode;
+      
+      if (!isDevModeEnabled || !isSuperadmin) {
+        logger.warn(`[createFromFakeUser] Access denied: isDevModeEnabled=${isDevModeEnabled}, isSuperadmin=${isSuperadmin}, userGlobalRole=${userGlobalRole}`);
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'This endpoint is only available for superadmins in test auth mode',
+        });
+      }
+
+      // Create or get a fake user for voting
+      const fakeUserId = `fake_vote_user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const fakeUserResult = await ctx.authService.authenticateFakeUser(fakeUserId);
+      let fakeUser = fakeUserResult.user;
+      
+      // Set fake user as superadmin to avoid voting restrictions
+      await ctx.userService.updateGlobalRole(fakeUser.id, 'superadmin');
+      
+      // Re-fetch user to get updated role
+      const updatedFakeUser = await ctx.userService.getUser(fakeUser.id);
+      if (updatedFakeUser) {
+        fakeUser = JwtService.mapUserToV1Format(updatedFakeUser);
+        logger.debug(`[createFromFakeUser] Fake user ${fakeUser.id} set as superadmin`);
+      } else {
+        logger.warn(`[createFromFakeUser] Failed to retrieve updated fake user ${fakeUser.id}, using original user`);
+      }
+
+      // Ensure fake user has sufficient balance by adding merits to wallet
+      const quotaAmount = input.quotaAmount ?? 0;
+      const walletAmount = input.walletAmount ?? 0;
+      const totalAmount = quotaAmount + walletAmount;
+
+      // For dev votes, we use walletAmount for both positive and negative votes
+      // to avoid quota limitations. Convert quotaAmount to walletAmount if needed.
+      const effectiveWalletAmount = quotaAmount > 0 ? quotaAmount : walletAmount;
+      const effectiveQuotaAmount = quotaAmount > 0 ? 0 : 0; // Always use wallet for dev votes
+
+      // Get community and currency once
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      if (effectiveWalletAmount > 0) {
+        // Add merits to fake user's wallet to ensure they can vote
+        await ctx.walletService.addTransaction(
+          fakeUser.id,
+          input.communityId,
+          'credit',
+          effectiveWalletAmount + 100, // Add extra for safety
+          'personal',
+          'dev_vote_setup',
+          'dev',
+          currency,
+          'Dev vote setup - adding merits for fake user',
+        );
+      }
+
+      // Create vote from fake user
+      // Use walletAmount for both positive and negative votes to avoid quota limitations
+      const vote = await ctx.voteService.createVote(
+        fakeUser.id,
+        input.targetType || 'publication',
+        input.targetId || input.publicationId,
+        effectiveQuotaAmount, // Always 0 for dev votes
+        effectiveWalletAmount, // Use wallet for all votes
+        input.direction || 'up',
+        input.comment || '[DEV] Vote from fake user',
+        input.communityId,
+        input.images,
+      );
+
+      // Update publication metrics if voting on a publication
+      if ((input.targetType || 'publication') === 'publication') {
+        await ctx.publicationService.voteOnPublication(
+          input.targetId || input.publicationId,
+          fakeUser.id,
+          effectiveWalletAmount, // Use effective wallet amount
+          input.direction || 'up',
+        );
+      }
+
+      // Deduct from wallet if wallet amount was used
+      if (effectiveWalletAmount > 0) {
+        await ctx.walletService.addTransaction(
+          fakeUser.id,
+          input.communityId,
+          'debit',
+          effectiveWalletAmount, // Use effective wallet amount
+          'personal',
+          'publication_vote',
+          input.targetId || input.publicationId,
+          currency, // Use currency already fetched above
+          `Vote on publication ${input.targetId || input.publicationId}`,
+        );
+      }
+
+      return {
+        id: vote.id,
+        targetType: vote.targetType,
+        targetId: vote.targetId,
+        userId: vote.userId,
+        direction: vote.direction,
+        amountQuota: vote.amountQuota,
+        amountWallet: vote.amountWallet,
+        communityId: vote.communityId,
+        comment: vote.comment,
+        images: vote.images || [],
+        createdAt: vote.createdAt.toISOString(),
+        updatedAt: vote.updatedAt?.toISOString() || vote.createdAt.toISOString(),
+      };
     }),
 
   /**

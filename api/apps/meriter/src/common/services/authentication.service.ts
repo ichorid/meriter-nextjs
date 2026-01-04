@@ -96,6 +96,29 @@ export class JwtVerificationService {
    * @returns Authentication result with user or error details
    */
   async authenticateFromJwt(jwt: string): Promise<AuthenticationResult> {
+    // Check if test auth mode is enabled and this is a mock token
+    const testAuthMode = this.configService.get('dev.testAuthMode', false);
+    if (testAuthMode && jwt.startsWith('mock_jwt_')) {
+      // Extract user ID from mock token format: mock_jwt_{userId}_{provider}_{timestamp}
+      const parts = jwt.split('_');
+      if (parts.length >= 4) {
+        const userId = parts.slice(2, -2).join('_'); // Everything between mock_jwt and last two parts
+        const dbUser = await this.userService.getUserById(userId);
+        if (dbUser) {
+          return {
+            user: this.mapUserToAuthenticatedUser(dbUser),
+            jwtPayload: {
+              uid: dbUser.id,
+              authProvider: dbUser.authProvider,
+              authId: dbUser.authId || '',
+              communityTags: dbUser.communityTags || [],
+            },
+          };
+        }
+      }
+      // If user not found, fall through to normal JWT verification
+    }
+
     try {
       const jwtSecret = (this.configService.getOrThrow as any)('jwt.secret') as string;
 

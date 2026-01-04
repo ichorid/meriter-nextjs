@@ -53,7 +53,7 @@ export class AuthProviderService {
     // ConfigService is injected via constructor, use it instead of process.env
     // This ensures proper environment variable loading in all contexts (local, Docker, production)
     const devConfig = this.configService.get('dev');
-    return devConfig?.fakeDataMode === true;
+    return devConfig?.fakeDataMode === true || devConfig?.testAuthMode === true;
   }
 
   // Telegram authentication methods removed: Telegram is fully disabled in this project.

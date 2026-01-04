@@ -164,6 +164,8 @@ export interface FeatureFlagsConfig {
 export interface DevConfig {
   /** Fake data mode enabled (from FAKE_DATA_MODE env var) */
   fakeDataMode: boolean;
+  /** Test auth mode enabled (from TEST_AUTH_MODE env var) */
+  testAuthMode: boolean;
 }
 
 /**
@@ -328,6 +330,7 @@ export default (): AppConfig => {
   const env = process.env;
   const nodeEnv = (env.NODE_ENV || 'development') as 'development' | 'production' | 'test';
   const fakeDataMode = env.FAKE_DATA_MODE === 'true';
+  const testAuthMode = env.TEST_AUTH_MODE === 'true';
 
   return {
     app: {
@@ -424,6 +427,7 @@ export default (): AppConfig => {
     },
     dev: {
       fakeDataMode,
+      testAuthMode,
     },
     // Flat env vars for backward compatibility
     NODE_ENV: nodeEnv,
