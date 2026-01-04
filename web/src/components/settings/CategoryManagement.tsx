@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Loader2, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { cn } from '@/lib/utils';
+import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 
 export const CategoryManagement: React.FC = () => {
   const t = useTranslations('settings.categories');
@@ -24,6 +25,7 @@ export const CategoryManagement: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   const sortedCategories = React.useMemo(() => {
     if (!categories) return [];
@@ -121,19 +123,20 @@ export const CategoryManagement: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-base-content">{t('title') || 'Управление категориями'}</h3>
-          <p className="text-sm text-base-content/60 mt-1">
-            {t('description') || 'Создавайте и управляйте категориями для постов'}
-          </p>
-        </div>
-        {(!categories || categories.length === 0) && (
+    <CollapsibleSection
+      title={t('title')}
+      summary={t('description')}
+      open={isOpen}
+      setOpen={setIsOpen}
+      right={
+        (!categories || categories.length === 0) ? (
           <Button
             variant="outline"
             size="sm"
-            onClick={handleInitializeDefaults}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleInitializeDefaults();
+            }}
             disabled={initializeDefaults.isPending}
             className="gap-2"
           >
@@ -142,125 +145,127 @@ export const CategoryManagement: React.FC = () => {
             ) : (
               <Plus className="w-4 h-4" />
             )}
-            {t('initializeDefaults') || 'Создать 10 категорий по умолчанию'}
+            {t('initializeDefaults')}
           </Button>
-        )}
-      </div>
+        ) : undefined
+      }
+    >
+      <div className="space-y-6">
+        {/* Create new category */}
+        <div className="space-y-2">
+          <Label>{t('createNew')}</Label>
+          <div className="flex gap-2">
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder={t('categoryNamePlaceholder')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isCreating) {
+                  handleCreate();
+                }
+              }}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleCreate}
+              disabled={isCreating || !newCategoryName.trim()}
+              className="gap-2"
+            >
+              {isCreating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
+              {t('create')}
+            </Button>
+          </div>
+        </div>
 
-      {/* Create new category */}
-      <div className="space-y-2">
-        <Label>{t('createNew') || 'Создать новую категорию'}</Label>
-        <div className="flex gap-2">
-          <Input
-            value={newCategoryName}
-            onChange={(e) => setNewCategoryName(e.target.value)}
-            placeholder={t('categoryNamePlaceholder') || 'Название категории'}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isCreating) {
-                handleCreate();
-              }
-            }}
-            className="flex-1"
-          />
-          <Button
-            onClick={handleCreate}
-            disabled={isCreating || !newCategoryName.trim()}
-            className="gap-2"
-          >
-            {isCreating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            {t('create') || 'Создать'}
-          </Button>
+        {/* Categories list */}
+        <div className="space-y-2">
+          <Label>{t('existingCategories')}</Label>
+          {sortedCategories.length === 0 ? (
+            <p className="text-sm text-base-content/60 py-4">
+              {t('noCategories')}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sortedCategories.map((category) => (
+                <div
+                  key={category.id}
+                  className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-100"
+                >
+                  {editingId === category.id ? (
+                    <>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleSaveEdit(category.id);
+                          } else if (e.key === 'Escape') {
+                            handleCancelEdit();
+                          }
+                        }}
+                        className="flex-1"
+                        autoFocus
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSaveEdit(category.id)}
+                        disabled={updateCategory.isPending || !editName.trim()}
+                        className="gap-1"
+                      >
+                        {updateCategory.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelEdit}
+                        disabled={updateCategory.isPending}
+                        className="gap-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm font-medium text-base-content">{category.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleStartEdit(category)}
+                        className="gap-1"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(category.id)}
+                        disabled={deleteCategory.isPending}
+                        className="gap-1 text-error hover:text-error"
+                      >
+                        {deleteCategory.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Categories list */}
-      <div className="space-y-2">
-        <Label>{t('existingCategories') || 'Существующие категории'}</Label>
-        {sortedCategories.length === 0 ? (
-          <p className="text-sm text-base-content/60 py-4">
-            {t('noCategories') || 'Категории пока не созданы'}
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {sortedCategories.map((category) => (
-              <div
-                key={category.id}
-                className="flex items-center gap-2 p-3 rounded-lg border border-base-300 bg-base-100"
-              >
-                {editingId === category.id ? (
-                  <>
-                    <Input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSaveEdit(category.id);
-                        } else if (e.key === 'Escape') {
-                          handleCancelEdit();
-                        }
-                      }}
-                      className="flex-1"
-                      autoFocus
-                    />
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleSaveEdit(category.id)}
-                      disabled={updateCategory.isPending || !editName.trim()}
-                      className="gap-1"
-                    >
-                      {updateCategory.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCancelEdit}
-                      disabled={updateCategory.isPending}
-                      className="gap-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 text-sm font-medium text-base-content">{category.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleStartEdit(category)}
-                      className="gap-1"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDelete(category.id)}
-                      disabled={deleteCategory.isPending}
-                      className="gap-1 text-error hover:text-error"
-                    >
-                      {deleteCategory.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </Button>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+    </CollapsibleSection>
   );
 };
 
