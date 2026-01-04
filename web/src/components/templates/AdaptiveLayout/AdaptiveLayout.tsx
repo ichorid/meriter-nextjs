@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowUp } from 'lucide-react';
-import { Button } from '@/components/ui/shadcn/button';
 import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
@@ -14,7 +13,6 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
-import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 
 // Scroll to top button component
 const ScrollToTopButton: React.FC = () => {
@@ -174,17 +172,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
     return false;
   }, [pathname]);
 
-  // Check if we're on a page where CreateMenu should be hidden
-  const shouldShowCreateMenu = React.useMemo(() => {
-    if (!pathname || !communityId) return false;
-    
-    // Hide on members page, settings page, and create pages
-    const isMembersPage = pathname?.includes('/members');
-    const isSettingsPage = pathname?.includes('/settings');
-    const isCreatePage = pathname?.includes('/create');
-    
-    return !isMembersPage && !isSettingsPage && !isCreatePage;
-  }, [pathname, communityId]);
 
   return (
     <div
@@ -241,13 +228,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           
           {/* Scroll to top button - fixed position in bottom right */}
           <ScrollToTopButton />
-          
-          {/* Desktop Create Post Button - floating action button bottom right */}
-          {shouldShowCreateMenu && (
-            <div className="hidden lg:block fixed bottom-6 right-20 z-50">
-              <CreateMenu communityId={communityId!} />
-            </div>
-          )}
         </div>
 
         {/* Docked inspector column (only used on ultra-wide) */}

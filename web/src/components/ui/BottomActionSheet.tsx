@@ -50,7 +50,7 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
         <div
             ref={ref}
             className={`
-                fixed inset-0 z-[100] flex items-end justify-center sm:items-center
+                fixed inset-0 z-[100] flex items-center justify-center
                 transition-opacity duration-300
                 ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
             `}
@@ -67,13 +67,11 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
             {/* Sheet */}
             <div
                 className={`
-                    relative w-full max-w-lg bg-base-100 rounded-t-3xl sm:rounded-xl shadow-2xl
+                    relative w-full max-w-lg bg-base-100 rounded-xl shadow-2xl
                     transform transition-all duration-300 ease-out
-                    ${visible ? 'translate-y-0 scale-100' : 'translate-y-full sm:translate-y-10 sm:scale-95'}
+                    ${visible ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}
                 `}
             >
-                {/* Handle bar for mobile */}
-                <div className="w-10 h-1 bg-base-content/20 rounded-full mx-auto mt-3 sm:hidden" />
 
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 pt-4 pb-3">
