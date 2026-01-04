@@ -1284,9 +1284,8 @@ export const publicationsRouter = router({
         });
       }
 
-      // Leads can forward posts for free from their community (no quota consumption)
-      // Note: This endpoint is already restricted to leads/superadmins only (line 1116),
-      // so we skip quota check/consumption entirely for direct forwards
+      // Leads can forward posts for free from their community (no wallet cost)
+      // Note: This endpoint is already restricted to leads/superadmins only (line 1116)
 
       // Get original publication data
       const originalAuthorId = publication.getAuthorId.getValue();

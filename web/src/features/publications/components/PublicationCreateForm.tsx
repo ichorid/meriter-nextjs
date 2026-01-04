@@ -389,8 +389,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         });
       } else {
         // Create new publication with wallet payment
-        const walletAmount = requiresPayment ? postCost : 0;
-
         publication = await createPublication.mutateAsync({
           communityId,
           title: title.trim(),
@@ -402,7 +400,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           hashtags: ENABLE_HASHTAGS ? hashtags : [],
           categories: ENABLE_HASHTAGS ? [] : categories,
           images: images.length > 0 ? images : undefined, // Always use array
-          walletAmount: walletAmount > 0 ? walletAmount : undefined,
           impactArea: impactArea || undefined,
           beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
           methods: methods.length > 0 ? methods : undefined,

@@ -7,10 +7,10 @@ import { Document } from 'mongoose';
  * Tracks all quota consumption uniformly across different usage types:
  * - vote: Quota used for voting on publications/comments
  * - poll_cast: Quota used for casting votes on polls
- * - publication_creation: Quota used for creating publications/posts
+ * - publication_creation: Legacy (posting now uses wallet merits, not quota)
  * - poll_creation: Quota used for creating polls
- * - forward: Quota used for forwarding posts (by leads)
- * - forward_proposal: Quota used for proposing to forward posts (by non-leads)
+ * - forward: Legacy (forwarding now uses wallet merits, not quota)
+ * - forward_proposal: Legacy (forwarding now uses wallet merits, not quota)
  */
 
 export interface QuotaUsage {

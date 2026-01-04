@@ -377,25 +377,13 @@ export const CreatePublicationDtoSchema = z.object({
   images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
-  quotaAmount: z.number().int().min(0).optional(),
-  walletAmount: z.number().int().min(0).optional(),
   // Taxonomy fields
   impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
   beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
-}).refine(
-  (data) => {
-    const quota = data.quotaAmount ?? 0;
-    const wallet = data.walletAmount ?? 0;
-    // At least one must be >= 1, or both can be 0 for future-vision communities
-    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
-  },
-  {
-    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
-  }
-)
+})
   .refine(
     (data) => {
       // Require impactArea and stage when postType is 'project'
