@@ -708,8 +708,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             <CategorySelector
               value={categories}
               onChange={setCategories}
-              label={t('fields.categories') || 'Категории'}
-              helperText={t('fields.categoriesHelp') || 'Выберите одну или несколько категорий для вашего поста'}
+              label={t('fields.categories')}
+              helperText={t('fields.categoriesHelp')}
             />
           )}
 

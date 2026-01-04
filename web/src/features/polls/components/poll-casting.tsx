@@ -284,7 +284,7 @@ export const PollCasting = ({
                         />
                         <label className="label">
                             <span className="label-text-alt text-xs text-base-content/60">
-                                {t('available')}: <span className="font-semibold">{quotaRemaining + balance}</span> меритов, из которых <span className="font-semibold">{canUseQuota && quotaRemaining > 0 ? quotaRemaining : 0}</span> – {t('quota')}{canUseQuota && quotaRemaining > 0 && balance > 0 ? <> и <span className="font-semibold">{balance}</span> – {t('points')}</> : balance > 0 && (!canUseQuota || quotaRemaining === 0) ? <> и <span className="font-semibold">{balance}</span> – {t('points')}</> : null}
+                                {t('available')}: <span className="font-semibold">{quotaRemaining + balance}</span> {t('merits')}, {t('fromWhich')} <span className="font-semibold">{canUseQuota && quotaRemaining > 0 ? quotaRemaining : 0}</span> – {t('quota')}{canUseQuota && quotaRemaining > 0 && balance > 0 ? <> {t('and')} <span className="font-semibold">{balance}</span> – {t('points')}</> : balance > 0 && (!canUseQuota || quotaRemaining === 0) ? <> {t('and')} <span className="font-semibold">{balance}</span> – {t('points')}</> : null}
                             </span>
                         </label>
                     </div>

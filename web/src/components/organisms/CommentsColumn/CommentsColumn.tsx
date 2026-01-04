@@ -117,7 +117,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     <div className="h-full flex flex-col bg-base-100 border-l border-base-300 overflow-hidden w-full">
       {/* Header with close/back button and sort toggle */}
       <SimpleStickyHeader
-        title="Голоса"
+        title={t('comments')}
         showBack={!!(showBackButton || onBack)}
         onBack={handleBack}
         rightAction={

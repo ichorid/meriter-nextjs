@@ -298,7 +298,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           <button
             onClick={handleCommentClick}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
-            title="Голоса"
+            title={t('comments')}
           >
             <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
             <div className="flex items-center gap-2">

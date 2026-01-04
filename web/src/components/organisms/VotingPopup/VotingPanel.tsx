@@ -290,7 +290,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 {/* Explanation */}
                 {!hideQuota && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
-                        {t("votingMechanics") || "Вы можете проголосовать ЗА пост или ПРОТИВ него.\nДля голосования ЗА сперва тратятся мериты вашей дневной квоты, а после её превышения заслуженные вами мериты с вашего кошелька.\nДля голосования ПРОТИВ можно использовать только мериты с кошелька."}
+                        {t("votingMechanics")}
                     </p>
                 )}
             </div>
@@ -348,7 +348,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {/* Quota Display */}
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-base-content/50 font-medium">
-                                {t("dailyQuota") || "Дневная квота"}
+                                {t("dailyQuota")}
                             </span>
                             <span className="text-base-content/70 font-semibold tabular-nums">
                                 {voteBreakdown.quotaBefore} → {voteBreakdown.quotaAfter}
@@ -363,7 +363,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {/* Wallet Display */}
                         <div className="flex items-center justify-between text-xs">
                             <span className="text-base-content/50 font-medium">
-                                {t("walletBalance") || "Накопленные мериты"}
+                                {t("walletBalance")}
                             </span>
                             <span className="text-base-content/70 font-semibold tabular-nums">
                                 {voteBreakdown.walletBefore} → {voteBreakdown.walletAfter}
@@ -384,7 +384,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     <div className="bg-base-200 rounded-lg p-3">
                         <div className="flex items-center justify-between mb-2">
                             <span className="text-sm font-medium text-base-content/70">
-                                {t("availableAmount") || "Доступно"}
+                                {t("available")}
                             </span>
                             <span className="text-sm font-semibold text-base-content">
                                 {maxPlus}
@@ -433,15 +433,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {!hideComment && (
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-base-content flex items-center gap-2">
-                        <span>{t("comment") || "Комментарий"}</span>
+                        <span>{t("comment")}</span>
                         <span className="text-xs text-base-content/50 font-normal">
-                            {t("required") || "(обязательно)"}
+                            {t("required")}
                         </span>
                     </label>
                     <Textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
-                        placeholder={t("textField") || "Напишите комментарий к вашему голосу..."}
+                        placeholder={t("textField")}
                         className={classList(
                             "min-h-[100px] resize-none",
                             !comment.trim() && "border-error/50 focus:border-error"
@@ -450,7 +450,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     />
                     {!comment.trim() && (
                         <p className="text-xs text-error">
-                            {t("commentRequired") || "Комментарий обязателен для голосования"}
+                            {t("commentRequired")}
                         </p>
                     )}
                 </div>
@@ -460,7 +460,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {onImagesChange && !hideImages && enableCommentImageUploads && (
                 <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-base-content">
-                        {t("images") || "Изображения"}
+                        {t("images")}
                     </label>
                     <ImageGallery
                         images={images}
@@ -489,7 +489,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90"
                     )}
                 >
-                    {t("submit") || "Отправить"}
+                    {t("submit")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (

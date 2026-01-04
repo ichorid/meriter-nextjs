@@ -171,7 +171,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     // Check feature flag - comment voting is disabled by default
     if (votingTargetType === 'comment' && !enableCommentVoting) {
-      updateVotingFormData({ error: 'Voting on comments is disabled. You can only vote on posts/publications.' });
+      updateVotingFormData({ error: t('commentVotingDisabled') || 'Voting on comments is disabled. You can only vote on posts/publications.' });
       return;
     }
 
@@ -215,7 +215,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
       if (effectiveVotingMode === 'wallet-only') {
         if (!canUseWallet) {
-          updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
+          updateVotingFormData({ error: t('downvoteRequiresBalance') });
           return;
         }
         quotaAmount = 0;
@@ -230,7 +230,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         walletAmount = Math.max(0, absoluteAmount - quotaAmount);
 
         if (walletAmount > 0 && !canUseWallet) {
-          updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
+          updateVotingFormData({ error: t('downvoteRequiresBalance') });
           return;
         }
       }
@@ -238,11 +238,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       // Downvotes use wallet only (quota cannot be used for downvotes)
       console.log('[VotingPopup] Calculating downvote amounts');
       if (isViewer) {
-        updateVotingFormData({ error: 'Зрители могут голосовать только используя дневную квоту. Голосование против требует накопленных меритов.' });
+        updateVotingFormData({ error: t('downvoteViewerReason') });
         return;
       }
       if (!canUseWallet) {
-        updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
+        updateVotingFormData({ error: t('downvoteRequiresBalance') });
         return;
       }
       quotaAmount = 0;

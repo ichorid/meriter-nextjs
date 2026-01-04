@@ -67,6 +67,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const tTaxonomy = useTranslations('publications.create.taxonomy');
     const {
         translateImpactArea,
         translateStage,
@@ -649,7 +650,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
                             <div className="h-4 w-px bg-base-300" />
                             <Filter className="h-4 w-4 text-base-content/60" />
-                            <span className="text-sm font-medium text-base-content/80">{tCommunities('filters.title') || 'Фильтры'}</span>
+                            <span className="text-sm font-medium text-base-content/80">{tCommunities('filters.title')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             {!ENABLE_HASHTAGS && selectedCategories.length > 0 && (
@@ -662,7 +663,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     }}
                                     className="gap-2"
                                 >
-                                    <X className="h-4 w-4" /> {tCommunities('filters.reset') || 'Сбросить'}
+                                    <X className="h-4 w-4" /> {tCommunities('filters.reset')}
                                 </Button>
                             )}
                             {ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
@@ -682,7 +683,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     }}
                                     className="gap-2"
                                 >
-                                    <X className="h-4 w-4" /> Reset
+                                    <X className="h-4 w-4" /> {tTaxonomy('reset')}
                                 </Button>
                             )}
                             <Button
@@ -690,7 +691,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 size="sm"
                                 onClick={() => setBOpenFilters((s) => !s)}
                             >
-                                {bOpenFilters ? (tCommunities('filters.hide') || 'Скрыть') : (tCommunities('filters.show') || 'Показать')}
+                                {bOpenFilters ? tCommunities('filters.hide') : tCommunities('filters.show')}
                             </Button>
                         </div>
                     </div>
@@ -705,7 +706,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 ) : null;
                             })}
                             {selectedCategories.length > 5 && (
-                                <Badge variant="outline" className="font-normal">+{selectedCategories.length - 5} more</Badge>
+                                <Badge variant="outline" className="font-normal">+{selectedCategories.length - 5} {tTaxonomy('more')}</Badge>
                             )}
                         </div>
                     )}
@@ -723,7 +724,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 <Badge key={x} variant="secondary">{x}</Badge>
                             ))}
                             {(fBeneficiaries.length > 2 || fMethods.length > 2 || fHelpNeeded.length > 2) && (
-                                <Badge variant="outline" className="font-normal">+more</Badge>
+                                <Badge variant="outline" className="font-normal">+{tTaxonomy('more')}</Badge>
                             )}
                         </div>
                     )}
@@ -735,7 +736,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 <>
                                     <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="space-y-2">
-                                            <Label>Impact Area</Label>
+                                            <Label>{tTaxonomy('impactArea')}</Label>
                                             <Select
                                                 value={fImpactArea}
                                                 onValueChange={(v) => setFImpactArea(v as ImpactArea | 'any')}
@@ -744,7 +745,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="any">Any</SelectItem>
+                                                    <SelectItem value="any">{tTaxonomy('any')}</SelectItem>
                                                     {(IMPACT_AREAS || []).map((x) => (
                                                         <SelectItem key={x} value={x}>{translateImpactArea(x)}</SelectItem>
                                                     ))}
@@ -752,7 +753,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             </Select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Stage</Label>
+                                            <Label>{tTaxonomy('stage')}</Label>
                                             <Select
                                                 value={fStage}
                                                 onValueChange={(v) => setFStage(v as Stage | 'any')}
@@ -761,7 +762,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                     <SelectValue />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="any">Any</SelectItem>
+                                                    <SelectItem value="any">{tTaxonomy('any')}</SelectItem>
                                                     {(STAGES || []).map((x) => (
                                                         <SelectItem key={x} value={x}>{translateStage(x)}</SelectItem>
                                                     ))}
@@ -773,10 +774,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     <Separator />
 
                                     <CollapsibleSection
-                                        title={`Beneficiaries (${fBeneficiaries.length})`}
+                                        title={`${tTaxonomy('beneficiaries')} (${fBeneficiaries.length})`}
                                         open={bOpenBeneficiaries}
                                         setOpen={setBOpenBeneficiaries}
-                                        summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : 'Who benefits?'}
+                                        summary={fBeneficiaries.length ? fBeneficiaries.map(translateBeneficiary).join(', ') : tTaxonomy('beneficiariesHint')}
                                         right={
                                             <Button
                                                 variant="ghost"
@@ -787,7 +788,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                 }}
                                                 disabled={!fBeneficiaries.length}
                                             >
-                                                Clear
+                                                {tTaxonomy('clear')}
                                             </Button>
                                         }
                                     >
@@ -802,10 +803,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     </CollapsibleSection>
 
                                     <CollapsibleSection
-                                        title={`Methods (${fMethods.length})`}
+                                        title={`${tTaxonomy('methods')} (${fMethods.length})`}
                                         open={bOpenMethods}
                                         setOpen={setBOpenMethods}
-                                        summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : 'How do they act?'}
+                                        summary={fMethods.length ? fMethods.map(translateMethod).join(', ') : tTaxonomy('methodsHint')}
                                         right={
                                             <Button
                                                 variant="ghost"
@@ -816,7 +817,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                 }}
                                                 disabled={!fMethods.length}
                                             >
-                                                Clear
+                                                {tTaxonomy('clear')}
                                             </Button>
                                         }
                                     >
@@ -831,10 +832,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     </CollapsibleSection>
 
                                     <CollapsibleSection
-                                        title={`Help needed (${fHelpNeeded.length})`}
+                                        title={`${tTaxonomy('helpNeeded')} (${fHelpNeeded.length})`}
                                         open={bOpenHelp}
                                         setOpen={setBOpenHelp}
-                                        summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : 'What do they need?'}
+                                        summary={fHelpNeeded.length ? fHelpNeeded.map(translateHelpNeeded).join(', ') : tTaxonomy('helpNeededHint')}
                                         right={
                                             <Button
                                                 variant="ghost"
@@ -845,7 +846,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                 }}
                                                 disabled={!fHelpNeeded.length}
                                             >
-                                                Clear
+                                                {tTaxonomy('clear')}
                                             </Button>
                                         }
                                     >
@@ -864,7 +865,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 <>
                                     <div className="space-y-3">
                                         <p className="text-sm text-base-content/70">
-                                            {tCommunities('filters.categoryHelp') || 'Выберите категории для фильтрации. Если ничего не выбрано, показываются все посты.'}
+                                            {tCommunities('filters.categoryHelp')}
                                         </p>
                                         {allCategories && allCategories.length > 0 ? (
                                             <div className="flex flex-wrap gap-2">
@@ -900,7 +901,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             </div>
                                         ) : (
                                             <p className="text-sm text-base-content/60">
-                                                {tCommunities('filters.noCategories') || 'Категории пока не настроены'}
+                                                {tCommunities('filters.noCategories')}
                                             </p>
                                         )}
                                     </div>
@@ -914,7 +915,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             }}
                                             className="flex-1"
                                         >
-                                            {tCommunities('filters.reset') || 'Сбросить'}
+                                            {tCommunities('filters.reset')}
                                         </Button>
                                         <Button
                                             variant="ghost"
@@ -924,7 +925,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             }}
                                             className="flex-1 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
                                         >
-                                            {tCommunities('filters.apply') || 'Применить'}
+                                            {tCommunities('filters.apply')}
                                         </Button>
                                     </div>
                                 </>
