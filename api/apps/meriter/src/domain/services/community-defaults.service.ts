@@ -286,6 +286,7 @@ export class CommunityDefaultsService {
       quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
       canEarn: true,
       canSpend: true,
+      startingMerits: 100,
     };
 
     switch (typeTag) {

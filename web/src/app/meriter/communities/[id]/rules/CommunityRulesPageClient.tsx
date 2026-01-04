@@ -24,6 +24,7 @@ export function CommunityRulesPageClient({ communityId }: CommunityRulesPageClie
     votingRules?: any;
     visibilityRules?: any;
     meritRules?: any;
+    meritSettings?: any;
     linkedCurrencies?: string[];
   }) => {
     await updateCommunity.mutateAsync({

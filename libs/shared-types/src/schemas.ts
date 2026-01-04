@@ -92,6 +92,14 @@ export const CommunityMeritConversionSchema = z.object({
   ratio: z.number(),
 });
 
+export const CommunityMeritSettingsSchema = z.object({
+  dailyQuota: z.number().int().min(0).optional(),
+  quotaRecipients: z.array(z.enum(["superadmin", "lead", "participant", "viewer"])).optional(),
+  canEarn: z.boolean().optional(),
+  canSpend: z.boolean().optional(),
+  startingMerits: z.number().int().min(0).optional(),
+});
+
 export const CommunityVotingSettingsSchema = z.object({
   spendsMerits: z.boolean().optional(),
   awardsMerits: z.boolean().optional(),
@@ -553,6 +561,7 @@ export const UpdateCommunityDtoSchema = z.object({
     meritConversion: CommunityMeritConversionSchema.optional(),
     votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
   }).optional(),
+  meritSettings: CommunityMeritSettingsSchema.optional(),
   isPriority: z.boolean().optional(),
 });
 

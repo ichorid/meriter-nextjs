@@ -86,6 +86,13 @@ export interface UpdateCommunityDto {
       ratio: number;
     };
   };
+  meritSettings?: {
+    dailyQuota?: number;
+    quotaRecipients?: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+    canEarn?: boolean;
+    canSpend?: boolean;
+    startingMerits?: number;
+  };
   isPriority?: boolean;
 }
 
@@ -176,12 +183,19 @@ export class CommunityService {
       return defaults;
     }
 
-    return {
+    const effectiveSettings = {
       ...defaults,
       ...community.meritSettings,
       quotaRecipients:
         community.meritSettings.quotaRecipients ?? defaults.quotaRecipients,
     };
+
+    // If startingMerits is not set, default to dailyQuota value
+    if (effectiveSettings.startingMerits === undefined) {
+      effectiveSettings.startingMerits = effectiveSettings.dailyQuota;
+    }
+
+    return effectiveSettings;
   }
 
   /**
@@ -432,6 +446,29 @@ export class CommunityService {
 
       // Merge votingSettings into updateData
       Object.assign(updateData, votingSettingsUpdate);
+    }
+
+    if (dto.meritSettings) {
+      // Only merge nested properties if they exist
+      const meritSettingsUpdate: any = {};
+      if (dto.meritSettings.dailyQuota !== undefined) {
+        meritSettingsUpdate['meritSettings.dailyQuota'] = dto.meritSettings.dailyQuota;
+      }
+      if (dto.meritSettings.quotaRecipients !== undefined) {
+        meritSettingsUpdate['meritSettings.quotaRecipients'] = dto.meritSettings.quotaRecipients;
+      }
+      if (dto.meritSettings.canEarn !== undefined) {
+        meritSettingsUpdate['meritSettings.canEarn'] = dto.meritSettings.canEarn;
+      }
+      if (dto.meritSettings.canSpend !== undefined) {
+        meritSettingsUpdate['meritSettings.canSpend'] = dto.meritSettings.canSpend;
+      }
+      if (dto.meritSettings.startingMerits !== undefined) {
+        meritSettingsUpdate['meritSettings.startingMerits'] = dto.meritSettings.startingMerits;
+      }
+
+      // Merge meritSettings into updateData
+      Object.assign(updateData, meritSettingsUpdate);
     }
 
     const updatedCommunity = await this.communityModel

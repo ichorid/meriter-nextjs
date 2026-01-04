@@ -52,6 +52,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         votingRules?: any;
         visibilityRules?: any;
         meritRules?: any;
+        meritSettings?: any;
         linkedCurrencies?: string[];
         settings?: {
             dailyEmission?: number;

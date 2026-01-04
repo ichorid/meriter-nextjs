@@ -299,6 +299,7 @@ export interface CommunityMeritSettings {
   quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
   canEarn: boolean;
   canSpend: boolean;
+  startingMerits?: number;
 }
 
 export interface CommunityMeritConversion {
@@ -340,6 +341,7 @@ export interface LegacyMeritRules {
   quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
   canEarn: boolean;
   canSpend: boolean;
+  startingMerits?: number;
 }
 
 // Extended Community type with computed fields from API

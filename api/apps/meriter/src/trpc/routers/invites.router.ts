@@ -319,6 +319,23 @@ export const invitesRouter = router({
           teamCommunity.settings.currencyNames,
         );
         
+        // Credit starting merits if configured
+        const meritSettings = ctx.communityService.getEffectiveMeritSettings(teamCommunity);
+        const startingMerits = meritSettings.startingMerits ?? meritSettings.dailyQuota;
+        if (startingMerits > 0) {
+          await ctx.walletService.addTransaction(
+            userId,
+            invite.communityId,
+            'credit',
+            startingMerits,
+            'personal',
+            'invite_starting_merits',
+            invite.id,
+            teamCommunity.settings.currencyNames,
+            `Starting merits from group invite`,
+          );
+        }
+        
         // Find marathon-of-good community (if exists)
         const marathonCommunity = await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
         if (marathonCommunity) {

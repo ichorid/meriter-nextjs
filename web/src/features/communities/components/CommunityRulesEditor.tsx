@@ -25,6 +25,13 @@ interface CommunityRulesEditorProps {
     votingRules?: LegacyVotingRules;
     visibilityRules?: LegacyVisibilityRules;
     meritRules?: LegacyMeritRules;
+    meritSettings?: {
+      dailyQuota?: number;
+      quotaRecipients?: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+      canEarn?: boolean;
+      canSpend?: boolean;
+      startingMerits?: number;
+    };
     linkedCurrencies?: string[];
     settings?: {
       dailyEmission?: number;
@@ -65,12 +72,26 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     teamOnly: false,
   });
 
-  const [meritRules, setMeritRules] = useState<LegacyMeritRules>(community.meritRules || {
-    dailyQuota: 100,
-    quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-    canEarn: true,
-    canSpend: true,
-  });
+  const [meritRules, setMeritRules] = useState<LegacyMeritRules>(
+    community.meritRules || 
+    (community.meritSettings ? {
+      dailyQuota: community.meritSettings.dailyQuota,
+      quotaRecipients: community.meritSettings.quotaRecipients,
+      canEarn: community.meritSettings.canEarn,
+      canSpend: community.meritSettings.canSpend,
+      startingMerits: community.meritSettings.startingMerits,
+    } : {
+      dailyQuota: 100,
+      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
+      canEarn: true,
+      canSpend: true,
+    })
+  );
+  
+  // Separate state for startingMerits initialized from meritSettings or meritRules
+  const [startingMerits, setStartingMerits] = useState<string>(
+    String(community.meritSettings?.startingMerits ?? community.meritRules?.startingMerits ?? community.meritSettings?.dailyQuota ?? community.meritRules?.dailyQuota ?? 100)
+  );
 
   const [linkedCurrencies, setLinkedCurrencies] = useState<string[]>(
     community.linkedCurrencies || []
@@ -198,12 +219,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       isHidden: false,
       teamOnly: false,
     };
-    const initialMeritRules = community.meritRules || {
-      dailyQuota: 100,
-      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-      canEarn: true,
-      canSpend: true,
-    };
+    const initialMeritRules = community.meritRules || 
+      (community.meritSettings ? {
+        dailyQuota: community.meritSettings.dailyQuota,
+        quotaRecipients: community.meritSettings.quotaRecipients,
+        canEarn: community.meritSettings.canEarn,
+        canSpend: community.meritSettings.canSpend,
+        startingMerits: community.meritSettings.startingMerits,
+      } : {
+        dailyQuota: 100,
+        quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
+        canEarn: true,
+        canSpend: true,
+      });
     const initialLinkedCurrencies = community.linkedCurrencies || [];
 
     setOriginalRules({
@@ -265,6 +293,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         votingRules,
         visibilityRules,
         meritRules,
+        meritSettings: {
+          dailyQuota: meritRules.dailyQuota,
+          quotaRecipients: meritRules.quotaRecipients,
+          canEarn: meritRules.canEarn,
+          canSpend: meritRules.canSpend,
+          startingMerits: parseInt(startingMerits, 10) || meritRules.dailyQuota,
+        },
         linkedCurrencies,
         settings: {
           dailyEmission: parseInt(dailyEmission, 10),
@@ -639,6 +674,20 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
               // Also update meritRules.dailyQuota to keep them in sync
               const value = parseInt(e.target.value, 10) || 0;
               setMeritRules({ ...meritRules, dailyQuota: value });
+            }}
+            type="number"
+            className="h-11 rounded-xl w-full"
+          />
+        </BrandFormControl>
+
+        <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
+          <Input
+            value={startingMerits}
+            onChange={(e) => {
+              setStartingMerits(e.target.value);
+              // Also update meritRules.startingMerits to keep them in sync
+              const value = parseInt(e.target.value, 10) || 0;
+              setMeritRules({ ...meritRules, startingMerits: value });
             }}
             type="number"
             className="h-11 rounded-xl w-full"

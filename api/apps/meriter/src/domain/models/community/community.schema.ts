@@ -50,6 +50,7 @@ export interface CommunityMeritSettings {
   quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
   canEarn: boolean;
   canSpend: boolean;
+  startingMerits?: number;
 }
 
 // Voting settings (configuration like merit conversion, not permissions)
@@ -207,12 +208,14 @@ export class CommunitySchemaClass implements Community {
       quotaRecipients: [String],
       canEarn: Boolean,
       canSpend: Boolean,
+      startingMerits: Number,
     },
     default: {
       dailyQuota: 100,
       quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
       canEarn: true,
       canSpend: true,
+      startingMerits: 100,
     },
   })
   meritSettings?: CommunityMeritSettings;

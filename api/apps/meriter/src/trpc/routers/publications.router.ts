@@ -155,7 +155,7 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
 /**
  * Helper to calculate remaining quota for a user in a community
  */
-async function getRemainingQuota(
+async function _getRemainingQuota(
   userId: string,
   communityId: string,
   community: any,
