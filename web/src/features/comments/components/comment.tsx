@@ -8,6 +8,7 @@ import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { useTranslations } from 'next-intl';
+import { dateVerbose } from "@shared/lib/date";
 import { useCommunity } from '@/hooks/api';
 import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
@@ -236,7 +237,7 @@ export const Comment: React.FC<CommentProps> = ({
         >
             <CardCommentVote
                 title={authorName}
-                subtitle={new Date(commentTimestamp || '').toLocaleString()}
+                subtitle={dateVerbose(new Date(commentTimestamp || ''))}
                 content={commentText}
                 rate={voteDisplay.rate}
                 currencyIcon={currencyIcon}

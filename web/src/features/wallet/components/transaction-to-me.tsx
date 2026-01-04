@@ -5,6 +5,7 @@ import { telegramGetAvatarLink } from "@/lib/utils/telegram";
 import { useTranslations } from 'next-intl';
 import { useQuery } from '@tanstack/react-query';
 import { useCommunity } from '@/hooks/api';
+import { dateVerbose } from "@shared/lib/date";
 
 class RestTransactionObject {
     amount: number = 0; //0
@@ -74,7 +75,7 @@ export const TransactionToMe = ({
         <div>
             <CardCommentVote
                 title={`${t('from')} ${transaction.fromUserTgName}`}
-                subtitle={new Date(transaction.ts).toLocaleString()}
+                subtitle={dateVerbose(new Date(transaction.ts))}
                 content={transaction.comment}
                 rate={formatRate()}
                 currencyIcon={currencyIcon}

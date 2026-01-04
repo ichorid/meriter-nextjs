@@ -99,12 +99,25 @@ export const CardCommentVote = ({
     return (
         <div className="mb-3 w-full">
             <div
-                className={classList(
-                    "w-full bg-base-200 rounded-xl p-4",
-                    (onDetailsClick || onClick) && "cursor-pointer"
-                )}
-                onClick={handleCardClick}
+                className="w-full bg-base-200 rounded-xl p-4 relative"
             >
+                {/* Share button in top right corner */}
+                {communityId && publicationSlug && commentId && (
+                    <button
+                        className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-base-content/50 hover:text-base-content/70 hover:bg-base-200/50 transition-all duration-200 z-10"
+                        onClick={handleShareClick}
+                        title={tShared('share')}
+                    >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="18" cy="5" r="3"></circle>
+                            <circle cx="6" cy="12" r="3"></circle>
+                            <circle cx="18" cy="19" r="3"></circle>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                        </svg>
+                    </button>
+                )}
+
                 <div className="flex gap-3 min-w-0">
                     {/* Vote section - vertical on the left */}
                     <div className="flex flex-col items-center gap-1 pt-1">
@@ -194,25 +207,6 @@ export const CardCommentVote = ({
                                     </div>
                                 )}
 
-                                {/* Actions */}
-                                <div className="flex items-center gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
-                                    {bottom}
-                                    {communityId && publicationSlug && commentId && (
-                                        <button
-                                            className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-base-content/50 hover:text-base-content/70 hover:bg-base-200/50 transition-all duration-200"
-                                            onClick={handleShareClick}
-                                            title={tShared('share')}
-                                        >
-                                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <circle cx="18" cy="5" r="3"></circle>
-                                                <circle cx="6" cy="12" r="3"></circle>
-                                                <circle cx="18" cy="19" r="3"></circle>
-                                                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                                                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                                            </svg>
-                                        </button>
-                                    )}
-                                </div>
                             </div>
                         </div>
                     </div>
