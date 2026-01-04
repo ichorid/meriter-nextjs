@@ -215,7 +215,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
       if (effectiveVotingMode === 'wallet-only') {
         if (!canUseWallet) {
-          updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+          updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
           return;
         }
         quotaAmount = 0;
@@ -230,19 +230,19 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         walletAmount = Math.max(0, absoluteAmount - quotaAmount);
 
         if (walletAmount > 0 && !canUseWallet) {
-          updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+          updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
           return;
         }
       }
     } else {
-      // Downvotes use wallet only (viewers cannot downvote).
+      // Downvotes use wallet only (quota cannot be used for downvotes)
       console.log('[VotingPopup] Calculating downvote amounts');
       if (isViewer) {
-        updateVotingFormData({ error: 'Viewers can only vote using daily quota. Downvotes require wallet merits.' });
+        updateVotingFormData({ error: 'Зрители могут голосовать только используя дневную квоту. Голосование против требует накопленных меритов.' });
         return;
       }
       if (!canUseWallet) {
-        updateVotingFormData({ error: 'Wallet merits are disabled for voting in this community.' });
+        updateVotingFormData({ error: 'Накопленные мериты отключены для голосования в этом сообществе.' });
         return;
       }
       quotaAmount = 0;
