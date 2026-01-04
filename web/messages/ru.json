@@ -185,6 +185,7 @@
     },
     "settings": {
         "title": "Настройки",
+        "platformTitle": "Настройки платформы",
         "breadcrumb": "Настройки",
         "subtitle": "Управляйте настройками вашего профиля",
         "language": "Язык",
@@ -561,6 +562,8 @@
         "points": "Баллы",
         "enterPositiveAmount": "Введите положительное количество",
         "sendError": "Ошибка при отправке: {message}",
+        "fromWhich": "из которых",
+        "and": "и",
         "upvoteFromQuota": "Голосование с суточной квоты",
         "upvoteFromWallet": "Голосование с баланса кошелька",
         "upvoteFromMixed": "Голосование с суточной квоты и баланса",
@@ -881,6 +884,9 @@
                 "helpNeeded": "Нужна помощь",
                 "helpNeededHint": "Что вы собираете прямо сейчас?",
                 "clear": "Очистить",
+                "any": "Любая",
+                "reset": "Сбросить",
+                "more": "ещё",
                 "values": {
                     "impactArea": {
                         "Community & Mutual Aid": "Сообщество и взаимопомощь",

@@ -183,6 +183,7 @@
     },
     "settings": {
         "title": "Settings",
+        "platformTitle": "Platform Settings",
         "breadcrumb": "Settings",
         "subtitle": "Manage your profile settings",
         "language": "Language",
@@ -561,6 +562,8 @@
         "points": "Points",
         "enterPositiveAmount": "Enter positive amount",
         "sendError": "Sending error: {message}",
+        "fromWhich": "of which",
+        "and": "and",
         "upvoteFromQuota": "Vote using daily quota",
         "upvoteFromWallet": "Vote using wallet balance",
         "upvoteFromMixed": "Vote using daily quota and wallet",
