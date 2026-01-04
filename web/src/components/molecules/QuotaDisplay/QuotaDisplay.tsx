@@ -117,8 +117,31 @@ export function QuotaDisplay({
               <DialogTitle className="text-left">
                 {tCommon('meritsAndQuota')}
               </DialogTitle>
-              <DialogDescription className="text-left text-base-content/80 pt-2 [&]:text-base-content/80 whitespace-pre-line">
-                {tCommon('meritsAndQuotaDescription')}
+              <DialogDescription className="text-left text-base-content/80 pt-2 [&]:text-base-content/80">
+                {(() => {
+                  const description = tCommon('meritsAndQuotaDescription');
+                  const parts = description.split('\n');
+                  return (
+                    <div className="space-y-2">
+                      {parts.map((part, index) => {
+                        const trimmedPart = part.trim();
+                        // Check if this is a note (contains "Есть исключение" or "There is an exception")
+                        if (trimmedPart.includes('Есть исключение') || trimmedPart.includes('There is an exception') || trimmedPart.includes('исключение') || trimmedPart.includes('exception')) {
+                          return (
+                            <p key={index} className="text-xs text-base-content/50 italic bg-base-200/50 px-2 py-1 rounded border border-base-300/30">
+                              {trimmedPart}
+                            </p>
+                          );
+                        }
+                        return (
+                          <p key={index} className="text-sm">
+                            {trimmedPart || '\u00A0'}
+                          </p>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </DialogDescription>
             </DialogHeader>
             <div className="mt-4 space-y-3">
@@ -154,7 +177,7 @@ export function QuotaDisplay({
                   </div>
                   <div className="flex-1 text-sm text-base-content/80">
                     <p className="font-medium text-base-content mb-1">
-                      {tCommon('andMoreMerits', { count: balance })}
+                      {tCommon('permanentMeritsWallet')}
                     </p>
                     <p className="text-xs">{tCommon('permanentMeritsExplanation')}</p>
                   </div>
@@ -210,8 +233,31 @@ export function QuotaDisplay({
             <DialogTitle className="text-left">
               {tCommon('meritsAndQuota')}
             </DialogTitle>
-            <DialogDescription className="text-left text-base-content/80 pt-2 [&]:text-base-content/80 whitespace-pre-line">
-              {tCommon('meritsAndQuotaDescription')}
+            <DialogDescription className="text-left text-base-content/80 pt-2 [&]:text-base-content/80">
+              {(() => {
+                const description = tCommon('meritsAndQuotaDescription');
+                const parts = description.split('\n');
+                return (
+                  <div className="space-y-2">
+                    {parts.map((part, index) => {
+                      const trimmedPart = part.trim();
+                      // Check if this is a note (contains "Есть исключение" or "There is an exception")
+                      if (trimmedPart.includes('Есть исключение') || trimmedPart.includes('There is an exception') || trimmedPart.includes('исключение') || trimmedPart.includes('exception')) {
+                        return (
+                          <p key={index} className="text-xs text-base-content/50 italic bg-base-200/50 px-2 py-1 rounded border border-base-300/30">
+                            {trimmedPart}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p key={index} className="text-sm">
+                          {trimmedPart || '\u00A0'}
+                        </p>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4 space-y-3">
@@ -247,7 +293,7 @@ export function QuotaDisplay({
                 </div>
                 <div className="flex-1 text-sm text-base-content/80">
                   <p className="font-medium text-base-content mb-1">
-                    {tCommon('andMoreMerits', { count: balance })}
+                    {tCommon('permanentMeritsWallet')}
                   </p>
                   <p className="text-xs">{tCommon('permanentMeritsExplanation')}</p>
                 </div>
