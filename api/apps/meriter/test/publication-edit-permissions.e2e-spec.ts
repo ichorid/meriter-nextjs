@@ -13,11 +13,11 @@ import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
-  
+
   let app: INestApplication;
   let connection: Connection;
   let testDb: any;
-  
+
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
@@ -94,6 +94,7 @@ describe('Publication and Comment Edit Permissions', () => {
             genitive: 'merits',
           },
           dailyEmission: 10,
+          postCost: 0,
         },
         postingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
@@ -119,6 +120,7 @@ describe('Publication and Comment Edit Permissions', () => {
             genitive: 'merits',
           },
           dailyEmission: 10,
+          postCost: 0,
         },
         postingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
@@ -629,8 +631,8 @@ describe('Publication and Comment Edit Permissions', () => {
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
         { id: commentId },
-        { 
-          $set: { 
+        {
+          $set: {
             'metrics.upvotes': 1,
             'metrics.downvotes': 0,
           }
@@ -663,8 +665,8 @@ describe('Publication and Comment Edit Permissions', () => {
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
         { id: commentId },
-        { 
-          $set: { 
+        {
+          $set: {
             'metrics.upvotes': 1,
             'metrics.downvotes': 0,
           }

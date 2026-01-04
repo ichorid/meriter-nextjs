@@ -93,13 +93,19 @@ export interface PhoneConfig {
 export interface EmailConfig {
   /** Whether Email authentication is enabled (from EMAIL_ENABLED env var) */
   enabled: boolean;
-  /** SMTP Server Configuration */
-  smtp: {
-    host: string;
-    port: number;
-    user: string;
-    pass: string;
-    secure: boolean;
+  api: {
+    url: string;
+    key: string;
+  };
+  from: {
+    address: string;
+    name: string;
+  };
+  features: {
+    trackLinks: number;
+    trackRead: number;
+    language: string;
+    skipUnsubscribe: number;
   };
 }
 
@@ -388,12 +394,19 @@ export default (): AppConfig => {
     },
     email: {
       enabled: env.EMAIL_ENABLED === 'true',
-      smtp: {
-        host: env.EMAIL_SMTP_HOST || '',
-        port: parseInt(env.EMAIL_SMTP_PORT || '587', 10),
-        user: env.EMAIL_SMTP_USERNAME || '',
-        pass: env.EMAIL_SMTP_PASSWORD || '',
-        secure: env.EMAIL_SMTP_IS_SECURE === 'true',
+      api: {
+        url: env.EMAIL_API_URL || 'https://go1.unisender.ru/ru/transactional/api/v1',
+        key: env.EMAIL_API_KEY || '',
+      },
+      from: {
+        address: env.EMAIL_FROM || 'noreply@meriter.pro',
+        name: env.EMAIL_FROM_NAME || 'Meriter',
+      },
+      features: {
+        trackLinks: parseInt(env.EMAIL_TRACK_LINKS || '1', 10),
+        trackRead: parseInt(env.EMAIL_TRACK_READ || '1', 10),
+        language: env.EMAIL_LANGUAGE || 'ru',
+        skipUnsubscribe: parseInt(env.EMAIL_SKIP_UNSUBSCRIBE || '0', 10),
       },
     },
     storage: {
