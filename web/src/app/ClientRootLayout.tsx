@@ -12,6 +12,8 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
+import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
+import { isTestAuthMode } from '@/config';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
 
@@ -127,11 +129,14 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
               <ClientRouter />
             </Suspense>
             <AuthProvider>
+              {isTestAuthMode() && <DevToolsBar />}
               <RuntimeConfigProvider
                 fallbackEnabledProviders={fallbackEnabledProviders}
                 fallbackAuthnEnabled={fallbackAuthnEnabled}
               >
-                <Root>{children}</Root>
+                <div className={isTestAuthMode() ? 'pt-[60px]' : ''}>
+                  <Root>{children}</Root>
+                </div>
               </RuntimeConfigProvider>
               <ToastContainer />
             </AuthProvider>
