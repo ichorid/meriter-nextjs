@@ -56,6 +56,9 @@ import { SortToggle } from '@/components/ui/SortToggle';
 import { isFakeDataMode } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Plus } from 'lucide-react';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -81,8 +84,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const targetPollId = searchParams?.get('poll');
     const highlightPostSlug = searchParams?.get('highlight');
 
-    // Get sort state from URL params
-    const sortBy = searchParams?.get('sort') || 'voted';
+    // Get sort state from URL params or localStorage
+    const urlSort = searchParams?.get('sort');
+    const [savedSort, setSavedSort] = useLocalStorage<'recent' | 'voted'>(`community-sort-${chatId}`, 'voted');
+    const sortBy = urlSort || savedSort;
     const selectedTag = searchParams?.get('tag');
     const searchQuery = searchParams?.get('q') || '';
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
@@ -116,10 +121,20 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Handle sort change
     const handleSortChange = (sort: 'recent' | 'voted') => {
+        // Save to localStorage
+        setSavedSort(sort);
+        // Update URL
         const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.set('sort', sort);
         router.push(`?${params.toString()}`);
     };
+    
+    // Save sort to localStorage when URL changes (if user navigates with URL params)
+    useEffect(() => {
+        if (urlSort && urlSort !== savedSort) {
+            setSavedSort(urlSort as 'recent' | 'voted');
+        }
+    }, [urlSort, savedSort, setSavedSort]);
 
     // Handle scroll to top
     const handleScrollToTop = () => {
@@ -209,8 +224,39 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [activeWithdrawPost, setActiveWithdrawPost] = useState<string | null>(null);
     // Category filter state (replaces taxonomy filters)
     const { data: allCategories } = useCategories();
-    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    // Get categories from URL params or localStorage
+    const urlCategories = searchParams?.get('categories');
+    const [savedCategories, setSavedCategories] = useLocalStorage<string[]>(`community-categories-${chatId}`, []);
+    const initialCategories = urlCategories ? urlCategories.split(',').filter(Boolean) : savedCategories;
+    const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
     const [bOpenFilters, setBOpenFilters] = useState(false);
+    
+    // Save categories to localStorage when they change (debounced to avoid saving during URL sync)
+    const prevSelectedCategories = useRef<string[]>(selectedCategories);
+    useEffect(() => {
+        // Only save if categories actually changed (not during initial render or URL sync)
+        if (JSON.stringify(prevSelectedCategories.current) !== JSON.stringify(selectedCategories)) {
+            prevSelectedCategories.current = selectedCategories;
+            // Only save if this change wasn't triggered by URL sync
+            // We check this by seeing if urlCategories matches selectedCategories
+            const urlCategoriesArray = urlCategories ? urlCategories.split(',').filter(Boolean) : [];
+            const categoriesMatchUrl = JSON.stringify(selectedCategories.sort()) === JSON.stringify(urlCategoriesArray.sort());
+            if (!categoriesMatchUrl || selectedCategories.length === 0) {
+                setSavedCategories(selectedCategories);
+            }
+        }
+    }, [selectedCategories, urlCategories, setSavedCategories]);
+    
+    // Sync categories with URL params on mount or when URL changes
+    useEffect(() => {
+        if (urlCategories !== null) {
+            const categoriesFromUrl = urlCategories ? urlCategories.split(',').filter(Boolean) : [];
+            if (JSON.stringify(categoriesFromUrl.sort()) !== JSON.stringify(selectedCategories.sort())) {
+                setSelectedCategories(categoriesFromUrl);
+                prevSelectedCategories.current = categoriesFromUrl;
+            }
+        }
+    }, [urlCategories]);
     
     // Legacy taxonomy filter state (kept for backwards compatibility, but disabled when ENABLE_HASHTAGS is false)
     const [fImpactArea, setFImpactArea] = useState<ImpactArea | 'any'>('any');
@@ -534,49 +580,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Dev Tools Bar - only visible in fake data mode */}
-            {fakeDataMode && (
-                <div className="mb-4 p-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl">
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-semibold text-base-content/70 mr-2">Dev Tools:</span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleGenerateUserPosts}
-                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                            className="rounded-xl active:scale-[0.98] px-2"
-                            title="Generate user post"
-                        >
-                            {generatingUserPosts ? <Loader2 className="animate-spin" size={16} /> : <span>+</span>}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleGenerateBeneficiaryPosts}
-                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                            className="rounded-xl active:scale-[0.98] px-2"
-                            title="Generate post with beneficiary"
-                        >
-                            {generatingBeneficiaryPosts ? <Loader2 className="animate-spin" size={16} /> : <span>++</span>}
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={handleAddMerits}
-                            disabled={generatingUserPosts || generatingBeneficiaryPosts || addingMerits}
-                            className="rounded-xl active:scale-[0.98] px-2"
-                            title="Add 100 wallet merits"
-                        >
-                            {addingMerits ? <Loader2 className="animate-spin" size={16} /> : <Coins size={16} className="text-base-content/70" />}
-                        </Button>
-                        {fakeDataMessage && (
-                            <span className={`text-xs ${fakeDataMessage.includes('Failed') ? 'text-error' : 'text-success'}`}>
-                                {fakeDataMessage}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            )}
 
             {/* Banners */}
             {error === false &&
@@ -627,6 +630,19 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
+                            {/* Create Post Button - first in filters row, desktop only */}
+                            {canCreatePost.canCreate && (
+                                <Button
+                                    onClick={() => router.push(`/meriter/communities/${chatId}/create`)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                                    aria-label={tCommunities('createPost')}
+                                >
+                                    <Plus size={16} />
+                                    {tCommunities('createPost')}
+                                </Button>
+                            )}
                             {/* Search Button */}
                             <Button
                                 variant="ghost"
@@ -648,9 +664,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 />
                             </div>
 
-                            <div className="h-4 w-px bg-base-300" />
-                            <Filter className="h-4 w-4 text-base-content/60" />
-                            <span className="text-sm font-medium text-base-content/80">{tCommunities('filters.title')}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             {!ENABLE_HASHTAGS && selectedCategories.length > 0 && (
@@ -660,6 +673,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     onClick={() => {
                                         setSelectedCategories([]);
                                         setBOpenFilters(false);
+                                        // Update URL
+                                        const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                        params.delete('categories');
+                                        router.push(`${pathname}?${params.toString()}`);
                                     }}
                                     className="gap-2"
                                 >
@@ -690,8 +707,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 variant={bOpenFilters ? 'secondary' : 'outline'}
                                 size="sm"
                                 onClick={() => setBOpenFilters((s) => !s)}
+                                className="gap-2"
                             >
-                                {bOpenFilters ? tCommunities('filters.hide') : tCommunities('filters.show')}
+                                <Filter className="h-4 w-4" />
+                                {tCommunities('filters.title')}
                             </Button>
                         </div>
                     </div>
@@ -881,11 +900,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                                 key={category.id}
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    if (isSelected) {
-                                                                        setSelectedCategories(selectedCategories.filter(id => id !== category.id));
+                                                                    const newCategories = isSelected
+                                                                        ? selectedCategories.filter(id => id !== category.id)
+                                                                        : [...selectedCategories, category.id];
+                                                                    setSelectedCategories(newCategories);
+                                                                    // Update URL
+                                                                    const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                                                    if (newCategories.length > 0) {
+                                                                        params.set('categories', newCategories.join(','));
                                                                     } else {
-                                                                        setSelectedCategories([...selectedCategories, category.id]);
+                                                                        params.delete('categories');
                                                                     }
+                                                                    router.push(`${pathname}?${params.toString()}`);
                                                                 }}
                                                                 className={cn(
                                                                     'px-3 py-2 rounded-lg border transition-colors text-sm font-medium',
@@ -912,6 +938,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             onClick={() => {
                                                 setSelectedCategories([]);
                                                 setBOpenFilters(false);
+                                                // Update URL
+                                                const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                                params.delete('categories');
+                                                router.push(`${pathname}?${params.toString()}`);
                                             }}
                                             className="flex-1"
                                         >
@@ -987,6 +1017,15 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         wallets={Array.isArray(wallets) ? wallets : []}
                                         showCommunityAvatar={false}
                                         isSelected={isSelected}
+                                        onCategoryClick={(categoryId) => {
+                                            // Set filter to show only this category
+                                            const newCategories = [categoryId];
+                                            setSelectedCategories(newCategories);
+                                            // Update URL
+                                            const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                            params.set('categories', categoryId);
+                                            router.push(`${pathname}?${params.toString()}`);
+                                        }}
                                     />
                                 </div>
                             );

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Clock, TrendingUp } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 export type SortOption = 'recent' | 'voted';
 
@@ -23,6 +24,8 @@ export const SortToggle: React.FC<SortToggleProps> = ({
   className = '',
   compact = true,
 }) => {
+  const t = useTranslations('common');
+  
   const baseButtonClass = `
     flex items-center justify-center gap-1.5 rounded-lg transition-all duration-200
     ${compact ? 'p-2' : 'px-3 py-1.5'}
@@ -43,8 +46,9 @@ export const SortToggle: React.FC<SortToggleProps> = ({
         type="button"
         onClick={() => onChange('recent')}
         className={`${baseButtonClass} ${value === 'recent' ? activeClass : inactiveClass}`}
-        aria-label="Sort by recent"
+        aria-label={t('sort.recent')}
         aria-pressed={value === 'recent'}
+        title={t('sort.recent')}
       >
         <Clock size={16} />
       </button>
@@ -52,8 +56,9 @@ export const SortToggle: React.FC<SortToggleProps> = ({
         type="button"
         onClick={() => onChange('voted')}
         className={`${baseButtonClass} ${value === 'voted' ? activeClass : inactiveClass}`}
-        aria-label="Sort by rating"
+        aria-label={t('sort.voted')}
         aria-pressed={value === 'voted'}
+        title={t('sort.voted')}
       >
         <TrendingUp size={16} />
       </button>
