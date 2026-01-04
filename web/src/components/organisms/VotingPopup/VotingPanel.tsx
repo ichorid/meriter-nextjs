@@ -131,6 +131,28 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         };
     }, [absAmount, isPositive, quotaRemaining, walletBalance]);
 
+    // Calculate bar sizes using sqrt-based proportional sizing
+    const barSizing = useMemo(() => {
+        const quotaBarWidth = Math.sqrt(Math.max(0, dailyQuota));
+        const walletBarWidth = canUseWallet ? Math.sqrt(Math.max(0, walletBalance)) : 0;
+        const totalWidth = quotaBarWidth + walletBarWidth;
+
+        // Available width: 304px minus gap (11px) if wallet bar exists
+        const availableWidth = 304 - (walletBarWidth > 0 ? 11 : 0);
+
+        const quotaBarProportional = totalWidth > 0
+            ? (quotaBarWidth / totalWidth) * availableWidth
+            : (canUseWallet ? 0 : availableWidth);
+        const walletBarProportional = totalWidth > 0
+            ? (walletBarWidth / totalWidth) * availableWidth
+            : 0;
+
+        return {
+            quotaBarWidth: quotaBarProportional,
+            walletBarWidth: walletBarProportional,
+        };
+    }, [dailyQuota, walletBalance, canUseWallet]);
+
     // Handle input change for text input (voting mode)
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -429,35 +451,218 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         </div>
                     </div>
 
-                    {/* Merit Balance Display - Combined */}
-                    <div className="bg-base-200/50 rounded-lg p-2.5 space-y-2">
-                        {/* Quota Display */}
-                        <div className="flex items-center justify-between text-xs">
-                            <span className="text-base-content/50 font-medium">
-                                {t("dailyQuota")}
-                            </span>
-                            <span className="text-base-content/70 font-semibold tabular-nums">
-                                {voteBreakdown.quotaBefore} → {voteBreakdown.quotaAfter}
-                            </span>
+                    {/* Limit Group - Dual Progress Bars */}
+                    <div className="flex flex-row items-center gap-[11px]">
+                        {/* Quota Bar */}
+                        <div
+                            className="flex flex-col gap-[5px] isolation-isolate"
+                            style={{
+                                width: `${barSizing.quotaBarWidth}px`,
+                                flexShrink: 0,
+                            }}
+                        >
+                            <div
+                                className="text-base-content opacity-60"
+                                style={{
+                                    width: "100%",
+                                    height: "14px",
+                                    fontSize: "12px",
+                                    fontFamily: "Roboto, sans-serif",
+                                    fontWeight: 400,
+                                    lineHeight: "120%",
+                                    letterSpacing: "0.374px",
+                                }}
+                            >
+                                {t("dailyLimit")}
+                            </div>
+                            <div
+                                className="relative flex items-center justify-center overflow-hidden bg-base-200 rounded-lg"
+                                style={{
+                                    width: "100%",
+                                    height: "20px",
+                                }}
+                            >
+                                {(() => {
+                                    const totalQuota = dailyQuota || quotaRemaining + usedToday;
+                                    if (totalQuota <= 0) return null;
+
+                                    const usedPercent = (usedToday / totalQuota) * 100;
+                                    const voteQuotaPercent = voteBreakdown.quotaAmount > 0
+                                        ? (voteBreakdown.quotaAmount / totalQuota) * 100
+                                        : 0;
+                                    const usedWidth = Math.min(100, usedPercent);
+                                    const maxVoteWidth = isPositive
+                                        ? Math.min(100 - usedWidth, (quotaRemaining / totalQuota) * 100)
+                                        : Math.min(100 - usedWidth, voteQuotaPercent);
+                                    const voteWidth = voteBreakdown.quotaAmount > 0
+                                        ? Math.min(maxVoteWidth, voteQuotaPercent)
+                                        : 0;
+
+                                    return (
+                                        <>
+                                            {/* Already used quota - striped pattern */}
+                                            {usedToday > 0 && (
+                                                <div
+                                                    className="absolute left-0 top-0 bottom-0 opacity-40"
+                                                    style={{
+                                                        width: `${usedWidth}%`,
+                                                        backgroundImage:
+                                                            "repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(0,0,0,0.1) 4px, rgba(0,0,0,0.1) 8px)",
+                                                        backgroundColor: "var(--base-content)",
+                                                        zIndex: 1,
+                                                    }}
+                                                />
+                                            )}
+
+                                            {/* Current vote amount - colored by direction */}
+                                            {voteBreakdown.quotaAmount > 0 && (
+                                                <div
+                                                    className={classList(
+                                                        "absolute top-0 bottom-0",
+                                                        isPositive ? "bg-success" : "bg-error"
+                                                    )}
+                                                    style={{
+                                                        // For upvotes, fill from left (after used quota); for downvotes, fill from right
+                                                        ...(isPositive
+                                                            ? { left: `${usedWidth}%`, width: `${voteWidth}%` }
+                                                            : { right: 0, width: `${voteWidth}%` }
+                                                        ),
+                                                        zIndex: 2,
+                                                    }}
+                                                />
+                                            )}
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                            <div
+                                className="text-base-content text-center"
+                                style={{
+                                    width: "100%",
+                                    fontSize: "12px",
+                                    fontFamily: "Roboto, sans-serif",
+                                    fontWeight: 400,
+                                    lineHeight: "120%",
+                                    letterSpacing: "0.374px",
+                                }}
+                            >
+                                {t("available")} {quotaRemaining} {t("of")} {dailyQuota || quotaRemaining + usedToday}
+                            </div>
                         </div>
-                        {absAmount > 0 && voteBreakdown.quotaAmount > 0 && (
-                            <div className={`text-[10px] ml-auto ${isPositive ? "text-success/80" : "text-error/80"}`}>
-                                -{voteBreakdown.quotaAmount} из квоты
+
+                        {/* Wallet Bar - Only show if can use wallet */}
+                        {canUseWallet && (
+                            <div
+                                className="flex flex-col gap-[5px] isolation-isolate flex-grow"
+                                style={{
+                                    width: `${barSizing.walletBarWidth}px`,
+                                    flexShrink: 0,
+                                }}
+                            >
+                                <div
+                                    className="text-base-content opacity-60"
+                                    style={{
+                                        width: "100%",
+                                        height: "14px",
+                                        fontSize: "12px",
+                                        fontFamily: "Roboto, sans-serif",
+                                        fontWeight: 400,
+                                        lineHeight: "120%",
+                                        letterSpacing: "0.374px",
+                                    }}
+                                >
+                                    {t("walletBalance")}
+                                </div>
+                                <div
+                                    className="relative flex items-center justify-center overflow-hidden bg-base-200 rounded-lg"
+                                    style={{
+                                        width: "100%",
+                                        height: "20px",
+                                    }}
+                                >
+                                    {(() => {
+                                        // For downvotes, wallet is always used. For upvotes, wallet is used when quota is fully used
+                                        const quotaFullyUsed = quotaRemaining === 0 || voteBreakdown.quotaAmount >= quotaRemaining;
+                                        const shouldShowWalletBar = !isPositive || (quotaFullyUsed && voteBreakdown.walletAmount > 0);
+                                        const walletPercent = shouldShowWalletBar && voteBreakdown.walletAmount > 0 && walletBalance > 0
+                                            ? (voteBreakdown.walletAmount / walletBalance) * 100
+                                            : 0;
+
+                                        return (
+                                            <>
+                                                {/* Current vote - colored by direction */}
+                                                {shouldShowWalletBar && voteBreakdown.walletAmount > 0 && (
+                                                    <div
+                                                        className={classList(
+                                                            "absolute top-0 bottom-0",
+                                                            isPositive ? "bg-success" : "bg-error"
+                                                        )}
+                                                        style={{
+                                                            // For downvotes, fill from right to left. For upvotes, fill from left to right
+                                                            ...(isPositive
+                                                                ? { left: 0, width: `${Math.min(100, walletPercent)}%` }
+                                                                : { right: 0, width: `${Math.min(100, walletPercent)}%` }
+                                                            ),
+                                                            zIndex: 2,
+                                                        }}
+                                                    />
+                                                )}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+                                <div
+                                    className="text-base-content text-center"
+                                    style={{
+                                        width: "100%",
+                                        fontSize: "12px",
+                                        fontFamily: "Roboto, sans-serif",
+                                        fontWeight: 400,
+                                        lineHeight: "120%",
+                                        letterSpacing: "0.374px",
+                                    }}
+                                >
+                                    {t("available")} {walletBalance}
+                                </div>
                             </div>
                         )}
+                    </div>
 
-                        {/* Wallet Display */}
+                    {/* Explanation: What will happen if you vote */}
+                    <div className="bg-base-200/50 rounded-lg p-3 space-y-2">
+                        <div className="text-xs font-medium text-base-content/70 mb-1">
+                            {(() => {
+                                try {
+                                    return t("youVoteWithYour");
+                                } catch {
+                                    return "You vote with your:";
+                                }
+                            })()}
+                        </div>
+                        {/* Daily Quota - Always shown */}
                         <div className="flex items-center justify-between text-xs">
-                            <span className="text-base-content/50 font-medium">
-                                {t("walletBalance")}
+                            <span className="text-base-content/60">
+                                {t("dailyQuota")}
                             </span>
-                            <span className="text-base-content/70 font-semibold tabular-nums">
-                                {voteBreakdown.walletBefore} → {voteBreakdown.walletAfter}
+                            <span className="text-base-content font-semibold tabular-nums">
+                                {voteBreakdown.quotaAmount > 0
+                                    ? `${voteBreakdown.quotaAmount}`
+                                    : "0"
+                                }
                             </span>
                         </div>
-                        {absAmount > 0 && voteBreakdown.walletAmount > 0 && (
-                            <div className={`text-[10px] ml-auto ${isPositive ? "text-success/80" : "text-error/80"}`}>
-                                -{voteBreakdown.walletAmount} из накопленных
+                        {/* Accumulated Merits - Always shown */}
+                        {canUseWallet && (
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="text-base-content/60">
+                                    {t("walletBalance")}
+                                </span>
+                                <span className="text-base-content font-semibold tabular-nums">
+                                    {voteBreakdown.walletAmount > 0
+                                        ? `${voteBreakdown.walletAmount}`
+                                        : "0"
+                                    }
+                                </span>
                             </div>
                         )}
                     </div>
@@ -538,7 +743,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         placeholder={t("textField")}
                         className={classList(
                             "min-h-[100px] resize-none",
-                            !comment.trim() && "border-error/50 focus:border-error"
+                            !comment.trim() ? "border-error/50 focus:border-error" : ""
                         )}
                         required
                     />
