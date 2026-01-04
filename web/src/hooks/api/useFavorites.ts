@@ -74,12 +74,54 @@ export function useAddFavorite() {
 export function useRemoveFavorite() {
   const utils = trpc.useUtils();
   return trpc.favorites.remove.useMutation({
-    onSuccess: async () => {
+    onMutate: async (variables) => {
+      const { targetType, targetId } = variables;
+      
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await utils.favorites.isFavorite.cancel({ targetType, targetId });
+      
+      // Snapshot the previous value
+      const previousIsFavorite = utils.favorites.isFavorite.getData({ targetType, targetId });
+      
+      // Optimistically update to false
+      utils.favorites.isFavorite.setData(
+        { targetType, targetId },
+        { isFavorite: false }
+      );
+      
+      return { previousIsFavorite, targetType, targetId };
+    },
+    onError: async (_err, _variables, context) => {
+      // Rollback optimistic update on error
+      if (context?.targetType && context.targetId) {
+        if (context.previousIsFavorite !== undefined) {
+          // Restore previous value
+          utils.favorites.isFavorite.setData(
+            { targetType: context.targetType, targetId: context.targetId },
+            context.previousIsFavorite
+          );
+        } else {
+          // If there was no previous data, invalidate to clear optimistic update
+          await utils.favorites.isFavorite.invalidate({ 
+            targetType: context.targetType, 
+            targetId: context.targetId 
+          });
+        }
+      }
+    },
+    onSuccess: async (_result, variables) => {
+      const { targetType, targetId } = variables;
+      
+      // Invalidate queries to ensure consistency
       await Promise.all([
+        utils.favorites.isFavorite.invalidate({ targetType, targetId }),
         utils.favorites.getUnreadCount.invalidate(),
         utils.favorites.getCount.invalidate(),
         utils.favorites.getAll.invalidate(),
       ]);
+      
+      // Show toast notification
+      useToastStore.getState().addToast('Removed from favorites', 'success');
     },
   });
 }
