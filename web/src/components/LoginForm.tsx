@@ -406,6 +406,31 @@ export function LoginForm({
                                             </BrandFormControl>
                                         </div>
                                     )}
+
+                                    {/* Fake Data Mode Authentication */}
+                                    {fakeDataMode && (
+                                        <div className="space-y-2 pt-4 border-t">
+                                            <p className="text-xs text-muted-foreground text-center mb-2">
+                                                {t("fakeDataModeEnabled")}
+                                            </p>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-center"
+                                                onClick={handleFakeAuth}
+                                                disabled={isLoading || isOAuthLoading}
+                                            >
+                                                {t("fakeLogin")}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full justify-center"
+                                                onClick={handleFakeSuperadminAuth}
+                                                disabled={isLoading || isOAuthLoading}
+                                            >
+                                                {t("superadminLogin")}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </>
