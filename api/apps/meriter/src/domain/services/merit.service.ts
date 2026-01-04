@@ -132,8 +132,8 @@ export class MeritService {
       communityId,
     );
 
-    // Only lead can see merit stats
-    if (userRole !== COMMUNITY_ROLE_LEAD) {
+    // Leads (and global/community superadmins) can see merit stats
+    if (userRole !== COMMUNITY_ROLE_LEAD && userRole !== COMMUNITY_ROLE_SUPERADMIN) {
       return null;
     }
 
