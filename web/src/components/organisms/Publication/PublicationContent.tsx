@@ -50,11 +50,13 @@ interface Publication {
 interface PublicationContentProps {
   publication: Publication;
   className?: string;
+  onCategoryClick?: (categoryId: string) => void;
 }
 
 export const PublicationContent: React.FC<PublicationContentProps> = ({
   publication,
   className = '',
+  onCategoryClick,
 }) => {
   const t = useTranslations('publications.create.taxonomy');
   const {
@@ -206,13 +208,20 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
               const category = allCategories.find(c => c.id === categoryId);
               if (!category) return null;
               return (
-                <span
+                <button
                   key={categoryId}
-                  className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onCategoryClick) {
+                      onCategoryClick(categoryId);
+                    }
+                  }}
+                  className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal cursor-pointer hover:opacity-80 transition-opacity"
                   style={{ backgroundColor: '#E0E0E0' }}
                 >
                   {category.name}
-                </span>
+                </button>
               );
             })}
           </div>

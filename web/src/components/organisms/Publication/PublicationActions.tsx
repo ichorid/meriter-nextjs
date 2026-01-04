@@ -1,8 +1,8 @@
 // Publication actions component
 'use client';
 
-import React from 'react';
-import { Hand, Share2, Star } from 'lucide-react';
+import React, { useState } from 'react';
+import { Hand, Share2, Star, Plus, Minus } from 'lucide-react';
 import { FavoriteStar } from '@/components/atoms';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,6 +14,10 @@ import { useCommunity } from '@/hooks/api/useCommunities';
 import { ResourcePermissions } from '@/types/api-v1';
 import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
+import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
+import { isTestAuthMode } from '@/config';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { trpc } from '@/lib/trpc/client';
 
 // Local Publication type definition
 interface Publication {
@@ -97,6 +101,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const pathname = usePathname();
   const t = useTranslations('shared');
   const myId = user?.id;
+  const testAuthMode = isTestAuthMode();
+  const isSuperadmin = user?.globalRole === 'superadmin';
+  const addToast = useToastStore((state) => state.addToast);
+  const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
+  const createFromFakeUserMutation = trpc.votes.createFromFakeUser.useMutation();
+  const utils = trpc.useUtils();
+  const [isAddingVote, setIsAddingVote] = useState(false);
+  const [isAddingNegativeVote, setIsAddingNegativeVote] = useState(false);
   
   // Check if we're on the community feed page (not the detail page)
   const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
@@ -225,6 +237,79 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     );
   };
 
+  // Handle dev add positive vote button click (test mode only, superadmin only)
+  const handleDevAddPositiveVote = async () => {
+    if (!testAuthMode || !isSuperadmin || !publicationId || !communityId) return;
+    
+    try {
+      setIsAddingVote(true);
+      
+      // Add a vote with +10 rating from fake user
+      // Use walletAmount instead of quotaAmount to avoid quota limitations
+      await createFromFakeUserMutation.mutateAsync({
+        publicationId,
+        communityId,
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 0, // Not used for dev votes
+        walletAmount: 10, // Use wallet for positive votes too
+        comment: '[DEV] +10 рейтинг от фейкового пользователя',
+        direction: 'up',
+      });
+      
+      // Invalidate queries to refresh the publication data
+      await utils.publications.getById.invalidate({ id: publicationId });
+      await utils.publications.getAll.invalidate();
+      
+      addToast('Добавлено +10 рейтинга от фейкового пользователя', 'success');
+      
+      // Call updateAll if provided to refresh parent component
+      if (updateAll) {
+        updateAll();
+      }
+    } catch (error: any) {
+      addToast(error?.message || 'Ошибка при добавлении рейтинга', 'error');
+    } finally {
+      setIsAddingVote(false);
+    }
+  };
+
+  // Handle dev add negative vote button click (test mode only, superadmin only)
+  const handleDevAddNegativeVote = async () => {
+    if (!testAuthMode || !isSuperadmin || !publicationId || !communityId) return;
+    
+    try {
+      setIsAddingNegativeVote(true);
+      
+      // Add a vote with -10 rating from fake user
+      await createFromFakeUserMutation.mutateAsync({
+        publicationId,
+        communityId,
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: '[DEV] -10 рейтинг от фейкового пользователя',
+        direction: 'down',
+      });
+      
+      // Invalidate queries to refresh the publication data
+      await utils.publications.getById.invalidate({ id: publicationId });
+      await utils.publications.getAll.invalidate();
+      
+      addToast('Добавлено -10 рейтинга от фейкового пользователя', 'success');
+      
+      // Call updateAll if provided to refresh parent component
+      if (updateAll) {
+        updateAll();
+      }
+    } catch (error: any) {
+      addToast(error?.message || 'Ошибка при добавлении отрицательного рейтинга', 'error');
+    } finally {
+      setIsAddingNegativeVote(false);
+    }
+  };
+
   // Handle share click
   const handleShareClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -271,7 +356,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
       <div className="flex items-center justify-between gap-3">
-        {/* Left side: Favorite, Share */}
+        {/* Left side: Favorite, Share, Dev Add Vote */}
         <div className="flex items-center gap-4">
           {/* Favorite */}
           {publicationIdForFavorite && (
@@ -291,42 +376,82 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
               <Share2 className="w-4 h-4" />
             </button>
           )}
+
+          {/* Dev Add Vote buttons (test mode, superadmin only) */}
+          {testAuthMode && isSuperadmin && publicationId && communityId && (
+            <>
+              <button
+                onClick={handleDevAddPositiveVote}
+                disabled={isAddingVote || isAddingNegativeVote}
+                className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Добавить +10 рейтинга от фейкового пользователя (DEV)"
+              >
+                <Plus className={`w-4 h-4 ${isAddingVote ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={handleDevAddNegativeVote}
+                disabled={isAddingVote || isAddingNegativeVote}
+                className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Добавить -10 рейтинга от фейкового пользователя (DEV)"
+              >
+                <Minus className={`w-4 h-4 ${isAddingNegativeVote ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Center: Score (clickable, opens comments) - hidden if hideVoteAndScore */}
         {!hideVoteAndScore && (
-          <button
-            onClick={handleCommentClick}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
-            title={t('comments')}
-          >
-            <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
-            <div className="flex items-center gap-2">
-              <span className={`text-lg font-semibold tabular-nums transition-colors ${
-                currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
-              }`}>
-                {currentScore > 0 ? '+' : ''}{currentScore}
-              </span>
-              {totalVotes !== undefined && 
-               typeof totalVotes === 'number' && 
-               !Number.isNaN(totalVotes) &&
-               typeof currentScore === 'number' && 
-               !Number.isNaN(currentScore) &&
-               totalVotes > currentScore && (
-                <span 
-                  className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
-                  title={t('totalVotesTooltip')}
-                >
-                  ({totalVotes > 0 ? '+' : ''}{totalVotes})
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={handleCommentClick}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
+              title={t('comments')}
+            >
+              <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
+              <div className="flex items-center gap-2">
+                <span className={`text-lg font-semibold tabular-nums transition-colors ${
+                  currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
+                }`}>
+                  {currentScore > 0 ? '+' : ''}{currentScore}
                 </span>
-              )}
-              {commentCount > 0 && (
-                <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
-                  · {commentCount}
-                </span>
-              )}
-            </div>
-          </button>
+                {totalVotes !== undefined && 
+                 typeof totalVotes === 'number' && 
+                 !Number.isNaN(totalVotes) &&
+                 typeof currentScore === 'number' && 
+                 !Number.isNaN(currentScore) &&
+                 totalVotes > currentScore && (
+                  <span 
+                    className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
+                    title={t('totalVotesTooltip')}
+                  >
+                    ({totalVotes > 0 ? '+' : ''}{totalVotes})
+                  </span>
+                )}
+                {commentCount > 0 && (
+                  <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
+                    · {commentCount}
+                  </span>
+                )}
+              </div>
+            </button>
+            
+            {/* Withdraw button - centered below score */}
+            {showWithdraw && (
+              <button
+                onClick={handleWithdrawClick}
+                disabled={maxWithdrawAmount <= 0}
+                className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+                  maxWithdrawAmount <= 0
+                    ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
+                    : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                }`}
+                title={maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined}
+              >
+                {t('withdraw')}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Right side: Vote button - hidden if hideVoteAndScore */}
@@ -349,29 +474,15 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         )}
       </div>
 
-      {/* Withdraw/Topup buttons - show below if applicable */}
-      {showWithdraw && (
-        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-base-300">
+      {/* Topup button - show below if applicable (only if withdraw is not shown) */}
+      {!showWithdraw && maxTopUpAmount > 0 && (
+        <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-base-300">
           <button
-            onClick={handleWithdrawClick}
-            disabled={maxWithdrawAmount <= 0}
-            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
-              maxWithdrawAmount <= 0
-                ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
-                : 'bg-base-content/10 text-base-content hover:bg-base-content/20 active:scale-95'
-            }`}
-            title={maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined}
+            onClick={handleTopupClick}
+            className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
           >
-            {t('withdraw')}
+            {t('addMerits', { amount: Math.floor(maxTopUpAmount * 10) / 10 })}
           </button>
-          {maxTopUpAmount > 0 && (
-            <button
-              onClick={handleTopupClick}
-              className="h-8 px-4 text-xs font-medium rounded-lg transition-all bg-base-content/10 text-base-content hover:bg-base-content/20 active:scale-95"
-            >
-              {t('addMerits', { amount: Math.floor(maxTopUpAmount * 10) / 10 })}
-            </button>
-          )}
         </div>
       )}
     </div>

@@ -19,6 +19,7 @@ interface PublicationCardProps {
   showCommunityAvatar?: boolean;
   className?: string;
   isSelected?: boolean;
+  onCategoryClick?: (categoryId: string) => void;
 }
 
 export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
@@ -27,6 +28,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   showCommunityAvatar = false,
   className = '',
   isSelected = false,
+  onCategoryClick,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -227,6 +229,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           meta: transformedMeta,
         }}
         className="mb-4"
+        onCategoryClick={onCategoryClick}
       />
 
       <PublicationActions
