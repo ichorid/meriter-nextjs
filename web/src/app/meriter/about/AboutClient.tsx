@@ -14,6 +14,7 @@ import {
     DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { CategoryManagement } from '@/components/settings/CategoryManagement';
+import { InviteManagement } from '@/components/settings/InviteManagement';
 import { AboutContent } from '@/components/organisms/About/AboutContent';
 import { AboutAdminPanel } from '@/components/organisms/About/AboutAdminPanel';
 
@@ -92,8 +93,9 @@ const AboutPage = () => {
                         <DialogHeader>
                             <DialogTitle>{tSettings('platformTitle')}</DialogTitle>
                         </DialogHeader>
-                        <div className="pt-4">
+                        <div className="pt-4 space-y-6">
                             <CategoryManagement />
+                            <InviteManagement />
                         </div>
                     </DialogContent>
                 </Dialog>
