@@ -335,13 +335,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             <button
               onClick={handleVoteClick}
               disabled={!canVote}
-              className={`h-8 px-4 text-xs font-medium rounded-lg transition-all ${
+              className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
                 canVote
                   ? 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
-                  : 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
+                  : 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
               }`}
               title={voteTooltipText}
             >
+              <Hand className={`w-4 h-4 ${canVote ? 'text-base-100' : 'text-base-content/60'}`} />
               {t('vote')}
             </button>
           </div>
