@@ -386,17 +386,31 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     });
   });
 
-  describe('Poll Creation Quota Consumption', () => {
-    it('should consume 1 quota when creating a poll', async () => {
+  describe('Poll Creation Wallet Payment', () => {
+    it('should deduct wallet merits when creating a poll', async () => {
       (global as any).testUserId = testUserId;
 
-      // Get initial quota
-      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testUserId,
-        communityId: testCommunityId,
-      });
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testUserId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
-      expect(quotaBefore.remaining).toBe(10);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(1);
 
       // Create poll
       const expiresAt = new Date();
@@ -415,58 +429,64 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const pollId = created.id;
 
-      // Verify quota was consumed
+      // Verify wallet was debited
+      const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 1);
+
+      // Verify wallet transaction was created
+      const transactions = await connection.db
+        .collection('transactions')
+        .find({
+          userId: testUserId,
+          communityId: testCommunityId,
+          type: 'debit',
+          transactionType: 'poll_creation',
+          referenceId: pollId,
+        })
+        .toArray();
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].amount).toBe(1);
+
+      // Verify quota was NOT consumed
       const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
-
-      expect(quotaAfter.used).toBe(1);
-      expect(quotaAfter.remaining).toBe(9);
-
-      // Verify quota_usage record was created
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testUserId,
-          communityId: testCommunityId,
-          usageType: 'poll_creation',
-          referenceId: pollId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(1);
+      expect(quotaAfter.used).toBe(0);
+      expect(quotaAfter.remaining).toBe(10);
     });
 
-    it('should reject poll creation when quota is insufficient', async () => {
+    it('should reject poll creation when wallet balance is insufficient', async () => {
       (global as any).testUserId = testUserId;
 
-      // Use up all quota by creating 10 polls
+      // Ensure wallet has no balance
+      const wallet = await walletService.getWallet(testUserId, testCommunityId);
+      if (wallet && wallet.getBalance() > 0) {
+        // Clear wallet by debiting all balance (if any exists)
+        const currentBalance = wallet.getBalance();
+        await walletService.addTransaction(
+          testUserId,
+          testCommunityId,
+          'debit',
+          currentBalance,
+          'personal',
+          'test_clear',
+          'test',
+          {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          'Clear balance for test',
+        );
+      }
+
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      for (let i = 0; i < 10; i++) {
-        await trpcMutation(app, 'polls.create', {
-          communityId: testCommunityId,
-          question: `Test Poll ${i}`,
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        });
-      }
-
-      // Verify quota is exhausted
-      const quota = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testUserId,
-        communityId: testCommunityId,
-      });
-
-      expect(quota.remaining).toBe(0);
-
-      // Try to create another poll - should fail
+      // Try to create a poll - should fail
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
         const result = await trpcMutationWithError(app, 'polls.create', {
           communityId: testCommunityId,
@@ -480,7 +500,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.message).toContain('Insufficient wallet balance');
       });
     });
 
@@ -508,10 +528,27 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       });
     });
 
-    it('should track quota consumption correctly with poll casts', async () => {
+    it('should not consume quota when creating poll (wallet only), but track quota for poll casts', async () => {
       (global as any).testUserId = testUserId;
 
-      // Create a poll (consumes 1 quota)
+      // Add wallet balance for poll creation
+      await walletService.addTransaction(
+        testUserId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
+
+      // Create a poll (deducts wallet, not quota)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
@@ -528,6 +565,14 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const pollId = createdPoll.id;
 
+      // Verify poll creation did not consume quota
+      const quotaBeforeCast = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
+      expect(quotaBeforeCast.used).toBe(0);
+      expect(quotaBeforeCast.remaining).toBe(10);
+
       // Create a poll cast (consumes 2 quota)
       await trpcMutation(app, 'polls.cast', {
         pollId,
@@ -538,14 +583,14 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         },
       });
 
-      // Verify total quota used is 3 (1 for poll + 2 for cast)
+      // Verify total quota used is 2 (only from cast, poll creation uses wallet)
       const quota = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
 
-      expect(quota.used).toBe(3);
-      expect(quota.remaining).toBe(7);
+      expect(quota.used).toBe(2);
+      expect(quota.remaining).toBe(8);
     });
   });
 
@@ -610,7 +655,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const authorPublicationId = createdAuthorPub.id;
 
-      // Create poll by testUserId (1 quota)
+      // Create poll by testUserId (uses wallet, not quota)
       (global as any).testUserId = testUserId;
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
@@ -647,15 +692,15 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         },
       });
 
-      // Verify total quota used by testUserId is 4 (0 for publications + 1 for poll + 2 for vote + 1 for poll cast)
-      // Publications now use wallet, not quota
+      // Verify total quota used by testUserId is 3 (0 for publications + 0 for poll + 2 for vote + 1 for poll cast)
+      // Publications and polls now use wallet, not quota
       const quota = await trpcQuery(app, 'wallets.getQuota', {
         userId: testUserId,
         communityId: testCommunityId,
       });
 
-      expect(quota.used).toBe(4);
-      expect(quota.remaining).toBe(6);
+      expect(quota.used).toBe(3);
+      expect(quota.remaining).toBe(7);
     });
   });
 });

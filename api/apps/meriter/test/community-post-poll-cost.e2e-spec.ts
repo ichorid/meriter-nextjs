@@ -393,9 +393,26 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   });
 
   describe('Poll Creation with Configurable Cost', () => {
-    it('should charge configured pollCost when creating a poll', async () => {
+    it('should charge configured pollCost from wallet when creating a poll', async () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
+
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
       // Set pollCost to 4
       await trpcMutation(app, 'communities.update', {
@@ -407,15 +424,12 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         },
       });
 
-      // Get initial quota
-      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
-        userId: testLeadId,
-        communityId: testCommunityId,
-      });
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(4);
 
-      expect(quotaBefore.remaining).toBe(10);
-
-      // Create poll (should consume 4 quota)
+      // Create poll (should deduct 4 from wallet)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
@@ -432,27 +446,33 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
       const pollId = created.id;
 
-      // Verify quota was consumed (4 instead of 1)
+      // Verify wallet was debited (4 instead of 1)
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 4);
+
+      // Verify wallet transaction was created
+      const transactions = await connection.db
+        .collection('transactions')
+        .find({
+          userId: testLeadId,
+          communityId: testCommunityId,
+          type: 'debit',
+          transactionType: 'poll_creation',
+          referenceId: pollId,
+        })
+        .toArray();
+
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].amount).toBe(4);
+
+      // Verify quota was NOT consumed
       const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
         userId: testLeadId,
         communityId: testCommunityId,
       });
-
-      expect(quotaAfter.used).toBe(4);
-      expect(quotaAfter.remaining).toBe(6);
-
-      // Verify quota_usage record shows 4
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          usageType: 'poll_creation',
-          referenceId: pollId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(4);
+      expect(quotaAfter.used).toBe(0);
+      expect(quotaAfter.remaining).toBe(10);
     });
 
     it('should allow free polls when pollCost is 0', async () => {

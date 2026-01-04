@@ -247,52 +247,17 @@ export const pollsRouter = router({
       // Get poll cost from community settings (default to 1 if not set)
       const pollCost = community.settings?.pollCost ?? 1;
       
-      // Extract payment amounts
-      const quotaAmount = input.quotaAmount ?? 0;
-      const walletAmount = input.walletAmount ?? 0;
-      
-      // Default to pollCost quota if neither is specified (backward compatibility)
-      const effectiveQuotaAmount = quotaAmount === 0 && walletAmount === 0 ? pollCost : quotaAmount;
-      const effectiveWalletAmount = walletAmount;
-      
-      // Validate payment (skip if cost is 0)
+      // Validate wallet payment (skip if cost is 0)
+      // Poll creation requires wallet merits only (no quota)
       if (pollCost > 0) {
-        // Validate that at least one payment method is provided
-        if (effectiveQuotaAmount === 0 && effectiveWalletAmount === 0) {
+        const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+        const walletBalance = wallet ? wallet.getBalance() : 0;
+
+        if (walletBalance < pollCost) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `You must pay with either quota or wallet merits to create a poll. The cost is ${pollCost}. At least one of quotaAmount or walletAmount must be at least ${pollCost}.`,
+            message: `Insufficient wallet balance. You need at least ${pollCost} wallet merit${pollCost === 1 ? '' : 's'} to create a poll. Available: ${walletBalance}`,
           });
-        }
-
-        // Check quota if using quota
-        if (effectiveQuotaAmount > 0) {
-          const remainingQuota = await getRemainingQuota(
-            ctx.user.id,
-            input.communityId,
-            community,
-            ctx.connection,
-          );
-
-          if (remainingQuota < effectiveQuotaAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient quota. Available: ${remainingQuota}, Requested: ${effectiveQuotaAmount}`,
-            });
-          }
-        }
-
-        // Check wallet balance if using wallet
-        if (effectiveWalletAmount > 0) {
-          const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
-          const walletBalance = wallet ? wallet.getBalance() : 0;
-
-          if (walletBalance < effectiveWalletAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${effectiveWalletAmount}`,
-            });
-          }
         }
       }
       
@@ -301,46 +266,28 @@ export const pollsRouter = router({
       const snapshot = poll.toSnapshot();
       const pollId = snapshot.id;
       
-      // Process payment after successful creation (skip if cost is 0)
+      // Process wallet payment after successful creation (skip if cost is 0)
       if (pollCost > 0) {
-        // Record quota usage if quota was used
-        if (effectiveQuotaAmount > 0) {
-          try {
-            await ctx.quotaUsageService.consumeQuota(
-              ctx.user.id,
-              snapshot.communityId,
-              effectiveQuotaAmount,
-              'poll_creation',
-              pollId,
-            );
-          } catch (_error) {
-            // Don't fail the request if quota consumption fails - poll is already created
-          }
-        }
+        try {
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
 
-        // Deduct from wallet if wallet was used
-        if (effectiveWalletAmount > 0) {
-          try {
-            const currency = community.settings?.currencyNames || {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            };
-
-            await ctx.walletService.addTransaction(
-              ctx.user.id,
-              snapshot.communityId,
-              'debit',
-              effectiveWalletAmount,
-              'personal',
-              'poll_creation',
-              pollId,
-              currency,
-              `Payment for creating poll`,
-            );
-          } catch (_error) {
-            // Don't fail the request if wallet deduction fails - poll is already created
-          }
+          await ctx.walletService.addTransaction(
+            ctx.user.id,
+            snapshot.communityId,
+            'debit',
+            pollCost,
+            'personal',
+            'poll_creation',
+            pollId,
+            currency,
+            `Payment for creating poll`,
+          );
+        } catch (_error) {
+          // Don't fail the request if wallet deduction fails - poll is already created
         }
       }
       
