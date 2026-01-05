@@ -435,13 +435,15 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
       expect(balanceAfter).toBe(balanceBefore - 1);
 
       // Verify wallet transaction was created
+      const wallet = await walletService.getWallet(testUserId, testCommunityId);
+      expect(wallet).toBeTruthy();
+      const walletId = wallet!.getId.getValue();
       const transactions = await connection.db
         .collection('transactions')
         .find({
-          userId: testUserId,
-          communityId: testCommunityId,
-          type: 'debit',
-          transactionType: 'poll_creation',
+          walletId,
+          type: 'withdrawal',
+          referenceType: 'poll_creation',
           referenceId: pollId,
         })
         .toArray();

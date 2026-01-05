@@ -455,10 +455,9 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       const transactions = await connection.db
         .collection('transactions')
         .find({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          type: 'debit',
-          transactionType: 'poll_creation',
+          walletId: walletAfter!.getId.getValue(),
+          type: 'withdrawal',
+          referenceType: 'poll_creation',
           referenceId: pollId,
         })
         .toArray();
@@ -535,7 +534,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       expect(quotaUsage).toBeNull();
     });
 
-    it('should reject poll creation when quota is insufficient for configured cost', async () => {
+    it('should reject poll creation when wallet balance is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
 
@@ -566,7 +565,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+        expect(result.error?.message).toContain('Insufficient wallet balance');
       });
     });
   });
