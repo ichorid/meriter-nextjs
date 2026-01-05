@@ -8,6 +8,7 @@ import { useUserRoles } from '@/hooks/api/useProfile';
  * Returns true if:
  * - Current user is a superadmin (can view any user in any community)
  * - Current user is a lead in the specified community (can view any user in that community)
+ * - Current user is a participant in the specified community (can view any user in that community)
  * 
  * @param communityId - The community ID to check permissions for
  * @returns { canView: boolean; isLoading: boolean }
@@ -24,12 +25,12 @@ export function useCanViewUserMerits(communityId?: string) {
       return true;
     }
 
-    // Check if user is a lead in this community
-    const isLeadInCommunity = userRoles.some(
-      (role) => role.communityId === communityId && role.role === 'lead'
+    // Check if user is a lead or participant in this community
+    const isLeadOrParticipantInCommunity = userRoles.some(
+      (role) => role.communityId === communityId && (role.role === 'lead' || role.role === 'participant')
     );
 
-    return isLeadInCommunity;
+    return isLeadOrParticipantInCommunity;
   }, [user, communityId, userRoles]);
 
   return {

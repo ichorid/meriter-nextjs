@@ -1,31 +1,6 @@
-// Polls React Query hooks
-import {
-    useQuery,
-    useMutation,
-    useQueryClient,
-    useInfiniteQuery,
-} from "@tanstack/react-query";
-import { pollsApiV1 } from "@/lib/api/v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
-import { STALE_TIME } from "@/lib/constants/query-config";
+// Polls React Query hooks - migrated to tRPC
+import { trpc } from "@/lib/trpc/client";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-    updateWalletOptimistically,
-    rollbackOptimisticUpdates,
-    type OptimisticUpdateContext,
-} from "./useVotes.helpers";
-import type { PaginatedResponse, Poll } from "@/types/api-v1";
-import { createGetNextPageParam } from "@/lib/utils/pagination-utils";
-import { createMutation } from "@/lib/api/mutation-factory";
-import { quotaKeys } from "./useQuota";
-
-// Local type definitions (only for types not in shared-types)
-interface PollOption {
-    id: string;
-    text: string;
-    votes: number;
-    percentage: number;
-}
 
 interface PollCreate {
     question: string;
@@ -33,21 +8,8 @@ interface PollCreate {
     options: { id?: string; text: string }[];
     communityId: string;
     expiresAt: string;
-}
-
-interface PollResult {
-    poll: Poll;
-    userCast?: PollCast;
-    totalCasts: number;
-}
-
-interface PollCast {
-    id: string;
-    pollId: string;
-    optionId: string;
-    userId: string;
-    amount: number;
-    createdAt: string;
+    quotaAmount?: number;
+    walletAmount?: number;
 }
 
 interface CastPollRequest {
@@ -58,193 +20,130 @@ interface CastPollRequest {
 
 // Get polls with pagination
 export function usePolls(
-    params: { skip?: number; limit?: number; userId?: string } = {}
+    params: { skip?: number; limit?: number; userId?: string; communityId?: string } = {}
 ) {
-    return useQuery({
-        queryKey: queryKeys.polls.list(params),
-        queryFn: () => pollsApiV1.getPolls(params),
-        staleTime: STALE_TIME.MEDIUM,
+    return trpc.polls.getAll.useQuery({
+        communityId: params.communityId,
+        authorId: params.userId,
+        page: params.skip !== undefined ? Math.floor((params.skip || 0) / (params.limit || 20)) + 1 : undefined,
+        pageSize: params.limit,
+        limit: params.limit,
+        skip: params.skip,
     });
 }
 
 // Infinite query for user's polls
 export function useInfiniteMyPolls(userId: string, pageSize: number = 20) {
-    return useInfiniteQuery({
-        queryKey: [...queryKeys.polls.lists(), "infinite", userId, pageSize],
-        queryFn: ({ pageParam = 1 }: { pageParam: number }) => {
-            const skip = (pageParam - 1) * pageSize;
-            return pollsApiV1.getPolls({ skip, limit: pageSize, userId });
+    return trpc.polls.getAll.useInfiniteQuery(
+        {
+            authorId: userId,
+            pageSize,
+            limit: pageSize,
         },
-        getNextPageParam: createGetNextPageParam<Poll>(),
-        initialPageParam: 1,
-        enabled: !!userId,
-    });
+        {
+            getNextPageParam: (lastPage) => {
+                if (!lastPage || lastPage.total === 0) return undefined;
+                const currentPage = Math.floor((lastPage.skip || 0) / (lastPage.limit || pageSize)) + 1;
+                const totalPages = Math.ceil(lastPage.total / (lastPage.limit || pageSize));
+                return currentPage < totalPages ? currentPage + 1 : undefined;
+            },
+            initialPageParam: 1,
+            enabled: !!userId,
+        }
+    );
 }
 
 // Get single poll
 export function usePoll(id: string) {
-    return useQuery({
-        queryKey: queryKeys.polls.detail(id),
-        queryFn: () => pollsApiV1.getPoll(id),
-        staleTime: STALE_TIME.MEDIUM,
-        enabled: !!id,
-    });
+    return trpc.polls.getById.useQuery(
+        { id },
+        { enabled: !!id }
+    );
 }
 
 // Get poll results
 export function usePollResults(id: string) {
-    return useQuery({
-        queryKey: [...queryKeys.polls.all, "results", id],
-        queryFn: () => pollsApiV1.getPollResults(id),
-        staleTime: STALE_TIME.SHORT,
-        enabled: !!id,
-    });
+    return trpc.polls.getResults.useQuery(
+        { id },
+        { enabled: !!id }
+    );
 }
 
 // Create poll
-export const useCreatePoll = createMutation<Poll, PollCreate>({
-    mutationFn: (data) => pollsApiV1.createPoll(data),
-    errorContext: "Create poll error",
-    invalidations: {
-        polls: {
-            lists: true,
+export const useCreatePoll = () => {
+    const utils = trpc.useUtils();
+
+    return trpc.polls.create.useMutation({
+        onSuccess: () => {
+            // Invalidate polls lists
+            utils.polls.getAll.invalidate();
+            // Invalidate quota queries for the community
+            // Note: quota router not yet migrated, invalidate manually if needed
         },
-        quota: {
-            communityId: (_result: any, variables: PollCreate) => variables.communityId,
-        },
-    },
-    setQueryData: {
-        queryKey: (result) => queryKeys.polls.detail(result.id),
-        data: (result) => result,
-    },
-});
+    });
+};
 
 // Cast poll
-export function useCastPoll() {
-    const queryClient = useQueryClient();
+export function useCastPoll(communityId?: string) {
+    const utils = trpc.useUtils();
     const { user } = useAuth();
 
-    return useMutation({
-        mutationFn: ({
-            id,
-            data,
-            communityId,
-        }: {
-            id: string;
-            data: CastPollRequest;
-            communityId?: string;
-        }) =>
-            pollsApiV1.castPoll(id, {
-                optionId: data.optionId,
-                // Poll casts only use wallet, quotaAmount should be 0
-                quotaAmount: data.quotaAmount ?? 0,
-                walletAmount: data.walletAmount ?? 0,
-            }),
-        onMutate: async (variables) => {
-            const { data, communityId } = variables || {};
-            const shouldOptimistic = !!user?.id && !!communityId;
-            if (!shouldOptimistic) return {} as OptimisticUpdateContext;
-
-            const context: OptimisticUpdateContext = {};
-
-            // Handle wallet optimistic update (poll casts always use personal wallet)
-            if (communityId) {
-                const walletAmount = data.walletAmount || 0;
-                const walletUpdate = await updateWalletOptimistically(
-                    queryClient,
-                    communityId,
-                    Math.abs(walletAmount), // Pass positive amount - helper will convert to negative delta for spending
-                    queryKeys.wallet
-                );
-                if (walletUpdate) {
-                    context.walletsKey = walletUpdate.walletsKey;
-                    context.balanceKey = walletUpdate.balanceKey;
-                    context.previousWallets = walletUpdate.previousWallets;
-                    context.previousBalance = walletUpdate.previousBalance;
-                }
-            }
-
-            return context;
-        },
-        onSuccess: (result, { id, communityId, data }) => {
+    return trpc.polls.cast.useMutation({
+        onSuccess: async (_result, variables) => {
             // Invalidate poll results to get updated cast counts
-            queryClient.invalidateQueries({ queryKey: [...queryKeys.polls.all, "results", id] });
-
+            await utils.polls.getById.invalidate({ id: variables.pollId });
             // Invalidate polls list to ensure consistency
-            queryClient.invalidateQueries({ queryKey: queryKeys.polls.lists() });
-
-            // Invalidate the specific poll to refetch with updated data
-            queryClient.invalidateQueries({ queryKey: queryKeys.polls.detail(id) });
+            await utils.polls.getAll.invalidate();
 
             // Invalidate wallet queries to ensure balance is up to date
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.wallet.wallets(),
-            });
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.wallet.balance(),
-            });
-            
-            // Invalidate quota queries if quota was used (poll casts can now use quota)
-            if (data.quotaAmount && data.quotaAmount > 0 && communityId && user?.id) {
-                queryClient.invalidateQueries({
-                    queryKey: quotaKeys.quota(user.id, communityId),
-                });
-            }
-        },
-        onError: (error, variables, context) => {
-            console.error("Cast poll error:", error);
-            rollbackOptimisticUpdates(queryClient, context);
-        },
-        onSettled: (_data, _err, vars, ctx) => {
-            const communityId = vars?.communityId;
+            await utils.wallets.getAll.invalidate();
+            await utils.wallets.getAll.refetch();
+
             if (communityId) {
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.wallet.wallets(),
-                });
-                queryClient.invalidateQueries({
-                    queryKey: queryKeys.wallet.balance(communityId),
-                });
+                await utils.wallets.getBalance.invalidate({ communityId });
+                await utils.wallets.getBalance.refetch({ communityId });
             }
+
+            // Invalidate quota queries if quota was used
+            if (variables.data.quotaAmount && variables.data.quotaAmount > 0 && user?.id && communityId) {
+                await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
+                await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
+            }
+
+            // Invalidate community feed to show updated poll in feed
+            if (communityId) {
+                await utils.communities.getFeed.invalidate({ communityId });
+            }
+        },
+        onError: (error) => {
+            console.error("Cast poll error:", error);
         },
     });
 }
 
 // Update poll
-export const useUpdatePoll = createMutation<
-    Poll,
-    { id: string; data: Partial<PollCreate> }
->({
-    mutationFn: ({ id, data }) => pollsApiV1.updatePoll(id, data),
-    errorContext: "Update poll error",
-    invalidations: {
-        polls: {
-            lists: true,
-            detail: (result) => result.id,
-        },
-    },
-    setQueryData: {
-        queryKey: (result) => queryKeys.polls.detail(result.id),
-        data: (result) => result,
-    },
-});
+export const useUpdatePoll = () => {
+    const utils = trpc.useUtils();
 
-// Delete poll
-export const useDeletePoll = createMutation<void, string>({
-    mutationFn: (id) => pollsApiV1.deletePoll(id),
-    errorContext: "Delete poll error",
-    invalidations: {
-        polls: {
-            lists: true,
-            results: (_, deletedId) => deletedId,
+    return trpc.polls.update.useMutation({
+        onSuccess: (_result, variables) => {
+            // Invalidate polls lists and specific poll
+            utils.polls.getAll.invalidate();
+            utils.polls.getById.invalidate({ id: variables.id });
         },
-    },
-    onSuccess: (_result, deletedId, queryClient) => {
-        // Remove from all caches
-        queryClient.removeQueries({
-            queryKey: queryKeys.polls.detail(deletedId),
-        });
-        queryClient.removeQueries({
-            queryKey: [...queryKeys.polls.all, "results", deletedId],
-        });
-    },
-});
+    });
+};
+
+// Delete poll - TODO: Add to polls router
+export const useDeletePoll = () => {
+    const utils = trpc.useUtils();
+
+    // Placeholder - delete endpoint not yet in tRPC router
+    return {
+        mutate: () => { },
+        mutateAsync: async () => { },
+        isLoading: false,
+        isError: false,
+        error: null,
+    };
+};

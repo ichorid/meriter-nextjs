@@ -9,6 +9,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
+import { ActionType } from '../src/domain/common/constants/action-types.constants';
 
 describe('Poll Creation Permissions', () => {
   jest.setTimeout(60000);
@@ -72,16 +73,12 @@ describe('Poll Creation Permissions', () => {
     });
 
     // Create Team Community with RESTRICTED rules (only lead/superadmin)
+    // Note: Team communities allow participants to post if they have team membership
     await communityModel.create({
       id: teamCommunityId,
       name: 'Team Community',
       typeTag: 'team',
       members: [participantId],
-      postingRules: {
-        allowedRoles: ['superadmin', 'lead'], // Participant excluded
-        requiresTeamMembership: false,
-        onlyTeamLead: false,
-      },
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -92,11 +89,13 @@ describe('Poll Creation Permissions', () => {
       name: 'Custom Community',
       typeTag: 'custom',
       members: [participantId],
-      postingRules: {
-        allowedRoles: ['superadmin', 'lead'], // Participant excluded
-        requiresTeamMembership: false,
-        onlyTeamLead: true, // This actually restricts participants
-      },
+      permissionRules: [
+        {
+          role: 'participant',
+          action: ActionType.CREATE_POLL,
+          allowed: false,
+        },
+      ],
       createdAt: new Date(),
       updatedAt: new Date(),
     });

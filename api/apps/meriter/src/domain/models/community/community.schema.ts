@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { ActionType } from '../../common/constants/action-types.constants';
 
 /**
  * Community Mongoose Schema
@@ -26,14 +27,16 @@ export interface CommunitySettings {
   language?: 'en' | 'ru';
   postCost?: number;
   pollCost?: number;
-  editWindowDays?: number;
-}
-
-export interface CommunityPostingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  requiresTeamMembership?: boolean;
-  onlyTeamLead?: boolean;
-  autoMembership?: boolean;
+  forwardCost?: number;
+  /**
+   * How long (in minutes) a publication can be edited after creation by participants.
+   * 0 means no time limit.
+   */
+  editWindowMinutes?: number;
+  /**
+   * Whether participants (non-authors) may edit publications created by others in the same community.
+   */
+  allowEditByOthers?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -41,26 +44,75 @@ export interface CommunityMeritConversion {
   ratio: number;
 }
 
-export interface CommunityVotingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  canVoteForOwnPosts: boolean;
-  participantsCannotVoteForLead?: boolean;
-  spendsMerits: boolean;
-  awardsMerits: boolean;
-  meritConversion?: CommunityMeritConversion;
-}
-
-export interface CommunityVisibilityRules {
-  visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  isHidden?: boolean;
-  teamOnly?: boolean;
-}
-
-export interface CommunityMeritRules {
+// Merit settings (configuration, not permissions)
+export interface CommunityMeritSettings {
   dailyQuota: number;
   quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
   canEarn: boolean;
   canSpend: boolean;
+  startingMerits?: number;
+}
+
+// Voting settings (configuration like merit conversion, not permissions)
+export interface CommunityVotingSettings {
+  spendsMerits: boolean;
+  awardsMerits: boolean;
+  meritConversion?: CommunityMeritConversion;
+  votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
+}
+
+/**
+ * PermissionRule
+ * 
+ * Granular permission rule defining role -> action -> allow/deny.
+ * Conditions can be used to add additional constraints.
+ */
+export interface PermissionRule {
+  role: 'superadmin' | 'lead' | 'participant' | 'viewer';
+  action: ActionType;
+  allowed: boolean; // explicit allow/deny
+  conditions?: {
+    requiresTeamMembership?: boolean;
+    onlyTeamLead?: boolean;
+    canVoteForOwnPosts?: boolean;
+    participantsCannotVoteForLead?: boolean;
+    // Deprecated/ignored for publication editing (editing is not based on votes/comments anymore)
+    canEditWithVotes?: boolean;
+    // Deprecated/ignored for publication editing (editing is not based on votes/comments anymore)
+    canEditWithComments?: boolean;
+    /**
+     * Publication edit window override for this specific rule, in minutes.
+     * 0 means no time limit.
+     */
+    canEditAfterMinutes?: number;
+    canDeleteWithVotes?: boolean;
+    canDeleteWithComments?: boolean;
+    teamOnly?: boolean;
+    isHidden?: boolean;
+  };
+}
+
+/**
+ * PermissionContext
+ * 
+ * Context information used for permission evaluation.
+ * Provides additional information about the resource and user state.
+ */
+export interface PermissionContext {
+  resourceId?: string; // publicationId, pollId, commentId, etc.
+  authorId?: string;
+  isAuthor?: boolean;
+  isTeamMember?: boolean;
+  hasTeamMembership?: boolean; // user has membership in any team-type community
+  isTeamCommunity?: boolean; // resource is in a team-type community
+  authorRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null;
+  sharedTeamCommunities?: string[]; // team communities shared between voter and author
+  hasVotes?: boolean;
+  hasComments?: boolean;
+  /**
+   * Minutes since resource creation. Used for publication edit window enforcement.
+   */
+  minutesSinceCreation?: number;
 }
 
 export interface Community {
@@ -72,10 +124,9 @@ export interface Community {
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
   typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
   linkedCurrencies?: string[];
-  postingRules?: CommunityPostingRules;
-  votingRules?: CommunityVotingRules;
-  visibilityRules?: CommunityVisibilityRules;
-  meritRules?: CommunityMeritRules;
+  permissionRules?: PermissionRule[]; // Granular permission rules - replaces postingRules, votingRules, visibilityRules
+  meritSettings?: CommunityMeritSettings; // Merit configuration (dailyQuota, quotaRecipients, etc.)
+  votingSettings?: CommunityVotingSettings; // Voting configuration (meritConversion, etc.)
   settings: CommunitySettings;
   hashtags: string[];
   hashtagDescriptions?: Record<string, string>;
@@ -126,77 +177,69 @@ export class CommunitySchemaClass implements Community {
   @Prop({ type: [String], default: [] })
   linkedCurrencies?: string[];
 
-  // НОВОЕ: Правила публикации (НАСТРАИВАЕМЫЕ)
+  // Granular permission rules - replaces postingRules, votingRules, visibilityRules
   @Prop({
-    type: {
-      allowedRoles: [String],
-      requiresTeamMembership: Boolean,
-      onlyTeamLead: Boolean,
-      autoMembership: Boolean,
-    },
-    default: {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      requiresTeamMembership: false,
-      onlyTeamLead: false,
-      autoMembership: false,
-    },
-  })
-  postingRules?: CommunityPostingRules;
-
-  // НОВОЕ: Правила голосования (НАСТРАИВАЕМЫЕ)
-  @Prop({
-    type: {
-      allowedRoles: [String],
-      canVoteForOwnPosts: Boolean,
-      participantsCannotVoteForLead: Boolean,
-      spendsMerits: Boolean,
-      awardsMerits: Boolean,
-      meritConversion: {
-        targetCommunityId: String,
-        ratio: Number,
+    type: [{
+      role: String,
+      action: String,
+      allowed: Boolean,
+      conditions: {
+        requiresTeamMembership: Boolean,
+        onlyTeamLead: Boolean,
+        canVoteForOwnPosts: Boolean,
+        participantsCannotVoteForLead: Boolean,
+        canEditWithVotes: Boolean,
+        canEditWithComments: Boolean,
+        canEditAfterMinutes: Number,
+        canDeleteWithVotes: Boolean,
+        canDeleteWithComments: Boolean,
+        teamOnly: Boolean,
+        isHidden: Boolean,
       },
-    },
-    default: {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      canVoteForOwnPosts: false,
-      participantsCannotVoteForLead: false,
-      spendsMerits: true,
-      awardsMerits: true,
-    },
+    }],
+    default: [],
   })
-  votingRules?: CommunityVotingRules;
+  permissionRules?: PermissionRule[];
 
-  // НОВОЕ: Правила видимости (НАСТРАИВАЕМЫЕ)
-  @Prop({
-    type: {
-      visibleToRoles: [String],
-      isHidden: Boolean,
-      teamOnly: Boolean,
-    },
-    default: {
-      visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      isHidden: false,
-      teamOnly: false,
-    },
-  })
-  visibilityRules?: CommunityVisibilityRules;
-
-  // НОВОЕ: Правила меритов (НАСТРАИВАЕМЫЕ)
+  // Merit settings (configuration, not permissions)
   @Prop({
     type: {
       dailyQuota: Number,
       quotaRecipients: [String],
       canEarn: Boolean,
       canSpend: Boolean,
+      startingMerits: Number,
     },
     default: {
       dailyQuota: 100,
       quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
       canEarn: true,
       canSpend: true,
+      startingMerits: 100,
     },
   })
-  meritRules?: CommunityMeritRules;
+  meritSettings?: CommunityMeritSettings;
+
+  // Voting settings (configuration like merit conversion, not permissions)
+  @Prop({
+    type: {
+      spendsMerits: Boolean,
+      awardsMerits: Boolean,
+      meritConversion: {
+        targetCommunityId: String,
+        ratio: Number,
+      },
+      votingRestriction: {
+        type: String,
+        enum: ['any', 'not-own', 'not-same-group'],
+      },
+    },
+    default: {
+      spendsMerits: true,
+      awardsMerits: true,
+    },
+  })
+  votingSettings?: CommunityVotingSettings;
 
   @Prop({
     type: {
@@ -210,7 +253,9 @@ export class CommunitySchemaClass implements Community {
       language: { type: String, enum: ['en', 'ru'], default: 'en' },
       postCost: { type: Number, default: 1 },
       pollCost: { type: Number, default: 1 },
-      editWindowDays: { type: Number, default: 7 },
+      forwardCost: { type: Number, default: 1 },
+      editWindowMinutes: { type: Number, default: 30 },
+      allowEditByOthers: { type: Boolean, default: false },
     },
     default: {},
   })
@@ -240,6 +285,9 @@ export class CommunitySchemaClass implements Community {
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);
 export type CommunityDocument = CommunitySchemaClass & Document;
+
+// Backwards-compatible runtime alias (many tests use `Community.name`)
+export const Community = CommunitySchemaClass;
 
 // Add indexes for common queries
 // Note: id index is already created by @Prop({ unique: true }) decorator

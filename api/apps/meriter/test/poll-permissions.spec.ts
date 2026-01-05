@@ -4,9 +4,6 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { PollService } from '../src/domain/services/poll.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -25,13 +22,10 @@ describe('Poll Permissions', () => {
   
   let permissionService: PermissionService;
   let pollService: PollService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let pollModel: Model<PollDocument>;
+  let _pollModel: Model<PollDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -64,15 +58,12 @@ describe('Poll Permissions', () => {
 
     permissionService = app.get<PermissionService>(PermissionService);
     pollService = app.get<PollService>(PollService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    pollModel = connection.model<PollDocument>(PollSchemaClass.name);
+    _pollModel = connection.model<PollDocument>(PollSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs

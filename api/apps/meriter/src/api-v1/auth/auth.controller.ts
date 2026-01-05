@@ -5,37 +5,81 @@ import {
   Body,
   Res,
   Req,
+  Param,
   UseGuards,
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from './auth.service';
+import { ConfigService } from '@nestjs/config';
+import { AuthProviderService } from './auth.service';
+import { SmsProviderService } from './sms-provider.service';
+import { EmailProviderService } from './email-provider.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../common/utils/cookie-manager.util';
-import { ApiError, UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
-import { TelegramAuthDataSchema, TelegramWebAppDataSchema } from '../../../../../../libs/shared-types/dist/index';
-import { ZodValidation } from '../../common/decorators/zod-validation.decorator';
+import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
+import { AppConfig } from '../../config/configuration';
 
-interface TelegramAuthData {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
-
-interface TelegramWebAppData {
-  initData: string;
-}
-
+/**
+ * Authentication Controller
+ * 
+ * REST endpoints for authentication flows:
+ * - Public/unauthenticated endpoints (fake auth, clearCookies) - use REST for simplicity
+ * - OAuth redirects and callbacks - must stay REST (required by OAuth spec)
+ * - Passkey/WebAuthn endpoints - use REST (WebAuthn requires REST)
+ * 
+ * Authenticated endpoints:
+ * - POST /api/v1/auth/logout -> Use trpc.auth.logout (authenticated only)
+ * - GET /api/v1/auth/me -> @deprecated Use trpc.users.getMe instead
+ */
 @Controller('api/v1/auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
-  constructor(private readonly authService: AuthService) { }
+  private isHttpsRequest(req: unknown): boolean {
+    const r = req as { secure?: unknown; headers?: Record<string, unknown> } | null;
+    if (r?.secure === true) return true;
+    const forwardedProto = r?.headers?.['x-forwarded-proto'];
+    if (!forwardedProto) return false;
+    const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
+    const first = raw.split(',')[0]?.trim().toLowerCase();
+    return first === 'https';
+  }
+
+  private getSanitizedSetCookieHeader(res: unknown): string[] | null {
+    try {
+      const r = res as { getHeader?: (name: string) => unknown } | null;
+      const raw = r?.getHeader?.('Set-Cookie');
+      const values: string[] =
+        typeof raw === 'string'
+          ? [raw]
+          : Array.isArray(raw)
+            ? raw.map(String)
+            : raw
+              ? [String(raw)]
+              : [];
+
+      if (values.length === 0) return null;
+
+      return values.map((v) =>
+        v
+          // redact jwt value
+          .replace(/(^|;\s*)jwt=[^;]*/i, '$1jwt=<redacted>')
+          // redact any fake ids
+          .replace(/(^|;\s*)fake_user_id=[^;]*/i, '$1fake_user_id=<redacted>')
+          .replace(/(^|;\s*)fake_superadmin_id=[^;]*/i, '$1fake_superadmin_id=<redacted>')
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  constructor(
+    private readonly authService: AuthProviderService,
+    private readonly smsProviderService: SmsProviderService,
+    private readonly emailProviderService: EmailProviderService,
+    private readonly configService: ConfigService<AppConfig>,
+    private readonly cookieManager: CookieManager,
+  ) { }
 
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
@@ -44,9 +88,10 @@ export class AuthController {
     this.logger.log('User logout request');
 
     // Clear the JWT cookie
-    const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
-    CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+    const cookieDomain = this.cookieManager.getCookieDomain();
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production';
+    this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
     return res.json({
       success: true,
@@ -58,8 +103,10 @@ export class AuthController {
   async clearCookies(@Req() req: any, @Res() res: any) {
     // Clear ALL cookies from the request, not just JWT variants
     // This prevents login loops caused by stale cookies with mismatched attributes
-    const cookieDomain = CookieManager.getCookieDomain();
-    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieDomain = this.cookieManager.getCookieDomain();
+    const isSecure = this.isHttpsRequest(req);
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production' || isSecure;
 
     // Get all cookie names from the request
     const cookieNames = new Set<string>();
@@ -76,7 +123,7 @@ export class AuthController {
 
     // Clear each cookie with all possible attribute combinations
     for (const cookieName of cookieNames) {
-      CookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
+      this.cookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
     }
 
     return res.json({
@@ -88,9 +135,11 @@ export class AuthController {
   @Post('fake')
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode is enabled
-      if (process.env.FAKE_DATA_MODE !== 'true') {
-        throw new ForbiddenException('Fake data mode is not enabled');
+      // Check if fake data mode or test auth mode is enabled
+      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!fakeDataMode && !testAuthMode) {
+        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
       }
 
       this.logger.log('Fake authentication request received');
@@ -113,22 +162,29 @@ export class AuthController {
       const result = await this.authService.authenticateFakeUser(fakeUserId);
 
       // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
-      // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      // Set new JWT cookie (pass req to detect HTTPS reliably)
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Set fake_user_id cookie (session cookie - expires when browser closes)
+      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
+      const actualIsSecure = this.isHttpsRequest(req);
+      // Recalculate isProduction with actual isSecure value
+      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+      const sameSite = 'lax' as const;
+      const secure = actualIsSecure || actualIsProduction;
       res.cookie('fake_user_id', fakeUserId, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure,
+        sameSite,
         // No maxAge - this makes it a session cookie that expires when browser closes
         path: '/',
         domain: cookieDomain,
@@ -153,12 +209,118 @@ export class AuthController {
     }
   }
 
+  /**
+   * Mock authentication endpoints for test auth mode
+   * These endpoints create real users in the database but bypass OAuth/SMS/Email flows
+   */
+  @Post('mock/:provider')
+  async authenticateMock(
+    @Param('provider') provider: string,
+    @Req() req: any,
+    @Res() res: any,
+    @Body() body: any,
+  ) {
+    try {
+      // Check if test auth mode is enabled
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!testAuthMode) {
+        throw new ForbiddenException('Test auth mode is not enabled');
+      }
+      this.logger.log(`Mock authentication request for provider: ${provider}`);
+
+      let result: {
+        user: any;
+        hasPendingCommunities: boolean;
+        isNewUser: boolean;
+        jwt: string;
+      };
+
+      switch (provider) {
+        case 'google':
+        case 'yandex':
+        case 'vk':
+        case 'telegram':
+        case 'apple':
+        case 'twitter':
+        case 'instagram':
+        case 'sber':
+        case 'mailru': {
+          const identifier = body.identifier || `mock_${provider}_user@example.com`;
+          const displayName = body.displayName || identifier.split('@')[0];
+          result = await this.authService.authenticateWithProvider({
+            provider,
+            providerId: identifier,
+            email: identifier.includes('@') ? identifier : `${identifier}@example.com`,
+            firstName: displayName.split(' ')[0] || 'User',
+            lastName: displayName.split(' ').slice(1).join(' ') || '',
+            displayName,
+            avatarUrl: undefined,
+          });
+          break;
+        }
+        case 'sms': {
+          const phoneNumber = body.phoneNumber;
+          if (!phoneNumber) {
+            throw new Error('Phone number is required');
+          }
+          result = await this.authService.authenticateSms(phoneNumber);
+          break;
+        }
+        case 'email': {
+          const email = body.email;
+          if (!email) {
+            throw new Error('Email is required');
+          }
+          result = await this.authService.authenticateEmail(email);
+          break;
+        }
+        case 'phone': {
+          const phoneNumber = body.phoneNumber;
+          if (!phoneNumber) {
+            throw new Error('Phone number is required');
+          }
+          result = await this.authService.authenticateSms(phoneNumber); // Reuse SMS logic
+          break;
+        }
+        case 'passkey': {
+          const credentialId = body.credentialId || `passkey_${Date.now()}`;
+          // For passkey, we'll use a mock identifier
+          result = await this.authService.authenticateEmail(`passkey_${credentialId}@example.com`);
+          break;
+        }
+        default:
+          throw new Error(`Unsupported provider: ${provider}`);
+      }
+
+      // Set JWT cookie
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+        jwt: result.jwt,
+      });
+    } catch (error: any) {
+      this.logger.error(`Mock authentication error: ${error.message}`, error.stack);
+      throw new UnauthorizedError(error.message || 'Mock authentication failed');
+    }
+  }
+
   @Post('fake/superadmin')
   async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode is enabled
-      if (process.env.FAKE_DATA_MODE !== 'true') {
-        throw new ForbiddenException('Fake data mode is not enabled');
+      // Check if fake data mode or test auth mode is enabled
+      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
+      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
+      if (!fakeDataMode && !testAuthMode) {
+        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
       }
 
       this.logger.log('Fake superadmin authentication request received');
@@ -181,22 +343,29 @@ export class AuthController {
       const result = await this.authService.authenticateFakeSuperadmin(fakeUserId);
 
       // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = CookieManager.getCookieDomain();
+      const cookieDomain = this.cookieManager.getCookieDomain();
       // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
       // Clear any existing JWT cookie first to ensure clean state
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
 
-      // Set new JWT cookie
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      // Set new JWT cookie (pass req to detect HTTPS reliably)
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
+      const actualIsSecure = this.isHttpsRequest(req);
+      // Recalculate isProduction with actual isSecure value
+      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+      const sameSite = 'lax' as const;
+      const secure = actualIsSecure || actualIsProduction;
       res.cookie('fake_superadmin_id', fakeUserId, {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: isProduction ? 'none' : 'lax',
+        secure,
+        sameSite,
         // No maxAge - this makes it a session cookie that expires when browser closes
         path: '/',
         domain: cookieDomain,
@@ -235,8 +404,8 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Google OAuth is explicitly disabled
-      const enabled = process.env.OAUTH_GOOGLE_ENABLED;
-      if (enabled === 'false' || enabled === '0') {
+      const enabled = this.configService.get('oauth')?.google.enabled;
+      if (enabled === false) {
         this.logger.error('Google OAuth is explicitly disabled via OAUTH_GOOGLE_ENABLED');
         throw new Error('Google OAuth is disabled');
       }
@@ -244,9 +413,8 @@ export class AuthController {
       // Get Google OAuth credentials
       // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
       // Note: clientSecret is not needed for initiation, only for callback
-      const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
-      const callbackUrl = process.env.OAUTH_GOOGLE_REDIRECT_URI
-        || process.env.OAUTH_GOOGLE_CALLBACK_URL
+      const clientId = this.configService.get('oauth')?.google.clientId;
+      const callbackUrl = this.configService.get('oauth')?.google.redirectUri
         || process.env.GOOGLE_REDIRECT_URI;
 
       // Check if credentials are present (clientId and callbackUrl are required for initiation)
@@ -283,7 +451,7 @@ export class AuthController {
   /**
    * Google OAuth callback endpoint
    * Handles OAuth callback and extracts return_url from OAuth2 state parameter
-   * Uses AuthService.authenticateGoogle for code exchange and user creation
+   * Uses AuthProviderService.authenticateGoogle for code exchange and user creation
    */
   @Get('google/callback')
   async googleCallback(@Req() req: any, @Res() res: any) {
@@ -306,8 +474,9 @@ export class AuthController {
     if (!path.startsWith('/')) {
       return path; // Already a full URL
     }
-    const domain = process.env.DOMAIN || 'localhost';
-    const isDocker = process.env.NODE_ENV === 'production';
+    const domain = this.configService.get('DOMAIN', 'localhost');
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const isDocker = nodeEnv === 'production';
     const protocol = domain === 'localhost' && !isDocker ? 'http' : (domain === 'localhost' ? 'http' : 'https');
     const webPort = domain === 'localhost' ? ':8001' : '';
     return `${protocol}://${domain}${webPort}${path}`;
@@ -331,19 +500,31 @@ export class AuthController {
       const result = await this.authService.authenticateGoogle(code);
 
       // Set JWT cookie
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
+      // which can cause truncation and prevent the cookie from being set properly
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      // Debug: log cookie attributes (sanitized) to diagnose cookie rejection in browsers.
+      // Safe to keep at debug level; does not log token values.
+      this.logger.debug(
+        `[cookie-debug] google callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
+      );
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      const redirectUrl = this.buildWebUrl(redirectPath);
 
-      this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
-      res.redirect(redirectUrl);
+      // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
+      // The callback page will retry users.getMe until cookie is available, then redirect to final destination
+      const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
+
+      this.logger.log(`Google authentication successful, isNewUser: ${result.isNewUser}, redirecting to callback page: ${callbackUrl}`);
+      res.redirect(callbackUrl);
     } catch (error) {
       const errorStack = error instanceof Error ? error.stack : String(error);
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
@@ -364,15 +545,14 @@ export class AuthController {
       const returnTo = req.query.returnTo || '/meriter/profile';
 
       // Check if Yandex OAuth is explicitly disabled
-      const enabled = process.env.OAUTH_YANDEX_ENABLED;
-      if (enabled === 'false' || enabled === '0') {
+      const enabled = this.configService.get('oauth')?.yandex.enabled;
+      if (enabled === false) {
         this.logger.error('Yandex OAuth is explicitly disabled via OAUTH_YANDEX_ENABLED');
         throw new Error('Yandex OAuth is disabled');
       }
 
-      const clientId = process.env.OAUTH_YANDEX_CLIENT_ID;
-      const callbackUrl = process.env.OAUTH_YANDEX_REDIRECT_URI
-        || process.env.OAUTH_YANDEX_CALLBACK_URL;
+      const clientId = this.configService.get('oauth')?.yandex.clientId;
+      const callbackUrl = this.configService.get('oauth')?.yandex.redirectUri;
 
       if (!clientId || !callbackUrl) {
         const missing = [];
@@ -431,19 +611,30 @@ export class AuthController {
 
       const result = await this.authService.authenticateYandex(code);
 
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      // Set JWT cookie
+      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
+      // which can cause truncation and prevent the cookie from being set properly
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      this.logger.debug(
+        `[cookie-debug] yandex callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
+      );
 
       // New users go to welcome page, existing users go to profile
       const redirectPath = result.isNewUser ? '/meriter/welcome' : '/meriter/profile';
-      const redirectUrl = this.buildWebUrl(redirectPath);
 
-      this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to: ${redirectUrl}`);
-      res.redirect(redirectUrl);
+      // Redirect to intermediate callback page to avoid SameSite=Lax cookie issues
+      // The callback page will retry users.getMe until cookie is available, then redirect to final destination
+      const callbackUrl = this.buildWebUrl(`/meriter/auth/callback?returnTo=${encodeURIComponent(redirectPath)}`);
+
+      this.logger.log(`Yandex authentication successful, isNewUser: ${result.isNewUser}, redirecting to callback page: ${callbackUrl}`);
+      res.redirect(callbackUrl);
     } catch (error) {
       const errorStack = error instanceof Error ? error.stack : String(error);
       const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
@@ -452,6 +643,9 @@ export class AuthController {
     }
   }
 
+  /**
+   * @deprecated Use trpc.users.getMe instead. This endpoint is deprecated.
+   */
   @Get('me')
   @UseGuards(UserGuard)
   async getCurrentUser(@Res() res: any, @Req() req: any) {
@@ -470,7 +664,7 @@ export class AuthController {
   @Post('passkey/register/start')
   async generatePasskeyRegistrationOptions(@Body() body: { username?: string; userId?: string }, @Res() res: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       const { username, userId } = body;
       if (!username && !userId) throw new Error('Username or userId required');
@@ -492,7 +686,7 @@ export class AuthController {
   @Post('passkey/register/finish')
   async verifyPasskeyRegistration(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       // The body contains the registration response and context
       // We expect { userId: "...", deviceName: "...", ...credentialResponse }
@@ -503,13 +697,14 @@ export class AuthController {
       const result = await this.authService.verifyPasskeyRegistration(body, userIdOrUsername, deviceName);
 
       // Set JWT cookie (sign-up + sign-in)
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       if (result.jwt) {
-        CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
       }
 
       return res.json({
@@ -525,7 +720,7 @@ export class AuthController {
   @Post('passkey/login/start')
   async generatePasskeyLoginOptions(@Body() body: { username?: string }) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
       const result = await this.authService.generatePasskeyLoginOptions(body.username);
       return result;
     } catch (error) {
@@ -537,17 +732,18 @@ export class AuthController {
   @Post('passkey/login/finish')
   async verifyPasskeyLogin(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') throw new ForbiddenException('Passkeys disabled');
+      if (!(this.configService.get('authn')?.enabled ?? false)) throw new ForbiddenException('Passkeys disabled');
 
       const result = await this.authService.verifyPasskeyLogin(body);
 
       // Set JWT cookie
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       return res.json({ success: true, user: result.user });
     } catch (error) {
@@ -563,7 +759,7 @@ export class AuthController {
   @Post('passkey/authenticate/start')
   async generatePasskeyAuthenticationOptions(@Res() res: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') {
+      if (!(this.configService.get('authn')?.enabled ?? false)) {
         throw new ForbiddenException('Passkeys disabled');
       }
 
@@ -583,19 +779,20 @@ export class AuthController {
   @Post('passkey/authenticate/finish')
   async authenticateWithPasskey(@Body() body: any, @Res() res: any, @Req() req: any) {
     try {
-      if (process.env.AUTHN_ENABLED !== 'true') {
+      if (!(this.configService.get('authn')?.enabled ?? false)) {
         throw new ForbiddenException('Passkeys disabled');
       }
 
       const result = await this.authService.authenticateWithPasskey(body);
 
       // Set JWT cookie (same as OAuth)
-      const cookieDomain = CookieManager.getCookieDomain();
-      const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-      const isProduction = process.env.NODE_ENV === 'production' || isSecure;
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
 
-      CookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      CookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction);
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
 
       // Return isNewUser flag for frontend redirect (like OAuth)
       return res.json({
@@ -606,6 +803,261 @@ export class AuthController {
     } catch (error) {
       this.logger.error('Passkey authentication error', error);
       throw new InternalServerError('Failed to authenticate with passkey');
+    }
+  }
+
+  // --- SMS Authentication Endpoints ---
+
+  /**
+   * Send OTP to phone number
+   * POST /api/v1/auth/sms/send
+   */
+  @Post('sms/send')
+  async sendSmsOtp(@Body() body: { phoneNumber: string }, @Res() res: any) {
+    try {
+      const { phoneNumber } = body;
+
+      if (!phoneNumber) {
+        throw new Error('Phone number is required');
+      }
+
+      // Validate E.164 format
+      if (!phoneNumber.startsWith('+')) {
+        throw new Error('Phone number must be in E.164 format (start with +)');
+      }
+
+      // Check if SMS is enabled
+      const smsEnabled = this.configService.get('sms')?.enabled ?? false;
+      if (!smsEnabled) {
+        throw new ForbiddenException('SMS authentication is not enabled');
+      }
+
+      this.logger.log(`SMS OTP send request for ${phoneNumber}`);
+
+      const result = await this.smsProviderService.sendOtp(phoneNumber);
+
+      this.logger.log(`OTP sent successfully to ${phoneNumber}`);
+
+      return res.json({
+        success: true,
+        expiresIn: result.expiresIn,
+        canResendAt: result.canResendAt,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send SMS';
+      this.logger.error(`SMS send error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Verify OTP and authenticate user
+   * POST /api/v1/auth/sms/verify
+   */
+  @Post('sms/verify')
+  async verifySmsOtp(@Body() body: { phoneNumber: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { phoneNumber, otpCode } = body;
+
+      if (!phoneNumber || !otpCode) {
+        throw new Error('Phone number and OTP code are required');
+      }
+
+      // Validate E.164 format
+      if (!phoneNumber.startsWith('+')) {
+        throw new Error('Phone number must be in E.164 format (start with +)');
+      }
+
+      // Check if SMS is enabled
+      const smsEnabled = this.configService.get('sms')?.enabled ?? false;
+      if (!smsEnabled) {
+        throw new ForbiddenException('SMS authentication is not enabled');
+      }
+
+      this.logger.log(`SMS OTP verify request for ${phoneNumber}`);
+
+      // Verify OTP
+      await this.smsProviderService.verifyOtp(phoneNumber, otpCode);
+
+      // Authenticate user (create or login)
+      const result = await this.authService.authenticateSms(phoneNumber);
+
+      // Set JWT cookie
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      this.logger.log(`SMS authentication successful for ${phoneNumber}, isNewUser: ${result.isNewUser}`);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) {
+        throw error;
+      }
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify SMS';
+      this.logger.error(`SMS verify error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Initiate Call Check (Flash Call / Call by User)
+   * POST /api/v1/auth/call/init
+   */
+  @Post('call/init')
+  async initCallCheck(@Body() body: { phoneNumber: string }, @Res() res: any) {
+    try {
+      const { phoneNumber } = body;
+      if (!phoneNumber) throw new Error('Phone number is required');
+
+      // Check if Phone/Call Check is enabled
+      const enabled = this.configService.get('phone')?.enabled ?? false;
+      if (!enabled) {
+        throw new ForbiddenException('Call authentication is not enabled');
+      }
+
+      const result = await this.smsProviderService.initiateCallVerification(phoneNumber);
+
+      return res.json({
+        success: true,
+        ...result,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to init call check';
+      this.logger.error(`Call check init error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Check Call Status and Authenticate
+   * POST /api/v1/auth/call/status
+   */
+  @Post('call/status')
+  async checkCallStatus(@Body() body: { checkId: string; phoneNumber: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { checkId, phoneNumber } = body;
+      if (!checkId || !phoneNumber) throw new Error('checkId and phoneNumber are required');
+
+      // Check if Phone/Call Check is enabled
+      const enabled = this.configService.get('phone')?.enabled ?? false;
+      if (!enabled) {
+        throw new ForbiddenException('Call authentication is not enabled');
+      }
+
+      // Check status
+      const statusResult = await this.smsProviderService.verifyCallStatus(checkId);
+
+      if (statusResult.status === 'CONFIRMED') {
+        // Authenticate User
+        const result = await this.authService.authenticateSms(phoneNumber);
+
+        // Set JWT
+        const cookieDomain = this.cookieManager.getCookieDomain();
+        const isSecure = this.isHttpsRequest(req);
+        const nodeEnv = this.configService.get('NODE_ENV', 'development');
+        const isProduction = nodeEnv === 'production' || isSecure;
+
+        this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+        return res.json({
+          success: true,
+          status: 'CONFIRMED',
+          user: result.user,
+          isNewUser: result.isNewUser,
+        });
+      }
+
+      // If not confirmed yet, just return status
+      return res.json({
+        success: true,
+        status: statusResult.status,
+      });
+
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to check call status';
+      // Don't log expected pending/error checking noise too loudly? 
+      // Actually errors here might be real API errors.
+      this.logger.error(`Call check status error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  // --- Email Authentication Endpoints ---
+
+  @Post('email/send')
+  async sendEmailOtp(@Body() body: { email: string }, @Res() res: any) {
+    try {
+      const { email } = body;
+      if (!email) throw new Error('Email is required');
+
+      const enabled = this.configService.get('email')?.enabled ?? false;
+      if (!enabled) throw new ForbiddenException('Email authentication is not enabled');
+
+      this.logger.log(`Email OTP send request for ${email}`);
+      const result = await this.emailProviderService.sendOtp(email);
+
+      return res.json({
+        success: true,
+        expiresIn: result.expiresIn,
+        canResendAt: result.canResendAt,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send Email';
+      this.logger.error(`Email send error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
+    }
+  }
+
+  @Post('email/verify')
+  async verifyEmailOtp(@Body() body: { email: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+    try {
+      const { email, otpCode } = body;
+      if (!email || !otpCode) throw new Error('Email and Code are required');
+
+      const enabled = this.configService.get('email')?.enabled ?? false;
+      if (!enabled) throw new ForbiddenException('Email authentication is not enabled');
+
+      // Verify OTP
+      await this.emailProviderService.verifyOtp(email, otpCode);
+
+      // Authenticate
+      const result = await this.authService.authenticateEmail(email);
+
+      // Set JWT
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
+      const errorMessage = error instanceof Error ? error.message : 'Failed to verify Email';
+      this.logger.error(`Email verify error: ${errorMessage}`, error);
+      throw new InternalServerError(errorMessage);
     }
   }
 }

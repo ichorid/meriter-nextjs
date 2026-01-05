@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Google OAuth Strategy
@@ -13,13 +14,13 @@ import { ConfigService } from '@nestjs/config';
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   private readonly logger = new Logger(GoogleStrategy.name);
 
-  constructor(private configService: ConfigService) {
-    const clientID = process.env.OAUTH_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
-    // Support both OAUTH_GOOGLE_REDIRECT_URI and OAUTH_GOOGLE_CALLBACK_URL
-    const callbackURL = process.env.OAUTH_GOOGLE_REDIRECT_URI 
-      || process.env.OAUTH_GOOGLE_CALLBACK_URL 
-      || process.env.GOOGLE_REDIRECT_URI;
+  constructor(private configService: ConfigService<AppConfig>) {
+    // Use configService parameter directly (not this.configService) before super()
+    const clientID = (configService.get as any)('oauth.google.clientId') as string | undefined;
+    const clientSecret = (configService.get as any)('oauth.google.clientSecret') as string | undefined;
+    // Support both OAUTH_GOOGLE_REDIRECT_URI and GOOGLE_REDIRECT_URI
+    const callbackURL = ((configService.get as any)('oauth.google.redirectUri') as string | undefined)
+      || (configService.get('GOOGLE_REDIRECT_URI') as string | undefined);
 
     // This strategy should only be instantiated if credentials are present
     // AuthModule checks this before registering the strategy

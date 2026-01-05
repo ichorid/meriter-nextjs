@@ -3,14 +3,22 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Button, Icon, Avatar } from '@/components/atoms';
+import { Icon } from '@/components/atoms';
+import { Button } from '@/components/ui/shadcn/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { routes } from '@/lib/constants/routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
-import { useRouter } from 'next/navigation';
 import { useWallets } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
+
+const NAV_LINKS = [
+  { href: routes.profile, label: 'Profile', icon: 'home' },
+  { href: routes.communities, label: 'Communities', icon: 'group' },
+  { href: routes.polls, label: 'Polls', icon: 'poll' },
+  { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
+];
 
 export interface NavigationBarProps {
   className?: string;
@@ -19,10 +27,9 @@ export interface NavigationBarProps {
 export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) => {
   const auth = useAuth();
   const { user, isAuthenticated } = auth;
-  const { activeModal, setActiveSidebar } = useUIStore();
+  const { setActiveSidebar } = useUIStore();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations('common');
   
@@ -42,13 +49,6 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
     });
     return total;
   }, [quotasMap]);
-  
-  const navLinks = [
-    { href: routes.profile, label: 'Profile', icon: 'home' },
-    { href: routes.communities, label: 'Communities', icon: 'group' },
-    { href: routes.polls, label: 'Polls', icon: 'poll' },
-    { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
-  ];
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -83,7 +83,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex gap-1">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Button 
                   variant="ghost" 
@@ -108,7 +108,12 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                   className="flex items-center gap-2"
                 >
                   <div className="flex items-center gap-2">
-                    <Avatar src={user.avatarUrl} alt={user.displayName} size="sm" />
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={user.avatarUrl} alt={user.displayName} />
+                      <AvatarFallback userId={user.id} className="font-medium text-xs">
+                        {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="hidden md:flex flex-col items-start text-xs">
                       <div className="flex items-center gap-1">
                         <span className="text-brand-text-secondary">{t('permanentMerits')}:</span>
@@ -125,7 +130,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                 </Button>
                 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-base-100 border border-base-300 rounded-lg shadow-lg z-50">
+                  <div className="absolute right-0 mt-2 w-48 bg-base-100 shadow-none rounded-lg shadow-lg z-50">
                     <div className="p-2">
                       <div className="px-4 py-2 text-sm border-b border-base-300">
                         <div className="font-medium truncate">{user.displayName}</div>

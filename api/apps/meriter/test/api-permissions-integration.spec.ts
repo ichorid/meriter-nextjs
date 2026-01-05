@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
 import { TestDatabaseHelper } from './test-db.helper';
+import { trpcQuery } from './helpers/trpc-test-helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommentService } from '../src/domain/services/comment.service';
@@ -13,13 +13,14 @@ import { Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { uid } from 'uid';
 import { signJWT } from '../src/common/helpers/jwt';
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('API Permissions Integration', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let _connection: Connection;
   
   let publicationService: PublicationService;
   let commentService: CommentService;
@@ -47,9 +48,7 @@ describe('API Permissions Integration', () => {
   // JWT tokens
   let participant1Token: string;
   let participant2Token: string;
-  let lead1Token: string;
   let superadminToken: string;
-  let viewerToken: string;
 
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
@@ -63,9 +62,10 @@ describe('API Permissions Integration', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
-    // Add cookie parser middleware (same as main.ts)
-    const cookieParser = require('cookie-parser');
-    app.use(cookieParser());
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait a bit for onModuleInit to complete
@@ -78,7 +78,7 @@ describe('API Permissions Integration', () => {
     userService = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
-    connection = app.get(getConnectionToken());
+    _connection = app.get(getConnectionToken());
 
     // Initialize test authIds (for user creation)
     const participant1AuthId = uid();
@@ -196,9 +196,9 @@ describe('API Permissions Integration', () => {
     // Generate JWT tokens (use internal IDs for uid, original authIds for authId)
     participant1Token = signJWT({ uid: participant1Id, authProvider: 'test', authId: participant1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
     participant2Token = signJWT({ uid: participant2Id, authProvider: 'test', authId: participant2AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
-    lead1Token = signJWT({ uid: lead1Id, authProvider: 'test', authId: lead1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
+    const _lead1Token = signJWT({ uid: lead1Id, authProvider: 'test', authId: lead1AuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
     superadminToken = signJWT({ uid: superadminId, authProvider: 'test', authId: superadminAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
-    viewerToken = signJWT({ uid: viewerId, authProvider: 'test', authId: viewerAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
+    const _viewerToken = signJWT({ uid: viewerId, authProvider: 'test', authId: viewerAuthId, communityTags: [] }, process.env.JWT_SECRET!, '365d');
   });
 
   afterAll(async () => {
@@ -212,66 +212,56 @@ describe('API Permissions Integration', () => {
 
   describe('GET /api/v1/publications/:id', () => {
     it('should include permissions in response', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/publications/${publicationId}`)
-        .set('Cookie', `jwt=${participant2Token}`)
-        .expect(200);
+      const publication = await trpcQuery(app, 'publications.getById', { id: publicationId }, { jwt: participant2Token });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.permissions).toBeDefined();
-      expect(typeof response.body.data.permissions.canVote).toBe('boolean');
-      expect(typeof response.body.data.permissions.canEdit).toBe('boolean');
-      expect(typeof response.body.data.permissions.canDelete).toBe('boolean');
-      expect(typeof response.body.data.permissions.canComment).toBe('boolean');
+      expect(publication).toBeDefined();
+      expect(publication.permissions).toBeDefined();
+      expect(typeof publication.permissions.canVote).toBe('boolean');
+      expect(typeof publication.permissions.canEdit).toBe('boolean');
+      expect(typeof publication.permissions.canDelete).toBe('boolean');
+      expect(typeof publication.permissions.canComment).toBe('boolean');
     });
 
     it('should return correct permissions for different users', async () => {
       // Participant 2 (not author) should be able to vote
-      const response1 = await request(app.getHttpServer())
-        .get(`/api/v1/publications/${publicationId}`)
-        .set('Cookie', `jwt=${participant2Token}`)
-        .expect(200);
+      const pub1 = await trpcQuery(app, 'publications.getById', { id: publicationId }, { jwt: participant2Token });
 
-      expect(response1.body.data.permissions.canVote).toBe(true);
+      expect(pub1.permissions.canVote).toBe(true);
 
       // Participant 1 (author) should not be able to vote on own post
-      const response2 = await request(app.getHttpServer())
-        .get(`/api/v1/publications/${publicationId}`)
-        .set('Cookie', `jwt=${participant1Token}`)
-        .expect(200);
+      const pub2 = await trpcQuery(app, 'publications.getById', { id: publicationId }, { jwt: participant1Token });
 
-      expect(response2.body.data.permissions.canVote).toBe(false);
-      expect(response2.body.data.permissions.voteDisabledReason).toBe('voteDisabled.isAuthor');
+      expect(pub2.permissions.canVote).toBe(false);
+      expect(pub2.permissions.voteDisabledReason).toBe('voteDisabled.isAuthor');
       // Note: canEdit might be false if there are comments or votes
       // The test creates a comment in beforeAll, so editing might be disabled
-      expect(typeof response2.body.data.permissions.canEdit).toBe('boolean');
+      expect(typeof pub2.permissions.canEdit).toBe('boolean');
     });
 
     it('should return correct permissions for superadmin', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/publications/${publicationId}`)
-        .set('Cookie', `jwt=${superadminToken}`)
-        .expect(200);
+      const publication = await trpcQuery(app, 'publications.getById', { id: publicationId }, { jwt: superadminToken });
 
-      expect(response.body.data.permissions.canVote).toBe(true);
-      expect(response.body.data.permissions.canEdit).toBe(true);
-      expect(response.body.data.permissions.canDelete).toBe(true);
+      expect(publication.permissions.canVote).toBe(true);
+      expect(publication.permissions.canEdit).toBe(true);
+      expect(publication.permissions.canDelete).toBe(true);
     });
   });
 
   describe('GET /api/v1/publications', () => {
     it('should include permissions for each publication in list', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/publications?communityId=${regularCommunityId}`)
-        .set('Cookie', `jwt=${participant2Token}`)
-        .expect(200);
+      const result = await trpcQuery(app, 'publications.getAll', { communityId: regularCommunityId }, { jwt: participant2Token });
 
-      expect(response.body.success).toBe(true);
-      expect(Array.isArray(response.body.data)).toBe(true);
+      // publications.getAll returns { data: [...], total: ..., skip: ..., limit: ... }
+      expect(result).toBeDefined();
+      // Debug: log actual result structure
+      if (!result || !result.data) {
+        console.log('Result:', JSON.stringify(result, null, 2));
+      }
+      expect(result).toHaveProperty('data');
+      expect(Array.isArray(result?.data)).toBe(true);
       
-      if (response.body.data.length > 0) {
-        const firstPublication = response.body.data[0];
+      if (result.data.length > 0) {
+        const firstPublication = result.data[0];
         expect(firstPublication.permissions).toBeDefined();
         expect(typeof firstPublication.permissions.canVote).toBe('boolean');
         expect(typeof firstPublication.permissions.canEdit).toBe('boolean');
@@ -283,31 +273,24 @@ describe('API Permissions Integration', () => {
 
   describe('GET /api/v1/comments/:id', () => {
     it('should include permissions in response', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${commentId}`)
-        .set('Cookie', `jwt=${participant1Token}`)
-        .expect(200);
+      const result = await trpcQuery(app, 'comments.getDetails', { id: commentId }, { jwt: participant1Token });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.permissions).toBeDefined();
-      expect(typeof response.body.data.permissions.canVote).toBe('boolean');
-      expect(typeof response.body.data.permissions.canEdit).toBe('boolean');
-      expect(typeof response.body.data.permissions.canDelete).toBe('boolean');
+      expect(result).toBeDefined();
+      expect(result.permissions).toBeDefined();
+      expect(typeof result.permissions.canVote).toBe('boolean');
+      expect(typeof result.permissions.canEdit).toBe('boolean');
+      expect(typeof result.permissions.canDelete).toBe('boolean');
     });
   });
 
   describe('GET /api/v1/comments/publications/:publicationId', () => {
     it('should include permissions for each comment in list', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/comments/publications/${publicationId}`)
-        .set('Cookie', `jwt=${participant1Token}`)
-        .expect(200);
+      const result = await trpcQuery(app, 'comments.getByPublicationId', { publicationId }, { jwt: participant1Token });
 
-      expect(Array.isArray(response.body.data)).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
       
-      if (response.body.data.length > 0) {
-        const firstComment = response.body.data[0];
+      if (result.data.length > 0) {
+        const firstComment = result.data[0];
         expect(firstComment.permissions).toBeDefined();
         expect(typeof firstComment.permissions.canVote).toBe('boolean');
         expect(typeof firstComment.permissions.canEdit).toBe('boolean');
@@ -318,43 +301,31 @@ describe('API Permissions Integration', () => {
 
   describe('GET /api/v1/polls/:id', () => {
     it('should include permissions in response', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/polls/${pollId}`)
-        .set('Cookie', `jwt=${participant2Token}`)
-        .expect(200);
+      const poll = await trpcQuery(app, 'polls.getById', { id: pollId }, { jwt: participant2Token });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.permissions).toBeDefined();
-      expect(typeof response.body.data.permissions.canVote).toBe('boolean');
-      expect(typeof response.body.data.permissions.canEdit).toBe('boolean');
-      expect(typeof response.body.data.permissions.canDelete).toBe('boolean');
+      expect(poll).toBeDefined();
+      expect(poll.permissions).toBeDefined();
+      expect(typeof poll.permissions.canVote).toBe('boolean');
+      expect(typeof poll.permissions.canEdit).toBe('boolean');
+      expect(typeof poll.permissions.canDelete).toBe('boolean');
     });
 
     it('should return correct permissions for poll author', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/polls/${pollId}`)
-        .set('Cookie', `jwt=${participant1Token}`)
-        .expect(200);
+      const poll = await trpcQuery(app, 'polls.getById', { id: pollId }, { jwt: participant1Token });
 
-      expect(response.body.data.permissions.canEdit).toBe(true);
-      expect(response.body.data.permissions.canDelete).toBe(true);
+      expect(poll.permissions.canEdit).toBe(true);
+      expect(poll.permissions.canDelete).toBe(true);
     });
   });
 
   describe('GET /api/v1/polls', () => {
     it('should include permissions for each poll in list', async () => {
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/polls/communities/${regularCommunityId}`)
-        .set('Cookie', `jwt=${participant2Token}`)
-        .expect(200);
+      const result = await trpcQuery(app, 'polls.getByCommunity', { communityId: regularCommunityId }, { jwt: participant2Token });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.data).toBeDefined();
-      expect(Array.isArray(response.body.data.data)).toBe(true);
+      expect(Array.isArray(result.data)).toBe(true);
       
-      if (response.body.data.data.length > 0) {
-        const firstPoll = response.body.data.data[0];
+      if (result.data.length > 0) {
+        const firstPoll = result.data[0];
         expect(firstPoll.permissions).toBeDefined();
         expect(typeof firstPoll.permissions.canVote).toBe('boolean');
         expect(typeof firstPoll.permissions.canEdit).toBe('boolean');

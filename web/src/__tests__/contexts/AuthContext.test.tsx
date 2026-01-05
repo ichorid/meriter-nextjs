@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { renderWithProviders, mockUser, mockApiResponses, testUtils } from '../utils/test-utils';
+import { renderWithProviders, mockUser, testUtils } from '../utils/test-utils';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { useMe, useTelegramAuth, useTelegramWebAppAuth, useLogout } from '@/hooks/api/useAuth';
 

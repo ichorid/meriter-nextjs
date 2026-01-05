@@ -3,10 +3,6 @@ import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common'
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
-import { PublicationService } from '../src/domain/services/publication.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -14,8 +10,9 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
+import { ActionType } from '../src/domain/common/constants/action-types.constants';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -37,14 +34,9 @@ describe('Posting Permissions', () => {
   let connection: Connection;
   
   let permissionService: PermissionService;
-  let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -78,16 +70,12 @@ describe('Posting Permissions', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     permissionService = app.get<PermissionService>(PermissionService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Initialize test IDs
@@ -123,12 +111,6 @@ describe('Posting Permissions', () => {
         name: 'Marathon of Good',
         typeTag: 'marathon-of-good',
         members: [],
-        postingRules: {
-            // Even if we restrict roles here, participants should be allowed by override
-            allowedRoles: ['lead'], 
-            requiresTeamMembership: false,
-            onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -137,12 +119,6 @@ describe('Posting Permissions', () => {
         name: 'Future Vision',
         typeTag: 'future-vision',
         members: [],
-        postingRules: {
-            // Even if we restrict roles here, participants should be allowed by override
-            allowedRoles: ['lead'],
-            requiresTeamMembership: false,
-            onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -151,11 +127,6 @@ describe('Posting Permissions', () => {
         name: 'Regular Community',
         typeTag: 'custom',
         members: [],
-        postingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: false,
-          onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -164,11 +135,18 @@ describe('Posting Permissions', () => {
         name: 'Restricted Community',
         typeTag: 'custom',
         members: [],
-        postingRules: {
-          allowedRoles: ['lead'],
-          requiresTeamMembership: false,
-          onlyTeamLead: true, // This actually restricts participants
-        },
+        permissionRules: [
+          {
+            role: 'participant',
+            action: ActionType.POST_PUBLICATION,
+            allowed: false,
+          },
+          {
+            role: 'participant',
+            action: ActionType.CREATE_POLL,
+            allowed: false,
+          },
+        ],
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -177,11 +155,6 @@ describe('Posting Permissions', () => {
         name: 'Support',
         typeTag: 'support',
         members: [],
-        postingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant'],
-          requiresTeamMembership: false, // Fixed: should be false to allow participants to post
-          onlyTeamLead: false,
-        },
         createdAt: new Date(),
         updatedAt: new Date(),
       }

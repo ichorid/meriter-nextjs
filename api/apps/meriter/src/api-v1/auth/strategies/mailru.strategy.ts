@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-// @ts-ignore - passport-oauth2 types may not be available
+// @ts-expect-error - passport-oauth2 types may not be available
 import { Strategy } from 'passport-oauth2';
 import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Mail.ru OAuth Strategy
@@ -11,11 +12,11 @@ import { ConfigService } from '@nestjs/config';
 export class MailruStrategy extends PassportStrategy(Strategy, 'mailru') {
     private readonly logger = new Logger(MailruStrategy.name);
 
-    constructor(private configService: ConfigService) {
-        const clientID = process.env.OAUTH_MAILRU_CLIENT_ID;
-        const clientSecret = process.env.OAUTH_MAILRU_CLIENT_SECRET;
-        const callbackURL = process.env.OAUTH_MAILRU_REDIRECT_URI
-            || process.env.OAUTH_MAILRU_CALLBACK_URL;
+    constructor(private configService: ConfigService<AppConfig>) {
+        // Use configService parameter directly (not this.configService) before super()
+        const clientID = (configService.get as any)('oauth.mailru.clientId') as string | undefined;
+        const clientSecret = (configService.get as any)('oauth.mailru.clientSecret') as string | undefined;
+        const callbackURL = (configService.get as any)('oauth.mailru.redirectUri') as string | undefined;
 
         if (!clientID || !clientSecret || !callbackURL) {
             throw new Error(

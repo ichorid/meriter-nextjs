@@ -14,6 +14,8 @@ import { useCommunity } from '@/hooks/api';
 import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { canUseWalletForVoting } from './voting-utils';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -25,6 +27,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const t = useTranslations('comments');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
+  const enableCommentImageUploads = features.commentImageUploads;
   const { user } = useAuth();
   const {
     activeVotingTarget,
@@ -34,6 +37,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     closeVotingPopup,
     updateVotingFormData,
   } = useUIStore();
+  
+  const addToast = useToastStore((state) => state.addToast);
 
   // Use shared hook for community data
   const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
@@ -76,6 +81,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const hasPoints = freePlusAmount > 0 || walletBalance > 0;
 
+  // Check if wallet can be used for voting
+  const canUseWallet = canUseWalletForVoting(walletBalance, community);
+
   // Calculate maxPlus based on effective voting mode (quota-only for viewers)
   let maxPlus = 0;
   if (effectiveVotingMode === 'wallet-only') {
@@ -83,7 +91,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   } else if (effectiveVotingMode === 'quota-only') {
     maxPlus = freePlusAmount;
   } else {
-    maxPlus = freePlusAmount + (walletBalance || 0);
+    // In mixed mode, include wallet only if it can be used
+    maxPlus = freePlusAmount + (canUseWallet ? (walletBalance || 0) : 0);
   }
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
@@ -154,15 +163,28 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   };
 
   const handleSubmit = async (directionPlus: boolean) => {
-    if (!activeVotingTarget || !votingTargetType || !targetCommunityId) return;
+    console.log('[VotingPopup] handleSubmit called', { directionPlus });
+    if (!activeVotingTarget || !votingTargetType || !targetCommunityId) {
+      console.log('[VotingPopup] Early return: missing required data', { activeVotingTarget, votingTargetType, targetCommunityId });
+      return;
+    }
 
     // Check feature flag - comment voting is disabled by default
     if (votingTargetType === 'comment' && !enableCommentVoting) {
-      updateVotingFormData({ error: 'Voting on comments is disabled. You can only vote on posts/publications.' });
+      updateVotingFormData({ error: t('commentVotingDisabled') || 'Voting on comments is disabled. You can only vote on posts/publications.' });
       return;
     }
 
     const delta = formData.delta;
+    console.log('[VotingPopup] Initial values', {
+      delta,
+      quotaRemaining,
+      walletBalance,
+      effectiveVotingMode,
+      isViewer,
+      'quotaRemaining type': typeof quotaRemaining,
+      'walletBalance type': typeof walletBalance,
+    });
     if (delta === 0) {
       updateVotingFormData({ error: t('pleaseAdjustSlider') });
       return;
@@ -176,72 +198,171 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       return;
     }
     const absoluteAmount = Math.abs(delta);
+    console.log('[VotingPopup] After initial checks', {
+      absoluteAmount,
+      isUpvote,
+      'absoluteAmount type': typeof absoluteAmount,
+      'absoluteAmount value': absoluteAmount,
+    });
 
-    // Calculate vote breakdown
+    // Calculate vote breakdown for submission (quota first, then wallet overflow).
+    // IMPORTANT: Use `freePlusAmount` (quotaRemaining fallback) as the quota budget we allow in UI.
     let quotaAmount = 0;
     let walletAmount = 0;
 
     if (isUpvote) {
+      console.log('[VotingPopup] Calculating upvote amounts, effectiveVotingMode:', effectiveVotingMode);
+
       if (effectiveVotingMode === 'wallet-only') {
-        walletAmount = absoluteAmount;
+        if (!canUseWallet) {
+          updateVotingFormData({ error: t('downvoteRequiresBalance') });
+          return;
+        }
         quotaAmount = 0;
+        walletAmount = absoluteAmount;
       } else if (effectiveVotingMode === 'quota-only') {
-        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+        quotaAmount = absoluteAmount;
         walletAmount = 0;
       } else {
-        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
-        walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+        // Standard (mixed): spend quota first, then overflow into wallet (if enabled).
+        const quotaBudget = freePlusAmount;
+        quotaAmount = Math.min(absoluteAmount, quotaBudget);
+        walletAmount = Math.max(0, absoluteAmount - quotaAmount);
+
+        if (walletAmount > 0 && !canUseWallet) {
+          updateVotingFormData({ error: t('downvoteRequiresBalance') });
+          return;
+        }
       }
     } else {
-      // Downvotes use wallet only (but viewers can't downvote since they can't use wallet)
+      // Downvotes use wallet only (quota cannot be used for downvotes)
+      console.log('[VotingPopup] Calculating downvote amounts');
       if (isViewer) {
-        updateVotingFormData({ error: 'Viewers can only vote using daily quota. Downvotes require wallet merits.' });
+        updateVotingFormData({ error: t('downvoteViewerReason') });
         return;
       }
+      if (!canUseWallet) {
+        updateVotingFormData({ error: t('downvoteRequiresBalance') });
+        return;
+      }
+      quotaAmount = 0;
       walletAmount = absoluteAmount;
     }
 
+    // Validate that at least one amount is non-zero before submission
+    // This handles edge cases where calculation resulted in both being 0
+    // (e.g., downvotes with no wallet balance, though walletAmount should be > 0 if absoluteAmount > 0)
+    console.log('[VotingPopup] After calculation, before validation:', {
+      quotaAmount,
+      walletAmount,
+      absoluteAmount,
+      'quotaAmount === 0': quotaAmount === 0,
+      'walletAmount === 0': walletAmount === 0,
+      'both zero?': quotaAmount === 0 && walletAmount === 0,
+    });
+    if (quotaAmount === 0 && walletAmount === 0) {
+      console.warn('[VotingPopup] Both amounts are 0! This should not happen. Fixing...', { isUpvote, absoluteAmount });
+      if (!isUpvote) {
+        // For downvotes, we need wallet - can't proceed without it
+        updateVotingFormData({ error: 'You have insufficient wallet balance for downvotes.' });
+        return;
+      }
+      // For upvotes, this shouldn't happen due to calculation above, but if it does,
+      // try quota anyway (might be stale data) - server will validate
+      quotaAmount = absoluteAmount;
+      walletAmount = 0;
+      console.log('[VotingPopup] Fixed amounts for upvote:', { quotaAmount, walletAmount });
+    }
+
+    console.log('[VotingPopup] Final amounts before API call:', {
+      quotaAmount,
+      walletAmount,
+      absoluteAmount,
+      isUpvote,
+      votingTargetType,
+      'quotaAmount type': typeof quotaAmount,
+      'walletAmount type': typeof walletAmount,
+      'quotaAmount value': quotaAmount,
+      'walletAmount value': walletAmount,
+    });
+
+    // Close popup immediately to prevent flash of updated progress bars
+    // The optimistic updates will happen in onMutate, but the popup will already be closed
+    const targetId = activeVotingTarget;
+    const commentText = formData.comment.trim();
+    const imagesToSubmit = enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined;
+    
+    // Close popup and reset form immediately
+    handleClose();
+
     try {
-      updateVotingFormData({ error: '' });
-
-      const targetId = activeVotingTarget;
-
       // For publications, use the combined endpoint that creates comment and vote atomically
       if (votingTargetType === 'publication') {
+        const mutationPayload = {
+          publicationId: targetId,
+          data: {
+            quotaAmount,
+            walletAmount,
+            comment: commentText || undefined,
+            direction: isUpvote ? 'up' : 'down' as const,
+            images: imagesToSubmit,
+          },
+          communityId: targetCommunityId,
+        };
+        console.log('[VotingPopup] Calling voteOnPublicationWithCommentMutation with:', JSON.stringify(mutationPayload, null, 2));
+        console.log('[VotingPopup] Raw values:', {
+          quotaAmount,
+          walletAmount,
+          'quotaAmount === 0': quotaAmount === 0,
+          'walletAmount === 0': walletAmount === 0,
+        });
         // Single vote with both quota and wallet amounts
         await voteOnPublicationWithCommentMutation.mutateAsync({
           publicationId: targetId,
           data: {
             quotaAmount,
             walletAmount,
-            comment: formData.comment.trim() || undefined,
+            comment: commentText || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: imagesToSubmit,
           },
           communityId: targetCommunityId,
         });
       } else {
         // For votes, use the vote-on-vote endpoint
         // Include comment field for vote-comments (L2, L3, etc.)
+        console.log('[VotingPopup] Calling voteOnVoteMutation with:', {
+          voteId: targetId,
+          quotaAmount,
+          walletAmount,
+          comment: commentText || undefined,
+          direction: isUpvote ? 'up' : 'down',
+        });
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
           data: {
             quotaAmount,
             walletAmount,
-            comment: formData.comment.trim() || undefined,
+            comment: commentText || undefined,
             direction: isUpvote ? 'up' : 'down',
-            images: formData.images && formData.images.length > 0 ? formData.images : undefined,
+            images: imagesToSubmit,
           },
           communityId: targetCommunityId,
         });
       }
 
-      // Close popup and reset form
-      handleClose();
+      // Popup already closed, mutation successful
+      console.log('[VotingPopup] Vote submitted successfully');
+      
+      // Show success toast
+      addToast('Vote submitted successfully', 'success');
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
+      console.error('[VotingPopup] Error submitting vote:', err);
       const message = err instanceof Error ? err.message : t('errorCommenting');
-      updateVotingFormData({ error: message });
+      
+      // Show error in toast notification
+      addToast(message, 'error');
     }
   };
 
@@ -251,12 +372,13 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   return (
     <BottomPortal>
-      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
           onClick={handleClose}
         />
-        <VotingPanel
+        <div className="relative z-10">
+          <VotingPanel
           onClose={handleClose}
           amount={formData.delta}
           setAmount={handleAmountChange}
@@ -268,11 +390,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           quotaRemaining={quotaRemaining}
           dailyQuota={dailyQuota}
           usedToday={usedToday}
+          walletBalance={walletBalance}
+          community={community}
           error={formData.error}
           isViewer={isViewer}
-          images={formData.images || []}
-          onImagesChange={handleImagesChange}
+          images={enableCommentImageUploads ? (formData.images || []) : []}
+          onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
         />
+        </div>
       </div>
     </BottomPortal>
   );

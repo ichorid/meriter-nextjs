@@ -11,16 +11,16 @@
 
 'use client';
 
-import { authApiV1 } from '@/lib/api/v1';
-
 import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
-import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout } from '@/hooks/api/useAuth';
+import { useMe, useFakeAuth, useFakeSuperadminAuth, useLogout, useClearCookies } from '@/hooks/api/useAuth';
 import { useDeepLinkHandler } from '@/shared/lib/deep-link-handler';
-import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession } from '@/lib/utils/auth';
+import { clearAuthStorage, redirectToLogin, clearJwtCookie, setHasPreviousSession, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { setSentryUser, clearSentryUser } from '@/lib/utils/sentry';
 import type { User } from '@/types/api-v1';
 import type { Router } from 'next/router';
 import type { ParsedUrlQuery } from 'querystring';
@@ -48,34 +48,50 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const addToast = useToastStore((state) => state.addToast);
   const last401ErrorRef = useRef<string | null>(null);
+  const lastServerClearCookiesAtRef = useRef<number>(0);
 
   const { data: user, isLoading: userLoading, error: userError } = useMe();
   const fakeAuthMutation = useFakeAuth();
   const fakeSuperadminAuthMutation = useFakeSuperadminAuth();
   const logoutMutation = useLogout();
+  const clearCookiesMutation = useClearCookies();
   const tCommon = useTranslations('common');
 
   const { handleDeepLink } = useDeepLinkHandler(router as unknown as Router, null, undefined);
 
-  // Memoize derived values to prevent unnecessary recalculations
-  const isLoading = useMemo(() => userLoading || isAuthenticating, [userLoading, isAuthenticating]);
+  const isLoading = userLoading || isAuthenticating;
+  const is401Error = isUnauthorizedError(userError);
+  const isAuthenticated = !!user && !is401Error;
 
-  // Check if we have a 401 error (unauthorized) - memoized
-  const is401Error = useMemo(() => {
-    const errorStatus = userError ? ((userError as any)?.details?.status || (userError as any)?.code) : null;
-    return errorStatus === 401 || errorStatus === 'HTTP_401';
-  }, [userError]);
+  // DEBUG: Log authentication state changes
+  useEffect(() => {
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+      console.log('[AUTH-DEBUG] AuthContext state:', {
+        hasUser: !!user,
+        userId: user?.id,
+        username: user?.username,
+        isLoading: userLoading,
+        isAuthenticated,
+        hasError: !!userError,
+        errorType: userError ? (isUnauthorizedError(userError) ? '401' : 'other') : 'none',
+        errorMessage: userError?.message,
+        pathname: window.location.pathname,
+      });
+    }
+  }, [user, userLoading, isAuthenticated, userError]);
 
-  // User is authenticated ONLY if:
-  // 1. We have a user object (not null/undefined)
-  // 2. There's no error OR the error is not a 401 (401 means not authenticated)
-  const isAuthenticated = useMemo(() => !!user && !is401Error, [user, is401Error]);
+  // Update Sentry user context when user changes
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      setSentryUser(user);
+    } else {
+      clearSentryUser();
+    }
+  }, [isAuthenticated, user]);
 
   const authenticateFakeUser = useCallback(async () => {
     try {
@@ -117,7 +133,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Call server-side clear-cookies to ensure HttpOnly cookies are removed
       try {
-        await authApiV1.clearCookies();
+        await clearCookiesMutation.mutateAsync();
       } catch (e) {
         console.error('Failed to clear server cookies:', e);
       }
@@ -130,7 +146,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Still clear everything and redirect on error
       try {
-        await authApiV1.clearCookies();
+        await clearCookiesMutation.mutateAsync();
       } catch (e) {
         console.error('Failed to clear server cookies:', e);
       }
@@ -139,12 +155,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setIsAuthenticating(false);
     }
-  }, [logoutMutation]);
-
-  // Memoize setAuthError wrapper to ensure stable reference
-  const setAuthErrorMemoized = useCallback((error: string | null) => {
-    setAuthError(error);
-  }, []);
+  }, [logoutMutation, clearCookiesMutation, tCommon]);
 
   // Track successful authentication to distinguish first-time users from returning users
   useEffect(() => {
@@ -156,26 +167,68 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     if (userError) {
-      // Check if it's a 401 error - invalid/expired JWT
-      const errorStatus = (userError as any)?.details?.status || (userError as any)?.code;
-      if (errorStatus === 401 || errorStatus === 'HTTP_401') {
-        // Clear auth storage on 401 errors to allow re-login
-        clearAuthStorage();
-        setAuthError(null); // Clear error to allow login
+      if (isUnauthorizedError(userError)) {
+        // 401 error - user is not authenticated
+        const hadSession = hasPreviousSession();
 
-        // Call server-side clear-cookies to ensure HttpOnly cookies are removed
-        // We use a fire-and-forget approach here to avoid blocking
-        authApiV1.clearCookies().catch(e => console.error('Failed to clear server cookies on 401:', e));
+        // Prevent handling the same 401 repeatedly (avoids loops and request storms).
+        // React Query / tRPC can surface new Error instances with the same message/path.
+        const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+        const errorKey = `${pathname}|${userError.message || 'unauthorized'}`;
+        if (last401ErrorRef.current === errorKey) {
+          return;
+        }
+        last401ErrorRef.current = errorKey;
+        
+        // Only clear cookies if we're NOT on an auth page (where 401 is expected)
+        // On login page, 401 is expected and we shouldn't clear cookies
+        if (!isOnAuthPage()) {
+          // If the user never had a successful session, a 401 is expected and we should not
+          // aggressively clear cookies (this can spam /auth/clear-cookies and interfere with login).
+          if (!hadSession) {
+            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+              console.log('[AUTH-DEBUG] 401 error but no previous session - skipping cookie clear');
+            }
+            setAuthError(null);
+            return;
+          }
+          
+          if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+            console.warn('[AUTH-DEBUG] 401 error with previous session - clearing cookies', {
+              pathname: window.location.pathname,
+              hadSession,
+            });
+          }
 
-        // Toast is now handled globally in api/client.ts
-        // const currentErrorId = `${errorStatus}-${(userError as any)?.message || '401'}`;
+          // Session expired on a protected route.
+          // clearCookiesIfNeeded() handles debouncing and OAuth redirect timing internally.
+          clearCookiesIfNeeded();
+          setAuthError(null);
 
-        // if (last401ErrorRef.current !== currentErrorId) {
-        //   last401ErrorRef.current = currentErrorId;
-        //   console.log('Adding toast for 401 error:', currentErrorId);
-        //   // addToast('Your session has expired. Please log in again.', 'warning');
-        // }
+          // Call server-side clear-cookies to ensure HttpOnly cookies are removed
+          // We use a fire-and-forget approach here to avoid blocking
+          // Throttle this call to prevent request storms during repeated 401s.
+          const now = Date.now();
+          if (now - lastServerClearCookiesAtRef.current > 5000) {
+            lastServerClearCookiesAtRef.current = now;
+            clearCookiesMutation.mutateAsync().catch(e => {
+              // Only log if it's not a 401 (expected when not authenticated)
+              if (!isUnauthorizedError(e)) {
+                console.error('Failed to clear server cookies:', e);
+              }
+            });
+          }
+
+          // Log session expiration for debugging (only if user had a session)
+          if (hadSession && process.env.NODE_ENV === 'development') {
+            console.info('Session expired - user needs to re-authenticate');
+          }
+        } else {
+          // On auth page, 401 is expected - just clear the error state
+          setAuthError(null);
+        }
       } else {
+        // Non-401 error - set as auth error
         setAuthError(userError.message || 'Authentication error');
         // Reset ref when error is not 401
         last401ErrorRef.current = null;
@@ -184,7 +237,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Reset ref when there's no error
       last401ErrorRef.current = null;
     }
-  }, [userError, addToast]);
+  }, [userError, clearCookiesMutation]);
 
   // Memoize context value to prevent unnecessary re-renders of consumers
   // Only recreate when actual values change, not object references
@@ -197,7 +250,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     handleDeepLink,
     authError,
-    setAuthError: setAuthErrorMemoized,
+    setAuthError,
   }), [
     user,
     isLoading,
@@ -207,7 +260,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     logout,
     handleDeepLink,
     authError,
-    setAuthErrorMemoized,
+    setAuthError,
   ]);
 
   return (

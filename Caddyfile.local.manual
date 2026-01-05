@@ -3,6 +3,7 @@
 
 {
     auto_https off
+    admin localhost:20190
 }
 
 :8080 {
@@ -15,6 +16,12 @@
 
     # All API requests go to NestJS backend
     handle /api* {
+        reverse_proxy localhost:8002
+        encode gzip
+    }
+
+    # tRPC requests go to NestJS backend
+    handle /trpc* {
         reverse_proxy localhost:8002
         encode gzip
     }

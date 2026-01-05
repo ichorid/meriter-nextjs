@@ -3,11 +3,11 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 import { Poll } from '../aggregates/poll/poll.entity';
 import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
-import type { Poll as PollSchema } from '../models/poll/poll.schema';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { CreatePollDto, UpdatePollDto } from '../../../../../../libs/shared-types/dist/index';
+import { uid } from 'uid';
 
 @Injectable()
 export class PollService {
@@ -56,12 +56,33 @@ export class PollService {
     return doc ? Poll.fromSnapshot(doc as any) : null;
   }
 
+  async deletePoll(id: string): Promise<void> {
+    // Remove poll casts first to avoid orphan records
+    await this.pollCastRepository.deleteByPoll(id);
+    await this.pollModel.deleteOne({ id }).exec();
+  }
+
   async getPollsByCommunity(
     communityId: string, 
     limit: number = 20, 
     skip: number = 0,
-    sortBy?: 'createdAt' | 'score'
+    sortBy?: 'createdAt' | 'score',
+    search?: string,
   ): Promise<Poll[]> {
+    // Build query
+    const query: any = { communityId, isActive: true };
+
+    // Apply search filter if provided
+    if (search && search.trim()) {
+      // Escape special regex characters for security
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      query.$or = [
+        { question: searchRegex },
+        { description: searchRegex },
+      ];
+    }
+
     // Build sort object
     const sort: any = {};
     if (sortBy === 'score') {
@@ -71,7 +92,7 @@ export class PollService {
     }
     
     const docs = await this.pollModel
-      .find({ communityId, isActive: true })
+      .find(query)
       .limit(limit)
       .skip(skip)
       .sort(sort)
@@ -218,7 +239,6 @@ export class PollService {
       
       // Map options to the format expected by the schema
       // Preserve existing option IDs if they match, otherwise generate new ones
-      const { uid } = require('uid');
       const existingOptions = poll.getOptions;
       const updatedOptions = updateData.options.map((opt, index) => {
         // Try to match by index first, then by ID

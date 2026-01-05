@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useQuery } from '@tanstack/react-query';
-import { commentsApiV1 } from '@/lib/api/v1';
+import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Dispatch, SetStateAction } from 'react';
 import { commentsKeys } from '@/hooks/api/useComments';
@@ -37,38 +36,37 @@ export const useComments = (
     const apiSort = sortBy === 'voted' ? 'score' : 'createdAt';
     const apiOrder = 'desc'; // Always descending for both recent and voted
 
-    // Get comments using v1 API with standard query keys
-    const { data: comments = [] } = useQuery({
-        queryKey: forTransaction && transactionId
-            ? [...commentsKeys.byComment(transactionId), { sort: apiSort, order: apiOrder }]
-            : publicationSlug
-            ? [...commentsKeys.byPublication(publicationSlug), { sort: apiSort, order: apiOrder }]
-            : ['comments', 'empty'],
-        queryFn: async () => {
-            if (forTransaction && transactionId) {
-                // Get replies to a comment
-                const result = await commentsApiV1.getCommentReplies(transactionId, {
-                    sort: apiSort,
-                    order: apiOrder,
-                });
-                // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
-                return (result && result.data && Array.isArray(result.data)) ? result.data : [];
-            } else if (publicationSlug) {
-                // Get comments on a publication
-                const result = await commentsApiV1.getPublicationComments(publicationSlug, {
-                    sort: apiSort,
-                    order: apiOrder,
-                });
-                // Handle PaginatedResponse structure - result is PaginatedResponse, result.data is the array
-                return (result && result.data && Array.isArray(result.data)) ? result.data : [];
-            }
-            return [];
+    // Get comments using tRPC
+    const repliesQuery = trpc.comments.getReplies.useQuery(
+        {
+            id: transactionId || '',
+            sort: apiSort,
+            order: apiOrder as 'asc' | 'desc',
         },
-        refetchOnWindowFocus: false,
-        // Prevent N+1 queries: only fetch replies when user expands a comment (showComments=true)
-        // For publication comments, always fetch (showComments is already true for onlyPublication)
-        enabled: forTransaction ? showComments && !!transactionId : !!publicationSlug,
-    });
+        {
+            enabled: forTransaction && showComments && !!transactionId,
+            refetchOnWindowFocus: false,
+        },
+    );
+
+    const publicationCommentsQuery = trpc.comments.getByPublicationId.useQuery(
+        {
+            publicationId: publicationSlug || '',
+            sort: apiSort,
+            order: apiOrder as 'asc' | 'desc',
+        },
+        {
+            enabled: !forTransaction && !!publicationSlug,
+            refetchOnWindowFocus: false,
+        },
+    );
+
+    // Use the appropriate query result
+    const comments = forTransaction && transactionId
+        ? (repliesQuery.data?.data || [])
+        : publicationSlug
+        ? (publicationCommentsQuery.data?.data || [])
+        : [];
 
     // Get user quota for free balance using standardized hook
     const { user } = useAuth();

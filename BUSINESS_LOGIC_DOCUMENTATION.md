@@ -307,6 +307,40 @@ Feature flags allow enabling or disabling specific features without code changes
   - Backend service layer (validates before creating votes)
 - This multi-layer approach ensures the feature cannot be bypassed even if one layer fails
 
+### Comment/ Vote Image Uploads Feature Flag
+
+**Purpose**: Control whether users can attach images to votes and comments.
+
+**Environment Variables**:
+- **Backend**: `ENABLE_COMMENT_IMAGE_UPLOADS` (default: `false` - disabled)
+- **Frontend**: `NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS` (default: `false` - disabled)
+
+**Behavior**:
+- **When Disabled (default)**:
+  - Users cannot upload images when creating votes or comments
+  - The ImageGallery component is hidden in voting/comment forms
+  - API endpoints reject requests that include image arrays with a `BadRequestException`
+  - Existing votes/comments with images still display properly (read-only)
+
+- **When Enabled**:
+  - Users can attach images to votes and comments using the ImageGallery component
+  - Image upload UI appears in voting/comment forms
+  - API accepts image arrays in vote and comment DTOs
+  - Images are validated and uploaded to S3 storage (if configured)
+
+**To Enable**:
+1. Set `ENABLE_COMMENT_IMAGE_UPLOADS=true` in backend environment (`.env` or Docker environment)
+2. Set `NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS=true` in frontend environment (`.env` or Docker environment)
+3. Restart both backend and frontend services
+
+**Implementation Details**:
+- Feature flag is checked at multiple layers:
+  - Frontend UI components (conditionally renders ImageGallery component)
+  - Frontend mutation handlers (excludes images from API calls when disabled)
+  - Backend API controllers (validates and rejects image arrays when disabled)
+- This multi-layer approach ensures the feature cannot be bypassed even if one layer fails
+- All existing image handling code remains intact, just conditionally disabled
+
 ## Data Flow
 
 ### Publication Creation Flow

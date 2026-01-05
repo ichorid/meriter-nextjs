@@ -12,14 +12,43 @@ export class TestDatabaseHelper {
 
   /**
    * Start the in-memory MongoDB instance
+   * Wraps MongoMemoryServer.create() with a timeout to prevent hanging in CI/CD
+   * Always creates a new instance to avoid conflicts with global setup
    */
   async start(): Promise<string> {
-    if (!process.env.MONGO_URL) {
-      this.mongod = await MongoMemoryServer.create();
-      const uri = this.mongod.getUri();
-      return uri;
+    // Always create a new instance, even if MONGO_URL is set (from global setup)
+    // This ensures each test gets its own isolated MongoDB instance
+    // Wrap MongoMemoryServer.create() with a timeout to fail fast
+    const createPromise = MongoMemoryServer.create({
+      binary: {
+        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR,
+      },
+      instance: {
+        dbName: 'test',
+      },
+    });
+
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutMs = process.env.CI ? 120_000 : 30_000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(
+            `MongoMemoryServer.create() timed out after ${Math.round(timeoutMs / 1000)} seconds. This may indicate network issues or insufficient resources in CI/CD.`,
+          ),
+        );
+      }, timeoutMs);
+    });
+
+    try {
+      this.mongod = await Promise.race([createPromise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     }
-    return process.env.MONGO_URL;
+    const uri = this.mongod.getUri();
+    return uri;
   }
 
   /**
@@ -27,7 +56,15 @@ export class TestDatabaseHelper {
    */
   async connect(uri?: string): Promise<Connection> {
     const mongoUri = uri || (await this.start());
-    this.connection = (await connect(mongoUri)).connection;
+    // Add connection timeout options to fail fast
+    this.connection = (await connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000, // 3 seconds - fail fast
+      connectTimeoutMS: 3000, // 3 seconds - fail fast
+      socketTimeoutMS: 3000, // 3 seconds - fail fast
+      maxPoolSize: 1, // Single connection for tests
+      retryWrites: false, // Disable retries
+      retryReads: false, // Disable retries
+    })).connection;
     return this.connection;
   }
 

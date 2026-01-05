@@ -35,7 +35,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
       onClick={onClick}
       className={`
         absolute left-1/2 -translate-x-1/2
-        bg-base-100 border border-base-300 rounded-full
+        bg-base-100 shadow-none rounded-full
         shadow-lg px-3 py-1.5
         flex items-center gap-2
         hover:bg-base-200 transition-colors

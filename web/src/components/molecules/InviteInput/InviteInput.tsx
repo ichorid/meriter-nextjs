@@ -4,9 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useInvite } from '@/hooks/api/useInvites';
-import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { BrandFormControl } from '@/components/ui';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import Link from 'next/link';
+import { routes } from '@/lib/constants/routes';
 
 interface InviteInputProps {
     className?: string;
@@ -33,7 +38,7 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
         setInviteError('');
 
         try {
-            const response = await useInviteMutation.mutateAsync(inviteCode.trim());
+            const response = await useInviteMutation.mutateAsync({ code: inviteCode.trim() });
             addToast(t('inviteUsedSuccess'), 'success');
 
             // Check for teamGroupId in response and redirect if present
@@ -61,14 +66,34 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
         }
     };
 
+    const handleLeadsLinkClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        router.push(`${routes.communities}?scrollToLeads=true`);
+    };
+
+    const helperText = (
+        <>
+            {t('inviteCodeHelperText')}{' '}
+            <Link 
+                href={`${routes.communities}?scrollToLeads=true`}
+                onClick={handleLeadsLinkClick}
+                className="text-primary hover:underline font-medium"
+            >
+                {t('inviteCodeHelperLinkText')}
+            </Link>
+            .
+        </>
+    );
+
     return (
         <div className={`space-y-3 ${className}`}>
             <BrandFormControl
                 label={hideLabel ? undefined : t('inviteCodeLabel')}
+                helperText={hideLabel ? undefined : helperText}
                 error={inviteError}
             >
                 <div className="flex gap-2">
-                    <BrandInput
+                    <Input
                         value={inviteCode}
                         onChange={(e) => {
                             setInviteCode(e.target.value);
@@ -79,16 +104,17 @@ export function InviteInput({ className = '', hideLabel = false }: InviteInputPr
                         autoCapitalize="none"
                         autoComplete="off"
                         disabled={useInviteMutation.isPending}
-                        className="flex-1"
+                        className="h-11 rounded-xl flex-1"
                     />
-                    <BrandButton
+                    <Button
                         onClick={handleSubmit}
                         disabled={!inviteCode.trim() || useInviteMutation.isPending}
-                        isLoading={useInviteMutation.isPending}
-                        size="md"
+                        size="default"
+                        className="rounded-xl active:scale-[0.98] px-6 shrink-0 whitespace-nowrap"
                     >
+                        {useInviteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                         {useInviteMutation.isPending ? t('checkingInvite') : t('continue')}
-                    </BrandButton>
+                    </Button>
                 </div>
             </BrandFormControl>
         </div>

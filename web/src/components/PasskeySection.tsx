@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { BrandButton } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Loader2 } from "lucide-react";
 import { usePasskeys } from "@/hooks/usePasskeys";
+import { isTestAuthMode } from "@/config";
+import { mockPasskeyAuth } from "@/lib/utils/mock-auth";
 
 interface PasskeySectionProps {
     isLoading: boolean;
@@ -23,6 +26,23 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
     const handleAuthenticate = async () => {
         setLocalLoading(true);
         try {
+            const testAuthMode = isTestAuthMode();
+            
+            if (testAuthMode) {
+                // In test auth mode, use mock authentication
+                const result = await mockPasskeyAuth();
+                
+                // Set JWT cookie manually
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                
+                onSuccess({
+                    isNewUser: result.isNewUser,
+                    user: result.user,
+                });
+                setLocalLoading(false);
+                return;
+            }
+
             const result = await authenticateWithPasskey();
 
             // Do not redirect here. Let the parent handle it based on isNewUser flag.
@@ -38,14 +58,15 @@ export function PasskeySection({ isLoading, onSuccess, onError }: PasskeySection
     };
 
     return (
-        <BrandButton
+        <Button
             variant="outline"
-            size="md"
-            fullWidth
+            size="default"
+            className="rounded-xl active:scale-[0.98] w-full flex items-center justify-center gap-2"
             onClick={handleAuthenticate}
             disabled={isLoading || localLoading}
         >
-            {localLoading ? t("authenticating", { defaultMessage: "Authenticating..." }) : t("signInWithPasskey", { defaultMessage: "Sign in with Passkey" })}
-        </BrandButton>
+            {localLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+            <span>{localLoading ? t("authenticating", { defaultMessage: "Authenticating..." }) : t("signInWithPasskey", { defaultMessage: "Sign in with Passkey" })}</span>
+        </Button>
     );
 }

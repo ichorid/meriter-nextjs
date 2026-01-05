@@ -4,6 +4,130 @@ import '@testing-library/jest-dom';
 // Mock axios globally before anything else
 jest.mock('axios');
 
+// Mock superjson (ES module that Jest can't handle)
+jest.mock('superjson', () => ({
+    default: {
+        serialize: jest.fn((data) => ({ json: JSON.stringify(data), meta: {} })),
+        deserialize: jest.fn((data) => JSON.parse(data.json)),
+        stringify: jest.fn((data) => JSON.stringify(data)),
+        parse: jest.fn((data) => JSON.parse(data)),
+    },
+    SuperJSON: {
+        serialize: jest.fn((data) => ({ json: JSON.stringify(data), meta: {} })),
+        deserialize: jest.fn((data) => JSON.parse(data.json)),
+        stringify: jest.fn((data) => JSON.stringify(data)),
+        parse: jest.fn((data) => JSON.parse(data)),
+    },
+}));
+
+// Mock tRPC client and hooks to avoid QueryClient compatibility issues in tests
+// This provides a comprehensive mock for all tRPC hooks used in the application
+jest.mock('@/lib/trpc/client', () => {
+    // Mock query result
+    const mockQueryResult = {
+        data: null,
+        isLoading: false,
+        error: null,
+        refetch: jest.fn().mockResolvedValue({ data: null }),
+        isFetching: false,
+        isError: false,
+        isSuccess: false,
+    };
+
+    // Mock mutation result
+    const mockMutationResult = {
+        mutateAsync: jest.fn().mockResolvedValue({}),
+        mutate: jest.fn(),
+        isLoading: false,
+        error: null,
+        isError: false,
+        isSuccess: false,
+    };
+
+    // Create a mock utils object with invalidate methods
+    const createMockUtils = () => ({
+        users: {
+            getMe: { invalidate: jest.fn() },
+        },
+        comments: {
+            getReplies: { invalidate: jest.fn() },
+            getByPublicationId: { invalidate: jest.fn() },
+        },
+        votes: {
+            create: { 
+                invalidate: jest.fn(),
+                mutateAsync: jest.fn().mockResolvedValue({}),
+            },
+        },
+        wallets: {
+            getByCommunity: { invalidate: jest.fn() },
+            getAll: { invalidate: jest.fn() },
+            getBalance: { invalidate: jest.fn() },
+            getTransactions: { invalidate: jest.fn() },
+            withdraw: { invalidate: jest.fn() },
+        },
+        publications: {
+            getBySlug: { invalidate: jest.fn() },
+            getByCommunity: { invalidate: jest.fn() },
+        },
+        communities: {
+            getById: { invalidate: jest.fn() },
+        },
+    });
+
+    // Create a proxy that returns mocks for any property access
+    // This handles nested paths like trpc.users.getMe.useQuery
+    // The proxy returns itself for any property, and also provides useQuery, useMutation, etc.
+    const createTRPCProxy = (): any => {
+        const handler: ProxyHandler<any> = {
+            get: (_target, prop: string) => {
+                if (prop === 'useUtils') {
+                    return jest.fn(() => createMockUtils());
+                }
+                if (prop === 'Provider') {
+                    return ({ children }: { children: React.ReactNode }) => children;
+                }
+                if (prop === 'useQuery') {
+                    return jest.fn(() => mockQueryResult);
+                }
+                if (prop === 'useMutation') {
+                    return jest.fn(() => mockMutationResult);
+                }
+                if (prop === 'useInfiniteQuery') {
+                    return jest.fn(() => ({
+                        data: { pages: [], pageParams: [] },
+                        isLoading: false,
+                        error: null,
+                        fetchNextPage: jest.fn(),
+                        hasNextPage: false,
+                        isFetching: false,
+                        isError: false,
+                        isSuccess: false,
+                    }));
+                }
+                if (prop === 'invalidate') {
+                    return jest.fn();
+                }
+                if (prop === 'mutateAsync') {
+                    return jest.fn().mockResolvedValue({});
+                }
+                // For any other property, return another proxy (allows infinite nesting)
+                // This makes trpc.users.getMe.useQuery work
+                return createTRPCProxy();
+            },
+        };
+        return new Proxy({}, handler);
+    };
+
+    return {
+        trpc: createTRPCProxy(),
+        getTrpcClient: jest.fn(() => ({
+            links: [],
+            transformer: {},
+        })),
+    };
+});
+
 // Mock next-intl
 jest.mock('next-intl', () => ({
     useTranslations: jest.fn((namespace: string) => (key: string) => `${namespace}.${key}`),
@@ -13,11 +137,6 @@ jest.mock('next-intl', () => ({
 
 jest.mock('next-intl/server', () => ({
     getMessages: jest.fn(() => Promise.resolve({})),
-}));
-
-// Mock next/config
-jest.mock('next/config', () => () => ({
-    publicRuntimeConfig: {},
 }));
 
 // Mock Next.js 15 App Router navigation
@@ -91,7 +210,7 @@ jest.mock('@/shared/lib/deep-link-handler', () => ({
 }));
 
 // Mock config
-jest.mock('./src/config/index.ts', () => ({
+jest.mock('@/config', () => ({
   config: {
     app: {
       isDevelopment: true,
@@ -107,9 +226,11 @@ jest.mock('./src/config/index.ts', () => ({
     },
     development: {
       fakeDataMode: false,
+      testAuthMode: false,
     },
   },
   isFakeDataMode: jest.fn(() => false),
+  isTestAuthMode: jest.fn(() => false),
   isDevelopment: jest.fn(() => true),
   isProduction: jest.fn(() => false),
   isTest: jest.fn(() => true),

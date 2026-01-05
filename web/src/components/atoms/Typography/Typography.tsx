@@ -2,6 +2,15 @@ import React from 'react';
 
 export type HeadingLevel = 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 
+const SIZE_CLASSES: Record<HeadingLevel, string> = {
+  h1: 'text-4xl font-bold',
+  h2: 'text-3xl font-bold',
+  h3: 'text-2xl font-semibold',
+  h4: 'text-xl font-semibold',
+  h5: 'text-lg font-medium',
+  h6: 'text-base font-medium',
+};
+
 export interface HeadingProps extends React.HTMLAttributes<HTMLHeadingElement> {
   as?: HeadingLevel;
 }
@@ -17,18 +26,9 @@ export const Heading = React.forwardRef<HTMLHeadingElement, HeadingProps>(
     ref
   ) => {
     const Tag = as;
-    
-    const sizeClasses = {
-      h1: 'text-4xl font-bold',
-      h2: 'text-3xl font-bold',
-      h3: 'text-2xl font-semibold',
-      h4: 'text-xl font-semibold',
-      h5: 'text-lg font-medium',
-      h6: 'text-base font-medium',
-    };
 
     return (
-      <Tag ref={ref} className={`${sizeClasses[as]} ${className}`} {...props}>
+      <Tag ref={ref} className={`${SIZE_CLASSES[as]} ${className}`} {...props}>
         {children}
       </Tag>
     );

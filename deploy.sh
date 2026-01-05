@@ -22,4 +22,3 @@ echo "[deploy] Cleaning old images..."
 docker image prune -f
 
 echo "[deploy] Done."
-

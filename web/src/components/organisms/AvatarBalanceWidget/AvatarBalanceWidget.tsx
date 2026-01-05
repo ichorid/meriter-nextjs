@@ -5,8 +5,8 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Settings } from 'lucide-react';
-import { Avatar } from '@/components/atoms/Avatar';
-import { Button } from '@/components/atoms/Button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { Button } from '@/components/ui/shadcn/button';
 
 interface BalanceInfo {
   icon?: string;
@@ -20,6 +20,7 @@ interface AvatarBalanceWidgetProps {
   onAvatarUrlNotFound?: () => void;
   onClick?: () => void;
   userName?: string;
+  userId?: string;
   className?: string;
 }
 
@@ -30,6 +31,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
   onAvatarUrlNotFound,
   onClick,
   userName,
+  userId,
   className = ''
 }) => {
   const t = useTranslations('shared');
@@ -43,7 +45,7 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
 
   return (
     <div className={`cursor-pointer ${className}`} onClick={onClick}>
-      <div className="bg-base-100 shadow-md rounded-2xl p-1.5 sm:p-4 flex items-center gap-1.5 sm:gap-3 relative">
+      <div className="bg-base-100 shadow-md rounded-xl p-1.5 sm:p-4 flex items-center gap-1.5 sm:gap-3 relative">
         <div className="flex-1 min-w-0 text-right text-xs sm:text-sm">
           {balance1 && (
             <div className="flex items-center justify-end gap-1 mb-1">
@@ -66,17 +68,21 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5">
-            <Avatar
-              src={avatarUrl}
-              alt={userName || 'User'}
-              size={40}
-              onError={onAvatarUrlNotFound}
-            />
+            <Avatar className="w-10 h-10">
+              <AvatarImage 
+                src={avatarUrl} 
+                alt={userName || 'User'}
+                onError={onAvatarUrlNotFound}
+              />
+              <AvatarFallback userId={userId || userName} className="font-medium">
+                {userName ? userName.charAt(0).toUpperCase() : 'U'}
+              </AvatarFallback>
+            </Avatar>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleSettingsClick}
-              className="btn-circle btn-xs opacity-60 hover:opacity-100"
+              className="h-6 w-6 rounded-full opacity-60 hover:opacity-100 p-0"
               aria-label={tCommon('settings')}
               title={tCommon('settings')}
             >

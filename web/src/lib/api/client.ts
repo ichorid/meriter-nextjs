@@ -5,9 +5,10 @@ import { config } from '@/config';
 import { transformAxiosError } from './errors';
 import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
-import { clearAuthStorage, hasPreviousSession } from '@/lib/utils/auth';
+import { clearAuthStorage, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 
 interface RequestConfig {
   timeout?: number;
@@ -49,6 +50,10 @@ export class ApiClient {
         return response;
       },
       (error: AxiosError) => {
+        const skipToast =
+          Boolean((error.config as any)?.skipToast) ||
+          Boolean((error.config as any)?.meta?.skipToast);
+
         // Handle 401 Unauthorized errors - clear auth storage and allow re-login
         if (error.response?.status === 401) {
           // Don't clear if this is an auth endpoint (might be during login flow)
@@ -56,19 +61,28 @@ export class ApiClient {
           const isAuthEndpoint = url.includes('/api/v1/auth/telegram/widget') ||
             url.includes('/api/v1/auth/telegram/webapp');
 
-          if (!isAuthEndpoint) {
-            // CRITICAL: Clear ALL cookies immediately before showing toast
+          // Skip cookie clearing on auth pages where 401 is expected (login page, etc.)
+          const shouldSkipClearing = isAuthEndpoint || (typeof window !== 'undefined' && isOnAuthPage());
+
+          if (!shouldSkipClearing) {
+            // CRITICAL: Clear cookies with path-aware logic, debouncing, and OAuth redirect detection
             // This prevents the endless login loop with stale cookies
+            // clearCookiesIfNeeded() now handles OAuth redirect timing internally
+            // Uses debouncing to prevent race conditions from multiple simultaneous requests
             if (typeof document !== 'undefined') {
-              clearAuthStorage();
+              clearCookiesIfNeeded(); // Path-aware, debounced, and OAuth-aware
               
-              // Also immediately call server-side clearCookies() to clear HttpOnly cookies
+              // Also call server-side clearCookies() to clear HttpOnly cookies
               // Use fire-and-forget pattern to avoid blocking the error flow
-              // Import authApiV1 lazily to avoid circular dependency
-              import('@/lib/api/v1').then(({ authApiV1 }) => {
-                authApiV1.clearCookies().catch(e => {
+              // The debouncing in clearCookiesIfNeeded will prevent duplicate calls
+              // Import trpc lazily to avoid circular dependency
+              import('@/lib/trpc/client').then(({ trpc }) => {
+                trpc.auth.clearCookies.mutate().catch((e: any) => {
                   // Silently fail - we've already cleared client-side cookies
-                  console.error('Failed to clear server cookies on 401:', e);
+                  // Only log if it's not a 401 (expected when not authenticated)
+                  if (!isUnauthorizedError(e)) {
+                    console.error('Failed to clear server cookies:', e);
+                  }
                 });
               }).catch(() => {
                 // Silently fail if import fails
@@ -85,7 +99,9 @@ export class ApiClient {
               const serverMessage = (error.response?.data as any)?.error?.message ||
                 (error.response?.data as any)?.message ||
                 'Session expired. Please login again.';
-              useToastStore.getState().addToast(serverMessage, 'error');
+              if (!skipToast) {
+                useToastStore.getState().addToast(serverMessage, 'error');
+              }
             }
           }
         }
@@ -97,18 +113,24 @@ export class ApiClient {
           const serverMessage = (error.response?.data as any)?.error?.message ||
             (error.response?.data as any)?.message ||
             'Server error. Please try again later.';
-          useToastStore.getState().addToast(serverMessage, 'error');
+          if (!skipToast) {
+            useToastStore.getState().addToast(serverMessage, 'error');
+          }
         }
 
         // Handle Network Errors globally
         if (apiError.code === 'NETWORK_ERROR') {
-          useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+          if (!skipToast) {
+            useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+          }
         } else if (!error.response?.status || error.response.status < 500) {
           // Handle other API errors (except 500s which are already handled)
           // We also skip 401s here because they are handled above with a specific message
           // But we need to make sure we don't duplicate toasts if we add more specific handlers later
           if (error.response?.status !== 401) {
-            useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+            if (!skipToast) {
+              useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+            }
           }
         }
 
@@ -117,7 +139,7 @@ export class ApiClient {
     );
   }
 
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = any>(url: string, config?: (AxiosRequestConfig & { skipToast?: boolean; meta?: { skipToast?: boolean } })): Promise<T> {
     const response = await this.client.get<T>(url, config);
     return response.data;
   }

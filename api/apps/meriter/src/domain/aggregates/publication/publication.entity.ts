@@ -48,6 +48,7 @@ export class Publication implements EditableEntity {
     private content: PublicationContent,
     private readonly type: 'text' | 'image' | 'video',
     private hashtags: string[],
+    private categories: string[],
     private metrics: Metrics,
     private readonly imageUrl: string | null,
     private readonly images: string[],
@@ -56,6 +57,13 @@ export class Publication implements EditableEntity {
     private readonly isProject: boolean,
     private readonly title: string | null,
     private readonly description: string | null,
+    private readonly impactArea: string | null,
+    private readonly beneficiaries: string[],
+    private readonly methods: string[],
+    private readonly stage: string | null,
+    private readonly helpNeeded: string[],
+    private readonly deleted: boolean,
+    private readonly deletedAt: Date | null,
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) { }
@@ -68,6 +76,7 @@ export class Publication implements EditableEntity {
     options: {
       beneficiaryId?: UserId;
       hashtags?: string[];
+      categories?: string[];
       imageUrl?: string;
       images?: string[];
       videoUrl?: string;
@@ -75,6 +84,11 @@ export class Publication implements EditableEntity {
       isProject?: boolean;
       title?: string;
       description?: string;
+      impactArea?: string;
+      beneficiaries?: string[];
+      methods?: string[];
+      stage?: string;
+      helpNeeded?: string[];
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
@@ -89,6 +103,7 @@ export class Publication implements EditableEntity {
       publicationContent,
       type,
       options.hashtags || [],
+      options.categories || [],
       Metrics.zero(),
       options.imageUrl || null,
       images,
@@ -97,6 +112,13 @@ export class Publication implements EditableEntity {
       options.isProject || false,
       options.title || null,
       options.description || null,
+      options.impactArea || null,
+      options.beneficiaries || [],
+      options.methods || [],
+      options.stage || null,
+      options.helpNeeded || [],
+      false, // deleted
+      null, // deletedAt
       new Date(),
       new Date(),
     );
@@ -105,7 +127,7 @@ export class Publication implements EditableEntity {
   static fromSnapshot(snapshot: PublicationSnapshot): Publication {
     // Support both legacy imageUrl and new images array
     const images = snapshot.images || (snapshot.imageUrl ? [snapshot.imageUrl] : []);
-    
+
     return new Publication(
       PublicationId.fromString(snapshot.id),
       CommunityId.fromString(snapshot.communityId),
@@ -113,7 +135,8 @@ export class Publication implements EditableEntity {
       snapshot.beneficiaryId ? UserId.fromString(snapshot.beneficiaryId) : null,
       PublicationContent.create(snapshot.content),
       snapshot.type,
-      snapshot.hashtags,
+      snapshot.hashtags || [],
+      snapshot.categories || [],
       Metrics.fromSnapshot(snapshot.metrics),
       snapshot.imageUrl || null,
       images,
@@ -122,6 +145,13 @@ export class Publication implements EditableEntity {
       snapshot.isProject || false,
       snapshot.title || null,
       snapshot.description || null,
+      snapshot.impactArea || null,
+      snapshot.beneficiaries || [],
+      snapshot.methods || [],
+      snapshot.stage || null,
+      snapshot.helpNeeded || [],
+      snapshot.deleted || false,
+      snapshot.deletedAt ? (snapshot.deletedAt instanceof Date ? snapshot.deletedAt : new Date(snapshot.deletedAt)) : null,
       snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt),
       snapshot.updatedAt instanceof Date ? snapshot.updatedAt : new Date(snapshot.updatedAt),
     );
@@ -161,6 +191,11 @@ export class Publication implements EditableEntity {
     this.updatedAt = new Date();
   }
 
+  updateCategories(categories: string[]): void {
+    this.categories = [...categories];
+    this.updatedAt = new Date();
+  }
+
   hasBeneficiary(): boolean {
     return this.beneficiaryId !== null;
   }
@@ -169,7 +204,7 @@ export class Publication implements EditableEntity {
    * Get the effective beneficiary: beneficiaryId if set, otherwise authorId
    */
   getEffectiveBeneficiary(): UserId {
-    return this.beneficiaryId || this.authorId;
+    return this.beneficiaryId ?? this.authorId;
   }
 
   // Getters
@@ -199,6 +234,10 @@ export class Publication implements EditableEntity {
 
   get getHashtags(): readonly string[] {
     return this.hashtags;
+  }
+
+  get getCategories(): readonly string[] {
+    return this.categories;
   }
 
   get getMetrics(): Metrics {
@@ -233,6 +272,26 @@ export class Publication implements EditableEntity {
     return this.images;
   }
 
+  get getImpactArea(): string | null {
+    return this.impactArea;
+  }
+
+  get getBeneficiaries(): readonly string[] {
+    return this.beneficiaries;
+  }
+
+  get getMethods(): readonly string[] {
+    return this.methods;
+  }
+
+  get getStage(): string | null {
+    return this.stage;
+  }
+
+  get getHelpNeeded(): readonly string[] {
+    return this.helpNeeded;
+  }
+
   // Serialization
   toSnapshot(): PublicationSnapshot {
     return {
@@ -243,6 +302,7 @@ export class Publication implements EditableEntity {
       content: this.content.getValue(),
       type: this.type,
       hashtags: [...this.hashtags],
+      categories: this.categories.length > 0 ? [...this.categories] : undefined,
       metrics: this.metrics.toSnapshot(),
       imageUrl: this.imageUrl || undefined,
       images: this.images.length > 0 ? this.images : undefined,
@@ -251,6 +311,13 @@ export class Publication implements EditableEntity {
       isProject: this.isProject,
       title: this.title || undefined,
       description: this.description || undefined,
+      impactArea: this.impactArea || undefined,
+      beneficiaries: this.beneficiaries.length > 0 ? [...this.beneficiaries] : undefined,
+      methods: this.methods.length > 0 ? [...this.methods] : undefined,
+      stage: this.stage || undefined,
+      helpNeeded: this.helpNeeded.length > 0 ? [...this.helpNeeded] : undefined,
+      deleted: this.deleted || undefined,
+      deletedAt: this.deletedAt || undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

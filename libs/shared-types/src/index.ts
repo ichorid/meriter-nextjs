@@ -5,6 +5,7 @@
 export {
     TimestampsSchema,
     IdentifiableSchema,
+    IdInputSchema,
     VotableMetricsSchema,
     PolymorphicReferenceSchema,
     CurrencySchema,
@@ -20,11 +21,10 @@ export {
     UserProfileSchema,
     UpdateUserProfileSchema,
     CommunitySettingsSchema,
-    PostingRulesSchema,
-    MeritConversionSchema,
-    VotingRulesSchema,
-    VisibilityRulesSchema,
-    MeritRulesSchema,
+    CommunityVotingSettingsSchema,
+    CommunityMeritConversionSchema,
+    PermissionRuleSchema,
+    PermissionRuleConditionsSchema,
     PollOptionSchema,
     UserCommunityRoleSchema,
     InviteSchema,
@@ -71,8 +71,23 @@ export {
     FeedItemSchema,
 } from './schemas';
 
+// Export taxonomy constants
+export {
+    IMPACT_AREAS,
+    BENEFICIARIES,
+    METHODS,
+    STAGES,
+    HELP_NEEDED,
+    type ImpactArea,
+    type Beneficiary,
+    type Method,
+    type Stage,
+    type HelpNeeded,
+} from './taxonomy';
+
 // Export inferred types explicitly (type-only to reduce memory usage)
 export type {
+    Authenticator,
     User,
     UserCommunityRole,
     Invite,
@@ -84,11 +99,8 @@ export type {
     PollCast,
     Wallet,
     Transaction,
-    PostingRules,
-    VotingRules,
-    VisibilityRules,
-    MeritRules,
-    MeritConversion,
+    PermissionRule,
+    PermissionRuleConditions,
     CreatePublicationDto,
     CreateCommentDto,
     UpdateCommentDto,

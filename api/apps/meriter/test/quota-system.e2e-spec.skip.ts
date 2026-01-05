@@ -4,19 +4,18 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { CommunityService } from '../src/domain/services/community.service';
 import { VoteService } from '../src/domain/services/vote.service';
-import { Model, Connection, Document } from 'mongoose';
-import { Community, CommunityDocument, CommunitySchema } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument, VoteSchema } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument, UserSchema } from '../src/domain/models/user/user.schema';
+import { Model, Connection } from 'mongoose';
+import { CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserDocument } from '../src/domain/models/user/user.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
 import { getConnectionToken } from '@nestjs/mongoose';
 
 describe('Quota System Integration (e2e)', () => {
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let communityService: CommunityService;
-  let voteService: VoteService;
+  let _voteService: VoteService;
   let communityModel: Model<CommunityDocument>;
   let voteModel: Model<VoteDocument>;
   let userModel: Model<UserDocument>;
@@ -41,7 +40,7 @@ describe('Quota System Integration (e2e)', () => {
 
     // Get services
     communityService = app.get<CommunityService>(CommunityService);
-    voteService = app.get<VoteService>(VoteService);
+    _voteService = app.get<VoteService>(VoteService);
     
     // Get connection from the NestJS app context
     connection = app.get(getConnectionToken());
@@ -60,7 +59,7 @@ describe('Quota System Integration (e2e)', () => {
       // Drop old token index if it exists
       try {
         await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

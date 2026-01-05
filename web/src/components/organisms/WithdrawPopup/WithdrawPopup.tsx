@@ -9,6 +9,7 @@ import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { VotingPanel } from '../VotingPopup/VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
+import { useToastStore } from '@/shared/stores/toast.store';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -19,6 +20,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 }) => {
   const t = useTranslations('shared');
   const { user } = useAuth();
+  const addToast = useToastStore((state) => state.addToast);
   const {
     activeWithdrawTarget,
     withdrawTargetType,
@@ -62,7 +64,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
     const amount = formData.amount;
     if (amount <= 0) {
-      updateWithdrawFormData({ error: t('pleaseAdjustSlider') || 'Please adjust the slider' });
+      updateWithdrawFormData({ error: t('pleaseChooseWithdrawAmount') || 'Please choose an amount to withdraw' });
       return;
     }
 
@@ -77,11 +79,13 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
           publicationId: targetId,
           amount,
         });
+        addToast(t('withdrewMerits', { amount }), 'success');
       } else if (withdrawTargetType === 'comment' || withdrawTargetType === 'vote') {
         await withdrawFromVoteMutation.mutateAsync({
           voteId: targetId,
           amount,
         });
+        addToast(t('withdrewMerits', { amount }), 'success');
       }
       // Handle topups
       else if (withdrawTargetType === 'publication-topup') {
@@ -143,12 +147,13 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
   return (
     <BottomPortal>
-      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
         <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
           onClick={handleClose}
         />
-        <VotingPanel
+        <div className="relative z-10">
+          <VotingPanel
           onClose={handleClose}
           amount={formData.amount}
           setAmount={handleAmountChange}
@@ -168,6 +173,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
           hideImages={true}
           title={popupTitle}
         />
+        </div>
       </div>
     </BottomPortal>
   );

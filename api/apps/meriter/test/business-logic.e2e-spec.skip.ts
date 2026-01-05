@@ -7,7 +7,7 @@ import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { PollService } from '../src/domain/services/poll.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { Model, Connection, Document } from 'mongoose';
+import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
@@ -25,11 +25,11 @@ describe('Business Logic E2E Tests', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let communityService: CommunityService;
-  let voteService: VoteService;
-  let publicationService: PublicationService;
-  let pollService: PollService;
-  let walletService: WalletService;
+  let _communityService: CommunityService;
+  let _voteService: VoteService;
+  let _publicationService: PublicationService;
+  let _pollService: PollService;
+  let _walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -61,11 +61,11 @@ describe('Business Logic E2E Tests', () => {
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
-    voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    pollService = app.get<PollService>(PollService);
-    walletService = app.get<WalletService>(WalletService);
+    _communityService = app.get<CommunityService>(CommunityService);
+    _voteService = app.get<VoteService>(VoteService);
+    _publicationService = app.get<PublicationService>(PublicationService);
+    _pollService = app.get<PollService>(PollService);
+    _walletService = app.get<WalletService>(WalletService);
 
     connection = app.get(getConnectionToken());
 
@@ -170,7 +170,7 @@ describe('Business Logic E2E Tests', () => {
       // Drop old token index if it exists
       try {
         await collection.dropIndex('token_1').catch(() => { });
-      } catch (err) {
+      } catch (_err) {
         // Index doesn't exist, ignore
       }
       await collection.deleteMany({});

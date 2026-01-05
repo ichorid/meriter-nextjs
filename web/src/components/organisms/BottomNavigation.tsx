@@ -3,6 +3,7 @@
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Users, User, Bell, Info } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
@@ -10,7 +11,15 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { WalletChip } from '@/components/molecules/WalletChip';
+import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { routes } from '@/lib/constants/routes';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/shadcn/dialog';
 
 export interface NavTab {
     name: string;
@@ -27,7 +36,11 @@ export interface BottomNavigationProps {
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
     const router = useRouter();
-    const { data: unreadCount = 0 } = useUnreadCount();
+    const t = useTranslations('common');
+    const tCommunities = useTranslations('communities');
+    const { data } = useUnreadCount();
+    const unreadCount = data?.count ?? 0;
+    const [showQuotaHint, setShowQuotaHint] = useState(false);
 
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
@@ -39,6 +52,18 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
         const match = pathname.match(/\/meriter\/communities\/([^\/]+)/);
         return match ? match[1] : null;
     }, [pathname]);
+
+    // Check if we're on a page where CreateMenu should be hidden
+    const shouldShowCreateMenu = useMemo(() => {
+        if (!pathname || !communityContextId) return false;
+        
+        // Hide on members page, settings page, and create pages
+        const isMembersPage = pathname.includes('/members');
+        const isSettingsPage = pathname.includes('/settings');
+        const isCreatePage = pathname.includes('/create');
+        
+        return !isMembersPage && !isSettingsPage && !isCreatePage;
+    }, [pathname, communityContextId]);
 
     // Get marathon-of-good quota for global context
     const { remaining: marathonQuotaRemaining, max: marathonQuotaMax, isLoading: marathonQuotaLoading } = useMarathonOfGoodQuota();
@@ -98,11 +123,11 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     // If in community context, we check if it is marathon-of-good -> golden
     const isMarathonQuota = !isInCommunityContext || communityForIcon?.typeTag === 'marathon-of-good';
 
-    // Handle click on WalletChip to navigate appropriately
+    // Handle click on WalletChip
     const handleWalletChipClick = () => {
-        if (isInCommunityContext && communityContextId) {
-            // In community context, navigate to that community
-            router.push(`/meriter/communities/${communityContextId}`);
+        if (isInCommunityContext) {
+            // Inside community: show quota hint dialog
+            setShowQuotaHint(true);
         } else if (marathonOfGoodCommunityId) {
             // Out of community context, navigate to marathon-of-good
             router.push(`/meriter/communities/${marathonOfGoodCommunityId}`);
@@ -112,33 +137,33 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
         }
     };
 
-    const defaultTabs: NavTab[] = [
+    const defaultTabs: NavTab[] = useMemo(() => [
         {
-            name: 'Communities',
+            name: t('communities'),
             icon: Users,
             path: '/meriter/communities',
             isActive: (path: string) => path.startsWith('/meriter/communities'),
         },
         {
-            name: 'Notifications',
+            name: t('notifications'),
             icon: Bell,
             path: '/meriter/notifications',
             isActive: (path: string) => path.startsWith('/meriter/notifications'),
             badge: unreadCount > 0 ? unreadCount : undefined,
         },
         {
-            name: 'Profile',
+            name: t('profile'),
             icon: User,
             path: '/meriter/profile',
             isActive: (path: string) => path.startsWith('/meriter/profile'),
         },
         {
-            name: 'About',
+            name: t('aboutProject'),
             icon: Info,
             path: routes.about,
             isActive: (path: string) => path === routes.about,
         },
-    ];
+    ], [t, unreadCount]);
 
     const tabs = customTabs || defaultTabs;
 
@@ -177,23 +202,29 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                     );
                 })}
 
-                {/* Wallet Chip - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
-                {/* Nav bar height is 64px (h-16), chip height is ~32px, so bottom = 64 - 16 = 48px */}
-                {!quotaLoading && (
-                    <WalletChip
-                        balance={totalWalletBalance}
-                        quota={totalDailyQuota}
-                        currencyIconUrl={currencyIconUrl}
-                        onClick={handleWalletChipClick}
-                        className="bottom-12"
-                        quotaRemaining={quotaRemaining}
-                        quotaMax={quotaMax}
-                        showRing={true}
-                        flashTrigger={flashTrigger}
-                        variant={isMarathonQuota ? 'golden' : 'default'}
-                    />
+                {/* Create Menu - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
+                {/* Nav bar height is 64px (h-16), so bottom = 64 - 16 = 48px */}
+                {/* Only show CreateMenu when inside a community and not on excluded pages */}
+                {isInCommunityContext && communityContextId && shouldShowCreateMenu && (
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-12 z-[100]">
+                        <CreateMenu communityId={communityContextId} />
+                    </div>
                 )}
             </div>
+
+            {/* Quota Hint Dialog */}
+            <Dialog open={showQuotaHint} onOpenChange={setShowQuotaHint}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="text-left">
+                            {t('dailyMerits')}
+                        </DialogTitle>
+                        <DialogDescription className="text-left text-base-content/80 pt-2 [&]:text-base-content/80">
+                            {tCommunities('quotaHelper')}
+                        </DialogDescription>
+                    </DialogHeader>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

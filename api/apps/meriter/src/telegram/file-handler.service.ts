@@ -61,6 +61,7 @@ export class TelegramFileHandlerService {
 
       // Process image with Sharp
       const processedBuffer = await sharp(buffer)
+        .rotate() // Auto-rotate based on EXIF orientation and strip EXIF data
         .resize(800, 600, { fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
         .toBuffer();
@@ -121,7 +122,7 @@ export class TelegramFileHandlerService {
       },
     });
 
-    const result = await upload.done();
+    const _result = await upload.done();
     const url = `https://${this.bucketName}.s3.amazonaws.com/${key}`;
 
     return {

@@ -7,7 +7,8 @@ import React, {
     useCallback,
     useMemo,
 } from "react";
-import { BrandInput } from "@/components/ui/BrandInput";
+import { Input } from "@/components/ui/shadcn/input";
+import { cn } from "@/lib/utils";
 import { Loader2, MapPin, AlertCircle, Search } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useLocale } from "next-intl";
@@ -349,34 +350,46 @@ export function OSMAutocomplete({
 
     return (
         <div className={`relative ${className}`} ref={wrapperRef}>
-            <BrandInput
-                value={query}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                onFocus={() => setIsOpen(true)}
-                autoComplete="off"
-                name={`osm-search-${inputId}`}
-                disabled={disabled}
-                role="combobox"
-                aria-expanded={showDropdown}
-                aria-haspopup="listbox"
-                aria-autocomplete="list"
-                rightIcon={
-                    searchState === "loading" ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-base-content/40" />
-                    ) : (
-                        <Search className="w-4 h-4 text-base-content/30" />
-                    )
-                }
-                error={error}
-            />
+            <div className="relative">
+                <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                <Input
+                    value={query}
+                    onChange={handleInputChange}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    onFocus={() => setIsOpen(true)}
+                    autoComplete="off"
+                    name={`osm-search-${inputId}`}
+                    disabled={disabled}
+                    role="combobox"
+                    aria-expanded={showDropdown}
+                    className={cn(
+                        'h-11 rounded-xl pl-10',
+                        (searchState === 'loading' || !searchState || searchState === 'success') && 'pr-10',
+                        error && 'border-destructive focus-visible:ring-destructive'
+                    )}
+                    aria-haspopup="listbox"
+                    aria-autocomplete="list"
+                />
+                {(searchState === "loading" || !searchState || searchState === 'success') && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                        {searchState === "loading" ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        ) : (
+                            <Search className="w-4 h-4 text-muted-foreground" />
+                        )}
+                    </div>
+                )}
+            </div>
+            {error && (
+                <p className="mt-1.5 text-xs text-destructive font-medium">{error}</p>
+            )}
 
             {showDropdown && (
                 <div
                     ref={listRef}
                     role="listbox"
-                    className="absolute z-50 w-full mt-1.5 bg-base-100 border border-base-content/10 rounded-xl shadow-lg max-h-64 overflow-y-auto"
+                    className="absolute z-50 w-full mt-1.5 bg-base-100 shadow-none rounded-xl shadow-lg max-h-64 overflow-y-auto"
                 >
                     {/* Loading state */}
                     {searchState === "loading" && results.length === 0 && (

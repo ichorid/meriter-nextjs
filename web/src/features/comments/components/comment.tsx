@@ -8,6 +8,7 @@ import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
 import { useTranslations } from 'next-intl';
+import { dateVerbose } from "@shared/lib/date";
 import { useCommunity } from '@/hooks/api';
 import { CommentDetailsPopup } from "@shared/components/comment-details-popup";
 import { useCommentVoteDisplay } from '../hooks/useCommentVoteDisplay';
@@ -94,14 +95,14 @@ export const Comment: React.FC<CommentProps> = ({
     const t = useTranslations('comments');
     const features = useFeaturesConfig();
     const enableCommentVoting = features.commentVoting;
-    
+
     // Use API data directly - no fallbacks
     const authorMeta = meta?.author;
     const authorName = authorMeta?.name || 'Unknown';
     const commentAuthorId = authorId || authorMeta?.id || '';
     const commentText = content || comment || '';
     const commentTimestamp = createdAt || ts || '';
-    
+
     // API provides vote transaction fields (plus, minus, amountTotal) when comment represents a vote
     const hasVoteTransactionData = plus !== undefined || minus !== undefined || amountTotal !== undefined;
     // For UI display of comment stats, always use metrics (accumulated votes on the comment)
@@ -110,51 +111,51 @@ export const Comment: React.FC<CommentProps> = ({
     const commentScore = metrics?.score ?? 0;
     // Sum from API is used only for displaying transaction header when present
     const displaySum = sum ?? commentScore;
-    
+
     // Check if current user is the author
     const isAuthor = myId === commentAuthorId;
-    
+
     // Check if there's a beneficiary and it's different from the author
     const beneficiaryMeta = meta?.beneficiary;
     const hasBeneficiary = beneficiaryMeta && beneficiaryMeta.id !== commentAuthorId;
     const isBeneficiary = hasBeneficiary && myId === beneficiaryMeta?.id;
-    
+
     // Withdrawal state management (for author's own comments)
     // IMPORTANT: For withdrawal, we only use metrics.score (votes cast ON the comment)
     // NOT sum from vote transaction data (which is the vote amount, not withdrawable)
     // Vote transaction comments can't withdraw the vote amount - only votes cast on the comment itself
     const withdrawableBalance = metrics?.score ?? 0; // Only use metrics.score for withdrawal
     const [optimisticSum, setOptimisticSum] = useState(withdrawableBalance);
-    
+
     useEffect(() => {
         // For withdrawal, only use metrics.score (votes cast on the comment itself)
         // Don't use sum from vote transaction data
         const currentSum = metrics?.score ?? 0;
         setOptimisticSum(currentSum);
     }, [metrics?.score]);
-    
+
     // Fetch community info once (consolidated from two calls)
     const { data: communityInfo } = useCommunity(communityId || '');
-    
+
     const currentBalance =
         (Array.isArray(wallets) &&
             wallets.find((w) => w.communityId === communityId)
                 ?.balance) ||
         0;
     const [showselector, setShowselector] = useState(false);
-    
+
     // State for comment details popup
     const [showDetailsPopup, setShowDetailsPopup] = useState(false);
-    
+
     // Rate conversion no longer needed with v1 API - currencies are normalized
     const rate = 1;
-    
+
     // API provides directionPlus for vote transaction comments
     // Calculate from vote data if available, otherwise infer from metrics
-    const calculatedDirectionPlus = directionPlus ?? 
-      (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) : 
-       ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
-    
+    const calculatedDirectionPlus = directionPlus ??
+        (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) :
+            ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
+
     // Use extracted hooks for vote display, recipient, and withdrawal
     const voteDisplay = useCommentVoteDisplay({
         amountTotal,
@@ -178,23 +179,27 @@ export const Comment: React.FC<CommentProps> = ({
         withdrawableBalance,
         currentBalance,
     });
-    
+
+    const totalWithdrawn =
+        (rest as { withdrawals?: { totalWithdrawn?: number } }).withdrawals
+            ?.totalWithdrawn ?? 0;
+
     // Check if community is special group (withdrawals disabled)
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
-    
+
     // Use API permissions instead of calculating on frontend
     const canVoteFromApi = (rest as any).permissions?.canVote ?? false;
     const voteDisabledReasonFromApi = (rest as any).permissions?.voteDisabledReason;
-    
+
     // Override reason if comment voting is disabled via feature flag
     const canVote = enableCommentVoting ? canVoteFromApi : false;
-    const voteDisabledReason = enableCommentVoting 
-        ? voteDisabledReasonFromApi 
+    const voteDisabledReason = enableCommentVoting
+        ? voteDisabledReasonFromApi
         : 'voteDisabled.commentVotingDisabled';
-    
+
     // Get currency icon from community info
     const currencyIcon = communityInfo?.settings?.iconUrl;
-    
+
     const {
         comments,
         showPlus,
@@ -219,7 +224,7 @@ export const Comment: React.FC<CommentProps> = ({
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
     const avatarUrl = authorMeta?.photoUrl || '';
-    
+
     return (
         <div
             className={classList(
@@ -232,7 +237,7 @@ export const Comment: React.FC<CommentProps> = ({
         >
             <CardCommentVote
                 title={authorName}
-                subtitle={new Date(commentTimestamp || '').toLocaleString()}
+                subtitle={dateVerbose(new Date(commentTimestamp || ''))}
                 content={commentText}
                 rate={voteDisplay.rate}
                 currencyIcon={currencyIcon}
@@ -271,6 +276,8 @@ export const Comment: React.FC<CommentProps> = ({
                     isAuthor && !isSpecialGroup ? (
                         <BarWithdraw
                             balance={maxWithdrawAmount}
+                            score={commentScore}
+                            totalVotes={totalWithdrawn > 0 ? commentScore + totalWithdrawn : undefined}
                             onWithdraw={() => {
                                 useUIStore.getState().openWithdrawPopup(
                                     _id,
@@ -295,19 +302,16 @@ export const Comment: React.FC<CommentProps> = ({
                             score={commentScore}
                             onVoteClick={() => {
                                 // Set voting mode based on community type
-                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'quota-only';
+                                let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
                                 if (communityInfo?.typeTag === 'future-vision') {
                                     // Future Vision: wallet-only (M), no quota (Q)
                                     mode = 'wallet-only';
                                 } else if (communityInfo?.typeTag === 'marathon-of-good') {
                                     // Marathon-of-Good: quota-only (Q), no wallet (M)
                                     mode = 'quota-only';
-                                } else if (communityInfo?.typeTag === 'team') {
-                                    // Team groups: quota-only (Q), no wallet (M)
-                                    mode = 'quota-only';
                                 } else {
-                                    // Non-special groups: quota-only
-                                    mode = 'quota-only';
+                                    // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+                                    mode = 'standard';
                                 }
                                 useUIStore.getState().openVotingPopup(_id, 'comment', mode);
                             }}
@@ -327,7 +331,7 @@ export const Comment: React.FC<CommentProps> = ({
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     if (!communityId) return;
-                    
+
                     if (communityInfo?.needsSetup) {
                         if (communityInfo?.isAdmin) {
                             // Admin: redirect to settings
@@ -351,7 +355,7 @@ export const Comment: React.FC<CommentProps> = ({
                 beneficiaryId={beneficiaryMeta?.id}
             />
             {showComments && (
-                <div className="transaction-comments">
+                <div className="transaction-comments pl-6 ml-2 border-l-2 border-base-200 mt-2">
                     <div className="comments">
                         {comments?.map((c: any) => (
                             <Comment
@@ -364,12 +368,12 @@ export const Comment: React.FC<CommentProps> = ({
                                 inPublicationSlug={inPublicationSlug}
                                 activeCommentHook={activeCommentHook}
                                 highlightTransactionId={highlightTransactionId}
-                        wallets={wallets}
-                        updateWalletBalance={updateWalletBalance}
-                        updateAll={updateAll}
-                        communityId={communityId}
-                        showCommunityAvatar={showCommunityAvatar}
-                        isDetailPage={isDetailPage}
+                                wallets={wallets}
+                                updateWalletBalance={updateWalletBalance}
+                                updateAll={updateAll}
+                                communityId={communityId}
+                                showCommunityAvatar={showCommunityAvatar}
+                                isDetailPage={isDetailPage}
                             />
                         ))}
                     </div>
@@ -380,8 +384,8 @@ export const Comment: React.FC<CommentProps> = ({
                 onClose={() => setShowDetailsPopup(false)}
                 rate={commentDetails?.voteTransaction ? voteDisplay.rate : voteDisplay.rate}
                 currencyIcon={commentDetails?.community?.iconUrl || currencyIcon}
-                amountWallet={commentDetails?.voteTransaction 
-                    ? Math.abs(commentDetails.voteTransaction.sum) 
+                amountWallet={commentDetails?.voteTransaction
+                    ? Math.abs(commentDetails.voteTransaction.sum)
                     : Math.abs((optimisticSum ?? withdrawableBalance) || 0)}
                 amountFree={commentDetails?.voteTransaction && commentDetails.voteTransaction.amountTotal !== undefined
                     ? Math.abs(commentDetails.voteTransaction.amountTotal) - Math.abs(commentDetails.voteTransaction.sum)
@@ -394,6 +398,7 @@ export const Comment: React.FC<CommentProps> = ({
                 commentContent={commentDetails?.comment?.content ?? commentText}
                 timestamp={commentDetails?.comment?.createdAt ?? commentTimestamp}
                 communityName={commentDetails?.community?.name ?? communityInfo?.name}
+                communityId={communityId}
                 communityAvatar={commentDetails?.community?.avatarUrl ?? communityInfo?.avatarUrl}
                 beneficiaryName={commentDetails?.beneficiary?.name ?? recipientName}
                 beneficiaryAvatar={commentDetails?.beneficiary?.photoUrl ?? recipientAvatar}

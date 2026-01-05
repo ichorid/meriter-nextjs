@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { BrandAvatar } from './BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from './shadcn/avatar';
+import { User } from 'lucide-react';
 import { dateVerbose } from '@/shared/lib/date';
 
 interface CardHeaderProps {
@@ -38,22 +39,26 @@ export function CardHeader({
       <div className="flex items-center space-x-3 flex-1 min-w-0">
         {/* Author Avatar */}
         {author && (
-          <BrandAvatar
-            src={avatarUrl}
-            fallback={displayName}
-            size="sm"
-            className="flex-shrink-0"
-          />
+          <Avatar className="w-8 h-8 text-xs flex-shrink-0">
+            {avatarUrl && (
+              <AvatarImage src={avatarUrl} alt={displayName} />
+            )}
+            <AvatarFallback userId={author.id} className="font-medium uppercase">
+              {displayName ? displayName.slice(0, 2).toUpperCase() : <User size={14} />}
+            </AvatarFallback>
+          </Avatar>
         )}
 
         {/* Community Avatar (if needed) */}
         {showCommunityAvatar && community && (
-          <BrandAvatar
-            src={community.avatarUrl}
-            fallback={community.name}
-            size="sm"
-            className="flex-shrink-0"
-          />
+          <Avatar className="w-8 h-8 text-xs flex-shrink-0">
+            {community.avatarUrl && (
+              <AvatarImage src={community.avatarUrl} alt={community.name} />
+            )}
+            <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+              {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={14} />}
+            </AvatarFallback>
+          </Avatar>
         )}
 
         {/* Author Info */}

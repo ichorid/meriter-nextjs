@@ -1,12 +1,13 @@
 'use client';
 
 import { useComments } from "@shared/hooks/use-comments";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { CardPublication } from "./card-publication";
 import { useCommunity, usePoll } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
-import { BarVoteUnified } from "@shared/components/bar-vote-unified";
 import { BarWithdraw } from "@shared/components/bar-withdraw";
+import { PublicationActions } from "@/components/organisms/Publication/PublicationActions";
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { WithTelegramEntities } from "@shared/components/with-telegram-entities";
 import { FormDimensionsEditor } from "@shared/components/form-dimensions-editor";
 import { useUIStore } from "@/stores/ui.store";
@@ -118,7 +119,8 @@ export const Publication = (props: any) => {
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
     // Check if this is a PROJECT post (no voting allowed)
-    const isProject = type === 'project' || (meta as any)?.isProject === true;
+    // Feature flag: projects are currently disabled - filter them out
+    const isProject = false; // ENABLE_PROJECT_POSTS && (type === 'project' || (meta as any)?.isProject === true);
     
     // Use API permissions instead of calculating on frontend
     const canVote = (originalPublication as any).permissions?.canVote ?? false;
@@ -147,6 +149,13 @@ export const Publication = (props: any) => {
     }, [onlyPublication, isDetailPage, setShowComments]);
     
     const [showDimensionsEditor, setShowDimensionsEditor] = useState(false);
+
+    const tagsStr = useMemo(() => [
+        "#" + keyword,
+        ...(Object.entries(dimensions || {}) || [])
+            .map(([slug, dim]) => "#" + dim)
+            .flat(),
+    ].join(" "), [keyword, dimensions]);
     
     // NOW we can do conditional returns after all hooks are called
     // Use internal IDs only - no legacy fallbacks
@@ -186,19 +195,17 @@ export const Publication = (props: any) => {
     const showVoteForAuthor = isAuthor && hasBeneficiary; // Author can vote when there's a beneficiary
     const currentScore = currentPlus - currentMinus;
     
+    // Calculate total votes (current score + withdrawn votes) for display
+    // Check if withdrawals data is available in originalPublication
+    const totalWithdrawn = (originalPublication as any)?.withdrawals?.totalWithdrawn || 0;
+    const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
+    
     // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
     // Display title - use meta.author.name
     const displayTitle = displayAuthorName;
     
-    const tagsStr = [
-        "#" + keyword,
-        ...(Object.entries(dimensions || {}) || [])
-            .map(([slug, dim]) => "#" + dim)
-            .flat(),
-    ].join(" ");
-
     const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
     
     return (
@@ -280,32 +287,55 @@ export const Publication = (props: any) => {
                                 />
                             );
                         } else {
+                            // Prepare publication object for PublicationActions
+                            // Use internal community ID if available, otherwise fall back to communityId
+                            const routingCommunityId = communityInfo?.id || communityId;
+                            
+                            const publicationForActions = {
+                                id: postId,
+                                slug: slug,
+                                authorId: authorId,
+                                beneficiaryId: beneficiaryId,
+                                communityId: routingCommunityId, // Use internal ID for proper community type detection
+                                createdAt: ts ? new Date(ts).toISOString() : new Date().toISOString(),
+                                content: content || messageText,
+                                metrics: {
+                                    score: currentScore,
+                                    commentCount: !isDetailPage ? comments?.length || 0 : 0,
+                                },
+                                meta: {
+                                    author: meta?.author,
+                                    beneficiary: hasBeneficiary ? {
+                                        id: beneficiaryId,
+                                        name: beneficiaryName,
+                                        photoUrl: beneficiaryPhotoUrl,
+                                        username: beneficiaryUsername,
+                                    } : undefined,
+                                    origin: meta?.origin,
+                                },
+                                permissions: (originalPublication as any)?.permissions as ResourcePermissions | undefined,
+                                withdrawals: {
+                                    totalWithdrawn: totalWithdrawn,
+                                },
+                                postType: isProject ? 'project' : undefined,
+                                isProject: isProject,
+                                categories: (originalPublication as any)?.categories || [],
+                            };
+
                             return (
-                                <BarVoteUnified
-                                    score={currentScore}
-                                    onVoteClick={() => {
-                                        useUIStore.getState().openVotingPopup(postId, 'publication');
+                                <PublicationActions
+                                    publication={publicationForActions}
+                                    onVote={(direction, amount) => {
+                                        // Voting is handled by the popup, this is just a placeholder
+                                        // The actual voting logic is in handleVoteClick
                                     }}
-                                    isAuthor={isAuthor}
-                                    isBeneficiary={isBeneficiary}
-                                    hasBeneficiary={hasBeneficiary}
-                                    commentCount={!isDetailPage ? comments?.length || 0 : 0}
-                                    onCommentClick={!isDetailPage ? () => {
-                                        const routingCommunityId = communityInfo?.id || communityId;
-                                        if (!routingCommunityId || !slug) return;
-                                        
-                                        // If on community feed page, set query parameter to show side panel
-                                        if (isOnCommunityFeedPage) {
-                                            const params = new URLSearchParams(searchParams?.toString() || '');
-                                            params.set('post', slug);
-                                            router.push(`${pathname}?${params.toString()}`);
-                                        } else {
-                                            // Otherwise, navigate to detail page
-                                            router.push(`/meriter/communities/${routingCommunityId}/posts/${slug}`);
-                                        }
-                                    } : undefined}
-                                    canVote={canVote}
-                                    disabledReason={voteDisabledReason}
+                                    onComment={(comment, amount, directionPlus) => {
+                                        // Commenting is handled by navigation, this is just a placeholder
+                                    }}
+                                    activeCommentHook={activeCommentHook}
+                                    wallets={wallets || []}
+                                    updateAll={updateAll}
+                                    hideVoteAndScore={isProject}
                                 />
                             );
                         }
@@ -314,6 +344,7 @@ export const Publication = (props: any) => {
                 showCommunityAvatar={showCommunityAvatar}
                 communityAvatarUrl={communityInfo?.avatarUrl}
                 communityName={communityInfo?.name || displayChatName}
+                communityId={communityInfo?.id || communityIdForRouting}
                 communityIconUrl={communityInfo?.settings?.iconUrl}
                 onCommunityClick={() => {
                     // Use internal community ID for routing if available

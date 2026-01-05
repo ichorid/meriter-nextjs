@@ -1,3 +1,5 @@
+import { uid } from 'uid';
+
 export class PollOption {
   private constructor(
     public readonly id: string,
@@ -101,7 +103,6 @@ export class Poll {
       throw new Error('Poll must have at least 2 options');
     }
     
-    const { uid } = require('uid');
     
     // Generate IDs for options that don't have them
     const pollOptions = options.map(opt => 

@@ -1,9 +1,9 @@
-import * as request from 'supertest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { MeriterModule } from '../src/meriter.module';
 import { TestDatabaseHelper } from './test-db.helper';
 import { createTestPublication, createTestComment } from './helpers/fixtures';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -11,23 +11,11 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { CommentSchemaClass, CommentDocument } from '../src/domain/models/comment/comment.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
-import { UserGuard } from '../src/user.guard';
 import { ApiResponseInterceptor } from '../src/common/interceptors/api-response.interceptor';
 import { uid } from 'uid';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { WalletService } from '../src/domain/services/wallet.service';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -38,9 +26,9 @@ describe('Publication and Comment Edit Permissions', () => {
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let commentModel: Model<CommentDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let walletService: WalletService;
 
   // Test user IDs
   let authorId: string;
@@ -62,11 +50,13 @@ describe('Publication and Comment Edit Permissions', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     app.useGlobalInterceptors(new ApiResponseInterceptor());
     await app.init();
 
@@ -77,9 +67,10 @@ describe('Publication and Comment Edit Permissions', () => {
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     commentModel = connection.model<CommentDocument>(CommentSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
+    walletService = app.get(WalletService);
 
     // Initialize test IDs
     authorId = uid();
@@ -100,7 +91,7 @@ describe('Publication and Comment Edit Permissions', () => {
       await collection.deleteMany({});
     }
 
-    // Create Communities with editWindowDays setting
+    // Create Communities with editWindowMinutes setting
     await communityModel.create([
       {
         id: communityId,
@@ -108,7 +99,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -130,7 +122,8 @@ describe('Publication and Comment Edit Permissions', () => {
         typeTag: 'custom',
         members: [],
         settings: {
-          editWindowDays: 7,
+          editWindowMinutes: 30,
+          allowEditByOthers: false,
           currencyNames: {
             singular: 'merit',
             plural: 'merits',
@@ -202,6 +195,17 @@ describe('Publication and Comment Edit Permissions', () => {
       { id: uid(), userId: participantId, communityId: communityId, role: 'participant', createdAt: now, updatedAt: now },
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
+
+    // Set up wallet balances for all users to allow publication creation
+    // Publication creation requires 1 wallet merit
+    const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(authorId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherLeadId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
@@ -214,73 +218,49 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Author should be able to edit
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content');
+      expect(updated.content).toBe('Updated content');
     });
 
     it('should allow author to edit own publication with UI-style update payload', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Simulate UI update call - matches PublicationCreateForm.tsx update call
-      const updateDto = {
-        title: 'Updated title',
-        description: 'Updated description',
-        content: 'Updated description', // UI sends description as content for backward compatibility
-        hashtags: ['updated', 'tags'],
-        imageUrl: undefined, // UI sends undefined for imageUrl
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: {
+          title: 'Updated title',
+          description: 'Updated description',
+          content: 'Updated description', // UI sends description as content for backward compatibility
+          hashtags: ['updated', 'tags'],
+          imageUrl: undefined, // UI sends undefined for imageUrl
+        },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated description');
+      expect(updated.content).toBe('Updated description');
     });
 
     it('should debug permission check for publication edit - check all conditions', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Get the publication to check its state
-      const getRes = await request(app.getHttpServer())
-        .get(`/api/v1/publications/${publicationId}`)
-        .expect(200);
-
-      const publication = getRes.body.data;
+      const publication = await trpcQuery(app, 'publications.getById', { id: publicationId });
       
       // Log publication state for debugging
       console.log('Publication state:', {
@@ -297,84 +277,66 @@ describe('Publication and Comment Edit Permissions', () => {
       console.log('Total votes:', totalVotes);
 
       // Try to edit - this should work if no votes and within edit window
-      const updateDto = {
-        content: 'Debug test content',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Debug test content' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
+      expect(updated).toBeDefined();
     });
 
-    it('should NOT allow author to edit own publication with votes', async () => {
+    it('should allow author to edit own publication with votes', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add a vote
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+      });
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(updated.content).toBe('Updated content');
     });
 
     it('should NOT allow author to edit own publication after edit window expires', async () => {
-      // Create publication as author with old date (8 days ago)
+      // Create publication as author with old date (outside edit window)
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
-      const publicationId = createRes.body.data.id;
-
-      // Update createdAt to 8 days ago (outside 7-day window)
+      // Update createdAt to 31 minutes ago (outside 30-minute window)
       // Use raw MongoDB collection to bypass Mongoose's timestamp management
-      const eightDaysAgo = new Date();
-      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
-      eightDaysAgo.setHours(0, 0, 0, 0); // Set to midnight for consistent day calculation
+      const oldDate = new Date(Date.now() - 31 * 60 * 1000);
       await connection.db.collection('publications').updateOne(
         { id: publicationId },
-        { $set: { createdAt: eightDaysAgo } }
+        { $set: { createdAt: oldDate } }
       );
 
       // Small delay to ensure database update is committed
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // Author should NOT be able to edit
-      const updateDto = {
-        content: 'Updated content',
-      };
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -383,53 +345,38 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+      });
 
       // Lead should be able to edit even with votes
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content by lead',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content by lead');
+      expect(updated.content).toBe('Updated content by lead');
     });
 
     it('should allow lead to edit publication in their community after edit window expires', async () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
-      const publicationId = createRes.body.data.id;
-
-      // Update createdAt to 8 days ago
+      // Update createdAt to 31 minutes ago (outside 30-minute window)
       // Use raw MongoDB collection to bypass Mongoose's timestamp management
-      const eightDaysAgo = new Date();
-      eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
+      const eightDaysAgo = new Date(Date.now() - 31 * 60 * 1000);
       await connection.db.collection('publications').updateOne(
         { id: publicationId },
         { $set: { createdAt: eightDaysAgo } }
@@ -437,39 +384,31 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead should be able to edit even after window expires
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content by lead',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
+      expect(updated).toBeDefined();
     });
 
     it('should NOT allow lead to edit publication in different community', async () => {
       // Create publication in other community
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(otherCommunityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Lead from different community should NOT be able to edit
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -478,36 +417,26 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Add votes
       (global as any).testUserId = participantId;
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${publicationId}/vote`)
-        .send({
-          amount: 1,
-          direction: 'up',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+      });
 
       // Superadmin should be able to edit even with votes
       (global as any).testUserId = superadminId;
-      const updateDto = {
-        content: 'Updated content by superadmin',
-      };
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated content by superadmin' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated content by superadmin');
+      expect(updated.content).toBe('Updated content by superadmin');
     });
   });
 
@@ -516,55 +445,34 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Author should be able to edit
-      const updateDto = {
-        content: 'Updated comment',
-      };
+      const updated = await trpcMutation(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated comment');
+      expect(updated.content).toBe('Updated comment');
     });
 
-    it('should NOT allow author to edit own comment with votes', async () => {
+    it('should allow author to edit own comment with votes', async () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
@@ -577,16 +485,13 @@ describe('Publication and Comment Edit Permissions', () => {
         }
       );
 
-      // Author should NOT be able to edit
       (global as any).testUserId = authorId;
-      const updateDto = {
-        content: 'Updated comment',
-      };
+      const updated = await trpcMutation(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment' },
+      });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(403);
+      expect(updated.content).toBe('Updated comment');
     });
   });
 
@@ -595,21 +500,13 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createPubRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createPubRes.body.data.id;
+      const createdPub = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = createdPub.id;
 
       // Create comment as author
       const commentDto = createTestComment('publication', publicationId);
-      const createCommentRes = await request(app.getHttpServer())
-        .post('/api/v1/comments')
-        .send(commentDto)
-        .expect(201);
-
-      const commentId = createCommentRes.body.data.id;
+      const createdComment = await trpcMutation(app, 'comments.create', commentDto);
+      const commentId = createdComment.id;
 
       // Simulate votes by updating comment metrics directly
       await commentModel.updateOne(
@@ -624,17 +521,12 @@ describe('Publication and Comment Edit Permissions', () => {
 
       // Lead should be able to edit even with votes
       (global as any).testUserId = leadId;
-      const updateDto = {
-        content: 'Updated comment by lead',
-      };
+      const updated = await trpcMutation(app, 'comments.update', {
+        id: commentId,
+        data: { content: 'Updated comment by lead' },
+      });
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/comments/${commentId}`)
-        .send(updateDto)
-        .expect(200);
-
-      expect(updateRes.body.success).toBe(true);
-      expect(updateRes.body.data.content).toBe('Updated comment by lead');
+      expect(updated.content).toBe('Updated comment by lead');
     });
   });
 
@@ -643,23 +535,155 @@ describe('Publication and Comment Edit Permissions', () => {
       // Create publication as author
       (global as any).testUserId = authorId;
       const pubDto = createTestPublication(communityId, authorId, {});
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send(pubDto)
-        .expect(201);
-
-      const publicationId = createRes.body.data.id;
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
 
       // Participant should NOT be able to edit
       (global as any).testUserId = participantId;
-      const updateDto = {
-        content: 'Updated content',
-      };
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.update', {
+          id: publicationId,
+          data: { content: 'Updated content' },
+        });
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/publications/${publicationId}`)
-        .send(updateDto)
-        .expect(403);
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
+    });
+  });
+
+  describe('Team Group Edit Permissions', () => {
+    let teamCommunityId: string;
+    let teamParticipant1Id: string;
+    let teamParticipant2Id: string;
+
+    beforeEach(async () => {
+      // Create team community
+      teamCommunityId = uid();
+      teamParticipant1Id = uid();
+      teamParticipant2Id = uid();
+
+      await communityModel.create({
+        id: teamCommunityId,
+        name: 'Test Team',
+        typeTag: 'team',
+        members: [],
+        settings: {
+          editWindowMinutes: 30,
+          allowEditByOthers: true,
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          dailyEmission: 10,
+        },
+        postingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant'],
+          requiresTeamMembership: false,
+          onlyTeamLead: false,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create team participants
+      await userModel.create([
+        {
+          id: teamParticipant1Id,
+          authProvider: 'telegram',
+          authId: `tg-${teamParticipant1Id}`,
+          displayName: 'Team Participant 1',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: teamParticipant2Id,
+          authProvider: 'telegram',
+          authId: `tg-${teamParticipant2Id}`,
+          displayName: 'Team Participant 2',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      // Create user community roles for team members
+      const now = new Date();
+      await userCommunityRoleModel.create([
+        { id: uid(), userId: teamParticipant1Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+        { id: uid(), userId: teamParticipant2Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      ]);
+
+      // Set up wallet balances for team participants
+      const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+      await walletService.addTransaction(teamParticipant1Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+      await walletService.addTransaction(teamParticipant2Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    });
+
+    it('should allow team participant to edit another team participant\'s publication', async () => {
+      // Create publication as team participant 1
+      (global as any).testUserId = teamParticipant1Id;
+      const pubDto = createTestPublication(teamCommunityId, teamParticipant1Id, {});
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
+
+      // Team participant 2 should be able to edit
+      (global as any).testUserId = teamParticipant2Id;
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated by team participant 2' },
+      });
+
+      expect(updated.content).toBe('Updated by team participant 2');
+    });
+
+    it('should allow team participant to edit another team participant\'s publication even with votes', async () => {
+      // Create publication as team participant 1
+      (global as any).testUserId = teamParticipant1Id;
+      const pubDto = createTestPublication(teamCommunityId, teamParticipant1Id, {});
+      const created = await trpcMutation(app, 'publications.create', pubDto);
+      const publicationId = created.id;
+
+      // Add a vote (use another team member or create a lead in the team)
+      // Create a lead in the team for voting
+      const teamLeadId = uid();
+      await userModel.create({
+        id: teamLeadId,
+        authProvider: 'telegram',
+        authId: `tg-${teamLeadId}`,
+        displayName: 'Team Lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      await userCommunityRoleModel.create({
+        id: uid(),
+        userId: teamLeadId,
+        communityId: teamCommunityId,
+        role: 'lead',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Set up wallet balance for team lead to allow voting
+      const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
+      await walletService.addTransaction(teamLeadId, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+
+      // Vote on the publication
+      (global as any).testUserId = teamLeadId;
+      await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+      });
+
+      // Team participant 2 should still be able to edit even with votes
+      (global as any).testUserId = teamParticipant2Id;
+      const updated = await trpcMutation(app, 'publications.update', {
+        id: publicationId,
+        data: { content: 'Updated by team participant 2 after vote' },
+      });
+
+      expect(updated.content).toBe('Updated by team participant 2 after vote');
     });
   });
 });

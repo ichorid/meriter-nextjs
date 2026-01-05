@@ -1,4 +1,10 @@
 ---
 alwaysApply: true
 ---
-frontend uses tanstack. All queries and mutations from/to API should be done through TanStack properly. Direct queries are forbidden
+Frontend uses tanstack and tRPC. 
+Authenticated queries and mutations from/to API MUST be done through TanStack+tRPC properly. 
+UNauthenticated queries (e.g. initial oauth) MUST go through TanStack+REST (served by the backend Nest.js)
+
+There can be reasonable exceptions to this rule, e.g. image uploads can be authenticated and go through TanStack+REST
+
+

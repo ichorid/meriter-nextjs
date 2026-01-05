@@ -39,9 +39,19 @@ export function useUserCommunities() {
     return memberCommunities;
   }, [isSuperadmin, allCommunitiesData, memberCommunities]);
 
-  // Get community IDs from the communities array
+  // Get community IDs from the communities array, sorted with special communities first
   const communityIds = useMemo(() => {
-    return communities.map((c: Community) => c.id);
+    // Sort communities: special communities first (marathon-of-good, future-vision, support), then others
+    const sorted = [...communities].sort((a: Community, b: Community) => {
+      const getSpecialOrder = (typeTag?: string): number => {
+        if (typeTag === 'marathon-of-good') return 1;
+        if (typeTag === 'future-vision') return 2;
+        if (typeTag === 'support') return 3;
+        return 999; // Regular communities go last
+      };
+      return getSpecialOrder(a.typeTag) - getSpecialOrder(b.typeTag);
+    });
+    return sorted.map((c: Community) => c.id);
   }, [communities]);
 
   // Create a map of communityId -> wallet for quick lookup

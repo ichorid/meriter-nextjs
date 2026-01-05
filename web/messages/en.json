@@ -22,10 +22,15 @@
         "confirm": "Confirm",
         "dailyMerits": "Daily",
         "permanentMerits": "Permanent",
+        "yourMerits": "Your merits",
         "siteTitle": "Meriter",
         "add": "Add",
         "createCommunity": "Create Community",
         "about": "About",
+        "aboutMe": "About",
+        "aboutProject": "About Project",
+        "favorites": "Favorites",
+        "communities": "Communities",
         "allCommunities": "All Communities",
         "copy": "Copy",
         "copied": "Copied!",
@@ -34,6 +39,7 @@
         "lead": "Lead",
         "participant": "Participant",
         "viewer": "Viewer",
+        "team": "Team",
         "noCommunitiesFound": "No communities found in wallets",
         "loadingCommunities": "Loading communities...",
         "search": "Search",
@@ -41,8 +47,10 @@
         "open": "Open",
         "comingSoon": "Coming soon",
         "noPermission": "You don't have permission to perform this action",
+        "needsSetup": "Needs setup",
         "user": "User",
         "unknownUser": "Unknown User",
+        "anonymous": "Anonymous",
         "createInvite": "Create Invite",
         "noMembersFound": "No members found",
         "userProfile": "User Profile",
@@ -60,6 +68,8 @@
         "goBack": "Go back",
         "post": "Post",
         "comments": "Comments",
+        "vote": "Vote",
+        "noVotesYet": "No votes yet",
         "addComment": "Add a comment",
         "publicationNotFound": "Publication not found",
         "backToCommunity": "Back to Community",
@@ -77,7 +87,20 @@
             "settings": "Settings"
         },
         "profile": "Profile",
-        "account": "Account"
+        "account": "Account",
+        "info": "Info",
+        "meritsAndQuota": "Merits & Quota",
+        "meritsAndQuotaDescription": "Merits are the currency of Meriter, needed to rate and comment on posts. In each community, merits are separate.\nThere is an exception: Marathon of Good merits can be used in Image of the Future (see game rules on the \"About\" page).\nIn this community, you have access to the following types of merits:",
+        "quotaExplanation": "Merits you receive daily. If you don't use them by the end of the day, they expire.",
+        "permanentMeritsExplanation": "Permanent merits you received from other community members through your posts. They don't expire, you can use them whenever you want.",
+        "permanentMeritsWallet": "Permanent merits (wallet)",
+        "andMoreMerits": "and {count} more merits",
+        "youHave": "You have",
+        "youHaveMerits": "You have {count} merits",
+        "sort": {
+            "recent": "By Date",
+            "voted": "By Rating"
+        }
     },
     "home": {
         "breadcrumb": "Home",
@@ -92,7 +115,7 @@
             "subtitle": "Here's your activity overview",
             "stats": {
                 "publications": "Publications",
-                "comments": "Comments",
+                "comments": "Votes",
                 "polls": "Polls",
                 "updates": "Updates",
                 "projects": "Projects"
@@ -103,7 +126,8 @@
                 "browseCommunities": "Browse Communities",
                 "search": "Search",
                 "createPost": "Create Post",
-                "createPoll": "Create Poll"
+                "createPoll": "Create Poll",
+                "createProject": "Create Project"
             }
         },
         "tip1": "Transfer points from publications and comments to your available balance to use them",
@@ -112,7 +136,7 @@
         "myCommunities": "My Communities",
         "tabs": {
             "publications": "My Publications",
-            "comments": "My Comments",
+            "comments": "My Votes",
             "polls": "Polls",
             "updates": "Updates"
         },
@@ -127,8 +151,8 @@
                 "message": "You haven't created any publications yet."
             },
             "comments": {
-                "title": "No Comments",
-                "message": "You haven't written any comments yet."
+                "title": "No Votes",
+                "message": "You haven't voted on any posts yet."
             },
             "polls": {
                 "title": "No Polls",
@@ -166,6 +190,7 @@
     },
     "settings": {
         "title": "Settings",
+        "platformTitle": "Platform Settings",
         "breadcrumb": "Settings",
         "subtitle": "Manage your profile settings",
         "language": "Language",
@@ -199,7 +224,30 @@
         "languageRussian": "Russian",
         "searchUsers": "Search Users",
         "removeAdmin": "Remove Admin",
-        "makeAdmin": "Make Admin"
+        "makeAdmin": "Make Admin",
+        "categories": {
+            "title": "Category Management",
+            "description": "Create and manage categories for posts",
+            "createNew": "Create new category",
+            "categoryNamePlaceholder": "Category name",
+            "create": "Create",
+            "existingCategories": "Existing categories",
+            "noCategories": "No categories created yet",
+            "created": "Category created",
+            "updated": "Category updated",
+            "deleted": "Category deleted",
+            "initialized": "Default categories initialized",
+            "initializeDefaults": "Create 10 default categories",
+            "confirmDelete": "Are you sure you want to delete this category? It will be removed from all posts.",
+            "confirmInitialize": "This will create 10 default categories. Continue?",
+            "errors": {
+                "nameRequired": "Category name is required",
+                "createFailed": "Failed to create category",
+                "updateFailed": "Failed to update category",
+                "deleteFailed": "Failed to delete category",
+                "initializeFailed": "Failed to initialize default categories"
+            }
+        }
     },
     "wallet": {
         "balance": "Balance",
@@ -211,11 +259,20 @@
     },
     "shared": {
         "balance": "Balance:",
-        "withdraw": "Withdraw:",
+        "withdraw": "Withdraw merits",
+        "withdrawButton": "Withdraw",
+        "withdrawHint": "Withdrawing merits from a post reduces its rating. The merits will be added to your wallet and can be used for voting.",
+        "availableMore": "Available more",
+        "addMerits": "Add {amount} merits",
         "vote": "Vote",
         "share": "Share",
+        "comments": "Votes",
+        "vote": "Vote",
+        "noVotesYet": "No votes yet",
         "urlCopiedToBuffer": "URL copied to buffer",
         "noVotesToWithdraw": "No votes to withdraw",
+        "totalVotes": "Total votes",
+        "totalVotesTooltip": "Total votes including withdrawn",
         "writeComment": "Write a comment",
         "from": "from",
         "inReplyTo": "In reply to:",
@@ -224,7 +281,8 @@
         "editDisabled": {
             "hasVotes": "Cannot edit: post has votes",
             "hasComments": "Cannot edit: post has comments",
-            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions"
+            "timeWindowExpired": "Cannot edit: time window expired or insufficient permissions",
+            "deleted": "Cannot edit: this post has been deleted"
         },
         "deleteDisabled": {
             "hasVotes": "Cannot delete: post has votes",
@@ -242,12 +300,14 @@
             "roleNotAllowed": "Your role does not have permission to vote in this community",
             "ownPostNotAllowed": "Voting on your own posts is not allowed in this community",
             "viewerNotMarathon": "Viewers can only vote in marathon-of-good communities",
+            "teammateInSpecialGroup": "You cannot vote for your teammates in this community",
             "commentVotingDisabled": "Voting on comments is disabled. You can only vote on posts/publications."
         },
         "loggingOut": "Logging out...",
         "confirmLogout": "Confirm Logout",
         "confirmLogoutMessage": "Are you sure you want to log out? You will need to sign in again to access your account.",
         "cancel": "Cancel",
+        "close": "Close",
         "submit": "Submit",
         "removeCommunityPoints": "Remove community points: {amount}",
         "addCommunityPoints": "Add community points: {amount}",
@@ -256,6 +316,8 @@
         "addCommentOptional": "Add a comment (optional)",
         "submitting": "Submitting...",
         "pleaseAdjustSlider": "Please adjust the slider",
+        "pleaseChooseWithdrawAmount": "Please choose an amount to withdraw",
+        "withdrewMerits": "Withdrew {amount} merits",
         "errorSubmitting": "Failed to submit",
         "timeAgo": {
             "seconds": "{count}s ago",
@@ -289,7 +351,7 @@
         "hint": {
             "agreeToTerms": "By clicking the button and confirming login, I agree to the",
             "termsOfService": "Terms of Service",
-            "and": "and",
+            "and": "and consent to the",
             "personalData": "processing of personal data"
         },
         "fillProfile": "Fill Profile",
@@ -302,7 +364,68 @@
         "usernameRequired": "Username is required",
         "passkeyLoginFailed": "Passkey login failed",
         "registrationSuccessSignIn": "Registration successful! Please sign in with your Passkey.",
-        "passkeyRegistrationFailed": "Passkey registration failed"
+        "passkeyRegistrationFailed": "Passkey registration failed",
+        "signInWithSms": "Sign in with SMS",
+        "orContinueWith": "Or continue with",
+        "or": "Or",
+        "smsDialog": {
+            "title": "Sign in with Phone",
+            "description": "Enter your phone number to receive a verification code",
+            "otpDescription": "Enter the code we sent to your phone",
+            "phoneLabel": "Phone Number",
+            "phonePlaceholder": "+79001234567",
+            "phoneHint": "Phone number must start with + and include country code (e.g., +79001234567)",
+            "sendCode": "Send Code",
+            "sending": "Sending...",
+            "otpLabel": "Verification Code",
+            "otpPlaceholder": "000000",
+            "verify": "Verify",
+            "verifying": "Verifying...",
+            "resendCode": "Resend Code",
+            "resendIn": "Resend in {seconds}s",
+            "sentTo": "Code sent to",
+            "invalidPhone": "Invalid phone number format",
+            "mustStartWithPlus": "Phone number must start with + (country code required)",
+            "invalidOtp": "Invalid verification code. Please enter 6 digits.",
+            "sendFailed": "Failed to send SMS. Please try again.",
+            "verifyFailed": "Failed to verify code. Please try again."
+        },
+        "callDialog": {
+            "title": "Login via Call",
+            "description": "Enter your phone number. You will see a number to call.",
+            "callDescription": "Please call the number below to verify your identity.",
+            "phoneLabel": "Phone Number",
+            "phonePlaceholder": "+1234567890",
+            "callButton": "Call to Verify",
+            "calling": "Initiating...",
+            "waiting": "Waiting for your call...",
+            "success": "Verified!",
+            "expired": "Verification expired",
+            "failed": "Verification failed",
+            "sentTo": "Calling number:"
+        },
+        "emailDialog": {
+            "title": "Sign in with Email",
+            "description": "Enter your email address to receive a login code",
+            "otpDescription": "Enter the code sent to your email",
+            "emailLabel": "Email",
+            "emailPlaceholder": "your@email.com",
+            "otpLabel": "Verification Code",
+            "otpPlaceholder": "000000",
+            "sendCode": "Send Code",
+            "sending": "Sending...",
+            "verify": "Verify",
+            "verifying": "Verifying...",
+            "resendCode": "Resend Code",
+            "resendIn": "Resend in {seconds}s",
+            "sentTo": "Code sent to",
+            "invalidEmail": "Invalid email address",
+            "invalidOtp": "Invalid verification code",
+            "sendFailed": "Failed to send email",
+            "verifyFailed": "Verification failed"
+        },
+        "signInWithCall": "Login via Call",
+        "signInWithEmail": "Sign in with Email"
     },
     "polls": {
         "createTitle": "Create Poll",
@@ -328,12 +451,8 @@
         "cancel": "Cancel",
         "creating": "Creating...",
         "createPoll": "Create Poll",
-        "quotaInfo": "Creating a poll costs 1 daily quota.",
-        "quotaRemaining": "You have {remaining} quota remaining.",
-        "insufficientQuota": "Insufficient quota. You need at least 1 quota to create a poll.",
-        "willPayWithQuota": "Creating a poll costs {cost} quota. You have {remaining} quota remaining. Payment will be deducted from quota.",
         "willPayWithWallet": "Creating a poll costs {cost} merit(s). You have {balance} merits available. Payment will be deducted from wallet merits.",
-        "insufficientPayment": "Insufficient payment. You need at least {cost} quota or {cost} wallet merit(s) to create a poll.",
+        "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a poll.",
         "pollIsFree": "Polls are free to create in this community.",
         "errorMaxOptions": "Maximum 10 answer options",
         "errorMinOptions": "Minimum 2 answer options",
@@ -358,6 +477,7 @@
         "casters": "casters",
         "thankers": "casters",
         "amountLabel": "Amount of points:",
+        "quota": "Quota",
         "available": "Available",
         "casting": "Casting...",
         "castPoll": "Cast Poll",
@@ -405,6 +525,7 @@
         "voteTitle": "Voting",
         "dailyLimit": "Daily limit",
         "available": "Available",
+        "of": "of",
         "downvoteExplanation": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
         "explanationDetails": "Explanations, details and descriptions",
         "textField": "Text field",
@@ -426,6 +547,14 @@
         "maxVoteAmount": "Max: {max}",
         "requiresVoteAmount": "Requires vote of at least +1/-1",
         "requiresComment": "Requires comment",
+        "commentRequired": "Comment is required for voting on a post",
+        "votingMechanics": "You can vote FOR a post or AGAINST it.\nFor voting FOR, merits from your daily quota are spent first, and after it is exceeded, merits from your wallet.\nFor voting AGAINST, only wallet merits can be used.",
+        "walletBalance": "Accumulated merits",
+        "dailyQuota": "Daily quota",
+        "whatWillHappen": "What will happen if you vote:",
+        "youVoteWithYour": "You vote with your:",
+        "noChange": "no change",
+        "required": "(required)",
         "voteUp": "Vote up",
         "voteDown": "Vote down",
         "close": "close[x]",
@@ -445,6 +574,8 @@
         "points": "Points",
         "enterPositiveAmount": "Enter positive amount",
         "sendError": "Sending error: {message}",
+        "fromWhich": "of which",
+        "and": "and",
         "upvoteFromQuota": "Vote using daily quota",
         "upvoteFromWallet": "Vote using wallet balance",
         "upvoteFromMixed": "Vote using daily quota and wallet",
@@ -524,16 +655,35 @@
             "searchPlaceholder": "Search publications...",
             "noAccess": "No access",
             "createPoll": "Create Poll",
+            "createProject": "Create Project",
             "byDate": "By Date",
             "byRating": "By Rating",
             "loadMore": "Load more",
             "createPost": "Create Post",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
-            "members": "Members",
+            "deleted": "Deleted",
+            "noDeletedPublications": "No deleted publications",
+            "members": {
+                "title": "Members",
+                "empty": "No members found",
+                "remove": "Remove member",
+                "confirmRemove": "Remove {name} from community?"
+            },
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
             "visionCommunityNotFound": "Future community not found",
+            "filters": {
+                "title": "Filters",
+                "show": "Show",
+                "hide": "Hide",
+                "categories": "Categories",
+                "selectCategories": "Select categories",
+                "reset": "Reset",
+                "apply": "Apply",
+                "categoryHelp": "Select categories to filter. If nothing is selected, all posts are shown.",
+                "noCategories": "Categories are not configured yet"
+            },
             "currency": "Currency"
         },
         "communitySettings": {
@@ -541,16 +691,27 @@
             "breadcrumb": "Settings",
             "settingsTitle": "Settings: {communityName}",
             "subtitle": "Manage settings for {communityName}",
+            "tabs": {
+                "general": "General",
+                "rules": "Rules"
+            },
             "communityProfile": "Community Profile",
             "name": "Name",
             "namePlaceholder": "Community Name",
             "description": "Description",
             "descriptionPlaceholder": "What is this community about?",
+            "characters": "characters",
             "avatarUrl": "Avatar URL",
             "avatarUrlPlaceholder": "https://example.com/avatar.png",
             "generateAvatar": "Generate",
             "generateAvatarHelp": "Click Generate to create an abstract avatar based on community name",
+            "changeAvatar": "Change avatar",
+            "cropAvatar": "Crop avatar",
             "coverImage": "Cover Image",
+            "coverImageHelp": "Upload a cover image for your community",
+            "coverImagePlaceholder": "Drop cover image here or click to upload",
+            "uploading": "Uploading...",
+            "uploadFailed": "Upload failed",
             "configuration": "Configuration",
             "language": "Language",
             "languageSelect": "Select option",
@@ -561,16 +722,25 @@
             "dailyEmission": "Daily Emission",
             "dailyEmissionHelp": "Amount of currency distributed daily to active members.",
             "postCost": "Post Creation Cost",
-            "postCostHelp": "Cost in quota/merits to create a post. Set to 0 to make posts free.",
+            "postCostHelp": "Cost in wallet merits to create a post. Set to 0 to make posts free.",
             "pollCost": "Poll Creation Cost",
-            "pollCostHelp": "Cost in quota/merits to create a poll. Set to 0 to make polls free.",
+            "pollCostHelp": "Cost in wallet merits to create a poll. Set to 0 to make polls free.",
+            "forwardCost": "Forward Cost",
+            "forwardCostHelp": "Cost in wallet merits to forward a post. Set to 0 to make forwarding free.",
             "currencyNames": "Currency Names",
             "singular": "Singular",
             "plural": "Plural",
             "genitive": "Genitive",
+            "votingRestriction": "Voting Restrictions",
+            "votingRestrictionHelp": "Control who can vote for whom in this community",
+            "votingRestrictionOptions": {
+                "any": "Anyone can vote for any post",
+                "notOwn": "Users can vote for others' posts, but not their own",
+                "notSameGroup": "Only for posts from users in different teams"
+            },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",
-            "hashtagsHelp": "Add hashtags to categorize your community content",
+            "hashtagsHelp": "Add hashtags to categorize your community content. Separators: semicolon (;) or comma (,).",
             "administrators": "Administrators",
             "noAdmins": "No additional admins.",
             "remove": "Remove",
@@ -579,6 +749,8 @@
             "add": "Add",
             "saveChanges": "Save Changes",
             "saving": "Saving...",
+            "save": "Save",
+            "cancel": "Cancel",
             "communityNotFound": "Community not found",
             "noDescription": "No description",
             "avatarUpdateNote": "Avatar updates automatically when you save settings",
@@ -610,7 +782,6 @@
             "hashtagDescription": "Any message with this hashtag in the community chat will automatically appear on the site",
             "delete": "Delete",
             "addValue": "+ Add Value",
-            "cancel": "Cancel",
             "saveSettings": "Save Settings",
             "settingsSaved": "Settings saved successfully!",
             "error": "Error",
@@ -639,16 +810,20 @@
         }
     },
     "publications": {
+        "publicationDetails": "Publication Details",
+        "beneficiary": "Beneficiary",
+        "editHistory": "Edit History",
+        "noEditsYet": "No edits yet",
         "create": {
             "title": "Create Publication",
             "editTitle": "Edit Publication",
             "update": "Update",
-            "quotaInfo": "Creating a post costs 1 daily quota.",
-            "quotaRemaining": "You have {remaining} quota remaining.",
-            "insufficientQuota": "Insufficient quota. You need at least 1 quota to create a post.",
-            "willPayWithQuota": "Creating a post costs {cost} quota. You have {remaining} quota remaining. Payment will be deducted from quota.",
-            "willPayWithWallet": "Creating a post costs {cost} merit(s). You have {balance} merits available. Payment will be deducted from wallet merits.",
-            "insufficientPayment": "Insufficient payment. You need at least {cost} quota or {cost} wallet merit(s) to create a post.",
+            "quotaInfo": "Creating a post costs 1 wallet merit.",
+            "quotaRemaining": "You have {remaining} wallet merits remaining.",
+            "insufficientQuota": "Insufficient wallet merits. You need at least 1 wallet merit to create a post.",
+            "willPayWithQuota": "Creating a post costs {cost} wallet merits. Payment will be deducted from your wallet.",
+            "willPayWithWallet": "Creating a post costs {cost} wallet merit(s). You have {balance} wallet merit(s). Payment will be deducted from your wallet.",
+            "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a post.",
             "postIsFree": "Posts are free to create in this community.",
             "fields": {
                 "title": "Title",
@@ -668,7 +843,12 @@
                 "imageUploadFailed": "Upload failed. Please try again.",
                 "hashtags": "Hashtags",
                 "hashtagsPlaceholder": "Add hashtags",
-                "hashtagsHelp": "Add up to 10 hashtags",
+                "hashtagsHelp": "Add up to 10 hashtags. Separators: semicolon (;) or comma (,).",
+                "categories": "Categories",
+                "selectCategories": "Select categories",
+                "categoriesHelp": "Select up to two categories for your post",
+                "noCategoriesAvailable": "No categories available",
+                "selectedCategories": "Selected: {count}",
                 "characters": "characters",
                 "images": "Images",
                 "imagesHelp": "Upload up to 10 images for your post"
@@ -698,7 +878,79 @@
                 "descriptionRequired": "Description is required",
                 "descriptionTooLong": "Description must be no more than {max} characters",
                 "invalidUrl": "Invalid URL",
-                "submitFailed": "Failed to create publication"
+                "submitFailed": "Failed to create publication",
+                "impactAreaRequired": "Impact area is required for project posts",
+                "stageRequired": "Stage is required for project posts"
+            },
+            "taxonomy": {
+                "requiredForProjects": "Required fields for project posts",
+                "optionalFacets": "Optional facets (folded by default). Add them only if they help discovery.",
+                "impactArea": "Impact Area",
+                "selectImpactArea": "Choose one",
+                "stage": "Stage",
+                "selectStage": "Choose one",
+                "beneficiaries": "Beneficiaries",
+                "beneficiariesHint": "Who benefits directly?",
+                "methods": "What you do",
+                "methodsHint": "How does the project create impact?",
+                "helpNeeded": "Help needed",
+                "helpNeededHint": "What are you collecting right now?",
+                "clear": "Clear",
+                "values": {
+                    "impactArea": {
+                        "Community & Mutual Aid": "Community & Mutual Aid",
+                        "Education & Youth": "Education & Youth",
+                        "Health & Wellbeing": "Health & Wellbeing",
+                        "Environment & Climate": "Environment & Climate",
+                        "Animals & Nature Protection": "Animals & Nature Protection",
+                        "Inclusion & Accessibility": "Inclusion & Accessibility",
+                        "Humanitarian Aid & Crisis Response": "Humanitarian Aid & Crisis Response",
+                        "Civic Engagement & Democracy": "Civic Engagement & Democracy",
+                        "Culture, Arts & Heritage": "Culture, Arts & Heritage",
+                        "Economic Empowerment": "Economic Empowerment",
+                        "Public Space & Local Infrastructure": "Public Space & Local Infrastructure",
+                        "Research, Advocacy & Awareness": "Research, Advocacy & Awareness"
+                    },
+                    "stage": {
+                        "Idea / looking for team": "Idea / looking for team",
+                        "Active / ongoing": "Active / ongoing",
+                        "Needs volunteers now": "Needs volunteers now",
+                        "Fundraising / collecting resources": "Fundraising / collecting resources",
+                        "Completed (showcase results)": "Completed (showcase results)"
+                    },
+                    "beneficiaries": {
+                        "Children & teens": "Children & teens",
+                        "Elderly": "Elderly",
+                        "People with disabilities": "People with disabilities",
+                        "Low-income families": "Low-income families",
+                        "Migrants & refugees": "Migrants & refugees",
+                        "Patients & caregivers": "Patients & caregivers",
+                        "Local community (general)": "Local community (general)",
+                        "Animals / wildlife": "Animals / wildlife",
+                        "Everyone (public-interest)": "Everyone (public-interest)"
+                    },
+                    "methods": {
+                        "Direct service": "Direct service",
+                        "Events & community building": "Events & community building",
+                        "Education & training": "Education & training",
+                        "Building / restoration": "Building / restoration",
+                        "Donations & distribution": "Donations & distribution",
+                        "Tech / tools / platforms": "Tech / tools / platforms",
+                        "Research & data": "Research & data",
+                        "Advocacy & campaigning": "Advocacy & campaigning",
+                        "Emergency response": "Emergency response"
+                    },
+                    "helpNeeded": {
+                        "Volunteers (time)": "Volunteers (time)",
+                        "Money": "Money",
+                        "Materials / equipment": "Materials / equipment",
+                        "Expertise": "Expertise",
+                        "Partnerships": "Partnerships",
+                        "Venue / space": "Venue / space",
+                        "Visibility / PR": "Visibility / PR",
+                        "Logistics / transport": "Logistics / transport"
+                    }
+                }
             },
             "cancel": "Cancel",
             "creating": "Creating...",
@@ -733,7 +985,23 @@
         }
     },
     "communities": {
+        "title": "Communities",
+        "specialCommunities": "Special Communities",
+        "yourCommunities": "Your Communities",
+        "leads": "Leads",
+        "leadsHelper": "This is a list of all Team Leads registered on the platform. If you want to join one of the teams, offer your help, or share something important, please contact its Lead: their contacts are available in their profile.",
+        "dontShowAgain": "Don't show again",
+        "quotaHelper": "Every day you receive merits that you can use to rate posts in this community, encouraging authors or expressing your dissatisfaction. This is called a quota, and this counter shows how many quota merits you have now.",
         "other": "Other",
+        "localGroups": {
+            "title": "Local",
+            "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
+            "contactNote": "If you want to become a Participant, contact one of the Leads."
+        },
+        "joinTeam": {
+            "title": "Join a Team",
+            "subtitle": "To join a team, contact one of the leads below for an invite."
+        },
         "create": {
             "title": "Create Community",
             "creating": "Creating...",
@@ -742,6 +1010,7 @@
         },
         "createPost": "Create Post",
         "createPoll": "Create Poll",
+        "createProject": "Create Project",
         "rules": {
             "title": "Community Rules",
             "communityNotFound": "Community not found",
@@ -764,10 +1033,14 @@
             "quotaRecipients": "Quota Recipients",
             "canEarn": "Can Earn",
             "canSpend": "Can Spend",
+            "editWindowMinutes": "Post editing window (minutes)",
+            "editWindowMinutesHelp": "How many minutes after publishing participants can edit a post (0 = no limit).",
+            "allowEditByOthers": "Allow participants to edit other people's posts",
             "linkedCurrencies": "Linked Currencies",
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",
             "remove": "Remove",
+            "save": "Save",
             "saveRules": "Save Rules",
             "saving": "Saving...",
             "showPreview": "Show Preview",
@@ -819,9 +1092,11 @@
     "registration": {
         "title": "Registration",
         "authTitle": "Authentication",
-        "inviteDescription": "Enter your invite code to begin registration (optional)",
-        "inviteCodeLabel": "Invite Code",
-        "inviteCodePlaceholder": "Enter invite code",
+        "inviteDescription": "Invite code is optional. It is used to assign a role (e.g., Participant or Team Lead). You can register without it. If you receive this code later and want to change your role, you can always enter it on your profile page.",
+        "inviteCodeLabel": "Invite Code (if available)",
+        "inviteCodePlaceholder": "Enter code (optional)",
+        "inviteCodeHelperText": "To change your role in the project, enter an invite code. For example, to become a team participant, request a code from its ",
+        "inviteCodeHelperLinkText": "Lead",
         "continue": "Continue",
         "checkingInvite": "Checking invite...",
         "inviteValid": "Invite is valid ({type})",
@@ -857,7 +1132,7 @@
         "newUserDescription": "Please complete your profile to continue.",
         "generalInformation": "General",
         "generalInformationSubtitle": "Please fill in the following information to complete your profile.",
-        "aboutInformation": "About project",
+        "aboutInformation": "About",
         "avatarUrl": "Avatar URL",
         "avatarUrlPlaceholder": "https://example.com/avatar.png",
         "avatarUrlHelper": "Add an avatar URL to your profile",
@@ -873,9 +1148,19 @@
         "contactInformation": "Contacts",
         "outerContacts": "Other Contacts",
         "newProfile": "New User",
-        "newProfileSubtitle": "Fields marked with * are required. Please do not skip them.",
+        "newProfileSubtitle": "Tell us a bit about yourself so others can get to know you",
+        "editProfile": "Edit Profile",
+        "editProfileSubtitle": "Update your profile information",
         "title": "Profile",
         "notFound": "User not found",
+        "hero": {
+            "stats": {
+                "publications": "Publications",
+                "comments": "Votes",
+                "polls": "Polls",
+                "projects": "Projects"
+            }
+        },
         "roles": "Roles in Communities",
         "projects": "Projects",
         "inviteSection": "Invite Code",
@@ -889,11 +1174,10 @@
         "view": "View",
         "loading": "Loading...",
         "loadMore": "Load More",
-        "edit": "Edit Profile",
+        "edit": "Edit",
         "meritStats": "Merit Statistics",
         "noMeritStats": "No merit statistics available",
         "meritAmount": "{amount} merits",
-        "editProfile": "Edit Profile",
         "save": "Save",
         "cancel": "Cancel",
         "bio": "Bio",
@@ -905,8 +1189,8 @@
         "cityPlaceholder": "Enter city",
         "website": "Website",
         "websitePlaceholder": "https://example.com",
-        "about": "About project",
-        "aboutPlaceholder": "Tell us more about the project",
+        "about": "About",
+        "aboutPlaceholder": "Tell us more about yourself",
         "contacts": "Contacts",
         "email": "Email",
         "messenger": "Messenger",
@@ -928,12 +1212,18 @@
         "characters": "characters",
         "errors": {
             "bioTooLong": "Bio must be no more than {max} characters",
-            "aboutTooLong": "About project must be no more than {max} characters",
+            "aboutTooLong": "About must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",
             "invalidUrl": "Invalid URL",
             "invalidEmail": "Invalid email address"
         },
         "role": "Role",
+        "roles": "Roles",
+        "leadLabel": "Lead",
+        "leadOfTeam": "Lead of team \"{teamName}\"",
+        "participantOfTeam": "Participant of team \"{teamName}\"",
+        "contactTeamRepresentative": "Contact this team's lead",
+        "leadDescription": "Lead – team curator you can contact for any questions related to this team.",
         "roleTypes": {
             "lead": "Lead",
             "participant": "Participant",
@@ -941,15 +1231,16 @@
             "superadmin": "Superadmin"
         },
         "contactInformattion": "Contacts",
-        "aboutInformattion": "About project",
+        "aboutInformattion": "About",
         "hint": {
-            "about": "Here you can tell a little bit about the project and what is important to you."
+            "about": "Tell us a little bit about yourself and what is important to you."
         },
         "useInvite": {
             "title": "Join community by invite"
         },
         "invites": {
             "title": "Invite Generation",
+            "description": "Create and manage invitation codes",
             "selectCommunity": "Select Community",
             "community": "Community",
             "inviteGenerated": "Invite generated successfully",
@@ -965,8 +1256,12 @@
             "superadminToLead": "Superadmin to Lead",
             "leadToParticipant": "Lead to Participant",
             "expires": "Expires",
-            "usedAt": "Used at"
-        }
+            "usedAt": "Used at",
+            "noActiveInvites": "No active invites"
+        },
+        "teamsAndRoles": "Teams & Roles",
+        "changeAvatar": "Change avatar",
+        "cropAvatar": "Crop avatar"
     },
     "invites": {
         "create": {
@@ -975,7 +1270,7 @@
             "leadToParticipant": "Lead to Participant",
             "superadminToLead": "Superadmin to Lead",
             "leadToParticipantDescription": "Create an invite to add a participant to this team community",
-            "superadminToLeadDescription": "Create an invite to make a user a Lead of this community",
+            "superadminToLeadDescription": "Create an invite to make a user a Lead and create a community that they will manage",
             "targetUserId": "Target User ID",
             "targetUserIdPlaceholder": "Enter target user ID (optional)",
             "targetUserName": "User Name",
@@ -999,7 +1294,8 @@
             "inviteRole": "Invite Role",
             "inviteRoleHelp": "Select the role for the invited user",
             "roleLead": "Lead",
-            "roleParticipant": "Participant"
+            "roleParticipant": "Participant",
+            "inviteCode": "Invite Code"
         }
     },
     "search": {
@@ -1025,7 +1321,7 @@
             "tryDifferent": "Try different search terms or filters",
             "loading": "Searching...",
             "searchPlaceholder": "Search...",
-            "searchLeadsPlaceholder": "Search leads by name, username, or bio...",
+            "searchLeadsPlaceholder": "Find by name or team name",
             "searchMembersPlaceholder": "Search members by name or username...",
             "searchLocationPlaceholder": "Search city or region...",
             "searchUsersPlaceholder": "Search users by name, username or email...",
@@ -1057,7 +1353,8 @@
             "mention": "Mentions",
             "reply": "Replies",
             "vote": "Votes",
-            "invite": "Invites"
+            "invite": "Invites",
+            "forward_proposal": "Forward Proposals"
         },
         "preferences": {
             "title": "Notification Preferences",
@@ -1068,7 +1365,8 @@
             "comments": "Comments",
             "publications": "Publications",
             "polls": "Polls",
-            "system": "System"
+            "system": "System",
+            "forward_proposal": "Forward Proposals"
         },
         "ariaLabels": {
             "markAsRead": "Mark as read",

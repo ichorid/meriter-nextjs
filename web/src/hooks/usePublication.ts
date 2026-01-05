@@ -103,6 +103,12 @@ export function usePublication({
 
     try {
       const absoluteAmount = Math.abs(amount);
+      
+      // Validate that amount is positive
+      if (absoluteAmount <= 0) {
+        throw new Error('Vote amount must be greater than zero');
+      }
+      
       const isUpvote = directionPlus;
       
       // Calculate vote breakdown: quota vs wallet
@@ -112,8 +118,18 @@ export function usePublication({
       let walletAmount = 0;
       
       if (isUpvote) {
-        quotaAmount = Math.min(absoluteAmount, quotaRemaining);
-        walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+        // Use quota first, then wallet
+        // If quotaRemaining > 0, use it; otherwise try quota anyway (might be stale data)
+        // Server will validate and return error if quota is actually exhausted
+        if (quotaRemaining > 0) {
+          quotaAmount = Math.min(absoluteAmount, quotaRemaining);
+          walletAmount = Math.max(0, absoluteAmount - quotaRemaining);
+        } else {
+          // Quota appears 0 (might be stale) - try quota first, server will validate
+          // If quota fails, we'll need wallet as fallback, but for now try quota
+          quotaAmount = absoluteAmount;
+          walletAmount = 0;
+        }
       } else {
         // Downvotes use wallet only
         walletAmount = absoluteAmount;
@@ -121,6 +137,15 @@ export function usePublication({
         // Validate wallet balance for negative votes
         if (walletAmount > walletBalance) {
           throw new Error('Insufficient balance');
+        }
+      }
+
+      // Validate that at least one amount is non-zero before sending
+      if (quotaAmount === 0 && walletAmount === 0) {
+        if (isUpvote) {
+          throw new Error('Insufficient quota and wallet balance to complete this vote');
+        } else {
+          throw new Error('Insufficient wallet balance for downvote');
         }
       }
 

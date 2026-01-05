@@ -7,7 +7,7 @@ import { useUserRoles, useLeadCommunities } from '@/hooks/api/useProfile';
 import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import { Ticket } from 'lucide-react';
 
-export function UseInvite() {
+function UseInviteComponent() {
   const t = useTranslations('profile.useInvite');
   const { user } = useAuth();
 
@@ -32,7 +32,7 @@ export function UseInvite() {
   }
 
   return (
-    <div className="bg-brand-surface border border-brand-secondary/10 rounded-xl p-6">
+    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
       <div className="flex items-center space-x-3 mb-6">
         <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
           <Ticket size={24} />
@@ -47,4 +47,6 @@ export function UseInvite() {
     </div>
   );
 }
+
+export const UseInvite = UseInviteComponent;
 

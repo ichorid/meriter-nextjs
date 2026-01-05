@@ -37,9 +37,9 @@ export const InfoCard: React.FC<InfoCardProps> = ({
     return (
         <Component
             className={`
-        w-full max-w-full flex flex-col bg-brand-surface border border-brand-secondary/10 rounded-xl
-        transition-all duration-200 overflow-hidden
-        ${onClick ? 'cursor-pointer hover:bg-brand-secondary/5 hover:shadow-md active:bg-brand-secondary/10 text-left' : 'hover:shadow-md'}
+        w-full max-w-full flex flex-col bg-brand-surface shadow-none rounded-xl
+        transition-all duration-300 overflow-hidden
+        ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 text-left' : 'hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)]'}
         ${paddingClass}
         ${className}
       `}
@@ -69,7 +69,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
                             {subtitle}
                         </p>
                     )}
-                    
+
                     {/* Badges */}
                     {badges && badges.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">

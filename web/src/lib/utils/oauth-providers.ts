@@ -6,6 +6,7 @@
  */
 
 import * as LucideIcons from 'lucide-react';
+import { config } from '@/config';
 
 export interface OAuthProvider {
   id: string;
@@ -116,7 +117,9 @@ export function getOAuthUrl(providerId: string, returnTo?: string): string {
   const isLocalDev = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || (isLocalDev ? 'http://localhost:8002' : '');
+  // Prefer config.api.baseUrl (which is forced to '' on non-localhost to avoid mixed-content).
+  // Keep localhost fallback for convenience when not using rewrites.
+  const apiBaseUrl = config.api.baseUrl || (isLocalDev ? 'http://localhost:8002' : '');
 
   const oauthUrl = apiBaseUrl
     ? `${apiBaseUrl}/api/v1/auth/${providerId}?returnTo=${encodeURIComponent(returnUrl)}`
@@ -126,21 +129,43 @@ export function getOAuthUrl(providerId: string, returnTo?: string): string {
 }
 
 /**
- * Get authentication environment variables
- * Централизованный доступ к env переменным для OAuth и Authn
+ * Get authentication environment variables from runtime config
+ * All auth-related configuration comes from the API via tRPC runtime config
+ * No fallback to process.env - frontend should always get this from the API
  */
-export function getAuthEnv(): Record<string, string | undefined> {
+export function getAuthEnv(runtimeConfig?: {
+  oauth?: {
+    google?: boolean;
+    yandex?: boolean;
+    vk?: boolean;
+    telegram?: boolean;
+    apple?: boolean;
+    twitter?: boolean;
+    instagram?: boolean;
+    sber?: boolean;
+    mailru?: boolean;
+  };
+  authn?: { enabled: boolean };
+} | null): Record<string, string | undefined> {
+  // Helper to convert boolean to string 'true'/'false' or undefined
+  const boolToString = (value: boolean | undefined): string | undefined => {
+    if (value === undefined) return undefined;
+    return value ? 'true' : 'false';
+  };
+
+  // Only use runtime config - no fallback to process.env
+  // If runtimeConfig is not provided, return all undefined (no providers enabled)
   return {
-    OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
-    OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
-    OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
-    OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
-    OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
-    OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
-    OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
-    OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
-    OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
-    AUTHN_ENABLED: process.env.AUTHN_ENABLED,
+    OAUTH_GOOGLE_ENABLED: boolToString(runtimeConfig?.oauth?.google),
+    OAUTH_YANDEX_ENABLED: boolToString(runtimeConfig?.oauth?.yandex),
+    OAUTH_VK_ENABLED: boolToString(runtimeConfig?.oauth?.vk),
+    OAUTH_TELEGRAM_ENABLED: boolToString(runtimeConfig?.oauth?.telegram),
+    OAUTH_APPLE_ENABLED: boolToString(runtimeConfig?.oauth?.apple),
+    OAUTH_TWITTER_ENABLED: boolToString(runtimeConfig?.oauth?.twitter),
+    OAUTH_INSTAGRAM_ENABLED: boolToString(runtimeConfig?.oauth?.instagram),
+    OAUTH_SBER_ENABLED: boolToString(runtimeConfig?.oauth?.sber),
+    OAUTH_MAILRU_ENABLED: boolToString(runtimeConfig?.oauth?.mailru),
+    AUTHN_ENABLED: boolToString(runtimeConfig?.authn?.enabled),
   };
 }
 

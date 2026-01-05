@@ -1,9 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
+import { INestApplication } from '@nestjs/common';
 import { Model, Connection } from 'mongoose';
-import { getConnectionToken } from '@nestjs/mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
@@ -11,39 +8,22 @@ import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
-import { UserGuard } from '../src/user.guard';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = {
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-      globalRole: (global as any).testUserRole || 'participant',
-    };
-    return true;
-  }
-}
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Community Post/Poll Cost Configuration (e2e)', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
+  let testDb: any;
   let connection: Connection;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let pollModel: Model<PollDocument>;
   let quotaUsageModel: Model<QuotaUsageDocument>;
-  let walletModel: Model<WalletDocument>;
   let userCommunityRoleService: UserCommunityRoleService;
   let walletService: WalletService;
 
@@ -52,31 +32,22 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   let testCommunityId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    process.env.MONGO_URL = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-cost-tests';
-
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MeriterModule],
-    })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
-      .compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    const ctx = await TestSetupHelper.createTestApp();
+    app = ctx.app;
+    testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     walletService = app.get<WalletService>(WalletService);
 
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    pollModel = connection.model<PollDocument>(Poll.name);
-    quotaUsageModel = connection.model<QuotaUsageDocument>(QuotaUsage.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
+    // Ensure these models are registered (used by procedures/services)
+    app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
+    app.get<Model<PollDocument>>(getModelToken(Poll.name));
+    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(getModelToken(QuotaUsage.name));
+    app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
 
     testUserId = uid();
     testLeadId = uid();
@@ -156,9 +127,18 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     await userCommunityRoleService.setRole(testUserId, testCommunityId, 'participant');
     await userCommunityRoleService.setRole(testLeadId, testCommunityId, 'lead');
 
-    // Create wallet for test user
+    // Create wallets for both users (lead wallet is needed for wallet-payment tests)
     await walletService.createOrGetWallet(
       testUserId,
+      testCommunityId,
+      {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+    );
+    await walletService.createOrGetWallet(
+      testLeadId,
       testCommunityId,
       {
         singular: 'merit',
@@ -169,27 +149,26 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
-    await testDb.stop();
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Community Settings - Post/Poll Cost', () => {
     it('should allow lead to update postCost and pollCost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = undefined;
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      const updated = await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 2,
             pollCost: 3,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      expect(updateRes.body.settings.postCost).toBe(2);
-      expect(updateRes.body.settings.pollCost).toBe(3);
+      expect(updated.settings.postCost).toBe(2);
+      expect(updated.settings.pollCost).toBe(3);
 
       // Verify in database
       const community = await communityModel.findOne({ id: testCommunityId }).lean();
@@ -199,313 +178,349 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should allow superadmin to update postCost and pollCost', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'superadmin';
+      (global as any).testUserGlobalRole = 'superadmin';
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      const updated = await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 5,
             pollCost: 7,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      expect(updateRes.body.settings.postCost).toBe(5);
-      expect(updateRes.body.settings.pollCost).toBe(7);
+      expect(updated.settings.postCost).toBe(5);
+      expect(updated.settings.pollCost).toBe(7);
     });
 
     it('should reject non-admin users from updating costs', async () => {
       (global as any).testUserId = testUserId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
-          settings: {
-            postCost: 2,
-            pollCost: 3,
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'communities.update', {
+          id: testCommunityId,
+          data: {
+            settings: {
+              postCost: 2,
+              pollCost: 3,
+            },
           },
-        })
-        .expect(403);
+        });
+
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
 
     it('should allow setting cost to 0 (free posts/polls)', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
-      const updateRes = await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      const updated = await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 0,
             pollCost: 0,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      expect(updateRes.body.settings.postCost).toBe(0);
-      expect(updateRes.body.settings.pollCost).toBe(0);
+      expect(updated.settings.postCost).toBe(0);
+      expect(updated.settings.pollCost).toBe(0);
     });
   });
 
   describe('Post Creation with Configurable Cost', () => {
-    it('should charge configured postCost when creating a post', async () => {
+    it('should charge configured postCost from wallet when creating a post', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 3
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 3,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
-      expect(quotaBefore.body.remainingToday).toBe(10);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(3);
 
-      // Create publication (should consume 3 quota)
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Test Publication',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      // Create publication (should consume 3 wallet merits)
+      const created = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Test Publication',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      const publicationId = createRes.body.data.id;
+      const publicationId = created.id;
 
-      // Verify quota was consumed (3 instead of 1)
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Verify wallet balance was decreased by 3
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 3);
 
-      expect(quotaAfter.body.usedToday).toBe(3);
-      expect(quotaAfter.body.remainingToday).toBe(7);
+      // Verify wallet transaction was created
+      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'publication_creation',
+            referenceId: publicationId,
+          })
+          .toArray();
 
-      // Verify quota_usage record shows 3
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          usageType: 'publication_creation',
-          referenceId: publicationId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(3);
+        expect(transactions.length).toBeGreaterThan(0);
+        const transaction = transactions.find(t => t.type === 'withdrawal');
+        expect(transaction).toBeDefined();
+        expect(transaction?.amount).toBe(3);
+      }
     });
 
     it('should allow free posts when postCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set postCost to 0
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 0,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
-      const initialQuota = quotaBefore.body.remainingToday;
+      // Create publication (should not consume wallet)
+      const created = await trpcMutation(app, 'publications.create', {
+        communityId: testCommunityId,
+        title: 'Free Post',
+        description: 'Test content',
+        content: 'Test content',
+        type: 'text',
+        postType: 'basic',
+      });
 
-      // Create publication (should not consume quota)
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Free Post',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-        })
-        .expect(201);
+      const publicationId = created.id;
 
-      const publicationId = createRes.body.data.id;
+      // Verify wallet balance was NOT changed
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore);
 
-      // Verify quota was NOT consumed
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Verify no wallet transaction was created
+      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
+      if (wallet) {
+        const transactions = await connection.db
+          .collection('transactions')
+          .find({
+            walletId: wallet.getId.getValue(),
+            referenceType: 'publication_creation',
+            referenceId: publicationId,
+          })
+          .toArray();
 
-      expect(quotaAfter.body.remainingToday).toBe(initialQuota);
-
-      // Verify no quota_usage record was created
-      const quotaUsage = await quotaUsageModel
-        .findOne({
-          userId: testLeadId,
-          communityId: testCommunityId,
-          usageType: 'publication_creation',
-          referenceId: publicationId,
-        })
-        .lean();
-
-      expect(quotaUsage).toBeNull();
+        expect(transactions.length).toBe(0);
+      }
     });
 
-    it('should reject post creation when quota is insufficient for configured cost', async () => {
+    it('should reject post creation when wallet merits are insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
-      // Set postCost to 15 (more than daily quota of 10)
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      // Set postCost to 15
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             postCost: 15,
           },
-        })
-        .expect(200);
+        },
+      });
+
+      // Ensure wallet has insufficient balance (should be 0 or less than 15)
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeLessThan(15);
 
       // Try to create publication - should fail
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'publications.create', {
           communityId: testCommunityId,
           title: 'Should Fail',
           description: 'Test content',
           content: 'Test content',
           type: 'text',
           postType: 'basic',
-        })
-        .expect(400);
+        });
 
-      expect(createRes.body.error?.message || createRes.body.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient wallet merits');
+      });
     });
   });
 
   describe('Poll Creation with Configurable Cost', () => {
-    it('should charge configured pollCost when creating a poll', async () => {
+    it('should charge configured pollCost from wallet when creating a poll', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
+
+      // Add wallet balance for the test
+      await walletService.addTransaction(
+        testLeadId,
+        testCommunityId,
+        'credit',
+        10,
+        'personal',
+        'test',
+        'test',
+        {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        'Test credit',
+      );
 
       // Set pollCost to 4
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             pollCost: 4,
           },
-        })
-        .expect(200);
+        },
+      });
 
-      // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Get initial wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
+      expect(balanceBefore).toBeGreaterThanOrEqual(4);
 
-      expect(quotaBefore.body.remainingToday).toBe(10);
-
-      // Create poll (should consume 4 quota)
+      // Create poll (should deduct 4 from wallet)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: testCommunityId,
-          question: 'Test Poll',
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Test Poll',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      const pollId = createRes.body.data.id;
+      const pollId = created.id;
 
-      // Verify quota was consumed (4 instead of 1)
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      // Verify wallet was debited (4 instead of 1)
+      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
+      expect(balanceAfter).toBe(balanceBefore - 4);
 
-      expect(quotaAfter.body.usedToday).toBe(4);
-      expect(quotaAfter.body.remainingToday).toBe(6);
-
-      // Verify quota_usage record shows 4
-      const quotaUsage = await quotaUsageModel
-        .findOne({
+      // Verify wallet transaction was created
+      const transactions = await connection.db
+        .collection('transactions')
+        .find({
           userId: testLeadId,
           communityId: testCommunityId,
-          usageType: 'poll_creation',
+          type: 'debit',
+          transactionType: 'poll_creation',
           referenceId: pollId,
         })
-        .lean();
+        .toArray();
 
-      expect(quotaUsage).toBeDefined();
-      expect(quotaUsage?.amountQuota).toBe(4);
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].amount).toBe(4);
+
+      // Verify quota was NOT consumed
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testLeadId,
+        communityId: testCommunityId,
+      });
+      expect(quotaAfter.used).toBe(0);
+      expect(quotaAfter.remaining).toBe(10);
     });
 
     it('should allow free polls when pollCost is 0', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 0
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             pollCost: 0,
           },
-        })
-        .expect(200);
+        },
+      });
 
       // Get initial quota
-      const quotaBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testLeadId,
+        communityId: testCommunityId,
+      });
 
-      const initialQuota = quotaBefore.body.remainingToday;
+      const initialQuota = quotaBefore.remaining;
 
       // Create poll (should not consume quota)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
-          communityId: testCommunityId,
-          question: 'Free Poll',
-          description: 'Test description',
-          options: [
-            { id: '1', text: 'Option 1' },
-            { id: '2', text: 'Option 2' },
-          ],
-          expiresAt: expiresAt.toISOString(),
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'polls.create', {
+        communityId: testCommunityId,
+        question: 'Free Poll',
+        description: 'Test description',
+        options: [
+          { id: '1', text: 'Option 1' },
+          { id: '2', text: 'Option 2' },
+        ],
+        expiresAt: expiresAt.toISOString(),
+      });
 
-      const pollId = createRes.body.data.id;
+      const pollId = created.id;
 
       // Verify quota was NOT consumed
-      const quotaAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testLeadId,
+        communityId: testCommunityId,
+      });
 
-      expect(quotaAfter.body.remainingToday).toBe(initialQuota);
+      expect(quotaAfter.remaining).toBe(initialQuota);
 
       // Verify no quota_usage record was created
       const quotaUsage = await quotaUsageModel
@@ -522,25 +537,24 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
     it('should reject poll creation when quota is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
+      (global as any).testUserGlobalRole = 'participant';
 
       // Set pollCost to 15 (more than daily quota of 10)
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
+      await trpcMutation(app, 'communities.update', {
+        id: testCommunityId,
+        data: {
           settings: {
             pollCost: 15,
           },
-        })
-        .expect(200);
+        },
+      });
 
       // Try to create poll - should fail
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/polls')
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'polls.create', {
           communityId: testCommunityId,
           question: 'Should Fail',
           description: 'Test description',
@@ -549,94 +563,13 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
             { id: '2', text: 'Option 2' },
           ],
           expiresAt: expiresAt.toISOString(),
-        })
-        .expect(400);
+        });
 
-      expect(createRes.body.error?.message || createRes.body.message).toContain('Insufficient quota');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Insufficient quota');
+      });
     });
   });
 
-  describe('Payment with Wallet when Cost > 0', () => {
-    it('should charge configured postCost from wallet when quota is insufficient', async () => {
-      (global as any).testUserId = testLeadId;
-      (global as any).testUserRole = 'participant';
-
-      // Set postCost to 2
-      await request(app.getHttpServer())
-        .put(`/api/v1/communities/${testCommunityId}`)
-        .send({
-          settings: {
-            postCost: 2,
-          },
-        })
-        .expect(200);
-
-      // Use up all quota (10 posts * 2 cost = 20 quota used, but we only have 10)
-      // So we can only create 5 posts before running out
-      for (let i = 0; i < 5; i++) {
-        await request(app.getHttpServer())
-          .post('/api/v1/publications')
-          .send({
-            communityId: testCommunityId,
-            title: `Post ${i}`,
-            description: 'Test content',
-            content: 'Test content',
-            type: 'text',
-            postType: 'basic',
-          })
-          .expect(201);
-      }
-
-      // Verify quota is exhausted (5 posts * 2 cost = 10 quota used)
-      const quotaCheck = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testLeadId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
-      expect(quotaCheck.body.remainingToday).toBeLessThanOrEqual(0);
-
-      // Add wallet balance
-      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
-      if (wallet) {
-        await walletService.addTransaction(
-          testLeadId,
-          testCommunityId,
-          'credit',
-          5,
-          'personal',
-          'test',
-          'test',
-          {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-          'Test credit',
-        );
-      }
-
-      // Get wallet balance before
-      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
-      const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
-      expect(balanceBefore).toBeGreaterThanOrEqual(2);
-
-      // Create publication with wallet payment (should consume 2 from wallet)
-      const createRes = await request(app.getHttpServer())
-        .post('/api/v1/publications')
-        .send({
-          communityId: testCommunityId,
-          title: 'Wallet Post',
-          description: 'Test content',
-          content: 'Test content',
-          type: 'text',
-          postType: 'basic',
-          walletAmount: 2,
-        })
-        .expect(201);
-
-      // Verify wallet balance decreased by 2
-      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
-      const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
-      expect(balanceAfter).toBe(balanceBefore - 2);
-    });
-  });
 });
 

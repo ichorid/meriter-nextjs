@@ -3,14 +3,17 @@
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api/useCommunityMembers';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
-import { Loader2, Users } from 'lucide-react';
+import { Loader2, Users, UserX } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { MemberInfoCard } from './MemberInfoCard';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 
 interface MembersTabProps {
     communityId: string;
@@ -22,15 +25,40 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const tCommon = useTranslations('common');
     const tSearch = useTranslations('search');
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
+    const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
     const [searchQuery, setSearchQuery] = useState('');
     const { canView: canViewMerits } = useCanViewUserMerits(communityId);
+    const { user } = useAuth();
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+    // Check if user is superadmin or lead
+    const isSuperadmin = user?.globalRole === 'superadmin';
+    const isUserLead = useMemo(() => {
+        if (!communityId || !user?.id || !userRoles) return false;
+        const role = userRoles.find((r) => r.communityId === communityId);
+        return role?.role === 'lead';
+    }, [communityId, user?.id, userRoles]);
+    const canRemoveMembers = isSuperadmin || isUserLead;
+
+    const handleRemoveMember = (userId: string, userName: string) => {
+        if (confirm(t('members.confirmRemove', { name: userName }) || `Remove ${userName} from community?`)) {
+            removeMember({ id: communityId, userId });
+        }
+    };
 
     const members = useMemo(() => {
-        return membersData?.data || [];
+        const data = membersData?.data;
+        // Ensure we always return an array, even if data is not an array
+        return Array.isArray(data) ? data : [];
     }, [membersData]);
 
     // Filter members based on search query
     const filteredMembers = useMemo(() => {
+        // Ensure members is an array before filtering
+        if (!Array.isArray(members)) {
+            return [];
+        }
+        
         if (!searchQuery.trim()) {
             return members;
         }
@@ -97,24 +125,46 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                         : undefined;
                     
                     return (
-                        <MemberInfoCard
-                            key={member.id}
-                            memberId={member.id}
-                            title={member.displayName || member.username || tCommon('unknownUser')}
-                            subtitle={member.username ? `@${member.username}` : undefined}
-                            icon={
-                                <BrandAvatar
-                                    src={member.avatarUrl}
-                                    fallback={member.displayName || member.username || tCommon('user')}
-                                    size="sm"
-                                    className="bg-transparent"
-                                />
-                            }
-                            badges={roleBadge ? [roleBadge] : undefined}
-                            communityId={communityId}
-                            canViewMerits={canViewMerits}
-                            onClick={() => router.push(routes.userProfile(member.id))}
-                        />
+                        <div key={member.id} className="relative group">
+                            <MemberInfoCard
+                                memberId={member.id}
+                                title={member.displayName || member.username || tCommon('unknownUser')}
+                                subtitle={member.username ? `@${member.username}` : undefined}
+                                icon={
+                                    <Avatar className="w-8 h-8 text-xs bg-transparent">
+                                        {member.avatarUrl && (
+                                            <AvatarImage src={member.avatarUrl} alt={member.displayName || member.username || tCommon('user')} />
+                                        )}
+                                        <AvatarFallback userId={member.id} className="font-medium uppercase">
+                                            {(member.displayName || member.username) ? (member.displayName || member.username).slice(0, 2).toUpperCase() : <User size={14} />}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                }
+                                badges={roleBadge ? [roleBadge] : undefined}
+                                communityId={communityId}
+                                canViewMerits={canViewMerits}
+                                walletBalance={member.walletBalance}
+                                quota={member.quota}
+                                onClick={() => router.push(routes.userProfile(member.id))}
+                            />
+                            {canRemoveMembers && member.id !== user?.id && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveMember(member.id, member.displayName || member.username || tCommon('unknownUser'));
+                                    }}
+                                    disabled={isRemoving}
+                                    className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                    title={t('members.remove') || 'Remove member'}
+                                >
+                                    {isRemoving ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <UserX className="w-4 h-4" />
+                                    )}
+                                </button>
+                            )}
+                        </div>
                     );
                 })
             ) : searchQuery ? (

@@ -1,13 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { PublicationService } from '../src/domain/services/publication.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -16,7 +12,7 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 
-class AllowAllGuard implements CanActivate {
+class _AllowAllGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest();
     req.user = { 
@@ -39,13 +35,9 @@ describe('Voting Permissions', () => {
   
   let permissionService: PermissionService;
   let publicationService: PublicationService;
-  let communityService: CommunityService;
-  let userService: UserService;
-  let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   // Test user IDs
@@ -89,21 +81,18 @@ describe('Voting Permissions', () => {
 
     permissionService = app.get<PermissionService>(PermissionService);
     publicationService = app.get<PublicationService>(PublicationService);
-    communityService = app.get<CommunityService>(CommunityService);
-    userService = app.get<UserService>(UserService);
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
+    const _publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(UserCommunityRoleSchemaClass.name);
 
     // Drop telegramChatId index if it exists (legacy index from old schema)
     try {
       await communityModel.collection.dropIndex('telegramChatId_1');
-    } catch (e) {
+    } catch (_e) {
       // Index doesn't exist or already dropped, ignore
     }
 
@@ -366,8 +355,8 @@ describe('Voting Permissions', () => {
 
   describe('Outside Team Communities', () => {
     describe('Participants', () => {
-      it('should not allow participant to vote for lead from same team', async () => {
-        // Create a publication by lead1 (same team as participant1)
+      it('should allow participant to vote for lead from same team in regular communities (restriction is special-groups only)', async () => {
+        // Create a publication by lead1 (same team as participant1) in a regular community
         const pub = await publicationService.createPublication(lead1Id, {
           communityId: regularCommunityId,
           content: 'Lead 1 publication',
@@ -375,7 +364,7 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true);
       });
 
       it('should allow participant to vote for lead from different team', async () => {
@@ -412,6 +401,35 @@ describe('Voting Permissions', () => {
         const pub = await publicationService.createPublication(participant2Id, {
           communityId: visionCommunityId,
           content: 'Vision participant publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(true);
+      });
+
+      it('should NOT allow participant to vote for teammate (lead) in marathon-of-good', async () => {
+        // marathonPubId is authored by lead1, and participant1 shares team1 with lead1
+        const canVote = await permissionService.canVote(participant1Id, marathonPubId);
+        expect(canVote).toBe(false);
+      });
+
+      it('should NOT allow participant to vote for teammate (lead) in future-vision', async () => {
+        const pub = await publicationService.createPublication(lead1Id, {
+          communityId: visionCommunityId,
+          content: 'Vision lead publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(false);
+      });
+
+      it('should allow participant to vote for non-teammate in future-vision', async () => {
+        // participant2 is in a different team than participant1 in this test setup
+        const pub = await publicationService.createPublication(participant2Id, {
+          communityId: visionCommunityId,
+          content: 'Vision participant 2 publication',
           type: 'text',
         });
 

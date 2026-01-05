@@ -3,9 +3,10 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Search, X } from 'lucide-react';
-import { BrandButton } from './BrandButton';
+import { Button } from './shadcn/button';
 import { BottomActionSheet } from './BottomActionSheet';
-import { BrandInput } from './BrandInput';
+import { Input } from './shadcn/input';
+import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 interface PageHeaderProps {
@@ -62,8 +63,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     };
 
     const headerClasses = asStickyHeader
-        ? `bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between -mx-4 px-4 h-14 flex-shrink-0 w-[calc(100%+2rem)] ${className}`
-        : `sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-content/10 flex items-center justify-between px-4 h-14 flex-shrink-0 w-full ${className}`;
+        ? `bg-base-100/95 backdrop-blur-md border-b border-base-200 px-4 py-2 flex items-center justify-between -mx-4 px-4 h-14 flex-shrink-0 w-[calc(100%+2rem)] ${className}`
+        : `sticky top-0 z-20 bg-base-100/95 backdrop-blur-md border-b border-base-200 px-4 flex items-center justify-between px-4 h-14 flex-shrink-0 w-full ${className}`;
 
     return (
         <>
@@ -72,15 +73,15 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             >
                 <div className="flex items-center flex-1 min-w-0">
                     {showBack && (
-                        <BrandButton
+                        <Button
                             variant="ghost"
                             size="sm"
-                            className="mr-2 -ml-2 px-2"
+                            className="rounded-xl active:scale-[0.98] mr-2 -ml-2 px-2"
                             onClick={handleBack}
                             aria-label={t('goBack')}
                         >
                             <ArrowLeft size={20} className="text-base-content" />
-                        </BrandButton>
+                        </Button>
                     )}
                     <h1 className="text-lg font-semibold text-base-content truncate">
                         {title}
@@ -89,15 +90,15 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
                 <div className="flex items-center gap-2">
                     {showSearch && (
-                        <BrandButton
+                        <Button
                             variant="ghost"
                             size="sm"
-                            className="px-2"
+                            className="rounded-xl active:scale-[0.98] px-2"
                             onClick={() => setShowSearchModal(true)}
                             aria-label={t('search') || 'Search'}
                         >
                             <Search size={18} className="text-base-content/70" />
-                        </BrandButton>
+                        </Button>
                     )}
 
                     {rightAction && (
@@ -116,24 +117,26 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     title={t('search') || 'Search'}
                 >
                     <div className="space-y-4">
-                        <BrandInput
-                            type="text"
-                            placeholder={t('searchPlaceholder') || 'Search...'}
-                            value={searchQuery}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            leftIcon={<Search size={18} />}
-                            rightIcon={searchQuery ? (
+                        <div className="relative w-full">
+                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                            <Input
+                                type="text"
+                                placeholder={t('searchPlaceholder') || 'Search...'}
+                                value={searchQuery}
+                                onChange={(e) => handleSearch(e.target.value)}
+                                className={cn('h-11 rounded-xl pl-10 w-full', searchQuery && 'pr-10')}
+                            />
+                            {searchQuery && (
                                 <button
                                     type="button"
                                     onClick={handleSearchClear}
-                                    className="text-brand-text-muted hover:text-brand-text-primary transition-colors"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
                                     aria-label={t('clearSearch')}
                                 >
                                     <X size={18} />
                                 </button>
-                            ) : undefined}
-                            className="w-full"
-                        />
+                            )}
+                        </div>
                     </div>
                 </BottomActionSheet>
             )}

@@ -96,7 +96,7 @@ export function InviteHandler() {
 
       const processInvite = async () => {
         try {
-          const response = await useInviteMutation.mutateAsync(inviteCode);
+          const response = await useInviteMutation.mutateAsync({ code: inviteCode });
           addToast(t('inviteUsedSuccess'), 'success');
 
           // Get returnTo before removing invite param

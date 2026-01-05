@@ -1,11 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { CommunityService } from '../src/domain/services/community.service';
-import { VoteService } from '../src/domain/services/vote.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
@@ -15,23 +12,8 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
-import { UserGuard } from '../src/user.guard';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    // Set a mock user based on testUserId
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { trpcQuery, trpcMutation } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Daily Quota Wallet Balance (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
@@ -40,15 +22,11 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
   
-  let communityService: CommunityService;
   let walletService: WalletService;
-  let voteService: VoteService;
   let userCommunityRoleService: UserCommunityRoleService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
-  let voteModel: Model<VoteDocument>;
-  let walletModel: Model<WalletDocument>;
   let publicationModel: Model<PublicationDocument>;
 
   let testUserId: string;
@@ -65,25 +43,25 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Get services
-    communityService = app.get<CommunityService>(CommunityService);
     walletService = app.get<WalletService>(WalletService);
-    voteService = app.get<VoteService>(VoteService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
     
     connection = app.get(getConnectionToken());
     
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
-    voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
-    walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
+    const _voteModel = connection.model<VoteDocument>(VoteSchemaClass.name);
+    const _walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
     publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
 
     // Initialize test IDs (will be used in beforeEach)
@@ -193,15 +171,16 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       expect(balanceBefore).toBe(0);
 
       // Request quota
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
       // Verify quota response
-      expect(response.body).toHaveProperty('dailyQuota', 10);
-      expect(response.body).toHaveProperty('usedToday', 0);
-      expect(response.body).toHaveProperty('remainingToday', 10);
-      expect(response.body).toHaveProperty('resetAt');
+      expect(quota).toHaveProperty('dailyQuota', 10);
+      expect(quota).toHaveProperty('used', 0);
+      expect(quota).toHaveProperty('remaining', 10);
+      expect(quota).toHaveProperty('resetAt');
 
       // Verify wallet balance is still 0
       const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
@@ -221,17 +200,20 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       const balanceInitial = walletInitial ? walletInitial.getBalance() : 0;
 
       // Request quota multiple times
-      await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
       // Verify wallet balance hasn't changed
       const walletFinal = await walletService.getWallet(testUserId, testCommunityId);
@@ -247,33 +229,31 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Request quota to get initial state
-      const responseBefore = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaBefore = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(responseBefore.body.remainingToday).toBe(10);
+      expect(quotaBefore.remaining).toBe(10);
 
       // Create a vote using quota
-      const voteRes = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 0,
-          comment: 'Test comment',
-        });
-      if (voteRes.status !== 201) {
-        console.error('Vote error:', voteRes.status, JSON.stringify(voteRes.body, null, 2));
-      }
-      expect(voteRes.status).toBe(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
       // Request quota again to verify usage
-      const responseAfter = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quotaAfter = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      expect(responseAfter.body.usedToday).toBe(3);
-      expect(responseAfter.body.remainingToday).toBe(7);
-      expect(responseAfter.body.dailyQuota).toBe(10);
+      expect(quotaAfter.used).toBe(3);
+      expect(quotaAfter.remaining).toBe(7);
+      expect(quotaAfter.dailyQuota).toBe(10);
 
       // Verify wallet balance is still 0
       const wallet = await walletService.getWallet(testUserId, testCommunityId);
@@ -286,33 +266,32 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       (global as any).testUserId = testUserId;
 
       // Create multiple votes using quota
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 2,
-          walletAmount: 0,
-          comment: 'Test comment 1',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 2,
+        walletAmount: 0,
+        comment: 'Test comment 1',
+      });
 
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 1,
-          walletAmount: 0,
-          comment: 'Test comment 2',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 1,
+        walletAmount: 0,
+        comment: 'Test comment 2',
+      });
 
       // Request quota to verify cumulative usage
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
       // Should have used 2 + 1 = 3 total (each test starts fresh due to beforeEach)
-      expect(response.body.usedToday).toBe(3);
-      expect(response.body.remainingToday).toBe(7);
-      expect(response.body.dailyQuota).toBe(10);
+      expect(quota.used).toBe(3);
+      expect(quota.remaining).toBe(7);
+      expect(quota.dailyQuota).toBe(10);
 
       // Verify wallet balance is still 0
       const wallet = await walletService.getWallet(testUserId, testCommunityId);
@@ -331,22 +310,23 @@ describe('Daily Quota Wallet Balance (e2e)', () => {
       const balanceInitial = walletInitial ? walletInitial.getBalance() : 0;
 
       // Request quota multiple times and use quota in votes
-      await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
-      await request(app.getHttpServer())
-        .post(`/api/v1/publications/${testPublicationId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Test comment',
-        })
-        .expect(201);
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Test comment',
+      });
 
-      await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${testCommunityId}`)
-        .expect(200);
+      await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: testCommunityId,
+      });
 
       // Verify wallet balance hasn't changed
       const walletFinal = await walletService.getWallet(testUserId, testCommunityId);

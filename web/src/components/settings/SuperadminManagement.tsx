@@ -1,46 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { usersApiV1 } from '@/lib/api/v1';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandButton } from '@/components/ui/BrandButton';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Button } from '@/components/ui/shadcn/button';
 import { User } from '@/types/api-v1';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Loader2 } from 'lucide-react';
+import { useSearchUsers, useUpdateGlobalRole } from '@/hooks/api/useUsers';
 
 export const SuperadminManagement = () => {
     const tSearch = useTranslations('search');
     const tSettings = useTranslations('settings');
     const [query, setQuery] = useState('');
-    const [users, setUsers] = useState<User[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
 
     const debouncedQuery = useDebounce(query, 500);
-
-    useEffect(() => {
-        const search = async () => {
-            if (debouncedQuery.length >= 2) {
-                setIsLoading(true);
-                try {
-                    const results = await usersApiV1.searchUsers(debouncedQuery);
-                    setUsers(results);
-                } catch (error) {
-                    console.error('Search error:', error);
-                } finally {
-                    setIsLoading(false);
-                }
-            } else {
-                setUsers([]);
-            }
-        };
-        search();
-    }, [debouncedQuery]);
+    const { data: users = [], isLoading } = useSearchUsers(debouncedQuery);
+    const updateGlobalRole = useUpdateGlobalRole();
 
     const handleToggleRole = async (user: User) => {
         const newRole = user.globalRole === 'superadmin' ? 'user' : 'superadmin';
         try {
-            const updatedUser = await usersApiV1.updateGlobalRole(user.id, newRole);
-            setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+            const updatedUser = await updateGlobalRole.mutateAsync({ userId: user.id, role: newRole });
             setMessage(`Successfully ${newRole === 'superadmin' ? 'promoted' : 'demoted'} ${user.displayName}`);
             setTimeout(() => setMessage(''), 3000);
         } catch (error) {
@@ -55,12 +36,15 @@ export const SuperadminManagement = () => {
                 Superadmin Management
             </h2>
 
-            <BrandInput
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={tSearch('results.searchUsersPlaceholder')}
-                label={tSettings('searchUsers')}
-            />
+            <div className="space-y-1.5">
+                <Label>{tSettings('searchUsers')}</Label>
+                <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={tSearch('results.searchUsersPlaceholder')}
+                    className="h-11 rounded-xl w-full"
+                />
+            </div>
 
             {isLoading && (
                 <div className="flex justify-center p-4">
@@ -80,13 +64,14 @@ export const SuperadminManagement = () => {
                                 <p className="text-xs text-base-content/60">@{user.username}</p>
                             </div>
                         </div>
-                        <BrandButton
+                        <Button
                             size="sm"
-                            variant={user.globalRole === 'superadmin' ? 'outline' : 'primary'}
+                            variant={user.globalRole === 'superadmin' ? 'outline' : 'default'}
                             onClick={() => handleToggleRole(user)}
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {user.globalRole === 'superadmin' ? tSettings('removeAdmin') : tSettings('makeAdmin')}
-                        </BrandButton>
+                        </Button>
                     </div>
                 ))}
             </div>

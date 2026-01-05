@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { normalizeArray } from "@/lib/utils/profileContent";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useMemo } from "react";
+import { useFavoriteCount, useUnreadFavoritesCount } from "@/hooks/api/useFavorites";
 
 /**
  * Hook to fetch all profile page data with infinite scroll support
@@ -23,6 +24,7 @@ export function useProfileData() {
     const {
         data: publicationsData,
         isLoading: publicationsLoading,
+        isFetching: publicationsFetching,
         fetchNextPage: fetchNextPublications,
         hasNextPage: hasNextPublications,
         isFetchingNextPage: isFetchingNextPublications,
@@ -46,10 +48,14 @@ export function useProfileData() {
         isFetchingNextPage: isFetchingNextComments,
     } = useInfiniteMyComments(user?.id || "", pageSize);
 
+    const { data: favoritesCountData, isLoading: favoritesCountLoading } = useFavoriteCount();
+    const { data: unreadFavoritesCountData, isLoading: unreadFavoritesCountLoading } =
+        useUnreadFavoritesCount();
+
     // Flatten data from all pages and filter out projects
     const myPublications = useMemo(() => {
         return (publicationsData?.pages ?? []).flatMap((page) => {
-            return Array.isArray(page) ? page : [];
+            return page?.data || [];
         }).filter((pub: any) => {
             // Filter out projects: exclude items where isProject is true or postType is 'project'
             return !pub.isProject && pub.postType !== 'project';
@@ -72,6 +78,7 @@ export function useProfileData() {
         // Publications
         myPublications,
         publicationsLoading,
+        publicationsFetching,
         fetchNextPublications,
         hasNextPublications,
         isFetchingNextPublications,
@@ -93,6 +100,12 @@ export function useProfileData() {
         // Wallets
         wallets: normalizeArray(wallets),
         walletsLoading,
+
+        // Favorites
+        favoritesCount: favoritesCountData?.count ?? 0,
+        unreadFavoritesCount: unreadFavoritesCountData?.count ?? 0,
+        favoritesCountLoading,
+        unreadFavoritesCountLoading,
     };
 }
 

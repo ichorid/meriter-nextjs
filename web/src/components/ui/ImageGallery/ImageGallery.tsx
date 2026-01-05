@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { ImagePlus, X, Loader2 } from 'lucide-react';
 import { ImageViewer } from '../ImageViewer/ImageViewer';
-import { ImageUploader, UploadResult } from '../ImageUploader/ImageUploader';
+import { useUploadImage } from '@/hooks/api/useUploads';
+import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -14,7 +15,7 @@ export interface ImageGalleryProps {
   images?: string[];
   /** Callback when images change */
   onImagesChange: (images: string[]) => void;
-  /** Upload endpoint */
+  /** Upload endpoint (deprecated - now uses tRPC) */
   uploadEndpoint?: string;
   /** Whether upload is disabled */
   disabled?: boolean;
@@ -25,20 +26,21 @@ export interface ImageGalleryProps {
 export function ImageGallery({
   images = [],
   onImagesChange,
-  uploadEndpoint = '/api/v1/uploads/image',
+  uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   disabled = false,
   className = '',
 }: ImageGalleryProps) {
+  const uploadMutation = useUploadImage();
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = useCallback((url: string) => {
+  const handleUpload = (url: string) => {
     if (images.length >= MAX_IMAGES) return;
     onImagesChange([...images, url]);
-  }, [images, onImagesChange]);
+  };
 
-  const handleRemove = useCallback((index: number) => {
+  const handleRemove = (index: number) => {
     const newImages = images.filter((_, i) => i !== index);
     onImagesChange(newImages);
     if (viewingIndex !== null) {
@@ -48,9 +50,9 @@ export function ImageGallery({
         setViewingIndex(viewingIndex - 1);
       }
     }
-  }, [images, onImagesChange, viewingIndex]);
+  };
 
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
@@ -64,28 +66,18 @@ export function ImageGallery({
     setIsUploading(true);
 
     try {
-      // Upload all files in parallel
-      const uploadPromises = filesToUpload.map((file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        return fetch(uploadEndpoint, {
-          method: 'POST',
-          body: formData,
-          credentials: 'include',
-        })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error('Upload failed');
-            }
-            return response.json();
-          })
-          .then((result) => {
-            if (result.success && result.data?.url) {
-              return result.data.url;
-            }
-            throw new Error('Invalid response');
-          });
+      // Upload all files in parallel using tRPC
+      const uploadPromises = filesToUpload.map(async (file) => {
+        const base64 = await fileToBase64(file);
+        const result = await uploadMutation.mutateAsync({
+          fileData: base64,
+          fileName: file.name,
+          mimeType: file.type,
+          maxWidth: 1920,
+          maxHeight: 1080,
+          quality: 85,
+        });
+        return result.url;
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);
@@ -98,37 +90,21 @@ export function ImageGallery({
       setIsUploading(false);
       e.target.value = '';
     }
-  }, [images, uploadEndpoint, onImagesChange]);
+  };
 
-  const handleClick = useCallback(() => {
+  const handleClick = () => {
     if (!disabled && !isUploading && images.length < MAX_IMAGES) {
       fileInputRef.current?.click();
     }
-  }, [disabled, isUploading, images.length]);
+  };
 
-  const handleImageClick = useCallback((index: number) => {
+  const handleImageClick = (index: number) => {
     setViewingIndex(index);
-  }, []);
+  };
 
-  const handleViewerClose = useCallback(() => {
+  const handleViewerClose = () => {
     setViewingIndex(null);
-  }, []);
-
-  const handleViewerNext = useCallback(() => {
-    if (viewingIndex !== null && viewingIndex < images.length - 1) {
-      setViewingIndex(viewingIndex + 1);
-    } else if (viewingIndex !== null && viewingIndex === images.length - 1) {
-      setViewingIndex(0); // Loop to first
-    }
-  }, [viewingIndex, images.length]);
-
-  const handleViewerPrev = useCallback(() => {
-    if (viewingIndex !== null && viewingIndex > 0) {
-      setViewingIndex(viewingIndex - 1);
-    } else if (viewingIndex !== null && viewingIndex === 0) {
-      setViewingIndex(images.length - 1); // Loop to last
-    }
-  }, [viewingIndex, images.length]);
+  };
 
   return (
     <div className={className}>
@@ -154,7 +130,7 @@ export function ImageGallery({
               src={url}
               alt={`Image ${index + 1}`}
               onClick={() => handleImageClick(index)}
-              className="w-20 h-20 object-cover rounded-lg border border-base-300 cursor-pointer hover:opacity-80 transition-opacity"
+              className="w-20 h-20 object-cover rounded-lg shadow-none cursor-pointer hover:opacity-80 transition-opacity"
             />
             <button
               type="button"

@@ -3,7 +3,7 @@
 import React from 'react';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useTranslations } from 'next-intl';
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { CommunityAvatar } from './community-avatar';
 import { formatDate } from '@/shared/lib/date';
 
@@ -18,12 +18,15 @@ interface CommentDetailsPopupProps {
     downvotes?: number;
     isUpvote: boolean;
     authorName?: string;
+    authorId?: string;
     authorAvatar?: string;
     commentContent?: string;
     timestamp?: string;
     communityName?: string;
+    communityId?: string;
     communityAvatar?: string;
     beneficiaryName?: string;
+    beneficiaryId?: string;
     beneficiaryAvatar?: string;
     isVoteTransaction?: boolean;
     totalScore?: number;
@@ -42,12 +45,15 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
     downvotes,
     isUpvote,
     authorName,
+    authorId,
     authorAvatar,
     commentContent,
     timestamp,
     communityName,
+    communityId,
     communityAvatar,
     beneficiaryName,
+    beneficiaryId,
     beneficiaryAvatar,
     isVoteTransaction = false,
     totalScore,
@@ -99,12 +105,12 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {authorName && (
                             <div className="mb-4">
                                 <div className="flex items-center gap-3">
-                                    <Avatar
-                                        src={authorAvatar}
-                                        alt={authorName}
-                                        name={authorName}
-                                        size={40}
-                                    />
+                                    <Avatar className="w-10 h-10">
+                                      <AvatarImage src={authorAvatar} alt={authorName} />
+                                      <AvatarFallback userId={authorId || authorName} className="font-medium text-sm">
+                                        {authorName ? authorName.charAt(0).toUpperCase() : '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
                                     <div className="flex-1">
                                         <div className="text-sm font-medium">{authorName}</div>
                                         {formattedTimestamp && (
@@ -122,6 +128,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                     <CommunityAvatar
                                         avatarUrl={communityAvatar}
                                         communityName={communityName}
+                                        communityId={communityId}
                                         size={32}
                                     />
                                     <div className="text-sm font-medium">{communityName}</div>
@@ -139,12 +146,12 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                             <div className="mb-4">
                                 <div className="text-xs opacity-70 mb-2">{t('beneficiary') || 'Beneficiary'}</div>
                                 <div className="flex items-center gap-3">
-                                    <Avatar
-                                        src={beneficiaryAvatar}
-                                        alt={beneficiaryName}
-                                        name={beneficiaryName}
-                                        size={32}
-                                    />
+                                    <Avatar className="w-8 h-8">
+                                      <AvatarImage src={beneficiaryAvatar} alt={beneficiaryName} />
+                                      <AvatarFallback userId={beneficiaryId || beneficiaryName} className="font-medium text-xs">
+                                        {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
+                                      </AvatarFallback>
+                                    </Avatar>
                                     <div className="text-sm font-medium">{beneficiaryName}</div>
                                 </div>
                             </div>

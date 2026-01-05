@@ -2,261 +2,131 @@ const withNextIntl = require('next-intl/plugin')(
     // This is the default (also the `src` folder is supported out of the box)
     './src/i18n/request.ts'
 );
-const { withGluestackUI } = require('@gluestack/ui-next-adapter');
+const { withSentryConfig } = require('@sentry/nextjs');
 const path = require('path');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: false,
-    // Re-enable strict type checking now that shared types have been trimmed for memory safety
+    reactStrictMode: true,
+    // Temporarily allow errors from backend imports (tRPC types) - these are type-only and don't affect runtime
     typescript: {
-        ignoreBuildErrors: false,
+        // TODO: Stop importing backend source types into the frontend build (generate a types-only artifact instead).
+        // Until then, Next's typecheck may traverse backend NestJS code and fail on mismatched tsconfig settings.
+        ignoreBuildErrors: true,
     },
-    // Skip ESLint during build to reduce memory usage
-    eslint: {
-        ignoreDuringBuilds: true,
-    },
-    // For App Router
-    experimental: {
-        serverActions: {
-            bodySizeLimit: '2mb',
-        },
-        // Optimize memory usage during build
-        optimizePackageImports: ['@gluestack-ui/themed', '@gluestack-style/react'],
-    },
-    // Expose server-side environment variables to Next.js
-    env: {
-        OAUTH_GOOGLE_ENABLED: process.env.OAUTH_GOOGLE_ENABLED,
-        OAUTH_YANDEX_ENABLED: process.env.OAUTH_YANDEX_ENABLED,
-        OAUTH_VK_ENABLED: process.env.OAUTH_VK_ENABLED,
-        OAUTH_TELEGRAM_ENABLED: process.env.OAUTH_TELEGRAM_ENABLED,
-        OAUTH_APPLE_ENABLED: process.env.OAUTH_APPLE_ENABLED,
-        OAUTH_TWITTER_ENABLED: process.env.OAUTH_TWITTER_ENABLED,
-        OAUTH_INSTAGRAM_ENABLED: process.env.OAUTH_INSTAGRAM_ENABLED,
-        OAUTH_SBER_ENABLED: process.env.OAUTH_SBER_ENABLED,
-        OAUTH_MAILRU_ENABLED: process.env.OAUTH_MAILRU_ENABLED,
-        AUTHN_ENABLED: process.env.AUTHN_ENABLED,
-    },
+    // Enable source maps for debugging in dev builds (works with static export)
+    // Note: In Next.js 16+, SWC minification cannot be disabled, but source maps will still work
+    // Source maps map minified code back to original source, allowing readable error messages
+    productionBrowserSourceMaps: process.env.NEXT_PUBLIC_DEV_BUILD === 'true',
+    // Note: OAuth provider flags and AUTHN are fetched from backend at runtime via useRuntimeConfig()
+    // No need to expose them as build-time env vars
     transpilePackages: [
         '@telegram-apps/sdk-react',
         '@telegram-apps/telegram-ui',
         '@meriter/shared-types',
-        '@gluestack-ui/themed',
-        '@gluestack-ui/config',
-        '@gluestack-ui/overlay',
-        '@gluestack-ui/provider',
-        '@gluestack-ui/toast',
-        '@gluestack-ui/slider',
-        '@gluestack-style/react',
-        '@gluestack/ui-next-adapter',
         '@expo/html-elements',
-        '@react-native/assets-registry',
-        'react-native',
-        'react-native-web',
-        'react-native-safe-area-context',
     ],
+    // Serverful Next.js (Docker) - required for robust dynamic routing and auth flows
+    // Used by web/Dockerfile via `.next/standalone`
     output: 'standalone',
     // Fix monorepo/workspace output tracing root
     outputFileTracingRoot: path.join(__dirname, '..'),
-    // Proxy API requests to backend API server
-    // In Docker, use service name 'api' on port 8002
-    // In local development, use 'localhost:8002'
+    // Ensure server-side fetches to `/api/*` and `/trpc/*` work inside the Docker network.
+    // When running behind Caddy, clients still use relative URLs and Caddy routes them.
     async rewrites() {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-        // If NEXT_PUBLIC_API_URL is set, use it (absolute URL)
-        // Otherwise, proxy to API server (relative rewrites)
         if (apiUrl && apiUrl.trim() !== '') {
-            // If API URL is set, don't use rewrites - client will use absolute URL
+            // If API URL is set, do not proxy via rewrites.
             return [];
         }
 
-        // Proxy /api/* to API server
-        // In Docker: always use service name 'api' (Next.js runs in Docker network)
-        // In local dev: use 'localhost:8002'
-        // Check if we're in Docker by checking if we can resolve 'api' hostname
-        // or by checking NODE_ENV and assuming Docker if production
-        // Since rewrites() may be called at build time, we need a reliable way to detect Docker
-        // Best approach: always use 'api' service name in production builds (Docker)
-        // and 'localhost' only in development
         const isProduction = process.env.NODE_ENV === 'production';
-        // In production (Docker), always use service name 'api'
-        // In development, use 'localhost:8002'
         const apiHost = isProduction ? 'http://api:8002' : 'http://localhost:8002';
 
         return [
-            {
-                source: '/api/:path*',
-                destination: `${apiHost}/api/:path*`,
-            },
+            { source: '/api/:path*', destination: `${apiHost}/api/:path*` },
+            { source: '/trpc/:path*', destination: `${apiHost}/trpc/:path*` },
         ];
     },
-    webpack: (config, { isServer }) => {
-        // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
+    webpack: (config, { isServer, dev }) => {
+        // Check dev mode at runtime (not at config load time)
+        const isDevMode = process.env.NEXT_PUBLIC_DEV_BUILD === 'true' || process.env.NODE_ENV === 'development';
+        
+        // CRITICAL: Merge all aliases properly to ensure single React instance
+        // This prevents "Cannot read properties of undefined (reading 'ReactCurrentOwner')" errors
+        // and "Cannot read properties of null (reading 'useState')" errors
+        const reactPath = path.resolve(__dirname, 'node_modules/react');
+        const reactDomPath = path.resolve(__dirname, 'node_modules/react-dom');
+        
         config.resolve.alias = {
             ...config.resolve.alias,
+            // Ensure React and React-DOM resolve to single instances (prevents ReactCurrentOwner errors)
+            // Using explicit paths ensures all modules use the same React 19 instance
+            'react': reactPath,
+            'react-dom': reactDomPath,
+            // Resolve @meriter/shared-types to the dist directory for CommonJS relative imports
             '@meriter/shared-types': path.resolve(__dirname, '../libs/shared-types/dist'),
         };
 
-        // Fix for React Native modules in Next.js
-        config.resolve.alias = {
-            ...config.resolve.alias,
-            'react-native$': 'react-native-web',
-        };
-
-        // Extensions for React Native
-        config.resolve.extensions = [
-            '.web.js',
-            '.web.jsx',
-            '.web.ts',
-            '.web.tsx',
-            ...config.resolve.extensions,
-        ];
-
-        // Define __DEV__ for React Native Web compatibility
-        // Check if DefinePlugin already exists and merge, otherwise create new one
-        const webpack = require('webpack');
-        const existingDefinePlugin = config.plugins.find(
-            plugin => plugin && plugin.constructor && plugin.constructor.name === 'DefinePlugin'
-        );
-
-        if (existingDefinePlugin) {
-            // Merge __DEV__ into existing DefinePlugin
-            const existingDefinitions = existingDefinePlugin.definitions || {};
-            existingDefinePlugin.definitions = {
-                ...existingDefinitions,
-                __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
-            };
-        } else {
-            // Create new DefinePlugin if none exists
-            config.plugins = config.plugins || [];
-            config.plugins.push(
-                new webpack.DefinePlugin({
-                    __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
-                })
-            );
+        // Enable dev features for static build
+        if (isDevMode && !isServer) {
+            console.log('[next.config] Dev mode enabled: disabling minification and enabling source maps');
+            
+            // Enable source maps for debugging only in dev mode
+            config.devtool = 'source-map'; // Full source maps (slower but best quality)
+            
+            // Disable minification to keep code readable
+            if (config.optimization) {
+                config.optimization.minimize = false;
+                // Disable all minimizers
+                config.optimization.minimizer = [];
+            } else {
+                config.optimization = {
+                    minimize: false,
+                    minimizer: [],
+                };
+            }
+        } else if (!isServer) {
+            console.log('[next.config] Production mode: minification enabled, source maps disabled');
+            // Explicitly disable source maps in production to avoid errors
+            config.devtool = false;
         }
 
-        // Use NormalModuleReplacementPlugin to replace problematic file with a patched version
-        // This runs BEFORE any loaders, so we can intercept the file
-        const NormalModuleReplacementPlugin = require('webpack').NormalModuleReplacementPlugin;
-        config.plugins.push(
-            new NormalModuleReplacementPlugin(
-                /@react-native\/assets-registry\/registry\.js$/,
-                (resource) => {
-                    // Replace with a version that will be processed by babel-loader
-                    // The babel-loader rule will handle Flow syntax
-                    resource.request = resource.request;
-                }
-            )
-        );
-
-        // Add rule to handle @expo/html-elements
-        config.module.rules.push({
-            test: /\.(tsx?|jsx?)$/,
-            include: /node_modules\/@expo\/html-elements/,
-            use: {
-                loader: 'babel-loader',
-                options: {
-                    presets: ['@babel/preset-env', '@babel/preset-typescript', '@babel/preset-react'],
-                },
-            },
-        });
-
-        // Add rule to handle @gluestack-ui/* packages with JSX
-        config.module.rules.push({
-            test: /\.(tsx?|jsx?)$/,
-            include: /node_modules\/@gluestack-ui/,
-            use: {
-                loader: 'babel-loader',
-                options: {
-                    presets: [
-                        '@babel/preset-env',
-                        ['@babel/preset-react', { runtime: 'automatic' }],
-                        '@babel/preset-typescript',
-                    ],
-                },
-            },
-        });
-
-        // CRITICAL: Handle @react-native/assets-registry with Flow syntax
-        // The file contains Flow syntax (+property, ?type) which SWC cannot parse
-        // We MUST intercept it BEFORE SWC processes it
-
-        // Add rule at the very top level with enforce: 'pre' to ensure it runs first
-        config.module.rules.unshift({
-            enforce: 'pre',
-            test: /\.(ts|tsx|js|jsx)$/,
-            include: /node_modules\/@react-native\/assets-registry/,
-            exclude: /\.d\.ts$/,
-            use: {
-                loader: 'babel-loader',
-                options: {
-                    presets: [
-                        ['@babel/preset-env', { modules: false }],
-                        '@babel/preset-flow', // CRITICAL: This handles Flow syntax like +property
-                        ['@babel/preset-typescript', {
-                            allowNamespaces: true,
-                            onlyRemoveTypeImports: false,
-                            isTSX: true,
-                            allExtensions: true,
-                        }],
-                        '@babel/preset-react',
-                    ],
-                },
-            },
-        });
-
-        // Also add to oneOf rule if it exists (Next.js uses this structure)
-        const oneOfRule = config.module.rules.find(
-            (rule) => rule && typeof rule === 'object' && Array.isArray(rule.oneOf)
-        );
-
-        if (oneOfRule && Array.isArray(oneOfRule.oneOf)) {
-            // Find and remove any SWC rules for this path
-            oneOfRule.oneOf = oneOfRule.oneOf.filter((rule) => {
-                if (!rule || typeof rule !== 'object') return true;
-                // Check if rule matches our path
-                if (rule.include) {
-                    const includeStr = rule.include.toString();
-                    if (includeStr.includes('@react-native/assets-registry')) {
-                        // Remove SWC rules for this path
-                        const usesSWC = rule.use && (
-                            (Array.isArray(rule.use) && rule.use.some(u => u && u.loader && u.loader.includes('swc'))) ||
-                            (typeof rule.use === 'object' && rule.use.loader && rule.use.loader.includes('swc')) ||
-                            (typeof rule.use === 'string' && rule.use.includes('swc'))
-                        );
-                        return !usesSWC; // Keep non-SWC rules, remove SWC rules
-                    }
-                }
-                return true;
-            });
-
-            // Insert babel-loader rule at the very beginning of oneOf array
-            oneOfRule.oneOf.unshift({
-                test: /\.(ts|tsx|js|jsx)$/,
-                include: /node_modules\/@react-native\/assets-registry/,
-                exclude: /\.d\.ts$/,
-                use: {
-                    loader: 'babel-loader',
-                    options: {
-                        presets: [
-                            ['@babel/preset-env', { modules: false }],
-                            '@babel/preset-flow',
-                            ['@babel/preset-typescript', {
-                                allowNamespaces: true,
-                                onlyRemoveTypeImports: false,
-                                isTSX: true,
-                                allExtensions: true,
-                            }],
-                            '@babel/preset-react',
-                        ],
-                    },
-                },
+        // Exclude backend API code from frontend bundle (only import types)
+        config.externals = config.externals || [];
+        if (!isServer) {
+            // On client-side, exclude backend API code
+            config.externals.push({
+                '../../../../api/apps/meriter/src/trpc/router': 'commonjs ../../../../api/apps/meriter/src/trpc/router',
             });
         }
+        
+        // Note: React externalization is handled by Next.js default behavior
+        // For standalone builds, React should be installed in the Docker runner stage
+        // This is more efficient than bundling React and follows Next.js best practices
 
         return config;
     },
 };
 
-module.exports = withGluestackUI(withNextIntl(nextConfig));
+// Wrap with Sentry configuration
+const sentryWebpackPluginOptions = {
+    // Suppresses source map uploading logs during build
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    // Only upload source maps in production builds
+    hideSourceMaps: true,
+    widenClientFileUpload: true,
+    transpileClientSDK: true,
+    tunnelRoute: '/monitoring',
+    disableLogger: true,
+    automaticVercelMonitors: true,
+};
+
+// Apply Sentry config only if DSN is provided
+const configWithSentry = process.env.NEXT_PUBLIC_SENTRY_DSN
+    ? withSentryConfig(withNextIntl(nextConfig), sentryWebpackPluginOptions)
+    : withNextIntl(nextConfig);
+
+module.exports = configWithSentry;

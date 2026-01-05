@@ -7,8 +7,10 @@ import { Document } from 'mongoose';
  * Tracks all quota consumption uniformly across different usage types:
  * - vote: Quota used for voting on publications/comments
  * - poll_cast: Quota used for casting votes on polls
- * - publication_creation: Quota used for creating publications/posts
+ * - publication_creation: Legacy (posting now uses wallet merits, not quota)
  * - poll_creation: Quota used for creating polls
+ * - forward: Legacy (forwarding now uses wallet merits, not quota)
+ * - forward_proposal: Legacy (forwarding now uses wallet merits, not quota)
  */
 
 export interface QuotaUsage {
@@ -16,7 +18,7 @@ export interface QuotaUsage {
   userId: string;
   communityId: string;
   amountQuota: number;
-  usageType: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
+  usageType: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
   referenceId: string; // ID of publication, poll, vote, or poll_cast
   createdAt: Date;
 }
@@ -37,9 +39,9 @@ export class QuotaUsageSchemaClass implements QuotaUsage {
 
   @Prop({
     required: true,
-    enum: ['vote', 'poll_cast', 'publication_creation', 'poll_creation'],
+    enum: ['vote', 'poll_cast', 'publication_creation', 'poll_creation', 'forward', 'forward_proposal'],
   })
-  usageType!: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation';
+  usageType!: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
 
   @Prop({ required: true })
   referenceId!: string; // ID of publication, poll, vote, or poll_cast
@@ -50,6 +52,9 @@ export class QuotaUsageSchemaClass implements QuotaUsage {
 
 export const QuotaUsageSchema = SchemaFactory.createForClass(QuotaUsageSchemaClass);
 export type QuotaUsageDocument = QuotaUsageSchemaClass & Document;
+
+// Backwards-compatible runtime alias (some tests use `QuotaUsage.name`)
+export const QuotaUsage = QuotaUsageSchemaClass;
 
 // Add indexes for common queries
 QuotaUsageSchema.index({ userId: 1, communityId: 1, createdAt: -1 });

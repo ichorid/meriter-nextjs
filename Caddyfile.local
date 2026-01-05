@@ -6,7 +6,7 @@
     admin localhost:20190
 }
 
-:80 {
+:8080 {
     # Enable access logs
     log {
         output stdout
@@ -41,20 +41,19 @@
         -Server
     }
 
-	# Rate limiting for API endpoints (higher limits for local dev)
-	# Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
-	# For local dev, rate limiting is optional but recommended
-	handle /_next* {
-		reverse_proxy host.docker.internal:8001 {
-			header_up X-Real-IP {remote_host}
-			header_up X-Forwarded-Proto "http"
-			header_up X-Forwarded-Host {host}
-			header_up X-Forwarded-For {remote_host}
-		}
-		encode gzip
-	}
+    # Next.js assets (dev/prod) - proxy to web
+    handle /_next* {
+        reverse_proxy localhost:8001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto "http"
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        encode gzip
+    }
 
-	handle /api* {
+    # API requests - proxy to backend API (running on host in dev mode)
+    handle /api* {
         # Rate limiting configuration (requires caddy-ratelimit plugin)
         # Uncomment and configure when plugin is installed:
         # rate_limit {
@@ -71,7 +70,7 @@
             X-RateLimit-Window "60"
         }
         
-        reverse_proxy host.docker.internal:8002 {
+        reverse_proxy localhost:8002 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}
@@ -80,25 +79,20 @@
         encode gzip
     }
 
-    # Rate limiting for web endpoints (higher limits for local dev)
+    # tRPC requests - proxy to backend API (running on host in dev mode)
+    handle /trpc* {
+        reverse_proxy localhost:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto "http"
+            header_up X-Forwarded-Host {host}
+            header_up X-Forwarded-For {remote_host}
+        }
+        encode gzip
+    }
+
+    # Web app
     handle {
-        # Rate limiting configuration (requires caddy-ratelimit plugin)
-        # Uncomment and configure when plugin is installed:
-        # rate_limit {
-        #     zone web_zone {
-        #         key {remote_host}
-        #         events 1000
-        #         window 1m
-        #     }
-        # }
-        
-        # Add rate limit headers
-        header {
-            X-RateLimit-Limit "1000"
-            X-RateLimit-Window "60"
-        }
-        
-        reverse_proxy host.docker.internal:8001 {
+        reverse_proxy localhost:8001 {
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-Proto "http"
             header_up X-Forwarded-Host {host}
@@ -106,9 +100,20 @@
         }
         encode gzip
     }
+    
+    encode gzip
 
-    # Error handling
+    # Error handling - return 204 for missing .map files to prevent 404 logs
+    # This must be at the end of the server block
     handle_errors {
+        @map_404 {
+            expression {err.status_code} == 404
+            path_regexp ^.*\.map$
+        }
+        handle @map_404 {
+            respond 204
+        }
+        # For other errors, return the error status
         respond "{err.status_code} {err.status_text}"
     }
 }

@@ -3,7 +3,6 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
-  OnModuleInit,
   forwardRef,
   Inject,
 } from '@nestjs/common';
@@ -15,14 +14,12 @@ import {
 } from '../models/community/community.schema';
 import type {
   Community,
-  CommunityPostingRules,
-  CommunityVotingRules,
-  CommunityVisibilityRules,
-  CommunityMeritRules,
+  PermissionRule,
+  CommunityMeritSettings,
+  CommunityVotingSettings,
 } from '../models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
-import type { User } from '../models/user/user.schema';
-import { CommunityId, UserId } from '../value-objects';
+import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import { EventBus } from '../events/event-bus';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
@@ -46,7 +43,6 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom';
-  visibilityRules?: CommunityVisibilityRules;
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -74,6 +70,28 @@ export interface UpdateCommunityDto {
       genitive: string;
     };
     dailyEmission?: number;
+    postCost?: number;
+    pollCost?: number;
+    forwardCost?: number;
+    editWindowMinutes?: number;
+    allowEditByOthers?: boolean;
+    language?: 'en' | 'ru';
+  };
+  votingSettings?: {
+    votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+    spendsMerits?: boolean;
+    awardsMerits?: boolean;
+    meritConversion?: {
+      targetCommunityId: string;
+      ratio: number;
+    };
+  };
+  meritSettings?: {
+    dailyQuota?: number;
+    quotaRecipients?: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+    canEarn?: boolean;
+    canSpend?: boolean;
+    startingMerits?: number;
   };
   isPriority?: boolean;
 }
@@ -86,6 +104,7 @@ export class CommunityService {
     @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
     @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))
@@ -101,100 +120,103 @@ export class CommunityService {
     return doc ? (doc as unknown as Community) : null;
   }
 
+
   /**
-   * Get effective posting rules (defaults merged with custom overrides)
+   * Get effective permission rules (defaults merged with custom overrides)
+   * DB rules override defaults. Rules are matched by role + action.
    */
-  getEffectivePostingRules(
-    community: Community,
-  ): CommunityPostingRules {
-    const defaults = this.communityDefaultsService.getDefaultPostingRules(
+  getEffectivePermissionRules(community: Community): PermissionRule[] {
+    const defaultRules = this.communityDefaultsService.getDefaultPermissionRules(
       community.typeTag,
     );
 
-    if (!community.postingRules) {
-      return defaults;
+    if (!community.permissionRules || community.permissionRules.length === 0) {
+      return defaultRules;
     }
 
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.postingRules,
-      // Ensure allowedRoles is properly handled (array override)
-      allowedRoles:
-        community.postingRules.allowedRoles ?? defaults.allowedRoles,
-    };
+    // Merge: DB rules override defaults
+    // Create a map of default rules by role+action for quick lookup
+    const defaultRulesMap = new Map<string, PermissionRule>();
+    for (const rule of defaultRules) {
+      const key = `${rule.role}:${rule.action}`;
+      defaultRulesMap.set(key, rule);
+    }
+
+    // Create a map of DB rules by role+action
+    const dbRulesMap = new Map<string, PermissionRule>();
+    for (const rule of community.permissionRules) {
+      const key = `${rule.role}:${rule.action}`;
+      dbRulesMap.set(key, rule);
+    }
+
+    // Merge: DB rules override defaults, but include all default rules
+    const mergedRules: PermissionRule[] = [];
+    const processedKeys = new Set<string>();
+
+    // First, add all DB rules (these override defaults)
+    for (const dbRule of community.permissionRules) {
+      const key = `${dbRule.role}:${dbRule.action}`;
+      mergedRules.push(dbRule);
+      processedKeys.add(key);
+    }
+
+    // Then, add default rules that weren't overridden
+    for (const defaultRule of defaultRules) {
+      const key = `${defaultRule.role}:${defaultRule.action}`;
+      if (!processedKeys.has(key)) {
+        mergedRules.push(defaultRule);
+      }
+    }
+
+    return mergedRules;
   }
 
   /**
-   * Get effective voting rules (defaults merged with custom overrides)
+   * Get effective merit settings (defaults merged with custom overrides)
    */
-  getEffectiveVotingRules(
-    community: Community,
-  ): CommunityVotingRules {
-    const defaults = this.communityDefaultsService.getDefaultVotingRules(
+  getEffectiveMeritSettings(community: Community): CommunityMeritSettings {
+    const defaults = this.communityDefaultsService.getDefaultMeritSettings(
       community.typeTag,
     );
 
-    if (!community.votingRules) {
+    if (!community.meritSettings) {
       return defaults;
     }
 
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
+    const effectiveSettings = {
       ...defaults,
-      ...community.votingRules,
-      // Ensure allowedRoles is properly handled (array override)
-      allowedRoles:
-        community.votingRules.allowedRoles ?? defaults.allowedRoles,
-      // Handle optional nested object
-      meritConversion:
-        community.votingRules.meritConversion ?? defaults.meritConversion,
-    };
-  }
-
-  /**
-   * Get effective visibility rules (defaults merged with custom overrides)
-   */
-  getEffectiveVisibilityRules(
-    community: Community,
-  ): CommunityVisibilityRules {
-    const defaults = this.communityDefaultsService.getDefaultVisibilityRules(
-      community.typeTag,
-    );
-
-    if (!community.visibilityRules) {
-      return defaults;
-    }
-
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.visibilityRules,
-      // Ensure visibleToRoles is properly handled (array override)
-      visibleToRoles:
-        community.visibilityRules.visibleToRoles ?? defaults.visibleToRoles,
-    };
-  }
-
-  /**
-   * Get effective merit rules (defaults merged with custom overrides)
-   */
-  getEffectiveMeritRules(community: Community): CommunityMeritRules {
-    const defaults = this.communityDefaultsService.getDefaultMeritRules(
-      community.typeTag,
-    );
-
-    if (!community.meritRules) {
-      return defaults;
-    }
-
-    // Merge stored rules with defaults (stored rules override defaults)
-    return {
-      ...defaults,
-      ...community.meritRules,
-      // Ensure quotaRecipients is properly handled (array override)
+      ...community.meritSettings,
       quotaRecipients:
-        community.meritRules.quotaRecipients ?? defaults.quotaRecipients,
+        community.meritSettings.quotaRecipients ?? defaults.quotaRecipients,
+    };
+
+    // If startingMerits is not set, default to dailyQuota value
+    if (effectiveSettings.startingMerits === undefined) {
+      effectiveSettings.startingMerits = effectiveSettings.dailyQuota;
+    }
+
+    return effectiveSettings;
+  }
+
+  /**
+   * Get effective voting settings (defaults merged with custom overrides)
+   */
+  getEffectiveVotingSettings(community: Community): CommunityVotingSettings {
+    const defaults = this.communityDefaultsService.getDefaultVotingSettings(
+      community.typeTag,
+    );
+
+    if (!community.votingSettings) {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...community.votingSettings,
+      votingRestriction:
+        community.votingSettings.votingRestriction ?? defaults.votingRestriction,
+      meritConversion:
+        community.votingSettings.meritConversion ?? defaults.meritConversion,
     };
   }
 
@@ -219,6 +241,7 @@ export class CommunityService {
           name: 'Образ Будущего',
           description: 'Группа для публикации и обсуждения образов будущего.',
           typeTag: 'future-vision',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -231,6 +254,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Future Vision', e);
       }
+    } else if (!futureVision.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Future Vision" community to set isPriority=true...');
+      await this.updateCommunity(futureVision.id, { isPriority: true });
     }
 
     // 2. Marathon of Good
@@ -242,6 +269,7 @@ export class CommunityService {
           name: 'Марафон Добра',
           description: 'Группа для отчетов о добрых делах.',
           typeTag: 'marathon-of-good',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -254,6 +282,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Marathon of Good', e);
       }
+    } else if (!marathon.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Marathon of Good" community to set isPriority=true...');
+      await this.updateCommunity(marathon.id, { isPriority: true });
     }
 
     // 3. Support
@@ -265,6 +297,7 @@ export class CommunityService {
           name: 'Поддержка',
           description: 'Группа поддержки.',
           typeTag: 'support',
+          isPriority: true,
           settings: {
             currencyNames: {
               singular: 'merit',
@@ -277,6 +310,10 @@ export class CommunityService {
       } catch (e) {
         this.logger.error('Failed to create Support', e);
       }
+    } else if (!support.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Support" community to set isPriority=true...');
+      await this.updateCommunity(support.id, { isPriority: true });
     }
   }
 
@@ -311,11 +348,8 @@ export class CommunityService {
         },
         dailyEmission: dto.settings?.dailyEmission || 10,
       },
-      // Don't store default rules - they come from code via CommunityDefaultsService
-      postingRules: undefined,
-      votingRules: undefined,
-      visibilityRules: undefined,
-      meritRules: undefined,
+      // Don't store default permission rules - they come from code via CommunityDefaultsService
+      // Default meritSettings and votingSettings are also provided by CommunityDefaultsService
       hashtags: [],
       hashtagDescriptions: {},
       isActive: true, // Default to active
@@ -371,9 +405,70 @@ export class CommunityService {
       if (dto.settings.dailyEmission !== undefined) {
         settingsUpdate['settings.dailyEmission'] = dto.settings.dailyEmission;
       }
+      if (dto.settings.postCost !== undefined) {
+        settingsUpdate['settings.postCost'] = dto.settings.postCost;
+      }
+      if (dto.settings.pollCost !== undefined) {
+        settingsUpdate['settings.pollCost'] = dto.settings.pollCost;
+      }
+      if (dto.settings.forwardCost !== undefined) {
+        settingsUpdate['settings.forwardCost'] = dto.settings.forwardCost;
+      }
+      if (dto.settings.editWindowMinutes !== undefined) {
+        settingsUpdate['settings.editWindowMinutes'] = dto.settings.editWindowMinutes;
+      }
+      if (dto.settings.allowEditByOthers !== undefined) {
+        settingsUpdate['settings.allowEditByOthers'] = dto.settings.allowEditByOthers;
+      }
+      if (dto.settings.language !== undefined) {
+        settingsUpdate['settings.language'] = dto.settings.language;
+      }
 
       // Merge settings into updateData
       Object.assign(updateData, settingsUpdate);
+    }
+
+    if (dto.votingSettings) {
+      // Only merge nested properties if they exist
+      const votingSettingsUpdate: any = {};
+      if (dto.votingSettings.votingRestriction !== undefined) {
+        votingSettingsUpdate['votingSettings.votingRestriction'] = dto.votingSettings.votingRestriction;
+      }
+      if (dto.votingSettings.spendsMerits !== undefined) {
+        votingSettingsUpdate['votingSettings.spendsMerits'] = dto.votingSettings.spendsMerits;
+      }
+      if (dto.votingSettings.awardsMerits !== undefined) {
+        votingSettingsUpdate['votingSettings.awardsMerits'] = dto.votingSettings.awardsMerits;
+      }
+      if (dto.votingSettings.meritConversion !== undefined) {
+        votingSettingsUpdate['votingSettings.meritConversion'] = dto.votingSettings.meritConversion;
+      }
+
+      // Merge votingSettings into updateData
+      Object.assign(updateData, votingSettingsUpdate);
+    }
+
+    if (dto.meritSettings) {
+      // Only merge nested properties if they exist
+      const meritSettingsUpdate: any = {};
+      if (dto.meritSettings.dailyQuota !== undefined) {
+        meritSettingsUpdate['meritSettings.dailyQuota'] = dto.meritSettings.dailyQuota;
+      }
+      if (dto.meritSettings.quotaRecipients !== undefined) {
+        meritSettingsUpdate['meritSettings.quotaRecipients'] = dto.meritSettings.quotaRecipients;
+      }
+      if (dto.meritSettings.canEarn !== undefined) {
+        meritSettingsUpdate['meritSettings.canEarn'] = dto.meritSettings.canEarn;
+      }
+      if (dto.meritSettings.canSpend !== undefined) {
+        meritSettingsUpdate['meritSettings.canSpend'] = dto.meritSettings.canSpend;
+      }
+      if (dto.meritSettings.startingMerits !== undefined) {
+        meritSettingsUpdate['meritSettings.startingMerits'] = dto.meritSettings.startingMerits;
+      }
+
+      // Merge meritSettings into updateData
+      Object.assign(updateData, meritSettingsUpdate);
     }
 
     const updatedCommunity = await this.communityModel
@@ -550,7 +645,9 @@ export class CommunityService {
     communityId: string,
     limit: number = 50,
     skip: number = 0,
+    search?: string,
   ): Promise<{ members: any[]; total: number }> {
+    // 1. Get community to retrieve memberIds, settings, and total count
     const community = await this.communityModel
       .findOne({ id: communityId })
       .lean();
@@ -559,42 +656,283 @@ export class CommunityService {
     }
 
     const memberIds = community.members || [];
-    const total = memberIds.length;
 
-    // Reverse to show newest members first (assuming appended to end)
-    // or just slice. Let's slice for now, but usually we want recent.
-    // Arrays in Mongo are usually appended.
-    const paginatedIds = memberIds.slice(skip, skip + limit);
-
-    if (paginatedIds.length === 0) {
-      return { members: [], total };
+    // Build search filter if search query is provided
+    const searchFilter: any = { id: { $in: memberIds } };
+    if (search && search.trim()) {
+      // Escape special regex characters and create case-insensitive regex
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      searchFilter.$or = [
+        { username: searchRegex },
+        { displayName: searchRegex },
+      ];
     }
 
-    const members = await this.userModel
-      .find({
-        id: { $in: paginatedIds },
-      })
-      .lean();
+    if (memberIds.length === 0) {
+      return { members: [], total: 0 };
+    }
 
-    // Map to DTOs with roles
-    const mappedMembers = await Promise.all(
-      members.map(async (user) => {
-        // Get user's role in this community
-        const role = await this.userCommunityRoleService.getRole(
-          user.id,
-          communityId,
-        );
-        
-        return {
-          id: user.id,
-          username: user.username,
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          globalRole: user.globalRole,
-          role: role || undefined, // role can be 'lead', 'participant', 'viewer', or null
-        };
-      }),
-    );
+    // Calculate quota start time (needed for quota aggregation)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+    
+    const dailyQuota = community.settings?.dailyEmission ?? 0;
+    const isFutureVision = community.typeTag === 'future-vision';
+    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
+
+    // 2. Use aggregation pipeline to join users with roles, wallets, and quota
+    // Use $facet to get both filtered results and total count
+    const aggregationResult = await this.userModel.aggregate([
+      // Match users that are members AND match search criteria (if provided)
+      { $match: searchFilter },
+      
+      // Lookup user community role for this specific community
+      {
+        $lookup: {
+          from: 'user_community_roles',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'roleData',
+        },
+      },
+      
+      // Lookup wallet for this user in this community
+      {
+        $lookup: {
+          from: 'wallets',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'walletData',
+        },
+      },
+
+      // Add community context for quota calculation
+      {
+        $addFields: {
+          userRole: { $arrayElemAt: ['$roleData.role', 0] },
+          dailyQuota: dailyQuota,
+          quotaStartTime: quotaStartTime,
+          isFutureVision: isFutureVision,
+          isMarathonOfGood: isMarathonOfGood,
+        },
+      },
+
+      // Lookup and aggregate quota usage from votes
+      {
+        $lookup: {
+          from: 'votes',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'votesQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from poll_casts
+      {
+        $lookup: {
+          from: 'poll_casts',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'pollCastsQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from quota_usage
+      {
+        $lookup: {
+          from: 'quota_usage',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'quotaUsageQuota',
+        },
+      },
+
+      // Calculate quota fields
+      {
+        $addFields: {
+          votesTotal: { $ifNull: [{ $arrayElemAt: ['$votesQuota.total', 0] }, 0] },
+          pollCastsTotal: { $ifNull: [{ $arrayElemAt: ['$pollCastsQuota.total', 0] }, 0] },
+          quotaUsageTotal: { $ifNull: [{ $arrayElemAt: ['$quotaUsageQuota.total', 0] }, 0] },
+        },
+      },
+
+      {
+        $addFields: {
+          usedToday: {
+            $add: ['$votesTotal', '$pollCastsTotal', '$quotaUsageTotal'],
+          },
+          // Calculate effective daily quota based on role and community type
+          effectiveDailyQuota: {
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$isFutureVision', true] },
+                  {
+                    $and: [
+                      { $eq: ['$userRole', 'viewer'] },
+                      { $ne: ['$isMarathonOfGood', true] },
+                    ],
+                  },
+                ],
+              },
+              then: 0,
+              else: '$dailyQuota',
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          remainingToday: {
+            $max: [
+              0,
+              {
+                $subtract: ['$effectiveDailyQuota', '$usedToday'],
+              },
+            ],
+          },
+        },
+      },
+
+      // Project final structure
+      {
+        $project: {
+          id: 1,
+          username: 1,
+          displayName: 1,
+          avatarUrl: 1,
+          globalRole: 1,
+          role: '$userRole',
+          walletBalance: { $arrayElemAt: ['$walletData.balance', 0] },
+          quota: {
+            dailyQuota: '$effectiveDailyQuota',
+            usedToday: '$usedToday',
+            remainingToday: '$remainingToday',
+          },
+        },
+      },
+      // Use $facet to get both paginated results and total count
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          totalCount: [
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    // Extract results and total from facet
+    const facetResult = aggregationResult[0] || { data: [], totalCount: [] };
+    const members = facetResult.data || [];
+    const total = facetResult.totalCount[0]?.count ?? 0;
+
+    // 3. Map to DTO format (handle undefined/null values)
+    const mappedMembers = members.map((user: any) => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      globalRole: user.globalRole,
+      role: user.role || undefined,
+      walletBalance: user.walletBalance ?? undefined,
+      quota: user.quota
+        ? {
+            dailyQuota: user.quota.dailyQuota ?? 0,
+            usedToday: user.quota.usedToday ?? 0,
+            remainingToday: user.quota.remainingToday ?? 0,
+          }
+        : undefined,
+    }));
 
     return { members: mappedMembers, total };
   }

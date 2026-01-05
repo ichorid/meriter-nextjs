@@ -9,6 +9,7 @@ export {
     CommentSchema,
     PollSchema,
     CreatePublicationDtoSchema,
+    UpdatePublicationDtoSchema,
     CreateCommentDtoSchema,
     CreateVoteDtoSchema,
     CreatePollDtoSchema,

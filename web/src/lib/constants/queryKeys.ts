@@ -3,25 +3,55 @@
  * Centralizes all query keys for type safety and consistency
  */
 
-import { serializeQueryParams } from "@/lib/utils/queryKeys";
+// Inline serialization to avoid circular dependencies
+function serializeValue(value: unknown): string {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    if (Array.isArray(value)) {
+        return `[${value.map(serializeValue).join(',')}]`;
+    }
+
+    if (typeof value === 'object') {
+        const sortedKeys = Object.keys(value).sort();
+        const pairs = sortedKeys
+            .map(key => `${key}:${serializeValue((value as Record<string, unknown>)[key])}`)
+            .join(',');
+        return `{${pairs}}`;
+    }
+
+    return String(value);
+}
+
+function serializeQueryParams(params: Record<string, any> | undefined | null): string {
+    if (!params || Object.keys(params).length === 0) {
+        return '';
+    }
+
+    return serializeValue(params);
+}
 
 export const queryKeys = {
     // Auth
     auth: {
         all: ["auth"] as const,
-        me: () => [...queryKeys.auth.all, "me"] as const,
+        me: () => ["auth", "me"] as const,
     },
 
     // Users
     users: {
         all: ["users"] as const,
         profile: (userId: string) =>
-            [...queryKeys.users.all, "profile", userId] as const,
+            ["users", "profile", userId] as const,
         updatesFrequency: () =>
-            [...queryKeys.users.all, "updates-frequency"] as const,
+            ["users", "updates-frequency"] as const,
         updates: (userId: string, params?: Record<string, any>) =>
             [
-                ...queryKeys.users.all,
+                "users",
                 "updates",
                 userId,
                 serializeQueryParams(params || {}),
@@ -31,29 +61,33 @@ export const queryKeys = {
     // Publications
     publications: {
         all: ["publications"] as const,
-        lists: () => [...queryKeys.publications.all, "list"] as const,
+        lists: () => ["publications", "list"] as const,
         list: (params: Record<string, any>) =>
             [
-                ...queryKeys.publications.lists(),
+                "publications",
+                "list",
                 serializeQueryParams(params),
             ] as const,
-        details: () => [...queryKeys.publications.all, "detail"] as const,
+        details: () => ["publications", "detail"] as const,
         detail: (id: string) =>
-            [...queryKeys.publications.details(), id] as const,
-        my: () => [...queryKeys.publications.all, "my"] as const,
+            ["publications", "detail", id] as const,
+        my: () => ["publications", "my"] as const,
         myPublications: (params: Record<string, any>) =>
             [
-                ...queryKeys.publications.my(),
+                "publications",
+                "my",
                 serializeQueryParams(params),
             ] as const,
         byCommunity: (communityId: string) =>
-            [...queryKeys.publications.all, "community", communityId] as const,
+            ["publications", "community", communityId] as const,
         byCommunityInfinite: (
             communityId: string,
             params: { pageSize?: number; sort?: string; order?: string } = {}
         ) =>
             [
-                ...queryKeys.publications.byCommunity(communityId),
+                "publications",
+                "community",
+                communityId,
                 "infinite",
                 serializeQueryParams(params),
             ] as const,
@@ -62,22 +96,24 @@ export const queryKeys = {
     // Comments
     comments: {
         all: ["comments"] as const,
-        lists: () => [...queryKeys.comments.all, "list"] as const,
+        lists: () => ["comments", "list"] as const,
         list: (params: Record<string, any>) =>
-            [...queryKeys.comments.lists(), serializeQueryParams(params)] as const,
-        details: () => [...queryKeys.comments.all, "detail"] as const,
-        detail: (id: string) => [...queryKeys.comments.details(), id] as const,
+            ["comments", "list", serializeQueryParams(params)] as const,
+        details: () => ["comments", "detail"] as const,
+        detail: (id: string) => ["comments", "detail", id] as const,
         detailData: (id: string) =>
-            [...queryKeys.comments.detail(id), "details"] as const,
+            ["comments", "detail", id, "details"] as const,
         byPublication: (publicationId: string) =>
-            [...queryKeys.comments.all, "publication", publicationId] as const,
+            ["comments", "publication", publicationId] as const,
         byComment: (commentId: string) =>
-            [...queryKeys.comments.all, "comment", commentId] as const,
+            ["comments", "comment", commentId] as const,
         my: (userId: string) =>
-            [...queryKeys.comments.all, "my", userId] as const,
+            ["comments", "my", userId] as const,
         myComments: (userId: string, params: Record<string, any>) =>
             [
-                ...queryKeys.comments.my(userId),
+                "comments",
+                "my",
+                userId,
                 serializeQueryParams(params),
             ] as const,
     },
@@ -85,21 +121,24 @@ export const queryKeys = {
     // Communities
     communities: {
         all: ["communities"] as const,
-        lists: () => [...queryKeys.communities.all, "list"] as const,
+        lists: () => ["communities", "list"] as const,
         list: (params: Record<string, any>) =>
             [
-                ...queryKeys.communities.lists(),
+                "communities",
+                "list",
                 serializeQueryParams(params),
             ] as const,
-        details: () => [...queryKeys.communities.all, "detail"] as const,
+        details: () => ["communities", "detail"] as const,
         detail: (id: string) =>
-            [...queryKeys.communities.details(), id] as const,
+            ["communities", "detail", id] as const,
         feed: (
             communityId: string,
             params: { pageSize?: number; sort?: string; tag?: string } = {}
         ) =>
             [
-                ...queryKeys.communities.detail(communityId),
+                "communities",
+                "detail",
+                communityId,
                 "feed",
                 serializeQueryParams(params),
             ] as const,
@@ -108,67 +147,76 @@ export const queryKeys = {
     // Polls
     polls: {
         all: ["polls"] as const,
-        lists: () => [...queryKeys.polls.all, "list"] as const,
+        lists: () => ["polls", "list"] as const,
         list: (params: Record<string, any>) =>
-            [...queryKeys.polls.lists(), serializeQueryParams(params)] as const,
-        details: () => [...queryKeys.polls.all, "detail"] as const,
-        detail: (id: string) => [...queryKeys.polls.details(), id] as const,
+            ["polls", "list", serializeQueryParams(params)] as const,
+        details: () => ["polls", "detail"] as const,
+        detail: (id: string) => ["polls", "detail", id] as const,
     },
 
     // Wallet
     wallet: {
         all: ["wallet"] as const,
-        wallets: () => [...queryKeys.wallet.all, "wallets"] as const,
+        wallets: () => ["wallet", "wallets"] as const,
         wallet: (communityId?: string) =>
-            [...queryKeys.wallet.all, "wallet", communityId] as const,
+            ["wallet", "wallet", communityId] as const,
         balance: (communityId?: string) =>
-            [...queryKeys.wallet.all, "balance", communityId] as const,
+            ["wallet", "balance", communityId] as const,
         freeBalance: (communityId?: string) =>
-            [...queryKeys.wallet.all, "freeBalance", communityId] as const,
-        transactions: () => [...queryKeys.wallet.all, "transactions"] as const,
+            ["wallet", "freeBalance", communityId] as const,
+        transactions: () => ["wallet", "transactions"] as const,
         transactionsList: (params: Record<string, any>) =>
             [
-                ...queryKeys.wallet.transactions(),
+                "wallet",
+                "transactions",
                 serializeQueryParams(params),
             ] as const,
         myTransactions: (params: Record<string, any>) =>
             [
-                ...queryKeys.wallet.all,
+                "wallet",
                 "myTransactions",
                 serializeQueryParams(params),
             ] as const,
-        updates: () => [...queryKeys.wallet.all, "updates"] as const,
+        updates: () => ["wallet", "updates"] as const,
     },
 
     // Settings
     settings: {
         all: ["settings"] as const,
         updatesFrequency: () =>
-            [...queryKeys.settings.all, "updates-frequency"] as const,
+            ["settings", "updates-frequency"] as const,
     },
 
     // Search
     search: {
         all: ["search"] as const,
         query: (params: Record<string, any>) =>
-            [...queryKeys.search.all, serializeQueryParams(params)] as const,
+            ["search", serializeQueryParams(params)] as const,
     },
 
     // Notifications
     notifications: {
         all: ["notifications"] as const,
-        lists: () => [...queryKeys.notifications.all, "list"] as const,
+        lists: () => ["notifications", "list"] as const,
         list: (params: Record<string, any>) =>
             [
-                ...queryKeys.notifications.lists(),
+                "notifications",
+                "list",
                 serializeQueryParams(params),
             ] as const,
         unreadCount: () =>
-            [...queryKeys.notifications.all, "unread-count"] as const,
+            ["notifications", "unread-count"] as const,
         preferences: () =>
-            [...queryKeys.notifications.all, "preferences"] as const,
+            ["notifications", "preferences"] as const,
     },
 
     // Version
     version: () => ["version"] as const,
+
+    // Config
+    config: {
+        all: ["config"] as const,
+        runtime: () => ["config", "runtime"] as const,
+        getConfig: () => ["config", "getConfig"] as const,
+    },
 };

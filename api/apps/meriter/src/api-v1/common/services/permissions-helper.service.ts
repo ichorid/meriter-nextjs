@@ -6,9 +6,10 @@ import { PollService } from '../../../domain/services/poll.service';
 import { CommunityService } from '../../../domain/services/community.service';
 import { UserService } from '../../../domain/services/user.service';
 import { VoteService } from '../../../domain/services/vote.service';
+import { PermissionContextService } from '../../../domain/services/permission-context.service';
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
 
 /**
  * Service to calculate and batch-calculate permissions for resources
@@ -20,6 +21,7 @@ export class PermissionsHelperService {
 
   constructor(
     private permissionService: PermissionService,
+    private permissionContextService: PermissionContextService,
     private publicationService: PublicationService,
     private commentService: CommentService,
     private pollService: PollService,
@@ -98,7 +100,7 @@ export class PermissionsHelperService {
     const isAuthor = authorId === userId;
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = hasBeneficiary && beneficiaryId === userId;
-    const isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
+    const _isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
 
     // Check permissions
     const canVote = await this.permissionService.canVote(userId, publicationId);
@@ -111,19 +113,36 @@ export class PermissionsHelperService {
     // Community should exist here since we checked above - use it directly
     let voteDisabledReason: string | undefined;
     if (!canVote) {
+      const isSpecialGroup =
+        community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good';
+
+      // Special groups rule: cannot vote for teammates (shared team communities)
+      // Apply only when voter is not the author/beneficiary (those have their own reasons)
+      if (isSpecialGroup && !isAuthor && !isBeneficiary) {
+        const context = await this.permissionContextService.buildContextForPublication(
+          userId,
+          publicationId,
+        );
+        if ((context.sharedTeamCommunities?.length ?? 0) > 0) {
+          voteDisabledReason = 'voteDisabled.teammateInSpecialGroup';
+        }
+      }
+
       // Community should always exist here due to check above
       // If it doesn't, something is wrong - but we already returned early if community was null
       // So we can safely use community here
-      voteDisabledReason = this.getVoteDisabledReason(
-        user,
-        userRole,
-        community,
-        isAuthor,
-        isBeneficiary,
-        hasBeneficiary,
-        isProject,
-        publicationId,
-      );
+      if (!voteDisabledReason) {
+        voteDisabledReason = this.getVoteDisabledReason(
+          user,
+          userRole,
+          community,
+          isAuthor,
+          isBeneficiary,
+          hasBeneficiary,
+          isProject,
+          publicationId,
+        );
+      }
     }
 
     return {
@@ -166,7 +185,7 @@ export class PermissionsHelperService {
 
     const authorId = comment.getAuthorId.getValue();
     const communityId = await this.commentService.resolveCommentCommunityId(commentId);
-    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    const _userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
     const isAuthor = authorId === userId;
 
     // Check permissions
@@ -212,7 +231,7 @@ export class PermissionsHelperService {
             canVote = true;
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // If resolution fails, default to false
         canVote = false;
         voteDisabledReason = 'voteDisabled.commentVotingDisabled';
@@ -226,6 +245,7 @@ export class PermissionsHelperService {
       canEdit,
       canDelete,
       canComment,
+      voteDisabledReason: canVote ? undefined : voteDisabledReason,
       editDisabledReason: canEdit ? undefined : this.getCommentEditDisabledReason(comment, userId, authorId),
       deleteDisabledReason: canDelete ? undefined : 'Cannot delete comment',
     };
@@ -260,8 +280,8 @@ export class PermissionsHelperService {
 
     const authorId = poll.getAuthorId;
     const communityId = poll.getCommunityId;
-    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    const isAuthor = authorId === userId;
+    const _userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+    const _isAuthor = authorId === userId;
 
     // Check permissions
     const canEdit = await this.permissionService.canEditPoll(userId, pollId);
@@ -364,7 +384,7 @@ export class PermissionsHelperService {
     isBeneficiary: boolean,
     hasBeneficiary: boolean,
     isProject: boolean,
-    publicationId: string,
+    _publicationId: string,
   ): string {
     if (!user) {
       return 'voteDisabled.notLoggedIn';
@@ -411,25 +431,11 @@ export class PermissionsHelperService {
     }
 
     // Check role restrictions
-    // Special handling for support communities: participants can always vote
-    // This matches the logic in permission.service.ts canVote method
-    const isSupportCommunityParticipant = community.typeTag === 'support' && userRole === COMMUNITY_ROLE_PARTICIPANT;
-    
-    if (userRole && community.votingRules) {
-      // Skip allowedRoles check for support community participants
-      if (!isSupportCommunityParticipant && !community.votingRules.allowedRoles.includes(userRole)) {
-        return 'voteDisabled.roleNotAllowed';
-      }
-
-      // Check own post restriction
-      if (isAuthor && !community.votingRules.canVoteForOwnPosts) {
-        // Exception: future-vision allows self-voting
-        if (community.typeTag === 'future-vision' && 
-            (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin')) {
-          return undefined as any;
-        }
-        return 'voteDisabled.ownPostNotAllowed';
-      }
+    // Note: Permission rules are now handled by PermissionService.canVote()
+    // This helper just provides reasons for UI display
+    // The actual permission check is done by the rule engine
+    if (!userRole) {
+      return 'voteDisabled.roleNotAllowed';
     }
 
     // Check viewer restrictions
@@ -445,23 +451,15 @@ export class PermissionsHelperService {
    */
   private getEditDisabledReason(
     publication: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
-    const metrics = publication.getMetrics;
-    const metricsSnapshot = metrics.toSnapshot();
-    const totalVotes = metricsSnapshot.upvotes + metricsSnapshot.downvotes;
-    const commentCount = metricsSnapshot.commentCount || 0;
-
-    if (totalVotes > 0) {
-      return 'editDisabled.hasVotes';
+    // Check if publication is deleted - deleted posts cannot be edited
+    const snapshot = publication.toSnapshot();
+    if (snapshot.deleted) {
+      return 'editDisabled.deleted';
     }
-
-    if (commentCount > 0) {
-      return 'editDisabled.hasComments';
-    }
-
-    // Check time window would be done by PermissionService
+    
     return 'editDisabled.timeWindowExpired';
   }
 
@@ -470,8 +468,8 @@ export class PermissionsHelperService {
    */
   private getDeleteDisabledReason(
     publication: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
     const metrics = publication.getMetrics;
     const metricsSnapshot = metrics.toSnapshot();
@@ -494,8 +492,8 @@ export class PermissionsHelperService {
    */
   private getCommentEditDisabledReason(
     comment: any,
-    userId: string,
-    authorId: string,
+    _userId: string,
+    _authorId: string,
   ): string | undefined {
     const metrics = comment.getMetrics;
     const metricsSnapshot = metrics.toSnapshot();

@@ -3,18 +3,26 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from 'next-intl';
 import { initDataRaw, useSignal, mainButton, backButton } from '@telegram-apps/sdk-react';
-import { pollsApiV1 } from '@/lib/api/v1';
-import { useUpdatePoll } from '@/hooks/api/usePolls';
-import { useUserQuota } from '@/hooks/api/useQuota';
+import { useCreatePoll, useUpdatePoll } from '@/hooks/api/usePolls';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useWallet } from '@/hooks/api/useWallet';
 import type { Poll } from '@/types/api-v1';
 import { safeHapticFeedback } from '@/shared/lib/utils/haptic-utils';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandInput } from '@/components/ui/BrandInput';
-import { BrandSelect } from '@/components/ui/BrandSelect';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
+import { Textarea } from '@/components/ui/shadcn/textarea';
+import { Label } from '@/components/ui/shadcn/label';
+import { Loader2 } from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { cn } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface IPollOption {
@@ -44,31 +52,28 @@ export const FormPollCreate = ({
     const isInTelegram = !!rawData;
     const isMountedRef = useRef(true);
     const updatePoll = useUpdatePoll();
+    const createPoll = useCreatePoll();
     const isEditMode = !!pollId && !!initialData;
     const currentCommunityId = communityId || initialData?.communityId || '';
     const { data: community } = useCommunity(currentCommunityId);
-    const { data: quotaData } = useUserQuota(currentCommunityId);
     const { data: wallet } = useWallet(currentCommunityId || undefined);
-    
+
     // Get poll cost from community settings (default to 1 if not set)
     const pollCost = community?.settings?.pollCost ?? 1;
-    
+
     // Check if payment is required (not future-vision and cost > 0)
     const requiresPayment = community?.typeTag !== 'future-vision' && pollCost > 0;
-    const quotaRemaining = quotaData?.remainingToday ?? 0;
     const walletBalance = wallet?.balance ?? 0;
-    
-    // Automatic payment method selection: quota first, then wallet
-    const willUseQuota = requiresPayment && quotaRemaining >= pollCost;
-    const willUseWallet = requiresPayment && quotaRemaining < pollCost && walletBalance >= pollCost;
-    const hasInsufficientPayment = requiresPayment && quotaRemaining < pollCost && walletBalance < pollCost;
+
+    // Poll creation requires wallet merits only (no quota)
+    const hasInsufficientPayment = requiresPayment && walletBalance < pollCost;
 
     // Calculate timeValue and timeUnit from expiresAt if editing
     const calculateTimeFromExpiresAt = (expiresAt: string): { value: string; unit: "minutes" | "hours" | "days" } => {
         const now = new Date();
         const expires = new Date(expiresAt);
         const diffMs = expires.getTime() - now.getTime();
-        
+
         if (diffMs <= 0) {
             return { value: "24", unit: "hours" };
         }
@@ -86,7 +91,7 @@ export const FormPollCreate = ({
         }
     };
 
-    const initialTime = initialData?.expiresAt 
+    const initialTime = initialData?.expiresAt
         ? calculateTimeFromExpiresAt(initialData.expiresAt)
         : { value: "24", unit: "hours" as const };
 
@@ -209,18 +214,13 @@ export const FormPollCreate = ({
                     text: opt.text.trim(),
                 }));
 
-            // Automatic payment (quota first, then wallet)
-            const quotaAmount = willUseQuota ? pollCost : 0;
-            const walletAmount = willUseWallet ? pollCost : 0;
-            
+            // Server charges wallet based on pollCost (no need to send payment amounts)
             const payload = {
                 question: title.trim(),
                 description: description.trim() || undefined,
                 options: filledOptions,
                 expiresAt: expiresAt.toISOString(),
                 communityId: selectedWallet,
-                quotaAmount: quotaAmount > 0 ? quotaAmount : undefined,
-                walletAmount: walletAmount > 0 ? walletAmount : undefined,
             };
 
             console.log('📊 Creating poll with payload:', payload);
@@ -235,7 +235,7 @@ export const FormPollCreate = ({
                 console.log('📊 Poll update response:', poll);
             } else {
                 // Create new poll
-                poll = await pollsApiV1.createPoll(payload);
+                poll = await createPoll.mutateAsync(payload);
                 console.log('📊 Poll creation response:', poll);
             }
 
@@ -357,20 +357,17 @@ export const FormPollCreate = ({
     return (
         <div className="space-y-6">
             {!isEditMode && requiresPayment && (
-                <div className={`p-3 rounded-lg border ${
-                    hasInsufficientPayment
-                        ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
-                        : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
-                }`}>
+                <div className={`p-3 rounded-lg border ${hasInsufficientPayment
+                    ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800'
+                    : 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                    }`}>
                     {hasInsufficientPayment ? (
                         <p className="text-red-700 dark:text-red-300 text-sm">
                             {t('insufficientPayment', { cost: pollCost })}
                         </p>
                     ) : pollCost > 0 ? (
                         <p className="text-blue-700 dark:text-blue-300 text-sm">
-                            {willUseQuota 
-                                ? t('willPayWithQuota', { remaining: quotaRemaining, cost: pollCost })
-                                : t('willPayWithWallet', { balance: walletBalance, cost: pollCost })}
+                            {t('willPayWithWallet', { balance: walletBalance, cost: pollCost })}
                         </p>
                     ) : (
                         <p className="text-blue-700 dark:text-blue-300 text-sm">
@@ -382,24 +379,24 @@ export const FormPollCreate = ({
 
             {/* Poll Title Section */}
             <BrandFormControl label={t('pollTitleLabel')} required>
-                <BrandInput
+                <Input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder={t('pollTitlePlaceholder')}
                     disabled={isCreating}
-                    fullWidth
+                    className="h-11 rounded-xl w-full"
                 />
             </BrandFormControl>
 
             {/* Description Section */}
             <BrandFormControl label={t('descriptionLabel')}>
-                <textarea
+                <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t('descriptionPlaceholder')}
                     disabled={isCreating}
                     rows={3}
-                    className="w-full px-4 py-3 bg-brand-surface dark:bg-base-100 border border-brand-border dark:border-base-300/50 rounded-xl text-brand-text-primary dark:text-base-content placeholder:text-brand-text-secondary/50 dark:placeholder:text-base-content/50 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:border-brand-primary transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                    className="resize-none"
                 />
             </BrandFormControl>
 
@@ -411,38 +408,38 @@ export const FormPollCreate = ({
                         <div key={`option-${option.id}`} className="flex items-center gap-2">
                             <span className="text-sm font-medium text-brand-text-primary dark:text-base-content w-6">{index + 1}.</span>
                             <div className="flex-1">
-                                <BrandInput
+                                <Input
                                     value={option.text}
                                     onChange={(e) => updateOption(option.id, e.target.value)}
                                     placeholder={t('optionPlaceholder', { number: index + 1 })}
                                     disabled={isCreating}
-                                    fullWidth
+                                    className="h-11 rounded-xl w-full"
                                 />
                             </div>
                             {options.length > 2 && (
-                                <BrandButton
+                                <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => removeOption(option.id)}
                                     disabled={isCreating}
-                                    className="text-red-500 border-red-200 hover:bg-red-50"
+                                    className="rounded-xl active:scale-[0.98] text-red-500 border-red-200 hover:bg-red-50"
                                 >
                                     <Trash2 size={16} />
-                                </BrandButton>
+                                </Button>
                             )}
                         </div>
                     ))}
 
                     {options.length < 10 && (
-                        <BrandButton
+                        <Button
                             variant="outline"
                             onClick={addOption}
                             disabled={isCreating}
-                            className="mt-2 w-full"
-                            leftIcon={<Plus size={16} />}
+                            className="rounded-xl active:scale-[0.98] mt-2 w-full"
                         >
+                            <Plus size={16} />
                             {t('addOption')}
-                        </BrandButton>
+                        </Button>
                     )}
                 </div>
             </div>
@@ -450,17 +447,22 @@ export const FormPollCreate = ({
             {/* Community Selection Section */}
             {!communityId && (
                 <BrandFormControl label={t('selectCommunity')} required>
-                    <BrandSelect
+                    <Select
                         value={selectedWallet}
-                        onChange={setSelectedWallet}
-                        options={wallets.map((wallet) => ({
-                            label: wallet.name || wallet.meta?.currencyNames?.many || t('communityFallback'),
-                            value: wallet.meta?.currencyOfCommunityTgChatId
-                        }))}
-                        placeholder={t('selectCommunityPlaceholder')}
+                        onValueChange={setSelectedWallet}
                         disabled={isCreating}
-                        fullWidth
-                    />
+                    >
+                        <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                            <SelectValue placeholder={t('selectCommunityPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {wallets.map((wallet) => (
+                                <SelectItem key={wallet.meta?.currencyOfCommunityTgChatId} value={wallet.meta?.currencyOfCommunityTgChatId}>
+                                    {wallet.name || wallet.meta?.currencyNames?.many || t('communityFallback')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </BrandFormControl>
             )}
 
@@ -468,33 +470,36 @@ export const FormPollCreate = ({
             <BrandFormControl label={t('durationLabel')} required>
                 <div className="flex gap-2">
                     <div className="w-24">
-                        <BrandInput
+                        <Input
                             value={timeValue}
                             onChange={(e) => setTimeValue(e.target.value)}
                             type="number"
                             disabled={isCreating}
-                            fullWidth
+                            className="h-11 rounded-xl w-full"
                         />
                     </div>
                     <div className="flex-1">
-                        <BrandSelect
+                        <Select
                             value={timeUnit}
-                            onChange={(val) => setTimeUnit(val as any)}
-                            options={[
-                                { label: t('minutes'), value: 'minutes' },
-                                { label: t('hours'), value: 'hours' },
-                                { label: t('days'), value: 'days' },
-                            ]}
+                            onValueChange={(val) => setTimeUnit(val as any)}
                             disabled={isCreating}
-                            fullWidth
-                        />
+                        >
+                            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="minutes">{t('minutes')}</SelectItem>
+                                <SelectItem value="hours">{t('hours')}</SelectItem>
+                                <SelectItem value="days">{t('days')}</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
             </BrandFormControl>
 
             {/* Error Alert */}
             {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg">
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 shadow-none dark:border-red-800/50 rounded-lg">
                     <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                 </div>
             )}
@@ -503,22 +508,24 @@ export const FormPollCreate = ({
             {!isInTelegram && (
                 <div className="flex justify-end gap-3 mt-4">
                     {onCancel && (
-                        <BrandButton
+                        <Button
                             variant="outline"
                             onClick={onCancel}
                             disabled={isCreating}
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {t('cancel')}
-                        </BrandButton>
+                        </Button>
                     )}
-                    <BrandButton
-                        variant="primary"
+                    <Button
+                        variant="default"
                         onClick={handleCreate}
                         disabled={isCreating || hasInsufficientPayment}
-                        isLoading={isCreating}
+                        className="rounded-xl active:scale-[0.98]"
                     >
+                        {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}
-                    </BrandButton>
+                    </Button>
                 </div>
             )}
         </div>

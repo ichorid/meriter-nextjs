@@ -1,9 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { PermissionsHelperService } from '../src/api-v1/common/services/permissions-helper.service';
-import { PermissionService } from '../src/domain/services/permission.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { CommentService } from '../src/domain/services/comment.service';
 import { PollService } from '../src/domain/services/poll.service';
@@ -23,7 +22,6 @@ describe('PermissionsHelperService', () => {
   let connection: Connection;
   
   let permissionsHelperService: PermissionsHelperService;
-  let permissionService: PermissionService;
   let publicationService: PublicationService;
   let commentService: CommentService;
   let pollService: PollService;
@@ -62,7 +60,6 @@ describe('PermissionsHelperService', () => {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
     permissionsHelperService = app.get<PermissionsHelperService>(PermissionsHelperService);
-    permissionService = app.get<PermissionService>(PermissionService);
     publicationService = app.get<PublicationService>(PublicationService);
     commentService = app.get<CommentService>(CommentService);
     pollService = app.get<PollService>(PollService);

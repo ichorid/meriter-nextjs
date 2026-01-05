@@ -13,6 +13,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
+import { trpc, getTrpcClient } from '@/lib/trpc/client';
 import { LoginForm } from '@/components/LoginForm';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { AppModeProvider } from '@/contexts/AppModeContext';
@@ -131,6 +132,7 @@ jest.mock('@/config', () => ({
     },
   },
   isFakeDataMode: jest.fn(() => false),
+  isTestAuthMode: jest.fn(() => false),
 }));
 
 // Mock OAuth providers
@@ -155,30 +157,54 @@ const mockUseAppMode = useAppMode as jest.MockedFunction<typeof useAppMode>;
 const mockGetOAuthUrl = getOAuthUrl as jest.MockedFunction<typeof getOAuthUrl>;
 const mockIsFakeDataMode = isFakeDataMode as jest.MockedFunction<typeof isFakeDataMode>;
 
+// Create QueryClient at module level to ensure it's fully initialized
+// This ensures compatibility with tRPC which expects certain QueryClient methods
+let testQueryClient: QueryClient | null = null;
+let testTrpcClient: ReturnType<typeof getTrpcClient> | null = null;
+
+function getTestQueryClient() {
+  if (!testQueryClient) {
+    testQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+          gcTime: 0, // Clear cache immediately in tests
+          staleTime: 0, // Always consider data stale in tests
+          refetchOnWindowFocus: false,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    });
+  }
+  return testQueryClient;
+}
+
+function getTestTrpcClient() {
+  if (!testTrpcClient) {
+    testTrpcClient = getTrpcClient();
+  }
+  return testTrpcClient;
+}
+
 // Test wrapper with all providers
 function TestWrapper({ children }: { children: React.ReactNode }) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-      },
-      mutations: {
-        retry: false,
-      },
-    },
-  });
+  const queryClient = getTestQueryClient();
+  const trpcClient = getTestTrpcClient();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <NextIntlClientProvider locale="en" messages={mockMessages}>
-        <AppModeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-        </AppModeProvider>
-      </NextIntlClientProvider>
-    </QueryClientProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <NextIntlClientProvider locale="en" messages={mockMessages} timeZone="UTC">
+          <AppModeProvider>
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </AppModeProvider>
+        </NextIntlClientProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
 
@@ -404,13 +430,12 @@ describe('Login Page Integration', () => {
   });
 
   describe('URL Parameters', () => {
-    it('should include returnTo and invite code in OAuth URL', async () => {
+    it('should include returnTo in OAuth URL', async () => {
       const user = userEvent.setup();
 
       // Mock useSearchParams to return params with a different returnTo path
-      // so we can verify both returnTo and invite are included
       jest.spyOn(require('next/navigation'), 'useSearchParams').mockReturnValue(
-        new URLSearchParams('returnTo=/meriter/communities/123&invite=TEST123')
+        new URLSearchParams('returnTo=/meriter/communities/123')
       );
 
       render(
@@ -423,14 +448,14 @@ describe('Login Page Integration', () => {
       const buttons = screen.getAllByText(/login\.signInWith/i);
       await user.click(buttons[0]!);
 
-      // Verify getOAuthUrl was called with params containing returnTo and invite
+      // Verify getOAuthUrl was called with the returnTo path
       expect(mockGetOAuthUrl).toHaveBeenCalled();
       const callArgs = mockGetOAuthUrl.mock.calls[0];
       if (callArgs && callArgs[1]) {
-        // When invite code is present and returnTo is different from /meriter/profile,
-        // the path will be /meriter/profile?invite=TEST123&returnTo=/meriter/communities/123
-        expect(callArgs[1]).toContain('invite');
-        expect(callArgs[1]).toContain('returnTo');
+        // The returnTo path should be passed directly, not as a query parameter
+        expect(callArgs[1]).toBe('/meriter/communities/123');
+        // Invite code feature has been removed
+        expect(callArgs[1]).not.toContain('invite');
       }
     });
   });

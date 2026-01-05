@@ -1,5 +1,6 @@
 import React from 'react';
-import { Button, Icon } from '@/components/atoms';
+import { Icon } from '@/components/atoms';
+import { Button } from '@/components/ui/shadcn/button';
 
 export interface VoteControlsProps {
   amount: number;

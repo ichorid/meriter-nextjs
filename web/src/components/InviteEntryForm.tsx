@@ -6,7 +6,9 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInviteByCode, useInvite } from '@/hooks/api/useInvites';
 import { LoadingState } from '@/components/atoms/LoadingState';
-import { BrandButton, BrandInput, BrandFormControl } from '@/components/ui';
+import { BrandFormControl } from '@/components/ui';
+import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
@@ -40,7 +42,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
         setIsSubmitting(true);
 
         try {
-            await useInviteMutation.mutateAsync(inviteCode.trim());
+            await useInviteMutation.mutateAsync({ code: inviteCode.trim() });
             addToast(t('success'), 'success');
             router.push('/meriter/profile');
         } catch (error: any) {
@@ -60,7 +62,7 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
 
     return (
         <div className="w-full max-w-md mx-auto">
-            <div className="bg-base-100 rounded-xl shadow-md border border-base-300">
+            <div className="bg-base-100 rounded-xl shadow-md shadow-none">
                 <div className="p-6 border-b border-base-300">
                     <div className="flex justify-center">
                         <h2 className="text-2xl font-bold text-center">
@@ -79,12 +81,13 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
                             label={t('inviteCodeLabel')}
                             error={inviteError}
                         >
-                            <BrandInput
+                            <Input
                                 value={inviteCode}
                                 onChange={(e) => setInviteCode(e.target.value)}
                                 placeholder={t('inviteCodePlaceholder')}
                                 autoCapitalize="none"
                                 autoComplete="off"
+                                className="h-11 rounded-xl w-full"
                             />
                         </BrandFormControl>
 
@@ -94,25 +97,26 @@ export function InviteEntryForm({ className = '', inviteCode: inviteCodeProp }: 
                             </div>
                         )}
 
-                        <BrandButton
+                        <Button
                             onClick={handleSubmit}
                             disabled={isSubmitting || authLoading}
-                            fullWidth
+                            className="rounded-xl active:scale-[0.98] w-full"
                         >
                             {inviteCode.trim() ? t('continue') : tCommon('skip') || 'Skip'}
-                        </BrandButton>
+                        </Button>
                     </div>
                 </div>
 
                 <div className="p-6 border-t border-base-300">
                     <div className="flex justify-center w-full">
-                        <BrandButton
-                            variant="link"
+                        <Button
+                            variant="ghost"
                             size="sm"
                             onClick={handleLogout}
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {tCommon('logout')}
-                        </BrandButton>
+                        </Button>
                     </div>
                 </div>
             </div>

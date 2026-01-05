@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { BrandInput } from '@/components/ui/BrandInput';
+import { Input } from '@/components/ui/shadcn/input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 const Map = dynamic(() => import('./Map'), {
@@ -106,24 +107,32 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
     return (
         <div className="space-y-4">
             <div className="relative">
-                <BrandInput
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={tSearch('results.searchLocationPlaceholder')}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    rightIcon={
+                <div className="relative">
+                    <Input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder={tSearch('results.searchLocationPlaceholder')}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                        className={cn('h-11 rounded-xl pr-10', isLoading && 'pr-10')}
+                    />
+                    {isLoading ? (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
+                            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
                         <button
+                            type="button"
                             onClick={handleSearch}
-                            className="p-1 hover:bg-base-200 rounded-full transition-colors"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-base-200 rounded-full transition-colors z-10"
                             disabled={isLoading}
                         >
-                            {isLoading ? <Loader2 className="w-5 h-5 animate-spin text-brand-primary" /> : <Search className="w-5 h-5 text-base-content/60" />}
+                            <Search className="w-4 h-4 text-muted-foreground" />
                         </button>
-                    }
-                />
+                    )}
+                </div>
 
                 {results.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-1 bg-base-100 shadow-none rounded-lg shadow-lg max-h-60 overflow-y-auto">
                         {results.map((result, index) => (
                             <button
                                 key={index}
@@ -138,7 +147,7 @@ export function LocationPicker({ initialRegion, initialCity, onLocationSelect }:
                 )}
             </div>
 
-            <div className="h-64 w-full rounded-xl overflow-hidden border border-base-300 relative">
+            <div className="h-64 w-full rounded-xl overflow-hidden shadow-none relative">
                 <Map
                     center={center}
                     zoom={zoom}

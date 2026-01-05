@@ -27,7 +27,7 @@ export class CommunityEnrichmentService {
           if (community) {
             communitiesMap.set(communityId, community);
           }
-        } catch (error) {
+        } catch (_error) {
           // Silently skip communities that don't exist
         }
       })

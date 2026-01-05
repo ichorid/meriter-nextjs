@@ -12,6 +12,7 @@ import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { NextIntlClientProvider } from 'next-intl';
 import { AuthContext, AuthContextType } from '@/contexts/AuthContext';
+import { trpc, getTrpcClient } from '@/lib/trpc/client';
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 
 // Mock messages for next-intl
@@ -54,12 +55,15 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
 
 /**
  * Creates a default QueryClient for testing with retry disabled
+ * Matches production QueryProvider setup for compatibility
  */
 export function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
+        gcTime: 0, // Clear cache immediately in tests
+        staleTime: 0, // Always consider data stale in tests
       },
       mutations: {
         retry: false,
@@ -80,15 +84,19 @@ export function renderWithProviders(
 ) {
   function Wrapper({ children }: { children: React.ReactNode }) {
     const defaultAuthValue = testUtils.createMockAuthContext(authContextValue);
+    // Use useState to ensure trpcClient is created once, matching production pattern
+    const [trpcClient] = React.useState(() => getTrpcClient());
 
     return (
-      <QueryClientProvider client={queryClient}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <AuthContext.Provider value={defaultAuthValue}>
-            {children}
-          </AuthContext.Provider>
-        </NextIntlClientProvider>
-      </QueryClientProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
+            <AuthContext.Provider value={defaultAuthValue}>
+              {children}
+            </AuthContext.Provider>
+          </NextIntlClientProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
     );
   }
 
@@ -106,15 +114,19 @@ export function createTestWrapper(options: CustomRenderOptions = {}) {
     } = options;
 
     const defaultAuthValue = testUtils.createMockAuthContext(authContextValue);
+    // Use useState to ensure trpcClient is created once, matching production pattern
+    const [trpcClient] = React.useState(() => getTrpcClient());
 
     return (
-      <QueryClientProvider client={queryClient}>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <AuthContext.Provider value={defaultAuthValue}>
-            {children}
-          </AuthContext.Provider>
-        </NextIntlClientProvider>
-      </QueryClientProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <NextIntlClientProvider locale={locale} messages={messages} timeZone="UTC">
+            <AuthContext.Provider value={defaultAuthValue}>
+              {children}
+            </AuthContext.Provider>
+          </NextIntlClientProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
     );
   };
 }

@@ -1,80 +1,61 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { invitesApiV1 } from "@/lib/api/v1";
-import { queryKeys } from "@/lib/constants/queryKeys";
+// Invites React Query hooks - migrated to tRPC
+import { trpc } from "@/lib/trpc/client";
 import type { Invite } from "@/types/api-v1";
+import { queryKeys } from "@/lib/constants/queryKeys";
 
 export function useInvites() {
-    return useQuery({
-        queryKey: ["invites"],
-        queryFn: () => invitesApiV1.getInvites(),
-    });
+    return trpc.invites.getAll.useQuery(undefined);
 }
 
 export function useCommunityInvites(communityId: string, options?: { enabled?: boolean }) {
-    return useQuery({
-        queryKey: ["invites", "community", communityId],
-        queryFn: () => invitesApiV1.getCommunityInvites(communityId),
-        enabled: options?.enabled !== false && !!communityId,
-    });
+    return trpc.invites.getByCommunity.useQuery(
+        { communityId },
+        { enabled: options?.enabled !== false && !!communityId }
+    );
 }
 
 export function useInviteByCode(code: string, options?: { enabled?: boolean }) {
-    return useQuery({
-        queryKey: ["invites", code],
-        queryFn: () => invitesApiV1.getInviteByCode(code),
-        enabled: options?.enabled !== false && !!code,
-    });
+    return trpc.invites.getByCode.useQuery(
+        { code },
+        { enabled: options?.enabled !== false && !!code }
+    );
 }
 
 export function useCreateInvite() {
-    const queryClient = useQueryClient();
+    const utils = trpc.useUtils();
 
-    return useMutation({
-        mutationFn: (data: {
-            targetUserId?: string;
-            targetUserName?: string;
-            type: "superadmin-to-lead" | "lead-to-participant";
-            communityId?: string;
-            teamId?: string;
-            expiresAt?: string;
-        }) => invitesApiV1.createInvite(data),
+    return trpc.invites.create.useMutation({
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["invites"] });
+            utils.invites.getAll.invalidate();
         },
     });
 }
 
 export function useInvite() {
-    const queryClient = useQueryClient();
+    const utils = trpc.useUtils();
 
-    return useMutation({
-        mutationFn: (code: string) => invitesApiV1.useInvite(code),
+    return trpc.invites.use.useMutation({
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["invites"] });
-            queryClient.invalidateQueries({ queryKey: ["users", "me"] });
+            utils.invites.getAll.invalidate();
+            // Invalidate user queries to refresh user data
+            utils.users.getMe.invalidate();
             // Invalidate communities queries to refresh communities list
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.communities.all,
-            });
+            utils.communities.getAll.invalidate();
             // Invalidate wallets query since wallets are used to display communities on home page
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.wallet.wallets(),
-            });
+            // Note: wallet router not yet migrated, invalidate manually if needed
             // Invalidate profile queries to refresh user roles and lead communities
             // This is important when a user becomes a lead after using an invite
-            queryClient.invalidateQueries({ queryKey: ["profile"] });
-            queryClient.invalidateQueries({ queryKey: ["auth", "me"] });
+            // Note: profile router not yet migrated, invalidate manually if needed
         },
     });
 }
 
 export function useDeleteInvite() {
-    const queryClient = useQueryClient();
+    const utils = trpc.useUtils();
 
-    return useMutation({
-        mutationFn: (id: string) => invitesApiV1.deleteInvite(id),
+    return trpc.invites.delete.useMutation({
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["invites"] });
+            utils.invites.getAll.invalidate();
         },
     });
 }

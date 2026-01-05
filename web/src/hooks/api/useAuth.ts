@@ -1,40 +1,116 @@
 // Auth React Query hooks
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React from 'react';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { trpc } from '@/lib/trpc/client';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 import { authApiV1 } from '@/lib/api/v1';
-import { queryKeys } from '@/lib/constants/queryKeys';
 import type { User } from '@/types/api-v1';
 
 export const useMe = () => {
-  // Always make request - React Query will handle 401 errors correctly
-  // The API client sends cookies automatically with withCredentials: true
-  return useQuery({
-    queryKey: queryKeys.auth.me(),
-    queryFn: () => authApiV1.getMe(),
+  // Stabilize `data` reference to avoid unnecessary re-renders when React Query/tRPC
+  // surfaces equivalent objects with new references (e.g. after transformations).
+  // We keep the FULL user object stable only when it's deeply equivalent.
+  const stableUserRef = React.useRef<User | null>(null);
+  const stableUserKeyRef = React.useRef<string | null>(null);
+
+  // Use tRPC for getMe - provides automatic type safety
+  // Use throwOnError: false to handle errors in AuthContext instead of throwing
+  const query = trpc.users.getMe.useQuery(undefined, {
     // Use longer staleTime for auth data since it doesn't change frequently during a session
     staleTime: 5 * 60 * 1000, // 5 minutes - auth data stays fresh for 5 minutes
     // Don't refetch on mount if data is fresh - prevents excessive refetches on navigation
     refetchOnMount: false,
+    // Don't throw errors - handle them in AuthContext
+    throwOnError: false,
     // Don't refetch on reconnect if query failed with 401
     refetchOnReconnect: (query) => {
-      const lastError = query.state.error as any;
-      if (lastError?.details?.status === 401 || lastError?.code === 'HTTP_401') {
-        return false;
-      }
-      return true;
+      return !isUnauthorizedError(query.state.error);
     },
-    // Retry once on 401 to handle cases where cookie was just set
-    retry: (failureCount, error: any) => {
-      const is401 = error?.details?.status === 401 || error?.code === 'HTTP_401';
-      // Don't retry on 401 errors (token is invalid/expired)
-      if (is401) return false;
+    // Don't retry on 401 errors (token is invalid/expired)
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error)) return false;
       // Retry other errors up to 1 time
       return failureCount < 1;
     },
+    // Suppress error toast for 401 errors - they're expected when not authenticated
+    // AuthContext handles 401 errors appropriately
+    meta: {
+      skipErrorToast: true,
+    },
+    select: (data) => {
+      if (!data) {
+        stableUserRef.current = null;
+        stableUserKeyRef.current = null;
+        return data;
+      }
+
+      // Keep the key stable across Dates/BigInts and avoid crashes on unexpected values.
+      let key: string;
+      try {
+        key = JSON.stringify(data, (_k, v) => {
+          if (typeof v === 'bigint') return v.toString();
+          if (v instanceof Date) return v.toISOString();
+          return v;
+        });
+      } catch {
+        // Conservative fallback: if we can't safely stringify, don't attempt to stabilize.
+        stableUserRef.current = data;
+        stableUserKeyRef.current = null;
+        return data;
+      }
+
+      if (stableUserKeyRef.current === key && stableUserRef.current) {
+        return stableUserRef.current;
+      }
+
+      stableUserKeyRef.current = key;
+      stableUserRef.current = data;
+      return data;
+    },
   });
+
+  // DEBUG: Log query state changes (hooks must remain unconditional)
+  const isDevClient =
+    typeof window !== 'undefined' && process.env.NODE_ENV === 'development';
+  const prevDataRef = React.useRef(query.data);
+  const prevErrorRef = React.useRef(query.error);
+
+  React.useEffect(() => {
+    if (!isDevClient) return;
+
+    if (query.data !== prevDataRef.current) {
+      console.log('[AUTH-DEBUG] useMe data changed:', {
+        hasUser: !!query.data,
+        userId: query.data?.id,
+        username: query.data?.username,
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+      });
+      prevDataRef.current = query.data;
+    }
+
+    if (query.error !== prevErrorRef.current) {
+      console.warn('[AUTH-DEBUG] useMe error:', {
+        error: query.error,
+        isUnauthorized: isUnauthorizedError(query.error),
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+      });
+      prevErrorRef.current = query.error;
+    }
+  }, [
+    isDevClient,
+    query.data,
+    query.error,
+    query.isLoading,
+    query.isFetching,
+  ]);
+
+  return query;
 };
 
 export const useFakeAuth = () => {
-  const queryClient = useQueryClient();
+  const utils = trpc.useUtils();
   
   return useMutation({
     mutationFn: () => authApiV1.authenticateFakeUser(),
@@ -42,13 +118,13 @@ export const useFakeAuth = () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
       // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+      utils.users.getMe.invalidate();
     },
   });
 };
 
 export const useFakeSuperadminAuth = () => {
-  const queryClient = useQueryClient();
+  const utils = trpc.useUtils();
   
   return useMutation({
     mutationFn: () => authApiV1.authenticateFakeSuperadmin(),
@@ -56,7 +132,7 @@ export const useFakeSuperadminAuth = () => {
       // Invalidate queries but don't refetch immediately
       // Let the redirect and page reload handle the refetch
       // This ensures cookies are properly set before refetching
-      queryClient.invalidateQueries({ queryKey: queryKeys.auth.all, refetchType: 'none' });
+      utils.users.getMe.invalidate();
     },
   });
 };
@@ -64,10 +140,16 @@ export const useFakeSuperadminAuth = () => {
 export const useLogout = () => {
   const queryClient = useQueryClient();
   
-  return useMutation({
-    mutationFn: () => authApiV1.logout(),
+  return trpc.auth.logout.useMutation({
     onSuccess: () => {
+      // Clear all queries
       queryClient.clear();
     },
+  });
+};
+
+export const useClearCookies = () => {
+  return useMutation({
+    mutationFn: () => authApiV1.clearCookies(),
   });
 };

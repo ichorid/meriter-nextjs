@@ -1,466 +1,291 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
-import { Model, Connection } from 'mongoose';
-import { getConnectionToken, MongooseModule } from '@nestjs/mongoose';
-import { DatabaseModule } from '../src/common/database/database.module';
-import * as cookieParser from 'cookie-parser';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { uid } from 'uid';
-import * as request from 'supertest';
-import { JwtService } from '../src/api-v1/common/utils/jwt-service.util';
-import { CommunityService } from '../src/domain/services/community.service';
-import { UserService } from '../src/domain/services/user.service';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 
-describe('Marathon and Vision Groups Integration Test', () => {
+describe('Marathon/Future Vision integration (e2e)', () => {
   jest.setTimeout(60000);
 
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let testDb: any;
+  let originalEnableCommentVoting: string | undefined;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let walletModel: Model<WalletDocument>;
-  let publicationModel: Model<PublicationDocument>;
-  let voteModel: Model<VoteDocument>;
-
-  // User IDs
-  let aliceId: string;
-  let bobId: string;
-  let carolId: string;
-  let derrekId: string;
-
-  // Community IDs
-  let marathonCommunityId: string;
-  let visionCommunityId: string;
-
-  // JWT Tokens
-  let aliceToken: string;
-  let bobToken: string;
-  let carolToken: string;
-  let derrekToken: string;
-
-  // Publication IDs
-  let bobPostId: string;
-  let derrekPostId: string;
-
-  // Invite codes
-  let aliceInviteCode: string;
-  let derrekInviteCode: string;
+  let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   beforeAll(async () => {
-    jest.setTimeout(120000); // Increase timeout for database setup
-    // Clear MONGO_URL to ensure we create a fresh in-memory server
-    const originalMongoUrl = process.env.MONGO_URL;
-    delete process.env.MONGO_URL;
-    
-    testDb = new TestDatabaseHelper();
-    const mongoUri = await testDb.start();
-    if (!mongoUri || mongoUri.includes('127.0.0.1:27017')) {
-      throw new Error(`Failed to start MongoDB Memory Server. Got URI: ${mongoUri}`);
-    }
-    
-    // Wait a moment to ensure the memory server is fully ready
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Set MONGO_URL before creating the module so DatabaseModule picks it up
-    process.env.MONGO_URL = mongoUri;
-    process.env.JWT_SECRET = 'test-jwt-secret-key-for-marathon-vision-integration';
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
 
-    // Override DatabaseModule to use our in-memory server directly
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        MongooseModule.forRoot(mongoUri, {
-          retryWrites: false,
-        }),
-        MeriterModule,
-      ],
-    })
-      .overrideModule(DatabaseModule)
-      .useModule(
-        MongooseModule.forRoot(mongoUri, {
-          retryWrites: false,
-        }),
-      )
-      .compile();
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
 
-    app = moduleFixture.createNestApplication();
-    app.use(cookieParser()); // Enable cookie parsing for JWT authentication
-    await app.init();
-
-    // Wait for onModuleInit to complete
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    connection = app.get(getConnectionToken());
-    communityModel = connection.model<CommunityDocument>(Community.name);
-    userModel = connection.model<UserDocument>(User.name);
-    walletModel = connection.model<WalletDocument>(Wallet.name);
-    publicationModel = connection.model<PublicationDocument>(Publication.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
-
-    // Generate test IDs
-    aliceId = uid();
-    bobId = uid();
-    carolId = uid();
-    derrekId = uid();
+    communityModel = app.get(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get(getModelToken(UserSchemaClass.name));
+    walletModel = app.get(getModelToken(WalletSchemaClass.name));
+    userCommunityRoleModel = app.get(getModelToken(UserCommunityRoleSchemaClass.name));
   });
 
   beforeEach(async () => {
-    // Clean up before each test
-    const collections = connection.collections;
-    for (const key in collections) {
-      const collection = collections[key];
-      try {
-        await collection.dropIndex('token_1').catch(() => {});
-      } catch (err) {
-        // Index doesn't exist, ignore
-      }
-      await collection.deleteMany({});
-    }
-
-    // Ensure special groups don't exist (onModuleInit might have created them)
-    await communityModel.deleteMany({ typeTag: 'future-vision' });
-    await communityModel.deleteMany({ typeTag: 'marathon-of-good' });
+    await communityModel.deleteMany({});
+    await userModel.deleteMany({});
+    await walletModel.deleteMany({});
+    await userCommunityRoleModel.deleteMany({});
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
-  it('should complete the full integration test scenario', async () => {
-    // Step 1: Create user Alice and give her superadmin rights (must be first to create groups)
-    // Step 2: Create marathon-of-good and future-vision groups
-    await userModel.create({
-      id: aliceId,
-      authProvider: 'fake',
-      authId: `fake-${aliceId}`,
-      displayName: 'Alice',
-      username: 'alice',
-      firstName: 'Alice',
-      lastName: 'Admin',
-      globalRole: 'superadmin',
-      communityMemberships: [],
-      communityTags: [],
-      profile: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+  it('enforces special-group voting rules and quota semantics', async () => {
+    const now = new Date();
 
-    // Generate JWT token for Alice
-    aliceToken = JwtService.generateToken(
-      aliceId,
-      'fake',
-      `fake-${aliceId}`,
-      [],
-      process.env.JWT_SECRET!,
-    );
+    const marathonCommunityId = uid();
+    const visionCommunityId = uid();
 
-    // Step 2: Create marathon-of-good and future-vision groups
-    const marathonResponse = await request(app.getHttpServer())
-      .post('/api/v1/communities')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
+    const authorId = uid();
+    const voterId = uid();
+
+    await userModel.create([
+      {
+        id: authorId,
+        telegramId: `author_${authorId}`,
+        authProvider: 'telegram',
+        authId: `author_${authorId}`,
+        displayName: 'Author',
+        username: `author_${authorId}`,
+        firstName: 'Author',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/a.jpg',
+        communityMemberships: [],
+        communityTags: [],
+        profile: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: voterId,
+        telegramId: `voter_${voterId}`,
+        authProvider: 'telegram',
+        authId: `voter_${voterId}`,
+        displayName: 'Voter',
+        username: `voter_${voterId}`,
+        firstName: 'Voter',
+        lastName: 'User',
+        avatarUrl: 'https://example.com/v.jpg',
+        communityMemberships: [],
+        communityTags: [],
+        profile: {},
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+
+    await communityModel.create([
+      {
+        id: marathonCommunityId,
         name: 'Marathon of Good',
-        description: 'Marathon of Good group',
         typeTag: 'marathon-of-good',
+        members: [authorId, voterId],
         settings: {
+          currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
           dailyEmission: 10,
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
         },
-      });
-
-    expect(marathonResponse.status).toBe(201);
-    expect(marathonResponse.body.id).toBeDefined();
-    marathonCommunityId = marathonResponse.body.id;
-
-    const visionResponse = await request(app.getHttpServer())
-      .post('/api/v1/communities')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
+        votingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          canVoteForOwnPosts: false,
+          participantsCannotVoteForLead: false,
+          spendsMerits: true,
+          awardsMerits: true,
+        },
+        hashtags: ['marathon'],
+        hashtagDescriptions: {},
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: visionCommunityId,
         name: 'Future Vision',
-        description: 'Future Vision group',
         typeTag: 'future-vision',
+        members: [authorId, voterId],
         settings: {
-          dailyEmission: 0, // No quota for future-vision
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
+          currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          dailyEmission: 10, // base emission can be non-zero; effective quota must still be 0 for future-vision
         },
-      })
-      .expect(201);
+        votingRules: {
+          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          canVoteForOwnPosts: false,
+          participantsCannotVoteForLead: false,
+          spendsMerits: true,
+          awardsMerits: true,
+        },
+        hashtags: ['vision'],
+        hashtagDescriptions: {},
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
 
-    visionCommunityId = visionResponse.body.id;
+    // Roles are read from UserCommunityRole
+    await userCommunityRoleModel.create([
+      // voter is viewer in marathon (viewers can vote with quota, but cannot use wallet)
+      { id: uid(), userId: voterId, communityId: marathonCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
+      // voter is participant in future-vision (wallet voting)
+      { id: uid(), userId: voterId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      // author is participant in both
+      { id: uid(), userId: authorId, communityId: marathonCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: authorId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+    ]);
 
-    // Step 3: Alice creates an invite
-    const inviteResponse = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        type: 'superadmin-to-lead',
-      });
-
-    expect(inviteResponse.status).toBe(201);
-    expect(inviteResponse.body.success).toBe(true);
-    expect(inviteResponse.body.data).toBeDefined();
-    aliceInviteCode = inviteResponse.body.data.code;
-
-    // Step 4: Create user Bob (default, should be viewer)
-    await userModel.create({
-      id: bobId,
-      authProvider: 'fake',
-      authId: `fake-${bobId}`,
-      displayName: 'Bob',
-      username: 'bob',
-      firstName: 'Bob',
-      lastName: 'User',
-      globalRole: undefined, // Default role
-      communityMemberships: [],
-      communityTags: [],
-      profile: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    // Generate JWT token for Bob
-    bobToken = JwtService.generateToken(
-      bobId,
-      'fake',
-      `fake-${bobId}`,
-      [],
-      process.env.JWT_SECRET!,
-    );
-
-    // Step 5: Bob uses invite from Alice and becomes a lead in his own group and a participant in marathon and vision groups
-    const bobInviteUseResponse = await request(app.getHttpServer())
-      .post(`/api/v1/invites/${aliceInviteCode}/use`)
-      .set('Cookie', `jwt=${bobToken}`);
-
-    expect(bobInviteUseResponse.status).toBe(201);
-
-    // Step 6: Bob creates a post in marathon-of-good group
-    const bobPostResponse = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .set('Cookie', `jwt=${bobToken}`)
-      .send({
+    // publications.create now requires wallet merits when community.settings.postCost is unset
+    // (defaults to 1). This test focuses on special-group voting semantics, so we seed wallets
+    // to keep publication creation unblocked without changing community settings.
+    await walletModel.create([
+      // Wallet for voter in future-vision (wallet voting)
+      {
+        id: uid(),
+        userId: voterId,
+        communityId: visionCommunityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      // Wallets for author so they can create publications in both communities
+      {
+        id: uid(),
+        userId: authorId,
         communityId: marathonCommunityId,
-        content: 'hello this is a good deed',
-        type: 'text',
-        hashtags: [],
-      })
-      .expect(201);
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId: authorId,
+        communityId: visionCommunityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
 
-    bobPostId = bobPostResponse.body.data.id;
-
-    // Step 7: Create user Carol (default)
-    await userModel.create({
-      id: carolId,
-      authProvider: 'fake',
-      authId: `fake-${carolId}`,
-      displayName: 'Carol',
-      username: 'carol',
-      firstName: 'Carol',
-      lastName: 'User',
-      globalRole: undefined, // Default role
-      communityMemberships: [],
-      communityTags: [],
-      profile: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    // Create a publication in marathon-of-good by author
+    (global as any).testUserId = authorId;
+    const marathonPub = await trpcMutation(app, 'publications.create', {
+      communityId: marathonCommunityId,
+      content: 'Marathon post',
+      type: 'text',
+      hashtags: ['marathon'],
+      postType: 'basic',
+      isProject: false,
     });
 
-    // Generate JWT token for Carol
-    carolToken = JwtService.generateToken(
-      carolId,
-      'fake',
-      `fake-${carolId}`,
-      [],
-      process.env.JWT_SECRET!,
-    );
+    // voter: can vote with quota in marathon
+    (global as any).testUserId = voterId;
+    await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: marathonPub.id,
+      quotaAmount: 3,
+      walletAmount: 0,
+      comment: 'Great deed!',
+    });
 
-    // Carol needs to be added to marathon group to vote and get quota
-    // Based on the scenario, Carol gets quota as soon as she joins the platform
-    // We'll add her as a viewer to marathon group (viewers can vote with quota)
-    const communityService = app.get<CommunityService>(CommunityService);
-    const userService = app.get<UserService>(UserService);
-    const userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
-    const walletService = app.get<WalletService>(WalletService);
+    const quota = await trpcQuery(app, 'wallets.getQuota', {
+      userId: voterId,
+      communityId: marathonCommunityId,
+    });
+    expect(quota.dailyQuota).toBe(10);
+    expect(quota.used).toBe(3);
+    expect(quota.remaining).toBe(7);
 
-    // Add Carol to marathon group as viewer
-    await userCommunityRoleService.setRole(carolId, marathonCommunityId, 'viewer', true);
-    await communityService.addMember(marathonCommunityId, carolId);
-    await userService.addCommunityMembership(carolId, marathonCommunityId);
-    
-    // Create wallet for Carol in marathon group (needed for quota tracking)
-    const marathonCommunity = await communityService.getCommunity(marathonCommunityId);
-    const marathonCurrency = marathonCommunity?.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-    await walletService.createOrGetWallet(carolId, marathonCommunityId, marathonCurrency);
+    // voter: cannot vote with wallet in marathon
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const walletVoteInMarathon = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPub.id,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet vote attempt',
+      });
+      expect(walletVoteInMarathon.error?.code).toBe('BAD_REQUEST');
+      expect(walletVoteInMarathon.error?.message).toContain('Marathon of Good only allows quota voting');
+    });
 
-    // Step 8: Carol votes for Bob's post in marathon-of-good group with 3 out of 10 daily quota
-    await request(app.getHttpServer())
-      .post(`/api/v1/publications/${bobPostId}/votes`)
-      .set('Cookie', `jwt=${carolToken}`)
-      .send({
+    // Create a publication in future-vision by author
+    (global as any).testUserId = authorId;
+    const visionPub = await trpcMutation(app, 'publications.create', {
+      communityId: visionCommunityId,
+      content: 'Vision post',
+      type: 'text',
+      hashtags: ['vision'],
+      postType: 'basic',
+      isProject: false,
+    });
+
+    // voter: future-vision quota is effectively 0
+    (global as any).testUserId = voterId;
+    const fvQuota = await trpcQuery(app, 'wallets.getQuota', {
+      userId: voterId,
+      communityId: visionCommunityId,
+    });
+    expect(fvQuota.dailyQuota).toBe(0);
+    expect(fvQuota.used).toBe(0);
+    expect(fvQuota.remaining).toBe(0);
+
+    // voter: quota voting rejected in future-vision
+    await withSuppressedErrors(['BAD_REQUEST'], async () => {
+      const quotaVoteInVision = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPub.id,
         quotaAmount: 3,
         walletAmount: 0,
-        comment: 'Great deed!',
-      })
-      .expect(201);
-
-    // Verify Carol's quota: should have 7 remaining (started with 10, used 3)
-    const carolQuotaResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${carolId}/quota?communityId=${marathonCommunityId}`)
-      .set('Cookie', `jwt=${carolToken}`);
-
-    expect(carolQuotaResponse.status).toBe(200);
-    // Quota endpoint returns data directly
-    expect(carolQuotaResponse.body.remainingToday).toBe(7);
-    expect(carolQuotaResponse.body.usedToday).toBe(3);
-
-    // Verify Bob's merit wallet in future-vision group is up 3 merits
-    const bobWalletsResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${bobId}/wallets`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .expect(200);
-
-    // Wallets endpoint returns array directly
-    const bobVisionWallet = bobWalletsResponse.body.find(
-      (w: any) => w.communityId === visionCommunityId,
-    );
-    expect(bobVisionWallet).toBeDefined();
-    expect(bobVisionWallet.balance).toBe(3);
-
-    // Verify Bob's wallet in marathon group DOES NOT CHANGE (should be 0)
-    const bobMarathonWallet = bobWalletsResponse.body.find(
-      (w: any) => w.communityId === marathonCommunityId,
-    );
-    // Marathon wallet should exist (created when Bob used invite) but balance should be 0
-    expect(bobMarathonWallet).toBeDefined();
-    expect(bobMarathonWallet.balance).toBe(0);
-
-    // Step 9: User Derrek joins the platform
-    await userModel.create({
-      id: derrekId,
-      authProvider: 'fake',
-      authId: `fake-${derrekId}`,
-      displayName: 'Derrek',
-      username: 'derrek',
-      firstName: 'Derrek',
-      lastName: 'User',
-      globalRole: undefined, // Default role
-      communityMemberships: [],
-      communityTags: [],
-      profile: {},
-      createdAt: new Date(),
-      updatedAt: new Date(),
+        comment: 'Quota vote attempt',
+      });
+      expect(quotaVoteInVision.error?.code).toBe('BAD_REQUEST');
+      expect(quotaVoteInVision.error?.message).toContain('Future Vision only allows wallet voting');
     });
 
-    // Generate JWT token for Derrek
-    derrekToken = JwtService.generateToken(
-      derrekId,
-      'fake',
-      `fake-${derrekId}`,
-      [],
-      process.env.JWT_SECRET!,
-    );
-
-    // Step 10: Alice creates an invite for Derrek (superadmin-to-lead)
-    // When Derrek uses this invite, he will automatically become a participant in marathon and vision groups
-    const derrekInviteResponse = await request(app.getHttpServer())
-      .post('/api/v1/invites')
-      .set('Cookie', `jwt=${aliceToken}`)
-      .send({
-        type: 'superadmin-to-lead',
-      })
-      .expect(201);
-
-    derrekInviteCode = derrekInviteResponse.body.data.code;
-
-    // Step 11: Derrek uses the invite and becomes a lead in his personal group and a participant in marathon and vision groups
-    await request(app.getHttpServer())
-      .post(`/api/v1/invites/${derrekInviteCode}/use`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(201);
-
-    // Step 12: Derrek creates a post in the future vision group
-    const derrekPostResponse = await request(app.getHttpServer())
-      .post('/api/v1/publications')
-      .set('Cookie', `jwt=${derrekToken}`)
-      .send({
-        communityId: visionCommunityId,
-        content: "here is derrek's vision",
-        type: 'text',
-        hashtags: [],
-      })
-      .expect(201);
-
-    derrekPostId = derrekPostResponse.body.data.id;
-
-    // Step 13: Bob upvotes derrek's post in the vision group, by using his (bob's) merits he has in his wallet in the vision group
-    // Bob uses 2 out of 3 merits to upvote derrek's vision post
-    await request(app.getHttpServer())
-      .post(`/api/v1/publications/${derrekPostId}/votes`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .send({
-        quotaAmount: 0,
-        walletAmount: 2,
-        comment: 'Great vision!',
-      })
-      .expect(201);
-
-    // Verify derrek's post now has 2 upvotes on it
-    const derrekPostCheckResponse = await request(app.getHttpServer())
-      .get(`/api/v1/publications/${derrekPostId}`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(200);
-
-    expect(derrekPostCheckResponse.body.data.metrics.upvotes).toBe(2);
-
-    // Verify derrek's wallets did not change anywhere (zero merits, bob's upvote in the vision group did not affect it)
-    const derrekWalletsResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${derrekId}/wallets`)
-      .set('Cookie', `jwt=${derrekToken}`)
-      .expect(200);
-
-    // Wallets endpoint returns array directly
-    derrekWalletsResponse.body.forEach((wallet: any) => {
-      expect(wallet.balance).toBe(0);
+    // voter: wallet voting allowed in future-vision
+    const walletVoteInVision = await trpcMutation(app, 'votes.createWithComment', {
+      targetType: 'publication',
+      targetId: visionPub.id,
+      quotaAmount: 0,
+      walletAmount: 5,
+      comment: 'Wallet vote',
     });
+    expect(walletVoteInVision.amountWallet).toBe(5);
+    expect(walletVoteInVision.direction).toBe('up');
 
-    // Verify bob's wallet in the vision group is down 2 merits (1 remaining)
-    const bobWalletsAfterVoteResponse = await request(app.getHttpServer())
-      .get(`/api/v1/users/${bobId}/wallets`)
-      .set('Cookie', `jwt=${bobToken}`)
-      .expect(200);
-
-    // Wallets endpoint returns array directly
-    const bobVisionWalletAfter = bobWalletsAfterVoteResponse.body.find(
-      (w: any) => w.communityId === visionCommunityId,
-    );
-    expect(bobVisionWalletAfter).toBeDefined();
-    expect(bobVisionWalletAfter.balance).toBe(1); // Was 3, used 2, now 1
+    // author: withdrawals are forbidden in future-vision (output group)
+    (global as any).testUserId = authorId;
+    await withSuppressedErrors(['FORBIDDEN'], async () => {
+      const withdraw = await trpcMutationWithError(app, 'publications.withdraw', {
+        publicationId: visionPub.id,
+        amount: 1,
+      });
+      expect(withdraw.error?.code).toBe('FORBIDDEN');
+      expect(withdraw.error?.message).toContain('Withdrawals are not allowed in Future Vision');
+    });
   });
 });
+
 

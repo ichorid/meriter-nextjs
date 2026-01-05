@@ -18,6 +18,13 @@ export interface FeedOptions {
   limit?: number;
   sort?: 'recent' | 'score';
   tag?: string;
+  search?: string;
+  impactArea?: string;
+  stage?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  helpNeeded?: string[];
+  categories?: string[]; // Array of category IDs to filter by
 }
 
 @Injectable()
@@ -29,7 +36,7 @@ export class CommunityFeedService {
     private readonly pollService: PollService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-  ) {}
+  ) { }
 
   async getCommunityFeed(
     communityId: string,
@@ -50,6 +57,13 @@ export class CommunityFeedService {
       limit: providedLimit,
       sort = 'score',
       tag,
+      search,
+      impactArea,
+      stage,
+      beneficiaries,
+      methods,
+      helpNeeded,
+      categories,
     } = options;
 
     // Use skip/limit if provided, otherwise calculate from page/pageSize
@@ -59,6 +73,16 @@ export class CommunityFeedService {
     // Check if community is future-vision (polls are disabled)
     const community = await this.communityService.getCommunity(communityId);
     const isFutureVision = community?.typeTag === 'future-vision';
+
+    // Check if any category filters are active (polls don't have categories, so exclude them)
+    const hasCategoryFilters = !!(
+      impactArea ||
+      stage ||
+      (beneficiaries && beneficiaries.length > 0) ||
+      (methods && methods.length > 0) ||
+      (helpNeeded && helpNeeded.length > 0) ||
+      (categories && categories.length > 0)
+    );
 
     // Fetch both publications and polls in parallel
     // Fetch more items than needed to ensure we have enough after merging and sorting
@@ -72,16 +96,27 @@ export class CommunityFeedService {
         skip,
         sortBy,
         tag,
+        {
+          impactArea,
+          stage,
+          beneficiaries,
+          methods,
+          helpNeeded,
+          categories,
+        },
+        search,
       ),
-      // Don't fetch polls for future-vision communities
-      isFutureVision
+      // Don't fetch polls for future-vision communities or when category filters are active
+      isFutureVision || hasCategoryFilters
         ? Promise.resolve([])
         : this.pollService.getPollsByCommunity(
-            communityId,
-            fetchLimit,
-            skip,
-            sortBy,
-          ),
+
+          communityId,
+          fetchLimit,
+          skip,
+          sortBy,
+          search,
+        ),
     ]);
 
     // Transform to unified feed items
@@ -166,7 +201,13 @@ export class CommunityFeedService {
           postType: snapshot.postType || 'basic',
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
-          imageUrl: snapshot.imageUrl || undefined,
+          categories: snapshot.categories || [],
+          images: pub.getImages && pub.getImages.length > 0 ? pub.getImages : undefined,
+          impactArea: snapshot.impactArea || undefined,
+          stage: snapshot.stage || undefined,
+          beneficiaries: snapshot.beneficiaries && snapshot.beneficiaries.length > 0 ? snapshot.beneficiaries : undefined,
+          methods: snapshot.methods && snapshot.methods.length > 0 ? snapshot.methods : undefined,
+          helpNeeded: snapshot.helpNeeded && snapshot.helpNeeded.length > 0 ? snapshot.helpNeeded : undefined,
           metrics: {
             upvotes: snapshot.metrics.upvotes,
             downvotes: snapshot.metrics.downvotes,
@@ -188,6 +229,8 @@ export class CommunityFeedService {
               },
             }),
           },
+          deleted: snapshot.deleted || false,
+          deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
         };

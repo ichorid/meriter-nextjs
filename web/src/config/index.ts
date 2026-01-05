@@ -12,6 +12,8 @@
 
 import { z } from 'zod';
 
+const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-export';
+
 /**
  * Derive application URL from DOMAIN
  * Protocol: http:// for localhost, https:// for production
@@ -32,18 +34,21 @@ function deriveAppUrl(): string {
     // Runtime fallback: use current location (allows one build for all environments)
     return `${window.location.protocol}//${window.location.host}`;
   }
-  
+
   // Server-side: require env var (for SSR and API routes)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
-  
+
   if (!domain) {
     // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
     if (process.env.APP_URL) {
       return process.env.APP_URL;
     }
+    if (isBuildTime) {
+      return 'http://localhost';
+    }
     throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
   }
-  
+
   // Use http:// for localhost, https:// for production
   const protocol = domain === 'localhost' ? 'http://' : 'https://';
   return `${protocol}${domain}`;
@@ -61,29 +66,34 @@ const optionalString = z.preprocess((value) => {
 const envSchema = z.object({
   // Application
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  
+
   // API Configuration - optional, defaults to relative URLs in production
   NEXT_PUBLIC_API_URL: z.string().optional(),
-  
+
   // Telegram Configuration
   BOT_TOKEN: z.string().optional(),
   NEXT_PUBLIC_TELEGRAM_API_URL: z.string().default('https://api.telegram.org'),
-  
+
   // S3 Configuration
   S3_BUCKET_NAME: optionalString,
   S3_ACCESS_KEY_ID: optionalString,
   S3_SECRET_ACCESS_KEY: optionalString,
   S3_ENDPOINT: optionalString,
   S3_REGION: optionalString,
-  
+
   // Feature Flags
   NEXT_PUBLIC_ENABLE_ANALYTICS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_DEBUG: z.string().optional(),
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.string().optional(),
+  NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS: z.string().optional(),
   NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: z.string().optional(),
-  
+
   // Development Mode
   NEXT_PUBLIC_FAKE_DATA_MODE: z.string().optional(),
+  NEXT_PUBLIC_TEST_AUTH_MODE: z.string().optional(),
+
+  // Monitoring
+  NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 // S3 validation removed - S3 is completely optional
 // If S3_ENDPOINT is set but other params are missing, S3 will simply be disabled
@@ -105,6 +115,8 @@ const env = envSchema.parse({
   NEXT_PUBLIC_ENABLE_COMMENT_VOTING: process.env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING,
   NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: process.env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM,
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
+  NEXT_PUBLIC_TEST_AUTH_MODE: process.env.NEXT_PUBLIC_TEST_AUTH_MODE,
+  NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
 });
 
 // Derive app URL from DOMAIN
@@ -126,10 +138,13 @@ function getDomainConfig(): string {
     }
     return hostname;
   }
-  
+
   // Server-side: require DOMAIN env var (already validated by deriveAppUrl, but double-check)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   if (!domain) {
+    if (isBuildTime) {
+      return 'localhost';
+    }
     throw new Error(
       'DOMAIN environment variable is required on server-side. ' +
       'Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro). ' +
@@ -152,6 +167,39 @@ const s3Region = env.S3_REGION;
 const s3Bucket = env.S3_BUCKET_NAME;
 const isS3Configured = !!(s3Endpoint && s3Region && s3Bucket && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY);
 
+/**
+ * Determine the API base URL to use in the browser.
+ *
+ * IMPORTANT:
+ * In production-like deployments (non-localhost), the app expects to reach the API via the same origin
+ * (Caddy proxies /api and /trpc). If someone sets NEXT_PUBLIC_API_URL to an http:// URL on an https://
+ * site, browsers will block mixed-content requests and Secure cookies won't work, causing auth loops.
+ *
+ * Therefore:
+ * - On non-localhost in the browser, always use relative URLs (baseUrl = '').
+ * - On localhost, allow NEXT_PUBLIC_API_URL (or default to relative and rely on rewrites).
+ */
+function getApiBaseUrl(): string {
+  const raw = normalizeUrl(env.NEXT_PUBLIC_API_URL) ?? '';
+
+  if (typeof window === 'undefined') {
+    // Server-side: keep configured value (used for SSR/build-time; should be empty in prod).
+    return raw;
+  }
+
+  const hostname = window.location.hostname;
+  const isLocal =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1';
+
+  // On real domains (dev/stage/prod), always go through same-origin proxy.
+  if (!isLocal) {
+    return '';
+  }
+
+  return raw;
+}
+
 // Configuration object with computed values
 export const config = {
   // Application
@@ -166,7 +214,7 @@ export const config = {
     // Throws error if domain cannot be determined (fail-fast validation)
     domain: getDomainConfig(),
   },
-  
+
   // API
   api: {
     // Always use relative URLs to go through Next.js rewrites proxy
@@ -174,7 +222,7 @@ export const config = {
     // In production with Caddy, use empty string (relative URLs)
     // In development, also use empty string to go through Next.js rewrites
     // Only use absolute URL if explicitly set via NEXT_PUBLIC_API_URL
-    baseUrl: env.NEXT_PUBLIC_API_URL ?? '',
+    baseUrl: getApiBaseUrl() || '',
     endpoints: {
       auth: '/api/v1/auth',
       publications: '/api/v1/publications',
@@ -187,38 +235,46 @@ export const config = {
       users: '/api/v1/users',
     },
   },
-  
+
   // Telegram
   telegram: {
-    botToken: env.BOT_TOKEN,
-    apiUrl: env.NEXT_PUBLIC_TELEGRAM_API_URL,
-    botUrl: env.BOT_TOKEN ? `${env.NEXT_PUBLIC_TELEGRAM_API_URL}/bot${env.BOT_TOKEN}` : '',
+    botToken: env.BOT_TOKEN || '',
+    apiUrl: env.NEXT_PUBLIC_TELEGRAM_API_URL || 'https://api.telegram.org',
+    botUrl: env.BOT_TOKEN ? `${env.NEXT_PUBLIC_TELEGRAM_API_URL || 'https://api.telegram.org'}/bot${env.BOT_TOKEN}` : '',
     avatarBaseUrl: s3Endpoint ?? '',
   },
-  
+
   // S3 Storage
   s3: {
     enabled: isS3Configured,
-    bucket: s3Bucket,
-    accessKeyId: env.S3_ACCESS_KEY_ID,
-    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
-    endpoint: s3Endpoint,
-    region: s3Region,
+    bucket: s3Bucket || '',
+    accessKeyId: env.S3_ACCESS_KEY_ID || '',
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY || '',
+    endpoint: s3Endpoint || '',
+    region: s3Region || '',
   },
-  
+
   // Feature Flags
   features: {
     analytics: env.NEXT_PUBLIC_ENABLE_ANALYTICS === 'true',
     debug: env.NEXT_PUBLIC_ENABLE_DEBUG === 'true' || env.NODE_ENV === 'development',
     commentVoting: env.NEXT_PUBLIC_ENABLE_COMMENT_VOTING === 'true',
+    commentImageUploads: env.NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS === 'true',
     loginInviteForm: env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
   },
-  
+
   // Development Mode
   development: {
     fakeDataMode: env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true',
+    testAuthMode: env.NEXT_PUBLIC_TEST_AUTH_MODE === 'true',
   },
-  
+
+  // Monitoring
+  sentry: {
+    dsn: env.NEXT_PUBLIC_SENTRY_DSN || '',
+    enabled: !!(env.NEXT_PUBLIC_SENTRY_DSN && env.NEXT_PUBLIC_SENTRY_DSN.trim() !== ''),
+  },
+
   // Messages and Templates
   // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
   // IMPORTANT: This getter is lazy - it only validates when actually accessed
@@ -230,7 +286,7 @@ export const config = {
     // In development, it comes from .env file (loaded by Next.js)
     // docker-compose.yml explicitly passes BOT_USERNAME=${BOT_USERNAME} from .env
     const botUsername = process.env.BOT_USERNAME;
-    
+
     // Fail fast - but only when actually accessed (not during TypeScript type checking)
     if (!botUsername || botUsername.trim() === '') {
       const nodeEnv = process.env.NODE_ENV || 'development';
@@ -239,18 +295,18 @@ export const config = {
         : 'BOT_USERNAME environment variable is required. Set it in .env file or environment.';
       throw new Error(errorMsg);
     }
-    
+
     return {
       welcomeLeader: `Добро пожаловать в Меритер!
 
 Добавьте этого бота (@${botUsername}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку "еще"/"more", а затем на "добавить в группу"/"add to group" и выберите сообщество, в которое будет добавлен бот.`,
-      
+
       welcomeUser: `Добро пожаловать в Меритер! Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
-      
+
       authUser: `Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
-      
+
       addedPublicationReply: `Сообщение добавлено в приложение https://t.me/${botUsername}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`,
-      
+
       approvedPendingWords: ['одобрить'],
     };
   },
@@ -272,6 +328,7 @@ export const isDevelopment = () => config.app.isDevelopment;
 export const isProduction = () => config.app.isProduction;
 export const isTest = () => config.app.isTest;
 export const isFakeDataMode = () => config.development.fakeDataMode;
+export const isTestAuthMode = () => config.development.testAuthMode;
 
 // Legacy exports for backward compatibility
 // Note: BOT_USERNAME is no longer available from config - use BotConfigContext instead

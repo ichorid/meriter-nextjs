@@ -3,10 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { PublicationService } from '../domain/services/publication.service';
 import { CommunitySchemaClass, CommunityDocument } from '../domain/models/community/community.schema';
-import type { Community } from '../domain/models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../domain/models/user/user.schema';
-import type { User } from '../domain/models/user/user.schema';
-import { TelegramMessageProcessorService, ParsedMessage } from './message-processor.service';
+import { TelegramMessageProcessorService } from './message-processor.service';
 import { TelegramMessage } from './message-processor.service';
 import { uid } from 'uid';
 
@@ -101,7 +99,7 @@ export class TelegramPublicationCreatorService {
         type: messageType,
         beneficiaryId,
         hashtags: parsedMessage.hashtags,
-        imageUrl: message.photo?.[0], // Use first photo if available
+        images: message.photo ? [message.photo[0]] : undefined, // Use first photo if available
         videoUrl: message.video,
       });
 

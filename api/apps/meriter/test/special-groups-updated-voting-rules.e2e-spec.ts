@@ -1,51 +1,33 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { TestDatabaseHelper } from './test-db.helper';
-import { MeriterModule } from '../src/meriter.module';
+import { INestApplication } from '@nestjs/common';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
-import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
-import { Model, Connection } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { Vote, VoteDocument } from '../src/domain/models/vote/vote.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
-import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
-import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
+import { VoteSchemaClass, VoteDocument } from '../src/domain/models/vote/vote.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
+import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
-import { UserGuard } from '../src/user.guard';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = { 
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-    };
-    return true;
-  }
-}
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
   
   let app: INestApplication;
-  let testDb: TestDatabaseHelper;
-  let connection: Connection;
+  let testDb: any;
+  let _connection: Connection;
+  let originalEnableCommentVoting: string | undefined;
   
-  let communityService: CommunityService;
   let voteService: VoteService;
-  let publicationService: PublicationService;
-  let userService: UserService;
-  let walletService: WalletService;
+  let _publicationService: PublicationService;
+  let _userService: UserService;
+  let _walletService: WalletService;
   
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -58,40 +40,34 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   let testUserId2: string;
   let marathonCommunityId: string;
   let visionCommunityId: string;
+  let teamCommunityId: string;
   let marathonPubId: string;
   let visionPubId: string;
-  let marathonVoteId: string;
-  let visionVoteId: string;
+  let teamPubId: string;
 
   beforeAll(async () => {
-    testDb = new TestDatabaseHelper();
-    const uri = await testDb.start();
     process.env.JWT_SECRET = 'test-jwt-secret-key-for-updated-voting-rules';
+    originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
+    process.env.ENABLE_COMMENT_VOTING = 'true';
 
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [MongooseModule.forRoot(uri), MeriterModule],
-    })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
-      .compile();
+    const context = await TestSetupHelper.createTestApp();
+    app = context.app;
+    testDb = context.testDb;
+    _connection = app.get(getConnectionToken());
 
-    app = moduleFixture.createNestApplication();
-    await app.init();
-
-    communityService = app.get<CommunityService>(CommunityService);
     voteService = app.get<VoteService>(VoteService);
-    publicationService = app.get<PublicationService>(PublicationService);
-    userService = app.get<UserService>(UserService);
-    walletService = app.get<WalletService>(WalletService);
-    
-    connection = app.get(getConnectionToken());
-    
-    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
-    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
-    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(Publication.name));
-    voteModel = app.get<Model<VoteDocument>>(getModelToken(Vote.name));
-    walletModel = app.get<Model<WalletDocument>>(getModelToken(Wallet.name));
-    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(getModelToken(UserCommunityRole.name));
+    _publicationService = app.get<PublicationService>(PublicationService);
+    _userService = app.get<UserService>(UserService);
+    _walletService = app.get<WalletService>(WalletService);
+
+    communityModel = app.get<Model<CommunityDocument>>(getModelToken(CommunitySchemaClass.name));
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    publicationModel = app.get<Model<PublicationDocument>>(getModelToken(PublicationSchemaClass.name));
+    voteModel = app.get<Model<VoteDocument>>(getModelToken(VoteSchemaClass.name));
+    walletModel = app.get<Model<WalletDocument>>(getModelToken(WalletSchemaClass.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(
+      getModelToken(UserCommunityRoleSchemaClass.name),
+    );
 
     testUserId = uid();
     testUserId2 = uid();
@@ -191,6 +167,36 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
+    // Create Team community
+    teamCommunityId = uid();
+    await communityModel.create({
+      id: teamCommunityId,
+      name: 'Team Community',
+      typeTag: 'team',
+      members: [testUserId, testUserId2],
+      settings: {
+        iconUrl: 'https://example.com/icon.png',
+        currencyNames: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        dailyEmission: 10,
+      },
+      votingRules: {
+        allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+        canVoteForOwnPosts: false,
+        participantsCannotVoteForLead: false,
+        spendsMerits: true,
+        awardsMerits: true,
+      },
+      hashtags: ['team'],
+      hashtagDescriptions: {},
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Create wallets with balance
     await walletModel.create([
       {
@@ -211,6 +217,20 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         id: uid(),
         userId: testUserId,
         communityId: visionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: teamCommunityId,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -264,6 +284,26 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
+    teamPubId = uid();
+    await publicationModel.create({
+      id: teamPubId,
+      communityId: teamCommunityId,
+      authorId: testUserId2,
+      content: 'Team publication',
+      type: 'text',
+      hashtags: ['team'],
+      postType: 'basic',
+      isProject: false,
+      metrics: {
+        upvotes: 0,
+        downvotes: 0,
+        score: 0,
+        commentCount: 0,
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     // Create user community roles
     const now = new Date();
     await userCommunityRoleModel.create([
@@ -299,6 +339,14 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         createdAt: now,
         updatedAt: now,
       },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: teamCommunityId,
+        role: 'participant',
+        createdAt: now,
+        updatedAt: now,
+      },
     ]);
 
     (global as any).testUserId = testUserId;
@@ -309,105 +357,99 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   });
 
   afterAll(async () => {
-    if (app) {
-      await app.close();
-    }
-    if (testDb) {
-      await testDb.stop();
-    }
+    process.env.ENABLE_COMMENT_VOTING = originalEnableCommentVoting;
+    await TestSetupHelper.cleanup({ app, testDb });
   });
 
   describe('Marathon of Good - Quota Only Voting', () => {
     it('should allow quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Quota vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Quota vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(5);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should allow quota voting on comments (votes)', async () => {
       // Create initial vote with testUserId
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
-      marathonVoteId = voteId;
+      const voteId = voteResponse.id;
+      const _marathonVoteId = voteId;
 
       // Now vote on the vote (comment) with quota only using testUserId2
       (global as any).testUserId = testUserId2;
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 3,
-          walletAmount: 0,
-          comment: 'Reply vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Reply vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(3);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(3);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should reject wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: marathonPubId,
           quotaAmount: 0,
           walletAmount: 10,
           comment: 'Wallet vote attempt',
-        })
-        .expect(400);
+        });
 
-      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+      });
     });
 
     it('should reject wallet voting on comments (votes)', async () => {
       // Create initial vote
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${marathonPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
 
       // Try to vote on the vote (comment) with wallet
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'vote',
+          targetId: voteId,
           quotaAmount: 0,
           walletAmount: 10,
           comment: 'Wallet vote attempt',
-        })
-        .expect(400);
+        });
 
-      expect(response.body.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+      });
     });
   });
 
@@ -415,90 +457,91 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should return 0 quota for Future Vision users', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/users/${testUserId}/quota?communityId=${visionCommunityId}`)
-        .expect(200);
+      const quota = await trpcQuery(app, 'wallets.getQuota', {
+        userId: testUserId,
+        communityId: visionCommunityId,
+      });
 
-      expect(response.body.dailyQuota).toBe(0);
-      expect(response.body.remainingToday).toBe(0);
-      expect(response.body.usedToday).toBe(0);
+      expect(quota.dailyQuota).toBe(0);
+      expect(quota.remaining).toBe(0);
+      expect(quota.used).toBe(0);
     });
 
     it('should reject quota voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: visionPubId,
           quotaAmount: 5,
           walletAmount: 0,
           comment: 'Quota vote attempt',
-        })
-        .expect(400);
+        });
 
-      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+      });
     });
 
     it('should reject quota voting on comments (votes)', async () => {
       // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
-      visionVoteId = voteId;
+      const voteId = voteResponse.id;
+      const _visionVoteId = voteId;
 
       // Try to vote on the vote (comment) with quota
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'vote',
+          targetId: voteId,
           quotaAmount: 3,
           walletAmount: 0,
           comment: 'Quota vote attempt',
-        })
-        .expect(400);
+        });
 
-      expect(response.body.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+      });
     });
 
     it('should allow wallet voting on publications', async () => {
       (global as any).testUserId = testUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountWallet).toBe(10);
-      expect(response.body.data.vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
 
     it('should allow wallet voting on comments (votes)', async () => {
       // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${visionPubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'First vote',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'First vote',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
+      const voteId = voteResponse.id;
 
       // Vote on the vote (comment) with wallet using testUserId2
       (global as any).testUserId = testUserId2;
@@ -524,18 +567,33 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
       }
 
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/votes/${voteId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 3,
-          comment: 'Reply vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 3,
+        comment: 'Reply vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountWallet).toBe(3);
-      expect(response.body.data.vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(3);
+      expect(vote.amountQuota).toBe(0);
+    });
+  });
+
+  describe('Team Groups - Wallet Voting Allowed', () => {
+    it('should allow wallet voting on publications in team communities', async () => {
+      (global as any).testUserId = testUserId;
+
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: teamPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote in team',
+      });
+
+      expect(vote.amountWallet).toBe(10);
+      expect(vote.amountQuota).toBe(0);
     });
   });
 
@@ -666,38 +724,38 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     it('should allow viewer to vote with quota in marathon-of-good', async () => {
       (global as any).testUserId = viewerUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${viewerPubId}/votes`)
-        .send({
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Viewer quota vote',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: viewerPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Viewer quota vote',
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.vote.amountQuota).toBe(5);
-      expect(response.body.data.vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should reject viewer wallet voting in marathon-of-good', async () => {
       (global as any).testUserId = viewerUserId;
       
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${viewerPubId}/votes`)
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: viewerPubId,
           quotaAmount: 0,
           walletAmount: 10,
           comment: 'Viewer wallet vote attempt',
-        })
-        .expect(400);
+        });
 
-      // Viewer check should happen first, but marathon-of-good check also applies
-      // Accept either error message as both indicate wallet voting is not allowed
-      expect(
-        response.body.message.includes('Viewers can only vote using daily quota') ||
-        response.body.message.includes('Marathon of Good only allows quota voting')
-      ).toBe(true);
+        // Viewer check should happen first, but marathon-of-good check also applies
+        // Accept either error message as both indicate wallet voting is not allowed
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(
+          result.error?.message.includes('Viewers can only vote using daily quota') ||
+            result.error?.message.includes('Marathon of Good only allows quota voting'),
+        ).toBe(true);
+      });
     });
   });
 
@@ -727,17 +785,14 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Vote with wallet-only (should be an upvote, not downvote)
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet-only upvote in Future Vision',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet-only upvote in Future Vision',
+      });
 
-      expect(response.body.success).toBe(true);
-      const vote = response.body.data.vote;
       expect(vote.amountWallet).toBe(10);
       expect(vote.amountQuota).toBe(0);
       // The key fix: direction should be 'up', not 'down'
@@ -745,7 +800,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
 
       // Verify publication metrics were updated correctly (upvote increases score)
       const publication = await publicationModel.findOne({ id: pubId }).lean();
-      expect(publication.metrics.upvotes).toBe(1);
+      // Publication metrics store total vote amounts (not "count of votes")
+      expect(publication.metrics.upvotes).toBe(10);
       expect(publication.metrics.downvotes).toBe(0);
       expect(publication.metrics.score).toBe(10); // Score should increase, not decrease
     });
@@ -775,29 +831,31 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Create a vote (comment) with wallet-only
-      const voteResponse = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          comment: 'Wallet-only vote comment',
-        })
-        .expect(201);
+      const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet-only vote comment',
+      });
 
-      const voteId = voteResponse.body.data.vote.id;
-      expect(voteResponse.body.data.vote.direction).toBe('up');
+      const voteId = voteResponse.id;
+      expect(voteResponse.direction).toBe('up');
 
-      // Fetch the comment and verify metrics
-      const commentResponse = await request(app.getHttpServer())
-        .get(`/api/v1/comments/${voteId}`)
-        .expect(200);
+      // Vote on the vote/comment with wallet-only (should default to an upvote, not downvote)
+      (global as any).testUserId = testUserId2;
+      await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        comment: 'Wallet-only vote on comment',
+      });
 
-      const comment = commentResponse.body.data;
-      // Metrics should show this as an upvote, not downvote
-      expect(comment.metrics.upvotes).toBeGreaterThanOrEqual(0);
-      expect(comment.metrics.downvotes).toBe(0);
-      // The vote should be counted as positive in the sum
-      expect(comment.sum).toBeGreaterThanOrEqual(0);
+      // Fetch the comment details and verify metrics of votes-on-vote are positive
+      const details = await trpcQuery(app, 'comments.getDetails', { id: voteId });
+      expect(details.metrics.downvotes).toBe(0);
+      expect(details.metrics.score).toBeGreaterThan(0);
     });
 
     it('should allow actual downvotes in Future Vision (wallet-only with negative amount)', async () => {
@@ -824,18 +882,15 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       });
 
       // Create a downvote using explicit direction field (wallet-only)
-      const response = await request(app.getHttpServer())
-        .post(`/api/v1/publications/${pubId}/votes`)
-        .send({
-          quotaAmount: 0,
-          walletAmount: 5,
-          direction: 'down', // Explicit direction for downvote
-          comment: 'Downvote in Future Vision',
-        })
-        .expect(201);
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: pubId,
+        quotaAmount: 0,
+        walletAmount: 5,
+        direction: 'down', // Explicit direction for downvote
+        comment: 'Downvote in Future Vision',
+      });
 
-      expect(response.body.success).toBe(true);
-      const vote = response.body.data.vote;
       expect(vote.amountWallet).toBe(5);
       expect(vote.amountQuota).toBe(0);
       expect(vote.direction).toBe('down');
@@ -843,7 +898,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       // Verify publication metrics were updated correctly (downvote decreases score)
       const publication = await publicationModel.findOne({ id: pubId }).lean();
       expect(publication.metrics.upvotes).toBe(0);
-      expect(publication.metrics.downvotes).toBe(1);
+      // Publication metrics store total vote amounts (not "count of votes")
+      expect(publication.metrics.downvotes).toBe(5);
       expect(publication.metrics.score).toBe(-5); // Score should decrease
     });
   });

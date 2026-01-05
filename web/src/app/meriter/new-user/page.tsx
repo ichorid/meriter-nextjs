@@ -1,18 +1,18 @@
 "use client";
 
-import React, { useMemo, useRef } from "react";
+import React, { useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUser } from "@/hooks/api/useProfile";
 import { UserForm, UserFormData } from "@/components/organisms/UserForm";
-import { Logo, BrandButton } from "@/components/ui";
+import { Logo } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
 import { Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 
-export default function NewUserPage() {
+function NewUserPageContent() {
     const t = useTranslations("profile");
-    const tLogin = useTranslations("login");
     const router = useRouter();
     const { user, isLoading: authLoading } = useAuth();
     const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser();
@@ -130,20 +130,32 @@ export default function NewUserPage() {
             {/* Fixed Footer */}
             <footer className="sticky bottom-0 z-10 px-6 pt-4 pb-6 bg-base-100 border-t border-base-content/5">
                 <div className="w-full max-w-2xl mx-auto">
-                    <BrandButton
+                    <Button
                         size="lg"
                         variant="default"
-                        fullWidth
+                        className="rounded-xl active:scale-[0.98] w-full"
                         onClick={handleFooterSubmit}
-                        isLoading={isUpdating}
                         disabled={isUpdating}
                     >
+                        {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
                         {t("completeRegistration", {
                             defaultMessage: "Complete Registration",
                         })}
-                    </BrandButton>
+                    </Button>
                 </div>
             </footer>
         </div>
+    );
+}
+
+export default function NewUserPage() {
+    return (
+        <Suspense fallback={
+            <div className="h-svh bg-base-100 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-base-content/50" />
+            </div>
+        }>
+            <NewUserPageContent />
+        </Suspense>
     );
 }

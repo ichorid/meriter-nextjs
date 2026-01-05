@@ -1,4 +1,4 @@
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
 import { decodeTelegramDeepLink, looksLikeBase64url } from './base64url';
 
 export interface DeepLinkParams {
@@ -22,10 +22,11 @@ export function useDeepLinkHandler(
   searchParams: any,
   telegramStartParam?: string
 ): DeepLinkHandler {
-  const handleDeepLink = () => {
-    let startapp = searchParams.get('startapp');
-    let id = searchParams.get('id');
-    const returnTo = searchParams.get('returnTo');
+  // Memoize handleDeepLink to ensure stable reference
+  const handleDeepLink = useCallback(() => {
+    let startapp = searchParams?.get?.('startapp');
+    let id = searchParams?.get?.('id');
+    const returnTo = searchParams?.get?.('returnTo');
     
     // Parse Telegram start_param (could be base64url encoded or plain string)
     if (telegramStartParam) {
@@ -77,10 +78,11 @@ export function useDeepLinkHandler(
       redirectPath = returnTo;
     }
     
-    router.push(redirectPath);
-  };
+    router?.push?.(redirectPath);
+  }, [router, searchParams, telegramStartParam]);
 
-  return { handleDeepLink };
+  // Memoize return value to ensure stable reference
+  return useMemo(() => ({ handleDeepLink }), [handleDeepLink]);
 }
 
 /**

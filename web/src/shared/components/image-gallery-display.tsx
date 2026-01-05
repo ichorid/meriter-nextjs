@@ -55,10 +55,7 @@ export function ImageGalleryDisplay({
         }
     }, [initialIndex]);
 
-    if (!images || images.length === 0) {
-        return null;
-    }
-
+    // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     const handleNext = useCallback(() => {
         setViewingIndex((prev) => {
             if (prev === null) return null;
@@ -85,16 +82,16 @@ export function ImageGalleryDisplay({
                     prev !== null && prev < images.length - 1
                         ? prev + 1
                         : prev !== null
-                        ? 0
-                        : null
+                            ? 0
+                            : null
                 );
             } else if (e.key === "ArrowLeft") {
                 setViewingIndex((prev) =>
                     prev !== null && prev > 0
                         ? prev - 1
                         : prev !== null
-                        ? images.length - 1
-                        : null
+                            ? images.length - 1
+                            : null
                 );
             }
         };
@@ -112,6 +109,11 @@ export function ImageGalleryDisplay({
             document.body.style.overflow = "";
         };
     }, [viewingIndex]);
+
+    // Early return AFTER all hooks have been called
+    if (!images || images.length === 0) {
+        return null;
+    }
 
     const handleImageClick = (index: number) => {
         if (onImageClick) {
@@ -162,97 +164,96 @@ export function ImageGalleryDisplay({
     ) {
         return typeof window !== "undefined"
             ? createPortal(
-                  <div
-                      className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
-                      onClick={handleClose}
-                  >
-                      {/* Close button */}
-                      <button
-                          onClick={(e) => {
-                              e.stopPropagation();
-                              handleClose();
-                          }}
-                          className="absolute top-4 right-4 z-10 p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                          aria-label="Close"
-                      >
-                          <svg
-                              className="w-6 h-6"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                          >
-                              <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                              />
-                          </svg>
-                      </button>
+                <div
+                    className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+                    onClick={handleClose}
+                >
+                    {/* Close button */}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleClose();
+                        }}
+                        className="absolute top-4 right-4 z-10 p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                        aria-label="Close"
+                    >
+                        <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
 
-                      {/* Previous button */}
-                      {images.length > 1 && (
-                          <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePrev();
-                              }}
-                              className="absolute left-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
-                              aria-label="Previous image"
-                          >
-                              <ChevronLeft size={28} />
-                          </button>
-                      )}
+                    {/* Previous button */}
+                    {images.length > 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrev();
+                            }}
+                            className="absolute left-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                            aria-label="Previous image"
+                        >
+                            <ChevronLeft size={28} />
+                        </button>
+                    )}
 
-                      {/* Image container */}
-                      <div
-                          className="flex items-center justify-center max-w-full max-h-full p-4"
-                          onClick={(e) => e.stopPropagation()}
-                      >
-                          <img
-                              src={images[viewingIndex]}
-                              alt={`${altPrefix} ${viewingIndex + 1} of ${
-                                  images.length
-                              }`}
-                              className="max-w-full max-h-[90vh] object-contain"
-                          />
-                      </div>
+                    {/* Image container */}
+                    <div
+                        className="flex items-center justify-center max-w-full max-h-full p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={images[viewingIndex]}
+                            alt={`${altPrefix} ${viewingIndex + 1} of ${images.length
+                                }`}
+                            className="max-w-full max-h-[90vh] object-contain"
+                        />
+                    </div>
 
-                      {/* Next button */}
-                      {images.length > 1 && (
-                          <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleNext();
-                              }}
-                              className="absolute right-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
-                              aria-label="Next image"
-                          >
-                              <ChevronRight size={28} />
-                          </button>
-                      )}
+                    {/* Next button */}
+                    {images.length > 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleNext();
+                            }}
+                            className="absolute right-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                            aria-label="Next image"
+                        >
+                            <ChevronRight size={28} />
+                        </button>
+                    )}
 
-                      {/* Image counter */}
-                      {images.length > 1 && (
-                          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur-sm text-white text-sm rounded-full font-medium">
-                              {viewingIndex + 1} / {images.length}
-                          </div>
-                      )}
-                  </div>,
-                  document.body
-              )
+                    {/* Image counter */}
+                    {images.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 bg-black/60 backdrop-blur-sm text-white text-sm rounded-full font-medium">
+                            {viewingIndex + 1} / {images.length}
+                        </div>
+                    )}
+                </div>,
+                document.body
+            )
             : null;
     }
 
     return (
         <>
-            <div className={`grid gap-3 ${getGridClass()} ${className}`}>
+            <div className={`flex flex-wrap gap-2 ${getGridClass()} ${className}`}>
                 {images.map((imageUrl, index) => (
                     <div
                         key={index}
                         className={`
               relative overflow-hidden rounded-xl cursor-pointer group
-              bg-base-200 border border-base-content/10 dark:border-base-content/20
+              bg-base-200 shadow-none dark:border-base-content/20
               shadow-sm hover:shadow-md hover:border-base-content/20 
               transition-all duration-300
               ${getImageAspect(index)}
@@ -276,10 +277,9 @@ export function ImageGalleryDisplay({
                             className={`
                                 absolute inset-0 m-0 w-full h-full object-cover transition-all duration-300
                                 group-hover:scale-105
-                                ${
-                                    imageLoadStates[index]
-                                        ? "opacity-100"
-                                        : "opacity-0"
+                                ${imageLoadStates[index]
+                                    ? "opacity-100"
+                                    : "opacity-0"
                                 }
                             `}
                             onLoad={() => handleImageLoad(index)}
@@ -289,7 +289,7 @@ export function ImageGalleryDisplay({
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-xl" />
 
                         {images.length > 1 && (
-                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-md font-semibold shadow-lg border border-white/10">
+                            <div className="absolute top-2 right-2 px-2 py-1 bg-black/70 backdrop-blur-sm text-white text-xs rounded-md font-semibold shadow-lg shadow-none">
                                 {index + 1}/{images.length}
                             </div>
                         )}
@@ -352,9 +352,8 @@ export function ImageGalleryDisplay({
                         >
                             <img
                                 src={images[viewingIndex]}
-                                alt={`${altPrefix} ${viewingIndex + 1} of ${
-                                    images.length
-                                }`}
+                                alt={`${altPrefix} ${viewingIndex + 1} of ${images.length
+                                    }`}
                                 className="max-w-full max-h-[90vh] object-contain"
                             />
                         </div>

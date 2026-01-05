@@ -6,6 +6,8 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState, ReactNode, useEffect } from 'react';
 import { setQueryClient } from '@/lib/utils/query-client-cache';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import { trpc, getTrpcClient } from '@/lib/trpc/client';
+import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 
 // Global error handler for toast notifications
 // This will be set after QueryProvider mounts
@@ -17,15 +19,29 @@ export function setGlobalToastHandler(handler: (message: string, type: 'error' |
 
 function handleQueryError(error: any, isMutation = false) {
   // Don't show toast for 401 errors - they are handled in AuthContext
-  const errorStatus = error?.details?.status || error?.code;
-  if (errorStatus === 401 || errorStatus === 'HTTP_401') {
-    return;
+  if (isUnauthorizedError(error)) {
+    return; // Don't show toast for 401 errors - they're expected when not authenticated
+  }
+
+  // Extract error message
+  const message = error?.message || extractErrorMessage(error, 'An error occurred');
+  
+  // Don't show toast for transformation errors on queries - they're usually network/connectivity issues
+  // that are better handled silently (queries should fail gracefully)
+  if (!isMutation) {
+    const isTransformationError = message.includes('transform') || 
+                                   message.includes('deserialize') || 
+                                   message.includes('Unable to transform');
+    if (isTransformationError) {
+      // Log but don't show toast - these are usually connectivity issues
+      console.warn('Query failed with transformation error (likely backend connectivity issue):', message);
+      return;
+    }
   }
 
   // Only show toast for mutations by default (queries errors are usually handled in UI)
   // But we can show for queries too if needed
-  if (globalToastHandler) {
-    const message = extractErrorMessage(error, 'An error occurred');
+  if (globalToastHandler && isMutation) {
     globalToastHandler(message, 'error');
   }
 }
@@ -40,10 +56,13 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 60 * 1000, // 1 minute
             // Time before unused data is garbage collected
             gcTime: 5 * 60 * 1000, // 5 minutes (was cacheTime)
+            // Always refetch on mount after invalidation, even if data is fresh
+            // This ensures mutations trigger immediate refetches when components mount
+            refetchOnMount: 'always',
             // Retry failed requests, but not for 401 errors
             retry: (failureCount, error: any) => {
               // Don't retry on 401 Unauthorized errors
-              if (error?.details?.status === 401 || error?.code === 'HTTP_401') {
+              if (isUnauthorizedError(error)) {
                 return false;
               }
               return failureCount < 1;
@@ -53,11 +72,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             // Refetch on reconnect, but not for queries that failed with 401
             refetchOnReconnect: (query) => {
               // Don't refetch if last error was 401
-              const lastError = query.state.error as any;
-              if (lastError?.details?.status === 401 || lastError?.code === 'HTTP_401') {
-                return false;
-              }
-              return true;
+              return !isUnauthorizedError(query.state.error);
             },
             // Global error handler for queries (optional - usually handled in UI)
             // onError: handleQueryError,
@@ -66,7 +81,7 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             // Retry failed mutations, but not for 401 errors
             retry: (failureCount, error: any) => {
               // Don't retry on 401 Unauthorized errors
-              if (error?.details?.status === 401 || error?.code === 'HTTP_401') {
+              if (isUnauthorizedError(error)) {
                 return false;
               }
               return failureCount < 1;
@@ -78,6 +93,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       })
   );
 
+  const [trpcClient] = useState(() => getTrpcClient());
+
   // Make queryClient available to interceptors
   useEffect(() => {
     setQueryClient(queryClient);
@@ -87,10 +104,12 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
-    </QueryClientProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
 

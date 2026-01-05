@@ -28,19 +28,11 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
     }
 
     return (
-        <div className="border border-brand-secondary/10 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-brand-text-primary mb-3">
+        <div className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50">
+            <h3 className="text-sm font-medium text-base-content mb-2">
                 {communityName || communityId}
             </h3>
             <div className="flex items-center gap-4 flex-wrap">
-                {wallet?.balance !== undefined && (
-                    <div className="text-sm">
-                        <span className="text-brand-text-secondary">{tCommon('permanentMerits')}: </span>
-                        <span className="font-semibold text-brand-text-primary">
-                            {wallet.balance.toLocaleString()}
-                        </span>
-                    </div>
-                )}
                 {quota && quota.dailyQuota > 0 && (
                     <div className="flex items-center gap-2">
                         <DailyQuotaRing
@@ -49,15 +41,22 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
                             className="w-5 h-5"
                             asDiv={true}
                         />
-                        <span className="text-sm text-brand-text-secondary">
-                            <span className="font-semibold text-brand-text-primary">{quota.remainingToday}</span>
+                        <span className="text-sm text-base-content/70">
+                            <span className="font-semibold text-base-content">{quota.remainingToday}</span>
                             {' / '}
-                            <span className="text-brand-text-secondary">{quota.dailyQuota}</span>
+                            <span className="text-base-content/60">{quota.dailyQuota}</span>
                         </span>
+                    </div>
+                )}
+                {wallet?.balance !== undefined && (
+                    <div className="flex items-center gap-1 text-sm">
+                        <span className="font-semibold text-base-content">
+                            {wallet.balance.toLocaleString()}
+                        </span>
+                        <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
                     </div>
                 )}
             </div>
         </div>
     );
 }
-

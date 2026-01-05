@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ZoomIn, ZoomOut, RotateCw, Download } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -47,16 +47,18 @@ export function ImageViewer({
           break;
         case '+':
         case '=':
-          handleZoomIn();
+          setZoom((prev) => Math.min(prev + 0.25, 5));
           break;
         case '-':
-          handleZoomOut();
+          setZoom((prev) => Math.max(prev - 0.25, 0.25));
           break;
         case 'r':
-          handleRotate();
+          setRotation((prev) => (prev + 90) % 360);
           break;
         case '0':
-          handleReset();
+          setZoom(1);
+          setRotation(0);
+          setPosition({ x: 0, y: 0 });
           break;
       }
     };
@@ -75,57 +77,57 @@ export function ImageViewer({
     };
   }, [isOpen]);
 
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.25, 5));
-  }, []);
+  };
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = () => {
     setZoom(prev => Math.max(prev - 0.25, 0.25));
-  }, []);
+  };
 
-  const handleRotate = useCallback(() => {
+  const handleRotate = () => {
     setRotation(prev => (prev + 90) % 360);
-  }, []);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setZoom(1);
     setRotation(0);
     setPosition({ x: 0, y: 0 });
-  }, []);
+  };
 
-  const handleDownload = useCallback(() => {
+  const handleDownload = () => {
     const link = document.createElement('a');
     link.href = src;
     link.download = alt || 'image';
     link.click();
-  }, [src, alt]);
+  };
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom(prev => Math.max(0.25, Math.min(5, prev + delta)));
-  }, []);
+  };
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom > 1) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
     }
-  }, [zoom, position]);
+  };
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return;
     setPosition({
       x: e.clientX - dragStart.x,
       y: e.clientY - dragStart.y,
     });
-  }, [isDragging, dragStart]);
+  };
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = () => {
     setIsDragging(false);
-  }, []);
+  };
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (zoom > 1 && e.touches.length === 1 && touch) {
       setIsDragging(true);
@@ -134,26 +136,26 @@ export function ImageViewer({
         y: touch.clientY - position.y,
       });
     }
-  }, [zoom, position]);
+  };
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+  const handleTouchMove = (e: React.TouchEvent) => {
     const touch = e.touches[0];
     if (!isDragging || e.touches.length !== 1 || !touch) return;
     setPosition({
       x: touch.clientX - dragStart.x,
       y: touch.clientY - dragStart.y,
     });
-  }, [isDragging, dragStart]);
+  };
 
-  const handleTouchEnd = useCallback(() => {
+  const handleTouchEnd = () => {
     setIsDragging(false);
-  }, []);
+  };
 
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
+  const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
-  }, [onClose]);
+  };
 
   if (!isOpen) return null;
 

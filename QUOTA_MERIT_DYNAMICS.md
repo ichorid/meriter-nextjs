@@ -8,7 +8,7 @@ This document describes the quota and merit dynamics across different group type
 
 ### 1. Regular Groups
 - **Type Tags**: `custom`, `political`, `housing`, `volunteer`, `corporate`
-- **Voting Rules**: Quota-only voting for posts/comments (wallet blocked)
+- **Voting Rules**: **Standard voting** for posts/comments (daily quota first, then wallet overflow)
 - **Merit Movement**: Merits credited to beneficiary's wallet in the same community
 
 ### 2. Special Groups
@@ -24,7 +24,7 @@ This document describes the quota and merit dynamics across different group type
 - **Uniqueness**: Only one instance allowed
 
 ### 3. Team Communities (`team`)
-- **Voting Rules**: Quota-only voting for posts/comments (wallet blocked)
+- **Voting Rules**: **Standard voting** for posts/comments (daily quota first, then wallet overflow)
 - **Merit Movement**: Isolated meritonomy - merits stay in team wallet only, no conversion
 - **Special Feature**: No cross-community merit conversion
 
@@ -45,22 +45,23 @@ This document describes the quota and merit dynamics across different group type
 
 | Group Type | Quota Voting (Posts/Comments) | Wallet Voting (Posts/Comments) | Wallet Voting (Polls) | Merit Destination | Merit Conversion |
 |------------|------------------------------|--------------------------------|----------------------|-------------------|------------------|
-| Regular Groups | ✅ Yes (only) | ❌ No (blocked) | ✅ Yes | Same community wallet | N/A |
+| Regular Groups | ✅ Yes | ✅ Yes (overflow after quota) | ✅ Yes | Same community wallet | N/A |
 | Marathon of Good | ✅ Yes (only) | ❌ No (blocked) | ✅ Yes | Future Vision wallet | Cross-community |
 | Future Vision | ❌ No (disabled) | ✅ Yes (only) | ✅ Yes | None (no accumulation) | N/A |
-| Team Communities | ✅ Yes (only) | ❌ No (blocked) | ✅ Yes | Team wallet only | Isolated (none) |
+| Team Communities | ✅ Yes | ✅ Yes (overflow after quota) | ✅ Yes | Team wallet only | Isolated (none) |
 
 ### Detailed Rules
 
 #### Regular Groups
 - **Publications/Comments**: 
   - ✅ Quota voting allowed
-  - ❌ Wallet voting blocked
+  - ✅ Wallet voting allowed (overflow after quota)
 - **Projects**: 
   - ❌ Quota voting blocked
   - ✅ Wallet voting required
 - **Polls**: 
-  - ✅ Wallet voting only (quota blocked)
+  - ✅ Wallet voting allowed
+  - ✅ Quota voting allowed (participants/leads/superadmin only)
 
 #### Marathon of Good
 - **Publications/Comments**: 
@@ -85,18 +86,19 @@ This document describes the quota and merit dynamics across different group type
 #### Team Communities
 - **Publications/Comments**: 
   - ✅ Quota voting allowed
-  - ❌ Wallet voting blocked
+  - ✅ Wallet voting allowed (overflow after quota)
 - **Projects**: 
   - ❌ Quota voting blocked
   - ✅ Wallet voting required
 - **Polls**: 
-  - ✅ Wallet voting only (quota blocked)
+  - ✅ Wallet voting allowed
+  - ✅ Quota voting allowed (participants/leads/superadmin only)
 
 ## Post Type Restrictions
 
 | Post Type | Regular Groups | Marathon of Good | Future Vision |
 |-----------|----------------|------------------|---------------|
-| Basic/Report | Quota only | Quota only | Wallet only |
+| Basic/Report | Wallet merits only | Wallet merits only | Wallet merits only |
 | Project | Wallet only | Wallet only | Wallet only |
 
 ## Merit Movement Rules

@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
 
 export default function Home() {
-    // Redirect to profile - let the profile page handle auth checks
+    // Serverful Next.js: simple server-side redirect.
+    // Auth checks are handled by the target route (or client auth provider).
     redirect('/meriter/profile');
 }
 

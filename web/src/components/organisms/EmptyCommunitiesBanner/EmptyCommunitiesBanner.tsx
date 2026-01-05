@@ -23,7 +23,7 @@ export const EmptyCommunitiesBanner: React.FC<EmptyCommunitiesBannerProps> = ({
 
   return (
     <div className="mb-4">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-blue-50 shadow-none rounded-lg p-4">
         <div className="flex gap-4 items-start">
           <div>
             <svg

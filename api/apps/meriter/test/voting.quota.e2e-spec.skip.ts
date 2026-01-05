@@ -21,8 +21,6 @@ describe('Voting quota spending (e2e)', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
-  let commentModel: Model<CommentDocument>;
-  let voteModel: Model<VoteDocument>;
 
   let voteService: VoteService;
   let commentService: CommentService;
@@ -44,8 +42,8 @@ describe('Voting quota spending (e2e)', () => {
     communityModel = connection.model<CommunityDocument>(Community.name);
     userModel = connection.model<UserDocument>(User.name);
     publicationModel = connection.model<PublicationDocument>(Publication.name);
-    commentModel = connection.model<CommentDocument>(Comment.name);
-    voteModel = connection.model<VoteDocument>(Vote.name);
+    const _commentModel = connection.model<CommentDocument>(Comment.name);
+    const _voteModel = connection.model<VoteDocument>(Vote.name);
 
     voteService = app.get<VoteService>(VoteService);
     commentService = app.get<CommentService>(CommentService);

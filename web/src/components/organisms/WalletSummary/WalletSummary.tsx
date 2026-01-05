@@ -1,6 +1,9 @@
 import React from 'react';
-import { Card, CardBody, CardHeader, CardTitle, Badge, Button } from '@/components/atoms';
-import { Avatar } from '@/components/atoms';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
+import { Badge } from '@/components/atoms/Badge/Badge';
+import { Button } from '@/components/ui/shadcn/button';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
 
 // Frontend-specific Wallet interface for UI display
 // Extends the base Wallet from shared-types
@@ -28,7 +31,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
   currency,
 }) => {
   const total = totalBalance || wallets.reduce((sum, w) => sum + w.balance, 0);
-  
+
   return (
     <Card>
       <CardHeader>
@@ -41,8 +44,8 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
           )}
         </div>
       </CardHeader>
-      
-      <CardBody>
+
+      <CardContent className="p-6 pt-0">
         <div className="space-y-3">
           {wallets.length === 0 ? (
             <p className="text-center text-base-content/60 py-4">
@@ -52,11 +55,16 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
             wallets.map((wallet) => (
               <div
                 key={wallet.id}
-                className="flex items-center justify-between p-3 border border-base-300 rounded-lg"
+                className="flex items-center justify-between p-3 shadow-none rounded-lg"
               >
                 <div className="flex items-center gap-3">
                   {wallet.currencyIcon && (
-                    <Avatar src={wallet.currencyIcon} alt={wallet.currency} size="md" />
+                    <Avatar className="w-10 h-10 text-sm">
+                      <AvatarImage src={wallet.currencyIcon} alt={wallet.currency} />
+                      <AvatarFallback className="bg-secondary/10 text-secondary-foreground font-medium uppercase">
+                        {wallet.currency ? wallet.currency.slice(0, 2).toUpperCase() : <User size={18} />}
+                      </AvatarFallback>
+                    </Avatar>
                   )}
                   <div>
                     <div className="font-medium">{wallet.currency}</div>
@@ -65,22 +73,24 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-2">
                   {onTopup && (
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => onTopup(wallet.id)}
+                      className="rounded-xl active:scale-[0.98]"
                     >
                       Top Up
                     </Button>
                   )}
                   {onWithdraw && wallet.balance > 0 && (
                     <Button
-                      variant="primary"
+                      variant="default"
                       size="sm"
                       onClick={() => onWithdraw(wallet.id)}
+                      className="rounded-xl active:scale-[0.98]"
                     >
                       Withdraw
                     </Button>
@@ -90,7 +100,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
             ))
           )}
         </div>
-      </CardBody>
+      </CardContent>
     </Card>
   );
 };

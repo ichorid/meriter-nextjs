@@ -61,3 +61,13 @@ export interface TransactionData {
 export interface UpdateFrequency {
   frequency: 'realtime' | 'hourly' | 'daily' | 'weekly';
 }
+
+export interface EditHistoryEntry {
+  editedBy: string;
+  editedAt: string;
+  editor?: {
+    id: string;
+    name?: string;
+    photoUrl?: string;
+  };
+}

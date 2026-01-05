@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback, memo } from "react";
+import { useState, useCallback } from "react";
 import { etv } from '@shared/lib/input-utils';
-import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@gluestack-ui/themed';
+import { Slider, SliderTrack, SliderFilledTrack, SliderThumb } from '@/components/ui/slider';
 import { classList } from '@lib/classList';
 import { useTranslations } from 'next-intl';
 
@@ -20,7 +20,7 @@ interface FormWithdrawVerticalProps {
     currencyIconUrl?: string;
 }
 
-export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
+export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
     comment,
     setComment,
     amount,
@@ -39,13 +39,12 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
     const maxAmount = isWithdrawal ? maxWithdrawAmount : maxTopUpAmount;
     const disabled = !amount || amount <= 0;
 
-    // Memoize onChange handler to prevent unnecessary re-renders
     const handleSliderChange = useCallback((value: number) => {
         setAmount(Math.max(0, Math.min(value, maxAmount)));
     }, [maxAmount, setAmount]);
 
     return (
-        <div className="p-5 rounded-2xl shadow-lg bg-base-100">
+        <div className="p-5 rounded-xl shadow-lg bg-base-100">
             {/* Header */}
             <div className="mb-4">
                 <div className="text-xl font-bold mb-2">
@@ -159,7 +158,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = memo(({
             </div>
         </div>
     );
-});
+};
 
 FormWithdrawVertical.displayName = 'FormWithdrawVertical';
 

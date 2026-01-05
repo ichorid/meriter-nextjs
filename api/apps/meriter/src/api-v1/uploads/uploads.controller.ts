@@ -21,6 +21,16 @@ interface CropData {
   height: number;
 }
 
+/**
+ * @deprecated Upload endpoints have been migrated to tRPC.
+ * 
+ * Migrated endpoints:
+ * - POST /api/v1/uploads/image -> trpc.uploads.uploadImage
+ * - POST /api/v1/uploads/avatar -> trpc.uploads.uploadAvatar
+ * - POST /api/v1/uploads/community/:communityId/avatar -> trpc.uploads.uploadCommunityAvatar
+ * 
+ * This controller is kept for backward compatibility but should not be used in new code.
+ */
 @Controller('api/v1/uploads')
 @UseGuards(UserGuard)
 export class UploadsController {
@@ -112,7 +122,7 @@ export class UploadsController {
     @UploadedFile() file: Express.Multer.File,
     @Param('communityId') communityId: string,
     @Body('crop') cropJson: string,
-    @Req() req: any,
+    @Req() _req: any,
   ): Promise<{ success: true; data: UploadResult }> {
     if (!this.uploadsService.isConfigured()) {
       throw new BadRequestException('Image upload is not available. S3 storage is not configured.');

@@ -1,15 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Search, FileText, MessageSquare, BarChart3, Users, Calendar, User, Hash } from 'lucide-react';
+import { Search, FileText, MessageSquare, BarChart3, Users, User, Hash } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { AdvancedSearch, SearchParams as AdvancedSearchParams } from '@/components/organisms/AdvancedSearch';
 import { useSearch } from '@/hooks/api/useSearch';
 import { InfoCard } from '@/components/ui/InfoCard';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Loader2 } from 'lucide-react';
 import type { SearchContentType } from '@/types/api-v1';
 
@@ -101,7 +101,7 @@ export default function SearchResultsPage() {
 
   return (
     <AdaptiveLayout
-      stickyHeader={<SimpleStickyHeader title={t('results.title')} showBack={true} asStickyHeader={true} />}
+      stickyHeader={<SimpleStickyHeader title={t('results.title')} showBack={true} asStickyHeader={true} showScrollToTop={true} />}
     >
       <div className="space-y-6">
         {/* Search Input */}
@@ -161,17 +161,23 @@ export default function SearchResultsPage() {
                         subtitle={subtitleParts.join(' | ')}
                         icon={
                           result.author?.avatarUrl ? (
-                            <BrandAvatar
-                              src={result.author.avatarUrl}
-                              fallback={result.author.name}
-                              size="sm"
-                            />
+                            <Avatar className="w-8 h-8 text-xs">
+                              {result.author.avatarUrl && (
+                                <AvatarImage src={result.author.avatarUrl} alt={result.author.name} />
+                              )}
+                              <AvatarFallback userId={result.author.id} className="font-medium uppercase">
+                                {result.author.name ? result.author.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                              </AvatarFallback>
+                            </Avatar>
                           ) : result.community?.avatarUrl ? (
-                            <BrandAvatar
-                              src={result.community.avatarUrl}
-                              fallback={result.community.name}
-                              size="sm"
-                            />
+                            <Avatar className="w-8 h-8 text-xs">
+                              {result.community.avatarUrl && (
+                                <AvatarImage src={result.community.avatarUrl} alt={result.community.name} />
+                              )}
+                              <AvatarFallback communityId={result.community.id} className="font-medium uppercase">
+                                {result.community.name ? result.community.name.slice(0, 2).toUpperCase() : <User size={14} />}
+                              </AvatarFallback>
+                            </Avatar>
                           ) : undefined
                         }
                         onClick={() => router.push(result.url)}

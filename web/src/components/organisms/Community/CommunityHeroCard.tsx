@@ -1,10 +1,14 @@
 'use client';
 
 import React from 'react';
-import { BrandAvatar } from '@/components/ui/BrandAvatar';
-import { Users, FileText, Settings } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { User } from 'lucide-react';
+import { Users, FileText, Settings, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
+import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 
 interface CommunityHeroCardProps {
   community: {
@@ -39,7 +43,16 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   onClick,
 }) => {
   const router = useRouter();
-  
+  const { user } = useAuth();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const t = useTranslations('pages.communitySettings');
+  const tCommunities = useTranslations('pages.communities');
+  const tCommon = useTranslations('common');
+
+  // Check if user is a lead (for deleted button visibility)
+  const isLead = user?.globalRole === 'superadmin' ||
+    !!userRoles.find((r) => r.communityId === community.id && r.role === 'lead');
+
   // Generate a gradient background based on community name if no cover image
   const generateGradient = (name: string): [string, string] => {
     const colors: [string, string][] = [
@@ -53,34 +66,36 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     const index = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
     return colors[index] ?? ['from-blue-600', 'to-purple-600'];
   };
-  
+
   const [gradientFrom, gradientTo] = generateGradient(community.name);
   const hasCoverImage = !!community.coverImageUrl;
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
     return (
-      <div 
-        className={`bg-base-100 rounded-xl overflow-hidden border border-base-content/10 ${onClick ? 'cursor-pointer hover:border-base-content/20 transition-colors' : ''} ${className}`}
+      <div
+        className={`bg-base-100 rounded-xl overflow-hidden shadow-none ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] transition-all duration-300' : ''} ${className}`}
         onClick={onClick}
       >
         <div className="flex items-center gap-3 p-3">
-          <BrandAvatar
-            src={community.avatarUrl}
-            fallback={community.name}
-            size="md"
-            className="w-10 h-10 flex-shrink-0"
-          />
+          <Avatar className="w-10 h-10 text-sm flex-shrink-0">
+            {community.avatarUrl && (
+              <AvatarImage src={community.avatarUrl} alt={community.name} />
+            )}
+            <AvatarFallback communityId={community.id} className="font-medium uppercase">
+              {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={18} />}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-base-content truncate">
                 {community.name}
               </h3>
               {community.settings?.iconUrl && (
-                <img 
-                  src={community.settings.iconUrl} 
-                  alt="" 
-                  className="w-4 h-4 flex-shrink-0" 
+                <img
+                  src={community.settings.iconUrl}
+                  alt=""
+                  className="w-4 h-4 flex-shrink-0"
                 />
               )}
             </div>
@@ -103,21 +118,21 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
       </div>
     );
   }
-  
+
   return (
-    <div 
-      className={`bg-base-100 rounded-2xl overflow-hidden shadow-lg border border-base-content/10 ${onClick ? 'cursor-pointer hover:shadow-xl transition-shadow' : ''} ${className}`}
+    <div
+      className={`bg-base-100 rounded-xl overflow-hidden shadow-none ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] transition-all duration-300' : ''} ${className}`}
       onClick={onClick}
     >
       {/* Cover Image / Gradient Background */}
-      <div 
+      <div
         className={`relative h-32 sm:h-40 ${!hasCoverImage ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ''}`}
         style={hasCoverImage ? { backgroundImage: `url(${community.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         {/* Overlay for better text visibility */}
         <div className="absolute inset-0 bg-black/20" />
-        
-        {/* Settings button for admins */}
+
+        {/* Settings button for admins - rightmost */}
         {community.isAdmin && (
           <button
             onClick={(e) => {
@@ -125,33 +140,70 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               router.push(routes.communitySettings(community.id));
             }}
             className="absolute top-3 right-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm"
-            title="Settings"
+            title={tCommon('settings')}
           >
             <Settings size={18} className="text-white" />
           </button>
         )}
-        
+
+        {/* Members button - positioned based on which buttons are visible */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(routes.communityMembers(community.id));
+          }}
+          className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${
+            community.isAdmin
+              ? 'right-[51px]'
+              : 'right-3'
+          }`}
+          title={tCommunities('members.title') || 'Members'}
+        >
+          <Users size={18} className="text-white" />
+        </button>
+
+        {/* Deleted button for leads/superadmins - left of Members */}
+        {isLead && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(routes.communityDeleted(community.id));
+            }}
+            className={`absolute top-3 p-2 rounded-full bg-black/30 hover:bg-black/50 transition-colors backdrop-blur-sm ${
+              community.isAdmin
+                ? 'right-[102px]'
+                : 'right-[51px]'
+            }`}
+            aria-label={tCommunities('deleted') || 'Deleted'}
+            title={tCommunities('deleted') || 'Deleted'}
+          >
+            <Trash2 size={18} className="text-white" />
+          </button>
+        )}
+
         {/* Setup badge */}
         {community.needsSetup && (
           <div className="absolute top-3 left-3 px-2 py-1 rounded-full bg-warning text-warning-content text-xs font-medium">
-            Needs setup
+            {tCommon('needsSetup')}
           </div>
         )}
       </div>
-      
+
       {/* Avatar - overlapping cover */}
       <div className="relative px-4 sm:px-6">
         <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
-          <div className="inline-block ring-4 ring-base-100 rounded-full bg-base-100">
-            <BrandAvatar
-              src={community.avatarUrl}
-              fallback={community.name}
-              size="xl"
-              className="w-20 h-20 sm:w-24 sm:h-24 bg-base-200"
-            />
+          <div className="relative inline-block ring-4 ring-base-100 rounded-full bg-base-100">
+            <Avatar className="w-20 h-20 sm:w-24 sm:h-24 text-xl bg-base-200">
+              {community.avatarUrl && (
+                <AvatarImage src={community.avatarUrl} alt={community.name} />
+              )}
+              <AvatarFallback communityId={community.id} className="font-medium uppercase">
+                {community.name ? community.name.slice(0, 2).toUpperCase() : <User size={32} />}
+              </AvatarFallback>
+            </Avatar>
           </div>
         </div>
-        
+
         {/* Community Info */}
         <div className="pb-4 relative z-0">
           {/* Name and currency icon */}
@@ -160,30 +212,21 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               {community.name}
             </h1>
             {community.settings?.iconUrl && (
-              <img 
-                src={community.settings.iconUrl} 
-                alt="" 
-                className="w-5 h-5 sm:w-6 sm:h-6" 
+              <img
+                src={community.settings.iconUrl}
+                alt=""
+                className="w-5 h-5 sm:w-6 sm:h-6"
               />
             )}
           </div>
-          
-          {/* Type tag badge */}
-          {community.typeTag && (
-            <div className="mb-2">
-              <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-primary/10 text-primary">
-                {community.typeTag}
-              </span>
-            </div>
-          )}
-          
+
           {/* Description */}
           {community.description && (
-            <p className="text-sm text-base-content/70 mb-3 line-clamp-2">
+            <p className="text-sm text-base-content/70 mb-3">
               {community.description}
             </p>
           )}
-          
+
           {/* Stats */}
           <div className="flex items-center gap-4 text-sm text-base-content/60">
             {community.memberCount !== undefined && (

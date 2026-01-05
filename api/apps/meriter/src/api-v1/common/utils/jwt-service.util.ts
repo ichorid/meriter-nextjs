@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { signJWT, JwtPayload } from '../../../common/helpers/jwt';
 import { User } from '@meriter/shared-types';
+import { AppConfig } from '../../../config/configuration';
 
 /**
  * Service for JWT token generation and user mapping
@@ -48,13 +49,11 @@ export class JwtService {
     authProvider: string,
     authId: string,
     communityTags: string[],
-    configService: ConfigService
+    configService: ConfigService<AppConfig>
   ): string {
-    const jwtSecret = configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      throw new Error('JWT secret not configured');
-    }
-
+    // ConfigService supports dot notation for nested paths at runtime
+    // TypeScript doesn't understand this, so we use type assertion
+    const jwtSecret = configService.getOrThrow('jwt.secret' as any);
     return this.generateToken(userId, authProvider, authId, communityTags, jwtSecret);
   }
 
@@ -63,7 +62,15 @@ export class JwtService {
    * @param user User object from database
    * @returns User object in V1 API format
    */
-  static mapUserToV1Format(user: any): User {
+  static mapUserToV1Format(user: any): any {
+    const contacts = user.profile?.contacts;
+    const mappedContacts = contacts && (contacts.email || contacts.messenger)
+      ? {
+          email: contacts.email ?? '',
+          messenger: contacts.messenger ?? '',
+        }
+      : undefined;
+
     return {
       id: user.id,
       authProvider: user.authProvider,
@@ -78,14 +85,18 @@ export class JwtService {
         bio: user.profile?.bio,
         location: user.profile?.location,
         website: user.profile?.website,
-        isVerified: user.profile?.isVerified,
-      },
+        isVerified: user.profile?.isVerified ?? false,
+        about: user.profile?.about,
+        contacts: mappedContacts as any,
+        educationalInstitution: user.profile?.educationalInstitution,
+      } as any,
       inviteCode: user.inviteCode,
       communityTags: user.communityTags || [],
       communityMemberships: user.communityMemberships || [],
+      authenticators: user.authenticators || [],
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
-    };
+    } as User;
   }
 }
 

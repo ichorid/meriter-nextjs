@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useCallback, memo, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { etv } from "@shared/lib/input-utils";
 import {
     Slider,
     SliderTrack,
     SliderFilledTrack,
     SliderThumb,
-} from "@gluestack-ui/themed";
+} from "@/components/ui/slider";
 import { classList } from "@lib/classList";
 import { useTranslations } from "next-intl";
 import { useToastStore } from "@/shared/stores/toast.store";
@@ -31,65 +31,63 @@ export interface FormCommentVoteBaseProps {
     currencyIconUrl?: string;
 }
 
-export const FormCommentVoteBase = memo(
-    ({
-        comment,
-        setComment,
-        freePlus,
-        freeMinus,
-        amount,
-        setAmount,
-        maxPlus,
-        maxMinus,
-        commentAdd,
-        error,
-        reason,
-        isWithdrawMode = false,
-        quotaAmount = 0,
-        walletAmount = 0,
-        quotaRemaining = 0,
-        currencyIconUrl,
-    }: FormCommentVoteBaseProps) => {
-        const t = useTranslations("comments");
-        const addToast = useToastStore((state) => state.addToast);
-        const [selected, setSelected] = useState(false);
-        const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;
-        const directionPlus = amount > 0;
-        const directionMinus = amount < 0;
+export const FormCommentVoteBase = ({
+    comment,
+    setComment,
+    freePlus,
+    freeMinus,
+    amount,
+    setAmount,
+    maxPlus,
+    maxMinus,
+    commentAdd,
+    error,
+    reason,
+    isWithdrawMode = false,
+    quotaAmount = 0,
+    walletAmount = 0,
+    quotaRemaining = 0,
+    currencyIconUrl,
+}: FormCommentVoteBaseProps) => {
+    const t = useTranslations("comments");
+    const addToast = useToastStore((state) => state.addToast);
+    const [selected, setSelected] = useState(false);
+    const overflow = amount >= 0 ? amount > freePlus : amount < -freeMinus;
+    const directionPlus = amount > 0;
+    const directionMinus = amount < 0;
 
-        // Slider configuration
-        const sliderMin = isWithdrawMode ? 0 : maxMinus === 0 ? 0 : -maxMinus;
-        const sliderMax = isWithdrawMode ? maxPlus : maxPlus;
+    // Slider configuration
+    const sliderMin = isWithdrawMode ? 0 : maxMinus === 0 ? 0 : -maxMinus;
+    const sliderMax = isWithdrawMode ? maxPlus : maxPlus;
 
-        // Memoize onChange handler
-        const handleSliderChange = useCallback(
-            (value: number) => {
-                const clampedAmount = isWithdrawMode
-                    ? Math.max(0, Math.min(value, maxPlus))
-                    : Math.max(-maxMinus, Math.min(value, maxPlus));
-                setAmount(clampedAmount);
-            },
-            [isWithdrawMode, maxPlus, maxMinus, setAmount]
-        );
+    const handleSliderChange = useCallback(
+        (value: number) => {
+            const clampedAmount = isWithdrawMode
+                ? Math.max(0, Math.min(value, maxPlus))
+                : Math.max(-maxMinus, Math.min(value, maxPlus));
+            setAmount(clampedAmount);
+        },
+        [isWithdrawMode, maxPlus, maxMinus, setAmount]
+    );
 
-        // Show error toast when error changes
-        useEffect(() => {
-            if (error) {
-                addToast(error, "error");
-            }
-        }, [error, addToast]);
+    // Show error toast when error changes
+    useEffect(() => {
+        if (error) {
+            addToast(error, "error");
+        }
+    }, [error, addToast]);
 
-        return (
-            <div
-                className={classList(
-                    "p-5 rounded-2xl shadow-lg",
-                    directionPlus
-                        ? "bg-success/10"
-                        : directionMinus
-                        ? "bg-error/10"
-                        : "bg-base-100"
-                )}
-            >
+    return (
+        <div
+            className={classList(
+                "p-5 rounded-xl shadow-lg",
+                directionPlus
+                    ? "bg-success/10"
+                    : directionMinus
+                    ? "bg-error/10"
+                    : "bg-base-100"
+            )}
+        >
                 <div className="border-t-2 border-base-300 w-full mb-4"></div>
 
                 {/* Quota/Balance info */}
@@ -241,8 +239,7 @@ export const FormCommentVoteBase = memo(
                     </div>
                 )}
             </div>
-        );
-    }
-);
+    );
+};
 
 FormCommentVoteBase.displayName = "FormCommentVoteBase";

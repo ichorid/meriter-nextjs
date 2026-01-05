@@ -354,7 +354,7 @@ describe('usePublication Hook', () => {
       );
 
       // Test with vote amount of 10
-      const testComponent = getByTestId('comment-positive').parentElement;
+      const _testComponent = getByTestId('comment-positive').parentElement;
       
       // We need to test the hook directly since we can't easily pass custom amount
       // This test verifies the logic works - the actual implementation should handle it

@@ -1,9 +1,9 @@
 // Publication actions component
 'use client';
 
-import React from 'react';
-import { BarVoteUnified } from '@shared/components/bar-vote-unified';
-import { BarWithdraw } from '@shared/components/bar-withdraw';
+import React, { useState } from 'react';
+import { Hand, Share2, Star, Plus, Minus } from 'lucide-react';
+import { FavoriteStar } from '@/components/atoms';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
@@ -12,6 +12,12 @@ import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { ResourcePermissions } from '@/types/api-v1';
+import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
+import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
+import { isTestAuthMode } from '@/config';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { trpc } from '@/lib/trpc/client';
 
 // Local Publication type definition
 interface Publication {
@@ -71,6 +77,8 @@ interface PublicationActionsProps {
   wallets?: Wallet[];
   updateAll?: () => void;
   className?: string;
+  /** Hide vote button and score display, show only favorite and share */
+  hideVoteAndScore?: boolean;
 }
 
 export const PublicationActions: React.FC<PublicationActionsProps> = ({
@@ -85,19 +93,29 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   wallets = [],
   updateAll,
   className = '',
+  hideVoteAndScore = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const t = useTranslations('feed');
+  const t = useTranslations('shared');
   const myId = user?.id;
+  const testAuthMode = isTestAuthMode();
+  const isSuperadmin = user?.globalRole === 'superadmin';
+  const addToast = useToastStore((state) => state.addToast);
+  const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
+  const createFromFakeUserMutation = trpc.votes.createFromFakeUser.useMutation();
+  const utils = trpc.useUtils();
+  const [isAddingVote, setIsAddingVote] = useState(false);
+  const [isAddingNegativeVote, setIsAddingNegativeVote] = useState(false);
   
   // Check if we're on the community feed page (not the detail page)
   const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
 
   // Check if this is a PROJECT post (no voting allowed)
-  const isProject = (publication as any).postType === 'project' || (publication as any).isProject === true;
+  // Feature flag: projects are currently disabled
+  const isProject = false; // ENABLE_PROJECT_POSTS && ((publication as any).postType === 'project' || (publication as any).isProject === true);
 
   // Extract beneficiary information
   const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
@@ -115,6 +133,20 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const maxWithdrawAmount = ((isAuthor && !hasBeneficiary) || isBeneficiary)
     ? Math.floor(10 * availableForWithdrawal) / 10
     : 0;
+
+  // Calculate total votes (current score + withdrawn votes) for display
+  // Only show when there are actual withdrawals and totalVotes > currentScore
+  const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
+  
+  // Debug logging (only in development)
+  if (process.env.NODE_ENV !== 'production' && totalWithdrawn > 0) {
+    console.debug('[PublicationActions] Vote display:', {
+      currentScore,
+      totalWithdrawn,
+      totalVotes,
+      willShowTotalVotes: totalVotes !== undefined && totalVotes > currentScore,
+    });
+  }
 
   // Get current wallet balance for topup
   const communityId = publication.communityId;
@@ -164,12 +196,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     } else if (community?.typeTag === 'marathon-of-good') {
       // Marathon-of-Good: quota-only (Q), no wallet (M)
       mode = 'quota-only';
-    } else if (community?.typeTag === 'team') {
-      // Team groups: quota-only (Q), no wallet (M)
-      mode = 'quota-only';
     } else {
-      // Non-special groups can only vote with quota on regular posts
-      mode = 'quota-only';
+      // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+      mode = 'standard';
     }
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
@@ -198,43 +227,240 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     );
   };
 
-  // Handle topup button click - opens popup for adding votes
-  const handleTopupClick = () => {
-    useUIStore.getState().openWithdrawPopup(
-      publicationId,
-      'publication-topup',
-      maxWithdrawAmount,
-      maxTopUpAmount
-    );
+  // Handle dev add positive vote button click (test mode only, superadmin only)
+  const handleDevAddPositiveVote = async () => {
+    if (!testAuthMode || !isSuperadmin || !publicationId || !communityId) return;
+    
+    try {
+      setIsAddingVote(true);
+      
+      // Add a vote with +10 rating from fake user
+      // Use walletAmount instead of quotaAmount to avoid quota limitations
+      await createFromFakeUserMutation.mutateAsync({
+        publicationId,
+        communityId,
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 0, // Not used for dev votes
+        walletAmount: 10, // Use wallet for positive votes too
+        comment: '[DEV] +10 рейтинг от фейкового пользователя',
+        direction: 'up',
+      });
+      
+      // Invalidate queries to refresh the publication data
+      await utils.publications.getById.invalidate({ id: publicationId });
+      await utils.publications.getAll.invalidate();
+      
+      addToast('Добавлено +10 рейтинга от фейкового пользователя', 'success');
+      
+      // Call updateAll if provided to refresh parent component
+      if (updateAll) {
+        updateAll();
+      }
+    } catch (error: any) {
+      addToast(error?.message || 'Ошибка при добавлении рейтинга', 'error');
+    } finally {
+      setIsAddingVote(false);
+    }
   };
 
+  // Handle dev add negative vote button click (test mode only, superadmin only)
+  const handleDevAddNegativeVote = async () => {
+    if (!testAuthMode || !isSuperadmin || !publicationId || !communityId) return;
+    
+    try {
+      setIsAddingNegativeVote(true);
+      
+      // Add a vote with -10 rating from fake user
+      await createFromFakeUserMutation.mutateAsync({
+        publicationId,
+        communityId,
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: '[DEV] -10 рейтинг от фейкового пользователя',
+        direction: 'down',
+      });
+      
+      // Invalidate queries to refresh the publication data
+      await utils.publications.getById.invalidate({ id: publicationId });
+      await utils.publications.getAll.invalidate();
+      
+      addToast('Добавлено -10 рейтинга от фейкового пользователя', 'success');
+      
+      // Call updateAll if provided to refresh parent component
+      if (updateAll) {
+        updateAll();
+      }
+    } catch (error: any) {
+      addToast(error?.message || 'Ошибка при добавлении отрицательного рейтинга', 'error');
+    } finally {
+      setIsAddingNegativeVote(false);
+    }
+  };
+
+  // Handle share click
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    hapticImpact('light');
+    if (communityId) {
+      let url: string;
+      if (publication.slug) {
+        url = getPostUrl(communityId, publication.slug);
+      } else if (publication.type === 'poll' && publication.id) {
+        url = getPollUrl(communityId, publication.id);
+      } else {
+        return; // No valid URL to share
+      }
+      await shareUrl(url, t('urlCopiedToBuffer'));
+    }
+  };
+
+  // Get tooltip text for disabled vote button
+  const getVoteTooltipText = (): string | undefined => {
+    if (canVote) {
+      return undefined;
+    }
+    if (voteDisabledReason) {
+      try {
+        const translated = t(voteDisabledReason);
+        if (translated === voteDisabledReason) {
+          return t('voteDisabled.default');
+        }
+        return translated;
+      } catch {
+        return t('voteDisabled.default');
+      }
+    }
+    return t('voteDisabled.default');
+  };
+
+  const voteTooltipText = getVoteTooltipText();
+  const commentCount = publication.metrics?.commentCount || 0;
+  const publicationIdForFavorite = publicationId || publication.id;
+  const targetType = (publication as any).postType === 'project' || (publication as any).isProject
+    ? 'project'
+    : 'publication';
+
   return (
-    <div className={`space-y-4 ${className}`}>
-      <div className="flex items-center justify-between">
-        {showWithdraw ? (
-          <BarWithdraw
-            balance={maxWithdrawAmount}
-            onWithdraw={handleWithdrawClick}
-            onTopup={handleTopupClick}
-            showDisabled={isBeneficiary || (isAuthor && !hasBeneficiary)}
-            isLoading={false}
-            commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentClick}
-          />
-        ) : (
-          <BarVoteUnified
-            score={currentScore}
-            onVoteClick={handleVoteClick}
-            isAuthor={isAuthor}
-            isBeneficiary={isBeneficiary}
-            hasBeneficiary={hasBeneficiary}
-            commentCount={publication.metrics?.commentCount || 0}
-            onCommentClick={handleCommentClick}
-            canVote={canVote}
-            disabledReason={voteDisabledReason}
-            communityId={communityId}
-            slug={publication.slug}
-          />
+    <div className={`pt-3 border-t border-base-300 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        {/* Left side: Favorite, Share, Dev Add Vote */}
+        <div className="flex items-center gap-4">
+          {/* Favorite */}
+          {publicationIdForFavorite && (
+            <FavoriteStar
+              targetType={targetType}
+              targetId={publicationIdForFavorite}
+            />
+          )}
+
+          {/* Share */}
+          {communityId && (publication.slug || (publication.type === 'poll' && publication.id)) && (
+            <button
+              onClick={handleShareClick}
+              className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80"
+              title={t('share')}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Dev Add Vote buttons (test mode, superadmin only) */}
+          {testAuthMode && isSuperadmin && publicationId && communityId && (
+            <>
+              <button
+                onClick={handleDevAddPositiveVote}
+                disabled={isAddingVote || isAddingNegativeVote}
+                className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Добавить +10 рейтинга от фейкового пользователя (DEV)"
+              >
+                <Plus className={`w-4 h-4 ${isAddingVote ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={handleDevAddNegativeVote}
+                disabled={isAddingVote || isAddingNegativeVote}
+                className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Добавить -10 рейтинга от фейкового пользователя (DEV)"
+              >
+                <Minus className={`w-4 h-4 ${isAddingNegativeVote ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Center: Score (clickable, opens comments) - hidden if hideVoteAndScore */}
+        {!hideVoteAndScore && (
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={handleCommentClick}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
+              title={t('comments')}
+            >
+              <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
+              <div className="flex items-center gap-2">
+                <span className={`text-lg font-semibold tabular-nums transition-colors ${
+                  currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
+                }`}>
+                  {currentScore > 0 ? '+' : ''}{currentScore}
+                </span>
+                {totalVotes !== undefined && 
+                 typeof totalVotes === 'number' && 
+                 !Number.isNaN(totalVotes) &&
+                 typeof currentScore === 'number' && 
+                 !Number.isNaN(currentScore) &&
+                 totalVotes > currentScore && (
+                  <span 
+                    className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
+                    title={t('totalVotesTooltip')}
+                  >
+                    ({totalVotes > 0 ? '+' : ''}{totalVotes})
+                  </span>
+                )}
+                {commentCount > 0 && (
+                  <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
+                    · {commentCount}
+                  </span>
+                )}
+              </div>
+            </button>
+            
+            {/* Withdraw button - centered below score */}
+            {showWithdraw && (
+              <button
+                onClick={handleWithdrawClick}
+                disabled={maxWithdrawAmount <= 0}
+                className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+                  maxWithdrawAmount <= 0
+                    ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
+                    : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                }`}
+                title={maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined}
+              >
+                {t('withdraw')}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Right side: Vote button - hidden if hideVoteAndScore */}
+        {!hideVoteAndScore && (
+          <div className="flex items-center">
+            <button
+              onClick={handleVoteClick}
+              disabled={!canVote}
+              className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+                canVote
+                  ? 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                  : 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
+              }`}
+              title={voteTooltipText}
+            >
+              <Hand className={`w-4 h-4 ${canVote ? 'text-base-100' : 'text-base-content/60'}`} />
+              {t('vote')}
+            </button>
+          </div>
         )}
       </div>
     </div>

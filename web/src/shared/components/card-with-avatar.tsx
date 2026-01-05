@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { Avatar } from '@/components/atoms';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 
 export const CardWithAvatar = ({
     avatarUrl,
@@ -11,6 +11,7 @@ export const CardWithAvatar = ({
     children,
     onClick,
     userName,
+    userId,
 }: {
     avatarUrl?: string;
     iconUrl?: string;
@@ -19,10 +20,11 @@ export const CardWithAvatar = ({
     onClick?: () => any;
     avatarUrlUpd?: (userId: string) => any;
     userName?: string;
+    userId?: string;
 }) => {
     const [retryCount, setRetryCount] = useState(0);
     
-    const baseClasses = "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-2xl mb-5 p-5";
+    const baseClasses = "card bg-base-100 shadow-md dark:border dark:border-base-content/20 rounded-xl mb-5 p-5";
     const clickableClass = onClick ? " cursor-pointer hover:shadow-lg transition-shadow" : "";
     
     if (!avatarUrl && !iconUrl)
@@ -59,18 +61,21 @@ export const CardWithAvatar = ({
             onClick={onClick}
         >
             <div className="flex items-start gap-4">
-                <Avatar
-                    src={avatarUrl}
+                <Avatar className="w-12 h-12">
+                  <AvatarImage 
+                    src={avatarUrl} 
                     alt={userName || 'User'}
-                    name={userName || 'User'}
-                    size={48}
                     onError={() => {
-                        if (retryCount < 1 && avatarUrlUpd) {
-                            avatarUrlUpd(userName || '');
-                            setRetryCount(retryCount + 1);
-                        }
+                      if (retryCount < 1 && avatarUrlUpd) {
+                        avatarUrlUpd(userName || '');
+                        setRetryCount(retryCount + 1);
+                      }
                     }}
-                />
+                  />
+                  <AvatarFallback userId={userId || userName} className="font-medium text-sm">
+                    {userName ? userName.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="flex-1">{children}</div>
             </div>
         </div>

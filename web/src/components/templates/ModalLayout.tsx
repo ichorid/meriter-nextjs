@@ -1,6 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { cn } from '@/lib/utils';
 
 export interface ModalBody {
     [key: string]: React.ComponentType<any> | null;
@@ -43,16 +50,12 @@ export function ModalLayout({
     const BodyComponent = bodyComponents[bodyType] || null;
 
     return (
-        <div className={`modal ${isOpen ? 'modal-open' : ''} ${className}`}>
-            <div className={`modal-box ${sizeClasses[size]}`}>
-                <button
-                    className="btn btn-sm btn-circle absolute right-2 top-2"
-                    onClick={() => close()}
-                >
-                    ✕
-                </button>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+            <DialogContent className={cn(sizeClasses[size], className)}>
                 {title && (
-                    <h3 className="font-semibold text-2xl pb-6 text-center">{title}</h3>
+                    <DialogHeader>
+                        <DialogTitle className="text-center">{title}</DialogTitle>
+                    </DialogHeader>
                 )}
 
                 {/* Loading modal body according to different modal type */}
@@ -63,8 +66,8 @@ export function ModalLayout({
                         {...extraObject}
                     />
                 )}
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
 

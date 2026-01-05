@@ -1,6 +1,4 @@
 import { Publication } from '../../../domain/aggregates/publication/publication.entity';
-import { UserEnrichmentService } from '../services/user-enrichment.service';
-import { CommunityEnrichmentService } from '../services/community-enrichment.service';
 import { UserFormatter } from '../utils/user-formatter.util';
 
 /**
@@ -12,8 +10,8 @@ export class EntityMappers {
    */
   private static formatCommunityForApi(community: any | null):
     | {
-        telegramChatName?: string;
-      }
+      telegramChatName?: string;
+    }
     | undefined {
     if (!community) {
       return undefined;
@@ -39,6 +37,11 @@ export class EntityMappers {
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
     const snapshot = publication.toSnapshot();
+    const images = publication.getImages;
+
+    // DEBUG: Log images data
+    console.log('[DEBUG] Publication ID:', publication.getId.getValue());
+    console.log('[DEBUG] getImages:', images);
 
     return {
       id: publication.getId.getValue(),
@@ -50,12 +53,33 @@ export class EntityMappers {
       content: publication.getContent,
       type: publication.getType,
       hashtags: publication.getHashtags,
-      imageUrl: snapshot.imageUrl || undefined,
+      categories: snapshot.categories || [],
+      images: images && images.length > 0 ? images : undefined,
       videoUrl: snapshot.videoUrl || undefined,
       title: publication.getTitle || undefined,
       description: publication.getDescription || undefined,
       postType: snapshot.postType || 'basic',
       isProject: snapshot.isProject || false,
+      // Forwarding / review flow
+      forwardStatus: snapshot.forwardStatus ?? null,
+      forwardTargetCommunityId: snapshot.forwardTargetCommunityId || undefined,
+      forwardProposedBy: snapshot.forwardProposedBy || undefined,
+      forwardProposedAt: snapshot.forwardProposedAt || undefined,
+      // Project taxonomy (needed for edit prefill + cards outside community feed)
+      impactArea: snapshot.impactArea || undefined,
+      stage: snapshot.stage || undefined,
+      beneficiaries:
+        snapshot.beneficiaries && snapshot.beneficiaries.length > 0
+          ? snapshot.beneficiaries
+          : undefined,
+      methods:
+        snapshot.methods && snapshot.methods.length > 0
+          ? snapshot.methods
+          : undefined,
+      helpNeeded:
+        snapshot.helpNeeded && snapshot.helpNeeded.length > 0
+          ? snapshot.helpNeeded
+          : undefined,
       metrics: {
         upvotes: publication.getMetrics.upvotes,
         downvotes: publication.getMetrics.downvotes,
@@ -75,6 +99,8 @@ export class EntityMappers {
           origin: this.formatCommunityForApi(community),
         }),
       },
+      deleted: snapshot.deleted ?? false,
+      deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
     };
@@ -140,12 +166,12 @@ export class EntityMappers {
     const author = usersMap.get(authorId);
 
     // Get images from entity or schema - check multiple sources
-    const images = comment.images || 
-                   comment.getImages?.() || 
-                   (comment.snapshot?.images) || 
-                   (comment.toSnapshot?.()?.images) ||
-                   [];
-    
+    const images = comment.images ||
+      comment.getImages?.() ||
+      (comment.snapshot?.images) ||
+      (comment.toSnapshot?.()?.images) ||
+      [];
+
     const baseComment = {
       id: comment.id || comment.getId?.getValue(),
       _id: comment.id || comment.getId?.getValue(),
@@ -182,7 +208,7 @@ export class EntityMappers {
 
       // Use images from baseComment (already extracted above)
       // Don't duplicate - images are already in baseComment if they exist
-      
+
       return {
         ...baseComment,
         amountTotal: voteAmount,

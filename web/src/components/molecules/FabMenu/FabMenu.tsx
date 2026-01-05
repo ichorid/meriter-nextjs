@@ -107,7 +107,7 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
         <div className="fabSlot" ref={menuRef}>
             {/* Menu Items */}
             {isOpen && !permissionLoading && (
-                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-2xl shadow-2xl border border-base-content/10 overflow-hidden z-50 pointer-events-auto">
+                <div className="absolute bottom-16 right-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50 pointer-events-auto">
                     <div className="py-2">
                         {canCreate ? (
                             <>
@@ -127,8 +127,8 @@ export const FabMenu = ({ communityId }: FabMenuProps) => {
                                         onClick={handleCreatePoll}
                                         className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
                                     >
-                                        <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center">
-                                            <BarChart2 size={16} className="text-secondary" />
+                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                            <BarChart2 size={16} className="text-primary" />
                                         </div>
                                         <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
                                     </button>

@@ -24,6 +24,20 @@ export interface CreateNotificationDto {
   message: string;
 }
 
+export interface NotificationDeduplicationKey {
+  targetType: string;
+  targetId: string;
+}
+
+export interface EditorPostDeduplicationKey {
+  publicationId: string;
+  editorId: string;
+}
+
+export interface VoteAggregationKey {
+  publicationId: string;
+}
+
 export interface GetNotificationsOptions {
   page?: number;
   pageSize?: number;
@@ -57,6 +71,211 @@ export class NotificationService {
 
     this.logger.log(`Notification created: ${notification.id} for user ${dto.userId}`);
     return notification.toObject();
+  }
+
+  /**
+   * Create a notification, but deduplicate by replacing the *oldest unread* notification
+   * with the same (userId, type, metadata.targetType, metadata.targetId).
+   *
+   * This matches the "one unread notification per object" requirement for favorites updates.
+   */
+  async createOrReplaceOldestUnreadByTarget(
+    dto: CreateNotificationDto,
+    key: NotificationDeduplicationKey,
+  ): Promise<Notification> {
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.targetType': key.targetType,
+        'metadata.targetId': key.targetId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification replaced (dedup): ${saved.id} for user ${dto.userId}`,
+      );
+      return saved.toObject();
+    }
+
+    return this.createNotification(dto);
+  }
+
+  /**
+   * Create a notification for publication edits, but deduplicate by replacing the *oldest unread* notification
+   * from the same editor on the same post.
+   *
+   * This ensures that if user B edits user A's post multiple times, only the latest notification is shown.
+   */
+  async createOrReplaceByEditorAndPost(
+    dto: CreateNotificationDto,
+    key: EditorPostDeduplicationKey,
+  ): Promise<Notification> {
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.editorId': key.editorId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification replaced (dedup by editor/post): ${saved.id} for user ${dto.userId}`,
+      );
+      return saved.toObject();
+    }
+
+    return this.createNotification(dto);
+  }
+
+  /**
+   * Create or replace a vote notification for favorited posts, aggregating vote data.
+   * 
+   * If an unread notification exists for the same user and publication, it aggregates:
+   * - Total upvotes and downvotes
+   * - Net amount
+   * - Voter count
+   * - Latest voter info
+   * 
+   * This prevents spam by showing one aggregated notification instead of many individual ones.
+   */
+  async createOrReplaceAndAggregateVotes(
+    dto: CreateNotificationDto,
+    key: VoteAggregationKey,
+    voterInfo: {
+      voterId: string;
+      voterName: string;
+      amount: number;
+      direction: 'up' | 'down';
+    },
+  ): Promise<Notification> {
+    const numberFromMetadata = (metadata: Record<string, unknown>, field: string): number => {
+      const value = metadata[field];
+      return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    };
+
+    const numberFromMetadataOrDefault = (
+      metadata: Record<string, unknown>,
+      field: string,
+      fallback: number,
+    ): number => {
+      const value = metadata[field];
+      return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+    };
+
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: 'vote',
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.targetType': 'publication',
+      })
+      .sort({ createdAt: 1 })
+      .exec();
+
+    if (existing) {
+      // Aggregate vote data from existing notification
+      const existingMetadata = existing.metadata as Record<string, unknown>;
+      const totalUpvotes =
+        numberFromMetadata(existingMetadata, 'totalUpvotes') +
+        (voterInfo.direction === 'up' ? voterInfo.amount : 0);
+      const totalDownvotes =
+        numberFromMetadata(existingMetadata, 'totalDownvotes') +
+        (voterInfo.direction === 'down' ? voterInfo.amount : 0);
+      const netAmount = totalUpvotes - totalDownvotes;
+      const voterCount = numberFromMetadataOrDefault(existingMetadata, 'voterCount', 1) + 1;
+
+      // Build aggregated message
+      const upStr = totalUpvotes > 0 ? `+${totalUpvotes}` : '';
+      const downStr = totalDownvotes > 0 ? `-${totalDownvotes}` : '';
+      const amountStr = (upStr || downStr) ? ` (${upStr}${downStr ? '/' + downStr : ''})` : '';
+      const message = `${voterInfo.voterName} and ${voterCount - 1} others voted on a favorite post${amountStr}`;
+
+      // Update existing notification with aggregated data
+      existing.source = dto.source;
+      existing.sourceId = voterInfo.voterId; // Latest voter
+      existing.metadata = {
+        ...dto.metadata,
+        totalUpvotes,
+        totalDownvotes,
+        netAmount,
+        voterCount,
+        latestVoterId: voterInfo.voterId,
+        latestVoterName: voterInfo.voterName,
+      };
+      existing.title = dto.title;
+      existing.message = message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification aggregated (vote): ${saved.id} for user ${dto.userId}, ${voterCount} voters, net: ${netAmount}`,
+      );
+      return saved.toObject();
+    }
+
+    // Create new notification with initial vote data
+    const initialUpvotes = voterInfo.direction === 'up' ? voterInfo.amount : 0;
+    const initialDownvotes = voterInfo.direction === 'down' ? voterInfo.amount : 0;
+    const netAmount = initialUpvotes - initialDownvotes;
+    let amountStr = '';
+    if (voterInfo.amount > 0) {
+      if (voterInfo.direction === 'up') {
+        amountStr = ` (+${voterInfo.amount})`;
+      } else {
+        amountStr = ` (-${voterInfo.amount})`;
+      }
+    }
+    const message = `${voterInfo.voterName} voted on a favorite post${amountStr}`;
+
+    const newDto: CreateNotificationDto = {
+      ...dto,
+      message,
+      metadata: {
+        ...dto.metadata,
+        totalUpvotes: initialUpvotes,
+        totalDownvotes: initialDownvotes,
+        netAmount,
+        voterCount: 1,
+        latestVoterId: voterInfo.voterId,
+        latestVoterName: voterInfo.voterName,
+      },
+    };
+
+    return this.createNotification(newDto);
   }
 
   async getNotifications(
@@ -141,9 +360,29 @@ export class NotificationService {
     const { type, metadata } = notification;
 
     switch (type) {
+      case 'favorite_update': {
+        const { communityId, publicationId, pollId, targetType } = metadata;
+        if (!communityId) {
+          return undefined;
+        }
+        if (targetType === 'poll' || pollId) {
+          const resolvedPollId = pollId;
+          if (!resolvedPollId) {
+            return undefined;
+          }
+          return `/meriter/communities/${communityId}?poll=${resolvedPollId}`;
+        }
+        const resolvedPublicationId = publicationId;
+        if (!resolvedPublicationId) {
+          return undefined;
+        }
+        return `/meriter/communities/${communityId}?post=${resolvedPublicationId}`;
+      }
+
       case 'vote':
       case 'beneficiary':
-      case 'publication': {
+      case 'publication':
+      case 'forward_proposal': {
         const { communityId, publicationId, targetId, targetType } = metadata;
         if (!communityId || !publicationId) {
           return undefined;

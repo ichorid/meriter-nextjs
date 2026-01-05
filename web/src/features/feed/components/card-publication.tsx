@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { classList } from '@lib/classList';
-import { Avatar } from '@/components/atoms';
-import { CommunityAvatar } from '@shared/components/community-avatar';
 import { useRouter } from 'next/navigation';
-import { routes } from '@/lib/constants/routes';
+import { classList } from '@lib/classList';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
+import { CommunityAvatar } from '@shared/components/community-avatar';
 import { ImageLightbox } from '@shared/components/image-lightbox';
-import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
+import { routes } from '@/lib/constants/routes';
 
 interface CardPublicationProps {
     title: any;
@@ -23,6 +22,7 @@ interface CardPublicationProps {
     showCommunityAvatar?: any;
     communityAvatarUrl?: any;
     communityName?: any;
+    communityId?: string;
     communityIconUrl?: any;
     onCommunityClick?: any;
     communityNeedsSetup?: any;
@@ -49,6 +49,7 @@ export const CardPublication = ({
     showCommunityAvatar,
     communityAvatarUrl,
     communityName,
+    communityId,
     communityIconUrl,
     onCommunityClick,
     communityNeedsSetup,
@@ -81,7 +82,7 @@ export const CardPublication = ({
     
     return (
     <div 
-        className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-2xl mb-5 overflow-hidden max-w-full transition-all${clickableClass}`}
+        className={`card bg-base-100 shadow-lg dark:border dark:border-base-content/20 rounded-xl mb-5 overflow-hidden max-w-full transition-all${clickableClass}`}
         onClick={onClick}
     >
         {coverImageUrl && galleryImages.length === 0 && (
@@ -108,6 +109,7 @@ export const CardPublication = ({
                                 <CommunityAvatar
                                     avatarUrl={communityAvatarUrl}
                                     communityName={communityName}
+                                    communityId={communityId}
                                     size={24}
                                     needsSetup={communityNeedsSetup}
                                 />
@@ -128,13 +130,14 @@ export const CardPublication = ({
                 <div className="flex items-center justify-between gap-2 min-w-0">
                     <div className="flex gap-2.5 min-w-0 flex-1">
                         <Avatar
-                            src={avatarUrl}
-                            alt={title}
-                            name={title}
-                            size={32}
-                            onError={onAvatarUrlNotFound}
+                            className="w-8 h-8 cursor-pointer"
                             onClick={authorId ? handleAuthorAvatarClick : undefined}
-                        />
+                        >
+                          <AvatarImage src={avatarUrl} alt={title} onError={onAvatarUrlNotFound} />
+                          <AvatarFallback userId={authorId} className="font-medium text-xs">
+                            {title ? title.charAt(0).toUpperCase() : '?'}
+                          </AvatarFallback>
+                        </Avatar>
                         <div className="info min-w-0 flex-1">
                             <div className="text-xs font-medium text-base-content dark:text-base-content break-words">{title}</div>
                         </div>
@@ -143,12 +146,14 @@ export const CardPublication = ({
                         <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
                             <span className="text-xs opacity-70 text-base-content dark:text-base-content flex-shrink-0">to:</span>
                             <Avatar
-                                src={beneficiaryAvatarUrl}
-                                alt={beneficiaryName}
-                                name={beneficiaryName}
-                                size={32}
+                                className="w-8 h-8 cursor-pointer"
                                 onClick={beneficiaryId ? handleBeneficiaryAvatarClick : undefined}
-                            />
+                            >
+                              <AvatarImage src={beneficiaryAvatarUrl} alt={beneficiaryName} />
+                              <AvatarFallback userId={beneficiaryId} className="font-medium text-xs">
+                                {beneficiaryName ? beneficiaryName.charAt(0).toUpperCase() : '?'}
+                              </AvatarFallback>
+                            </Avatar>
                             <div className="info min-w-0">
                                 <div className="text-xs font-medium text-base-content dark:text-base-content break-words">{beneficiaryName}</div>
                                 {beneficiarySubtitle && (

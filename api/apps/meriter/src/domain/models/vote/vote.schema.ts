@@ -21,7 +21,7 @@ export interface Vote {
   amountQuota: number;
   amountWallet: number;
   direction: 'up' | 'down'; // Explicit vote direction: upvote or downvote
-  comment: string; // Required comment text attached to vote
+  comment?: string; // Comment text attached to vote (can be empty string)
   images?: string[]; // Array of image URLs for vote attachments
   communityId: string; // Made required for consistency
   createdAt: Date;
@@ -50,8 +50,8 @@ export class VoteSchemaClass implements Vote {
   @Prop({ required: true, enum: ['up', 'down'] })
   direction!: 'up' | 'down'; // Explicit vote direction: upvote or downvote
 
-  @Prop({ required: true, maxlength: 5000 })
-  comment!: string; // Required comment text attached to vote
+  @Prop({ type: String, required: false, maxlength: 5000, default: '' })
+  comment?: string; // Comment text attached to vote (can be empty string)
 
   @Prop({ type: [String], default: [] })
   images?: string[]; // Array of image URLs for vote attachments
@@ -65,6 +65,9 @@ export class VoteSchemaClass implements Vote {
 
 export const VoteSchema = SchemaFactory.createForClass(VoteSchemaClass);
 export type VoteDocument = VoteSchemaClass & Document;
+
+// Backwards-compatible runtime alias (many tests use `Vote.name`)
+export const Vote = VoteSchemaClass;
 
 // Add indexes for common queries
 VoteSchema.index({ targetType: 1, targetId: 1 });

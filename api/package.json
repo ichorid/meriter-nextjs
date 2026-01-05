@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.28.0",
+  "version": "0.44.0",
   "description": "",
   "author": "",
   "private": true,
@@ -15,11 +15,12 @@
     "debug": "nest start --debug --watch",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
-    "test:ci": "jest --ci",
+    "test:ci": "jest --ci --bail",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --forceExit"
+    "test:e2e": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=50%",
+    "test:e2e:ci": "jest --config ./apps/meriter/test/jest-e2e.json --bail --maxWorkers=100%"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.940.0",
@@ -33,7 +34,11 @@
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.4.20",
     "@nestjs/schedule": "^4.1.2",
+    "@sentry/node": "^8.45.0",
+    "@sentry/profiling-node": "^8.45.0",
     "@simplewebauthn/server": "^13.2.2",
+    "@trpc/server": "^11.0.0",
+    "@types/nodemailer": "^7.0.4",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "class-transformer": "^0.5.1",
@@ -46,6 +51,7 @@
     "mongoose": "^8.20.1",
     "nestjs-telegram": "^1.2.0",
     "node-xlsx": "^0.24.0",
+    "nodemailer": "^7.0.12",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
@@ -54,6 +60,7 @@
     "rimraf": "^6.1.2",
     "rxjs": "^7.8.2",
     "sharp": "^0.33.5",
+    "superjson": "^1.13.3",
     "uid": "^2.0.2",
     "xml-js": "^1.6.11",
     "zod": "^4.1.13"
@@ -102,7 +109,12 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": [
-        "ts-jest"
+        "ts-jest",
+        {
+          "tsconfig": {
+            "module": "commonjs"
+          }
+        }
       ]
     },
     "collectCoverageFrom": [
@@ -112,8 +124,6 @@
     ],
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
-    "globalSetup": "<rootDir>/jest.global-setup.js",
-    "globalTeardown": "<rootDir>/jest.global-teardown.js",
     "setupFiles": [
       "<rootDir>/jest.setup.js"
     ],
@@ -121,7 +131,9 @@
       "<rootDir>/apps/",
       "<rootDir>/libs/"
     ],
-    "maxWorkers": 1,
+    "transformIgnorePatterns": [
+      "node_modules/(?!.*superjson|.*copy-anything|.*is-what|.*type-fest)"
+    ],
     "moduleNameMapper": {
       "@meriter/shared-types": "<rootDir>/../libs/shared-types/src",
       "@meriter/shared-types/(.*)": "<rootDir>/../libs/shared-types/src/$1",

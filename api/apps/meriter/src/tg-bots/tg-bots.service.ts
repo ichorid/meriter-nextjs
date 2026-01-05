@@ -1,17 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
+import { AppConfig } from "../config/configuration";
 import { Model } from "mongoose";
 import { uid } from "uid";
 import * as sharp from "sharp";
 
 import {
-  ADDED_PUBLICATION_REPLY,
   APPROVED_PEDNDING_WORDS,
   AUTH_USER_MESSAGE,
   BOT_TOKEN,
   BOT_URL,
   BOT_USERNAME,
-  LEADER_MESSAGE_AFTER_ADDED,
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
   URL as WEB_BASE_URL,
@@ -19,14 +19,9 @@ import {
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
 import { UserSchemaClass, UserDocument } from "../domain/models/user/user.schema";
-import type { User } from "../domain/models/user/user.schema";
 import { PublicationSchemaClass, PublicationDocument } from "../domain/models/publication/publication.schema";
-import type { Publication } from "../domain/models/publication/publication.schema";
 import { CommunitySchemaClass, CommunityDocument } from "../domain/models/community/community.schema";
-import type { Community } from "../domain/models/community/community.schema";
 import { UserCommunityRoleService } from "../domain/services/user-community-role.service";
-
-import * as config from "../config";
 
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
@@ -49,12 +44,13 @@ export class TgBotsService {
     @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
     private userCommunityRoleService: UserCommunityRoleService,
     private featureFlagsService: FeatureFlagsService,
+    private configService: ConfigService<AppConfig>,
   ) {
     // S3 is completely optional - only initialize if fully configured
-    const s3Endpoint = process.env.S3_ENDPOINT;
-    const s3BucketName = process.env.S3_BUCKET_NAME;
-    const s3AccessKeyId = process.env.S3_ACCESS_KEY_ID;
-    const s3SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const s3Endpoint = (this.configService.get as any)('storage.s3.endpoint') as string | undefined;
+    const s3BucketName = (this.configService.get as any)('storage.s3.bucketName') as string | undefined;
+    const s3AccessKeyId = (this.configService.get as any)('storage.s3.accessKeyId') as string | undefined;
+    const s3SecretAccessKey = (this.configService.get as any)('storage.s3.secretAccessKey') as string | undefined;
 
     const isS3Configured = !!(s3Endpoint && s3BucketName && s3AccessKeyId && s3SecretAccessKey);
 
@@ -66,7 +62,7 @@ export class TgBotsService {
           secretAccessKey: s3SecretAccessKey,
         },
         endpoint: s3Endpoint,
-        region: process.env.S3_REGION || "ru-msk",
+        region: ((this.configService.get as any)('storage.s3.region') ?? "ru-msk") as string,
       });
       this.s3Bucket = s3BucketName;
     } else {
@@ -75,7 +71,7 @@ export class TgBotsService {
       this.s3Bucket = undefined;
     }
 
-    this.telegramApiUrl = process.env.TELEGRAM_API_URL || "https://api.telegram.org";
+    this.telegramApiUrl = ((this.configService.get as any)('telegram.apiUrl') ?? "https://api.telegram.org") as string;
   }
 
   async sendUserUpdates(userId: string, events: UpdateEventItem[], locale: 'en' | 'ru' = 'en') {
@@ -156,7 +152,7 @@ export class TgBotsService {
     };
     await this.sendUserUpdates(userId, [event], locale);
   }
-  async processHookBody(body: TelegramTypes.Update, botUsername: string) {
+  async processHookBody(body: TelegramTypes.Update, _botUsername: string) {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; ignoring webhook update');
       return;
@@ -198,8 +194,8 @@ export class TgBotsService {
       message_id,
       from,
       chat,
-      new_chat_members,
-      left_chat_member,
+      new_chat_members: _new_chat_members,
+      left_chat_member: _left_chat_member,
       text,
       caption,
       entities,
@@ -260,7 +256,7 @@ export class TgBotsService {
     this.logger.log(`ℹ️  Community auto-creation is disabled. Communities must be created manually through the API.`);
   }
 
-  async processRemovedFromChat({ chatId, chat_username }: { chatId: string; chat_username?: string }) {
+  async processRemovedFromChat({ chatId, chat_username: _chat_username }: { chatId: string; chat_username?: string }) {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping processRemovedFromChat');
       return;
@@ -406,7 +402,7 @@ export class TgBotsService {
   async processRecieveMessageFromGroup({
     tgChatId: numTgChatId,
     tgUserId: numTgUserId,
-    tgAuthorUsername,
+    tgAuthorUsername: _tgAuthorUsername,
     tgAuthorName,
     messageText,
     messageId,
@@ -540,7 +536,7 @@ export class TgBotsService {
       entities,
       beneficiary,
     });
-    const [result, updUserdata] = await Promise.all([
+    const [result, _updUserdata] = await Promise.all([
       promisePublication,
       promiseUpdUserdata,
     ]);
@@ -575,8 +571,8 @@ export class TgBotsService {
     this.logger.log(`👤 Processing direct message from user ${tgUserId}: "${messageText}"`);
     this.logger.log(`🔍 Parsed referral: ${referal || 'none'}`);
 
-    let authJWT;
-    let redirect;
+    let _authJWT;
+    let _redirect;
     const auth = messageText.match("/auth");
 
     if (referal !== false) {
@@ -638,7 +634,7 @@ export class TgBotsService {
           tgChatId: chat_id,
           meta: params,
           ts: Date.now(),
-        })*/ !process.env.noAxios &&
+        })*/ !((this.configService.get as any)('noAxios') as boolean | undefined) &&
         Axios.get(BOT_URL + "/sendMessage", {
           params,
         }),
@@ -665,9 +661,11 @@ export class TgBotsService {
   }
 
   async tgGetChat(tgChatId: string | number) {
-    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
     const params = { chat_id: tgChatId };
-    if (process.env.noAxios) return null;
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return null;
     return await Axios.get(BOT_URL + "/getChat", {
       params,
     })
@@ -678,7 +676,8 @@ export class TgBotsService {
   async tgGetChatMember(tgChatId: string | number, tgUserId: string | number) {
     //if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
     const params = { chat_id: tgChatId, user_id: tgUserId };
-    if (process.env.noAxios) return null;
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return null;
     return await Axios.get(BOT_URL + "/getChatMember", {
       params,
       timeout: 5000, // 5 second timeout to prevent hanging requests
@@ -699,7 +698,8 @@ export class TgBotsService {
     // Remove @ prefix if present
     const cleanUsername = username.replace(/^@/, '');
 
-    if (process.env.noAxios) return null;
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return null;
 
     try {
       const response = await Axios.get(BOT_URL + "/getChat", {
@@ -731,15 +731,18 @@ export class TgBotsService {
       return "ok";
     }
     //console.log(tgChatId, text )
-    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
-    if (!process.env.BOT_TOKEN) {
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
+    const botToken = (this.configService.get as any)('bot.token') as string | undefined;
+    if (!botToken) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
       return "ok";
     }
     this.logger.log(`Sending Telegram message`);
     const params = { chat_id: tgChatId, text, parse_mode: "MarkdownV2" };
     try {
-      if (!process.env.noAxios) {
+      const noAxios = this.configService.get('noAxios');
+      if (!noAxios) {
         await Axios.get(BOT_URL + "/sendMessage", { params });
       }
     } catch (e) {
@@ -764,8 +767,10 @@ export class TgBotsService {
   */
 
   async tgChatGetAdmins({ tgChatId }: { tgChatId: string | number }) {
-    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
-    if (process.env.noAxios) return [{ id: "1" }];
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return [{ id: "1" }];
 
     return Axios.get(BOT_URL + "/getChatAdministrators", {
       params: { chat_id: tgChatId },
@@ -778,8 +783,11 @@ export class TgBotsService {
   }
 
   async tgChatIsAdmin({ tgChatId, tgUserId }: { tgChatId: string | number; tgUserId: string | number }) {
-    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
-    if (process.env.noAxios) return process.env.admin == "true" ? true : false;
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
+    const noAxios = this.configService.get('noAxios');
+    const admin = this.configService.get('admin');
+    if (noAxios) return admin == "true" ? true : false;
     const admins = await this.tgChatGetAdmins({ tgChatId });
     if (!admins) return false;
     //console.log(admins, tgUserId);
@@ -788,7 +796,8 @@ export class TgBotsService {
   }
 
   async tgChatGetKeywords({ tgChatId }: { tgChatId: string | number }) {
-    if (String(tgChatId).length < 4 && process.env.NODE_ENV !== "test") return;
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
     const chat = await this.communityModel.findOne({
 
     });
@@ -803,7 +812,7 @@ export class TgBotsService {
    * @returns Public S3 URL of the uploaded avatar
    */
   async downloadAndUploadTelegramPhoto(photoUrl: string, telegramId: string): Promise<string> {
-    const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     const s3Key = `telegram_small_avatars/${telegramId}.jpg`;
 
     try {
@@ -814,6 +823,7 @@ export class TgBotsService {
       });
 
       const toJpeg = sharp()
+        .rotate() // Auto-rotate based on EXIF orientation and strip EXIF data
         .resize(200, 200)
         .jpeg({ quality: 100 });
 
@@ -836,16 +846,16 @@ export class TgBotsService {
     }
   }
 
-  async telegramGetChatPhotoUrl(token: string, chat_id: string | number, revalidate = false) {
+  async telegramGetChatPhotoUrl(token: string, chat_id: string | number, _revalidate = false) {
     //if (process.env.NODE_ENV === 'test') return ``;
 
-    const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     try {
       const url = `${avatarBaseUrl}/${chat_id}.jpg`;
       const status = await Axios.head(url).then((d) => d.status);
       if (status === 200)
         return `${avatarBaseUrl}/${chat_id}.jpg`;
-    } catch (e) {
+    } catch (_e) {
       this.logger.warn("not found ", chat_id);
     }
 
@@ -867,7 +877,7 @@ export class TgBotsService {
 
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = process.env.DICEBEAR_API_URL || 'https://avatars.dicebear.com/api/jdenticon';
+        const dicebarApiUrl =  ((this.configService.get as any)('telegram.dicebearApiUrl') ?? 'https://avatars.dicebear.com/api/jdenticon') as string;
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -885,7 +895,7 @@ export class TgBotsService {
     }
 
     try {
-      const { small_file_id, small_file_unique_id, big_file_id } = photo;
+      const { small_file_id, small_file_unique_id, big_file_id: _big_file_id } = photo;
       const { file_path } = await this.telegramPrepareFile(token, small_file_id);
       const photoUrl = `telegram_images/${small_file_unique_id}.jpg`;
       const photoUrl2 = `telegram_small_avatars/${chat_id}.jpg`;
@@ -897,7 +907,7 @@ export class TgBotsService {
         this.awsUploadStream({
           Key: photoUrl2,
         });
-      const f = await this.telegramGetFile(token, file_path).then((d) => {
+      const _f = await this.telegramGetFile(token, file_path).then((d) => {
         d.data.pipe(writeStream);
         d.data.pipe(writeStream2);
         //console.log(d.headers);
@@ -923,7 +933,7 @@ export class TgBotsService {
           .resize(200, 200)
           .jpeg({ quality: 100 });
 
-        const dicebarApiUrl = process.env.DICEBEAR_API_URL || 'https://avatars.dicebear.com/api/jdenticon';
+        const dicebarApiUrl =  ((this.configService.get as any)('telegram.dicebearApiUrl') ?? 'https://avatars.dicebear.com/api/jdenticon') as string;
         await Axios({
           method: "get",
           url: `${dicebarApiUrl}/${chat_id}.svg`,
@@ -946,7 +956,7 @@ export class TgBotsService {
     if (!chat_id || chat_id == "undefined") return;
     //apiGET("/api/telegram/updatechatphoto", { chat_id }).then((d) => d);
 
-    const avatarBaseUrl = process.env.TELEGRAM_AVATAR_BASE_URL || 'https://telegram.hb.bizmrg.com/telegram_small_avatars';
+    const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     return `${avatarBaseUrl}/${chat_id}.jpg`;
   }
 
@@ -1003,7 +1013,7 @@ export class TgBotsService {
   async telegramSendMessage(token: string, chat_id: string | number, text: string) {
     const params = { chat_id, text, parse_mode: "MarkdownV2" };
     try {
-      const r = await Promise.all([
+      const _r = await Promise.all([
         Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
           params,
         }),
@@ -1016,7 +1026,8 @@ export class TgBotsService {
   }
 
   async telegramChatGetAdmins(token: string, chat_id: string | number) {
-    if (process.env.noAxios) return [{ id: "1" }];
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return [{ id: "1" }];
 
     return Axios.get(
       `${this.telegramApiUrl}/bot${token}/getChatAdministrators`,
@@ -1032,17 +1043,17 @@ export class TgBotsService {
   async publicationAdd({
     tgChatId: tgChatIdInt,
     fromTgChatId,
-    tgAuthorName,
-    tgAuthorUsername,
-    tgMessageId,
+    tgAuthorName: _tgAuthorName,
+    tgAuthorUsername: _tgAuthorUsername,
+    tgMessageId: _tgMessageId,
     tgAuthorId,
-    tgChatName,
-    tgChatUsername,
+    tgChatName: _tgChatName,
+    tgChatUsername: _tgChatUsername,
     keyword,
-    text,
+    text: _text,
     messageText,
-    authorPhotoUrl,
-    entities,
+    authorPhotoUrl: _authorPhotoUrl,
+    entities: _entities,
     beneficiary,
   }: {
     tgChatId: string | number;
@@ -1060,7 +1071,7 @@ export class TgBotsService {
     entities?: any;
     beneficiary?: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null;
   }) {
-    const tgChatId = String(tgChatIdInt);
+    const _tgChatId = String(tgChatIdInt);
 
     // Fetch community and validate hashtag exists
     const community = await this.communityModel.findOne({
@@ -1149,7 +1160,7 @@ export class TgBotsService {
     };
   };
 
-  async sendInfoLetter(aboutChatId: string, toTgChatId: string) {
+  async sendInfoLetter(aboutChatId: string, _toTgChatId: string) {
     // Community lookup by Telegram chat ID is no longer supported
     // Communities must be created manually through the API
     this.logger.warn(`⚠️  sendInfoLetter called for chat ${aboutChatId}, but community lookup by chatId is not supported. Communities must be created manually.`);

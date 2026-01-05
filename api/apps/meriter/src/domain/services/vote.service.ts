@@ -3,13 +3,11 @@ import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection } from 'mongoose';
 import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
 import type { Vote } from '../models/vote/vote.schema';
-import { UserId } from '../value-objects';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
 import { PermissionService } from './permission.service';
 import { UserService } from './user.service';
-import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
@@ -26,7 +24,7 @@ export class VoteService {
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
     private userService: UserService,
     private eventBus: EventBus,
-  ) {}
+  ) { }
 
   /**
    * Get the effective beneficiary for a target (publication or vote)
@@ -73,6 +71,59 @@ export class VoteService {
       return false;
     }
 
+    // Check voting restrictions from community settings
+    if (communityId) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.votingSettings?.votingRestriction) {
+        const restriction = community.votingSettings.votingRestriction;
+
+        // Check if this is self-voting
+        const isSelfVoting = effectiveBeneficiary === userId;
+
+        // Check restriction: "not-own" - cannot vote for own posts
+        if (restriction === 'not-own' && isSelfVoting) {
+          // Exception: future-vision allows self-voting
+          if (community.typeTag === 'future-vision') {
+            const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+            if (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN) {
+              return true; // Allow self-voting in future-vision group for these roles
+            }
+          }
+          this.logger.log(`[canUserVote] DENIED: Cannot vote for own post (not-own restriction)`);
+          return false;
+        }
+
+        // Check restriction: "not-same-group" - cannot vote if users share communities
+        if (restriction === 'not-same-group' && !isSelfVoting) {
+          const authorId = effectiveBeneficiary;
+          const voterCommunities = await this.userService.getUserCommunities(userId);
+          const authorCommunities = await this.userService.getUserCommunities(authorId);
+
+          // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
+          const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
+          const sharedCommunities = voterCommunities.filter(vcId =>
+            authorCommunities.includes(vcId)
+          );
+
+          // Check if any shared community is NOT a special group
+          for (const sharedCommId of sharedCommunities) {
+            const sharedComm = await this.communityService.getCommunity(sharedCommId);
+            if (sharedComm && !specialTypeTags.includes(sharedComm.typeTag || '')) {
+              this.logger.log(`[canUserVote] DENIED: Users share non-special communities (not-same-group restriction)`);
+              return false;
+            }
+          }
+        }
+
+        // Restriction "any" allows all votes (no additional checks needed)
+        // If not self-voting and restriction is not "not-same-group", allow it
+        if (!isSelfVoting && restriction !== 'not-same-group') {
+          return true;
+        }
+      }
+    }
+
+    // Legacy check: if no voting restriction is set, use old logic
     // Check if this is self-voting
     const isSelfVoting = effectiveBeneficiary === userId;
     if (!isSelfVoting) {
@@ -107,6 +158,7 @@ export class VoteService {
     if (!effectiveBeneficiary) {
       return false;
     }
+    // Compare the string value of UserId with userId
     return effectiveBeneficiary === userId;
   }
 
@@ -121,7 +173,10 @@ export class VoteService {
     communityId: string,
     images?: string[]
   ): Promise<Vote> {
-    this.logger.log(`Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${comment.substring(0, 50)}...`);
+    const commentPreview = (comment ?? '').substring(0, 50);
+    this.logger.log(
+      `Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${commentPreview}...`,
+    );
 
     // Check feature flag - comment voting is disabled by default
     const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
@@ -157,38 +212,36 @@ export class VoteService {
     const community = await this.communityService.getCommunity(communityId);
     const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
     const isFutureVision = community?.typeTag === 'future-vision';
-    const isSpecialGroup = isMarathonOfGood || isFutureVision;
 
     // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    
-    // Viewers can only vote with quota (no wallet voting) - check this first for clearer error messages
-    if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
-      throw new BadRequestException(
-        'Viewers can only vote using daily quota, not wallet merits.',
-      );
-    }
-
-    // Marathon of Good: Block wallet voting on publications/comments (quota only)
-    // Future Vision: Block quota voting on publications/comments (wallet only)
+    // Voting defaults:
+    // - In most communities: both quota and wallet voting are allowed.
+    // Special case restrictions:
+    // - Marathon of Good: quota-only for publications/comments (for everyone, including viewers)
+    // - Future Vision: wallet-only for publications/comments (no quota)
+    // - Viewers: quota-only in all communities (no wallet)
     // Polls are handled separately and always use wallet
     // This check comes BEFORE postType validation to ensure it applies
-    // Note: Viewer check already happened above, so skip if viewer
     if (targetType === 'publication' || targetType === 'vote') {
-      if (isMarathonOfGood && amountWallet > 0 && userRole !== COMMUNITY_ROLE_VIEWER) {
+      // Special case: Marathon of Good blocks wallet voting (quota only) for everyone
+      if (isMarathonOfGood && amountWallet > 0) {
         throw new BadRequestException(
           'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
         );
       }
+
+      // Viewers can only vote with quota (no wallet voting)
+      if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
+        throw new BadRequestException(
+          'Viewers can only vote using daily quota, not wallet merits.',
+        );
+      }
+
+      // Special case: Future Vision blocks quota voting (wallet only)
       if (isFutureVision && amountQuota > 0) {
         throw new BadRequestException(
           'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
-        );
-      }
-      // For regular groups (non-special), reject wallet voting
-      if (!isSpecialGroup && amountWallet > 0) {
-        throw new BadRequestException(
-          'Voting with permanent wallet merits is only allowed in special groups (Marathon of Good and Future Vision). Please use daily quota to vote on posts and comments.',
         );
       }
     }
@@ -217,34 +270,24 @@ export class VoteService {
         }
       }
 
-      // Report (Good Deed) / Basic: Voting with Daily Quota only
-      // Marathon of Good: quota only (already enforced above)
-      // Future Vision: wallet only (already enforced above)
+      // Report (Good Deed) / Basic: Wallet voting allowed by default
+      // Special case: Marathon of Good blocks wallet for basic posts (quota only, already enforced above)
+      // Special case: Future Vision blocks quota for basic posts (wallet only, already enforced above)
+      // All other groups allow wallet voting for basic posts by default
       // Assuming 'basic' implies Report/Good Deed context for now
-      if (postType === 'basic' && !isProject && !isSpecialGroup) {
-        // For non-special groups only, basic posts can only use quota
-        if (amountWallet > 0) {
-          throw new BadRequestException(
-            'Reports (Good Deeds) can only be voted on with Daily Quota',
-          );
-        }
-        if (amountQuota <= 0) {
+      if (postType === 'basic' && !isProject) {
+        // Marathon of Good: basic posts require quota (wallet already blocked above)
+        if (isMarathonOfGood && amountQuota <= 0) {
           throw new BadRequestException(
             'Reports require Daily Quota to vote',
           );
         }
-      }
-      // For Marathon of Good basic posts, ensure quota is used
-      if (postType === 'basic' && !isProject && isMarathonOfGood && amountQuota <= 0) {
-        throw new BadRequestException(
-          'Reports require Daily Quota to vote',
-        );
-      }
-      // For Future Vision basic posts, ensure wallet is used
-      if (postType === 'basic' && !isProject && isFutureVision && amountWallet <= 0) {
-        throw new BadRequestException(
-          'Reports require Wallet Merits to vote',
-        );
+        // Future Vision: basic posts require wallet (quota already blocked above)
+        if (isFutureVision && amountWallet <= 0) {
+          throw new BadRequestException(
+            'Reports require Wallet Merits to vote',
+          );
+        }
       }
     }
 

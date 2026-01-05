@@ -1,13 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
-import { UserGuard } from '../src/user.guard';
-import { InviteService } from '../src/domain/services/invite.service';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -16,22 +13,9 @@ import { InviteSchemaClass, InviteDocument } from '../src/domain/models/invite/i
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import * as request from 'supertest';
-
-class AllowAllGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
-    const req = context.switchToHttp().getRequest();
-    req.user = {
-      id: (global as any).testUserId || 'test-user-id',
-      telegramId: 'test-telegram-id',
-      displayName: 'Test User',
-      username: 'testuser',
-      communityTags: [],
-      globalRole: (global as any).testUserGlobalRole || undefined,
-    };
-    return true;
-  }
-}
+import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
+import { TestSetupHelper } from './helpers/test-setup.helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 
 describe('Invites - New Role Assignment Logic', () => {
   jest.setTimeout(60000);
@@ -40,11 +24,9 @@ describe('Invites - New Role Assignment Logic', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let inviteService: InviteService;
   let communityService: CommunityService;
   let userService: UserService;
   let userCommunityRoleService: UserCommunityRoleService;
-  let walletService: WalletService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -72,23 +54,23 @@ describe('Invites - New Role Assignment Logic', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
-      .overrideGuard(UserGuard)
-      .useClass(AllowAllGuard)
       .compile();
 
     app = moduleFixture.createNestApplication();
+    
+    // Setup tRPC middleware for tRPC tests
+    TestSetupHelper.setupTrpcMiddleware(app);
+    
     await app.init();
 
     // Wait for onModuleInit to complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    inviteService = app.get<InviteService>(InviteService);
     communityService = app.get<CommunityService>(CommunityService);
     userService = app.get<UserService>(UserService);
     userCommunityRoleService = app.get<UserCommunityRoleService>(
       UserCommunityRoleService,
     );
-    walletService = app.get<WalletService>(WalletService);
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
@@ -235,19 +217,15 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-          // No communityId provided
-        })
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+        // No communityId provided
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.type).toBe('superadmin-to-lead');
+      expect(response).toBeDefined();
+      expect(response.type).toBe('superadmin-to-lead');
       // communityId should be undefined or empty
-      expect(response.body.data.communityId).toBeUndefined();
+      expect(response.communityId).toBeUndefined();
     });
 
     it('should assign participant role to marathon-of-good and future-vision when invite is used', async () => {
@@ -255,25 +233,19 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = 'superadmin';
 
       // Create invite without communityId
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       // Use the invite as newLeadId
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const useResponse = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const useResponse = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(useResponse.body.success).toBe(true);
-      expect(useResponse.body.data.message).toContain('Team group created');
+      expect(useResponse.message).toContain('Team group created');
 
       // Verify user is participant in marathon-of-good
       const marathonRole = await userCommunityRoleService.getRole(
@@ -318,27 +290,21 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = 'superadmin';
 
       // Create invite without communityId
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      const inviteCode = createResponse.body.data.code;
+      const inviteCode = created.code;
 
       // Use the invite as newLeadId
       (global as any).testUserId = newLeadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const useResponse = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const useResponse = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(useResponse.body.success).toBe(true);
-      expect(useResponse.body.data.teamGroupId).toBeDefined();
+      expect(useResponse.teamGroupId).toBeDefined();
 
-      const teamCommunityId = useResponse.body.data.teamGroupId;
+      const teamCommunityId = useResponse.teamGroupId;
 
       // Verify team community exists
       const teamCommunity = await communityService.getCommunity(teamCommunityId);
@@ -372,18 +338,14 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Create invite without communityId (should auto-detect lead's team)
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'lead-to-participant',
-          // No communityId provided - should auto-detect from lead's team
-        })
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.create', {
+        type: 'lead-to-participant',
+        // No communityId provided - should auto-detect from lead's team
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data).toBeDefined();
-      expect(response.body.data.type).toBe('lead-to-participant');
-      expect(response.body.data.communityId).toBe(leadTeamCommunityId);
+      expect(response).toBeDefined();
+      expect(response.type).toBe('lead-to-participant');
+      expect(response.communityId).toBe(leadTeamCommunityId);
     });
 
     it('should assign participant role to lead team when invite is used', async () => {
@@ -391,25 +353,20 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Create invite (will auto-detect lead's team)
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'lead-to-participant',
-        })
-        .expect(201);
+      const created = await trpcMutation(app, 'invites.create', {
+        type: 'lead-to-participant',
+      });
 
-      const inviteCode = createResponse.body.data.code;
-      expect(createResponse.body.data.communityId).toBe(leadTeamCommunityId);
+      const inviteCode = created.code;
+      expect(created.communityId).toBe(leadTeamCommunityId);
 
       // Use the invite as newParticipantId
       (global as any).testUserId = newParticipantId;
       (global as any).testUserGlobalRole = undefined;
 
-      const useResponse = await request(app.getHttpServer())
-        .post(`/api/v1/invites/${inviteCode}/use`)
-        .expect(201);
+      const useResponse = await trpcMutation(app, 'invites.use', { code: inviteCode });
 
-      expect(useResponse.body.success).toBe(true);
+      expect(useResponse).toBeDefined();
 
       // Verify user is participant in lead's team community
       const teamRole = await userCommunityRoleService.getRole(
@@ -485,14 +442,14 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Try to create invite without communityId - should fail
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
           type: 'lead-to-participant',
-        })
-        .expect(400);
+        });
 
-      expect(response.body.message).toContain('No team community found');
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('No team community found');
+      });
     });
 
     it('should allow explicit communityId to be provided for lead invites', async () => {
@@ -500,16 +457,12 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Create invite with explicit communityId
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'lead-to-participant',
-          communityId: leadTeamCommunityId,
-        })
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.create', {
+        type: 'lead-to-participant',
+        communityId: leadTeamCommunityId,
+      });
 
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.communityId).toBe(leadTeamCommunityId);
+      expect(response.communityId).toBe(leadTeamCommunityId);
     });
 
     it('should fail if explicit communityId is not a team community', async () => {
@@ -517,16 +470,15 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserGlobalRole = undefined;
 
       // Try to create invite with marathon community (not a team)
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
           type: 'lead-to-participant',
           communityId: marathonCommunityId,
-        })
-        .expect(403); // Should fail because lead doesn't have lead role in marathon
+        });
 
-      // The error should indicate permission issue
-      expect(response.body.message).toBeDefined();
+        // The error should indicate permission issue
+        expect(result.error?.code).toBe('FORBIDDEN');
+      });
     });
   });
 
@@ -535,28 +487,25 @@ describe('Invites - New Role Assignment Logic', () => {
       (global as any).testUserId = superadminId;
       (global as any).testUserGlobalRole = 'superadmin';
 
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
-          type: 'superadmin-to-lead',
-        })
-        .expect(201);
+      const response = await trpcMutation(app, 'invites.create', {
+        type: 'superadmin-to-lead',
+      });
 
-      expect(response.body.success).toBe(true);
+      expect(response).toBeDefined();
     });
 
     it('should block non-superadmin from creating superadmin-to-lead invite', async () => {
       (global as any).testUserId = leadId;
       (global as any).testUserGlobalRole = undefined;
 
-      const response = await request(app.getHttpServer())
-        .post('/api/v1/invites')
-        .send({
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(app, 'invites.create', {
           type: 'superadmin-to-lead',
-        })
-        .expect(403);
+        });
 
-      expect(response.body.message).toContain('Only superadmin');
+        expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.message).toContain('Only superadmin');
+      });
     });
   });
 });

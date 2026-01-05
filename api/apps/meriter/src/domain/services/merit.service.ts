@@ -36,7 +36,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    const rules = this.communityService.getEffectiveMeritRules(community);
+    const rules = this.communityService.getEffectiveMeritSettings(community);
 
     // Check if role can spend
     if (!rules.canSpend) return false;
@@ -61,7 +61,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return false;
 
-    const rules = this.communityService.getEffectiveMeritRules(community);
+    const rules = this.communityService.getEffectiveMeritSettings(community);
 
     return rules.canEarn;
   }
@@ -79,7 +79,7 @@ export class MeritService {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) return 0;
 
-    const rules = this.communityService.getEffectiveMeritRules(community);
+    const rules = this.communityService.getEffectiveMeritSettings(community);
 
     // Check if role is in quotaRecipients
     if (!rules.quotaRecipients.includes(userRole as any)) {
@@ -105,7 +105,7 @@ export class MeritService {
       throw new Error('Source community not found');
     }
 
-    const rules = this.communityService.getEffectiveVotingRules(sourceCommunity);
+    const rules = this.communityService.getEffectiveVotingSettings(sourceCommunity);
     if (!rules?.meritConversion) {
       throw new Error('Merit conversion not configured for this community');
     }
@@ -132,8 +132,8 @@ export class MeritService {
       communityId,
     );
 
-    // Only lead can see merit stats
-    if (userRole !== COMMUNITY_ROLE_LEAD) {
+    // Leads (and global/community superadmins) can see merit stats
+    if (userRole !== COMMUNITY_ROLE_LEAD && userRole !== COMMUNITY_ROLE_SUPERADMIN) {
       return null;
     }
 

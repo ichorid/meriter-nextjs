@@ -1,68 +1,35 @@
-import type { Metadata, Viewport } from 'next';
+import type { Viewport } from 'next';
 import './globals.css';
-import { NextIntlClientProvider } from 'next-intl';
-import { getMessages } from 'next-intl/server';
-import { headers } from 'next/headers';
-import { detectBrowserLanguage, SUPPORTED_LOCALES, DEFAULT_LOCALE } from '@/i18n/request';
-import { cookies } from 'next/headers';
-import { Root } from '@/components/Root';
-import { QueryProvider } from '@/providers/QueryProvider';
-import { GluestackUIProvider } from '@/providers/GluestackUIProvider';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { AuthWrapper } from '@/components/AuthWrapper';
-import { ToastContainer } from '@/shared/components/toast-container';
-import { AppModeProvider } from '@/contexts/AppModeContext';
-import StyledJsxRegistry from '@/registry';
-
-import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
+import { DEFAULT_LOCALE } from '@/i18n/request';
+import ClientRootLayout from './ClientRootLayout';
+import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Meriter',
-    description: 'Merit-based community platform',
+  title: {
+    template: 'Meriter / %s',
+    default: 'Meriter',
+  },
+  description: 'Meriter - Community Governance Platform',
 };
 
 export const viewport: Viewport = {
-    width: 'device-width',
-    initialScale: 1.0,
-    maximumScale: 1.0,
-    userScalable: false,
+  width: 'device-width',
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  userScalable: false,
 };
 
-
-export default async function RootLayout({
-    children,
+export default function RootLayout({
+  children,
 }: {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }) {
-    // Get server-side locale and messages
-    const headersList = await headers();
-    const acceptLanguage = headersList.get('accept-language');
-
-    // Get locale from cookie with fallback to browser detection
-    const cookieStore = await cookies();
-    const localePreference = cookieStore.get('NEXT_LOCALE')?.value;
-
-    let locale = DEFAULT_LOCALE;
-    if (localePreference === 'auto') {
-        locale = detectBrowserLanguage(acceptLanguage || undefined);
-    } else if (localePreference && SUPPORTED_LOCALES.includes(localePreference as any)) {
-        locale = localePreference as any;
-    } else {
-        locale = detectBrowserLanguage(acceptLanguage || undefined);
-    }
-
-    const messages = await getMessages({ locale });
-
-    const env = getAuthEnv();
-    const enabledProviders = getEnabledProviders(env);
-    const authnEnabled = process.env.AUTHN_ENABLED === 'true';
-
-    return (
-        <html lang={locale} suppressHydrationWarning>
-            <head>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
+  return (
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
 (function() {
   try {
     const stored = localStorage.getItem('theme');
@@ -82,36 +49,92 @@ export default async function RootLayout({
   }
 })();
                         `,
-                    }}
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
-                    rel="stylesheet"
-                />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-                    rel="stylesheet"
-                />
-            </head>
-            <body suppressHydrationWarning>
-                <StyledJsxRegistry>
-                    <GluestackUIProvider>
-                        <AppModeProvider>
-                            <QueryProvider>
-                                <NextIntlClientProvider messages={messages}>
-                                    <AuthProvider>
-                                        {/* Temporarily disable AuthWrapper for debugging - set DISABLE_AUTH_WRAPPER = true in AuthWrapper.tsx */}
-                                        <AuthWrapper enabledProviders={enabledProviders} authnEnabled={authnEnabled}>
-                                            <Root>{children}</Root>
-                                        </AuthWrapper>
-                                        <ToastContainer />
-                                    </AuthProvider>
-                                </NextIntlClientProvider>
-                            </QueryProvider>
-                        </AppModeProvider>
-                    </GluestackUIProvider>
-                </StyledJsxRegistry>
-            </body>
-        </html>
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+// Global chunk loading error handler
+(function() {
+  // Handle script loading errors (chunk load failures)
+  window.addEventListener('error', function(event) {
+    const target = event.target;
+    const isChunkError = target && (
+      (target.tagName === 'SCRIPT' && target.src) ||
+      (target.tagName === 'LINK' && target.href && target.rel === 'preload')
     );
+    
+    if (isChunkError) {
+      const src = target.src || target.href;
+      const isNextChunk = src && (
+        src.includes('/_next/static/chunks/') ||
+        src.includes('/_next/static/css/')
+      );
+      
+      if (isNextChunk) {
+        console.error('ChunkLoadError: Failed to load', src);
+        // Prevent default error handling
+        event.preventDefault();
+        
+        // Retry by reloading the page after a short delay
+        // This helps recover from stale chunk references after deployments
+        const retryCount = parseInt(sessionStorage.getItem('chunkRetryCount') || '0', 10);
+        if (retryCount < 2) {
+          sessionStorage.setItem('chunkRetryCount', String(retryCount + 1));
+          setTimeout(function() {
+            window.location.reload();
+          }, 1000);
+        } else {
+          // Too many retries, clear counter and show error
+          sessionStorage.removeItem('chunkRetryCount');
+          console.error('ChunkLoadError: Max retries reached. Please refresh manually.');
+        }
+      }
+    }
+  }, true); // Use capture phase to catch errors early
+  
+  // Handle unhandled promise rejections from chunk loading
+  window.addEventListener('unhandledrejection', function(event) {
+    const error = event.reason;
+    if (error && (
+      error.message && (
+        error.message.includes('Failed to load chunk') ||
+        error.message.includes('Loading chunk') ||
+        error.message.includes('ChunkLoadError')
+      ) ||
+      error.name === 'ChunkLoadError'
+    )) {
+      console.error('ChunkLoadError (unhandled rejection):', error);
+      event.preventDefault();
+      
+      const retryCount = parseInt(sessionStorage.getItem('chunkRetryCount') || '0', 10);
+      if (retryCount < 2) {
+        sessionStorage.setItem('chunkRetryCount', String(retryCount + 1));
+        setTimeout(function() {
+          window.location.reload();
+        }, 1000);
+      } else {
+        sessionStorage.removeItem('chunkRetryCount');
+        console.error('ChunkLoadError: Max retries reached. Please refresh manually.');
+      }
+    }
+  });
+})();
+                        `,
+          }}
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap"
+          rel="stylesheet"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+          rel="stylesheet"
+        />
+      </head>
+      <body suppressHydrationWarning>
+        <ClientRootLayout>{children}</ClientRootLayout>
+      </body>
+    </html>
+  );
 }

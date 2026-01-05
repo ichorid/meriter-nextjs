@@ -3,13 +3,82 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { ArrowUp } from 'lucide-react';
 import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
+import { ResizeHandle } from '@/components/atoms';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
+
+// Scroll to top button component
+const ScrollToTopButton: React.FC = () => {
+  const [showButton, setShowButton] = useState(false);
+
+  const handleScrollToTop = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+    if (mainWrap) {
+      mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      document.body.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const checkScroll = () => {
+      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
+      let scrollTop = 0;
+      if (mainWrap) {
+        scrollTop = mainWrap.scrollTop;
+      } else {
+        scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      }
+      const windowHeight = window.innerHeight;
+      setShowButton(scrollTop > windowHeight / 2);
+    };
+
+    const timeoutId = setTimeout(checkScroll, 100);
+    const mainWrap = document.querySelector('.mainWrap');
+
+    if (mainWrap) {
+      mainWrap.addEventListener('scroll', checkScroll, { passive: true });
+    } else {
+      window.addEventListener('scroll', checkScroll, { passive: true });
+    }
+
+    window.addEventListener('resize', checkScroll, { passive: true });
+
+    return () => {
+      clearTimeout(timeoutId);
+      if (mainWrap) {
+        mainWrap.removeEventListener('scroll', checkScroll);
+      } else {
+        window.removeEventListener('scroll', checkScroll);
+      }
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, []);
+
+  if (!showButton) return null;
+
+  return (
+    <button
+      onClick={handleScrollToTop}
+      className="fixed bottom-20 right-10 lg:bottom-6 lg:right-3 z-50 p-2.5 rounded-full bg-base-200 shadow-lg hover:bg-base-300 transition-all active:scale-95"
+      aria-label="Scroll to top"
+      title="Scroll to top"
+    >
+      <ArrowUp size={15} />
+    </button>
+  );
+};
 
 export interface AdaptiveLayoutProps {
   children: React.ReactNode;
@@ -61,6 +130,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   // Comments column shows on desktop (lg) only
   const showCommentsColumn = !!(showComments && selectedPostSlug && communityId);
 
+  // Inspector width management with resize capability
+  const { width: inspectorWidth, setWidth: setInspectorWidth, minWidth, maxWidth } = useInspectorWidth();
+
   // Breakpoints: overlay on most screens; dock only on very wide
   // Note: CSS hides overlay at max-width: 1023px, so tablet is 768px - 1023px
   const isDesktop = useMediaQuery('(min-width: 1024px)'); // lg breakpoint ≥1024px
@@ -75,25 +147,6 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
   // Overlay should only show on desktop (≥1024px), not on tablet where CSS hides it anyway
   const canShowOverlay = isDesktop && !isTablet;
-
-  // Debug logging
-  if (process.env.NODE_ENV !== 'production' && selectedPostSlug) {
-    console.log('[AdaptiveLayout] Comments sidebar state:', JSON.stringify({
-      selectedPostSlug,
-      showComments,
-      commentsOpen: !!commentsOpen,
-      showCommentsColumn: !!showCommentsColumn,
-      communityId,
-      isDesktop,
-      isTablet,
-      isMobile,
-      isUltraWide,
-      inspectorMode,
-      showCommentsInCenter,
-      windowWidth: typeof window !== 'undefined' ? window.innerWidth : 'SSR',
-    }, null, 2));
-  }
-
 
   // Handler to close comments (remove post param from URL)
   const handleCloseComments = useCallback(() => {
@@ -118,6 +171,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
     return false;
   }, [pathname]);
+
 
   return (
     <div
@@ -145,7 +199,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           <div className="main pb-24 lg:pb-0">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
             {stickyHeader && !showCommentsInCenter && (
-              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-4">
+              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-0">
                 {stickyHeader}
               </div>
             )}
@@ -171,11 +225,21 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
               children
             )}
           </div>
+          
+          {/* Scroll to top button - fixed position in bottom right */}
+          <ScrollToTopButton />
         </div>
 
         {/* Docked inspector column (only used on ultra-wide) */}
         {inspectorMode === 'docked' && showCommentsColumn && (
           <aside className="inspectorDock">
+            <ResizeHandle
+              direction="left"
+              initialWidth={inspectorWidth}
+              minWidth={minWidth}
+              maxWidth={maxWidth}
+              onResize={setInspectorWidth}
+            />
             <CommentsColumn
               {...createCommentsColumnProps(
                 selectedPostSlug!,
@@ -206,22 +270,31 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
             aria-hidden={!commentsOpen}
           >
             {showCommentsColumn && (
-              <CommentsColumn
-                {...createCommentsColumnProps(
-                  selectedPostSlug!,
-                  communityId!,
-                  searchParams,
-                  {
-                    balance: balance!,
-                    wallets: wallets || [],
-                    myId,
-                    highlightTransactionId,
-                    activeCommentHook: activeCommentHook || [null, () => { }],
-                    activeWithdrawPost: activeWithdrawPost ?? null,
-                    setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
-                  }
-                )}
-              />
+              <>
+                <ResizeHandle
+                  direction="left"
+                  initialWidth={inspectorWidth}
+                  minWidth={minWidth}
+                  maxWidth={maxWidth}
+                  onResize={setInspectorWidth}
+                />
+                <CommentsColumn
+                  {...createCommentsColumnProps(
+                    selectedPostSlug!,
+                    communityId!,
+                    searchParams,
+                    {
+                      balance: balance!,
+                      wallets: wallets || [],
+                      myId,
+                      highlightTransactionId,
+                      activeCommentHook: activeCommentHook || [null, () => { }],
+                      activeWithdrawPost: activeWithdrawPost ?? null,
+                      setActiveWithdrawPost: setActiveWithdrawPost || (() => { }),
+                    }
+                  )}
+                />
+              </>
             )}
           </div>
           <div

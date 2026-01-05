@@ -6,6 +6,13 @@ import {
   PolymorphicReferenceSchema,
   CurrencySchema,
 } from "./base-schemas";
+import {
+  IMPACT_AREAS,
+  BENEFICIARIES,
+  METHODS,
+  STAGES,
+  HELP_NEEDED,
+} from "./taxonomy";
 
 // Metrics schemas extending base VotableMetricsSchema
 export const PublicationMetricsSchema = VotableMetricsSchema.extend({
@@ -73,54 +80,53 @@ export const CommunitySettingsSchema = z.object({
   currencyNames: CurrencySchema,
   dailyEmission: z.number().int().min(0).default(10),
   language: z.enum(["en", "ru"]).default("en"),
-  postCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a post (0 = free)
-  pollCost: z.number().int().min(0).default(1), // Cost in quota/merits to create a poll (0 = free)
-  editWindowDays: z.number().int().min(0).default(7), // Number of days after creation that regular users can edit their posts/comments (0 = no time limit)
+  postCost: z.number().int().min(0).default(1), // Cost in wallet merits to create a post (0 = free)
+  pollCost: z.number().int().min(0).default(1), // Cost in wallet merits to create a poll (0 = free)
+  forwardCost: z.number().int().min(0).default(1), // Cost in wallet merits to forward a post (0 = free)
+  editWindowMinutes: z.number().int().min(0).default(30), // Number of minutes after creation that participants can edit publications (0 = no time limit)
+  allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
 });
 
-// Community rules schemas (настраиваемые правила)
-// requiresTeamMembership: requires membership in a team-type community (typeTag: 'team')
-// onlyTeamLead: only allows leads (representatives) to post
-export const PostingRulesSchema = z.object({
-  allowedRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  requiresTeamMembership: z.boolean().optional(), // Requires membership in a team-type community
-  onlyTeamLead: z.boolean().optional(),
-  autoMembership: z.boolean().optional(),
-});
-
-export const MeritConversionSchema = z.object({
+export const CommunityMeritConversionSchema = z.object({
   targetCommunityId: z.string(),
-  ratio: z.number().positive(),
+  ratio: z.number(),
 });
 
-export const VotingRulesSchema = z.object({
-  allowedRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  canVoteForOwnPosts: z.boolean(),
+export const CommunityMeritSettingsSchema = z.object({
+  dailyQuota: z.number().int().min(0).optional(),
+  quotaRecipients: z.array(z.enum(["superadmin", "lead", "participant", "viewer"])).optional(),
+  canEarn: z.boolean().optional(),
+  canSpend: z.boolean().optional(),
+  startingMerits: z.number().int().min(0).optional(),
+});
+
+export const CommunityVotingSettingsSchema = z.object({
+  spendsMerits: z.boolean().optional(),
+  awardsMerits: z.boolean().optional(),
+  meritConversion: CommunityMeritConversionSchema.optional(),
+  votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
+});
+
+// Permission rule schema - granular role -> action -> allow/deny rules
+export const PermissionRuleConditionsSchema = z.object({
+  requiresTeamMembership: z.boolean().optional(),
+  onlyTeamLead: z.boolean().optional(),
+  canVoteForOwnPosts: z.boolean().optional(),
   participantsCannotVoteForLead: z.boolean().optional(),
-  spendsMerits: z.boolean(),
-  awardsMerits: z.boolean(),
-  meritConversion: MeritConversionSchema.optional(),
-});
-
-export const VisibilityRulesSchema = z.object({
-  visibleToRoles: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  isHidden: z.boolean().optional(),
+  canEditWithVotes: z.boolean().optional(),
+  canEditWithComments: z.boolean().optional(),
+  canEditAfterMinutes: z.number().int().min(0).optional(),
+  canDeleteWithVotes: z.boolean().optional(),
+  canDeleteWithComments: z.boolean().optional(),
   teamOnly: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
 });
 
-export const MeritRulesSchema = z.object({
-  dailyQuota: z.number().int().min(0),
-  quotaRecipients: z.array(
-    z.enum(["superadmin", "lead", "participant", "viewer"])
-  ),
-  canEarn: z.boolean(),
-  canSpend: z.boolean(),
+export const PermissionRuleSchema = z.object({
+  role: z.enum(["superadmin", "lead", "participant", "viewer"]),
+  action: z.string(), // ActionType enum value
+  allowed: z.boolean(),
+  conditions: PermissionRuleConditionsSchema.optional(),
 });
 
 export const PollOptionSchema = z.object({
@@ -210,14 +216,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
     .optional(),
   // НОВОЕ: Связанные валюты (настраивается)
   linkedCurrencies: z.array(z.string()).optional(),
-  // НОВОЕ: Правила публикации (НАСТРАИВАЕМЫЕ)
-  postingRules: PostingRulesSchema.optional(),
-  // НОВОЕ: Правила голосования (НАСТРАИВАЕМЫЕ)
-  votingRules: VotingRulesSchema.optional(),
-  // НОВОЕ: Правила видимости (НАСТРАИВАЕМЫЕ)
-  visibilityRules: VisibilityRulesSchema.optional(),
-  // НОВОЕ: Правила меритов (НАСТРАИВАЕМЫЕ)
-  meritRules: MeritRulesSchema.optional(),
+  // Granular permission rules - replaces postingRules, votingRules, visibilityRules, meritRules
+  permissionRules: z.array(PermissionRuleSchema).optional(),
   settings: CommunitySettingsSchema,
   hashtags: z.array(z.string()).default([]),
   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
@@ -245,10 +245,28 @@ export const PublicationSchema = IdentifiableSchema.merge(
   type: z.enum(["text", "image", "video"]), // Медиа-тип (остается для обратной совместимости)
   hashtags: z.array(z.string()).default([]),
   metrics: PublicationMetricsSchema,
-  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(), // Array of images for gallery
   videoUrl: z.string().url().optional(),
   // НОВОЕ: Автор поста (отображаемое имя, может отличаться от authorId)
   authorDisplay: z.string().optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).default([]),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).default([]),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).default([]),
+  // Forward fields
+  forwardStatus: z.enum(["pending", "forwarded"]).nullable().optional(),
+  forwardTargetCommunityId: z.string().optional(),
+  forwardProposedBy: z.string().optional(),
+  forwardProposedAt: z.date().optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
+  // Edit history
+  editHistory: z.array(z.object({
+    editedBy: z.string(),
+    editedAt: z.date(),
+  })).optional().default([]),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -355,22 +373,41 @@ export const CreatePublicationDtoSchema = z.object({
   type: z.enum(["text", "image", "video"]),
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
-  imageUrl: z.string().url().optional(),
+  categories: z.array(z.string()).optional(), // Array of category IDs
+  images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
-  quotaAmount: z.number().int().min(0).optional(),
-  walletAmount: z.number().int().min(0).optional(),
-}).refine(
-  (data) => {
-    const quota = data.quotaAmount ?? 0;
-    const wallet = data.walletAmount ?? 0;
-    // At least one must be >= 1, or both can be 0 for future-vision communities
-    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
-  },
-  {
-    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a post",
-  }
-);
+  // Taxonomy fields
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
+})
+  .refine(
+    (data) => {
+      // Require impactArea and stage when postType is 'project'
+      if (data.postType === 'project') {
+        return !!data.impactArea && !!data.stage;
+      }
+      return true;
+    },
+    {
+      message: "impactArea and stage are required when postType is 'project'",
+    }
+  )
+  .refine(
+    (data) => {
+      // Validate array lengths
+      if (data.beneficiaries && data.beneficiaries.length > 2) return false;
+      if (data.methods && data.methods.length > 3) return false;
+      if (data.helpNeeded && data.helpNeeded.length > 3) return false;
+      return true;
+    },
+    {
+      message: "beneficiaries max 2, methods max 3, helpNeeded max 3",
+    }
+  );
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -380,7 +417,13 @@ export const CreateCommentDtoSchema = z.object({
   images: z.array(z.string().url()).optional(),
 });
 
-export const UpdateCommentDtoSchema = CreateCommentDtoSchema.partial();
+export const UpdateCommentDtoSchema = z.object({
+  targetType: z.enum(["publication", "comment"]).optional(),
+  targetId: z.string().min(1).optional(),
+  content: z.string().max(5000).optional(),
+  parentCommentId: z.string().optional(),
+  images: z.array(z.string().url()).optional(),
+});
 
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
   quotaAmount: z.number().int().min(0).optional(),
@@ -425,21 +468,24 @@ export const CreatePollDtoSchema = z.object({
     )
     .min(2),
   expiresAt: z.string().datetime(),
+  quotaAmount: z.number().int().min(0).optional(), // Deprecated: poll creation now uses wallet merits only
+  walletAmount: z.number().int().min(0).optional(), // Deprecated: server charges wallet based on pollCost
+});
+
+export const UpdatePollDtoSchema = z.object({
+  communityId: z.string().optional(),
+  question: z.string().min(1).max(1000).optional(),
+  description: z.string().max(2000).optional(),
+  options: z
+    .array(
+      z.object({ id: z.string().optional(), text: z.string().min(1).max(200) })
+    )
+    .min(2)
+    .optional(),
+  expiresAt: z.string().datetime().optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),
-}).refine(
-  (data) => {
-    const quota = data.quotaAmount ?? 0;
-    const wallet = data.walletAmount ?? 0;
-    // At least one must be >= 1, or both can be 0 for future-vision communities
-    return quota >= 1 || wallet >= 1 || (quota === 0 && wallet === 0);
-  },
-  {
-    message: "At least one of quotaAmount or walletAmount must be at least 1 to create a poll",
-  }
-);
-
-export const UpdatePollDtoSchema = CreatePollDtoSchema.partial();
+});
 
 export const CreatePollCastDtoSchema = z
   .object({
@@ -476,16 +522,41 @@ export const UpdateCommunityDtoSchema = z.object({
   coverImageUrl: z.string().url().optional(),
   hashtags: z.array(z.string()).optional(),
   hashtagDescriptions: z.record(z.string(), z.string()).optional(),
-  settings: CommunitySettingsSchema.partial().optional(),
+  settings: z.object({
+    iconUrl: z.string().url().optional(),
+    currencyNames: CurrencySchema.optional(),
+    dailyEmission: z.number().int().min(0).optional(),
+    language: z.enum(["en", "ru"]).optional(),
+    postCost: z.number().int().min(0).optional(),
+    pollCost: z.number().int().min(0).optional(),
+    forwardCost: z.number().int().min(0).optional(),
+    editWindowMinutes: z.number().int().min(0).optional(),
+    allowEditByOthers: z.boolean().optional(),
+  }).optional(),
+  votingSettings: z.object({
+    spendsMerits: z.boolean().optional(),
+    awardsMerits: z.boolean().optional(),
+    meritConversion: CommunityMeritConversionSchema.optional(),
+    votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
+  }).optional(),
+  meritSettings: CommunityMeritSettingsSchema.optional(),
   isPriority: z.boolean().optional(),
 });
 
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
+  categories: z.array(z.string()).optional(), // Array of category IDs
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
-  imageUrl: z.string().url().optional().nullable(),
+  images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
+  imageUrl: z.string().url().optional().nullable(), // For backward compatibility
+  // Taxonomy fields (can be updated)
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).max(2).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
 }).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z
@@ -523,14 +594,15 @@ export const WithdrawAmountDtoSchema = z.object({
   amount: z.number().int().min(1).optional(),
 });
 
-export const VoteWithCommentDtoSchema = PolymorphicReferenceSchema.partial()
-  .extend({
-    quotaAmount: z.number().int().min(0).optional(),
-    walletAmount: z.number().int().min(0).optional(),
-    comment: z.string().optional(),
-    direction: z.enum(["up", "down"]).optional(),
-    images: z.array(z.string().url()).optional(),
-  })
+export const VoteWithCommentDtoSchema = z.object({
+  targetType: z.enum(["publication", "comment", "vote"]).optional(),
+  targetId: z.string().optional(),
+  quotaAmount: z.number().int().min(0).optional(),
+  walletAmount: z.number().int().min(0).optional(),
+  comment: z.string().optional(),
+  direction: z.enum(["up", "down"]).optional(),
+  images: z.array(z.string().url()).optional(),
+})
   .refine(
     (data) => {
       const quota = data.quotaAmount ?? 0;
@@ -677,10 +749,25 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   beneficiaryId: z.string().optional(),
   content: z.string().min(1),
   slug: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  postType: z.enum(["basic", "poll", "project"]).optional(),
+  isProject: z.boolean().optional(),
   hashtags: z.array(z.string()).default([]),
+  categories: z.array(z.string()).default([]), // Array of category IDs
+  imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).optional(),
   metrics: PublicationMetricsSchema,
   meta: FeedItemMetaSchema,
   permissions: ResourcePermissionsSchema.optional(),
+  // Taxonomy fields for project categorization
+  impactArea: z.enum([...IMPACT_AREAS] as [string, ...string[]]).optional(),
+  beneficiaries: z.array(z.enum([...BENEFICIARIES] as [string, ...string[]])).optional(),
+  methods: z.array(z.enum([...METHODS] as [string, ...string[]])).optional(),
+  stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
+  helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).optional(),
+  deleted: z.boolean().optional().default(false),
+  deletedAt: z.date().optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
@@ -705,6 +792,7 @@ export const FeedItemSchema = z.discriminatedUnion("type", [
 ]);
 
 // Export types
+export type Authenticator = z.infer<typeof AuthenticatorSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type UserCommunityRole = z.infer<typeof UserCommunityRoleSchema>;
 export type Invite = z.infer<typeof InviteSchema>;
@@ -718,11 +806,8 @@ export type Wallet = z.infer<typeof WalletSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 
 // Export rule types
-export type PostingRules = z.infer<typeof PostingRulesSchema>;
-export type VotingRules = z.infer<typeof VotingRulesSchema>;
-export type VisibilityRules = z.infer<typeof VisibilityRulesSchema>;
-export type MeritRules = z.infer<typeof MeritRulesSchema>;
-export type MeritConversion = z.infer<typeof MeritConversionSchema>;
+export type PermissionRule = z.infer<typeof PermissionRuleSchema>;
+export type PermissionRuleConditions = z.infer<typeof PermissionRuleConditionsSchema>;
 export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;

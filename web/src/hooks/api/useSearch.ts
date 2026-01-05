@@ -1,7 +1,5 @@
 // Search React Query hooks
-import { useQuery } from '@tanstack/react-query';
-import { searchApiV1 } from '@/lib/api/v1';
-import { queryKeys } from '@/lib/constants/queryKeys';
+import { trpc } from '@/lib/trpc/client';
 import type { SearchContentType } from '@/types/api-v1';
 
 interface SearchParams {
@@ -17,10 +15,21 @@ interface SearchParams {
 }
 
 export function useSearch(params: SearchParams = {}) {
-  return useQuery({
-    queryKey: queryKeys.search.query(params),
-    queryFn: () => searchApiV1.search(params),
-    enabled: !!(params.query || params.tags?.length || params.authorId || params.communityId),
-  });
+  return trpc.search.search.useQuery(
+    {
+      query: params.query,
+      contentType: params.contentType,
+      tags: params.tags,
+      authorId: params.authorId,
+      communityId: params.communityId,
+      dateFrom: params.dateFrom,
+      dateTo: params.dateTo,
+      page: params.page,
+      pageSize: params.pageSize,
+    },
+    {
+      enabled: !!(params.query || params.tags?.length || params.authorId || params.communityId),
+    },
+  );
 }
 

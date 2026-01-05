@@ -2,48 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Keep essential third-party imports */
-@import '@telegram-apps/telegram-ui/dist/styles.css';
-
 @layer base {
+
   /* Root html/body viewport constraints */
-  html, body {
+  html,
+  body {
     max-width: 100vw;
     overflow-x: hidden;
     height: 100%;
   }
-  
+
   :root {
     /* Light theme colors (default) */
     --base-100: #ffffff;
     --base-200: #f2f2f2;
     --base-300: #e5e6e6;
     --base-content: #1f2937;
-    
+
     --primary: #2563eb;
     --primary-content: #ffffff;
-    
+
     --secondary: #64748b;
     --secondary-content: #ffffff;
-    
-    --accent: #0ea5e9;
-    --accent-content: #ffffff;
-    
+
+    /* Shadcn Accent (UI interactions/Ghost hover) - Neutral */
+    --accent: #f2f2f2;
+    --accent-content: #1f2937;
+
     --neutral: #3d4451;
     --neutral-content: #ffffff;
-    
+
     --info: #3b82f6;
     --info-content: #ffffff;
-    
+
     --success: #10b981;
     --success-content: #ffffff;
-    
+
     --warning: #f59e0b;
     --warning-content: #ffffff;
-    
+
     --error: #ef4444;
     --error-content: #ffffff;
-    
+
     /* Brand colors (light theme) */
     --brand-primary: #2563eb;
     --brand-secondary: #64748b;
@@ -54,54 +54,80 @@
     --brand-text-primary: #1f2937;
     --brand-text-secondary: #6b7280;
     --brand-text-muted: #9ca3af;
-    
+
+    /* shadcn/ui theme variables (mapped to existing variables) */
+    --background: var(--base-100);
+    --foreground: var(--base-content);
+    --card: var(--base-100);
+    --card-foreground: var(--base-content);
+    --popover: var(--base-100);
+    --popover-foreground: var(--base-content);
+    --primary-foreground: var(--primary-content);
+    --secondary-foreground: var(--secondary-content);
+    --muted: var(--base-200);
+    --muted-foreground: var(--brand-text-muted);
+    --accent-foreground: var(--accent-content);
+    --destructive: var(--error);
+    --destructive-foreground: var(--error-content);
+    --border: var(--brand-border);
+    --input: var(--base-200);
+    --ring: var(--primary);
+    --radius: 12px;
+    --chart-1: var(--primary);
+    --chart-2: var(--secondary);
+    --chart-3: var(--brand-accent);
+    --chart-4: var(--success);
+    --chart-5: var(--warning);
+
     /* Loading indicator colors */
     --loading-overlay: rgba(0, 0, 0, 0.5);
     --loading-spinner-bg: #f3f3f3;
     --loading-spinner-active: #0474bf;
     --loading-text: #ffffff;
-    
+
     /* Layout dimensions */
     --header-h: 56px;
-    --nav-w: 336px; /* Match --left-sidebar-width default */
-    --left-sidebar-width: 336px; /* Explicitly define for consistency */
+    --nav-w: 336px;
+    /* Match --left-sidebar-width default */
+    --left-sidebar-width: 336px;
+    /* Explicitly define for consistency */
     --inspector-w: 360px;
     --content-max: 920px;
     --gutter: 24px;
-    --radius: 12px;
   }
-  
+
   [data-theme="dark"] {
     /* Dark theme colors */
     --base-100: #1d232a;
     --base-200: #191e24;
     --base-300: #15191e;
     --base-content: #a6adbb;
-    
+
     --primary: #3b82f6;
     --primary-content: #ffffff;
-    
+
     --secondary: #64748b;
     --secondary-content: #ffffff;
-    
-    --accent: #0ea5e9;
+
+    /* Shadcn Accent (UI interactions/Ghost hover) - Neutral */
+    --accent: #191e24;
     --accent-content: #ffffff;
-    
+
     --neutral: #3d4451;
     --neutral-content: #ffffff;
-    
+
     --info: #3b82f6;
     --info-content: #ffffff;
-    
+
     --success: #10b981;
     --success-content: #ffffff;
-    
+
     --warning: #f59e0b;
     --warning-content: #ffffff;
-    
+
     --error: #ef4444;
     --error-content: #ffffff;
-    
+
     /* Brand colors (dark theme) */
     --brand-primary: #3b82f6;
     --brand-secondary: #64748b;
@@ -112,14 +138,37 @@
     --brand-text-primary: #a6adbb;
     --brand-text-secondary: #8b92a0;
     --brand-text-muted: #6b7280;
-    
+
+    /* shadcn/ui theme variables (dark mode - mapped to existing variables) */
+    --background: var(--base-100);
+    --foreground: var(--base-content);
+    --card: var(--brand-surface);
+    --card-foreground: var(--base-content);
+    --popover: var(--brand-surface);
+    --popover-foreground: var(--base-content);
+    --primary-foreground: var(--primary-content);
+    --secondary-foreground: var(--secondary-content);
+    --muted: var(--base-200);
+    --muted-foreground: var(--brand-text-muted);
+    --accent-foreground: var(--accent-content);
+    --destructive: var(--error);
+    --destructive-foreground: var(--error-content);
+    --border: var(--brand-border);
+    --input: var(--base-200);
+    --ring: var(--primary);
+    --chart-1: var(--primary);
+    --chart-2: var(--secondary);
+    --chart-3: var(--brand-accent);
+    --chart-4: var(--success);
+    --chart-5: var(--warning);
+
     /* Loading indicator colors (dark theme) */
     --loading-overlay: rgba(0, 0, 0, 0.7);
     --loading-spinner-bg: #2a3239;
     --loading-spinner-active: #3b82f6;
     --loading-text: #ffffff;
   }
-  
+
   body {
     background-color: var(--base-100);
     color: var(--base-content);
@@ -127,37 +176,42 @@
 }
 
 .loading-indicator:before {
-    content: '';
-    background: var(--loading-overlay);
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    z-index: 1000;
-  }
-  
-  .loading-indicator:after {
-    content: ' ';
-    position: fixed;
-    top: 40%;
-    left: 45%;
-    z-index: 10010;
-    color: var(--loading-text);
-    text-align:center;
-    font-weight:bold;
-    font-size:1.2rem;        
-    border: 16px solid var(--loading-spinner-bg);
-    border-top: 16px solid var(--loading-spinner-active);
-    border-radius: 50%;
-    width: 120px;
-    height: 120px;
-    animation: spin 2s linear infinite;
+  content: '';
+  background: var(--loading-overlay);
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.loading-indicator:after {
+  content: ' ';
+  position: fixed;
+  top: 40%;
+  left: 45%;
+  z-index: 10010;
+  color: var(--loading-text);
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border: 16px solid var(--loading-spinner-bg);
+  border-top: 16px solid var(--loading-spinner-active);
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  animation: spin 2s linear infinite;
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Smooth scroll behavior */
@@ -200,6 +254,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -211,6 +266,7 @@
     opacity: 1;
     transform: translateY(0);
   }
+
   to {
     opacity: 0;
     transform: translateY(-10px);
@@ -222,6 +278,7 @@
     opacity: 0;
     transform: translateX(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -233,6 +290,7 @@
     opacity: 0;
     transform: scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -244,9 +302,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(0.95);
   }
+
   100% {
     transform: scale(1);
   }
@@ -258,6 +318,7 @@
     transform: scale(0);
     opacity: 1;
   }
+
   100% {
     transform: scale(4);
     opacity: 0;
@@ -270,9 +331,11 @@
     transform: scale(0);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.2);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -281,13 +344,24 @@
 
 /* Error shake animation */
 @keyframes shake {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateX(0);
   }
-  10%, 30%, 50%, 70%, 90% {
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
     transform: translateX(-5px);
   }
-  20%, 40%, 60%, 80% {
+
+  20%,
+  40%,
+  60%,
+  80% {
     transform: translateX(5px);
   }
 }
@@ -297,22 +371,25 @@
   .bg-base-100 {
     background-color: var(--base-100);
   }
+
   .bg-base-200 {
     background-color: var(--base-200);
   }
+
   .bg-base-300 {
     background-color: var(--base-300);
   }
+
   .text-base-content {
     color: var(--base-content);
   }
+
   .border-base-300 {
     border-color: var(--base-300);
   }
 }
 
-/* Dark mode styles for form elements (input, textarea, select) */
-[data-theme="dark"] .input,
+/* Dark mode styles for native form elements (kept for any direct usage) */
 [data-theme="dark"] input[type="text"],
 [data-theme="dark"] input[type="search"],
 [data-theme="dark"] input[type="email"],
@@ -320,16 +397,13 @@
 [data-theme="dark"] input[type="number"],
 [data-theme="dark"] input[type="tel"],
 [data-theme="dark"] input[type="url"],
-[data-theme="dark"] .textarea,
 [data-theme="dark"] textarea,
-[data-theme="dark"] .select,
 [data-theme="dark"] select {
   background-color: var(--base-200);
   color: var(--base-content);
   border-color: var(--base-300);
 }
 
-[data-theme="dark"] .input:focus,
 [data-theme="dark"] input[type="text"]:focus,
 [data-theme="dark"] input[type="search"]:focus,
 [data-theme="dark"] input[type="email"]:focus,
@@ -337,16 +411,13 @@
 [data-theme="dark"] input[type="number"]:focus,
 [data-theme="dark"] input[type="tel"]:focus,
 [data-theme="dark"] input[type="url"]:focus,
-[data-theme="dark"] .textarea:focus,
 [data-theme="dark"] textarea:focus,
-[data-theme="dark"] .select:focus,
 [data-theme="dark"] select:focus {
   background-color: var(--base-200);
   border-color: var(--primary);
   outline: none;
 }
 
-[data-theme="dark"] .input::placeholder,
 [data-theme="dark"] input[type="text"]::placeholder,
 [data-theme="dark"] input[type="search"]::placeholder,
 [data-theme="dark"] input[type="email"]::placeholder,
@@ -354,7 +425,6 @@
 [data-theme="dark"] input[type="number"]::placeholder,
 [data-theme="dark"] input[type="tel"]::placeholder,
 [data-theme="dark"] input[type="url"]::placeholder,
-[data-theme="dark"] .textarea::placeholder,
 [data-theme="dark"] textarea::placeholder {
   color: var(--base-content);
   opacity: 0.5;
@@ -423,6 +493,7 @@
 
 /* Action button styling - Vote and Withdraw buttons */
 @layer components {
+
   /* Base action button styles - Tailwind-based, matches BrandButton approach */
   .btn-action {
     @apply inline-flex items-center justify-center rounded-xl font-medium;
@@ -500,7 +571,7 @@
     display: flex;
     flex-direction: column;
   }
-  
+
   /* Root loading state */
   .root__loading {
     display: flex;
@@ -576,13 +647,16 @@
 
 /* Idle subtle pulse animation */
 .daily-quota-ring--pulse {
-  animation: quota-pulse 3s ease-in-out infinite;
+  /* animation: quota-pulse 3s ease-in-out infinite; */
 }
 
 @keyframes quota-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.04);
   }
@@ -597,9 +671,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.15);
   }
+
   100% {
     transform: scale(1);
   }
@@ -614,9 +690,11 @@
   0% {
     transform: scale(1);
   }
+
   50% {
     transform: scale(1.15);
   }
+
   100% {
     transform: scale(1);
   }
@@ -633,11 +711,14 @@
 
 /* App Shell Layout Styles */
 @layer components {
+
   /* Shell */
   .appShell {
     height: 100dvh;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    /* Ensure shell takes full width */
   }
 
   /* Header */
@@ -655,13 +736,19 @@
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: var(--nav-w) 1fr; /* default: no docked inspector */
+    grid-template-columns: var(--nav-w) minmax(0, 1fr);
+    /* default: no docked inspector - use minmax to ensure expansion */
+    width: 100%;
+    /* Ensure grid takes full width */
   }
 
   /* Left nav */
   .leftNav {
-    overflow: auto;
+    overflow: hidden;
+    /* Let sidebar handle its own scrolling */
     min-height: 0;
+    min-width: 0;
+    /* Allow shrinking */
     border-right: 1px solid var(--base-300);
   }
 
@@ -673,28 +760,17 @@
   }
 
   .main {
+    display: block;
+    width: 100%;
     max-width: var(--content-max);
     margin-inline: auto;
     padding: var(--gutter) clamp(16px, 3vw, 32px);
+    box-sizing: border-box;
+    /* Include padding in width calculation */
+    min-width: 0;
+    /* Allow shrinking below content size if needed */
   }
 
-  /* FAB: anchor to the content column, not viewport */
-  .fabSlot {
-    position: sticky;
-    bottom: 24px;
-    display: flex;
-    justify-content: flex-end;
-    pointer-events: none; /* so only the button gets clicks */
-    margin-top: 24px;
-  }
-
-  .fab {
-    pointer-events: auto;
-    width: 48px;
-    height: 48px;
-    border-radius: 999px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
 
   /* Overlay inspector (default behavior) */
   .inspectorOverlay {
@@ -710,6 +786,21 @@
     border-left: 1px solid var(--base-300);
     box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
     overflow: hidden;
+  }
+
+  /* Resize handle styling */
+  .resize-handle {
+    transition: background-color 150ms ease;
+  }
+
+  .resize-handle:hover {
+    background-color: var(--primary);
+    opacity: 0.6;
+  }
+
+  .resize-handle:active {
+    background-color: var(--primary);
+    opacity: 0.8;
   }
 
   /* Adjust overlay when header is not visible */
@@ -758,13 +849,14 @@
   /* Docked mode on ultra-wide screens */
   @media (min-width: 1600px) {
     .appShell[data-inspector-mode="docked"] .appBody {
-      grid-template-columns: var(--nav-w) 1fr var(--inspector-w);
+      grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--inspector-w);
     }
 
     .inspectorDock {
       overflow: auto;
       min-height: 0;
       border-left: 1px solid var(--base-300);
+      position: relative;
     }
 
     /* In docked mode, disable overlay+scrim */
@@ -774,14 +866,17 @@
     }
   }
 
-  /* Tablet/mobile: collapse nav to a drawer/rail (outline only) */
-  @media (max-width: 900px) {
+  /* Tablet/mobile: collapse nav to a drawer/rail (outline only)
+     NOTE: Tailwind `lg` starts at 1024px, and `.leftNav` is hidden below that via `hidden lg:block`.
+     Keep CSS in sync so we don't leave an empty 336px grid column on tablet widths. */
+  @media (max-width: 1023px) {
     .appBody {
       grid-template-columns: 1fr;
     }
 
     .leftNav {
-      display: none; /* replace with a drawer */
+      display: none;
+      /* replace with a drawer */
     }
   }
 }

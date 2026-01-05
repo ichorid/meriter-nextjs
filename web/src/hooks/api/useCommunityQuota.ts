@@ -1,5 +1,5 @@
-// Community quota React Query hooks
-import { usersApiV1 } from '@/lib/api/v1';
+// Community quota React Query hooks - migrated to tRPC
+import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { quotaKeys } from './useQuota';
 import { STALE_TIME } from '@/lib/constants/query-config';
@@ -27,11 +27,20 @@ interface QuotaData {
  */
 export function useCommunityQuotas(communityIds: string[]) {
   const { user } = useAuth();
+  const utils = trpc.useUtils();
 
   const result = useBatchQueries<QuotaData, string>({
     ids: communityIds,
     queryKey: (communityId) => quotaKeys.quota(user?.id, communityId),
-    queryFn: (communityId) => usersApiV1.getUserQuota(user?.id || '', communityId),
+    queryFn: async (communityId) => {
+      const data = await utils.wallets.getQuota.fetch({ userId: 'me', communityId });
+      return {
+        dailyQuota: data.dailyQuota,
+        usedToday: data.used,
+        remainingToday: data.remaining,
+        resetAt: new Date().toISOString(), // TODO: Get actual reset time from backend
+      };
+    },
     enabled: (communityId) => !!user?.id && !!communityId,
     staleTime: STALE_TIME.SHORT,
     retry: false, // Don't retry on quota errors (community not configured)

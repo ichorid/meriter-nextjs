@@ -1,9 +1,17 @@
 'use client';
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import { Camera, X, Loader2, RotateCcw, ZoomIn, ZoomOut, Check } from 'lucide-react';
-import { BrandButton } from '@/components/ui/BrandButton';
-import { BrandModal } from '@/components/ui/BrandModal';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { cn } from '@/lib/utils';
+import { useUploadAvatar, useUploadCommunityAvatar } from '@/hooks/api/useUploads';
+import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -55,10 +63,12 @@ export interface AvatarUploaderProps {
   disabled?: boolean;
   /** Custom class name */
   className?: string;
-  /** Upload endpoint */
+  /** Upload endpoint (deprecated - now uses tRPC) */
   uploadEndpoint?: string;
   /** Custom labels */
   labels?: AvatarUploaderLabels;
+  /** Community ID - if provided, uses community avatar upload instead of user avatar */
+  communityId?: string;
 }
 
 export function AvatarUploader({
@@ -67,10 +77,14 @@ export function AvatarUploader({
   size = 96,
   disabled = false,
   className = '',
-  uploadEndpoint = '/api/v1/uploads/avatar',
+  uploadEndpoint, // Deprecated - kept for backward compatibility but not used
   labels: customLabels,
+  communityId,
 }: AvatarUploaderProps) {
   const labels = { ...DEFAULT_LABELS, ...customLabels };
+  const userAvatarMutation = useUploadAvatar();
+  const communityAvatarMutation = useUploadCommunityAvatar();
+  const uploadMutation = communityId ? communityAvatarMutation : userAvatarMutation;
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -88,7 +102,7 @@ export function AvatarUploader({
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const validateFile = useCallback((file: File): string | null => {
+  const validateFile = (file: File): string | null => {
     if (!ALLOWED_TYPES.includes(file.type)) {
       return labels.invalidType;
     }
@@ -96,9 +110,9 @@ export function AvatarUploader({
       return labels.tooLarge;
     }
     return null;
-  }, [labels.invalidType, labels.tooLarge]);
+  };
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -117,9 +131,9 @@ export function AvatarUploader({
     
     // Reset input
     e.target.value = '';
-  }, [validateFile]);
+  };
 
-  const handleClose = useCallback(() => {
+  const handleClose = () => {
     setIsModalOpen(false);
     setSelectedFile(null);
     if (previewUrl) {
@@ -129,9 +143,9 @@ export function AvatarUploader({
     setZoom(1);
     setPosition({ x: 0, y: 0 });
     setError(null);
-  }, [previewUrl]);
+  };
 
-  const handleUpload = useCallback(async () => {
+  const handleUpload = async () => {
     if (!selectedFile) return;
 
     setIsUploading(true);
@@ -156,52 +170,51 @@ export function AvatarUploader({
         height: Math.min(cropSize, img.naturalHeight),
       };
 
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('crop', JSON.stringify(crop));
-
-      const response = await fetch(uploadEndpoint, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || labels.uploadFailed);
-      }
-
-      const result = await response.json();
+      const base64 = await fileToBase64(selectedFile);
       
-      if (result.success && result.data?.url) {
-        onUpload(result.data.url);
-        handleClose();
-      } else {
-        throw new Error(labels.uploadFailed);
-      }
+      const result = communityId
+        ? await uploadMutation.mutateAsync({
+            communityId,
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          })
+        : await uploadMutation.mutateAsync({
+            fileData: base64,
+            fileName: selectedFile.name,
+            mimeType: selectedFile.type,
+            crop,
+          });
+      
+      onUpload(result.url);
+      handleClose();
     } catch (err) {
       console.error('Avatar upload error:', err);
-      setError(err instanceof Error ? err.message : labels.uploadFailed);
+      const errorMessage = err instanceof Error 
+        ? err.message 
+        : uploadMutation.error?.message || labels.uploadFailed;
+      setError(errorMessage);
     } finally {
       setIsUploading(false);
     }
-  }, [selectedFile, uploadEndpoint, onUpload, zoom, position, labels.uploadFailed, handleClose]);
+  };
 
-  const handleZoomIn = useCallback(() => {
+  const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + 0.1, 3));
-  }, []);
+  };
 
-  const handleZoomOut = useCallback(() => {
+  const handleZoomOut = () => {
     setZoom(prev => Math.max(prev - 0.1, 0.5));
-  }, []);
+  };
 
-  const handleReset = useCallback(() => {
+  const handleReset = () => {
     setZoom(1);
     setPosition({ x: 0, y: 0 });
-  }, []);
+  };
 
   // Touch/mouse drag handlers
-  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
     setIsDragging(true);
     
@@ -209,9 +222,9 @@ export function AvatarUploader({
     const clientY = 'touches' in e ? (e.touches[0]?.clientY ?? 0) : e.clientY;
     
     setDragStart({ x: clientX - position.x, y: clientY - position.y });
-  }, [position]);
+  };
 
-  const handleDragMove = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const handleDragMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDragging) return;
     e.preventDefault();
     
@@ -223,18 +236,18 @@ export function AvatarUploader({
     const newY = Math.max(-maxOffset, Math.min(maxOffset, clientY - dragStart.y));
     
     setPosition({ x: newX, y: newY });
-  }, [isDragging, dragStart, zoom]);
+  };
 
-  const handleDragEnd = useCallback(() => {
+  const handleDragEnd = () => {
     setIsDragging(false);
-  }, []);
+  };
 
   // Handle wheel zoom
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     setZoom(prev => Math.max(0.5, Math.min(3, prev + delta)));
-  }, []);
+  };
 
   return (
     <div className={className}>
@@ -282,13 +295,13 @@ export function AvatarUploader({
       )}
 
       {/* Crop modal */}
-      <BrandModal
-        isOpen={isModalOpen}
-        onClose={handleClose}
-        title={labels.cropTitle}
-        size="md"
-      >
-        <div className="space-y-4">
+      <Dialog open={isModalOpen} onOpenChange={(open) => !open && handleClose()}>
+        <DialogContent className={cn('max-w-lg rounded-xl max-h-[90vh] flex flex-col p-0')}>
+          <DialogHeader className="p-6 border-b">
+            <DialogTitle>{labels.cropTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-4">
           {/* Preview with crop area */}
           <div 
             ref={containerRef}
@@ -382,25 +395,32 @@ export function AvatarUploader({
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-2">
-            <BrandButton
+            <Button
               variant="outline"
               onClick={handleClose}
               disabled={isUploading}
+              className="rounded-xl active:scale-[0.98]"
             >
               {labels.cancel}
-            </BrandButton>
-            <BrandButton
-              variant="primary"
+            </Button>
+            <Button
+              variant="default"
               onClick={handleUpload}
               disabled={isUploading}
-              isLoading={isUploading}
-              leftIcon={!isUploading ? <Check size={16} /> : undefined}
+              className="rounded-xl active:scale-[0.98]"
             >
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check size={16} />
+              )}
               {labels.save}
-            </BrandButton>
+            </Button>
           </div>
-        </div>
-      </BrandModal>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

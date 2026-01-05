@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect, useImperativeHandle } from "react";
 import { useTranslations } from "next-intl";
-import { BrandButton, BrandInput, BrandFormControl } from "@/components/ui";
+import { BrandFormControl } from "@/components/ui";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Textarea } from "@/components/ui/shadcn/textarea";
+import { Loader2 } from "lucide-react";
 import { OSMAutocomplete } from "@/components/molecules/OSMAutocomplete";
+import { AvatarUploader } from "@/components/ui/AvatarUploader";
 
 export interface UserFormData {
     displayName: string;
@@ -33,7 +38,9 @@ interface UserFormProps {
     stickyFooter?: boolean;
     hideHeader?: boolean;
     hideFooter?: boolean;
-    formRef?: React.RefObject<{ submit: () => void }>;
+    formRef?: React.RefObject<{ submit: () => void } | null>;
+    title?: string;
+    subtitle?: string;
 }
 
 export function UserForm({
@@ -48,6 +55,8 @@ export function UserForm({
     hideHeader = false,
     hideFooter = false,
     formRef,
+    title,
+    subtitle,
 }: UserFormProps) {
     const t = useTranslations("profile");
     const tCommon = useTranslations("common");
@@ -70,8 +79,8 @@ export function UserForm({
     );
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    // Email is editable only if it wasn't provided initially
-    const isEmailEditable = !initialData?.contacts?.email;
+    // Email is editable only if it wasn't provided initially (non-empty string)
+    const isEmailEditable = !initialData?.contacts?.email || initialData?.contacts?.email.trim() === '';
 
     useEffect(() => {
         if (initialData) {
@@ -175,10 +184,10 @@ export function UserForm({
             {!hideHeader && (
                 <header className="mb-8">
                     <h2 className="text-xl font-semibold text-base-content mb-2">
-                        {t("newProfile")}
+                        {title || t("newProfile")}
                     </h2>
                     <p className="text-sm text-base-content/60 leading-relaxed">
-                        {t("newProfileSubtitle")}
+                        {subtitle || t("newProfileSubtitle")}
                     </p>
                 </header>
             )}
@@ -186,40 +195,34 @@ export function UserForm({
             {/* Form Sections */}
             <div className="space-y-6">
                 {/* Section 1: General Information */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("generalInformation")}
                     </h3>
 
                     {/* Avatar Row */}
-                    <div className="flex items-start gap-4 mb-5">
-                        <div className="relative w-16 h-16 rounded-full overflow-hidden bg-base-300/50 border-2 border-base-content/10 flex-shrink-0">
-                            {avatarUrl ? (
-                                <img
-                                    src={avatarUrl}
-                                    alt="Avatar"
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-base-content/20 text-xs">
-                                    —
-                                </div>
-                            )}
+                    <div className="space-y-2">
+                        <label className="block text-sm font-medium text-base-content">
+                            {t("avatarUrl")}
+                        </label>
+                        <div className="flex justify-center">
+                            <AvatarUploader
+                                value={avatarUrl}
+                                onUpload={(url) => setAvatarUrl(url)}
+                                size={120}
+                                labels={{
+                                    upload: t("changeAvatar") || "Change avatar",
+                                    cropTitle: t("cropAvatar") || "Crop avatar",
+                                    cancel: tCommon("cancel") || "Cancel",
+                                    save: t("save") || "Save",
+                                }}
+                            />
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <BrandFormControl
-                                label={t("avatarUrl")}
-                                helperText={t("avatarUrlHelper")}
-                            >
-                                <BrandInput
-                                    value={avatarUrl}
-                                    onChange={(e) =>
-                                        setAvatarUrl(e.target.value)
-                                    }
-                                    placeholder={tCommon('urlPlaceholder')}
-                                />
-                            </BrandFormControl>
-                        </div>
+                        {t("avatarUrlHelper") && (
+                            <p className="text-xs text-base-content/50 text-center">
+                                {t("avatarUrlHelper")}
+                            </p>
+                        )}
                     </div>
 
                     {/* Display Name */}
@@ -228,16 +231,17 @@ export function UserForm({
                         error={errors.displayName}
                         required
                     >
-                        <BrandInput
+                        <Input
                             value={displayName}
                             onChange={(e) => setDisplayName(e.target.value)}
                             placeholder={t("displayNamePlaceholder")}
+                            className="h-11 rounded-xl w-full"
                         />
                     </BrandFormControl>
                 </section>
 
                 {/* Section 2: Contact Information */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("contactInformation")}
                     </h3>
@@ -278,23 +282,20 @@ export function UserForm({
                             label={t("email")}
                             error={errors.email}
                         >
-                            <BrandInput
+                            <Input
                                 type="email"
                                 value={email}
-                                onChange={(e) =>
-                                    isEmailEditable && setEmail(e.target.value)
-                                }
+                                onChange={(e) => setEmail(e.target.value)}
                                 disabled={!isEmailEditable}
                                 placeholder={
                                     isEmailEditable
                                         ? t("emailPlaceholder")
                                         : undefined
                                 }
-                                className={
-                                    !isEmailEditable
-                                        ? "bg-base-300/30 text-base-content/50"
-                                        : ""
-                                }
+                                className={`h-11 rounded-xl w-full ${!isEmailEditable
+                                    ? "bg-base-300/30 text-base-content/50"
+                                    : ""
+                                    }`}
                             />
                         </BrandFormControl>
                     </div>
@@ -304,8 +305,8 @@ export function UserForm({
                         label={t("otherContacts")}
                         helperText={t("otherContactsHelper")}
                     >
-                        <textarea
-                            className="w-full px-4 py-3 bg-base-100 border border-base-content/10 rounded-xl resize-none text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-base-content/20 focus:border-base-content/20 transition-all"
+                        <Textarea
+                            className="min-h-[80px]"
                             value={otherContacts}
                             onChange={(e) => setOtherContacts(e.target.value)}
                             placeholder={t("otherContactsPlaceholder")}
@@ -315,7 +316,7 @@ export function UserForm({
                 </section>
 
                 {/* Section 3: About */}
-                <section className="bg-base-200/40 rounded-2xl p-5">
+                <section className="space-y-4">
                     <h3 className="text-sm font-semibold text-base-content mb-5 uppercase tracking-wide">
                         {t("aboutInformation")}
                     </h3>
@@ -331,8 +332,8 @@ export function UserForm({
                             error={errors.about}
                             required
                         >
-                            <textarea
-                                className="w-full px-4 py-3 bg-base-100 border border-base-content/10 rounded-xl resize-none text-base-content placeholder:text-base-content/40 focus:outline-none focus:ring-2 focus:ring-base-content/20 focus:border-base-content/20 transition-all"
+                            <Textarea
+                                className="min-h-[120px]"
                                 value={about}
                                 onChange={(e) => setAbout(e.target.value)}
                                 placeholder={t("aboutPlaceholder")}
@@ -349,33 +350,33 @@ export function UserForm({
                 <footer
                     className={`
                         flex gap-3 justify-end pt-6 border-t border-base-content/5
-                        ${
-                            stickyFooter
-                                ? "sticky bottom-0 bg-base-100 pb-6 -mx-6 px-6 mt-8"
-                                : "mt-8"
+                        ${stickyFooter
+                            ? "sticky bottom-0 bg-base-100 pb-6 -mx-6 px-6 mt-8"
+                            : "mt-8"
                         }
                     `}
                 >
                     {onCancel && (
-                        <BrandButton
+                        <Button
                             variant="ghost"
                             onClick={onCancel}
                             disabled={isSubmitting}
-                            size="md"
+                            size="default"
+                            className="rounded-xl active:scale-[0.98]"
                         >
                             {t("cancel")}
-                        </BrandButton>
+                        </Button>
                     )}
-                    <BrandButton
+                    <Button
                         onClick={handleSubmit}
                         disabled={isSubmitting}
-                        isLoading={isSubmitting}
                         size="lg"
                         variant="default"
-                        fullWidth={stickyFooter}
+                        className={`rounded-xl active:scale-[0.98] ${stickyFooter ? 'w-full' : ''}`}
                     >
+                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                         {isSubmitting ? t("saving") : submitLabel || t("save")}
-                    </BrandButton>
+                    </Button>
                 </footer>
             )}
         </div>

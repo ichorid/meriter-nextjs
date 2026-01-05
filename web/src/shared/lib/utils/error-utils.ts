@@ -6,6 +6,7 @@
 /**
  * Extracts error message from various error formats
  * Handles:
+ * - tRPC errors (TRPCClientError)
  * - ApiError format (from our API client)
  * - Axios error format (legacy compatibility)
  * - Standard Error objects
@@ -16,6 +17,26 @@
  */
 export function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error) {
+    // Check for tRPC errors first
+    // tRPC errors have a shape property with error data
+    if ('shape' in err && err.shape && typeof err.shape === 'object') {
+      const shape = err.shape as any;
+      // tRPC errors can have message in shape.data.message or shape.message
+      if (shape.data?.message && typeof shape.data.message === 'string') {
+        return shape.data.message;
+      }
+      if (shape.message && typeof shape.message === 'string') {
+        return shape.message;
+      }
+    }
+
+    // Check if it's a transformation/deserialization error
+    const errorMessage = err.message || '';
+    if (errorMessage.includes('transform') || errorMessage.includes('deserialize') || errorMessage.includes('Unable to transform')) {
+      // Provide a more helpful message for transformation errors
+      return 'Server response format is invalid. Please check if the backend API is running and accessible.';
+    }
+    
     // Check for ApiError format (from our API client)
     // ApiError has message property directly
     if ('message' in err && typeof err.message === 'string' && err.message) {

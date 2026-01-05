@@ -1,0 +1,57 @@
+'use client';
+
+import React from 'react';
+import { FormPollCreate } from '@/features/polls/components/form-poll-create';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useTranslations } from 'next-intl';
+
+interface CreatePollPageClientProps {
+  communityId: string;
+}
+
+export function CreatePollPageClient({ communityId }: CreatePollPageClientProps) {
+  const router = useRouter();
+  const t = useTranslations('polls');
+  const { isAuthenticated, isLoading: userLoading } = useAuth();
+
+  useEffect(() => {
+    if (!userLoading && !isAuthenticated) {
+      router.push(`/meriter/login?returnTo=${encodeURIComponent(`/meriter/communities/${communityId}/create-poll`)}`);
+    }
+  }, [isAuthenticated, userLoading, router, communityId]);
+
+  if (!isAuthenticated || !communityId) {
+    return null;
+  }
+
+  return (
+    <AdaptiveLayout
+      communityId={communityId}
+      stickyHeader={
+        <SimpleStickyHeader
+          title={t('createTitle')}
+          showBack={true}
+          onBack={() => router.push(`/meriter/communities/${communityId}`)}
+          asStickyHeader={true}
+        />
+      }
+    >
+      <div className="space-y-6">
+        <FormPollCreate
+          communityId={communityId}
+          onSuccess={(pollId) => {
+            router.push(`/meriter/communities/${communityId}?poll=${pollId}`);
+          }}
+          onCancel={() => {
+            router.push(`/meriter/communities/${communityId}`);
+          }}
+        />
+      </div>
+    </AdaptiveLayout>
+  );
+}
+

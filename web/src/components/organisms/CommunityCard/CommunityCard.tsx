@@ -47,28 +47,31 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('common');
+  const tCommunities = useTranslations('communities');
   const isActive = pathname?.includes(`/communities/${communityId}`);
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
-    // Check global superadmin role first
-    if (user?.globalRole === 'superadmin') {
-      return { role: 'superadmin', label: t('superadmin'), variant: 'error' as const };
+    // Don't show role badge for special communities (marathon-of-good, future-vision, support)
+    if (community?.typeTag === 'marathon-of-good' || 
+        community?.typeTag === 'future-vision' || 
+        community?.typeTag === 'support') {
+      return null;
     }
-    
+
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
-    
-    // Only show badge for lead, participant, and superadmin (not viewer)
+
+    // Only show badge for lead and participant (not viewer, not superadmin)
     if (role?.role === 'lead') {
-      return { role: 'lead', label: t('lead'), variant: 'accent' as const };
+      return { role: 'lead', label: t('lead'), variant: 'secondary' as const };
     }
     if (role?.role === 'participant') {
-      return { role: 'participant', label: t('participant'), variant: 'info' as const };
+      return { role: 'participant', label: t('participant'), variant: 'secondary' as const };
     }
-    
+
     return null;
-  }, [user?.globalRole, user?.id, userRoles, communityId, t]);
+  }, [community?.typeTag, user?.id, userRoles, communityId, t]);
 
   // Get user's role for this community to check merit rules
   const userRole = React.useMemo(() => {
@@ -81,24 +84,24 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Check if user can earn permanent merits based on community rules
   const canEarnPermanentMerits = React.useMemo(() => {
-    if (!community?.meritRules) return false;
+    if (!community?.meritSettings) return false;
     // User can earn permanent merits only if canEarn is true
-    return community.meritRules.canEarn === true;
-  }, [community?.meritRules]);
+    return community.meritSettings.canEarn === true;
+  }, [community?.meritSettings]);
 
   const hasQuota = React.useMemo(() => {
-    if (!community?.meritRules || !userRole) return false;
-    const { dailyQuota, quotaRecipients } = community.meritRules;
+    if (!community?.meritSettings || !userRole) return false;
+    const { dailyQuota, quotaRecipients } = community.meritSettings;
     // User has quota if dailyQuota > 0 and their role is in quotaRecipients
-    return dailyQuota > 0 && quotaRecipients?.includes(userRole as any);
-  }, [community?.meritRules, userRole]);
+    return dailyQuota > 0 && quotaRecipients.includes(userRole);
+  }, [community?.meritSettings, userRole]);
 
   // Check if it's marathon-of-good
   const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
 
   // Fetch quota data for this community
   const { data: quotaData } = useUserQuota(communityId);
-  
+
   // Format balance and quota display
   const balance = wallet?.balance || 0;
   const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
@@ -117,7 +120,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         {isExpanded ? (
           <div className="flex-1">
             <div className="text-sm font-medium truncate text-base-content/50">
-              Loading {communityId}...
+              {t('loading')} {communityId}...
             </div>
           </div>
         ) : (
@@ -126,12 +129,12 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
       </div>
     );
   }
-  
+
   // Get currency icon from community settings (stored as data URL or image URL)
   const currencyIconUrl = community.settings?.iconUrl;
 
   // Get cover image from community
-  const coverImageUrl = (community as any).coverImageUrl;
+  const coverImageUrl = community.coverImageUrl;
   const hasCover = !!coverImageUrl;
 
   // Expanded version (desktop)
@@ -139,79 +142,76 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={`/meriter/communities/${communityId}`}>
         <div
-          className={`w-full rounded-2xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-hidden relative ${
-            isActive
-              ? 'bg-base-content text-base-100'
-              : hasCover 
-                ? 'text-white' 
-                : 'bg-base-200 hover:bg-base-300'
-          }`}
-          style={hasCover && !isActive ? {
+          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 pb-6 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
+            ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
+            : ''
+            } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
+          style={hasCover ? {
             backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
           } : undefined}
         >
           {/* Left section: Avatar + Content */}
-          <div className="flex flex-row items-start gap-3 flex-1 min-w-0">
-            {/* Avatar section with badge below */}
-            <div className="flex flex-col items-start gap-2 flex-shrink-0">
-              <CommunityAvatar
-                avatarUrl={community.avatarUrl}
-                communityName={community.name}
-                size={46}
-                needsSetup={community.needsSetup}
-                className="bg-base-300"
-              />
+          <div className="flex flex-row items-start gap-3 flex-1 min-w-0 relative">
+            {/* Avatar section with badge below and quota on top-right */}
+            <div className={`flex flex-col items-start gap-2 flex-shrink-0 relative ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
+              <div className="relative">
+                <CommunityAvatar
+                  avatarUrl={community.avatarUrl}
+                  communityName={community.name}
+                  communityId={community.id}
+                  size={46}
+                  needsSetup={community.needsSetup}
+                  className="bg-base-300"
+                />
+                {/* Quota counter on top-right corner of avatar */}
+                {showQuota && (
+                  <div className="absolute -top-2 z-10 bg-base-200 rounded-full p-0.5" style={{ transform: 'scale(0.76)', right: '-8px' }}>
+                    <DailyQuotaRing
+                      remaining={remainingQuota}
+                      max={dailyQuota}
+                      className="w-5 h-5 flex-shrink-0"
+                      asDiv={true}
+                      variant={isMarathonOfGood ? 'golden' : 'default'}
+                    />
+                  </div>
+                )}
+              </div>
               {userRoleBadge && (
-                <Badge 
-                  variant={userRoleBadge.variant} 
-                  size="xs"
-                  className={isActive ? 'bg-base-100/20 text-base-100 border-base-100/20' : ''}
-                >
-                  {userRoleBadge.label}
-                </Badge>
+                <div className="absolute bottom-[-28px] left-0 right-0 flex items-center justify-center">
+                  <Badge
+                    variant={userRoleBadge.variant}
+                    size="xs"
+                  >
+                    {userRoleBadge.label}
+                  </Badge>
+                </div>
               )}
             </div>
 
             {/* Content section */}
-            <div className="flex flex-col items-start gap-3 flex-1 min-w-0">
+            <div className={`flex flex-col items-start flex-1 min-w-0 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
               {/* Title section */}
-              <div className="flex flex-col items-start gap-1 w-full">
-                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${
-                  isActive ? 'text-base-100' : hasCover ? 'text-white drop-shadow' : 'text-base-content'
-                }`}>
+              <div className="flex flex-col items-start w-full">
+                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${hasCover ? 'text-white drop-shadow' : 'text-base-content'
+                  }`}>
                   {community.name}
                 </div>
-                {/* Merits/Quota indicators */}
-                {showIndicators && (
-                  <div className="flex flex-row items-center gap-2.5 w-full min-w-0">
-                    {showMerits && (
-                      <div className="flex items-center gap-1 min-w-0 flex-shrink">
-                        {currencyIconUrl && (
-                          <img 
-                            src={currencyIconUrl} 
-                            alt="Currency" 
-                            className="w-3 h-3 flex-shrink-0" 
-                          />
-                        )}
-                        <span className={`text-xs leading-[14px] tracking-[0.374px] min-w-0 ${
-                          isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
-                        }`}>
-                          <span className="truncate">{t('permanentMerits')}:</span> <span className={`font-semibold whitespace-nowrap ${
-                            isActive ? 'text-base-100' : hasCover ? 'text-white' : 'text-base-content'
-                          }`}>{balance}</span>
-                        </span>
-                      </div>
-                    )}
-                    {showQuota && (
-                      <DailyQuotaRing
-                        remaining={remainingQuota}
-                        max={dailyQuota}
-                        className="w-5 h-5 flex-shrink-0"
-                        asDiv={true}
-                        variant={isMarathonOfGood ? 'golden' : 'default'}
-                        inverted={isActive}
+                {/* Merits indicator - right below name */}
+                {showMerits && (
+                  <div className="flex items-center gap-1 min-w-0 flex-shrink mt-0.5">
+                    <span className={`text-[11px] leading-[14px] tracking-[0.374px] min-w-0 ${hasCover ? 'text-white/70' : 'text-base-content/60'
+                      }`}>
+                      {t('yourMerits')}:{' '}
+                    </span>
+                    <span className={`text-xs font-medium whitespace-nowrap ${hasCover ? 'text-white/80' : 'text-base-content/70'
+                      }`}>{balance}</span>
+                    {currencyIconUrl && (
+                      <img
+                        src={currencyIconUrl}
+                        alt={tCommunities('currency')}
+                        className="w-2.5 h-2.5 flex-shrink-0"
                       />
                     )}
                   </div>
@@ -220,9 +220,8 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] line-clamp-2 w-full ${
-                  isActive ? 'text-base-100/60' : hasCover ? 'text-white/70' : 'text-base-content/60'
-                }`}>
+                <div className={`text-xs leading-[14px] tracking-[0.374px] w-full mt-4 ${hasCover ? 'text-white/70' : 'text-base-content/60'
+                  }`}>
                   {community.description}
                 </div>
               )}
@@ -230,11 +229,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           </div>
 
           {/* Right section: Chevron */}
-          <div className="flex items-start flex-shrink-0 w-6 h-6">
-            <ChevronRight 
-              className={`w-6 h-6 ${
-                isActive ? 'text-base-100/60' : hasCover ? 'text-white/60' : 'text-base-content/60'
-              }`} 
+          <div className={`flex items-start flex-shrink-0 w-6 h-6 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
+            <ChevronRight
+              className={`w-6 h-6 ${hasCover ? 'text-white/60' : 'text-base-content/60'
+                }`}
             />
           </div>
         </div>
@@ -247,27 +245,23 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     <Link href={`/meriter/communities/${communityId}`}>
       <div className="flex flex-col items-center relative py-1">
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${
-            isActive
-              ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
-              : 'hover:ring-2 hover:ring-base-content/10'
-          }`}
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${isActive
+            ? 'ring-2 ring-base-content ring-offset-2 ring-offset-base-100'
+            : 'hover:ring-2 hover:ring-base-content/10'
+            }`}
         >
           <CommunityAvatar
             avatarUrl={community.avatarUrl}
             communityName={community.name}
+            communityId={community.id}
             size={44}
             needsSetup={community.needsSetup}
           />
         </div>
         {userRoleBadge && (
-          <div 
-            className={`absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 ${
-              userRoleBadge.variant === 'error' ? 'bg-error' :
-              userRoleBadge.variant === 'accent' ? 'bg-accent' :
-              userRoleBadge.variant === 'info' ? 'bg-info' : 'bg-accent'
-            }`} 
-            title={userRoleBadge.label} 
+          <div
+            className="absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 bg-base-content/40"
+            title={userRoleBadge.label}
           />
         )}
         {(showMerits || showQuota) && (

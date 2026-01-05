@@ -4,13 +4,13 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserService } from '../../domain/services/user.service';
 import { CommunityService } from '../../domain/services/community.service';
-import { User } from '../../../../../../libs/shared-types/dist/index';
+import { User } from '../../domain/models/user/user.schema';
 import { signJWT } from '../../common/helpers/jwt';
+import { AppConfig } from '../../config/configuration';
 import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
-import type { Community } from '../../domain/models/community/community.schema';
 import { JwtService } from '../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 import {
@@ -23,7 +23,7 @@ import {
   PasskeyChallenge,
   PasskeyChallengeDocument,
 } from '../../domain/models/auth/passkey-challenge.schema';
-import { Authenticator } from '../../../../../../libs/shared-types/dist/index';
+import { Authenticator } from '../../domain/models/user/user.schema';
 
 interface TelegramAuthData {
   id: number;
@@ -36,13 +36,13 @@ interface TelegramAuthData {
 }
 
 @Injectable()
-export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+export class AuthProviderService {
+  private readonly logger = new Logger(AuthProviderService.name);
 
   constructor(
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-    private readonly configService: ConfigService,
+    private readonly configService: ConfigService<AppConfig>,
     @InjectModel(CommunitySchemaClass.name)
     private communityModel: Model<CommunityDocument>,
     @InjectModel(PasskeyChallenge.name)
@@ -50,7 +50,10 @@ export class AuthService {
   ) { }
 
   private isFakeDataMode(): boolean {
-    return process.env.FAKE_DATA_MODE === 'true';
+    // ConfigService is injected via constructor, use it instead of process.env
+    // This ensures proper environment variable loading in all contexts (local, Docker, production)
+    const devConfig = this.configService.get('dev');
+    return devConfig?.fakeDataMode === true || devConfig?.testAuthMode === true;
   }
 
   // Telegram authentication methods removed: Telegram is fully disabled in this project.
@@ -97,13 +100,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error(
-        'JWT_SECRET is not configured. Cannot generate JWT token.',
-      );
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -176,13 +173,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(updatedUser.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error(
-        'JWT_SECRET is not configured. Cannot generate JWT token.',
-      );
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -212,24 +203,23 @@ export class AuthService {
   }> {
     this.logger.log('Authenticating with Google OAuth code');
 
-    const clientId = process.env.OAUTH_GOOGLE_CLIENT_ID;
-    const clientSecret = process.env.OAUTH_GOOGLE_CLIENT_SECRET;
+    const oauth = this.configService.get('oauth');
+    const clientId = oauth?.google?.clientId;
+    const clientSecret = oauth?.google?.clientSecret;
 
     if (!clientId || !clientSecret) {
       throw new Error('Google OAuth credentials not configured');
     }
 
-    let callbackUrl =
-      process.env.OAUTH_GOOGLE_REDIRECT_URI ||
-      process.env.OAUTH_GOOGLE_CALLBACK_URL ||
-      process.env.GOOGLE_REDIRECT_URI;
+    let callbackUrl = oauth?.google?.redirectUri || this.configService.get('GOOGLE_REDIRECT_URI');
 
     if (!callbackUrl) {
       const domain =
-        process.env.DOMAIN ||
-        process.env.APP_URL?.replace(/^https?:\/\//, '') ||
+        this.configService.get('DOMAIN') ||
+        this.configService.get('APP_URL')?.replace(/^https?:\/\//, '') ||
         'localhost';
-      const isDocker = process.env.NODE_ENV === 'production';
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isDocker = nodeEnv === 'production';
       const protocol =
         domain === 'localhost' && !isDocker
           ? 'http'
@@ -313,13 +303,7 @@ export class AuthService {
 
     await this.userService.ensureUserInBaseCommunities(user.id);
 
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error(
-        'JWT_SECRET is not configured. Cannot generate JWT token.',
-      );
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -350,8 +334,9 @@ export class AuthService {
   }> {
     this.logger.log('Authenticating with Yandex OAuth code');
 
-    const clientId = process.env.OAUTH_YANDEX_CLIENT_ID;
-    const clientSecret = process.env.OAUTH_YANDEX_CLIENT_SECRET;
+    const oauth = this.configService.get('oauth');
+    const clientId = oauth?.yandex?.clientId;
+    const clientSecret = oauth?.yandex?.clientSecret;
 
     if (!clientId || !clientSecret) {
       throw new Error('Yandex OAuth credentials not configured');
@@ -426,11 +411,7 @@ export class AuthService {
 
     await this.userService.ensureUserInBaseCommunities(user.id);
 
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error('JWT_SECRET is not configured. Cannot generate JWT token.');
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -444,6 +425,141 @@ export class AuthService {
     );
 
     this.logger.log(`JWT generated for Yandex user ${email}, isNewUser: ${isNewUser}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+    };
+  }
+
+  /**
+   * Authenticate user with SMS (phone number)
+   * Similar to OAuth flow: creates user if doesn't exist, returns JWT
+   */
+  async authenticateSms(phoneNumber: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+  }> {
+    this.logger.log(`Authenticating with SMS: ${phoneNumber}`);
+
+    // Validate E.164 format (must start with +)
+    if (!phoneNumber.startsWith('+')) {
+      throw new Error('Phone number must be in E.164 format (start with +)');
+    }
+
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('sms', phoneNumber);
+    const isNewUser = !existingUser;
+
+    // Extract last 6 digits for username
+    const phoneDigits = phoneNumber.replace(/\D/g, '');
+    const last6Digits = phoneDigits.slice(-6);
+    const username = `sms_${last6Digits}`;
+
+    // Mask phone for display: +7 953 *** 96-61
+    const maskedPhone = phoneNumber.replace(/(\+\d{1,3})(\d{3})(\d+)(\d{2})(\d{2})/, '$1 $2 *** $4-$5');
+    const displayName = `User ${maskedPhone}`;
+
+    // Last 4 digits for lastName
+    const last4Digits = phoneDigits.slice(-4);
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'sms',
+      authId: phoneNumber, // Store in E.164 format
+      username,
+      firstName: 'User',
+      lastName: last4Digits,
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'sms',
+        authId: phoneNumber,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for SMS user ${phoneNumber}, isNewUser: ${isNewUser}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+    };
+  }
+
+  /**
+   * Authenticate user with Email
+   * Uses email as authId
+   */
+  async authenticateEmail(email: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+  }> {
+    this.logger.log(`Authenticating with Email: ${email}`);
+
+    // Check if user already exists
+    const existingUser = await this.userService.getUserByAuthId('email', email);
+    const isNewUser = !existingUser;
+
+    // Generate username from email part or random if taken (userService handles uniqueness if logic exists, but let's provide a good candidate)
+    // For simplicity, we match SMS pattern somewhat or OAuth pattern
+    const emailPrefix = email.split('@')[0];
+    const username = `${emailPrefix}_${Math.floor(Math.random() * 1000)}`;
+
+    // Display name based on email
+    const displayName = emailPrefix;
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'email',
+      authId: email,
+      username,
+      firstName: 'User', // Generic first/last for email auth if we don't ask
+      lastName: '',
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update user');
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'email',
+        authId: email,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for Email user ${email}, isNewUser: ${isNewUser}`);
 
     return {
       user: JwtService.mapUserToV1Format(user),
@@ -469,6 +585,7 @@ export class AuthService {
   }): Promise<{
     user: User;
     hasPendingCommunities: boolean;
+    isNewUser: boolean;
     jwt: string;
   }> {
     this.logger.log(
@@ -490,6 +607,7 @@ export class AuthService {
 
     // Find or create user by provider ID
     let user = await this.userService.getUserByAuthId(provider, providerId);
+    const isNewUser = !user;
 
     if (!user) {
       // Create new user
@@ -523,13 +641,7 @@ export class AuthService {
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      this.logger.error(
-        'JWT_SECRET is not configured. Cannot generate JWT token.',
-      );
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -547,6 +659,7 @@ export class AuthService {
     return {
       user: JwtService.mapUserToV1Format(user),
       hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
       jwt: jwtToken,
     };
   }
@@ -652,7 +765,7 @@ export class AuthService {
     }
   }
 
-  private async discoverUserCommunities(userId: string): Promise<number> {
+  private async discoverUserCommunities(_userId: string): Promise<number> {
     // Telegram-based community discovery is disabled
     return 0;
   }
@@ -662,33 +775,43 @@ export class AuthService {
   private getRpId(requestRpId?: string): string {
     // If requestRpId provided (from host header), use it (stripping port if needed)
     if (requestRpId) {
-      return requestRpId.split(':')[0];
+      const cleaned = requestRpId.split(':')[0];
+      this.logger.debug(`RP ID computed: ${cleaned} (from request: ${requestRpId})`);
+      return cleaned;
     }
-    const rpId = process.env.RP_ID || 'localhost';
+    const authn = this.configService.get('authn');
+    const rpId = authn?.rpId ?? 'localhost';
     // Remove protocol and port if present, though users should provide clean domains
-    return rpId.replace(/^https?:\/\//, '').split(':')[0];
+    const cleaned = rpId.replace(/^https?:\/\//, '').split(':')[0];
+    this.logger.debug(`RP ID computed: ${cleaned} (from env: ${authn?.rpId ?? 'default'})`);
+    return cleaned;
   }
 
   private getOrigin(requestOrigin?: string): string {
     if (requestOrigin) {
+      this.logger.debug(`Origin computed: ${requestOrigin} (from request)`);
       return requestOrigin;
     }
-    let origin = process.env.RP_ORIGIN || process.env.APP_URL || 'http://localhost:3000';
+    const authn = this.configService.get('authn');
+    let origin = authn?.rpOrigin || this.configService.get('APP_URL') || 'http://localhost:3000';
     // Ensure protocol is present
     if (!origin.startsWith('http')) {
       origin = `https://${origin}`;
     }
-    return origin.replace(/\/$/, ''); // Remove trailing slash
+    const cleaned = origin.replace(/\/$/, ''); // Remove trailing slash
+    this.logger.debug(`Origin computed: ${cleaned} (from env: ${authn?.rpOrigin || this.configService.get('APP_URL') || 'default'})`);
+    return cleaned;
   }
 
   private getRpName(): string {
-    return process.env.RP_NAME || 'Meriter';
+    const authn = this.configService.get('authn');
+    return authn?.rpName ?? 'Meriter';
   }
 
   async generatePasskeyRegistrationOptions(
     username: string,
     existingUserId?: string, // If linking to existing user
-    requestRpId?: string,
+    _requestRpId?: string,
   ) {
     // Check if user exists (for new users, we want to ensure username isn't taken by an AUTH-based user)
     // For WebAuthn, we treat username as the primary handle for initial discovery if they don't have a device yet
@@ -700,11 +823,12 @@ export class AuthService {
       if (!user) throw new Error('User not found');
     }
 
-    const authenticators: Authenticator[] = user?.authenticators || [];
+    const _authenticators: Authenticator[] = user?.authenticators || [];
 
+    const rpId = this.getRpId();
     const options = await generateRegistrationOptions({
       rpName: process.env.RP_NAME || 'Meriter',
-      rpID: this.getRpId(),
+      rpID: rpId,
       userID: new Uint8Array(Buffer.from(user ? user.id : username)), // Use UserID if exists, else generic
       userName: username,
       // Don't exclude credentials yet, we handle duplicate checks manually or let browser handle it
@@ -715,10 +839,23 @@ export class AuthService {
       // })),
       attestationType: 'none',
       authenticatorSelection: {
-        residentKey: 'preferred',
-        userVerification: 'preferred',
-        authenticatorAttachment: 'cross-platform',
+        // Prefer platform authenticators (passkeys) but allow fallback to cross-platform
+        authenticatorAttachment: 'platform',
+        residentKey: 'required', // Required for discoverable credentials (passkeys)
+        userVerification: 'discouraged',
       },
+      // Explicitly include ES256 and RS256 (required for passkeys and broader compatibility)
+      supportedAlgorithmIDs: [-7, -257], // ES256, RS256
+    });
+
+    // Log options for debugging (without sensitive data)
+    this.logger.log(`Registration options generated:`, {
+      rpId: options.rp.id,
+      rpName: options.rp.name,
+      userName: username,
+      authenticatorAttachment: 'platform',
+      residentKey: 'required',
+      challengeLength: options.challenge?.length || 0,
     });
 
     // Save challenge
@@ -749,7 +886,13 @@ export class AuthService {
 
     this.logger.log(`clientDataJSON type: ${typeof clientDataJSON}, length: ${clientDataJSON?.length}`);
 
-    const bodyForLib = { id, rawId, response: { clientDataJSON, attestationObject }, type };
+    const bodyForLib = {
+      id,
+      rawId,
+      response: { clientDataJSON, attestationObject },
+      type,
+      clientExtensionResults: {}
+    };
 
     try {
       const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -855,10 +998,7 @@ export class AuthService {
         }
 
         // Generate JWT for immediate login
-        const jwtSecret = process.env.JWT_SECRET;
-        if (!jwtSecret) {
-          throw new Error('JWT secret not configured');
-        }
+        const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
         const jwtToken = signJWT(
           {
@@ -876,7 +1016,7 @@ export class AuthService {
 
       throw new Error('Verification failed');
     } catch (error) {
-      this.logger.error(`Passkey verification error: ${error.message}`);
+      this.logger.error(`Passkey verification error: ${error instanceof Error ? error.message : String(error)}`);
       throw error;
     }
   }
@@ -902,7 +1042,7 @@ export class AuthService {
         type: 'public-key',
         transports: auth.transports as AuthenticatorTransport[],
       })),
-      userVerification: 'preferred',
+      userVerification: 'discouraged',
     });
 
     // Save challenge
@@ -917,7 +1057,7 @@ export class AuthService {
 
   async verifyPasskeyLogin(body: any) {
     const { response: { clientDataJSON, authenticatorData, signature, userHandle }, id, rawId, type } = body;
-    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type };
+    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type, clientExtensionResults: {} };
 
     // Find challenge
     const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -936,7 +1076,7 @@ export class AuthService {
     // In Mongoose: findOne({ 'authenticators.credentialID': id })
     // I need to add that to UserService or access model directly.
     // I'll use userService if I can, or just execute query if I had model access.
-    // AuthService doesn't have User Model injected directly, only UserService.
+    // AuthProviderService doesn't have User Model injected directly, only UserService.
     // I will assume I need to add `getUserByAuthenticatorId` to UserService, OR
     // I can try to find user by `storedChallenge.userId` if it was set (username flow).
     // BUT for "Discoverable credentials" (login without username), userHandle is key.
@@ -985,7 +1125,7 @@ export class AuthService {
     }
 
     const verification = await verifyAuthenticationResponse({
-      response: bodyForLib,
+      response: { ...bodyForLib, clientExtensionResults: {} },
       expectedChallenge: storedChallenge.challenge,
       expectedOrigin: this.getOrigin(),
       expectedRPID: this.getRpId(),
@@ -995,8 +1135,7 @@ export class AuthService {
         counter: authenticator.counter,
         transports: authenticator.transports as AuthenticatorTransport[],
       },
-      requireUserVerification: true,
-    });
+    } as any);
 
     if (verification.verified) {
       const { authenticationInfo } = verification;
@@ -1013,8 +1152,7 @@ export class AuthService {
       await this.passkeyChallengeModel.deleteMany({ challengeId: storedChallenge.challengeId });
 
       // Generate Token
-      const jwtSecret = this.configService.get<string>('jwt.secret');
-      if (!jwtSecret) throw new Error('JWT Config missing');
+      const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
       const jwtToken = signJWT(
         {
@@ -1048,7 +1186,7 @@ export class AuthService {
     jwt: string;
   }> {
     const { response: { clientDataJSON, authenticatorData, signature, userHandle }, id, rawId, type } = body;
-    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type };
+    const bodyForLib = { id, rawId, response: { clientDataJSON, authenticatorData, signature, userHandle }, type, clientExtensionResults: {} };
 
     // Find challenge
     const clientData = JSON.parse(Buffer.from(clientDataJSON, 'base64').toString('utf8'));
@@ -1072,7 +1210,7 @@ export class AuthService {
     if (!user) {
       try {
         user = await (this.userService as any).getUserByCredentialId(id);
-      } catch (e) {
+      } catch (_e) {
         // Method might not exist yet, continue
       }
     }
@@ -1091,7 +1229,7 @@ export class AuthService {
         firstName: '',
         lastName: '',
         displayName: 'Passkey User',
-        avatarUrl: null,
+        avatarUrl: undefined,
       });
 
       if (!user) {
@@ -1112,12 +1250,22 @@ export class AuthService {
       // Check if this is a registration response (has attestationObject)
       if (body.response.attestationObject) {
         // This is registration - verify as registration
+        // Create proper registration body with attestationObject
+        const registrationBodyForLib = {
+          id,
+          rawId,
+          response: {
+            clientDataJSON,
+            attestationObject: body.response.attestationObject,
+          },
+          type,
+          clientExtensionResults: {},
+        };
         const verification = await verifyRegistrationResponse({
-          response: bodyForLib,
+          response: registrationBodyForLib,
           expectedChallenge: storedChallenge.challenge,
           expectedOrigin: this.getOrigin(),
           expectedRPID: this.getRpId(),
-          requireUserVerification: true,
         });
 
         if (!verification.verified) {
@@ -1125,10 +1273,32 @@ export class AuthService {
         }
 
         const { registrationInfo } = verification;
+        const info: any = registrationInfo;
+        const credential = info.credential;
+
+        // Extract values from the nested credential object or root if fallback
+        const credentialID = credential?.id || info.credentialID;
+        const credentialPublicKey = credential?.publicKey || info.credentialPublicKey;
+        const counter = credential?.counter || info.counter;
+
+        const finalCredentialID = credentialID
+          ? Buffer.from(credentialID).toString('base64url')
+          : body.id;
+
+        const finalPublicKey = credentialPublicKey
+          ? Buffer.from(credentialPublicKey).toString('base64url')
+          : '';
+
+        if (!finalPublicKey) {
+          throw new Error('Missing credentialPublicKey from verification result');
+        }
+
         authenticator = {
-          credentialID: Buffer.from(registrationInfo.credentialID).toString('base64url'),
-          credentialPublicKey: Buffer.from(registrationInfo.credentialPublicKey).toString('base64url'),
-          counter: registrationInfo.counter,
+          credentialID: finalCredentialID,
+          credentialPublicKey: finalPublicKey,
+          counter: counter || 0,
+          credentialDeviceType: registrationInfo.credentialDeviceType,
+          credentialBackedUp: registrationInfo.credentialBackedUp,
           transports: body.response.transports || [],
           deviceName: body.deviceName || 'Unknown Device',
         };
@@ -1145,7 +1315,7 @@ export class AuthService {
     } else {
       // Existing authenticator - verify as authentication
       const verification = await verifyAuthenticationResponse({
-        response: bodyForLib,
+        response: { ...bodyForLib, clientExtensionResults: {} },
         expectedChallenge: storedChallenge.challenge,
         expectedOrigin: this.getOrigin(),
         expectedRPID: this.getRpId(),
@@ -1153,10 +1323,9 @@ export class AuthService {
           credentialID: authenticator.credentialID,
           credentialPublicKey: Buffer.from(authenticator.credentialPublicKey, 'base64url'),
           counter: authenticator.counter,
-          transports: authenticator.transports as any[],
+          transports: authenticator.transports as AuthenticatorTransport[],
         },
-        requireUserVerification: true,
-      });
+      } as any);
 
       if (!verification.verified) {
         throw new Error('Authentication verification failed');
@@ -1175,10 +1344,7 @@ export class AuthService {
     await this.passkeyChallengeModel.deleteMany({ challengeId: storedChallenge.challengeId });
 
     // Generate JWT
-    const jwtSecret = this.configService.get<string>('jwt.secret');
-    if (!jwtSecret) {
-      throw new Error('JWT secret not configured');
-    }
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
 
     const jwtToken = signJWT(
       {
@@ -1207,12 +1373,21 @@ export class AuthService {
    * Browser shows existing Passkeys or offers to create new one
    */
   async generatePasskeyAuthenticationOptions(requestRpId?: string) {
+    const rpId = this.getRpId(requestRpId);
     // Use authentication options with empty allowCredentials
     // This enables conditional UI (Passkey autocomplete)
     const options = await generateAuthenticationOptions({
-      rpID: this.getRpId(requestRpId),
+      rpID: rpId,
       allowCredentials: [], // Empty = conditional UI, shows all user's passkeys
-      userVerification: 'preferred',
+      userVerification: 'discouraged',
+    });
+
+    // Log options for debugging
+    this.logger.log(`Authentication options generated:`, {
+      rpId: options.rpId,
+      allowCredentialsCount: 0,
+      userVerification: 'discouraged',
+      challengeLength: options.challenge?.length || 0,
     });
 
     // Save challenge

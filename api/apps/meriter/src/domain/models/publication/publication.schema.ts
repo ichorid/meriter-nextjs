@@ -33,10 +33,29 @@ export interface Publication {
   type: 'text' | 'image' | 'video';
   authorDisplay?: string;
   hashtags: string[];
+  categories?: string[]; // Array of category IDs
   metrics: PublicationMetrics;
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
+  // Taxonomy fields for project categorization
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
+  // Forward fields
+  forwardStatus?: 'pending' | 'forwarded' | null;
+  forwardTargetCommunityId?: string;
+  forwardProposedBy?: string;
+  forwardProposedAt?: Date;
+  deleted?: boolean;
+  deletedAt?: Date;
+  // Edit history
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -84,6 +103,10 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ type: [String], default: [] })
   hashtags!: string[];
 
+  // Categories (predefined tags managed by superadmin)
+  @Prop({ type: [String], default: [] })
+  categories?: string[]; // Array of category IDs
+
   @Prop({
     type: {
       upvotes: { type: Number, default: 0 },
@@ -109,6 +132,53 @@ export class PublicationSchemaClass implements Publication {
   @Prop()
   videoUrl?: string;
 
+  // Taxonomy fields for project categorization
+  @Prop()
+  impactArea?: string;
+
+  @Prop({ type: [String], default: [] })
+  beneficiaries?: string[];
+
+  @Prop({ type: [String], default: [] })
+  methods?: string[];
+
+  @Prop()
+  stage?: string;
+
+  @Prop({ type: [String], default: [] })
+  helpNeeded?: string[];
+
+  // Forward fields
+  @Prop({ type: String, enum: ['pending', 'forwarded'], default: null })
+  forwardStatus?: 'pending' | 'forwarded' | null;
+
+  @Prop()
+  forwardTargetCommunityId?: string;
+
+  @Prop()
+  forwardProposedBy?: string;
+
+  @Prop()
+  forwardProposedAt?: Date;
+
+  @Prop({ default: false })
+  deleted?: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop({
+    type: [{
+      editedBy: { type: String, required: true },
+      editedAt: { type: Date, required: true },
+    }],
+    default: [],
+  })
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
+
   @Prop({ required: true })
   createdAt!: Date;
 
@@ -119,9 +189,13 @@ export class PublicationSchemaClass implements Publication {
 export const PublicationSchema = SchemaFactory.createForClass(PublicationSchemaClass);
 export type PublicationDocument = PublicationSchemaClass & Document;
 
+// Backwards-compatible runtime alias (many tests use `Publication.name`)
+export const Publication = PublicationSchemaClass;
+
 // Add indexes for common queries
 PublicationSchema.index({ communityId: 1, createdAt: -1 });
 PublicationSchema.index({ authorId: 1, createdAt: -1 });
 PublicationSchema.index({ hashtags: 1 });
 PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
+PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community

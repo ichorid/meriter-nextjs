@@ -35,11 +35,6 @@ import type {
     WithdrawAmountDto,
     VoteWithCommentDto,
     CreateTargetlessVoteDto,
-    PostingRules,
-    VotingRules,
-    VisibilityRules,
-    MeritRules,
-    MeritConversion,
     ApiResponse,
     ApiErrorResponse,
     PaginationParams,
@@ -128,11 +123,6 @@ export type {
     WithdrawAmountDto,
     VoteWithCommentDto,
     CreateTargetlessVoteDto,
-    PostingRules,
-    VotingRules,
-    VisibilityRules,
-    MeritRules,
-    MeritConversion,
     ApiResponse,
     ApiErrorResponse,
     PaginationParams,
@@ -267,7 +257,9 @@ export type NotificationType =
     | "comment"
     | "publication"
     | "poll"
-    | "system";
+    | "favorite_update"
+    | "system"
+    | "forward_proposal";
 
 export interface Notification {
     id: string;
@@ -301,6 +293,69 @@ export interface NotificationPreferences {
     system: boolean;
 }
 
+// Community merit and voting settings types (computed fields from API)
+export interface CommunityMeritSettings {
+  dailyQuota: number;
+  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  canEarn: boolean;
+  canSpend: boolean;
+  startingMerits?: number;
+}
+
+export interface CommunityMeritConversion {
+  targetCommunityId: string;
+  ratio: number;
+}
+
+export interface CommunityVotingSettings {
+  spendsMerits: boolean;
+  awardsMerits: boolean;
+  meritConversion?: CommunityMeritConversion;
+  votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
+}
+
+// Legacy rule types (for backwards compatibility with old API responses)
+export interface LegacyPostingRules {
+  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  requiresTeamMembership?: boolean;
+  onlyTeamLead?: boolean;
+  autoMembership?: boolean;
+}
+
+export interface LegacyVotingRules {
+  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  canVoteForOwnPosts?: boolean;
+  participantsCannotVoteForLead?: boolean;
+  spendsMerits?: boolean;
+  awardsMerits?: boolean;
+}
+
+export interface LegacyVisibilityRules {
+  visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  isHidden?: boolean;
+  teamOnly?: boolean;
+}
+
+export interface LegacyMeritRules {
+  dailyQuota: number;
+  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  canEarn: boolean;
+  canSpend: boolean;
+  startingMerits?: number;
+}
+
+// Extended Community type with computed fields from API
+export interface CommunityWithComputedFields extends Community {
+  // Computed fields added by API
+  meritSettings?: CommunityMeritSettings;
+  votingSettings?: CommunityVotingSettings;
+  // Legacy fields (for backwards compatibility)
+  postingRules?: LegacyPostingRules;
+  votingRules?: LegacyVotingRules;
+  visibilityRules?: LegacyVisibilityRules;
+  meritRules?: LegacyMeritRules;
+}
+
 // Augment base types with permissions
 export interface PublicationWithPermissions extends Publication {
   permissions?: ResourcePermissions;
@@ -318,7 +373,7 @@ export interface PollWithPermissions extends Poll {
 export interface GetPublicationsResponse
     extends PaginatedResponse<Publication> {}
 export interface GetCommentsResponse extends PaginatedResponse<Comment> {}
-export interface GetCommunitiesResponse extends PaginatedResponse<Community> {}
+export interface GetCommunitiesResponse extends PaginatedResponse<CommunityWithComputedFields> {}
 export interface GetPollsResponse extends PaginatedResponse<Poll> {}
 
 // Frontend-specific request types (using shared DTOs)

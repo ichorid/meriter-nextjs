@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import typography from '@tailwindcss/typography';
+import animate from 'tailwindcss-animate';
 
 const config: Config = {
   content: [
@@ -13,6 +14,51 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // shadcn/ui theme colors mapped to existing CSS variables
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        card: {
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
+        },
+        popover: {
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
+        },
+        primary: {
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+          content: 'var(--primary-content)',
+        },
+        secondary: {
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+          content: 'var(--secondary-content)',
+        },
+        muted: {
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
+        },
+        accent: {
+          DEFAULT: 'var(--accent)',
+          foreground: 'var(--accent-foreground)',
+          content: 'var(--accent-content)',
+        },
+        destructive: {
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
+        },
+        border: 'var(--border)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
+        chart: {
+          '1': 'var(--chart-1)',
+          '2': 'var(--chart-2)',
+          '3': 'var(--chart-3)',
+          '4': 'var(--chart-4)',
+          '5': 'var(--chart-5)',
+        },
+        // Brand colors (preserved)
         brand: {
           primary: 'var(--brand-primary)',
           secondary: 'var(--brand-secondary)',
@@ -32,18 +78,6 @@ const config: Config = {
           '200': 'var(--base-200)',
           '300': 'var(--base-300)',
           content: 'var(--base-content)',
-        },
-        primary: {
-          DEFAULT: 'var(--primary)',
-          content: 'var(--primary-content)',
-        },
-        secondary: {
-          DEFAULT: 'var(--secondary)',
-          content: 'var(--secondary-content)',
-        },
-        accent: {
-          DEFAULT: 'var(--accent)',
-          content: 'var(--accent-content)',
         },
         neutral: {
           DEFAULT: 'var(--neutral)',
@@ -66,9 +100,28 @@ const config: Config = {
           content: 'var(--error-content)',
         },
       },
+      borderRadius: {
+        lg: 'var(--radius)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
+      },
       fontFamily: {
         sans: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
         heading: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
+      },
+      keyframes: {
+        'accordion-down': {
+          from: { height: '0' },
+          to: { height: 'var(--radix-accordion-content-height)' },
+        },
+        'accordion-up': {
+          from: { height: 'var(--radix-accordion-content-height)' },
+          to: { height: '0' },
+        },
+      },
+      animation: {
+        'accordion-down': 'accordion-down 0.2s ease-out',
+        'accordion-up': 'accordion-up 0.2s ease-out',
       },
     },
   },
@@ -76,6 +129,7 @@ const config: Config = {
     typography({
       target: 'modern',
     }),
+    animate,
   ],
 };
 

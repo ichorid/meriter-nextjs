@@ -8,7 +8,7 @@ The app uses a `globalRole` field on the User model. When set to `'superadmin'`,
 
 ## Prerequisites
 
-- Access to MongoDB (either locally or via connection string)
+- Access to MongoDB (via Docker container or connection string)
 - Know how to identify your user account (see methods below)
 
 ## Step 1: Identify Your User
@@ -17,55 +17,83 @@ First, you need to find your user document in MongoDB. Users are stored in the `
 
 You can identify your user by:
 
-### Method 1: By Telegram ID (if you logged in via Telegram)
+### Method 1: By Username (Recommended - Easiest)
 ```javascript
 // In MongoDB shell or MongoDB Compass
-db.users.findOne({
-  authProvider: "telegram",
-  authId: "YOUR_TELEGRAM_USER_ID"  // Replace with your actual Telegram user ID
-})
-```
-
-### Method 2: By Google ID (if you logged in via Google)
-```javascript
-db.users.findOne({
-  authProvider: "google",
-  authId: "YOUR_GOOGLE_ID"  // Replace with your actual Google user ID
-})
-```
-
-### Method 3: By Username
-```javascript
 db.users.findOne({
   username: "YOUR_USERNAME"  // Replace with your username
 })
 ```
 
-### Method 4: By Display Name
+### Method 2: By OAuth Provider and ID
+The system supports multiple OAuth providers: `google`, `yandex`, `vk`, `telegram`, `apple`, `twitter`, `instagram`, `sber`.
+
+```javascript
+db.users.findOne({
+  authProvider: "google",  // or "yandex", "vk", "telegram", "apple", "twitter", "instagram", "sber"
+  authId: "YOUR_PROVIDER_ID"  // Replace with your provider-specific user ID
+})
+```
+
+### Method 3: By Display Name
 ```javascript
 db.users.findOne({
   displayName: "YOUR_DISPLAY_NAME"  // Replace with your display name
 })
 ```
 
+### Method 4: By User ID
+```javascript
+db.users.findOne({
+  id: "YOUR_USER_ID"  // Replace with your internal user ID
+})
+```
+
 ### Method 5: List All Users
 If you're not sure, you can list all users:
 ```javascript
-db.users.find({}, { displayName: 1, username: 1, authProvider: 1, authId: 1 }).pretty()
+db.users.find({}, { displayName: 1, username: 1, authProvider: 1, authId: 1, id: 1 }).pretty()
 ```
 
 ## Step 2: Update Your User Document
 
 Once you've identified your user document, update it to add the `globalRole: 'superadmin'` field:
 
-### Option A: Using MongoDB Shell
+### Option A: Using Docker Container (Recommended - One-liner)
 
+**By Username:**
+```bash
+docker exec -it meriter-mongodb mongosh meriter --eval 'db.users.updateOne({username: "YOUR_USERNAME"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+```
+
+**By OAuth Provider and ID:**
+```bash
+docker exec -it meriter-mongodb mongosh meriter --eval 'db.users.updateOne({authProvider: "google", authId: "YOUR_PROVIDER_ID"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+```
+
+**By User ID:**
+```bash
+docker exec -it meriter-mongodb mongosh meriter --eval 'db.users.updateOne({id: "YOUR_USER_ID"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+```
+
+If authentication is required (production setup), use:
+```bash
+docker exec -it meriter-mongodb mongosh meriter -u meriter_user -p "$MONGO_APP_PASSWORD" --authenticationDatabase meriter --eval 'db.users.updateOne({username: "YOUR_USERNAME"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+```
+
+### Option B: Using MongoDB Shell (Interactive)
+
+Connect to the container and run MongoDB shell:
+```bash
+docker exec -it meriter-mongodb mongosh meriter
+```
+
+Then run:
 ```javascript
 // Replace the filter with one of the methods from Step 1
 db.users.updateOne(
   {
-    authProvider: "telegram",  // or "google"
-    authId: "YOUR_USER_ID"     // Your actual user ID
+    username: "YOUR_USERNAME"  // or use authProvider/authId, id, or displayName
   },
   {
     $set: {
@@ -76,9 +104,9 @@ db.users.updateOne(
 )
 ```
 
-### Option B: Using MongoDB Compass
+### Option C: Using MongoDB Compass
 
-1. Connect to your MongoDB instance
+1. Connect to your MongoDB instance (use connection string or connect via Docker network)
 2. Navigate to the `meriter` database
 3. Open the `users` collection
 4. Find your user document using one of the filters from Step 1
@@ -86,33 +114,38 @@ db.users.updateOne(
 6. Add or update the `globalRole` field to `"superadmin"`
 7. Save the document
 
-### Option C: Using MongoDB Connection String (Command Line)
+### Option D: Using MongoDB Connection String (Command Line)
 
-If you have the MongoDB connection string, you can use `mongosh`:
-
+If connecting from outside the container:
 ```bash
-mongosh "mongodb://127.0.0.1:27017/meriter" --eval 'db.users.updateOne({authProvider: "telegram", authId: "YOUR_TELEGRAM_ID"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+mongosh "mongodb://127.0.0.1:27017/meriter" --eval 'db.users.updateOne({username: "YOUR_USERNAME"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
 ```
 
 Or with authentication:
 ```bash
-mongosh "mongodb://meriter_user:YOUR_PASSWORD@mongodb:27017/meriter?authSource=meriter" --eval 'db.users.updateOne({authProvider: "telegram", authId: "YOUR_TELEGRAM_ID"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
+mongosh "mongodb://meriter_user:YOUR_PASSWORD@127.0.0.1:27017/meriter?authSource=meriter" --eval 'db.users.updateOne({username: "YOUR_USERNAME"}, {$set: {globalRole: "superadmin", updatedAt: new Date()}})'
 ```
 
 ## Step 3: Verify the Update
 
 Verify that the update was successful:
 
+**Using Docker Container (One-liner):**
+```bash
+docker exec -it meriter-mongodb mongosh meriter --eval 'db.users.findOne({username: "YOUR_USERNAME"}, {displayName: 1, globalRole: 1, id: 1, username: 1})'
+```
+
+**Using MongoDB Shell:**
 ```javascript
 db.users.findOne(
   {
-    authProvider: "telegram",  // or "google"
-    authId: "YOUR_USER_ID"
+    username: "YOUR_USERNAME"  // or use the same filter you used for update
   },
   {
     displayName: 1,
     globalRole: 1,
-    id: 1
+    id: 1,
+    username: 1
   }
 )
 ```
@@ -160,9 +193,10 @@ According to the codebase, superadmin role grants you:
 
 ### Can't find my user document
 
-1. **Check if you've logged in**: You need to have created an account first by logging in
+1. **Check if you've logged in**: You need to have created an account first by logging in through one of the OAuth providers
 2. **Check database name**: Make sure you're looking in the `meriter` database (not `meriter_test`)
-3. **Check authentication provider**: Make sure you're searching with the correct `authProvider` value (`"telegram"` or `"google"`)
+3. **Check authentication provider**: Make sure you're searching with the correct `authProvider` value (e.g., `"google"`, `"yandex"`, `"vk"`, `"telegram"`, `"apple"`, `"twitter"`, `"instagram"`, `"sber"`)
+4. **Check username**: Username is optional and may not be set for all users. Try using `authProvider` and `authId` instead
 
 ## Security Note
 

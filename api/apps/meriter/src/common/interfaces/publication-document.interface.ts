@@ -9,6 +9,7 @@ export interface PublicationDocument {
   content: string;
   type: 'text' | 'image' | 'video';
   hashtags: string[];
+  categories?: string[]; // Array of category IDs
   metrics: {
     upvotes: number;
     downvotes: number;
@@ -21,6 +22,23 @@ export interface PublicationDocument {
   isProject?: boolean;
   title?: string;
   description?: string;
+  // Taxonomy fields for project categorization
+  impactArea?: string;
+  beneficiaries?: string[];
+  methods?: string[];
+  stage?: string;
+  helpNeeded?: string[];
+  // Forward fields
+  forwardStatus?: 'pending' | 'forwarded' | null;
+  forwardTargetCommunityId?: string;
+  forwardProposedBy?: string;
+  forwardProposedAt?: Date;
+  deleted?: boolean;
+  deletedAt?: Date;
+  editHistory?: Array<{
+    editedBy: string;
+    editedAt: Date;
+  }>;
   createdAt: Date;
   updatedAt: Date;
 }
