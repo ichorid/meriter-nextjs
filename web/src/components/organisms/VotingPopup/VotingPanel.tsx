@@ -436,24 +436,24 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             <div className="text-sm font-medium text-base-content">
                                 {t("dailyQuotaLabel")}
                             </div>
-                            <div className="relative h-12 bg-base-200 rounded-lg border-2 border-base-300 overflow-hidden">
+                            <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                                 {/* Progress fill - shows how much of quota will be used */}
-                                {isPositive && absAmount > 0 && (
-                                    <div
-                                        className="absolute left-0 top-0 bottom-0 transition-all bg-primary"
-                                        style={{
-                                            width: `${Math.min(100, (voteBreakdown.quotaAmount / Math.max(1, dailyQuota || quotaRemaining + usedToday)) * 100)}%`,
-                                        }}
-                                    />
-                                )}
+                                {(() => {
+                                    const fillPercent = isPositive && absAmount > 0 && voteBreakdown.quotaAmount > 0
+                                        ? Math.min(100, (voteBreakdown.quotaAmount / Math.max(1, dailyQuota || quotaRemaining + usedToday)) * 100)
+                                        : 0;
+                                    return fillPercent > 0 ? (
+                                        <div
+                                            className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
+                                            style={{
+                                                width: `${fillPercent}%`,
+                                            }}
+                                        />
+                                    ) : null;
+                                })()}
                                 {/* Available text overlay */}
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <span className={classList(
-                                        "text-xs font-medium z-10",
-                                        isPositive && absAmount > 0 && voteBreakdown.quotaAmount > 0
-                                            ? "text-white drop-shadow-sm"
-                                            : "text-base-content/70"
-                                    )}>
+                                    <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
                                         {t("available")} {quotaRemaining}
                                     </span>
                                 </div>
@@ -466,26 +466,26 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 <div className="text-sm font-medium text-base-content">
                                     {t("walletLabel")}
                                 </div>
-                                <div className="relative h-12 bg-base-200 rounded-lg border-2 border-base-300 overflow-hidden">
+                                <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                                     {/* Progress fill - shows how much of wallet will be used */}
                                     {/* For upvotes: only fill when quota is fully used */}
                                     {/* For downvotes: always fill */}
-                                    {absAmount > 0 && voteBreakdown.walletAmount > 0 && (
-                                        <div
-                                            className="absolute left-0 top-0 bottom-0 transition-all bg-primary"
-                                            style={{
-                                                width: `${Math.min(100, (voteBreakdown.walletAmount / Math.max(1, walletBalance)) * 100)}%`,
-                                            }}
-                                        />
-                                    )}
+                                    {(() => {
+                                        const fillPercent = absAmount > 0 && voteBreakdown.walletAmount > 0
+                                            ? Math.min(100, (voteBreakdown.walletAmount / Math.max(1, walletBalance)) * 100)
+                                            : 0;
+                                        return fillPercent > 0 ? (
+                                            <div
+                                                className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
+                                                style={{
+                                                    width: `${fillPercent}%`,
+                                                }}
+                                            />
+                                        ) : null;
+                                    })()}
                                     {/* Available text overlay */}
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                        <span className={classList(
-                                            "text-xs font-medium z-10",
-                                            absAmount > 0 && voteBreakdown.walletAmount > 0
-                                                ? "text-white drop-shadow-sm"
-                                                : "text-base-content/70"
-                                        )}>
+                                        <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
                                             {t("available")} {walletBalance}
                                         </span>
                                     </div>
@@ -602,7 +602,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
                     {/* Available Progress Bar */}
                     <div className="flex flex-col gap-2">
-                        <div className="relative h-12 bg-base-200 rounded-lg border-2 border-base-300 overflow-hidden">
+                        <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                             {/* Progress fill - shows how much is available */}
                             {(() => {
                                 const available = Math.max(0, maxPlus - amount);
@@ -611,7 +611,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 if (available > 0 && fillPercent > 0) {
                                     return (
                                         <div
-                                            className="absolute left-0 top-0 bottom-0 transition-all bg-primary"
+                                            className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
                                             style={{
                                                 width: `${fillPercent}%`,
                                             }}
@@ -622,21 +622,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             })()}
                             {/* Available text overlay */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                                {(() => {
-                                    const available = Math.max(0, maxPlus - amount);
-                                    const fillPercent = maxPlus > 0 ? Math.min(100, (available / maxPlus) * 100) : 0;
-                                    const hasFill = available > 0 && fillPercent > 0;
-                                    return (
-                                        <span className={classList(
-                                            "text-xs font-medium z-10",
-                                            hasFill
-                                                ? "text-white drop-shadow-sm"
-                                                : "text-base-content/70"
-                                        )}>
-                                            {tShared("available")} {available}
-                                        </span>
-                                    );
-                                })()}
+                                <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
+                                    {tShared("available")} {Math.max(0, maxPlus - amount)}
+                                </span>
                             </div>
                         </div>
                     </div>
