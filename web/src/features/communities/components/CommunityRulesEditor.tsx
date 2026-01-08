@@ -135,13 +135,24 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
 
-  // Store original rules for reset functionality
+  // Store original rules and settings for reset functionality
   const [originalRules, setOriginalRules] = useState({
     postingRules: { ...postingRules },
     votingRules: { ...votingRules },
     visibilityRules: { ...visibilityRules },
     meritRules: { ...meritRules },
     linkedCurrencies: [...linkedCurrencies],
+  });
+
+  // Store original settings for change detection
+  const [originalSettings, setOriginalSettings] = useState({
+    dailyEmission: String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100),
+    postCost: String(community.settings?.postCost ?? 1),
+    pollCost: String(community.settings?.pollCost ?? 1),
+    forwardCost: String(community.settings?.forwardCost ?? 1),
+    editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
+    allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+    votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own',
   });
 
   // History of rule changes
@@ -241,6 +252,17 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       meritRules: JSON.parse(JSON.stringify(initialMeritRules)),
       linkedCurrencies: [...initialLinkedCurrencies],
     });
+
+    // Initialize original settings
+    setOriginalSettings({
+      dailyEmission: String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100),
+      postCost: String(community.settings?.postCost ?? 1),
+      pollCost: String(community.settings?.pollCost ?? 1),
+      forwardCost: String(community.settings?.forwardCost ?? 1),
+      editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
+      allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+      votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own',
+    });
   }, [community.id]); // Only when community changes
 
   const validateRules = (): boolean => {
@@ -323,6 +345,16 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         linkedCurrencies: [...linkedCurrencies],
       };
       setOriginalRules(savedRules);
+      // Update original settings after successful save
+      setOriginalSettings({
+        dailyEmission,
+        postCost,
+        pollCost,
+        forwardCost,
+        editWindowMinutes,
+        allowEditByOthers,
+        votingRestriction,
+      });
       // Save to history
       saveToHistory(savedRules);
     } finally {
@@ -348,17 +380,39 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setVisibilityRules({ ...originalRules.visibilityRules });
     setMeritRules({ ...originalRules.meritRules });
     setLinkedCurrencies([...originalRules.linkedCurrencies]);
+    // Reset settings
+    setDailyEmission(originalSettings.dailyEmission);
+    setPostCost(originalSettings.postCost);
+    setPollCost(originalSettings.pollCost);
+    setForwardCost(originalSettings.forwardCost);
+    setEditWindowMinutes(originalSettings.editWindowMinutes);
+    setAllowEditByOthers(originalSettings.allowEditByOthers);
+    setVotingRestriction(originalSettings.votingRestriction);
     setValidationErrors({});
   };
 
   const hasChanges = () => {
-    return (
+    // Check rules changes
+    const rulesChanged = (
       JSON.stringify(postingRules) !== JSON.stringify(originalRules.postingRules) ||
       JSON.stringify(votingRules) !== JSON.stringify(originalRules.votingRules) ||
       JSON.stringify(visibilityRules) !== JSON.stringify(originalRules.visibilityRules) ||
       JSON.stringify(meritRules) !== JSON.stringify(originalRules.meritRules) ||
       JSON.stringify(linkedCurrencies) !== JSON.stringify(originalRules.linkedCurrencies)
     );
+
+    // Check settings changes
+    const settingsChanged = (
+      dailyEmission !== originalSettings.dailyEmission ||
+      postCost !== originalSettings.postCost ||
+      pollCost !== originalSettings.pollCost ||
+      forwardCost !== originalSettings.forwardCost ||
+      editWindowMinutes !== originalSettings.editWindowMinutes ||
+      allowEditByOthers !== originalSettings.allowEditByOthers ||
+      votingRestriction !== originalSettings.votingRestriction
+    );
+
+    return rulesChanged || settingsChanged;
   };
 
   const exportRules = () => {

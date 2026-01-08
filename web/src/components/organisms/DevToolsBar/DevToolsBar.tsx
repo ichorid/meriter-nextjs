@@ -19,6 +19,7 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
   const addToast = useToastStore((state) => state.addToast);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHidden, setIsHidden] = useState(false);
   const [currentLocale, setCurrentLocale] = useState<Locale>(DEFAULT_LOCALE);
 
   // Detect current locale on mount
@@ -102,6 +103,23 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
     // Reload page to apply new locale
     window.location.reload();
   };
+
+  if (isHidden) {
+    return (
+      <div className={cn('fixed top-0 left-0 right-0 z-50 bg-base-200/95 backdrop-blur-sm border-b border-base-300', className)}>
+        <div className="container mx-auto px-4 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsHidden(false)}
+            className="h-6 px-2 text-xs"
+          >
+            Dev Tools
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (isCollapsed) {
     return (
@@ -215,8 +233,9 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsCollapsed(true)}
+            onClick={() => setIsHidden(true)}
             className="h-6 w-6 p-0"
+            aria-label="Close dev tools"
           >
             <X className="w-3 h-3" />
           </Button>
