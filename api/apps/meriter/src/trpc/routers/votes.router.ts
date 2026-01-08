@@ -456,6 +456,115 @@ export const votesRouter = router({
     }),
 
   /**
+   * Create vote from fake user (DEV only, superadmin only)
+   * Bypasses all balance/quota/permission checks for testing purposes
+   */
+  createFromFakeUser: protectedProcedure
+    .input(
+      z.object({
+        publicationId: z.string().optional(),
+        communityId: z.string(),
+        targetType: z.enum(['publication', 'vote']),
+        targetId: z.string(),
+        quotaAmount: z.number().min(0).optional(),
+        walletAmount: z.number().min(0).optional(),
+        comment: z.string().optional(),
+        direction: z.enum(['up', 'down']).optional(),
+        images: z.array(z.string()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if test auth mode or fake data mode is enabled
+      const testAuthMode = ctx.configService.get('dev')?.testAuthMode ?? false;
+      const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
+      if (!testAuthMode && !fakeDataMode) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Test auth mode or fake data mode is not enabled',
+        });
+      }
+
+      // Check if user is superadmin
+      if (!ctx.user || ctx.user.globalRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can create votes from fake users',
+        });
+      }
+
+      // Validate amounts
+      const quotaAmount = input.quotaAmount ?? 0;
+      const walletAmount = input.walletAmount ?? 0;
+      const totalAmount = quotaAmount + walletAmount;
+
+      if (totalAmount <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'At least one of quotaAmount or walletAmount must be greater than zero',
+        });
+      }
+
+      // Determine direction
+      const direction: 'up' | 'down' = input.direction ?? 'up';
+
+      // Get community
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Create a fake user ID for the vote
+      // Use a consistent fake user ID based on the community
+      const fakeUserId = `fake_user_${input.communityId}_${Date.now()}`;
+
+      // Create vote directly without balance/quota/permission checks
+      const vote = await ctx.voteService.createVote(
+        fakeUserId,
+        input.targetType,
+        input.targetId,
+        quotaAmount,
+        walletAmount,
+        direction,
+        input.comment || '',
+        input.communityId,
+        input.images,
+      );
+
+      // Update publication metrics if voting on a publication
+      if (input.targetType === 'publication') {
+        const totalAmount = quotaAmount + walletAmount;
+        await ctx.publicationService.voteOnPublication(
+          input.targetId,
+          fakeUserId,
+          totalAmount,
+          direction,
+        );
+      }
+
+      // NOTE: We do NOT deduct from wallet for fake votes
+      // This is intentional - fake votes are for testing only
+
+      // Return vote as plain object
+      return {
+        id: vote.id,
+        targetType: vote.targetType,
+        targetId: vote.targetId,
+        userId: vote.userId,
+        direction: vote.direction,
+        amountQuota: vote.amountQuota,
+        amountWallet: vote.amountWallet,
+        communityId: vote.communityId,
+        comment: vote.comment,
+        images: vote.images || [],
+        createdAt: vote.createdAt.toISOString(),
+        updatedAt: vote.updatedAt?.toISOString() || vote.createdAt.toISOString(),
+      };
+    }),
+
+  /**
    * Delete vote
    */
   delete: protectedProcedure
