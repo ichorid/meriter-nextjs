@@ -12,6 +12,8 @@ import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { FoldableInviteInput } from '@/components/organisms/Profile/FoldableInviteInput';
 import { useProfileData } from '@/hooks/useProfileData';
+import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuotaSection';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/shadcn/button';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { routes } from '@/lib/constants/routes';
@@ -27,6 +29,13 @@ function ProfilePageComponent() {
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: roles } = useUserRoles(user?.id || '');
+  const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>('profile.meritsExpanded', true);
+
+  // Get unique community IDs from user roles
+  const communityIds = useMemo(() => {
+    if (!roles) return [];
+    return Array.from(new Set(roles.map(role => role.communityId).filter(Boolean)));
+  }, [roles]);
 
   // Get profile content data for cards
   const {
@@ -133,6 +142,25 @@ function ProfilePageComponent() {
             isLoading={contentCardsLoading}
           />
         </div>
+
+        {/* Merits & Quota Section */}
+        {communityIds.length > 0 && (
+          <div>
+            <Separator className="bg-base-300" />
+            <MeritsAndQuotaSection 
+              userId={user.id} 
+              communityIds={communityIds} 
+              userRoles={userRolesArray.map(role => ({
+                id: role.id || '',
+                communityId: role.communityId || '',
+                communityName: role.communityName,
+                role: role.role,
+              }))}
+              expanded={meritsExpanded}
+              onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
+            />
+          </div>
+        )}
 
         {/* Foldable Invite Input Section - Only show if user has lead/participant roles */}
         {userRolesArray.some(r => r.role === 'lead' || r.role === 'participant') && (
