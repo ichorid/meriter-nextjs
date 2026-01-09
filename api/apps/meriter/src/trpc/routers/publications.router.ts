@@ -1336,15 +1336,39 @@ export const publicationsRouter = router({
       // Deduct from wallet (with sync for MD/OB)
       if (forwardCost > 0) {
         try {
-          await syncDebitForMarathonAndFutureVision(
-            userId,
-            sourceCommunityId,
-            forwardCost,
-            'forward_proposal',
-            publicationId,
-            'Payment for forwarding proposal',
-            ctx,
-          );
+          const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
+          const isMarathonOrFutureVision = sourceCommunity?.typeTag === 'marathon-of-good' || sourceCommunity?.typeTag === 'future-vision';
+          
+          if (isMarathonOrFutureVision) {
+            // Use sync for MD/OB
+            await syncDebitForMarathonAndFutureVision(
+              userId,
+              sourceCommunityId,
+              forwardCost,
+              'forward_proposal',
+              publicationId,
+              'Payment for forwarding proposal',
+              ctx,
+            );
+          } else {
+            // Regular debit for other communities
+            const currency = sourceCommunity?.settings?.currencyNames || {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            };
+            await ctx.walletService.addTransaction(
+              userId,
+              sourceCommunityId,
+              'debit',
+              forwardCost,
+              'personal',
+              'forward_proposal',
+              publicationId,
+              currency,
+              'Payment for forwarding proposal',
+            );
+          }
         } catch (_error) {
           // Don't fail the request if wallet deduction fails - proposal is already created
         }

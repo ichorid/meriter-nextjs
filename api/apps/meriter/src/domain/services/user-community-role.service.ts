@@ -34,12 +34,13 @@ export class UserCommunityRoleService {
     userId: string,
     communityId: string,
   ): Promise<UserCommunityRoleDocument | null> {
-    return this.userCommunityRoleModel
+    const doc = await this.userCommunityRoleModel
       .findOne({
         userId,
         communityId,
       })
       .exec();
+    return doc;
   }
 
   /**
