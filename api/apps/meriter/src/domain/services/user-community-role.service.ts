@@ -91,7 +91,7 @@ export class UserCommunityRoleService {
     role: 'lead' | 'participant' | 'viewer',
     skipSync: boolean = false, // Recursion guard to prevent infinite loops
   ): Promise<UserCommunityRoleDocument> {
-    // Get existing role (without lean to check if it exists)
+    // Get existing role to check previous role for sync
     const existingDoc = await this.userCommunityRoleModel
       .findOne({
         userId,
@@ -100,33 +100,30 @@ export class UserCommunityRoleService {
       .exec();
     const previousRole = existingDoc?.role;
 
-    // Update or create the role
-    let result: UserCommunityRoleDocument;
-    if (existingDoc) {
-      // Use updateOne to ensure the role is saved correctly
-      await this.userCommunityRoleModel.updateOne(
-        { userId, communityId },
-        { 
-          $set: { 
-            role,
-            updatedAt: new Date(),
-          }
-        }
-      );
-      // Re-fetch to get the updated document
-      result = await this.userCommunityRoleModel
-        .findOne({ userId, communityId })
-        .exec() as UserCommunityRoleDocument;
-    } else {
-      const newRole = new this.userCommunityRoleModel({
-        id: uid(32),
-        userId,
-        communityId,
-        role,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      result = await newRole.save();
+    // Use findOneAndUpdate with upsert to ensure the role is created/updated correctly
+    const result = await this.userCommunityRoleModel.findOneAndUpdate(
+      { userId, communityId },
+      {
+        $set: {
+          role,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          id: existingDoc?.id || uid(32),
+          userId,
+          communityId,
+          createdAt: new Date(),
+        },
+      },
+      {
+        new: true, // Return the updated document
+        upsert: true, // Create if it doesn't exist
+        runValidators: true, // Run schema validators
+      }
+    ).exec();
+
+    if (!result) {
+      throw new Error(`Failed to set role for user ${userId} in community ${communityId}`);
     }
 
     // Synchronize lead status between marathon-of-good and future-vision
