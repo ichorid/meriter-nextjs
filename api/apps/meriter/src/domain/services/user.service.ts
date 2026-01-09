@@ -244,11 +244,18 @@ export class UserService implements OnModuleInit {
       .findOne({ typeTag: 'support' })
       .lean();
 
-    if (!futureVision || !marathonOfGood || !teamProjects || !support) {
-      this.logger.warn(
-        'Base communities not found. They should be created on server startup.',
-      );
-      return;
+    // Log warnings for missing communities but continue processing available ones
+    if (!futureVision) {
+      this.logger.warn('Future Vision community not found');
+    }
+    if (!marathonOfGood) {
+      this.logger.warn('Marathon of Good community not found');
+    }
+    if (!teamProjects) {
+      this.logger.warn('Team Projects community not found');
+    }
+    if (!support) {
+      this.logger.warn('Support community not found');
     }
 
     // Check if user is already a member
@@ -259,13 +266,13 @@ export class UserService implements OnModuleInit {
     }
 
     const memberships = user.communityMemberships || [];
-    const needsToJoinFV = !memberships.includes(futureVision.id);
-    const needsToJoinMG = !memberships.includes(marathonOfGood.id);
-    const needsToJoinTP = !memberships.includes(teamProjects.id);
-    const needsToJoinSupport = !memberships.includes(support.id);
+    const needsToJoinFV = futureVision && !memberships.includes(futureVision.id);
+    const needsToJoinMG = marathonOfGood && !memberships.includes(marathonOfGood.id);
+    const needsToJoinTP = teamProjects && !memberships.includes(teamProjects.id);
+    const needsToJoinSupport = support && !memberships.includes(support.id);
 
     // Add user to Future Vision if needed
-    if (needsToJoinFV) {
+    if (needsToJoinFV && futureVision) {
       this.logger.log(`Adding user ${userId} to Future Vision`);
       try {
         // 1. Check if user has any role in this community
@@ -312,7 +319,7 @@ export class UserService implements OnModuleInit {
     }
 
     // Add user to Marathon of Good if needed
-    if (needsToJoinMG) {
+    if (needsToJoinMG && marathonOfGood) {
       this.logger.log(`Adding user ${userId} to Marathon of Good`);
       try {
         // 1. Check if user has any role in this community
@@ -361,7 +368,7 @@ export class UserService implements OnModuleInit {
     }
 
     // Add user to Team Projects if needed
-    if (needsToJoinTP) {
+    if (needsToJoinTP && teamProjects) {
       this.logger.log(`Adding user ${userId} to Team Projects`);
       try {
         // 1. Check if user has any role in this community
@@ -411,7 +418,7 @@ export class UserService implements OnModuleInit {
     }
 
     // Add user to Support if needed
-    if (needsToJoinSupport) {
+    if (needsToJoinSupport && support) {
       this.logger.log(`Adding user ${userId} to Support`);
       try {
         // 1. Check if user has any role in this community
