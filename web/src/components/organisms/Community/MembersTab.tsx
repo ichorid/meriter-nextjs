@@ -8,12 +8,13 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
-import { Loader2, Users, UserX } from 'lucide-react';
+import { Loader2, Users, UserX, Coins } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { MemberInfoCard } from './MemberInfoCard';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { AddMeritsDialog } from './AddMeritsDialog';
 
 interface MembersTabProps {
     communityId: string;
@@ -27,6 +28,8 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId);
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
     const [searchQuery, setSearchQuery] = useState('');
+    const [addMeritsDialogOpen, setAddMeritsDialogOpen] = useState(false);
+    const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
     const { canView: canViewMerits } = useCanViewUserMerits(communityId);
     const { user } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -147,6 +150,19 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                 quota={member.quota}
                                 onClick={() => router.push(routes.userProfile(member.id))}
                             />
+                            {canRemoveMembers && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedMember({ id: member.id, name: member.displayName || member.username || tCommon('unknownUser') });
+                                        setAddMeritsDialogOpen(true);
+                                    }}
+                                    className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                    title={t('members.addMerits') || 'Add merits'}
+                                >
+                                    <Coins className="w-4 h-4" />
+                                </button>
+                            )}
                             {canRemoveMembers && member.id !== user?.id && (
                                 <button
                                     onClick={(e) => {
@@ -154,7 +170,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                         handleRemoveMember(member.id, member.displayName || member.username || tCommon('unknownUser'));
                                     }}
                                     disabled={isRemoving}
-                                    className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
                                     title={t('members.remove') || 'Remove member'}
                                 >
                                     {isRemoving ? (
@@ -178,6 +194,18 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                     </p>
                 </div>
             ) : null}
+            {selectedMember && (
+                <AddMeritsDialog
+                    open={addMeritsDialogOpen}
+                    onOpenChange={setAddMeritsDialogOpen}
+                    userId={selectedMember.id}
+                    userName={selectedMember.name}
+                    communityId={communityId}
+                    onSuccess={() => {
+                        // Refetch members data if needed
+                    }}
+                />
+            )}
         </div>
     );
 };

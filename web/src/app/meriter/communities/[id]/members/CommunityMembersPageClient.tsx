@@ -124,37 +124,37 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                                             hideTeamInfo={hideTeamInfo}
                                             canViewMerits={canViewMerits}
                                             onClick={() => router.push(routes.userProfile(member.id))}
-                                            hideChevron={isAdmin && member.id !== user?.id}
+                                            hideChevron={isAdmin}
                                         />
+                                        {isAdmin && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setSelectedMember({ id: member.id, name: member.displayName || member.username });
+                                                    setAddMeritsDialogOpen(true);
+                                                }}
+                                                className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                title={t('members.addMerits')}
+                                            >
+                                                <Coins className="w-4 h-4" />
+                                            </button>
+                                        )}
                                         {isAdmin && member.id !== user?.id && (
-                                            <>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setSelectedMember({ id: member.id, name: member.displayName || member.username });
-                                                        setAddMeritsDialogOpen(true);
-                                                    }}
-                                                    className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                    title={t('members.addMerits')}
-                                                >
-                                                    <Coins className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRemoveMember(member.id, member.displayName || member.username);
-                                                    }}
-                                                    disabled={isRemoving}
-                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                    title={t('members.remove')}
-                                                >
-                                                    {isRemoving ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                    ) : (
-                                                        <UserX className="w-4 h-4" />
-                                                    )}
-                                                </button>
-                                            </>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveMember(member.id, member.displayName || member.username);
+                                                }}
+                                                disabled={isRemoving}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                title={t('members.remove')}
+                                            >
+                                                {isRemoving ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <UserX className="w-4 h-4" />
+                                                )}
+                                            </button>
                                         )}
                                     </div>
                                 ))}
