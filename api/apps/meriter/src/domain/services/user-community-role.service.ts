@@ -39,14 +39,8 @@ export class UserCommunityRoleService {
         userId,
         communityId,
       })
-      .lean()
       .exec();
-    // Convert lean document to Mongoose document for compatibility
-    if (!doc) {
-      return null;
-    }
-    // Return as UserCommunityRoleDocument (the interface allows this)
-    return doc as unknown as UserCommunityRoleDocument;
+    return doc;
   }
 
   /**
@@ -109,9 +103,20 @@ export class UserCommunityRoleService {
     // Update or create the role
     let result: UserCommunityRoleDocument;
     if (existingDoc) {
-      existingDoc.role = role;
-      existingDoc.updatedAt = new Date();
-      result = await existingDoc.save();
+      // Use updateOne to ensure the role is saved correctly
+      await this.userCommunityRoleModel.updateOne(
+        { userId, communityId },
+        { 
+          $set: { 
+            role,
+            updatedAt: new Date(),
+          }
+        }
+      );
+      // Re-fetch to get the updated document
+      result = await this.userCommunityRoleModel
+        .findOne({ userId, communityId })
+        .exec() as UserCommunityRoleDocument;
     } else {
       const newRole = new this.userCommunityRoleModel({
         id: uid(32),
