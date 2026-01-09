@@ -56,6 +56,45 @@ async function syncDebitForMarathonAndFutureVision(
     genitive: 'merits',
   };
 
+  // Get current balances to ensure synchronization
+  const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
+  const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
+
+  const mdBalance = mdWallet?.getBalance() ?? 0;
+  const fvBalance = fvWallet?.getBalance() ?? 0;
+
+  // Synchronize balances if they differ (credit the wallet with lower balance)
+  if (mdBalance !== fvBalance) {
+    const balanceDiff = Math.abs(mdBalance - fvBalance);
+    if (mdBalance < fvBalance) {
+      // MD has less, credit it to match FV
+      await ctx.walletService.addTransaction(
+        userId,
+        marathonCommunity.id,
+        'credit',
+        balanceDiff,
+        'personal',
+        'balance_sync',
+        `sync_${Date.now()}`,
+        mdCurrency,
+        `Balance sync: Future Vision → Marathon of Good`,
+      );
+    } else {
+      // FV has less, credit it to match MD
+      await ctx.walletService.addTransaction(
+        userId,
+        futureVisionCommunity.id,
+        'credit',
+        balanceDiff,
+        'personal',
+        'balance_sync',
+        `sync_${Date.now()}`,
+        fvCurrency,
+        `Balance sync: Marathon of Good → Future Vision`,
+      );
+    }
+  }
+
   // Debit from both wallets simultaneously
   await Promise.all([
     ctx.walletService.addTransaction(
