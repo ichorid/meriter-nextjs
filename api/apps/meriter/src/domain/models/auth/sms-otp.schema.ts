@@ -15,7 +15,7 @@ export class SmsOtp {
     @Prop({ required: true })
     otpCode!: string; // 6-digit code
 
-    @Prop({ required: true, index: true })
+    @Prop({ required: true })
     expiresAt!: Date; // TTL: 5 minutes from creation
 
     @Prop({ default: false })

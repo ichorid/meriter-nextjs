@@ -122,8 +122,25 @@ async function syncDebitForMarathonAndFutureVision(
   const isMarathon = community.typeTag === 'marathon-of-good';
   const isFutureVision = community.typeTag === 'future-vision';
 
-  // Only sync for MD or OB
+  // For regular communities (not Marathon or Future Vision), just debit from current community
   if (!isMarathon && !isFutureVision) {
+    const currentCurrency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    await ctx.walletService.addTransaction(
+      userId,
+      communityId,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      currentCurrency,
+      description,
+    );
     return;
   }
 
@@ -135,86 +152,104 @@ async function syncDebitForMarathonAndFutureVision(
     ? community
     : await ctx.communityService.getCommunityByTypeTag('future-vision');
 
-  if (!marathonCommunity || !futureVisionCommunity) {
-    return; // One of communities not found, skip sync
-  }
+  // If both communities exist, sync balances and debit from both
+  if (marathonCommunity && futureVisionCommunity) {
+    const mdCurrency = marathonCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
 
-  const mdCurrency = marathonCommunity.settings?.currencyNames || {
-    singular: 'merit',
-    plural: 'merits',
-    genitive: 'merits',
-  };
+    const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
 
-  const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-    singular: 'merit',
-    plural: 'merits',
-    genitive: 'merits',
-  };
+    // Get current balances to ensure synchronization
+    const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
+    const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
 
-  // Get current balances to ensure synchronization
-  const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
-  const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
+    const mdBalance = mdWallet?.getBalance() ?? 0;
+    const fvBalance = fvWallet?.getBalance() ?? 0;
 
-  const mdBalance = mdWallet?.getBalance() ?? 0;
-  const fvBalance = fvWallet?.getBalance() ?? 0;
+    // Synchronize balances if they differ (credit the wallet with lower balance)
+    if (mdBalance !== fvBalance) {
+      const balanceDiff = Math.abs(mdBalance - fvBalance);
+      if (mdBalance < fvBalance) {
+        // MD has less, credit it to match FV
+        await ctx.walletService.addTransaction(
+          userId,
+          marathonCommunity.id,
+          'credit',
+          balanceDiff,
+          'personal',
+          'balance_sync',
+          `sync_${Date.now()}`,
+          mdCurrency,
+          `Balance sync: Future Vision → Marathon of Good`,
+        );
+      } else {
+        // FV has less, credit it to match MD
+        await ctx.walletService.addTransaction(
+          userId,
+          futureVisionCommunity.id,
+          'credit',
+          balanceDiff,
+          'personal',
+          'balance_sync',
+          `sync_${Date.now()}`,
+          fvCurrency,
+          `Balance sync: Marathon of Good → Future Vision`,
+        );
+      }
+    }
 
-  // Synchronize balances if they differ (credit the wallet with lower balance)
-  if (mdBalance !== fvBalance) {
-    const balanceDiff = Math.abs(mdBalance - fvBalance);
-    if (mdBalance < fvBalance) {
-      // MD has less, credit it to match FV
-      await ctx.walletService.addTransaction(
+    // Debit from both wallets simultaneously
+    await Promise.all([
+      ctx.walletService.addTransaction(
         userId,
         marathonCommunity.id,
-        'credit',
-        balanceDiff,
+        'debit',
+        amount,
         'personal',
-        'balance_sync',
-        `sync_${Date.now()}`,
+        transactionType,
+        referenceId,
         mdCurrency,
-        `Balance sync: Future Vision → Marathon of Good`,
-      );
-    } else {
-      // FV has less, credit it to match MD
-      await ctx.walletService.addTransaction(
+        `${description} (Marathon of Good)`,
+      ),
+      ctx.walletService.addTransaction(
         userId,
         futureVisionCommunity.id,
-        'credit',
-        balanceDiff,
+        'debit',
+        amount,
         'personal',
-        'balance_sync',
-        `sync_${Date.now()}`,
+        transactionType,
+        referenceId,
         fvCurrency,
-        `Balance sync: Marathon of Good → Future Vision`,
-      );
-    }
-  }
+        `${description} (Future Vision)`,
+      ),
+    ]);
+  } else {
+    // Only one community exists, debit only from the current community
+    const currentCurrency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
 
-  // Debit from both wallets simultaneously
-  await Promise.all([
-    ctx.walletService.addTransaction(
+    await ctx.walletService.addTransaction(
       userId,
-      marathonCommunity.id,
+      communityId,
       'debit',
       amount,
       'personal',
       transactionType,
       referenceId,
-      mdCurrency,
-      `${description} (Marathon of Good)`,
-    ),
-    ctx.walletService.addTransaction(
-      userId,
-      futureVisionCommunity.id,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      fvCurrency,
-      `${description} (Future Vision)`,
-    ),
-  ]);
+      currentCurrency,
+      description,
+    );
+  }
 }
 
 /**

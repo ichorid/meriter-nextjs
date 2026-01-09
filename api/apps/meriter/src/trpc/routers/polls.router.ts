@@ -27,8 +27,25 @@ async function syncDebitForMarathonAndFutureVision(
   const isMarathon = community.typeTag === 'marathon-of-good';
   const isFutureVision = community.typeTag === 'future-vision';
 
-  // Only sync for MD or OB
+  // For regular communities (not Marathon or Future Vision), just debit from current community
   if (!isMarathon && !isFutureVision) {
+    const currentCurrency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    await ctx.walletService.addTransaction(
+      userId,
+      communityId,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      currentCurrency,
+      description,
+    );
     return;
   }
 
@@ -40,9 +57,8 @@ async function syncDebitForMarathonAndFutureVision(
     ? community
     : await ctx.communityService.getCommunityByTypeTag('future-vision');
 
-  if (!marathonCommunity || !futureVisionCommunity) {
-    return; // One of communities not found, skip sync
-  }
+  // If both communities exist, sync balances and debit from both
+  if (marathonCommunity && futureVisionCommunity) {
 
   const mdCurrency = marathonCommunity.settings?.currencyNames || {
     singular: 'merit',
@@ -95,31 +111,51 @@ async function syncDebitForMarathonAndFutureVision(
     }
   }
 
-  // Debit from both wallets simultaneously
-  await Promise.all([
-    ctx.walletService.addTransaction(
+    // Debit from both wallets simultaneously
+    await Promise.all([
+      ctx.walletService.addTransaction(
+        userId,
+        marathonCommunity.id,
+        'debit',
+        amount,
+        'personal',
+        transactionType,
+        referenceId,
+        mdCurrency,
+        `${description} (Marathon of Good)`,
+      ),
+      ctx.walletService.addTransaction(
+        userId,
+        futureVisionCommunity.id,
+        'debit',
+        amount,
+        'personal',
+        transactionType,
+        referenceId,
+        fvCurrency,
+        `${description} (Future Vision)`,
+      ),
+    ]);
+  } else {
+    // Only one community exists, debit only from the current community
+    const currentCurrency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    await ctx.walletService.addTransaction(
       userId,
-      marathonCommunity.id,
+      communityId,
       'debit',
       amount,
       'personal',
       transactionType,
       referenceId,
-      mdCurrency,
-      `${description} (Marathon of Good)`,
-    ),
-    ctx.walletService.addTransaction(
-      userId,
-      futureVisionCommunity.id,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      fvCurrency,
-      `${description} (Future Vision)`,
-    ),
-  ]);
+      currentCurrency,
+      description,
+    );
+  }
 }
 
 /**

@@ -39,7 +39,7 @@ export type CategoryDocument = CategorySchemaClass & Document;
 export const CategorySchema = SchemaFactory.createForClass(CategorySchemaClass);
 
 // Create index for faster queries
-CategorySchema.index({ slug: 1 });
+// Note: slug already has an index from unique: true, so we don't need to create it again
 CategorySchema.index({ order: 1 });
 
 
