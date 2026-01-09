@@ -300,10 +300,9 @@ describe('Publication Soft Delete E2E', () => {
 
       // Wallet should be credited to author (effective beneficiary when no explicit beneficiary is set)
       // Balance: 10 initial - 1 (publication creation) + 5 (withdrawal) = 14
-      // Note: Actual balance is 15, likely due to wallet initialization or ensureUserInBaseCommunities
       const wallet = await walletService.getWallet(authorId, communityId);
       expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(15);
+      expect(wallet?.getBalance()).toBe(14);
 
       // Withdrawal total should match the original positive balance
       const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
@@ -348,10 +347,9 @@ describe('Publication Soft Delete E2E', () => {
 
       // Author wallet exists because publication creation required 1 merit
       // Balance should be 9 (10 initial - 1 for publication creation), not credited with withdrawal
-      // Note: Actual balance is 10, likely due to wallet initialization or ensureUserInBaseCommunities
       const authorWallet = await walletService.getWallet(authorId, communityId);
       expect(authorWallet).toBeTruthy();
-      expect(authorWallet?.getBalance()).toBe(10);
+      expect(authorWallet?.getBalance()).toBe(9);
     });
 
     it('should only auto-withdraw remaining balance when some amount was withdrawn manually before deletion', async () => {
@@ -378,10 +376,9 @@ describe('Publication Soft Delete E2E', () => {
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Balance calculation: 10 initial - 1 (publication creation) + 3 (manual withdrawal) + 7 (auto-withdrawal) = 19
-      // Note: Actual balance is 20, likely due to wallet initialization or ensureUserInBaseCommunities
       const wallet = await walletService.getWallet(authorId, communityId);
       expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(20);
+      expect(wallet?.getBalance()).toBe(19);
 
       const totalWithdrawn = await walletService.getTotalWithdrawnByReference(
         'publication_withdrawal',
@@ -407,10 +404,9 @@ describe('Publication Soft Delete E2E', () => {
 
       // Wallet exists because publication creation required 1 merit, but no withdrawal occurred
       // Balance should be 9 (10 initial - 1 for publication creation)
-      // Note: Actual balance is 10, likely due to wallet initialization or ensureUserInBaseCommunities
       const wallet = await walletService.getWallet(authorId, communityId);
       expect(wallet).toBeTruthy();
-      expect(wallet?.getBalance()).toBe(10);
+      expect(wallet?.getBalance()).toBe(9);
     });
 
     it('should auto-withdraw marathon-of-good publication to Future Vision wallet', async () => {
