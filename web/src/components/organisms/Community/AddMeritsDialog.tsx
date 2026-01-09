@@ -39,7 +39,7 @@ export function AddMeritsDialog({
     
     const amountNum = parseInt(amount, 10);
     if (isNaN(amountNum) || amountNum <= 0) {
-      addToast(t('addMerits.invalidAmount'), 'error');
+      addToast(t('addMeritsDialog.invalidAmount'), 'error');
       return;
     }
 
@@ -51,12 +51,12 @@ export function AddMeritsDialog({
         amount: amountNum,
       });
       
-      addToast(t('addMerits.success', { amount: amountNum, name: userName }), 'success');
+      addToast(t('addMeritsDialog.success', { amount: amountNum, name: userName }), 'success');
       setAmount('100');
       onOpenChange(false);
       onSuccess?.();
     } catch (error: any) {
-      addToast(error?.message || t('addMerits.error'), 'error');
+      addToast(error?.message || t('addMeritsDialog.error'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -66,12 +66,12 @@ export function AddMeritsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t('addMerits.title', { name: userName })}</DialogTitle>
+          <DialogTitle>{t('addMeritsDialog.title', { name: userName })}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">{t('addMerits.amountLabel')}</Label>
+              <Label htmlFor="amount">{t('addMeritsDialog.amountLabel')}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -83,7 +83,7 @@ export function AddMeritsDialog({
                 autoFocus
               />
               <p className="text-xs text-base-content/60">
-                {t('addMerits.amountHelp')}
+                {t('addMeritsDialog.amountHelp')}
               </p>
             </div>
           </div>
@@ -94,16 +94,16 @@ export function AddMeritsDialog({
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
-              {t('addMerits.cancel')}
+              {t('addMeritsDialog.cancel')}
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('addMerits.submitting')}
+                  {t('addMeritsDialog.submitting')}
                 </>
               ) : (
-                t('addMerits.confirm')
+                t('addMeritsDialog.confirm')
               )}
             </Button>
           </DialogFooter>

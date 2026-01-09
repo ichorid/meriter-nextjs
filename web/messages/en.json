@@ -679,7 +679,7 @@
                 "remove": "Remove member",
                 "confirmRemove": "Remove {name} from community?",
                 "addMerits": "Add merits",
-                "addMerits": {
+                "addMeritsDialog": {
                     "title": "Add merits to {name}",
                     "amountLabel": "Amount of merits",
                     "amountHelp": "Enter the amount of merits to add",

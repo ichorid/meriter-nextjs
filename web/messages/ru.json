@@ -672,7 +672,7 @@
                 "remove": "Удалить участника",
                 "confirmRemove": "Удалить {name} из сообщества?",
                 "addMerits": "Начислить мериты",
-                "addMerits": {
+                "addMeritsDialog": {
                     "title": "Начислить мериты {name}",
                     "amountLabel": "Количество меритов",
                     "amountHelp": "Введите количество меритов для начисления",
