@@ -25,6 +25,7 @@ export interface Vote {
   images?: string[]; // Array of image URLs for vote attachments
   communityId: string; // Made required for consistency
   createdAt: Date;
+  updatedAt?: Date; // Added by Mongoose timestamps
 }
 
 @Schema({ collection: 'votes', timestamps: true })

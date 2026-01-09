@@ -85,6 +85,7 @@ export const CommunitySettingsSchema = z.object({
   forwardCost: z.number().int().min(0).default(1), // Cost in wallet merits to forward a post (0 = free)
   editWindowMinutes: z.number().int().min(0).default(30), // Number of minutes after creation that participants can edit publications (0 = no time limit)
   allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
+  canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -206,6 +207,7 @@ export const CommunitySchema = IdentifiableSchema.merge(
       "future-vision",
       "marathon-of-good",
       "support",
+      "team-projects",
       "team",
       "political",
       "housing",
@@ -532,7 +534,8 @@ export const UpdateCommunityDtoSchema = z.object({
     forwardCost: z.number().int().min(0).optional(),
     editWindowMinutes: z.number().int().min(0).optional(),
     allowEditByOthers: z.boolean().optional(),
-  }).optional(),
+    canPayPostFromQuota: z.boolean().optional(),
+  }).passthrough().optional(),
   votingSettings: z.object({
     spendsMerits: z.boolean().optional(),
     awardsMerits: z.boolean().optional(),
@@ -541,7 +544,7 @@ export const UpdateCommunityDtoSchema = z.object({
   }).optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
   isPriority: z.boolean().optional(),
-});
+}).passthrough();
 
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),

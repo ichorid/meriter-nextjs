@@ -39,6 +39,7 @@ export const communitiesRouter = router({
           pollCost: community.settings?.pollCost ?? 1,
           editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
           allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+          canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -208,6 +209,7 @@ export const communitiesRouter = router({
           pollCost: community.settings?.pollCost ?? 1,
             editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
             allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+            canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -247,10 +249,16 @@ export const communitiesRouter = router({
         });
       }
 
+      console.log(`[CommunitiesRouter] Updating community ${input.id}, received data: ${JSON.stringify(input.data)}`);
+      console.log(`[CommunitiesRouter] Settings in received data: ${JSON.stringify(input.data.settings)}`);
+      console.log(`[CommunitiesRouter] canPayPostFromQuota in settings: ${input.data.settings?.canPayPostFromQuota}`);
+      
       const community = await ctx.communityService.updateCommunity(
         input.id,
         input.data,
       );
+      
+      console.log(`[CommunitiesRouter] After update, community settings.canPayPostFromQuota: ${community.settings?.canPayPostFromQuota}`);
 
       const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
       const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
@@ -270,6 +278,7 @@ export const communitiesRouter = router({
           pollCost: community.settings?.pollCost ?? 1,
             editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
             allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+            canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)

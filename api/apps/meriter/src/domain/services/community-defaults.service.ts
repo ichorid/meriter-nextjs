@@ -44,6 +44,9 @@ export class CommunityDefaultsService {
       case 'team':
         typeSpecificRules = this.getTeamRules();
         break;
+      case 'team-projects':
+        typeSpecificRules = this.getTeamProjectsRules();
+        break;
       default:
         // Custom or other types use base rules only
         break;
@@ -278,6 +281,66 @@ export class CommunityDefaultsService {
   }
 
   /**
+   * Team Projects community specific rules
+   * - Only leads can post (participants cannot)
+   * - Everyone can vote (including viewers)
+   * - No merits are earned or spent (just commenting/discussion)
+   */
+  private getTeamProjectsRules(): PermissionRule[] {
+    const rules: PermissionRule[] = [];
+
+    // Only leads can post (participants cannot post)
+    rules.push({
+      role: 'participant',
+      action: ActionType.POST_PUBLICATION,
+      allowed: false,
+    });
+
+    rules.push({
+      role: 'participant',
+      action: ActionType.CREATE_POLL,
+      allowed: false,
+    });
+
+    // Everyone can vote (viewers, participants, leads)
+    rules.push({
+      role: 'viewer',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    rules.push({
+      role: 'participant',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    rules.push({
+      role: 'lead',
+      action: ActionType.VOTE,
+      allowed: true,
+      conditions: {
+        canVoteForOwnPosts: false,
+      },
+    });
+
+    // Everyone can view
+    rules.push({
+      role: 'viewer',
+      action: ActionType.VIEW_COMMUNITY,
+      allowed: true,
+    });
+
+    return rules;
+  }
+
+  /**
    * Get default merit settings based on community typeTag
    */
   getDefaultMeritSettings(typeTag?: string): CommunityMeritSettings {
@@ -314,6 +377,15 @@ export class CommunityDefaultsService {
           quotaRecipients: ['superadmin', 'lead', 'participant'],
         };
 
+      case 'team-projects':
+        return {
+          ...baseDefaults,
+          dailyQuota: 10, // 10 comments per day (or 100, as requested)
+          quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'], // Everyone gets quota for voting
+          canEarn: false, // No merits earned from posts
+          canSpend: false, // No merits spent on posts
+        };
+
       default:
         return baseDefaults;
     }
@@ -322,13 +394,24 @@ export class CommunityDefaultsService {
   /**
    * Get default voting settings based on community typeTag
    */
-  getDefaultVotingSettings(_typeTag?: string): CommunityVotingSettings {
-    return {
+  getDefaultVotingSettings(typeTag?: string): CommunityVotingSettings {
+    const baseSettings: CommunityVotingSettings = {
       spendsMerits: true,
       awardsMerits: true,
       votingRestriction: 'not-own', // Default: users can vote for others' posts, but not their own
       // meritConversion is optional and community-specific
     };
+
+    // Team Projects: no merits earned or spent (just commenting/discussion)
+    if (typeTag === 'team-projects') {
+      return {
+        ...baseSettings,
+        spendsMerits: false, // No merits spent when voting
+        awardsMerits: false, // No merits earned from votes
+      };
+    }
+
+    return baseSettings;
   }
 }
 

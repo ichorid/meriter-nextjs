@@ -46,7 +46,8 @@ export function useUserCommunities() {
       const getSpecialOrder = (typeTag?: string): number => {
         if (typeTag === 'marathon-of-good') return 1;
         if (typeTag === 'future-vision') return 2;
-        if (typeTag === 'support') return 3;
+        if (typeTag === 'team-projects') return 3;
+        if (typeTag === 'support') return 4;
         return 999; // Regular communities go last
       };
       return getSpecialOrder(a.typeTag) - getSpecialOrder(b.typeTag);

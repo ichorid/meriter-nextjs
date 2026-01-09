@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
+import { COMMUNITY_ROLE_VIEWER, GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
 export const walletsRouter = router({
   /**
@@ -587,6 +587,71 @@ export const walletsRouter = router({
       );
 
       const updatedWallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+      return {
+        success: true,
+        balance: updatedWallet?.getBalance() || 0,
+        message: `Added ${input.amount} ${input.amount === 1 ? currency.singular : currency.plural}`,
+      };
+    }),
+
+  /**
+   * Add merits to user wallet (admin only)
+   */
+  addMeritsToUser: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        communityId: z.string(),
+        amount: z.number().positive(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if user is superadmin
+      const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      
+      // Check if user is admin of the community
+      const isCommunityAdmin = await ctx.communityService.isUserAdmin(
+        input.communityId,
+        ctx.user.id,
+      );
+
+      if (!isSuperadmin && !isCommunityAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmins and community admins can add merits to users',
+        });
+      }
+
+      // Get community to get currency settings
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Get currency settings
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Add transaction to credit the wallet (creates wallet if it doesn't exist)
+      await ctx.walletService.addTransaction(
+        input.userId,
+        input.communityId,
+        'credit',
+        input.amount,
+        'personal',
+        'admin_add_merits',
+        `admin_add_${Date.now()}_${ctx.user.id}`,
+        currency,
+        `Merits added by ${ctx.user.username || ctx.user.id}`,
+      );
+
+      const updatedWallet = await ctx.walletService.getWallet(input.userId, input.communityId);
       return {
         success: true,
         balance: updatedWallet?.getBalance() || 0,

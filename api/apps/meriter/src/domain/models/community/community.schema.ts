@@ -37,6 +37,11 @@ export interface CommunitySettings {
    * Whether participants (non-authors) may edit publications created by others in the same community.
    */
   allowEditByOthers?: boolean;
+  /**
+   * Whether posts can be paid from quota instead of wallet only.
+   * If false, posts can only be paid from wallet merits.
+   */
+  canPayPostFromQuota?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -122,7 +127,7 @@ export interface Community {
   avatarUrl?: string;
   coverImageUrl?: string;
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
   linkedCurrencies?: string[];
   permissionRules?: PermissionRule[]; // Granular permission rules - replaces postingRules, votingRules, visibilityRules
   meritSettings?: CommunityMeritSettings; // Merit configuration (dailyQuota, quotaRecipients, etc.)
@@ -163,6 +168,7 @@ export class CommunitySchemaClass implements Community {
       'future-vision',
       'marathon-of-good',
       'support',
+      'team-projects',
       'team',
       'political',
       'housing',
@@ -171,7 +177,7 @@ export class CommunitySchemaClass implements Community {
       'custom',
     ],
   })
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
 
   // НОВОЕ: Связанные валюты (настраивается)
   @Prop({ type: [String], default: [] })
@@ -256,6 +262,7 @@ export class CommunitySchemaClass implements Community {
       forwardCost: { type: Number, default: 1 },
       editWindowMinutes: { type: Number, default: 30 },
       allowEditByOthers: { type: Boolean, default: false },
+      canPayPostFromQuota: { type: Boolean, default: false },
     },
     default: {},
   })

@@ -9,7 +9,7 @@ import { useCommunities, useCommunity } from '@/hooks/api/useCommunities';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { InviteCreationForm } from './InviteCreationForm';
 import { InviteList } from './InviteList';
-import { ChevronDown, ChevronUp, UserPlus } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import type { Invite } from '@/types/api-v1';
 
 interface InviteCreationPopupProps {
@@ -197,15 +197,6 @@ export const InviteCreationPopup = React.forwardRef<HTMLDivElement, InviteCreati
             title={t('title')}
         >
             <div className="space-y-4">
-                <div className="flex items-center space-x-3 mb-4">
-                    <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
-                        <UserPlus size={20} />
-                    </div>
-                    <h2 className="text-lg font-bold text-brand-text-primary">
-                        {t('title')}
-                    </h2>
-                </div>
-
                 <InviteCreationForm
                     isSuperadmin={isSuperadmin}
                     inviteType={inviteType}

@@ -29,6 +29,12 @@ interface UpdateCommunityDto {
         currencyNames?: { singular: string; plural: string; genitive: string };
         dailyEmission?: number;
         language?: "en" | "ru";
+        postCost?: number;
+        pollCost?: number;
+        forwardCost?: number;
+        editWindowMinutes?: number;
+        allowEditByOthers?: boolean;
+        canPayPostFromQuota?: boolean;
     };
     hashtags?: string[];
     hashtagDescriptions?: Record<string, string>;
@@ -112,10 +118,14 @@ export const useUpdateCommunity = () => {
     const utils = trpc.useUtils();
     
     return trpc.communities.update.useMutation({
-        onSuccess: (_, variables) => {
-            // Invalidate communities list and specific community
-            utils.communities.getAll.invalidate();
-            utils.communities.getById.invalidate({ id: variables.id });
+        onSuccess: async (_, variables) => {
+            // Invalidate and refetch communities list and specific community
+            await Promise.all([
+                utils.communities.getAll.invalidate(),
+                utils.communities.getById.invalidate({ id: variables.id }),
+            ]);
+            // Refetch to ensure UI is updated
+            await utils.communities.getById.refetch({ id: variables.id });
         },
     });
 };

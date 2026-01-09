@@ -15,6 +15,8 @@ import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { useDebounce } from '@/hooks/useDebounce';
 import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
+import { AddMeritsDialog } from '@/components/organisms/Community/AddMeritsDialog';
+import { Coins } from 'lucide-react';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -29,6 +31,8 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
     const [searchQuery, setSearchQuery] = useState('');
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
+    const [addMeritsDialogOpen, setAddMeritsDialogOpen] = useState(false);
+    const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId, {
         search: debouncedSearchQuery.trim() || undefined,
     });
@@ -120,23 +124,37 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                                             hideTeamInfo={hideTeamInfo}
                                             canViewMerits={canViewMerits}
                                             onClick={() => router.push(routes.userProfile(member.id))}
+                                            hideChevron={isAdmin && member.id !== user?.id}
                                         />
                                         {isAdmin && member.id !== user?.id && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemoveMember(member.id, member.displayName || member.username);
-                                                }}
-                                                disabled={isRemoving}
-                                                className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                title={t('members.remove')}
-                                            >
-                                                {isRemoving ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <UserX className="w-4 h-4" />
-                                                )}
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedMember({ id: member.id, name: member.displayName || member.username });
+                                                        setAddMeritsDialogOpen(true);
+                                                    }}
+                                                    className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                    title={t('members.addMerits')}
+                                                >
+                                                    <Coins className="w-4 h-4" />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRemoveMember(member.id, member.displayName || member.username);
+                                                    }}
+                                                    disabled={isRemoving}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                                                    title={t('members.remove')}
+                                                >
+                                                    {isRemoving ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : (
+                                                        <UserX className="w-4 h-4" />
+                                                    )}
+                                                </button>
+                                            </>
                                         )}
                                     </div>
                                 ))}
@@ -159,6 +177,18 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                     </>
                 )}
             </div>
+            {selectedMember && (
+                <AddMeritsDialog
+                    open={addMeritsDialogOpen}
+                    onOpenChange={setAddMeritsDialogOpen}
+                    userId={selectedMember.id}
+                    userName={selectedMember.name}
+                    communityId={communityId}
+                    onSuccess={() => {
+                        // Refetch members data if needed
+                    }}
+                />
+            )}
         </AdaptiveLayout>
     );
 }

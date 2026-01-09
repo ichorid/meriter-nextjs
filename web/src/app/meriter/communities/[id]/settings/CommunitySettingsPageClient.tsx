@@ -58,11 +58,16 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
             dailyEmission?: number;
             postCost?: number;
             pollCost?: number;
+            forwardCost?: number;
+            editWindowMinutes?: number;
+            allowEditByOthers?: boolean;
+            canPayPostFromQuota?: boolean;
         };
         votingSettings?: {
             votingRestriction?: 'any' | 'not-own' | 'not-same-group';
         };
     }) => {
+        console.log('Saving rules with canPayPostFromQuota:', rules.settings?.canPayPostFromQuota);
         await updateCommunity.mutateAsync({
             id: communityId,
             data: rules,

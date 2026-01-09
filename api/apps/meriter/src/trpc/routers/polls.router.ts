@@ -7,6 +7,83 @@ import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 
 /**
+ * Synchronize debit transactions between Marathon of Good and Future Vision wallets
+ * If debiting from MD or OB, debit from both wallets simultaneously
+ */
+async function syncDebitForMarathonAndFutureVision(
+  userId: string,
+  communityId: string,
+  amount: number,
+  transactionType: string,
+  referenceId: string,
+  description: string,
+  ctx: any,
+): Promise<void> {
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (!community) {
+    return; // Community not found, skip sync
+  }
+
+  const isMarathon = community.typeTag === 'marathon-of-good';
+  const isFutureVision = community.typeTag === 'future-vision';
+
+  // Only sync for MD or OB
+  if (!isMarathon && !isFutureVision) {
+    return;
+  }
+
+  // Get both communities
+  const marathonCommunity = isMarathon 
+    ? community 
+    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
+  const futureVisionCommunity = isFutureVision
+    ? community
+    : await ctx.communityService.getCommunityByTypeTag('future-vision');
+
+  if (!marathonCommunity || !futureVisionCommunity) {
+    return; // One of communities not found, skip sync
+  }
+
+  const mdCurrency = marathonCommunity.settings?.currencyNames || {
+    singular: 'merit',
+    plural: 'merits',
+    genitive: 'merits',
+  };
+
+  const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+    singular: 'merit',
+    plural: 'merits',
+    genitive: 'merits',
+  };
+
+  // Debit from both wallets simultaneously
+  await Promise.all([
+    ctx.walletService.addTransaction(
+      userId,
+      marathonCommunity.id,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      mdCurrency,
+      `${description} (Marathon of Good)`,
+    ),
+    ctx.walletService.addTransaction(
+      userId,
+      futureVisionCommunity.id,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      fvCurrency,
+      `${description} (Future Vision)`,
+    ),
+  ]);
+}
+
+/**
  * Helper to calculate remaining quota for a user in a community (including poll casts)
  */
 async function getRemainingQuota(
@@ -266,25 +343,17 @@ export const pollsRouter = router({
       const snapshot = poll.toSnapshot();
       const pollId = snapshot.id;
       
-      // Process wallet payment after successful creation (skip if cost is 0)
+      // Process wallet payment after successful creation (with sync for MD/OB)
       if (pollCost > 0) {
         try {
-          const currency = community.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-
-          await ctx.walletService.addTransaction(
+          await syncDebitForMarathonAndFutureVision(
             ctx.user.id,
             snapshot.communityId,
-            'debit',
             pollCost,
-            'personal',
             'poll_creation',
             pollId,
-            currency,
-            `Payment for creating poll`,
+            'Payment for creating poll',
+            ctx,
           );
         } catch (_error) {
           // Don't fail the request if wallet deduction fails - poll is already created
@@ -555,21 +624,15 @@ export const pollsRouter = router({
           });
         }
         
-        // Deduct from wallet FIRST
-        await ctx.walletService.addTransaction(
+        // Deduct from wallet FIRST (with sync for MD/OB)
+        await syncDebitForMarathonAndFutureVision(
           ctx.user.id,
           communityId,
-          'debit',
           walletAmount,
-          'personal',
           'poll_cast',
           input.pollId,
-          community.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
           `Cast on poll ${input.pollId}`,
+          ctx,
         );
       }
       

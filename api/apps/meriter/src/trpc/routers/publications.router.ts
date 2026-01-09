@@ -25,7 +25,7 @@ async function processWithdrawal(
     throw new NotFoundError('Community', publicationCommunityId);
   }
 
-  // Check if publication is in marathon-of-good - if so, credit Future Vision wallet
+  // Check if publication is in marathon-of-good - if so, credit both Marathon of Good and Future Vision wallets
   if (publicationCommunity.typeTag === 'marathon-of-good') {
     const futureVisionCommunity =
       await ctx.communityService.getCommunityByTypeTag('future-vision');
@@ -34,13 +34,32 @@ async function processWithdrawal(
       throw new NotFoundError('Community', 'future-vision');
     }
 
+    const mdCurrency = publicationCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
     const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
       singular: 'merit',
       plural: 'merits',
       genitive: 'merits',
     };
 
-    // Credit Future Vision wallet
+    // Credit Marathon of Good wallet (for spending on posts in MD)
+    await ctx.walletService.addTransaction(
+      beneficiaryId,
+      publicationCommunityId,
+      'credit',
+      amount,
+      'personal',
+      referenceType,
+      publicationId,
+      mdCurrency,
+      `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId} (Marathon of Good)`,
+    );
+
+    // Credit Future Vision wallet (for spending in OB)
     await ctx.walletService.addTransaction(
       beneficiaryId,
       futureVisionCommunity.id,
@@ -85,6 +104,83 @@ async function processWithdrawal(
 }
 
 type CurrencyNames = { singular: string; plural: string; genitive: string };
+
+/**
+ * Synchronize debit transactions between Marathon of Good and Future Vision wallets
+ * If debiting from MD or OB, debit from both wallets simultaneously
+ */
+async function syncDebitForMarathonAndFutureVision(
+  userId: string,
+  communityId: string,
+  amount: number,
+  transactionType: string,
+  referenceId: string,
+  description: string,
+  ctx: any,
+): Promise<void> {
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (!community) {
+    return; // Community not found, skip sync
+  }
+
+  const isMarathon = community.typeTag === 'marathon-of-good';
+  const isFutureVision = community.typeTag === 'future-vision';
+
+  // Only sync for MD or OB
+  if (!isMarathon && !isFutureVision) {
+    return;
+  }
+
+  // Get both communities
+  const marathonCommunity = isMarathon 
+    ? community 
+    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
+  const futureVisionCommunity = isFutureVision
+    ? community
+    : await ctx.communityService.getCommunityByTypeTag('future-vision');
+
+  if (!marathonCommunity || !futureVisionCommunity) {
+    return; // One of communities not found, skip sync
+  }
+
+  const mdCurrency = marathonCommunity.settings?.currencyNames || {
+    singular: 'merit',
+    plural: 'merits',
+    genitive: 'merits',
+  };
+
+  const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+    singular: 'merit',
+    plural: 'merits',
+    genitive: 'merits',
+  };
+
+  // Debit from both wallets simultaneously
+  await Promise.all([
+    ctx.walletService.addTransaction(
+      userId,
+      marathonCommunity.id,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      mdCurrency,
+      `${description} (Marathon of Good)`,
+    ),
+    ctx.walletService.addTransaction(
+      userId,
+      futureVisionCommunity.id,
+      'debit',
+      amount,
+      'personal',
+      transactionType,
+      referenceId,
+      fvCurrency,
+      `${description} (Future Vision)`,
+    ),
+  ]);
+}
 
 type PublicationForAutoWithdraw = {
   getMetrics: { score: number };
@@ -541,18 +637,58 @@ export const publicationsRouter = router({
 
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
+      const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
+      
+      // Log for debugging
+      console.log(`[PublicationsRouter] Creating post in community ${input.communityId}, postCost: ${postCost}, canPayFromQuota: ${canPayFromQuota}, settings: ${JSON.stringify(community.settings)}`);
 
-      // Posts now require wallet merits only (no quota)
-      // Validate payment if cost > 0
+      // Calculate payment breakdown and validate if cost > 0
+      let quotaAmount = 0;
+      let walletAmount = 0;
+
       if (postCost > 0) {
-        const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
-        const walletBalance = wallet ? wallet.getBalance() : 0;
+        if (canPayFromQuota) {
+          // Try to pay from quota first, then wallet
+          const remainingQuota = await _getRemainingQuota(
+            ctx.user.id,
+            input.communityId,
+            community,
+            ctx.connection,
+          );
+          quotaAmount = Math.min(postCost, remainingQuota);
+          walletAmount = Math.max(0, postCost - quotaAmount);
+        } else {
+          // Pay only from wallet
+          walletAmount = postCost;
+        }
 
-        if (walletBalance < postCost) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: `Insufficient wallet merits. Available: ${walletBalance}, Required: ${postCost}`,
-          });
+        // Check wallet balance if wallet payment is required
+        if (walletAmount > 0) {
+          const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+          const walletBalance = wallet ? wallet.getBalance() : 0;
+
+          if (walletBalance < walletAmount) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Insufficient wallet merits. Available: ${walletBalance}, Required: ${walletAmount}`,
+            });
+          }
+        }
+
+        // Check quota if quota payment is required
+        if (quotaAmount > 0) {
+          const remainingQuota = await _getRemainingQuota(
+            ctx.user.id,
+            input.communityId,
+            community,
+            ctx.connection,
+          );
+          if (remainingQuota < quotaAmount) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Insufficient quota. Available: ${remainingQuota}, Required: ${quotaAmount}`,
+            });
+          }
         }
       }
 
@@ -568,7 +704,7 @@ export const publicationsRouter = router({
       const communityId = publication.getCommunityId.getValue();
       const publicationId = publication.getId.getValue();
 
-      // Process payment after successful creation (deduct wallet merits)
+      // Process payment after successful creation (use pre-calculated amounts)
       if (postCost > 0) {
         try {
           const currency = community.settings?.currencyNames || {
@@ -577,19 +713,33 @@ export const publicationsRouter = router({
             genitive: 'merits',
           };
 
-          await ctx.walletService.addTransaction(
-            ctx.user.id,
-            communityId,
-            'debit',
-            postCost,
-            'personal',
-            'publication_creation',
-            publicationId,
-            currency,
-            `Payment for creating publication`,
-          );
+          // Deduct from quota if needed
+          if (quotaAmount > 0 && ctx.connection?.db) {
+            await ctx.connection.db.collection('quota_usage').insertOne({
+              id: `quota_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              userId: ctx.user.id,
+              communityId,
+              amountQuota: quotaAmount,
+              usageType: 'publication_creation',
+              referenceId: publicationId,
+              createdAt: new Date(),
+            });
+          }
+
+          // Deduct from wallet if needed (with sync for MD/OB)
+          if (walletAmount > 0) {
+            await syncDebitForMarathonAndFutureVision(
+              ctx.user.id,
+              communityId,
+              walletAmount,
+              'publication_creation',
+              publicationId,
+              'Payment for creating publication',
+              ctx,
+            );
+          }
         } catch (_error) {
-          // Don't fail the request if wallet deduction fails - publication is already created
+          // Don't fail the request if payment deduction fails - publication is already created
         }
       }
 
@@ -1144,25 +1294,17 @@ export const publicationsRouter = router({
         }
       }
 
-      // Deduct from wallet
+      // Deduct from wallet (with sync for MD/OB)
       if (forwardCost > 0) {
         try {
-          const currency = sourceCommunity.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-
-          await ctx.walletService.addTransaction(
+          await syncDebitForMarathonAndFutureVision(
             userId,
             sourceCommunityId,
-            'debit',
             forwardCost,
-            'personal',
             'forward_proposal',
             publicationId,
-            currency,
-            `Payment for forwarding proposal`,
+            'Payment for forwarding proposal',
+            ctx,
           );
         } catch (_error) {
           // Don't fail the request if wallet deduction fails - proposal is already created

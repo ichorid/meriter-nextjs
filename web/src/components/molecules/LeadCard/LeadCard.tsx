@@ -25,6 +25,7 @@ interface LeadCardProps {
         remainingToday: number;
         usedToday: number;
     };
+    hideChevron?: boolean;
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
@@ -40,6 +41,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     onClick,
     permanentMerits,
     quota,
+    hideChevron = false,
 }) => {
     const t = useTranslations('common');
     const tCommon = useTranslations('common');
@@ -147,7 +149,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             </div>
 
             {/* Chevron */}
-            {onClick && (
+            {onClick && !hideChevron && (
                 <div className="flex-shrink-0 text-base-content/40">
                     <ChevronRight size={24} />
                 </div>

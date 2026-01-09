@@ -263,7 +263,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own',
     });
-  }, [community.id]); // Only when community changes
+  }, [community.id]);
 
   const validateRules = (): boolean => {
     const errors: Record<string, string> = {};
@@ -310,7 +310,16 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setIsSaving(true);
     try {
       const editWindowMinutesValue = Number.parseInt(editWindowMinutes, 10);
-      await onSave({
+      const settingsToSave: any = {
+        dailyEmission: parseInt(dailyEmission, 10),
+        postCost: parseInt(postCost, 10),
+        pollCost: parseInt(pollCost, 10),
+        forwardCost: parseInt(forwardCost, 10),
+        editWindowMinutes: Number.isFinite(editWindowMinutesValue) ? editWindowMinutesValue : 30,
+        allowEditByOthers,
+      };
+      
+      const dataToSave = {
         postingRules,
         votingRules,
         visibilityRules,
@@ -323,18 +332,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           startingMerits: parseInt(startingMerits, 10) || meritRules.dailyQuota,
         },
         linkedCurrencies,
-        settings: {
-          dailyEmission: parseInt(dailyEmission, 10),
-          postCost: parseInt(postCost, 10),
-          pollCost: parseInt(pollCost, 10),
-          forwardCost: parseInt(forwardCost, 10),
-          editWindowMinutes: Number.isFinite(editWindowMinutesValue) ? editWindowMinutesValue : 30,
-          allowEditByOthers,
-        },
+        settings: settingsToSave,
         votingSettings: {
           votingRestriction,
         },
-      });
+      };
+      
+      await onSave(dataToSave);
       setValidationErrors({});
       // Update original rules after successful save
       const savedRules = {
@@ -572,6 +576,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {t('autoMembership')}
           </Label>
         </div>
+
+        <BrandFormControl 
+          label={tSettings('postCost')}
+          helperText={tSettings('postCostHelp')}
+        >
+          <Input
+            type="number"
+            min="0"
+            value={postCost}
+            onChange={(e) => setPostCost(e.target.value)}
+            className="h-11 rounded-xl w-full"
+          />
+        </BrandFormControl>
       </div>
 
       {/* Voting Rules */}

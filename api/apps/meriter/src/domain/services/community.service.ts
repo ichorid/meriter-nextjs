@@ -37,6 +37,7 @@ export interface CreateCommunityDto {
     | 'future-vision'
     | 'marathon-of-good'
     | 'support'
+    | 'team-projects'
     | 'team'
     | 'political'
     | 'housing'
@@ -75,6 +76,7 @@ export interface UpdateCommunityDto {
     forwardCost?: number;
     editWindowMinutes?: number;
     allowEditByOthers?: boolean;
+    canPayPostFromQuota?: boolean;
     language?: 'en' | 'ru';
   };
   votingSettings?: {
@@ -288,7 +290,52 @@ export class CommunityService {
       await this.updateCommunity(marathon.id, { isPriority: true });
     }
 
-    // 3. Support
+    // 3. Team Projects
+    // Check for duplicates first
+    const allTeamProjects = await this.communityModel.find({ typeTag: 'team-projects' }).lean();
+    if (allTeamProjects.length > 1) {
+      this.logger.warn(`Found ${allTeamProjects.length} communities with typeTag 'team-projects'. Removing duplicates...`);
+      // Keep the first one (oldest), delete the rest
+      const sorted = allTeamProjects.sort((a, b) => {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return aDate - bDate;
+      });
+      const toKeep = sorted[0];
+      for (let i = 1; i < sorted.length; i++) {
+        this.logger.log(`Deleting duplicate Team Projects community: ${sorted[i].id}`);
+        await this.communityModel.deleteOne({ id: sorted[i].id });
+      }
+    }
+    
+    const teamProjects = await this.getCommunityByTypeTag('team-projects');
+    if (!teamProjects) {
+      this.logger.log('Creating "Team Projects" community...');
+      try {
+        await this.createCommunity({
+          name: 'Проекты команд',
+          description: 'Группа для публикации проектов команд.',
+          typeTag: 'team-projects',
+          isPriority: true,
+          settings: {
+            currencyNames: {
+              singular: 'merit',
+              plural: 'merits',
+              genitive: 'merits',
+            },
+            dailyEmission: 10,
+          },
+        });
+      } catch (e) {
+        this.logger.error('Failed to create Team Projects', e);
+      }
+    } else if (!teamProjects.isPriority) {
+      // Update existing community to ensure it's marked as priority
+      this.logger.log('Updating "Team Projects" community to set isPriority=true...');
+      await this.updateCommunity(teamProjects.id, { isPriority: true });
+    }
+
+    // 4. Support
     const support = await this.getCommunityByTypeTag('support');
     if (!support) {
       this.logger.log('Creating "Support" community...');
@@ -318,8 +365,8 @@ export class CommunityService {
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
-    // Check for single-instance communities (Future Vision, Good Deeds Marathon, and Support)
-    if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'support') {
+    // Check for single-instance communities (Future Vision, Marathon of Good, Team Projects, and Support)
+    if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'team-projects' || dto.typeTag === 'support') {
       const existing = await this.communityModel
         .findOne({ typeTag: dto.typeTag })
         .lean();
@@ -420,6 +467,11 @@ export class CommunityService {
       if (dto.settings.allowEditByOthers !== undefined) {
         settingsUpdate['settings.allowEditByOthers'] = dto.settings.allowEditByOthers;
       }
+      // Explicitly handle canPayPostFromQuota - always update if present (including false)
+      if ('canPayPostFromQuota' in dto.settings) {
+        settingsUpdate['settings.canPayPostFromQuota'] = Boolean(dto.settings.canPayPostFromQuota);
+        this.logger.log(`Updating canPayPostFromQuota to: ${Boolean(dto.settings.canPayPostFromQuota)} for community ${communityId}`);
+      }
       if (dto.settings.language !== undefined) {
         settingsUpdate['settings.language'] = dto.settings.language;
       }
@@ -471,17 +523,24 @@ export class CommunityService {
       Object.assign(updateData, meritSettingsUpdate);
     }
 
+    this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
+    
+    // Perform the update
+    await this.communityModel.updateOne(
+      { id: communityId },
+      { $set: updateData },
+    );
+
+    // Explicitly re-fetch the document to ensure we get the updated values
     const updatedCommunity = await this.communityModel
-      .findOneAndUpdate(
-        { id: communityId },
-        { $set: updateData },
-        { new: true },
-      )
+      .findOne({ id: communityId })
       .lean();
 
     if (!updatedCommunity) {
       throw new NotFoundException('Community not found');
     }
+
+    this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
 
     return (updatedCommunity as unknown) as Community;
   }

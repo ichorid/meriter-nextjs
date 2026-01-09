@@ -439,8 +439,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                                 {/* Progress fill - shows how much of quota will be used */}
                                 {(() => {
+                                    // Use quotaRemaining as the maximum for progress bar (what's actually available)
+                                    const maxQuota = Math.max(1, quotaRemaining);
                                     const fillPercent = isPositive && absAmount > 0 && voteBreakdown.quotaAmount > 0
-                                        ? Math.min(100, (voteBreakdown.quotaAmount / Math.max(1, dailyQuota || quotaRemaining + usedToday)) * 100)
+                                        ? Math.min(100, (voteBreakdown.quotaAmount / maxQuota) * 100)
                                         : 0;
                                     return fillPercent > 0 ? (
                                         <div

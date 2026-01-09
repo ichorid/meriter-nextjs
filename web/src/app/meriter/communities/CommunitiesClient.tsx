@@ -91,7 +91,7 @@ export default function CommunitiesPage() {
         const userComms: typeof allCommunities = [];
 
         allCommunities.forEach(community => {
-            const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'support';
+            const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'team-projects' || community.typeTag === 'support';
             if (isSpecial) {
                 special.push(community);
             } else {
@@ -99,12 +99,13 @@ export default function CommunitiesPage() {
             }
         });
 
-        // Sort special communities: marathon-of-good, future-vision, support
+        // Sort special communities: marathon-of-good, future-vision, team-projects, support
         special.sort((a, b) => {
             const order: Record<string, number> = {
                 'marathon-of-good': 1,
                 'future-vision': 2,
-                'support': 3,
+                'team-projects': 3,
+                'support': 4,
             };
             return (order[a.typeTag || ''] || 999) - (order[b.typeTag || ''] || 999);
         });

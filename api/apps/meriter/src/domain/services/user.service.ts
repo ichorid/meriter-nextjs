@@ -237,11 +237,14 @@ export class UserService implements OnModuleInit {
     const marathonOfGood = await this.communityModel
       .findOne({ typeTag: 'marathon-of-good' })
       .lean();
+    const teamProjects = await this.communityModel
+      .findOne({ typeTag: 'team-projects' })
+      .lean();
     const support = await this.communityModel
       .findOne({ typeTag: 'support' })
       .lean();
 
-    if (!futureVision || !marathonOfGood || !support) {
+    if (!futureVision || !marathonOfGood || !teamProjects || !support) {
       this.logger.warn(
         'Base communities not found. They should be created on server startup.',
       );
@@ -258,6 +261,7 @@ export class UserService implements OnModuleInit {
     const memberships = user.communityMemberships || [];
     const needsToJoinFV = !memberships.includes(futureVision.id);
     const needsToJoinMG = !memberships.includes(marathonOfGood.id);
+    const needsToJoinTP = !memberships.includes(teamProjects.id);
     const needsToJoinSupport = !memberships.includes(support.id);
 
     // Add user to Future Vision if needed
@@ -356,6 +360,56 @@ export class UserService implements OnModuleInit {
       }
     }
 
+    // Add user to Team Projects if needed
+    if (needsToJoinTP) {
+      this.logger.log(`Adding user ${userId} to Team Projects`);
+      try {
+        // 1. Check if user has any role in this community
+        const existingRole = await this.userCommunityRoleService.getRole(
+          userId,
+          teamProjects.id,
+        );
+
+        // 2. Add user to community's members list
+        await this.communityService.addMember(teamProjects.id, userId);
+        // 3. Add community to user's memberships
+        await this.addCommunityMembership(userId, teamProjects.id);
+
+        // 4. Assign viewer role if user has no role (joining without invite)
+        // Everyone gets viewer role by default, can vote (comment)
+        if (!existingRole) {
+          await this.userCommunityRoleService.setRole(
+            userId,
+            teamProjects.id,
+            'viewer',
+            true, // skipSync to prevent recursion
+          );
+          this.logger.log(
+            `Assigned viewer role to user ${userId} in Team Projects (no invite)`,
+          );
+        }
+
+        // 5. Create wallet for user in community
+        const currency = teamProjects.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        await this.walletService.createOrGetWallet(
+          userId,
+          teamProjects.id,
+          currency,
+        );
+        this.logger.log(
+          `User ${userId} successfully added to Team Projects`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to add user ${userId} to Team Projects: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        );
+      }
+    }
+
     // Add user to Support if needed
     if (needsToJoinSupport) {
       this.logger.log(`Adding user ${userId} to Support`);
@@ -403,7 +457,7 @@ export class UserService implements OnModuleInit {
       }
     }
 
-    if (!needsToJoinFV && !needsToJoinMG && !needsToJoinSupport) {
+    if (!needsToJoinFV && !needsToJoinMG && !needsToJoinTP && !needsToJoinSupport) {
       this.logger.log(`User ${userId} already in base communities`);
     }
   }

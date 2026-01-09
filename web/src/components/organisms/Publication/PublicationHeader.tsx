@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, Trash2, ArrowRight, Eye } from 'lucide-react';
+import { Edit, Trash2, ArrowRight, Eye, Send } from 'lucide-react';
 import { Badge } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
@@ -314,7 +314,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
             title={isLead && isPendingForward ? 'Review forward proposal' : 'Forward post'}
           >
-            {isLead && isPendingForward ? <Eye size={16} /> : <ArrowRight size={16} />}
+            {isLead && isPendingForward ? <Eye size={16} /> : <Send size={16} />}
           </Button>
         )}
         <Button

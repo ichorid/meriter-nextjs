@@ -9,7 +9,6 @@ import {
 } from "@/hooks/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
-import { HashtagInput } from "@/shared/components/hashtag-input";
 import { IconPicker } from "@/shared/components/iconpicker";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
@@ -60,7 +59,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [currencySingular, setCurrencySingular] = useState("merit");
     const [currencyPlural, setCurrencyPlural] = useState("merits");
     const [currencyGenitive, setCurrencyGenitive] = useState("merits");
-    const [hashtags, setHashtags] = useState<string[]>([]);
     const [isPriority, setIsPriority] = useState(false);
     // Default icon is "thanks" emoji (🙏)
     const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(
@@ -80,7 +78,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setCurrencyGenitive(
                 c.settings?.currencyNames?.genitive || "merits"
             );
-            setHashtags(c.hashtags || []);
             setIsPriority(c.isPriority || false);
             setIconUrl(c.settings?.iconUrl || defaultIconUrl);
         }
@@ -99,7 +96,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 description,
                 avatarUrl: avatarUrl || undefined,
                 coverImageUrl: coverImageUrl || undefined,
-                hashtags,
                 settings: {
                     iconUrl: iconUrl || defaultIconUrl,
                     currencyNames: {
@@ -280,14 +276,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     }}
                 />
             </BrandFormControl>
-
-            <HashtagInput
-                value={hashtags}
-                onChange={setHashtags}
-                label={t("hashtags")}
-                placeholder={t("hashtagsPlaceholder")}
-                helperText={t("hashtagsHelp")}
-            />
 
             <div className="border-t border-base-300 pt-6">
                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
