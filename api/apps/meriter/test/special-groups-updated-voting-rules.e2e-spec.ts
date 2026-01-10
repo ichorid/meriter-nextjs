@@ -241,6 +241,34 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: marathonCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: visionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
     ]);
 
     // Create publications
@@ -424,7 +452,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     });
 
     it('should reject wallet voting on comments (votes)', async () => {
-      // Create initial vote
+      // Create initial vote with testUserId
       (global as any).testUserId = testUserId;
       
       const voteResponse = await trpcMutation(app, 'votes.createWithComment', {
@@ -437,7 +465,9 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
 
       const voteId = voteResponse.id;
 
-      // Try to vote on the vote (comment) with wallet
+      // Try to vote on the vote (comment) with wallet using testUserId2
+      // (testUserId2 can vote because effective beneficiary is testUserId, not testUserId2)
+      (global as any).testUserId = testUserId2;
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
         const result = await trpcMutationWithError(app, 'votes.createWithComment', {
           targetType: 'vote',

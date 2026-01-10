@@ -4,6 +4,7 @@ import { PermissionContext } from '../models/community/community.schema';
 import { PublicationService } from './publication.service';
 import { CommentService } from './comment.service';
 import { PollService } from './poll.service';
+import { VoteService } from './vote.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { PermissionService } from './permission.service';
@@ -25,6 +26,8 @@ export class PermissionContextService {
     private commentService: CommentService,
     @Inject(forwardRef(() => PollService))
     private pollService: PollService,
+    @Inject(forwardRef(() => VoteService))
+    private voteService: VoteService,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(forwardRef(() => PermissionService))
@@ -46,16 +49,21 @@ export class PermissionContextService {
     const communityId = publication.getCommunityId.getValue();
     const authorId = publication.getAuthorId.getValue();
 
+    // Get effective beneficiary (beneficiaryId if set, otherwise authorId)
+    const beneficiaryId = publication.getBeneficiaryId?.getValue();
+    const effectiveBeneficiaryId = beneficiaryId ?? authorId;
+
     // Ensure accurate string comparison for IDs
     const authorIdStr = (authorId as any) instanceof Object ? authorId.toString() : String(authorId);
+    const effectiveBeneficiaryIdStr = (effectiveBeneficiaryId as any) instanceof Object 
+      ? effectiveBeneficiaryId.toString() 
+      : String(effectiveBeneficiaryId);
     const userIdStr = (userId as any) instanceof Object ? userId.toString() : String(userId);
+    
     const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+    const isEffectiveBeneficiary = effectiveBeneficiaryIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
 
-    // console.log(`[DEBUG_CTX] pubId=${publicationId} isAuthor=${isAuthor}`);
-    // console.log(`[DEBUG_CTX] authorId: type=${typeof authorId}, val=${authorId}, str=${authorIdStr}`);
-    // console.log(`[DEBUG_CTX] userId: type=${typeof userId}, val=${userId}, str=${userIdStr}`);
-
-    this.logger.debug(`[buildContextForPublication] pubId=${publicationId} isAuthor=${isAuthor} (${authorIdStr} vs ${userIdStr})`);
+    this.logger.debug(`[buildContextForPublication] pubId=${publicationId} isAuthor=${isAuthor} isEffectiveBeneficiary=${isEffectiveBeneficiary} (${authorIdStr} vs ${userIdStr}, effective=${effectiveBeneficiaryIdStr})`);
 
     const community = await this.communityService.getCommunity(communityId);
     const isTeamCommunity = community?.typeTag === 'team';
@@ -89,13 +97,15 @@ export class PermissionContextService {
 
     const hasTeamMembership = await this.userHasTeamMembership(userId);
 
-    // For voting context: check shared team communities
-    const sharedTeamCommunities = await this.getSharedTeamCommunities(userId, authorId);
+    // For voting context: check shared team communities between voter and effective beneficiary
+    const sharedTeamCommunities = await this.getSharedTeamCommunities(userId, effectiveBeneficiaryId);
 
     return {
       resourceId: publicationId,
       authorId,
+      effectiveBeneficiaryId,
       isAuthor,
+      isEffectiveBeneficiary,
       isTeamMember,
       hasTeamMembership,
       isTeamCommunity,
@@ -120,11 +130,16 @@ export class PermissionContextService {
     }
 
     const authorId = comment.getAuthorId.getValue();
+    // Comments don't have beneficiaries, so effective beneficiary = author
+    const effectiveBeneficiaryId = authorId;
 
     // Ensure accurate string comparison for IDs
+    // For comments, effective beneficiary = author, so we can use authorId directly
     const authorIdStr = String(authorId);
     const userIdStr = String(userId);
+    
     const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+    const isEffectiveBeneficiary = isAuthor; // For comments, same as isAuthor
 
     const communityId = await this.commentService.resolveCommentCommunityId(commentId);
     const community = await this.communityService.getCommunity(communityId);
@@ -154,15 +169,81 @@ export class PermissionContextService {
 
     const hasTeamMembership = await this.userHasTeamMembership(userId);
 
+    // For voting context: check shared team communities between voter and effective beneficiary
+    const sharedTeamCommunities = await this.getSharedTeamCommunities(userId, effectiveBeneficiaryId);
+
     return {
       resourceId: commentId,
       authorId,
+      effectiveBeneficiaryId,
       isAuthor,
+      isEffectiveBeneficiary,
       isTeamMember,
       hasTeamMembership,
       isTeamCommunity,
       authorRole,
+      sharedTeamCommunities,
       hasVotes,
+    };
+  }
+
+  /**
+   * Build context for a vote resource (used for voting on votes/comments)
+   */
+  async buildContextForVote(
+    userId: string,
+    voteId: string,
+  ): Promise<PermissionContext> {
+    const vote = await this.voteService.getVoteById(voteId);
+    if (!vote) {
+      return {};
+    }
+
+    // For votes, the effective beneficiary is the vote's author (userId field)
+    const effectiveBeneficiaryId = vote.userId;
+    
+    // Ensure accurate string comparison for IDs
+    const effectiveBeneficiaryIdStr = String(effectiveBeneficiaryId).trim().toLowerCase();
+    const userIdStr = String(userId).trim().toLowerCase();
+    
+    const isEffectiveBeneficiary = effectiveBeneficiaryIdStr === userIdStr;
+    const isAuthor = isEffectiveBeneficiary; // For votes, author = effective beneficiary
+
+    // Get community from the vote's target (publication or another vote)
+    const communityId = vote.communityId;
+    const community = await this.communityService.getCommunity(communityId);
+    const isTeamCommunity = community?.typeTag === 'team';
+
+    // Get effective beneficiary role
+    const authorRole = await this.permissionService.getUserRoleInCommunity(
+      effectiveBeneficiaryId,
+      communityId,
+    );
+
+    // Check team membership
+    const isTeamMember = isTeamCommunity
+      ? await this.isUserTeamMember(userId, communityId)
+      : false;
+
+    const hasTeamMembership = await this.userHasTeamMembership(userId);
+
+    // For voting context: check shared team communities between voter and effective beneficiary
+    const sharedTeamCommunities = await this.getSharedTeamCommunities(
+      userId,
+      effectiveBeneficiaryId
+    );
+
+    return {
+      resourceId: voteId,
+      authorId: effectiveBeneficiaryId,
+      effectiveBeneficiaryId,
+      isAuthor,
+      isEffectiveBeneficiary,
+      isTeamMember,
+      hasTeamMembership,
+      isTeamCommunity,
+      authorRole,
+      sharedTeamCommunities,
     };
   }
 

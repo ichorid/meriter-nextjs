@@ -108,30 +108,37 @@ export class PermissionRuleEngine {
     if (action === ActionType.VOTE && community.votingSettings?.votingRestriction) {
       const restriction = community.votingSettings.votingRestriction;
       
-      // Check restriction: "not-own" - cannot vote for own posts
-      if (restriction === 'not-own' && context?.isAuthor) {
+      // Check restriction: "not-own" - cannot vote for own effective beneficiary
+      if (restriction === 'not-own' && context?.isEffectiveBeneficiary) {
         // Exception: future-vision allows self-voting
         if (community.typeTag === 'future-vision') {
-          this.logger.debug(
-            `[canPerformAction] ALLOWED: Self-voting allowed in future-vision despite not-own restriction`,
-          );
+          if (this.isFutureVisionSelfVotingAllowed(userRole)) {
+            this.logger.debug(
+              `[canPerformAction] ALLOWED: Self-voting allowed in future-vision despite not-own restriction`,
+            );
+          } else {
+            this.logger.debug(
+              `[canPerformAction] DENIED: Cannot vote for own effective beneficiary (not-own restriction)`,
+            );
+            return false;
+          }
         } else {
           this.logger.debug(
-            `[canPerformAction] DENIED: Cannot vote for own post (not-own restriction)`,
+            `[canPerformAction] DENIED: Cannot vote for own effective beneficiary (not-own restriction)`,
           );
           return false;
         }
       }
       
       // Check restriction: "not-same-group" - cannot vote if users share communities
-      if (restriction === 'not-same-group' && context?.authorId) {
+      if (restriction === 'not-same-group' && context?.effectiveBeneficiaryId) {
         const voterCommunities = await this.userService.getUserCommunities(userId);
-        const authorCommunities = await this.userService.getUserCommunities(context.authorId);
+        const beneficiaryCommunities = await this.userService.getUserCommunities(context.effectiveBeneficiaryId);
         
         // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
         const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
         const sharedCommunities = voterCommunities.filter(vcId => 
-          authorCommunities.includes(vcId)
+          beneficiaryCommunities.includes(vcId)
         );
         
         // Check if any shared community is NOT a special group
@@ -164,10 +171,10 @@ export class PermissionRuleEngine {
         );
         return false;
       }
-      // Team members can vote for each other but not themselves
-      if (context?.isAuthor) {
+      // Team members can vote for each other but not themselves (effective beneficiary check)
+      if (context?.isEffectiveBeneficiary) {
         this.logger.debug(
-          `[canPerformAction] DENIED: Cannot vote for own post in team community`,
+          `[canPerformAction] DENIED: Cannot vote for own effective beneficiary in team community`,
         );
         return false;
       }
@@ -179,13 +186,13 @@ export class PermissionRuleEngine {
     }
 
     // STEP 7.2: Special groups restriction - cannot vote for teammates in FV / MoG
-    // "Teammates" means: voter and author share at least one team-type community.
+    // "Teammates" means: voter and effective beneficiary share at least one team-type community.
     // Applies ONLY to future-vision and marathon-of-good communities.
     if (
       action === ActionType.VOTE &&
       (community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good') &&
-      context?.authorId &&
-      String(context.authorId).trim() !== String(userId).trim() &&
+      context?.effectiveBeneficiaryId &&
+      String(context.effectiveBeneficiaryId).trim() !== String(userId).trim() &&
       (context.sharedTeamCommunities?.length ?? 0) > 0
     ) {
       this.logger.debug(
@@ -194,19 +201,24 @@ export class PermissionRuleEngine {
       return false;
     }
 
-    // STEP 7.5: Check if lead is trying to vote for own post (outside team communities)
-    if (action === ActionType.VOTE && userRole === 'lead' && context?.isAuthor) {
+    // STEP 7.5: Check if lead/participant is trying to vote for own effective beneficiary (outside team communities)
+    if (action === ActionType.VOTE && context?.isEffectiveBeneficiary) {
       // Exception: future-vision allows self-voting
       if (community.typeTag === 'future-vision') {
-        this.logger.debug(
-          `[canPerformAction] ALLOWED: Lead can vote for own post in future-vision`,
-        );
-        return true;
+        if (this.isFutureVisionSelfVotingAllowed(userRole)) {
+          this.logger.debug(
+            `[canPerformAction] ALLOWED: Self-voting allowed in future-vision for role=${userRole}`,
+          );
+          return true;
+        }
       }
-      this.logger.debug(
-        `[canPerformAction] DENIED: Lead cannot vote for own post`,
-      );
-      return false;
+      // Default: prevent self-voting for other roles
+      if (userRole === 'lead' || userRole === 'participant') {
+        this.logger.debug(
+          `[canPerformAction] DENIED: ${userRole} cannot vote for own effective beneficiary`,
+        );
+        return false;
+      }
     }
 
     // STEP 8: Author requirement for edit/delete actions for participants
@@ -285,15 +297,15 @@ export class PermissionRuleEngine {
 
     if (isSuperadmin) {
       // Superadmin can do almost everything, but with some restrictions
-      // For voting: cannot vote for own posts
+      // For voting: cannot vote for own effective beneficiary
       if (action === ActionType.VOTE) {
-        if (context?.isAuthor) {
+        if (context?.isEffectiveBeneficiary) {
           // Exception: future-vision allows self-voting for superadmin
           const community = await this.communityService.getCommunity(communityId);
           if (community?.typeTag === 'future-vision') {
             return true;
           }
-          return false; // Cannot vote for own posts
+          return false; // Cannot vote for own effective beneficiary
         }
         return true; // Can vote for others
       }
@@ -321,6 +333,18 @@ export class PermissionRuleEngine {
 
     // No special status applies
     return null;
+  }
+
+  /**
+   * Check if Future Vision self-voting is allowed for the given role
+   * Centralizes Future Vision exception logic
+   */
+  private isFutureVisionSelfVotingAllowed(
+    userRole: 'superadmin' | 'lead' | 'participant' | 'viewer' | null,
+  ): boolean {
+    return userRole === 'participant' || 
+           userRole === 'lead' || 
+           userRole === 'superadmin';
   }
 
   /**
@@ -377,12 +401,18 @@ export class PermissionRuleEngine {
       }
     }
 
-    // Check canVoteForOwnPosts
+    // Check canVoteForOwnPosts - use effective beneficiary (not just author)
     if (conditions.canVoteForOwnPosts !== undefined && action === ActionType.VOTE) {
-      if (context?.isAuthor && !conditions.canVoteForOwnPosts) {
+      if (context?.isEffectiveBeneficiary && !conditions.canVoteForOwnPosts) {
         // Exception: future-vision allows self-voting
         if (community.typeTag === 'future-vision') {
-          return true;
+          const userRole = await this.permissionService.getUserRoleInCommunity(
+            userId,
+            community.id,
+          );
+          if (this.isFutureVisionSelfVotingAllowed(userRole)) {
+            return true;
+          }
         }
         return false;
       }

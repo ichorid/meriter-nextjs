@@ -16,7 +16,7 @@ import {
   NotificationDocument,
 } from '../src/domain/models/notification/notification.schema';
 import { uid } from 'uid';
-import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcQuery, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Notifications E2E Tests', () => {
@@ -340,24 +340,27 @@ describe('Notifications E2E Tests', () => {
     });
 
     it('should NOT create notification when user votes on own content', async () => {
-      // User1 votes on their own publication
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          testPublicationId,
-          5,
-          0,
-          'up',
-          'My own vote',
-          testCommunityId,
-        ),
-      ).rejects.toThrow('Cannot vote: you are the effective beneficiary of this content');
+      // User1 tries to vote on their own publication through tRPC router
+      // Permission check should fail before VoteService.createVote() is called
+      (global as any).testUserId = testUserId;
+      
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'My own vote',
+      });
+
+      // Permission check should fail with FORBIDDEN (permission check happens in tRPC router)
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe('FORBIDDEN');
+      expect(result.error?.message).toContain('permission to vote');
 
       // Wait a bit for event handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Check no notification was created
+      // Check no notification was created (vote never created because permission check failed)
       const notifications = await notificationModel.find({ userId: testUserId }).lean();
       const voteNotifications = notifications.filter((n) => n.type === 'vote' && n.metadata?.publicationId === testPublicationId);
       expect(voteNotifications.length).toBe(0);

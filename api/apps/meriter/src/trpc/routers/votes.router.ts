@@ -387,14 +387,22 @@ async function createVoteLogic(
     images?: string[];
   },
 ) {
-  // Check permissions if voting on a publication
-  // Note: Comment voting (targetType 'vote') permissions are handled separately if needed
+  // Check permissions based on target type
   if (input.targetType === 'publication') {
     const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
     if (!canVote) {
       throw new TRPCError({
         code: 'FORBIDDEN',
         message: 'You do not have permission to vote on this publication',
+      });
+    }
+  } else if (input.targetType === 'vote') {
+    // Voting on a vote/comment - use canVoteOnVote
+    const canVote = await ctx.permissionService.canVoteOnVote(ctx.user.id, input.targetId);
+    if (!canVote) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to vote on this comment',
       });
     }
   }

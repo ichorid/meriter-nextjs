@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
 import { PollService } from './poll.service';
+import { VoteService } from './vote.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT } from '../common/constants/roles.constants';
 import { ActionType } from '../common/constants/action-types.constants';
 import { PermissionRuleEngine } from './permission-rule-engine.service';
@@ -27,6 +28,8 @@ export class PermissionService {
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
     private pollService: PollService,
+    @Inject(forwardRef(() => VoteService))
+    private voteService: VoteService,
     private permissionRuleEngine: PermissionRuleEngine,
     private permissionContextService: PermissionContextService,
   ) { }
@@ -130,6 +133,35 @@ export class PermissionService {
     const context = await this.permissionContextService.buildContextForPublication(
       userId,
       publicationId,
+    );
+
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      communityId,
+      ActionType.VOTE,
+      context,
+    );
+  }
+
+  /**
+   * Check if user can vote on a vote/comment
+   * Uses permission rule engine with context
+   */
+  async canVoteOnVote(userId: string, voteId: string): Promise<boolean> {
+    this.logger.log(`[canVoteOnVote] START: userId=${userId}, voteId=${voteId}`);
+
+    const vote = await this.voteService.getVoteById(voteId);
+    if (!vote) {
+      this.logger.warn(`[canVoteOnVote] Vote ${voteId} not found`);
+      return false;
+    }
+
+    const communityId = vote.communityId;
+    
+    // Build context for voting on a vote
+    const context = await this.permissionContextService.buildContextForVote(
+      userId,
+      voteId,
     );
 
     return this.permissionRuleEngine.canPerformAction(

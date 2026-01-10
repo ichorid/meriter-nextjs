@@ -94,13 +94,19 @@ export class PermissionsHelperService {
       };
     }
 
-    // Get user and role
+    // Build context for permission evaluation (includes effective beneficiary info)
+    const context = await this.permissionContextService.buildContextForPublication(
+      userId,
+      publicationId,
+    );
+
+    // Get user and role for reason determination
     const user = await this.userService.getUserById(userId);
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    const isAuthor = authorId === userId;
+    const isAuthor = context.isAuthor ?? false;
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = hasBeneficiary && beneficiaryId === userId;
-    const _isEffectiveBeneficiary = isBeneficiary || (isAuthor && !hasBeneficiary);
+    const isEffectiveBeneficiary = context.isEffectiveBeneficiary ?? false;
 
     // Check permissions
     const canVote = await this.permissionService.canVote(userId, publicationId);
@@ -117,12 +123,8 @@ export class PermissionsHelperService {
         community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good';
 
       // Special groups rule: cannot vote for teammates (shared team communities)
-      // Apply only when voter is not the author/beneficiary (those have their own reasons)
-      if (isSpecialGroup && !isAuthor && !isBeneficiary) {
-        const context = await this.permissionContextService.buildContextForPublication(
-          userId,
-          publicationId,
-        );
+      // Apply only when voter is not the effective beneficiary (those have their own reasons)
+      if (isSpecialGroup && !isEffectiveBeneficiary) {
         if ((context.sharedTeamCommunities?.length ?? 0) > 0) {
           voteDisabledReason = 'voteDisabled.teammateInSpecialGroup';
         }
@@ -186,7 +188,6 @@ export class PermissionsHelperService {
     const authorId = comment.getAuthorId.getValue();
     const communityId = await this.commentService.resolveCommentCommunityId(commentId);
     const _userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    const isAuthor = authorId === userId;
 
     // Check permissions
     const canEdit = await this.permissionService.canEditComment(userId, commentId);
@@ -209,26 +210,37 @@ export class PermissionsHelperService {
         const resolved = await this.voteCommentResolver.resolve(commentId);
         
         if (resolved.vote) {
-          // This is a vote-comment - check if user can vote on this vote
-          // Use VoteService to check mutual exclusivity and permissions
-          canVote = await this.voteService.canUserVote(userId, 'vote', resolved.vote.id, communityId);
+          // This is a vote-comment - use PermissionService to check permissions
+          canVote = await this.permissionService.canVoteOnVote(userId, resolved.vote.id);
           
           if (!canVote) {
-            // Check if it's because user is the author (mutual exclusivity)
-            if (resolved.vote.userId === userId) {
+            // Build context to get the reason
+            const context = await this.permissionContextService.buildContextForVote(
+              userId,
+              resolved.vote.id,
+            );
+            
+            if (context.isEffectiveBeneficiary) {
               voteDisabledReason = 'voteDisabled.isAuthor';
             } else {
               voteDisabledReason = 'voteDisabled.roleNotAllowed';
             }
           }
         } else {
-          // Regular comment - check mutual exclusivity (can't vote on own comment)
-          if (isAuthor) {
+          // Regular comment - use PermissionService to check permissions
+          // Build context to check effective beneficiary
+          const context = await this.permissionContextService.buildContextForComment(
+            userId,
+            commentId,
+          );
+          
+          if (context.isEffectiveBeneficiary) {
             canVote = false;
             voteDisabledReason = 'voteDisabled.isAuthor';
           } else {
-            // Allow voting on regular comments if feature is enabled and not own comment
-            canVote = true;
+            // Check if user has permission to vote in the community
+            // Regular comments can be voted on if feature is enabled and not own comment
+            canVote = true; // For now, allow voting on regular comments if not own
           }
         }
       } catch (_error) {

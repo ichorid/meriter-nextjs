@@ -436,27 +436,90 @@ describe('Voting Permissions', () => {
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
         expect(canVote).toBe(true);
       });
+
+      it('should allow participant to vote for own effective beneficiary in Future Vision (exception)', async () => {
+        // Participant1 can vote for their own post in Future Vision
+        const pub = await publicationService.createPublication(participant1Id, {
+          communityId: visionCommunityId,
+          content: 'Participant 1 Future Vision publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for participants
+      });
+
+      it('should not allow participant to vote for own effective beneficiary in regular communities', async () => {
+        const pub = await publicationService.createPublication(participant1Id, {
+          communityId: regularCommunityId,
+          content: 'Participant 1 regular publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(false); // No exception for regular communities
+      });
+
+      it('should allow participant to vote for their own post if there is a different beneficiary', async () => {
+        // Create publication by participant1 with participant2 as beneficiary
+        const pub = await publicationService.createPublication(participant1Id, {
+          communityId: regularCommunityId,
+          content: 'Post with beneficiary',
+          type: 'text',
+          beneficiaryId: participant2Id, // Different beneficiary
+        });
+
+        // Participant1 (author) can vote because effective beneficiary is participant2 (different)
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(true); // Can vote because effective beneficiary != author
+      });
+
+      it('should not allow participant to vote for post where they are the beneficiary', async () => {
+        // Create publication by participant2 with participant1 as beneficiary
+        const pub = await publicationService.createPublication(participant2Id, {
+          communityId: regularCommunityId,
+          content: 'Post where participant1 is beneficiary',
+          type: 'text',
+          beneficiaryId: participant1Id, // Participant1 is beneficiary
+        });
+
+        // Participant1 (beneficiary) cannot vote because effective beneficiary = participant1
+        const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
+        expect(canVote).toBe(false); // Cannot vote for own effective beneficiary
+      });
     });
 
     describe('Leads', () => {
-      it('should allow lead to vote for anything except own posts', async () => {
+      it('should allow lead to vote for anything except own effective beneficiary', async () => {
         const canVote = await permissionService.canVote(lead1Id, regularPubId);
         expect(canVote).toBe(true);
       });
 
-      it('should not allow lead to vote for own posts', async () => {
+      it('should not allow lead to vote for own effective beneficiary (own posts)', async () => {
         const canVote = await permissionService.canVote(lead1Id, marathonPubId);
         expect(canVote).toBe(false);
+      });
+
+      it('should allow lead to vote for own effective beneficiary in Future Vision (exception)', async () => {
+        // Lead1 can vote for their own post in Future Vision
+        const pub = await publicationService.createPublication(lead1Id, {
+          communityId: visionCommunityId,
+          content: 'Lead 1 Future Vision publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(lead1Id, pub.getId.getValue());
+        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for leads
       });
     });
 
     describe('Superadmin', () => {
-      it('should allow superadmin to vote for anything except own posts', async () => {
+      it('should allow superadmin to vote for anything except own effective beneficiary', async () => {
         const canVote = await permissionService.canVote(superadminId, regularPubId);
         expect(canVote).toBe(true);
       });
 
-      it('should not allow superadmin to vote for own posts', async () => {
+      it('should not allow superadmin to vote for own effective beneficiary (own posts)', async () => {
         const pub = await publicationService.createPublication(superadminId, {
           communityId: regularCommunityId,
           content: 'Superadmin publication',
@@ -465,6 +528,17 @@ describe('Voting Permissions', () => {
 
         const canVote = await permissionService.canVote(superadminId, pub.getId.getValue());
         expect(canVote).toBe(false);
+      });
+
+      it('should allow superadmin to vote for own effective beneficiary in Future Vision (exception)', async () => {
+        const pub = await publicationService.createPublication(superadminId, {
+          communityId: visionCommunityId,
+          content: 'Superadmin Future Vision publication',
+          type: 'text',
+        });
+
+        const canVote = await permissionService.canVote(superadminId, pub.getId.getValue());
+        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for superadmin
       });
     });
 
