@@ -106,7 +106,7 @@ export class PermissionsHelperService {
     const isAuthor = context.isAuthor ?? false;
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = hasBeneficiary && beneficiaryId === userId;
-    const isEffectiveBeneficiary = context.isEffectiveBeneficiary ?? false;
+    const _isEffectiveBeneficiary = context.isEffectiveBeneficiary ?? false;
 
     // Check permissions
     const canVote = await this.permissionService.canVote(userId, publicationId);
@@ -116,35 +116,22 @@ export class PermissionsHelperService {
 
     // Determine vote disabled reason
     // Only determine reason if canVote is false
-    // Community should exist here since we checked above - use it directly
+    // NOTE: Self-voting and teammate voting are now ALLOWED with wallet-only constraint
+    // Currency constraints are enforced in VoteService, not here
     let voteDisabledReason: string | undefined;
     if (!canVote) {
-      const isSpecialGroup =
-        community.typeTag === 'future-vision' || community.typeTag === 'marathon-of-good';
-
-      // Special groups rule: cannot vote for teammates (shared team communities)
-      // Apply only when voter is not the effective beneficiary (those have their own reasons)
-      if (isSpecialGroup && !isEffectiveBeneficiary) {
-        if ((context.sharedTeamCommunities?.length ?? 0) > 0) {
-          voteDisabledReason = 'voteDisabled.teammateInSpecialGroup';
-        }
-      }
-
       // Community should always exist here due to check above
-      // If it doesn't, something is wrong - but we already returned early if community was null
       // So we can safely use community here
-      if (!voteDisabledReason) {
-        voteDisabledReason = this.getVoteDisabledReason(
-          user,
-          userRole,
-          community,
-          isAuthor,
-          isBeneficiary,
-          hasBeneficiary,
-          isProject,
-          publicationId,
-        );
-      }
+      voteDisabledReason = this.getVoteDisabledReason(
+        user,
+        userRole,
+        community,
+        isAuthor,
+        isBeneficiary,
+        hasBeneficiary,
+        isProject,
+        publicationId,
+      );
     }
 
     return {
@@ -214,34 +201,14 @@ export class PermissionsHelperService {
           canVote = await this.permissionService.canVoteOnVote(userId, resolved.vote.id);
           
           if (!canVote) {
-            // Build context to get the reason
-            const context = await this.permissionContextService.buildContextForVote(
-              userId,
-              resolved.vote.id,
-            );
-            
-            if (context.isEffectiveBeneficiary) {
-              voteDisabledReason = 'voteDisabled.isAuthor';
-            } else {
-              voteDisabledReason = 'voteDisabled.roleNotAllowed';
-            }
+            // Permission denied for role or other reasons
+            // NOTE: Self-voting is now allowed with wallet-only constraint
+            voteDisabledReason = 'voteDisabled.roleNotAllowed';
           }
         } else {
-          // Regular comment - use PermissionService to check permissions
-          // Build context to check effective beneficiary
-          const context = await this.permissionContextService.buildContextForComment(
-            userId,
-            commentId,
-          );
-          
-          if (context.isEffectiveBeneficiary) {
-            canVote = false;
-            voteDisabledReason = 'voteDisabled.isAuthor';
-          } else {
-            // Check if user has permission to vote in the community
-            // Regular comments can be voted on if feature is enabled and not own comment
-            canVote = true; // For now, allow voting on regular comments if not own
-          }
+          // Regular comment - voting is allowed (self-voting has currency constraint)
+          // NOTE: Self-voting is allowed with wallet-only constraint, enforced in VoteService
+          canVote = true;
         }
       } catch (_error) {
         // If resolution fails, default to false
@@ -387,14 +354,16 @@ export class PermissionsHelperService {
 
   /**
    * Get the reason why voting is disabled
+   * NOTE: Self-voting and teammate voting are now ALLOWED with wallet-only constraint
+   * Those are not reasons to disable voting - only role/permission issues are
    */
   private getVoteDisabledReason(
     user: any,
     userRole: string | null,
     community: any,
-    isAuthor: boolean,
-    isBeneficiary: boolean,
-    hasBeneficiary: boolean,
+    _isAuthor: boolean,
+    _isBeneficiary: boolean,
+    _hasBeneficiary: boolean,
     isProject: boolean,
     _publicationId: string,
   ): string {
@@ -402,8 +371,8 @@ export class PermissionsHelperService {
       return 'voteDisabled.notLoggedIn';
     }
 
-    // Superadmin can vote on all posts except own (handled in canVote, but check here as safeguard)
-    if (user.globalRole === GLOBAL_ROLE_SUPERADMIN && !isAuthor) {
+    // Superadmin can always vote
+    if (user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
       return undefined as any; // No reason - superadmin can vote
     }
 
@@ -412,47 +381,24 @@ export class PermissionsHelperService {
     }
 
     // Community should always be provided when called from calculatePublicationPermissions
-    // since we verify it exists before calling this method.
-    // If community is somehow missing (shouldn't happen), we can't determine the reason properly
-    // In this case, we'll skip the community-specific checks and fall through to other checks
-    // But ideally this should never happen, so we check defensively
     if (!community) {
-      // Can't determine reason without community - this is a fallback
-      // Should not happen in normal flow
       return 'voteDisabled.noCommunity';
     }
 
-    // Check team community restrictions
-    if (community.typeTag === 'team' && isAuthor) {
-      return 'voteDisabled.teamOwnPost';
-    }
-
-    // Check mutual exclusivity
-    if (isBeneficiary) {
-      return 'voteDisabled.isBeneficiary';
-    }
-
-    if (isAuthor && !hasBeneficiary) {
-      // Exception: future-vision allows self-voting
-      if (community.typeTag === 'future-vision' && 
-          (userRole === 'participant' || userRole === 'lead' || userRole === 'superadmin')) {
-        // Allow self-voting in future-vision, so no reason
-        return undefined as any;
-      }
-      return 'voteDisabled.isAuthor';
-    }
+    // NOTE: Self-voting (isAuthor, isBeneficiary) is now ALLOWED with wallet-only constraint
+    // The currency constraint is enforced in VoteService, not here
+    // We don't return disabled reasons for self-voting anymore
 
     // Check role restrictions
-    // Note: Permission rules are now handled by PermissionService.canVote()
-    // This helper just provides reasons for UI display
-    // The actual permission check is done by the rule engine
     if (!userRole) {
       return 'voteDisabled.roleNotAllowed';
     }
 
-    // Check viewer restrictions
-    if (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good') {
-      return 'voteDisabled.viewerNotMarathon';
+    // Check viewer restrictions (viewers can only vote in marathon-of-good and team-projects)
+    if (userRole === COMMUNITY_ROLE_VIEWER && 
+        community.typeTag !== 'marathon-of-good' && 
+        community.typeTag !== 'team-projects') {
+      return 'voteDisabled.viewerNotAllowed';
     }
 
     return undefined as any;

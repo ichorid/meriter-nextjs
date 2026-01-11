@@ -339,9 +339,9 @@ describe('Notifications E2E Tests', () => {
       expect(commentVoteNotifications[0].sourceId).toBe(testUserId3);
     });
 
-    it('should NOT create notification when user votes on own content', async () => {
-      // User1 tries to vote on their own publication through tRPC router
-      // Permission check should fail before VoteService.createVote() is called
+    it('should reject self-voting with quota (wallet-only constraint)', async () => {
+      // User1 tries to vote on their own publication with quota
+      // Self-voting is now allowed permission-wise, but requires wallet-only (no quota)
       (global as any).testUserId = testUserId;
       
       const result = await trpcMutationWithError(app, 'votes.createWithComment', {
@@ -349,18 +349,18 @@ describe('Notifications E2E Tests', () => {
         targetId: testPublicationId,
         quotaAmount: 5,
         walletAmount: 0,
-        comment: 'My own vote',
+        comment: 'My own vote with quota',
       });
 
-      // Permission check should fail with FORBIDDEN (permission check happens in tRPC router)
+      // Currency constraint should fail with BAD_REQUEST (enforced in VoteService)
       expect(result.error).toBeDefined();
-      expect(result.error?.code).toBe('FORBIDDEN');
-      expect(result.error?.message).toContain('permission to vote');
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Self-voting requires wallet merits only');
 
       // Wait a bit for event handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Check no notification was created (vote never created because permission check failed)
+      // Check no notification was created (vote never created because currency constraint failed)
       const notifications = await notificationModel.find({ userId: testUserId }).lean();
       const voteNotifications = notifications.filter((n) => n.type === 'vote' && n.metadata?.publicationId === testPublicationId);
       expect(voteNotifications.length).toBe(0);

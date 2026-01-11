@@ -359,6 +359,26 @@ export class VoteService {
   }
 
   /**
+   * Get list of team-type community IDs that a user belongs to
+   * Used for teammate detection in special community voting constraints
+   */
+  private async getTeamCommunitiesForUser(userId: string): Promise<string[]> {
+    // Get all communities the user belongs to
+    const userCommunities = await this.userService.getUserCommunities(userId);
+    
+    // Filter to only team-type communities
+    const teamCommunities: string[] = [];
+    for (const communityId of userCommunities) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.typeTag === 'team') {
+        teamCommunities.push(communityId);
+      }
+    }
+    
+    return teamCommunities;
+  }
+
+  /**
    * Returns the sum of vote amounts cast ON the given vote.
    * Uses MongoDB aggregation to avoid loading all documents.
    */

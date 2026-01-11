@@ -240,7 +240,8 @@ describe('PermissionsHelperService', () => {
       expect(permissions.canDelete).toBe(true);
     });
 
-    it('should prevent voting on own post in regular community', async () => {
+    it('should allow voting on own post in regular community (currency constraint in VoteService)', async () => {
+      // Self-voting is now allowed with wallet-only constraint (enforced in VoteService)
       const publication = await publicationService.createPublication(participant1Id, {
         communityId: regularCommunityId,
         content: 'Test publication',
@@ -252,8 +253,9 @@ describe('PermissionsHelperService', () => {
         publication.getId.getValue(),
       );
 
-      expect(permissions.canVote).toBe(false);
-      expect(permissions.voteDisabledReason).toBe('voteDisabled.isAuthor');
+      // Permission is granted - currency constraint is enforced at vote creation time
+      expect(permissions.canVote).toBe(true);
+      expect(permissions.voteDisabledReason).toBeUndefined();
     });
 
     it('should allow voting on own post in future-vision community', async () => {

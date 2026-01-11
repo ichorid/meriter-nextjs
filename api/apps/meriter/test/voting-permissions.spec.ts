@@ -408,21 +408,23 @@ describe('Voting Permissions', () => {
         expect(canVote).toBe(true);
       });
 
-      it('should NOT allow participant to vote for teammate (lead) in marathon-of-good', async () => {
+      it('should allow participant to vote for teammate (lead) in marathon-of-good (currency constraint handled in VoteService)', async () => {
         // marathonPubId is authored by lead1, and participant1 shares team1 with lead1
+        // Permission is granted - teammate restriction is now a currency constraint (wallet-only)
         const canVote = await permissionService.canVote(participant1Id, marathonPubId);
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true);
       });
 
-      it('should NOT allow participant to vote for teammate (lead) in future-vision', async () => {
+      it('should allow participant to vote for teammate (lead) in future-vision (currency constraint handled in VoteService)', async () => {
         const pub = await publicationService.createPublication(lead1Id, {
           communityId: visionCommunityId,
           content: 'Vision lead publication',
           type: 'text',
         });
 
+        // Permission is granted - teammate restriction is now a currency constraint (wallet-only)
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true);
       });
 
       it('should allow participant to vote for non-teammate in future-vision', async () => {
@@ -437,8 +439,9 @@ describe('Voting Permissions', () => {
         expect(canVote).toBe(true);
       });
 
-      it('should allow participant to vote for own effective beneficiary in Future Vision (exception)', async () => {
+      it('should allow participant to vote for own effective beneficiary in Future Vision (currency constraint in VoteService)', async () => {
         // Participant1 can vote for their own post in Future Vision
+        // Self-voting is now allowed everywhere with wallet-only constraint
         const pub = await publicationService.createPublication(participant1Id, {
           communityId: visionCommunityId,
           content: 'Participant 1 Future Vision publication',
@@ -446,10 +449,11 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for participants
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
 
-      it('should not allow participant to vote for own effective beneficiary in regular communities', async () => {
+      it('should allow participant to vote for own effective beneficiary in regular communities (currency constraint in VoteService)', async () => {
+        // Self-voting is now allowed with wallet-only constraint (enforced in VoteService)
         const pub = await publicationService.createPublication(participant1Id, {
           communityId: regularCommunityId,
           content: 'Participant 1 regular publication',
@@ -457,7 +461,7 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false); // No exception for regular communities
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
 
       it('should allow participant to vote for their own post if there is a different beneficiary', async () => {
@@ -474,7 +478,7 @@ describe('Voting Permissions', () => {
         expect(canVote).toBe(true); // Can vote because effective beneficiary != author
       });
 
-      it('should not allow participant to vote for post where they are the beneficiary', async () => {
+      it('should allow participant to vote for post where they are the beneficiary (currency constraint in VoteService)', async () => {
         // Create publication by participant2 with participant1 as beneficiary
         const pub = await publicationService.createPublication(participant2Id, {
           communityId: regularCommunityId,
@@ -483,24 +487,25 @@ describe('Voting Permissions', () => {
           beneficiaryId: participant1Id, // Participant1 is beneficiary
         });
 
-        // Participant1 (beneficiary) cannot vote because effective beneficiary = participant1
+        // Participant1 (beneficiary) can now vote because self-voting is allowed (wallet-only constraint in VoteService)
         const canVote = await permissionService.canVote(participant1Id, pub.getId.getValue());
-        expect(canVote).toBe(false); // Cannot vote for own effective beneficiary
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
     });
 
     describe('Leads', () => {
-      it('should allow lead to vote for anything except own effective beneficiary', async () => {
+      it('should allow lead to vote for anything', async () => {
         const canVote = await permissionService.canVote(lead1Id, regularPubId);
         expect(canVote).toBe(true);
       });
 
-      it('should not allow lead to vote for own effective beneficiary (own posts)', async () => {
+      it('should allow lead to vote for own effective beneficiary (currency constraint in VoteService)', async () => {
+        // Self-voting is now allowed with wallet-only constraint
         const canVote = await permissionService.canVote(lead1Id, marathonPubId);
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
 
-      it('should allow lead to vote for own effective beneficiary in Future Vision (exception)', async () => {
+      it('should allow lead to vote for own effective beneficiary in Future Vision', async () => {
         // Lead1 can vote for their own post in Future Vision
         const pub = await publicationService.createPublication(lead1Id, {
           communityId: visionCommunityId,
@@ -509,17 +514,18 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(lead1Id, pub.getId.getValue());
-        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for leads
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
     });
 
     describe('Superadmin', () => {
-      it('should allow superadmin to vote for anything except own effective beneficiary', async () => {
+      it('should allow superadmin to vote for anything', async () => {
         const canVote = await permissionService.canVote(superadminId, regularPubId);
         expect(canVote).toBe(true);
       });
 
-      it('should not allow superadmin to vote for own effective beneficiary (own posts)', async () => {
+      it('should allow superadmin to vote for own effective beneficiary (currency constraint in VoteService)', async () => {
+        // Self-voting is now allowed with wallet-only constraint
         const pub = await publicationService.createPublication(superadminId, {
           communityId: regularCommunityId,
           content: 'Superadmin publication',
@@ -527,10 +533,10 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(superadminId, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
 
-      it('should allow superadmin to vote for own effective beneficiary in Future Vision (exception)', async () => {
+      it('should allow superadmin to vote for own effective beneficiary in Future Vision', async () => {
         const pub = await publicationService.createPublication(superadminId, {
           communityId: visionCommunityId,
           content: 'Superadmin Future Vision publication',
@@ -538,7 +544,7 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(superadminId, pub.getId.getValue());
-        expect(canVote).toBe(true); // Exception: Future Vision allows self-voting for superadmin
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
     });
 
@@ -558,7 +564,10 @@ describe('Voting Permissions', () => {
         expect(canVote).toBe(false);
       });
 
-      it('should not allow viewer to vote for own posts', async () => {
+      it('should allow viewer to vote for own posts in marathon-of-good (currency constraint in VoteService)', async () => {
+        // Viewers can vote in marathon-of-good, including self-voting (with wallet-only constraint)
+        // But since viewers are quota-only and self-voting requires wallet, it effectively won't work
+        // Permission-wise, it's allowed
         const pub = await publicationService.createPublication(viewerId, {
           communityId: marathonCommunityId,
           content: 'Viewer publication',
@@ -566,7 +575,7 @@ describe('Voting Permissions', () => {
         });
 
         const canVote = await permissionService.canVote(viewerId, pub.getId.getValue());
-        expect(canVote).toBe(false);
+        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
       });
     });
   });
@@ -584,9 +593,10 @@ describe('Voting Permissions', () => {
       expect(canVote).toBe(true);
     });
 
-    it('should not allow team member (participant) to vote for themselves', async () => {
+    it('should allow team member (participant) to vote for themselves (currency constraint in VoteService)', async () => {
+      // Self-voting is now allowed with wallet-only constraint
       const canVote = await permissionService.canVote(participant1Id, team1PubId);
-      expect(canVote).toBe(false);
+      expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
     });
 
     it('should allow team lead to vote for team participants', async () => {
@@ -594,7 +604,8 @@ describe('Voting Permissions', () => {
       expect(canVote).toBe(true);
     });
 
-    it('should not allow team lead to vote for themselves', async () => {
+    it('should allow team lead to vote for themselves (currency constraint in VoteService)', async () => {
+      // Self-voting is now allowed with wallet-only constraint
       const pub = await publicationService.createPublication(lead1Id, {
         communityId: team1CommunityId,
         content: 'Team lead own publication',
@@ -602,7 +613,7 @@ describe('Voting Permissions', () => {
       });
 
       const canVote = await permissionService.canVote(lead1Id, pub.getId.getValue());
-      expect(canVote).toBe(false);
+      expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
     });
 
     it('should not allow non-team members to vote in team community', async () => {

@@ -97,44 +97,75 @@ All voting permission checks are centralized in PermissionService → Permission
   - Can vote if you are the author BUT there's a different beneficiary (effective beneficiary ≠ author)
 - **Exception**: Future Vision allows self-voting for participants/leads/superadmins
 
-**Teammate Restrictions:**
-- In Future Vision and Marathon of Good: Cannot vote for teammates (users who share team-type communities)
-- Team Communities: Team members can vote for each other, but not themselves (effective beneficiary check)
+**Teammate Voting Rules:**
+- **Permission**: Teammate voting is **allowed** unless `votingRestriction: 'not-same-team'` is set (Factor 1)
+  - If `votingRestriction: 'not-same-team'` is set, Factor 1 blocks voting if users share team communities (permission block)
+  - If restriction is `'any'` or not set, teammate voting is permitted permission-wise
+- **Currency Constraint**: Teammate voting in special communities (FV/MoG) **requires wallet-only** (Factor 2)
+  - Only applies if users share team communities AND community is Future Vision or Marathon of Good
+  - Quota cannot be used for teammate voting in these communities
+  - Wallet merits can be used
+
+**Database Configurable Settings:**
+All factors respect runtime-configurable DB settings:
+- **Factor 1 (Role Hierarchy)**: 
+  - Uses `community.permissionRules` (via `getEffectivePermissionRules()`) - DB rules override defaults
+  - Respects `community.votingSettings.votingRestriction: 'not-same-team'` - permission block
+- **Factor 2 (Social Currency Constraint)**: 
+  - Always applies (self-voting always wallet-only)
+  - Teammate constraint only if not blocked by 'not-same-team' restriction
+- **Factor 3 (Context Currency Mode)**: 
+  - Respects `community.meritSettings.quotaRecipients` - role must be in list to use quota
+- **Factor 4 (Merit Destination)**: 
+  - Respects `community.votingSettings.meritConversion` - custom routing
+  - Respects `community.votingSettings.awardsMerits` - if false, no destinations
 
 **Balance Deduction**: Merits deducted from voter's wallet. Quota deducted from voter's personal daily quota.
-**Recipient Credit**: Merits credited to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId)
+**Recipient Credit**: Merits credited via Factor 4 (Merit Destination) to the effective beneficiary's wallet based on community type and settings
 **Free Quota**: Users get free quota daily for voting
 **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
 **Voting Over Quota**: Users can vote beyond their daily quota by using wallet balance. The maximum vote amount is quota + wallet balance combined.
 **Quota vs Wallet Logic**: For upvotes, quota is used first, then wallet. For downvotes, only wallet can be used (quota cannot be used for negative votes).
 
-#### Vote Processing
-1. **Permission Check** (in tRPC Router):
+#### Vote Processing (Factorized Flow)
+1. **Permission Check** (in tRPC Router, Factor 1):
    - Calls `PermissionService.canVote()` for publications or `canVoteOnVote()` for votes/comments
-   - PermissionService builds context with effective beneficiary information
-   - PermissionRuleEngine evaluates all rules (self-voting, teammate restrictions, Future Vision exceptions, etc.)
+   - PermissionService builds context with effective beneficiary information via `PermissionContextService`
+   - PermissionRuleEngine evaluates using Factor 1 (Role Hierarchy)
+   - Checks role-based permissions from DB rules
+   - Checks `votingRestriction: 'not-same-team'` if set
    - Returns FORBIDDEN if permission check fails
 
-2. **Business Logic Validation** (in VoteService.createVote):
+2. **Currency Validation** (in VoteService.createVote, Factors 2 + 3):
+   - Uses `VoteFactorService.evaluateCurrencyMode()` to get composed currency mode
+   - Factor 2 (Social Currency Constraint) checks self/teammate constraints
+   - Factor 3 (Context Currency Mode) checks community/content/role/direction rules
+   - Social constraint (Factor 2) takes priority over context (Factor 3)
+   - Validates quotaAmount and walletAmount against currency mode result
+   - Returns BAD_REQUEST if currency constraint fails
+
+3. **Business Logic Validation** (in VoteService.createVote):
    - Reject double-zero votes (quotaAmount = 0 and walletAmount = 0)
    - Reject if quotaAmount > available quota
    - Reject if walletAmount > available wallet balance
    - Reject if total amount (quotaAmount + walletAmount) > quota + wallet combined
-   - Reject if quotaAmount > 0 for downvotes
-   - Enforce community-specific quota/wallet restrictions (Marathon: quota-only, Future Vision: wallet-only, viewers: quota-only)
-   - Enforce post type restrictions (projects require wallet)
 
-3. **Amount Calculation**: Calculate quotaAmount and walletAmount
+4. **Amount Calculation**: Calculate quotaAmount and walletAmount
    - For upvotes: quotaAmount = min(requestedAmount, availableQuota), walletAmount = max(0, requestedAmount - availableQuota)
    - For downvotes: quotaAmount = 0, walletAmount = requestedAmount
 
-4. **Vote Creation**: Create vote document with quotaAmount and walletAmount
+5. **Vote Creation**: Create vote document with quotaAmount and walletAmount
 
-5. **Balance Deduction**: Deduct from quota (if used) and wallet (if used)
+6. **Balance Deduction**: Deduct from quota (if used) and wallet (if used)
 
-6. **Metrics Update**: Update publication/comment vote counts
+7. **Metrics Update**: Update publication/comment vote counts
 
-7. **Transaction Record**: Create transaction record for audit
+8. **Merit Routing** (Factor 4): Uses `VoteFactorService.evaluateMeritDestination()` to determine where merits go
+   - Respects community type (Regular, Marathon of Good, Future Vision, Team)
+   - Respects `meritConversion` and `awardsMerits` settings
+   - Credits merits to appropriate wallets
+
+9. **Transaction Record**: Create transaction record for audit
 
 ### 5. Comments System
 

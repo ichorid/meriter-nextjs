@@ -194,8 +194,14 @@ This document describes the quota and merit dynamics across different group type
 - **Future Vision**: Returns 0 quota (same as viewers)
 - **Regular Groups**: Returns configured daily quota minus used quota
 
-### Vote Validation
-- **Controller**: `validateAndProcessVoteAmounts()` in `votes.controller.ts`
-- **Service**: `createVote()` in `vote.service.ts`
-- **Both enforce**: Group-specific voting rules before creating vote
+### Vote Validation (Factorized)
+- **Permission**: `PermissionService.canVote()` → `PermissionRuleEngine` → Factor 1 (Role Hierarchy)
+- **Currency**: `VoteService.createVote()` → `VoteFactorService.evaluateCurrencyMode()` → Factors 2 + 3 (composed)
+- **Routing**: `processWithdrawal()` → `VoteFactorService.evaluateMeritDestination()` → Factor 4 (Merit Destination)
+- **All factors**: Respect DB settings (`permissionRules`, `votingSettings`, `meritSettings`)
+
+### Database Migration
+- **Voting Restrictions**: `'not-own'` removed (now currency constraint), `'not-same-group'` renamed to `'not-same-team'`
+- **Migration Script**: `api/scripts/migrate-voting-restrictions.ts`
+- **Schema Updates**: Community schema updated to remove `'not-own'` and rename `'not-same-group'` to `'not-same-team'`
 

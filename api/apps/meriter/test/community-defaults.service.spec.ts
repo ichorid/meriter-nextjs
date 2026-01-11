@@ -37,22 +37,23 @@ describe('CommunityDefaultsService', () => {
       const rules = service.getDefaultPermissionRules(undefined);
       expect(rules.length).toBeGreaterThan(0);
 
-      // Check for participant:VOTE rule with canVoteForOwnPosts: false
+      // Check for participant:VOTE rule (no canVoteForOwnPosts - self-voting now uses currency constraint)
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      // NOTE: canVoteForOwnPosts is no longer set - self-voting is handled by currency constraints in VoteService
+      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBeUndefined();
     });
 
     it('should return base rules when typeTag is custom', () => {
       const rules = service.getDefaultPermissionRules('custom');
       expect(rules.length).toBeGreaterThan(0);
 
-      // Check for participant:VOTE rule with canVoteForOwnPosts: false
+      // Check for participant:VOTE rule (no canVoteForOwnPosts - self-voting now uses currency constraint)
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBeUndefined();
     });
 
     it('should include all expected base rules for each role and action', () => {
@@ -87,33 +88,35 @@ describe('CommunityDefaultsService', () => {
       expect(findRule(rules, 'viewer', ActionType.POST_PUBLICATION)).toBeUndefined();
     });
 
-    it('should have participant:VOTE rule with canVoteForOwnPosts: false in base rules', () => {
+    it('should have participant:VOTE rule without canVoteForOwnPosts condition (handled by currency constraint)', () => {
       const rules = service.getDefaultPermissionRules();
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      // canVoteForOwnPosts is no longer used - self-voting is allowed with wallet-only constraint
+      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBeUndefined();
     });
   });
 
   describe('Future-Vision Override Tests', () => {
-    it('should override participant:VOTE rule with canVoteForOwnPosts: true', () => {
+    it('should have participant:VOTE rule without conditions (self-voting via currency constraint)', () => {
       const rules = service.getDefaultPermissionRules('future-vision');
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(true);
+      // No canVoteForOwnPosts - self-voting is wallet-only, enforced in VoteService
+      expect(participantVoteRule?.conditions).toBeUndefined();
     });
 
-    it('should override lead:VOTE rule with canVoteForOwnPosts: true', () => {
+    it('should have lead:VOTE rule without conditions (self-voting via currency constraint)', () => {
       const rules = service.getDefaultPermissionRules('future-vision');
       const leadVoteRule = findRule(rules, 'lead', ActionType.VOTE);
 
       expect(leadVoteRule).toBeDefined();
       expect(leadVoteRule?.allowed).toBe(true);
-      expect(leadVoteRule?.conditions?.canVoteForOwnPosts).toBe(true);
+      expect(leadVoteRule?.conditions).toBeUndefined();
     });
 
     it('should preserve all other base rules unchanged', () => {
@@ -148,13 +151,13 @@ describe('CommunityDefaultsService', () => {
   });
 
   describe('Marathon-of-Good Override Tests', () => {
-    it('should override participant:VOTE rule (marathon-of-good)', () => {
+    it('should have participant:VOTE rule without canVoteForOwnPosts (marathon-of-good)', () => {
       const rules = service.getDefaultPermissionRules('marathon-of-good');
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      expect(participantVoteRule?.conditions).toBeUndefined();
     });
 
     it('should add viewer:VOTE rule', () => {
@@ -163,7 +166,7 @@ describe('CommunityDefaultsService', () => {
 
       expect(viewerVoteRule).toBeDefined();
       expect(viewerVoteRule?.allowed).toBe(true);
-      expect(viewerVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      expect(viewerVoteRule?.conditions).toBeUndefined();
     });
 
     it('should preserve all other base rules unchanged', () => {
@@ -182,13 +185,13 @@ describe('CommunityDefaultsService', () => {
   });
 
   describe('Support Override Tests', () => {
-    it('should override participant:VOTE rule', () => {
+    it('should have participant:VOTE rule without canVoteForOwnPosts', () => {
       const rules = service.getDefaultPermissionRules('support');
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      expect(participantVoteRule?.conditions).toBeUndefined();
     });
 
     it('should preserve all other base rules unchanged', () => {
@@ -225,13 +228,13 @@ describe('CommunityDefaultsService', () => {
       expect(participantPollRule?.conditions?.requiresTeamMembership).toBe(true);
     });
 
-    it('should override participant:VOTE rule', () => {
+    it('should have participant:VOTE rule without canVoteForOwnPosts', () => {
       const rules = service.getDefaultPermissionRules('team');
       const participantVoteRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(participantVoteRule).toBeDefined();
       expect(participantVoteRule?.allowed).toBe(true);
-      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBe(false);
+      expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBeUndefined();
     });
 
     it('should override viewer:VIEW_COMMUNITY with allowed: false', () => {
@@ -277,7 +280,7 @@ describe('CommunityDefaultsService', () => {
       const baseRules = service.getDefaultPermissionRules();
       const baseRuleCount = baseRules.length;
 
-      // Future-vision adds 2 rules (participant:VOTE, lead:VOTE) but overrides 2 existing ones
+      // Future-vision overrides 2 rules (participant:VOTE, lead:VOTE) - no new rules added
       // So count should be the same
       const futureVisionRules = service.getDefaultPermissionRules('future-vision');
       expect(futureVisionRules.length).toBe(baseRuleCount);
@@ -308,8 +311,8 @@ describe('CommunityDefaultsService', () => {
       );
       expect(participantVoteRules.length).toBe(1);
       
-      // That rule should have canVoteForOwnPosts: true (from future-vision, not base)
-      expect(participantVoteRules[0].conditions?.canVoteForOwnPosts).toBe(true);
+      // That rule should NOT have canVoteForOwnPosts (no longer used)
+      expect(participantVoteRules[0].conditions).toBeUndefined();
     });
   });
 
@@ -319,20 +322,22 @@ describe('CommunityDefaultsService', () => {
       const matchingRule = findRule(rules, 'participant', ActionType.VOTE);
 
       expect(matchingRule).toBeDefined();
-      expect(matchingRule?.conditions?.canVoteForOwnPosts).toBe(true);
+      expect(matchingRule?.allowed).toBe(true);
+      // No conditions - self-voting handled by currency constraints
+      expect(matchingRule?.conditions).toBeUndefined();
     });
 
     it('should return correct rule for each type tag', () => {
       // Test future-vision
       const fvRules = service.getDefaultPermissionRules('future-vision');
       const fvParticipantVote = findRule(fvRules, 'participant', ActionType.VOTE);
-      expect(fvParticipantVote?.conditions?.canVoteForOwnPosts).toBe(true);
+      expect(fvParticipantVote?.allowed).toBe(true);
+      expect(fvParticipantVote?.conditions).toBeUndefined();
 
       // Test marathon-of-good
       const marathonRules = service.getDefaultPermissionRules('marathon-of-good');
       const marathonParticipantVote = findRule(marathonRules, 'participant', ActionType.VOTE);
       expect(marathonParticipantVote?.allowed).toBe(true);
-      expect(marathonParticipantVote?.conditions?.canVoteForOwnPosts).toBe(false);
       const marathonViewerVote = findRule(marathonRules, 'viewer', ActionType.VOTE);
       expect(marathonViewerVote?.allowed).toBe(true);
 
@@ -347,8 +352,6 @@ describe('CommunityDefaultsService', () => {
       const supportRules = service.getDefaultPermissionRules('support');
       const supportParticipantVote = findRule(supportRules, 'participant', ActionType.VOTE);
       expect(supportParticipantVote?.allowed).toBe(true);
-      expect(supportParticipantVote?.conditions?.canVoteForOwnPosts).toBe(false);
     });
   });
 });
-

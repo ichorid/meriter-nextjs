@@ -311,7 +311,8 @@ export interface CommunityVotingSettings {
   spendsMerits: boolean;
   awardsMerits: boolean;
   meritConversion?: CommunityMeritConversion;
-  votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
+  votingRestriction?: 'any' | 'not-same-team'; // Restriction on who can vote for whom
+  // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
 }
 
 // Legacy rule types (for backwards compatibility with old API responses)

@@ -239,7 +239,9 @@ export class CommunitySchemaClass implements Community {
       },
       votingRestriction: {
         type: String,
-        enum: ['any', 'not-own', 'not-same-group'],
+        enum: ['any', 'not-same-team'],
+        // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
+        // Note: 'not-same-group' renamed to 'not-same-team' for clarity
       },
     },
     default: {

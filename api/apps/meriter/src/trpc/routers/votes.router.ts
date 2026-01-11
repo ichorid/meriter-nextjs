@@ -18,86 +18,62 @@ async function processWithdrawal(
   referenceType: 'publication_withdrawal' | 'comment_withdrawal' | 'vote_withdrawal',
   ctx: any,
 ): Promise<{ targetCommunityId: string; currency: { singular: string; plural: string; genitive: string } }> {
-  const publicationCommunity = await ctx.communityService.getCommunity(publicationCommunityId);
-  if (!publicationCommunity) {
-    throw new NotFoundError('Community', publicationCommunityId);
-  }
-
-  // Check if publication is in marathon-of-good - if so, credit both Marathon of Good and Future Vision wallets
-  if (publicationCommunity.typeTag === 'marathon-of-good') {
-    const futureVisionCommunity =
-      await ctx.communityService.getCommunityByTypeTag('future-vision');
-
-    if (!futureVisionCommunity) {
-      throw new NotFoundError('Community', 'future-vision');
-    }
-
-    const mdCurrency = publicationCommunity.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    // Credit Marathon of Good wallet (for spending on posts in MD)
-    await ctx.walletService.addTransaction(
-      beneficiaryId,
-      publicationCommunityId,
-      'credit',
-      amount,
-      'personal',
-      referenceType,
-      publicationId,
-      mdCurrency,
-      `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId} (Marathon of Good)`,
-    );
-
-    // Credit Future Vision wallet (for spending in OB)
-    await ctx.walletService.addTransaction(
-      beneficiaryId,
-      futureVisionCommunity.id,
-      'credit',
-      amount,
-      'personal',
-      referenceType,
-      publicationId,
-      fvCurrency,
-      `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId} (Marathon of Good → Future Vision)`,
-    );
-
-    return {
-      targetCommunityId: futureVisionCommunity.id,
-      currency: fvCurrency,
-    };
-  }
-
-  // For other communities, credit the publication's community wallet
-  const currency = publicationCommunity.settings?.currencyNames || {
-    singular: 'merit',
-    plural: 'merits',
-    genitive: 'merits',
-  };
-
-  await ctx.walletService.addTransaction(
-    beneficiaryId,
+  // Use Factor 4: Merit Destination to determine where merits should go
+  const meritDestinationResult = await ctx.voteFactorService.evaluateMeritDestination(
     publicationCommunityId,
-    'credit',
+    beneficiaryId,
     amount,
-    'personal',
-    referenceType,
-    publicationId,
-    currency,
-    `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`,
   );
 
+  // Process all destinations from the factor
+  let primaryDestination: { communityId: string; currency: { singular: string; plural: string; genitive: string } } | null = null;
+
+  for (const destination of meritDestinationResult.destinations) {
+    const description = `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`;
+    const finalDescription = destination.communityId === publicationCommunityId
+      ? `${description} (Marathon of Good)`
+      : `${description} (Marathon of Good → Future Vision)`;
+
+    await ctx.walletService.addTransaction(
+      destination.userId,
+      destination.communityId,
+      'credit',
+      destination.amount,
+      'personal',
+      referenceType,
+      publicationId,
+      destination.currency,
+      finalDescription,
+    );
+
+    // Track primary destination (last one or first one, depending on logic)
+    // For Marathon of Good → Future Vision, the Future Vision is the primary
+    primaryDestination = {
+      communityId: destination.communityId,
+      currency: destination.currency,
+    };
+  }
+
+  // If no destinations (e.g., Future Vision), return publication community as fallback
+  if (!primaryDestination) {
+    const publicationCommunity = await ctx.communityService.getCommunity(publicationCommunityId);
+    if (!publicationCommunity) {
+      throw new NotFoundError('Community', publicationCommunityId);
+    }
+    const currency = publicationCommunity.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    return {
+      targetCommunityId: publicationCommunityId,
+      currency,
+    };
+  }
+
   return {
-    targetCommunityId: publicationCommunityId,
-    currency,
+    targetCommunityId: primaryDestination.communityId,
+    currency: primaryDestination.currency,
   };
 }
 
