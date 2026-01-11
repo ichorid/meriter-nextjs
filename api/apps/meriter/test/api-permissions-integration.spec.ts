@@ -228,11 +228,12 @@ describe('API Permissions Integration', () => {
 
       expect(pub1.permissions.canVote).toBe(true);
 
-      // Participant 1 (author) should not be able to vote on own post
+      // Participant 1 (author) should be able to vote on own post (with wallet-only constraint in VoteService)
+      // Self-voting is now allowed at permission level - currency constraint enforced at vote creation
       const pub2 = await trpcQuery(app, 'publications.getById', { id: publicationId }, { jwt: participant1Token });
 
-      expect(pub2.permissions.canVote).toBe(false);
-      expect(pub2.permissions.voteDisabledReason).toBe('voteDisabled.isAuthor');
+      expect(pub2.permissions.canVote).toBe(true);
+      expect(pub2.permissions.voteDisabledReason).toBeUndefined();
       // Note: canEdit might be false if there are comments or votes
       // The test creates a comment in beforeAll, so editing might be disabled
       expect(typeof pub2.permissions.canEdit).toBe('boolean');

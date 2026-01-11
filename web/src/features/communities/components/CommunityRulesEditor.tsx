@@ -40,7 +40,7 @@ interface CommunityRulesEditorProps {
       forwardCost?: number;
     };
     votingSettings?: {
-      votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+      votingRestriction?: 'any' | 'not-same-team';
     };
   }) => Promise<void>;
 }
@@ -117,8 +117,8 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [allowEditByOthers, setAllowEditByOthers] = useState<boolean>(
     community.settings?.allowEditByOthers ?? false
   );
-  const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-own' | 'not-same-group'>(
-    (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own'
+  const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-same-team'>(
+    (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any'
   );
 
   const { user } = useAuth();
@@ -152,7 +152,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     forwardCost: String(community.settings?.forwardCost ?? 1),
     editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
-    votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own',
+    votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
   });
 
   // History of rule changes
@@ -261,7 +261,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       forwardCost: String(community.settings?.forwardCost ?? 1),
       editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
-      votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-own' | 'not-same-group') || 'not-own',
+      votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
     });
   }, [community.id]);
 
@@ -915,15 +915,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         >
           <Select
             value={votingRestriction}
-            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-own' | 'not-same-group')}
+            onValueChange={(value) => setVotingRestriction(value as 'any' | 'not-same-team')}
           >
             <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="any">{tSettings('votingRestrictionOptions.any')}</SelectItem>
-              <SelectItem value="not-own">{tSettings('votingRestrictionOptions.notOwn')}</SelectItem>
-              <SelectItem value="not-same-group">{tSettings('votingRestrictionOptions.notSameGroup')}</SelectItem>
+              <SelectItem value="not-same-team">{tSettings('votingRestrictionOptions.notSameTeam')}</SelectItem>
             </SelectContent>
           </Select>
         </BrandFormControl>

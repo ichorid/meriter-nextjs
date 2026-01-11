@@ -80,7 +80,7 @@ export interface UpdateCommunityDto {
     language?: 'en' | 'ru';
   };
   votingSettings?: {
-    votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+    votingRestriction?: 'any' | 'not-same-team';
     spendsMerits?: boolean;
     awardsMerits?: boolean;
     meritConversion?: {
@@ -301,7 +301,7 @@ export class CommunityService {
         const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
         return aDate - bDate;
       });
-      const toKeep = sorted[0];
+      const _toKeep = sorted[0];
       for (let i = 1; i < sorted.length; i++) {
         this.logger.log(`Deleting duplicate Team Projects community: ${sorted[i].id}`);
         await this.communityModel.deleteOne({ id: sorted[i].id });

@@ -75,41 +75,97 @@ Meriter is a merit-based social platform that operates through Telegram communit
 - **Combined Voting**: The API supports sending both quotaAmount and walletAmount in a single request, avoiding double API calls. The system automatically splits votes when both amounts are provided.
 
 #### Voting Rules
-- **Mutual Exclusivity**: Vote and Withdraw are MUTUALLY EXCLUSIVE. A user can NEVER have both abilities on the same object.
-- **Self-Voting Prevention**: Cannot vote for own content when you are the effective beneficiary. Specifically:
+
+**Permission Check Flow:**
+All voting permission checks are centralized in PermissionService → PermissionRuleEngine:
+- tRPC Router calls `PermissionService.canVote()` for publications or `PermissionService.canVoteOnVote()` for votes/comments
+- PermissionService builds context via `PermissionContextService` (includes effective beneficiary information)
+- PermissionRuleEngine evaluates all permission rules using the context
+- VoteService only handles business logic validation (amounts, quota/wallet restrictions) - no permission checks
+
+**Effective Beneficiary:**
+- **Effective Beneficiary** = `beneficiaryId` if set, otherwise `authorId`
+- Self-voting is determined by checking if the voter is the effective beneficiary
+- You can vote if you're the author but there's a different beneficiary (effective beneficiary ≠ author)
+- For votes/comments: effective beneficiary = vote/comment author (userId)
+
+**Self-Voting Prevention:**
+- Cannot vote for own content when you are the effective beneficiary
+- Specifically:
   - Cannot vote if you are the author AND there's no beneficiary (effective beneficiary = author)
   - Cannot vote if you are the beneficiary (effective beneficiary = beneficiary)
   - Can vote if you are the author BUT there's a different beneficiary (effective beneficiary ≠ author)
-- **Balance Deduction**: Merits deducted from voter's wallet. Quota deducted from voter's personal daily quota.
-- **Recipient Credit**: Merits credited to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId)
-- **Free Quota**: Users get free quota daily for voting
-- **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
-- **Voting Over Quota**: Users can vote beyond their daily quota by using wallet balance. The maximum vote amount is quota + wallet balance combined.
-- **Quota vs Wallet Logic**: For upvotes, quota is used first, then wallet. For downvotes, only wallet can be used (quota cannot be used for negative votes).
-- **API Validation**: The API validates that:
-  - Votes cannot be double-zero (both quotaAmount and walletAmount cannot be zero)
-  - quotaAmount cannot exceed available quota
-  - walletAmount cannot exceed available wallet balance
-  - Total vote amount (quotaAmount + walletAmount) cannot exceed quota + wallet combined
-  - quotaAmount cannot be used for downvotes
+- **Exception**: Future Vision allows self-voting for participants/leads/superadmins
 
-#### Vote Processing
-1. **Validation**: Check user balance and voting rules
+**Teammate Voting Rules:**
+- **Permission**: Teammate voting is **allowed** unless `votingRestriction: 'not-same-team'` is set (Factor 1)
+  - If `votingRestriction: 'not-same-team'` is set, Factor 1 blocks voting if users share team communities (permission block)
+  - If restriction is `'any'` or not set, teammate voting is permitted permission-wise
+- **Currency Constraint**: Teammate voting in special communities (FV/MoG) **requires wallet-only** (Factor 2)
+  - Only applies if users share team communities AND community is Future Vision or Marathon of Good
+  - Quota cannot be used for teammate voting in these communities
+  - Wallet merits can be used
+
+**Database Configurable Settings:**
+All factors respect runtime-configurable DB settings:
+- **Factor 1 (Role Hierarchy)**: 
+  - Uses `community.permissionRules` (via `getEffectivePermissionRules()`) - DB rules override defaults
+  - Respects `community.votingSettings.votingRestriction: 'not-same-team'` - permission block
+- **Factor 2 (Social Currency Constraint)**: 
+  - Always applies (self-voting always wallet-only)
+  - Teammate constraint only if not blocked by 'not-same-team' restriction
+- **Factor 3 (Context Currency Mode)**: 
+  - Respects `community.meritSettings.quotaRecipients` - role must be in list to use quota
+- **Factor 4 (Merit Destination)**: 
+  - Respects `community.votingSettings.meritConversion` - custom routing
+  - Respects `community.votingSettings.awardsMerits` - if false, no destinations
+
+**Balance Deduction**: Merits deducted from voter's wallet. Quota deducted from voter's personal daily quota.
+**Recipient Credit**: Merits credited via Factor 4 (Merit Destination) to the effective beneficiary's wallet based on community type and settings
+**Free Quota**: Users get free quota daily for voting
+**Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
+**Voting Over Quota**: Users can vote beyond their daily quota by using wallet balance. The maximum vote amount is quota + wallet balance combined.
+**Quota vs Wallet Logic**: For upvotes, quota is used first, then wallet. For downvotes, only wallet can be used (quota cannot be used for negative votes).
+
+#### Vote Processing (Factorized Flow)
+1. **Permission Check** (in tRPC Router, Factor 1):
+   - Calls `PermissionService.canVote()` for publications or `canVoteOnVote()` for votes/comments
+   - PermissionService builds context with effective beneficiary information via `PermissionContextService`
+   - PermissionRuleEngine evaluates using Factor 1 (Role Hierarchy)
+   - Checks role-based permissions from DB rules
+   - Checks `votingRestriction: 'not-same-team'` if set
+   - Returns FORBIDDEN if permission check fails
+
+2. **Currency Validation** (in VoteService.createVote, Factors 2 + 3):
+   - Uses `VoteFactorService.evaluateCurrencyMode()` to get composed currency mode
+   - Factor 2 (Social Currency Constraint) checks self/teammate constraints
+   - Factor 3 (Context Currency Mode) checks community/content/role/direction rules
+   - Social constraint (Factor 2) takes priority over context (Factor 3)
+   - Validates quotaAmount and walletAmount against currency mode result
+   - Returns BAD_REQUEST if currency constraint fails
+
+3. **Business Logic Validation** (in VoteService.createVote):
    - Reject double-zero votes (quotaAmount = 0 and walletAmount = 0)
    - Reject if quotaAmount > available quota
    - Reject if walletAmount > available wallet balance
    - Reject if total amount (quotaAmount + walletAmount) > quota + wallet combined
-   - Reject if quotaAmount > 0 for downvotes
-2. **Amount Calculation**: Calculate quotaAmount and walletAmount
+
+4. **Amount Calculation**: Calculate quotaAmount and walletAmount
    - For upvotes: quotaAmount = min(requestedAmount, availableQuota), walletAmount = max(0, requestedAmount - availableQuota)
    - For downvotes: quotaAmount = 0, walletAmount = requestedAmount
-3. **Vote Creation**: Create vote documents atomically
-   - If both quotaAmount and walletAmount > 0: Create two vote documents (one quota, one wallet)
-   - If only quotaAmount > 0: Create single quota vote
-   - If only walletAmount > 0: Create single wallet vote
-4. **Balance Deduction**: Deduct from quota (if used) and wallet (if used)
-5. **Metrics Update**: Update publication/comment vote counts
-6. **Transaction Record**: Create transaction record for audit
+
+5. **Vote Creation**: Create vote document with quotaAmount and walletAmount
+
+6. **Balance Deduction**: Deduct from quota (if used) and wallet (if used)
+
+7. **Metrics Update**: Update publication/comment vote counts
+
+8. **Merit Routing** (Factor 4): Uses `VoteFactorService.evaluateMeritDestination()` to determine where merits go
+   - Respects community type (Regular, Marathon of Good, Future Vision, Team)
+   - Respects `meritConversion` and `awardsMerits` settings
+   - Credits merits to appropriate wallets
+
+9. **Transaction Record**: Create transaction record for audit
 
 ### 5. Comments System
 

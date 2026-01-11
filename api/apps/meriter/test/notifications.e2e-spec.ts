@@ -16,7 +16,7 @@ import {
   NotificationDocument,
 } from '../src/domain/models/notification/notification.schema';
 import { uid } from 'uid';
-import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcQuery, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Notifications E2E Tests', () => {
@@ -339,25 +339,28 @@ describe('Notifications E2E Tests', () => {
       expect(commentVoteNotifications[0].sourceId).toBe(testUserId3);
     });
 
-    it('should NOT create notification when user votes on own content', async () => {
-      // User1 votes on their own publication
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          testPublicationId,
-          5,
-          0,
-          'up',
-          'My own vote',
-          testCommunityId,
-        ),
-      ).rejects.toThrow('Cannot vote: you are the effective beneficiary of this content');
+    it('should reject self-voting with quota (wallet-only constraint)', async () => {
+      // User1 tries to vote on their own publication with quota
+      // Self-voting is now allowed permission-wise, but requires wallet-only (no quota)
+      (global as any).testUserId = testUserId;
+      
+      const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'My own vote with quota',
+      });
+
+      // Currency constraint should fail with BAD_REQUEST (enforced in VoteService)
+      expect(result.error).toBeDefined();
+      expect(result.error?.code).toBe('BAD_REQUEST');
+      expect(result.error?.message).toContain('Self-voting requires wallet merits only');
 
       // Wait a bit for event handler to process
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Check no notification was created
+      // Check no notification was created (vote never created because currency constraint failed)
       const notifications = await notificationModel.find({ userId: testUserId }).lean();
       const voteNotifications = notifications.filter((n) => n.type === 'vote' && n.metadata?.publicationId === testPublicationId);
       expect(voteNotifications.length).toBe(0);

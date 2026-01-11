@@ -106,12 +106,14 @@ export interface PermissionRule {
 export interface PermissionContext {
   resourceId?: string; // publicationId, pollId, commentId, etc.
   authorId?: string;
+  effectiveBeneficiaryId?: string; // beneficiaryId if set, otherwise authorId - the user who receives benefits
   isAuthor?: boolean;
+  isEffectiveBeneficiary?: boolean; // true if the current user is the effective beneficiary
   isTeamMember?: boolean;
   hasTeamMembership?: boolean; // user has membership in any team-type community
   isTeamCommunity?: boolean; // resource is in a team-type community
   authorRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null;
-  sharedTeamCommunities?: string[]; // team communities shared between voter and author
+  sharedTeamCommunities?: string[]; // team communities shared between voter and effective beneficiary
   hasVotes?: boolean;
   hasComments?: boolean;
   /**
@@ -237,7 +239,9 @@ export class CommunitySchemaClass implements Community {
       },
       votingRestriction: {
         type: String,
-        enum: ['any', 'not-own', 'not-same-group'],
+        enum: ['any', 'not-same-team'],
+        // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
+        // Note: 'not-same-group' renamed to 'not-same-team' for clarity
       },
     },
     default: {

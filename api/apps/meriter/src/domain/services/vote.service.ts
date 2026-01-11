@@ -10,7 +10,7 @@ import { PermissionService } from './permission.service';
 import { UserService } from './user.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT, COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
+import { COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 
 @Injectable()
 export class VoteService {
@@ -47,103 +47,6 @@ export class VoteService {
       }
       return vote.userId;
     }
-  }
-
-  /**
-   * Check if user can vote on a publication or vote.
-   * Rules:
-   * - Superadmin can always vote (including self-votes)
-   * - Cannot vote if user is the effective beneficiary (for regular users)
-   * - Exception: In future-vision groups, participants/leads/superadmins can self-vote
-   * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
-   * - For votes: effective beneficiary = userId of the vote being voted on (cannot vote on your own vote)
-   */
-  async canUserVote(userId: string, targetType: 'publication' | 'vote', targetId: string, communityId?: string): Promise<boolean> {
-    // Check if user is superadmin - superadmins can always vote (including self-votes)
-    const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-      this.logger.log(`[canUserVote] Superadmin ${userId} can vote on any content (including self-votes)`);
-      return true;
-    }
-
-    const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
-    if (!effectiveBeneficiary) {
-      return false;
-    }
-
-    // Check voting restrictions from community settings
-    if (communityId) {
-      const community = await this.communityService.getCommunity(communityId);
-      if (community?.votingSettings?.votingRestriction) {
-        const restriction = community.votingSettings.votingRestriction;
-
-        // Check if this is self-voting
-        const isSelfVoting = effectiveBeneficiary === userId;
-
-        // Check restriction: "not-own" - cannot vote for own posts
-        if (restriction === 'not-own' && isSelfVoting) {
-          // Exception: future-vision allows self-voting
-          if (community.typeTag === 'future-vision') {
-            const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-            if (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN) {
-              return true; // Allow self-voting in future-vision group for these roles
-            }
-          }
-          this.logger.log(`[canUserVote] DENIED: Cannot vote for own post (not-own restriction)`);
-          return false;
-        }
-
-        // Check restriction: "not-same-group" - cannot vote if users share communities
-        if (restriction === 'not-same-group' && !isSelfVoting) {
-          const authorId = effectiveBeneficiary;
-          const voterCommunities = await this.userService.getUserCommunities(userId);
-          const authorCommunities = await this.userService.getUserCommunities(authorId);
-
-          // Find shared communities (excluding special groups: future-vision, marathon-of-good, support)
-          const specialTypeTags = ['future-vision', 'marathon-of-good', 'support'];
-          const sharedCommunities = voterCommunities.filter(vcId =>
-            authorCommunities.includes(vcId)
-          );
-
-          // Check if any shared community is NOT a special group
-          for (const sharedCommId of sharedCommunities) {
-            const sharedComm = await this.communityService.getCommunity(sharedCommId);
-            if (sharedComm && !specialTypeTags.includes(sharedComm.typeTag || '')) {
-              this.logger.log(`[canUserVote] DENIED: Users share non-special communities (not-same-group restriction)`);
-              return false;
-            }
-          }
-        }
-
-        // Restriction "any" allows all votes (no additional checks needed)
-        // If not self-voting and restriction is not "not-same-group", allow it
-        if (!isSelfVoting && restriction !== 'not-same-group') {
-          return true;
-        }
-      }
-    }
-
-    // Legacy check: if no voting restriction is set, use old logic
-    // Check if this is self-voting
-    const isSelfVoting = effectiveBeneficiary === userId;
-    if (!isSelfVoting) {
-      return true; // Not self-voting, allow it
-    }
-
-    // Self-voting: check if allowed in future-vision group
-    if (communityId) {
-      const community = await this.communityService.getCommunity(communityId);
-      if (community?.typeTag === 'future-vision') {
-        // Check user role - allow self-voting for participant, lead, or superadmin
-        const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-        if (userRole === COMMUNITY_ROLE_PARTICIPANT || userRole === COMMUNITY_ROLE_LEAD || userRole === COMMUNITY_ROLE_SUPERADMIN) {
-          return true; // Allow self-voting in future-vision group for these roles
-        }
-      }
-    }
-
-    // Default: prevent self-voting
-    return false;
   }
 
   /**
@@ -186,12 +89,8 @@ export class VoteService {
       );
     }
 
-    // Validate that user can vote (mutual exclusivity check)
-    // Pass communityId to allow self-voting in future-vision groups
-    const canVote = await this.canUserVote(userId, targetType, targetId, communityId);
-    if (!canVote) {
-      throw new BadRequestException('Cannot vote: you are the effective beneficiary of this content');
-    }
+    // Permission checks are handled by PermissionService in the tRPC router before this method is called
+    // This method only handles business logic validation (amounts, quota/wallet restrictions, post types)
 
     // Validate that at least one amount is positive
     if (amountQuota <= 0 && amountWallet <= 0) {
@@ -457,6 +356,26 @@ export class VoteService {
 
   async hasVoted(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
     return this.hasUserVoted(userId, targetType, targetId);
+  }
+
+  /**
+   * Get list of team-type community IDs that a user belongs to
+   * Used for teammate detection in special community voting constraints
+   */
+  private async getTeamCommunitiesForUser(userId: string): Promise<string[]> {
+    // Get all communities the user belongs to
+    const userCommunities = await this.userService.getUserCommunities(userId);
+    
+    // Filter to only team-type communities
+    const teamCommunities: string[] = [];
+    for (const communityId of userCommunities) {
+      const community = await this.communityService.getCommunity(communityId);
+      if (community?.typeTag === 'team') {
+        teamCommunities.push(communityId);
+      }
+    }
+    
+    return teamCommunities;
   }
 
   /**

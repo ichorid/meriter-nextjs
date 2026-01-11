@@ -87,6 +87,14 @@ import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
 
+// Import vote factor services
+import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
+import { SocialCurrencyConstraintFactor } from './domain/services/factors/social-currency-constraint.factor';
+import { ContextCurrencyModeFactor } from './domain/services/factors/context-currency-mode.factor';
+import { CurrencyModeFactor } from './domain/services/factors/currency-mode.factor';
+import { MeritDestinationFactor } from './domain/services/factors/merit-destination.factor';
+import { VoteFactorService } from './domain/services/vote-factor.service';
+
 // Import event bus
 import { EventBus } from './domain/events/event-bus';
 
@@ -145,6 +153,14 @@ import { EventBus } from './domain/events/event-bus';
     CategoryService,
     AboutService,
 
+    // Vote Factor Services
+    RoleHierarchyFactor,
+    SocialCurrencyConstraintFactor,
+    ContextCurrencyModeFactor,
+    CurrencyModeFactor,
+    MeritDestinationFactor,
+    VoteFactorService,
+
     // Event bus
     EventBus,
   ],
@@ -177,6 +193,14 @@ import { EventBus } from './domain/events/event-bus';
     QuotaUsageService,
     CategoryService,
     AboutService,
+
+    // Export vote factor services
+    RoleHierarchyFactor,
+    SocialCurrencyConstraintFactor,
+    ContextCurrencyModeFactor,
+    CurrencyModeFactor,
+    MeritDestinationFactor,
+    VoteFactorService,
 
     // Export event bus
     EventBus,

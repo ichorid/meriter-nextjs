@@ -72,7 +72,8 @@ export class CommunityDefaultsService {
     ];
     const rules: PermissionRule[] = [];
 
-    // Superadmin can do everything (except vote for own posts, handled in rule engine)
+    // Superadmin can do everything
+    // NOTE: Self-voting is allowed with wallet-only constraint (enforced in VoteService)
     for (const action of Object.values(ActionType)) {
       rules.push({
         role: 'superadmin',
@@ -82,19 +83,13 @@ export class CommunityDefaultsService {
     }
 
     // Lead permissions
+    // NOTE: Self-voting is allowed with wallet-only constraint (enforced in VoteService)
     rules.push(
       { role: 'lead', action: ActionType.POST_PUBLICATION, allowed: true },
       { role: 'lead', action: ActionType.CREATE_POLL, allowed: true },
       { role: 'lead', action: ActionType.EDIT_PUBLICATION, allowed: true },
       { role: 'lead', action: ActionType.DELETE_PUBLICATION, allowed: true },
-      {
-        role: 'lead',
-        action: ActionType.VOTE,
-        allowed: true,
-        conditions: {
-          canVoteForOwnPosts: false,
-        },
-      },
+      { role: 'lead', action: ActionType.VOTE, allowed: true },
       { role: 'lead', action: ActionType.COMMENT, allowed: true },
       { role: 'lead', action: ActionType.EDIT_COMMENT, allowed: true },
       { role: 'lead', action: ActionType.DELETE_COMMENT, allowed: true },
@@ -104,6 +99,7 @@ export class CommunityDefaultsService {
     );
 
     // Participant permissions (base - can be overridden by type)
+    // NOTE: Self-voting is allowed with wallet-only constraint (enforced in VoteService)
     rules.push(
       { role: 'participant', action: ActionType.POST_PUBLICATION, allowed: true },
       { role: 'participant', action: ActionType.CREATE_POLL, allowed: true },
@@ -125,14 +121,7 @@ export class CommunityDefaultsService {
           canDeleteWithComments: false,
         },
       },
-      {
-        role: 'participant',
-        action: ActionType.VOTE,
-        allowed: true,
-        conditions: {
-          canVoteForOwnPosts: false,
-        },
-      },
+      { role: 'participant', action: ActionType.VOTE, allowed: true },
       { role: 'participant', action: ActionType.COMMENT, allowed: true },
       {
         role: 'participant',
@@ -158,30 +147,25 @@ export class CommunityDefaultsService {
 
   /**
    * Marathon of Good specific rules
+   * NOTE: Self-voting and teammate voting are allowed with wallet-only constraint,
+   * but since MoG is quota-only for posts/comments, self/teammate voting is effectively blocked.
+   * This is enforced in VoteService via currency constraints.
    */
   private getMarathonOfGoodRules(): PermissionRule[] {
     const rules: PermissionRule[] = [];
 
-    // Participants can post and create polls (already in base, but ensure it's explicit)
-    // NOTE: teammate voting restrictions (based on shared team communities) are enforced
-    // by the PermissionRuleEngine and apply only to marathon-of-good and future-vision.
+    // Participants can vote (currency constraints in VoteService)
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
-    // Viewers can vote in marathon-of-good
+    // Viewers can vote in marathon-of-good (quota-only)
     rules.push({
       role: 'viewer',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     return rules;
@@ -189,27 +173,24 @@ export class CommunityDefaultsService {
 
   /**
    * Future Vision specific rules
+   * NOTE: Self-voting and teammate voting are allowed with wallet-only constraint.
+   * Since FV is wallet-only for posts/comments, self/teammate voting is naturally allowed.
+   * This is enforced in VoteService via currency constraints.
    */
   private getFutureVisionRules(): PermissionRule[] {
     const rules: PermissionRule[] = [];
 
-    // Participants, leads, and superadmins can vote for own posts in future-vision
+    // Everyone can vote (wallet-only, currency constraints in VoteService)
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: true,
-      },
     });
 
     rules.push({
       role: 'lead',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: true,
-      },
     });
 
     return rules;
@@ -221,15 +202,11 @@ export class CommunityDefaultsService {
   private getSupportRules(): PermissionRule[] {
     const rules: PermissionRule[] = [];
 
-    // Participants can post, create polls, and vote freely in support communities
-    // (base rules already allow this, but we make it explicit)
+    // Participants can vote (currency constraints for self-voting in VoteService)
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     return rules;
@@ -260,14 +237,11 @@ export class CommunityDefaultsService {
       },
     });
 
-    // Team communities: only team members can vote, and they can vote for each other but not themselves
+    // Team communities: team members can vote (self-voting requires wallet, enforced in VoteService)
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     // Viewers cannot see team communities
@@ -302,32 +276,23 @@ export class CommunityDefaultsService {
       allowed: false,
     });
 
-    // Everyone can vote (viewers, participants, leads)
+    // Everyone can vote (self-voting requires wallet, enforced in VoteService)
     rules.push({
       role: 'viewer',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     rules.push({
       role: 'lead',
       action: ActionType.VOTE,
       allowed: true,
-      conditions: {
-        canVoteForOwnPosts: false,
-      },
     });
 
     // Everyone can view
@@ -393,12 +358,14 @@ export class CommunityDefaultsService {
 
   /**
    * Get default voting settings based on community typeTag
+   * NOTE: Self-voting restrictions are now handled via currency constraints (wallet-only) in VoteService.
+   * 'not-same-team' restriction is handled as a permission block in Factor 1 (Role Hierarchy).
    */
   getDefaultVotingSettings(typeTag?: string): CommunityVotingSettings {
     const baseSettings: CommunityVotingSettings = {
       spendsMerits: true,
       awardsMerits: true,
-      votingRestriction: 'not-own', // Default: users can vote for others' posts, but not their own
+      votingRestriction: 'any', // Self-voting allowed with wallet-only (enforced in VoteService via currency constraint)
       // meritConversion is optional and community-specific
     };
 

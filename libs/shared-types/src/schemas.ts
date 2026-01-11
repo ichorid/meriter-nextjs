@@ -105,7 +105,9 @@ export const CommunityVotingSettingsSchema = z.object({
   spendsMerits: z.boolean().optional(),
   awardsMerits: z.boolean().optional(),
   meritConversion: CommunityMeritConversionSchema.optional(),
-  votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
+  votingRestriction: z.enum(["any", "not-same-team"]).optional(),
+  // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
+  // Note: 'not-same-group' renamed to 'not-same-team' for clarity
 });
 
 // Permission rule schema - granular role -> action -> allow/deny rules
