@@ -31,7 +31,7 @@ async function processWithdrawal(
   let primaryDestination: { communityId: string; currency: { singular: string; plural: string; genitive: string } } | null = null;
 
   for (const destination of meritDestinationResult.destinations) {
-    const description = `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`;
+    let description = `Withdrawal from ${referenceType.replace('_withdrawal', '')} ${publicationId}`;
     if (destination.communityId === publicationCommunityId) {
       description += ' (Marathon of Good)';
     } else {

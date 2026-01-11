@@ -30,6 +30,7 @@ import { CookieManager } from '../api-v1/common/utils/cookie-manager.util';
 import { UploadsService } from '../api-v1/uploads/uploads.service';
 import { CategoryService } from '../domain/services/category.service';
 import { AboutService } from '../domain/services/about.service';
+import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -64,6 +65,7 @@ export class TrpcService {
     private uploadsService: UploadsService,
     private categoryService: CategoryService,
     private aboutService: AboutService,
+    private voteFactorService: VoteFactorService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -104,6 +106,7 @@ export class TrpcService {
       uploadsService: this.uploadsService,
       categoryService: this.categoryService,
       aboutService: this.aboutService,
+      voteFactorService: this.voteFactorService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

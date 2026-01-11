@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ActionType } from '../../common/constants/action-types.constants';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../common/constants/roles.constants';
 import { CommunityService } from '../community.service';
@@ -19,6 +19,7 @@ export class RoleHierarchyFactor {
 
   constructor(
     private communityService: CommunityService,
+    @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
     private userService: UserService,
   ) {}

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ActionType } from '../common/constants/action-types.constants';
 import { PermissionContextService } from './permission-context.service';
 import { PermissionService } from './permission.service';
@@ -40,6 +40,7 @@ export class VoteFactorService {
     private currencyModeFactor: CurrencyModeFactor,
     private meritDestinationFactor: MeritDestinationFactor,
     private permissionContextService: PermissionContextService,
+    @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
     private communityService: CommunityService,
   ) {}

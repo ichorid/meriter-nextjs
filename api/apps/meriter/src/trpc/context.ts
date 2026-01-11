@@ -31,6 +31,7 @@ import { Connection } from 'mongoose';
 import { JwtVerificationService } from '../common/services/authentication.service';
 import { CategoryService } from '../domain/services/category.service';
 import { AboutService } from '../domain/services/about.service';
+import { VoteFactorService } from '../domain/services/vote-factor.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -61,6 +62,7 @@ export interface CreateContextOptions {
   uploadsService: UploadsService;
   categoryService: CategoryService;
   aboutService: AboutService;
+  voteFactorService: VoteFactorService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -103,6 +105,7 @@ export async function createContext(opts: CreateContextOptions) {
     uploadsService,
     categoryService,
     aboutService,
+    voteFactorService,
     connection,
     configService,
     cookieManager,
@@ -194,6 +197,7 @@ export async function createContext(opts: CreateContextOptions) {
     uploadsService,
     categoryService,
     aboutService,
+    voteFactorService,
     connection,
     configService,
     cookieManager,

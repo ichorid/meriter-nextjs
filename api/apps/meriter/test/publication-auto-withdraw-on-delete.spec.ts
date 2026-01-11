@@ -32,6 +32,16 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
       publicationService: {
         reduceScore,
       },
+      voteFactorService: {
+        evaluateMeritDestination: jest.fn().mockResolvedValue({
+          destinations: [{
+            userId: beneficiaryId,
+            communityId: communityId,
+            amount: 5,
+            currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          }],
+        }),
+      },
     };
 
     const withdrawn = await autoWithdrawPublicationBalanceBeforeDelete(publicationId, publication, ctx);
@@ -70,6 +80,11 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
       },
       publicationService: {
         reduceScore: jest.fn(),
+      },
+      voteFactorService: {
+        evaluateMeritDestination: jest.fn().mockResolvedValue({
+          destinations: [],
+        }),
       },
     };
 

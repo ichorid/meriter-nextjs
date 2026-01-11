@@ -8,9 +8,9 @@ import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
 import { PermissionService } from './permission.service';
 import { UserService } from './user.service';
+import { VoteFactorService } from './vote-factor.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
-import { COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
 
 @Injectable()
 export class VoteService {
@@ -23,6 +23,7 @@ export class VoteService {
     private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
     private userService: UserService,
+    private voteFactorService: VoteFactorService,
     private eventBus: EventBus,
   ) { }
 
@@ -107,87 +108,72 @@ export class VoteService {
       throw new BadRequestException('Comment is required');
     }
 
-    // Check if community is a special group (marathon-of-good or future-vision)
-    const community = await this.communityService.getCommunity(communityId);
-    const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
-    const isFutureVision = community?.typeTag === 'future-vision';
-
-    // Check user role to enforce viewer restrictions (check BEFORE community-specific rules)
-    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
-    // Voting defaults:
-    // - In most communities: both quota and wallet voting are allowed.
-    // Special case restrictions:
-    // - Marathon of Good: quota-only for publications/comments (for everyone, including viewers)
-    // - Future Vision: wallet-only for publications/comments (no quota)
-    // - Viewers: quota-only in all communities (no wallet)
-    // Polls are handled separately and always use wallet
-    // This check comes BEFORE postType validation to ensure it applies
-    if (targetType === 'publication' || targetType === 'vote') {
-      // Special case: Marathon of Good blocks wallet voting (quota only) for everyone
-      if (isMarathonOfGood && amountWallet > 0) {
-        throw new BadRequestException(
-          'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
-        );
-      }
-
-      // Viewers can only vote with quota (no wallet voting)
-      if (userRole === COMMUNITY_ROLE_VIEWER && amountWallet > 0) {
-        throw new BadRequestException(
-          'Viewers can only vote using daily quota, not wallet merits.',
-        );
-      }
-
-      // Special case: Future Vision blocks quota voting (wallet only)
-      if (isFutureVision && amountQuota > 0) {
-        throw new BadRequestException(
-          'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
-        );
+    // Get effective beneficiary (for social currency constraint factor)
+    const effectiveBeneficiaryId = await this.getEffectiveBeneficiary(targetType, targetId);
+    if (!effectiveBeneficiaryId) {
+      if (targetType === 'publication') {
+        throw new NotFoundException('Publication not found');
+      } else {
+        throw new NotFoundException('Vote not found');
       }
     }
 
-    // Enforce voting rules based on target type
+    // Get user role for context currency mode factor
+    const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
+
+    // Get publication info if voting on a publication
+    let postType: string | undefined;
+    let isProject: boolean | undefined;
     if (targetType === 'publication') {
       const publication = await this.publicationService.getPublication(targetId);
       if (!publication) {
         throw new NotFoundException('Publication not found');
       }
+      postType = publication.getPostType;
+      isProject = publication.getIsProject;
+    }
 
-      const postType = publication.getPostType;
-      const isProject = publication.getIsProject;
+    // Calculate shared team communities (for social currency constraint factor)
+    const voterTeamCommunities = await this.getTeamCommunitiesForUser(userId);
+    const beneficiaryTeamCommunities = await this.getTeamCommunitiesForUser(effectiveBeneficiaryId);
+    const sharedTeamCommunities = voterTeamCommunities.filter(id => beneficiaryTeamCommunities.includes(id));
 
-      // Project (Idea): Voting with wallet (Merits) only
-      if (postType === 'project' || isProject) {
-        if (amountQuota > 0) {
-          throw new BadRequestException(
-            'Projects can only be voted on with Merits (Wallet), not Daily Quota',
-          );
-        }
-        if (amountWallet <= 0) {
-          throw new BadRequestException(
-            'Projects require Merits (Wallet) to vote',
-          );
-        }
-      }
+    // Evaluate currency mode using factorized service (Factors 2 + 3)
+    const currencyMode = await this.voteFactorService.evaluateCurrencyMode(
+      userId,
+      communityId,
+      effectiveBeneficiaryId,
+      targetType,
+      postType,
+      isProject,
+      direction,
+      userRole,
+      sharedTeamCommunities,
+    );
 
-      // Report (Good Deed) / Basic: Wallet voting allowed by default
-      // Special case: Marathon of Good blocks wallet for basic posts (quota only, already enforced above)
-      // Special case: Future Vision blocks quota for basic posts (wallet only, already enforced above)
-      // All other groups allow wallet voting for basic posts by default
-      // Assuming 'basic' implies Report/Good Deed context for now
-      if (postType === 'basic' && !isProject) {
-        // Marathon of Good: basic posts require quota (wallet already blocked above)
-        if (isMarathonOfGood && amountQuota <= 0) {
-          throw new BadRequestException(
-            'Reports require Daily Quota to vote',
-          );
-        }
-        // Future Vision: basic posts require wallet (quota already blocked above)
-        if (isFutureVision && amountWallet <= 0) {
-          throw new BadRequestException(
-            'Reports require Wallet Merits to vote',
-          );
-        }
-      }
+    // Validate amounts against currency mode result
+    if (!currencyMode.allowedQuota && amountQuota > 0) {
+      throw new BadRequestException(
+        currencyMode.reason || 'Quota voting is not allowed for this vote',
+      );
+    }
+
+    if (!currencyMode.allowedWallet && amountWallet > 0) {
+      throw new BadRequestException(
+        currencyMode.reason || 'Wallet voting is not allowed for this vote',
+      );
+    }
+
+    if (currencyMode.requiredCurrency === 'quota' && amountQuota <= 0) {
+      throw new BadRequestException(
+        currencyMode.reason || 'Quota voting is required for this vote',
+      );
+    }
+
+    if (currencyMode.requiredCurrency === 'wallet' && amountWallet <= 0) {
+      throw new BadRequestException(
+        currencyMode.reason || 'Wallet voting is required for this vote',
+      );
     }
 
     // Allow multiple votes on the same content - remove the duplicate check
