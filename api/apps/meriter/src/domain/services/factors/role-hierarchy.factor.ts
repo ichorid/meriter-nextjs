@@ -128,7 +128,7 @@ export class RoleHierarchyFactor {
     }
 
     // STEP 10: Check edit/delete restrictions for participants
-    if (userRole === 'participant' && (action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION)) {
+    if (userRole === 'participant' && (action === ActionType.EDIT_PUBLICATION || action === ActionType.DELETE_PUBLICATION || action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL)) {
       if (!context.isAuthor) {
         // Special case: allow participant to edit publications created by others only if explicitly enabled
         if (action === ActionType.EDIT_PUBLICATION) {
@@ -136,6 +136,9 @@ export class RoleHierarchyFactor {
           if (!allowEditByOthers) {
             return { allowed: false, reason: 'Participant cannot edit other user\'s publication' };
           }
+        } else if (action === ActionType.EDIT_POLL || action === ActionType.DELETE_POLL) {
+          // Participants can only edit/delete polls they created
+          return { allowed: false, reason: `Participant can only ${action} their own polls` };
         } else {
           return { allowed: false, reason: `Participant can only ${action} their own resources` };
         }

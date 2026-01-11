@@ -477,19 +477,18 @@ describe('Publication Soft Delete E2E', () => {
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Should credit Future Vision wallet, not marathon wallet
-      // Note: Due to synchronization, when voting in MD, merits are credited to both MD and OB wallets
-      // When withdrawal happens, it also credits both wallets
-      // So OB balance: 5 (from vote via processWithdrawal) + 5 (from withdrawal) = 10, plus initialization = 14
+      // Withdrawals from Marathon of Good publications only credit Future Vision wallet (merit destination factor)
+      // The withdrawal amount is 5 (from the publication's score)
       const fvWallet = await walletService.getWallet(authorId, futureVisionCommunityId);
       expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(14);
+      expect(fvWallet?.getBalance()).toBe(5); // 5 from auto-withdrawal only
 
       // Marathon wallet should exist (was created for publication creation) but balance should not increase
-      // Publication creation cost 1 merit, so balance should be 9 (10 - 1), not credited with withdrawal
-      // Note: Due to synchronization, withdrawal also credits MD wallet, so balance is 9 + 5 = 14
+      // Publication creation cost 1 merit, so balance should be 9 (10 - 1)
+      // Withdrawals from Marathon of Good do NOT credit Marathon wallet - only Future Vision
       const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
       expect(marathonWallet).toBeTruthy();
-      expect(marathonWallet?.getBalance()).toBe(14); // 10 initial - 1 for publication creation + 5 from withdrawal (synchronized)
+      expect(marathonWallet?.getBalance()).toBe(9); // 10 initial - 1 for publication creation (withdrawal does not credit Marathon)
     });
 
     it('should exclude deleted publications from getAll query', async () => {

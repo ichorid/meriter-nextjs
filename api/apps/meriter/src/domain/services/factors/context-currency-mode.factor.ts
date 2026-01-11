@@ -44,7 +44,9 @@ export class ContextCurrencyModeFactor {
     const isMarathonOfGood = community.typeTag === 'marathon-of-good';
     const isFutureVision = community.typeTag === 'future-vision';
     const isProjectContent = postType === 'project' || isProject === true;
-    const isPoll = targetType === 'vote'; // Voting on votes/comments (polls)
+    // Note: Polls are handled separately via polls router, not through vote service
+    // The vote service only handles targetType 'publication' | 'vote' (where 'vote' means comment)
+    const isPoll = false;
     const isDownvote = direction === 'down';
     const isViewer = userRole === COMMUNITY_ROLE_VIEWER;
 
@@ -88,6 +90,7 @@ export class ContextCurrencyModeFactor {
     }
 
     // Priority 4: Poll → wallet-only
+    // Note: Polls are not handled through vote service, so this should never be true
     if (isPoll) {
       this.logger.debug(
         `[evaluate] Poll → wallet-only: targetType=${targetType}`,
