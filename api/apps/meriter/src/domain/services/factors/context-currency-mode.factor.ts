@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BadRequestException } from '@nestjs/common';
 import { COMMUNITY_ROLE_VIEWER } from '../../common/constants/roles.constants';
 import { CommunityService } from '../community.service';
 import { ContextCurrencyModeResult, VoteFactorContext } from './vote-factor.types';
@@ -45,7 +44,7 @@ export class ContextCurrencyModeFactor {
     const isMarathonOfGood = community.typeTag === 'marathon-of-good';
     const isFutureVision = community.typeTag === 'future-vision';
     const isProjectContent = postType === 'project' || isProject === true;
-    const isPoll = targetType === 'vote' && context.targetType !== 'publication'; // Simplified check
+    const isPoll = targetType === 'vote'; // Voting on votes/comments (polls)
     const isDownvote = direction === 'down';
     const isViewer = userRole === COMMUNITY_ROLE_VIEWER;
 

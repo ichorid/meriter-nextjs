@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { ActionType } from '../common/constants/action-types.constants';
+import { PermissionContext } from '../models/community/community.schema';
 import { PermissionContextService } from './permission-context.service';
 import { PermissionService } from './permission.service';
 import { CommunityService } from './community.service';
@@ -21,11 +22,12 @@ import {
 /**
  * Vote Factor Service
  * 
- * Orchestrates evaluation of all 4 factors:
+ * Orchestrates evaluation of 4 core factors + 1 composer:
  * - Factor 1: Role Hierarchy (permission)
  * - Factor 2: Social Currency Constraint (self/teammate)
  * - Factor 3: Context Currency Mode (community/content/role/direction)
  * - Factor 4: Merit Destination (routing)
+ * - CurrencyModeFactor (composer): Combines Factors 2 + 3 into a final currency mode result
  * 
  * Composes factor results into final vote constraint result.
  */
@@ -211,7 +213,7 @@ export class VoteFactorService {
     isProject?: boolean,
     direction?: 'up' | 'down',
     sharedTeamCommunities?: string[],
-    permissionContext?: any,
+    permissionContext?: Partial<PermissionContext>,
   ): Promise<VoteConstraintResult> {
     // Get user role
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
@@ -244,7 +246,7 @@ export class VoteFactorService {
       this.socialConstraintFactor.evaluate(context),
       this.contextCurrencyModeFactor.evaluate(context),
       this.currencyModeFactor.evaluate(context),
-      this.meritDestinationFactor.evaluate(context, 0), // Amount not needed for evaluation, only routing
+      this.meritDestinationFactor.evaluate(context, 0), // Amount set to 0 for evaluation phase; actual amount provided during routing/withdrawal
     ]);
 
     return {

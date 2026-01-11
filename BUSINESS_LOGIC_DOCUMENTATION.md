@@ -89,13 +89,11 @@ All voting permission checks are centralized in PermissionService → Permission
 - You can vote if you're the author but there's a different beneficiary (effective beneficiary ≠ author)
 - For votes/comments: effective beneficiary = vote/comment author (userId)
 
-**Self-Voting Prevention:**
-- Cannot vote for own content when you are the effective beneficiary
-- Specifically:
-  - Cannot vote if you are the author AND there's no beneficiary (effective beneficiary = author)
-  - Cannot vote if you are the beneficiary (effective beneficiary = beneficiary)
-  - Can vote if you are the author BUT there's a different beneficiary (effective beneficiary ≠ author)
-- **Exception**: Future Vision allows self-voting for participants/leads/superadmins
+**Self-Voting Currency Constraint:**
+- Self-voting is **allowed** but requires wallet-only currency (handled by Factor 2: Social Currency Constraint)
+- Self-voting is determined when the voter is the effective beneficiary
+- When self-voting: quota cannot be used, only wallet merits are allowed
+- This is a currency constraint, NOT a permission block - users can vote for themselves but must use wallet
 
 **Teammate Voting Rules:**
 - **Permission**: Teammate voting is **allowed** unless `votingRestriction: 'not-same-team'` is set (Factor 1)
@@ -299,10 +297,11 @@ All factors respect runtime-configurable DB settings:
 2. **Amount Specification**: Users specify merit amount for each vote
 3. **Free Merit Allocation**: Daily free merits for voting
 4. **Recipient Credit**: Merits go to the effective beneficiary's wallet (beneficiaryId if set, otherwise authorId). The effective beneficiary can withdraw accumulated votes from the publication/comment to their permanent merit wallet at any time.
-5. **Mutual Exclusivity Enforcement**: Users cannot vote and withdraw from the same object. The API enforces that:
-   - Users cannot vote if they are the effective beneficiary
+5. **Withdraw Rules**: Users can withdraw from objects where they are the effective beneficiary:
+   - Users can withdraw if they are the effective beneficiary
    - Users cannot withdraw if they are not the effective beneficiary
    - Withdraw is only available when the object has a positive balance (sum > 0)
+   - Note: Self-voting is allowed (currency constraint applies - wallet-only), but users typically cannot both vote and withdraw from the same object in the UI
 6. **Voting Over Quota**: Users can vote beyond daily quota by spending wallet balance. The maximum vote range is quota + wallet combined.
 7. **Quota vs Wallet Usage**:
    - For upvotes: Quota is used first, then wallet if amount exceeds quota
@@ -348,7 +347,7 @@ Feature flags allow enabling or disabling specific features without code changes
   - Users can vote on comments using the same voting mechanics as posts
   - Vote button and counter appear on comment cards
   - Comments can receive upvotes/downvotes with quota or wallet merits
-  - Comment voting follows the same rules as publication voting (mutual exclusivity, self-voting prevention, etc.)
+  - Comment voting follows the same rules as publication voting (self-voting requires wallet-only, currency constraints, etc.)
 
 **To Enable**:
 1. Set `ENABLE_COMMENT_VOTING=true` in backend environment (`.env` or Docker environment)
