@@ -15,6 +15,7 @@ import {
   NotificationSchemaClass,
   NotificationDocument,
 } from '../src/domain/models/notification/notification.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { trpcMutation, trpcQuery, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
@@ -36,6 +37,7 @@ describe('Notifications E2E Tests', () => {
   let publicationModel: Model<PublicationDocument>;
   let walletModel: Model<WalletDocument>;
   let notificationModel: Model<NotificationDocument>;
+  let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
 
   let testUserId: string;
   let testUserId2: string;
@@ -86,6 +88,7 @@ describe('Notifications E2E Tests', () => {
     app.get<Model<VoteDocument>>(getModelToken(VoteSchemaClass.name));
     walletModel = app.get<Model<WalletDocument>>(getModelToken(WalletSchemaClass.name));
     notificationModel = app.get<Model<NotificationDocument>>(getModelToken(NotificationSchemaClass.name));
+    userCommunityRoleModel = app.get<Model<UserCommunityRoleDocument>>(getModelToken(UserCommunityRoleSchemaClass.name));
   });
 
   beforeEach(async () => {
@@ -210,6 +213,14 @@ describe('Notifications E2E Tests', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       },
+    ]);
+
+    // Create user community roles
+    const now = new Date();
+    await userCommunityRoleModel.create([
+      { id: uid(), userId: testUserId, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: testUserId2, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: testUserId3, communityId: testCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
     // Create test publication
