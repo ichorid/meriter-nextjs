@@ -477,84 +477,21 @@ describe('Publication Soft Delete E2E', () => {
       await trpcMutation(app, 'publications.delete', { id: created.id });
 
       // Should credit both Future Vision and Marathon wallets (synchronized)
-      // Withdrawals from Marathon of Good publications credit Future Vision wallet (merit destination factor)
-      // and then synchronize to Marathon wallet immediately
+      // Withdrawals from Marathon of Good publications credit the same community (Marathon) first,
+      // then synchronize to Future Vision wallet to match
       // The withdrawal amount is 5 (from the publication's score)
+      // Marathon starts at 9 (10 - 1 for publication creation), gets +5 = 14
+      // Future Vision starts at 0, syncs to match Marathon = 14
       const fvWallet = await walletService.getWallet(authorId, futureVisionCommunityId);
       expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5); // 5 from auto-withdrawal
+      expect(fvWallet?.getBalance()).toBe(14); // Synced to match Marathon balance (9 + 5 = 14)
 
       // Marathon wallet should also be credited and synchronized
       // Publication creation cost 1 merit, so initial balance was 9 (10 - 1)
-      // After withdrawal sync, balance should be 9 + 5 = 14, but actually it should match Future Vision (5)
-      // Wait, let me reconsider: the sync function credits the other wallet with the same amount
-      // So if Future Vision gets 5, Marathon should also get 5 (not added to existing balance, but set to match)
-      // Actually no - the sync function adds the amount to the other wallet, so:
-      // Marathon starts at 9, Future Vision gets 5, then Marathon gets synced with +5 = 14
-      // But wait, that's not right either. Let me check the sync logic again.
-      // The syncCreditForMarathonAndFutureVision adds the amount to the other wallet.
-      // So: Future Vision gets 5 (from withdrawal), then Marathon gets +5 (from sync) = 9 + 5 = 14
-      // But the goal is to keep them synchronized, so both should end up with the same balance.
-      // Actually, I think the issue is that we want both to have the same total, not to add to Marathon.
-      // But the current implementation adds to Marathon. So Marathon = 9 + 5 = 14, Future Vision = 5.
-      // That's not synchronized. We need to fix the sync logic.
-      // Actually wait - let me re-read the syncDebit logic. It syncs balances BEFORE debiting.
-      // For credits, we should probably do the same - sync balances first, then credit both.
-      // But that's more complex. For now, let's just verify that both get credited.
-      // The sync adds to the other wallet, so:
+      // After withdrawal, balance is 9 + 5 = 14
       const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
       expect(marathonWallet).toBeTruthy();
-      // Marathon had 9, then gets +5 from sync = 14
-      // But actually, we want them synchronized. Let me check what the expected behavior should be.
-      // I think the issue is that the sync should ensure both have the same balance after the credit.
-      // So if Future Vision has 5, Marathon should also have 5 (not 14).
-      // But that would require checking the balance first and adjusting.
-      // For now, let's just verify that Marathon gets the sync credit.
-      // Actually, re-reading the syncDebit function, it syncs balances BEFORE the operation.
-      // For credits, we should probably do: credit one, then sync the other to match.
-      // But the current implementation just adds to the other. Let me fix the sync function.
-      // Actually, wait. The plan says "also credit the other wallet with the same amount".
-      // So if Future Vision gets 5, Marathon should also get 5. That means Marathon goes from 9 to 14.
-      // But then they're not synchronized (14 vs 5). 
-      // I think the correct behavior should be: credit Future Vision with 5, then credit Marathon with 5 to match.
-      // But that means Marathon should be 5, not 14. So we need to check the balance first.
-      // Actually, I think the simplest approach is: credit both wallets with the same amount simultaneously.
-      // But the withdrawal already credited Future Vision, so we just need to credit Marathon with the same amount.
-      // And if Marathon already has more, we should still add to it? No, that doesn't make sense.
-      // I think the correct logic is: after crediting Future Vision, check if Marathon has less, and if so, credit it to match.
-      // But the plan says "also credit the other wallet with the same amount", which suggests just adding the amount.
-      // Let me re-read the plan more carefully.
-      // The plan says: "If credit was added to one, also credit the other wallet with the same amount"
-      // This suggests adding the amount to the other wallet, not matching balances.
-      // But then they won't be synchronized if one already had a balance.
-      // I think the intent is to keep them synchronized, so we should match balances.
-      // But for now, let's implement what the plan says and see if tests pass.
-      // Actually, let me check the syncDebit function again - it syncs balances BEFORE debiting.
-      // For credits, we should probably sync AFTER crediting, to ensure they match.
-      // But the current implementation just adds to the other wallet.
-      // I think the correct fix is: after crediting one wallet, check both balances and sync if needed.
-      // But that's what syncDebit does before debiting. For credits, we should do it after.
-      // Actually, I think the issue is simpler: we should credit both wallets with the same amount at the same time.
-      // But the withdrawal process already credits Future Vision. So we need to also credit Marathon.
-      // And to keep them synchronized, we should ensure both have the same balance after.
-      // So: Future Vision gets +5 (now 5), Marathon should also be 5 (not 9+5=14).
-      // That means we need to check the balance first and adjust.
-      // But the plan says to "also credit the other wallet with the same amount", which is simpler.
-      // Let me implement it as the plan says for now, and we can refine later if needed.
-      // Actually, I realize the issue: the sync function should ensure both wallets end up with the same balance.
-      // So if Future Vision gets 5, Marathon should also be 5 (if it was 0) or should be adjusted to match.
-      // But the simplest implementation is: credit both with the same amount.
-      // But the withdrawal already credited Future Vision, so we just credit Marathon.
-      // And if Marathon had 9, it becomes 14, which is not synchronized.
-      // I think we need to fix the sync function to match balances, not just add.
-      // But for now, let's test with the current implementation and see what happens.
-      // Actually, let me re-read the syncDebit function. It syncs balances BEFORE the operation.
-      // So for credits, we should sync AFTER the operation to ensure they match.
-      // But the current implementation just adds to the other wallet.
-      // I think the fix is: after crediting one wallet, check both balances and sync if needed.
-      // But that's more complex. For now, let's just verify that both get credited and see if we need to adjust.
-      // Both wallets should have the same balance (synchronized)
-      expect(marathonWallet?.getBalance()).toBe(5); // Should match Future Vision balance
+      expect(marathonWallet?.getBalance()).toBe(14); // 9 (initial - 1) + 5 (withdrawal) = 14
       expect(fvWallet?.getBalance()).toBe(marathonWallet?.getBalance()); // Verify synchronization
     });
 
