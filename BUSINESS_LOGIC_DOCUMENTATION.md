@@ -114,12 +114,9 @@ All factors respect runtime-configurable DB settings:
   - Teammate constraint only if not blocked by 'not-same-team' restriction
 - **Factor 3 (Context Currency Mode)**: 
   - Respects `community.meritSettings.quotaRecipients` - role must be in list to use quota
-- **Factor 4 (Merit Destination)**: 
-  - Respects `community.votingSettings.meritConversion` - custom routing
-  - Respects `community.votingSettings.awardsMerits` - if false, no destinations
 
 **Balance Deduction**: Merits deducted from voter's wallet. Quota deducted from voter's personal daily quota.
-**Recipient Credit**: Merits credited via Factor 4 (Merit Destination) to the effective beneficiary's wallet based on community type and settings
+**Recipient Credit**: Merits credited to the effective beneficiary's wallet in the same community. For Marathon of Good and Future Vision, wallets are synchronized after credits.
 **Free Quota**: Users get free quota daily for voting
 **Quota Amount**: Each community has different quota settings. Default is 10 quota/day.
 **Voting Over Quota**: Users can vote beyond their daily quota by using wallet balance. The maximum vote amount is quota + wallet balance combined.
@@ -158,7 +155,7 @@ All factors respect runtime-configurable DB settings:
 
 7. **Metrics Update**: Update publication/comment vote counts
 
-8. **Merit Routing** (Factor 4): Uses `VoteFactorService.evaluateMeritDestination()` to determine where merits go
+8. **Merit Credit**: Credits always go to the same community wallet. Marathon of Good and Future Vision wallets are synchronized after credits.
    - Respects community type (Regular, Marathon of Good, Future Vision, Team)
    - Respects `meritConversion` and `awardsMerits` settings
    - Credits merits to appropriate wallets

@@ -55,22 +55,6 @@ export interface CurrencyModeResult {
 }
 
 /**
- * Result from Factor 4: Merit Destination
- */
-export interface MeritDestinationResult {
-  destinations: Array<{
-    userId: string;
-    communityId: string;
-    amount: number;
-    currency: {
-      singular: string;
-      plural: string;
-      genitive: string;
-    };
-  }>;
-}
-
-/**
  * Combined result from all factors
  */
 export interface VoteConstraintResult {
@@ -78,5 +62,4 @@ export interface VoteConstraintResult {
   socialConstraint: SocialCurrencyConstraintResult;
   contextCurrency: ContextCurrencyModeResult;
   currencyMode: CurrencyModeResult;
-  meritDestination: MeritDestinationResult;
 }

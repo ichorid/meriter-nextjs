@@ -15,12 +15,12 @@ This document describes the quota and merit dynamics across different group type
 
 #### Marathon of Good (`marathon-of-good`)
 - **Voting Rules**: Quota-only voting for posts/comments, wallet voting for polls
-- **Merit Movement**: Merits credited to beneficiary's Future Vision wallet (not Marathon wallet)
+- **Merit Movement**: Merits credited to beneficiary's Marathon wallet (same community), then synchronized to Future Vision wallet
 - **Uniqueness**: Only one instance allowed
 
 #### Future Vision (`future-vision`)
 - **Voting Rules**: Wallet-only voting (quota disabled/returns 0)
-- **Merit Movement**: No merit accumulation (merits don't credit any wallet)
+- **Merit Movement**: Merits credited to beneficiary's Future Vision wallet (same community), then synchronized to Marathon wallet
 - **Uniqueness**: Only one instance allowed
 
 ### 3. Team Communities (`team`)
@@ -43,11 +43,11 @@ This document describes the quota and merit dynamics across different group type
 
 ### Summary Table
 
-| Group Type | Quota Voting (Posts/Comments) | Wallet Voting (Posts/Comments) | Wallet Voting (Polls) | Merit Destination | Merit Conversion |
-|------------|------------------------------|--------------------------------|----------------------|-------------------|------------------|
+| Group Type | Quota Voting (Posts/Comments) | Wallet Voting (Posts/Comments) | Wallet Voting (Polls) | Merit Destination | Merit Synchronization |
+|------------|------------------------------|--------------------------------|----------------------|-------------------|---------------------|
 | Regular Groups | ✅ Yes | ✅ Yes (overflow after quota) | ✅ Yes | Same community wallet | N/A |
-| Marathon of Good | ✅ Yes (only) | ❌ No (blocked) | ✅ Yes | Future Vision wallet | Cross-community |
-| Future Vision | ❌ No (disabled) | ✅ Yes (only) | ✅ Yes | None (no accumulation) | N/A |
+| Marathon of Good | ✅ Yes (only) | ❌ No (blocked) | ✅ Yes | Same community wallet | Synced to Future Vision |
+| Future Vision | ❌ No (disabled) | ✅ Yes (only) | ✅ Yes | Same community wallet | Synced to Marathon |
 | Team Communities | ✅ Yes | ✅ Yes (overflow after quota) | ✅ Yes | Team wallet only | Isolated (none) |
 
 ### Detailed Rules
@@ -109,15 +109,16 @@ This document describes the quota and merit dynamics across different group type
 - **Timing**: Credited immediately on upvote (withdrawal disabled)
 
 ### Marathon of Good
-- **Flow**: Vote → Beneficiary's Future Vision wallet
-- **Special Rule**: Marathon wallet is NOT credited
-- **Transaction Type**: `merit_transfer_gdm_to_fv`
+- **Flow**: Withdrawal → Beneficiary's Marathon wallet (same community) → Synchronized to Future Vision wallet
+- **Special Rule**: Both Marathon and Future Vision wallets stay synchronized (1-to-1)
+- **Synchronization**: After credit to Marathon wallet, Future Vision wallet is also credited to match
 - **Effective Beneficiary**: `beneficiaryId` if set, otherwise `authorId`
 
 ### Future Vision
-- **Flow**: Vote → No merit accumulation
-- **Special Rule**: Votes do not credit any wallet
-- **Purpose**: Future Vision is for discussion only, not merit accumulation
+- **Flow**: Withdrawal → Beneficiary's Future Vision wallet (same community) → Synchronized to Marathon wallet
+- **Special Rule**: Both Future Vision and Marathon wallets stay synchronized (1-to-1)
+- **Synchronization**: After credit to Future Vision wallet, Marathon wallet is also credited to match
+- **Effective Beneficiary**: `beneficiaryId` if set, otherwise `authorId`
 
 ### Team Communities
 - **Flow**: Vote → Team community wallet only
@@ -167,11 +168,11 @@ This document describes the quota and merit dynamics across different group type
 4. **Regular Groups Block Wallet**: Wallet voting blocked on posts/comments
 5. **Marathon Blocks Wallet**: Wallet voting blocked on posts/comments (quota only)
 6. **Future Vision Blocks Quota**: Quota voting blocked (wallet only)
-7. **Marathon Credits Future Vision**: Merits go to Future Vision wallet, not Marathon wallet
-8. **Future Vision No Accumulation**: Votes don't credit any wallet
+7. **Marathon and Future Vision Synchronized**: Both wallets maintain 1-to-1 synchronization (debits and credits)
+8. **Credits Go to Same Community**: Withdrawals always credit the publication's community wallet
 9. **Team Communities Isolated**: No merit conversion, stays in team wallet
 10. **Downvotes Wallet Only**: Quota cannot be used for negative votes
-11. **Withdrawal Disabled**: Merits credited immediately on upvote
+11. **Withdrawal Disabled**: Merits credited immediately on upvote (in regular groups)
 
 ## Error Messages
 
@@ -197,7 +198,7 @@ This document describes the quota and merit dynamics across different group type
 ### Vote Validation (Factorized)
 - **Permission**: `PermissionService.canVote()` → `PermissionRuleEngine` → Factor 1 (Role Hierarchy)
 - **Currency**: `VoteService.createVote()` → `VoteFactorService.evaluateCurrencyMode()` → Factors 2 + 3 (composed)
-- **Routing**: `processWithdrawal()` → `VoteFactorService.evaluateMeritDestination()` → Factor 4 (Merit Destination)
+- **Credit Routing**: `processWithdrawal()` → Credits same community wallet → Synchronizes Marathon/Future Vision wallets
 - **All factors**: Respect DB settings (`permissionRules`, `votingSettings`, `meritSettings`)
 
 ### Database Migration

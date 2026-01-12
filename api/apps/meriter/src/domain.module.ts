@@ -92,7 +92,6 @@ import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.fa
 import { SocialCurrencyConstraintFactor } from './domain/services/factors/social-currency-constraint.factor';
 import { ContextCurrencyModeFactor } from './domain/services/factors/context-currency-mode.factor';
 import { CurrencyModeFactor } from './domain/services/factors/currency-mode.factor';
-import { MeritDestinationFactor } from './domain/services/factors/merit-destination.factor';
 import { VoteFactorService } from './domain/services/vote-factor.service';
 
 // Import event bus
@@ -158,7 +157,6 @@ import { EventBus } from './domain/events/event-bus';
     SocialCurrencyConstraintFactor,
     ContextCurrencyModeFactor,
     CurrencyModeFactor,
-    MeritDestinationFactor,
     VoteFactorService,
 
     // Event bus
@@ -199,7 +197,6 @@ import { EventBus } from './domain/events/event-bus';
     SocialCurrencyConstraintFactor,
     ContextCurrencyModeFactor,
     CurrencyModeFactor,
-    MeritDestinationFactor,
     VoteFactorService,
 
     // Export event bus

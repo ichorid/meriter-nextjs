@@ -4,6 +4,104 @@ import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { COMMUNITY_ROLE_VIEWER, GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
+/**
+ * Synchronize credit transactions between Marathon of Good and Future Vision wallets
+ * If crediting to MD or FV, also credit the other wallet with the same amount
+ */
+async function syncCreditForMarathonAndFutureVision(
+  userId: string,
+  communityId: string,
+  amount: number,
+  transactionType: string,
+  referenceId: string,
+  description: string,
+  ctx: any,
+): Promise<void> {
+  // Skip if amount is 0
+  if (amount <= 0) {
+    return;
+  }
+
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (!community) {
+    return; // Community not found, skip sync
+  }
+
+  const isMarathon = community.typeTag === 'marathon-of-good';
+  const isFutureVision = community.typeTag === 'future-vision';
+
+  // For regular communities (not Marathon or Future Vision), skip sync
+  if (!isMarathon && !isFutureVision) {
+    return;
+  }
+
+  // Get both communities
+  const marathonCommunity = isMarathon 
+    ? community 
+    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
+  const futureVisionCommunity = isFutureVision
+    ? community
+    : await ctx.communityService.getCommunityByTypeTag('future-vision');
+
+  // If both communities exist, credit the other wallet to keep them synchronized
+  if (marathonCommunity && futureVisionCommunity) {
+    // Get current balances after the credit was added
+    const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
+    const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
+
+    const mdBalance = mdWallet?.getBalance() ?? 0;
+    const fvBalance = fvWallet?.getBalance() ?? 0;
+
+    if (isMarathon) {
+      // Credit was added to Marathon, also credit Future Vision to match
+      const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Credit Future Vision to match Marathon balance
+      if (fvBalance < mdBalance) {
+        const balanceDiff = mdBalance - fvBalance;
+        await ctx.walletService.addTransaction(
+          userId,
+          futureVisionCommunity.id,
+          'credit',
+          balanceDiff,
+          'personal',
+          'balance_sync',
+          `sync_${Date.now()}_${referenceId}`,
+          fvCurrency,
+          `Balance sync: ${description} (Future Vision)`,
+        );
+      }
+    } else if (isFutureVision) {
+      // Credit was added to Future Vision, also credit Marathon to match
+      const mdCurrency = marathonCommunity.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+
+      // Credit Marathon to match Future Vision balance
+      if (mdBalance < fvBalance) {
+        const balanceDiff = fvBalance - mdBalance;
+        await ctx.walletService.addTransaction(
+          userId,
+          marathonCommunity.id,
+          'credit',
+          balanceDiff,
+          'personal',
+          'balance_sync',
+          `sync_${Date.now()}_${referenceId}`,
+          mdCurrency,
+          `Balance sync: ${description} (Marathon of Good)`,
+        );
+      }
+    }
+  }
+}
+
 export const walletsRouter = router({
   /**
    * Get user wallets for all communities
@@ -649,6 +747,17 @@ export const walletsRouter = router({
         `admin_add_${Date.now()}_${ctx.user.id}`,
         currency,
         `Merits added by ${ctx.user.username || ctx.user.id}`,
+      );
+
+      // Synchronize credit with the other wallet (Marathon/Future Vision)
+      await syncCreditForMarathonAndFutureVision(
+        input.userId,
+        input.communityId,
+        input.amount,
+        'admin_add_merits',
+        `admin_add_${Date.now()}_${ctx.user.id}`,
+        `Merits added by ${ctx.user.username || ctx.user.id}`,
+        ctx,
       );
 
       const updatedWallet = await ctx.walletService.getWallet(input.userId, input.communityId);

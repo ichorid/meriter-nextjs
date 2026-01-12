@@ -25,22 +25,16 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
           },
         }),
         getCommunityByTypeTag: jest.fn().mockResolvedValue(null),
+        getEffectiveVotingSettings: jest.fn().mockReturnValue({
+          awardsMerits: true,
+        }),
       },
       walletService: {
         addTransaction,
+        getWallet: jest.fn().mockResolvedValue(null),
       },
       publicationService: {
         reduceScore,
-      },
-      voteFactorService: {
-        evaluateMeritDestination: jest.fn().mockResolvedValue({
-          destinations: [{
-            userId: beneficiaryId,
-            communityId: communityId,
-            amount: 5,
-            currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-          }],
-        }),
       },
     };
 
@@ -74,17 +68,16 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
       communityService: {
         getCommunity: jest.fn(),
         getCommunityByTypeTag: jest.fn(),
+        getEffectiveVotingSettings: jest.fn().mockReturnValue({
+          awardsMerits: true,
+        }),
       },
       walletService: {
         addTransaction: jest.fn(),
+        getWallet: jest.fn().mockResolvedValue(null),
       },
       publicationService: {
         reduceScore: jest.fn(),
-      },
-      voteFactorService: {
-        evaluateMeritDestination: jest.fn().mockResolvedValue({
-          destinations: [],
-        }),
       },
     };
 

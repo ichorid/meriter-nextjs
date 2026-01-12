@@ -4,7 +4,6 @@ import { RoleHierarchyFactor } from '../src/domain/services/factors/role-hierarc
 import { SocialCurrencyConstraintFactor } from '../src/domain/services/factors/social-currency-constraint.factor';
 import { ContextCurrencyModeFactor } from '../src/domain/services/factors/context-currency-mode.factor';
 import { CurrencyModeFactor } from '../src/domain/services/factors/currency-mode.factor';
-import { MeritDestinationFactor } from '../src/domain/services/factors/merit-destination.factor';
 import { PermissionContextService } from '../src/domain/services/permission-context.service';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { CommunityService } from '../src/domain/services/community.service';
@@ -16,7 +15,6 @@ describe('VoteFactorService', () => {
   let socialConstraintFactor: jest.Mocked<SocialCurrencyConstraintFactor>;
   let contextCurrencyModeFactor: jest.Mocked<ContextCurrencyModeFactor>;
   let currencyModeFactor: jest.Mocked<CurrencyModeFactor>;
-  let meritDestinationFactor: jest.Mocked<MeritDestinationFactor>;
   let permissionService: jest.Mocked<PermissionService>;
   let communityService: jest.Mocked<CommunityService>;
 
@@ -34,10 +32,6 @@ describe('VoteFactorService', () => {
     };
 
     const mockCurrencyModeFactor = {
-      evaluate: jest.fn(),
-    };
-
-    const mockMeritDestinationFactor = {
       evaluate: jest.fn(),
     };
 
@@ -71,10 +65,6 @@ describe('VoteFactorService', () => {
           useValue: mockCurrencyModeFactor,
         },
         {
-          provide: MeritDestinationFactor,
-          useValue: mockMeritDestinationFactor,
-        },
-        {
           provide: PermissionContextService,
           useValue: mockPermissionContextService,
         },
@@ -94,7 +84,6 @@ describe('VoteFactorService', () => {
     socialConstraintFactor = module.get(SocialCurrencyConstraintFactor);
     contextCurrencyModeFactor = module.get(ContextCurrencyModeFactor);
     currencyModeFactor = module.get(CurrencyModeFactor);
-    meritDestinationFactor = module.get(MeritDestinationFactor);
     permissionService = module.get(PermissionService);
     communityService = module.get(CommunityService);
   });
@@ -147,31 +136,6 @@ describe('VoteFactorService', () => {
     });
   });
 
-  describe('evaluateMeritDestination', () => {
-    it('should delegate to MeritDestinationFactor', async () => {
-      const mockCommunity = { id: 'community1' };
-      communityService.getCommunity.mockResolvedValue(mockCommunity as any);
-
-      meritDestinationFactor.evaluate.mockResolvedValue({
-        destinations: [{
-          userId: 'user2',
-          communityId: 'community1',
-          amount: 100,
-          currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        }],
-      });
-
-      const result = await service.evaluateMeritDestination(
-        'community1',
-        'user2',
-        100,
-      );
-
-      expect(result.destinations).toHaveLength(1);
-      expect(meritDestinationFactor.evaluate).toHaveBeenCalled();
-    });
-  });
-
   describe('evaluateAllFactors', () => {
     it('should evaluate all factors and return combined result', async () => {
       const mockCommunity = { id: 'community1' };
@@ -196,10 +160,6 @@ describe('VoteFactorService', () => {
         allowedWallet: true,
       });
 
-      meritDestinationFactor.evaluate.mockResolvedValue({
-        destinations: [],
-      });
-
       const result = await service.evaluateAllFactors(
         'user1',
         'community1',
@@ -212,7 +172,6 @@ describe('VoteFactorService', () => {
       expect(result.socialConstraint.constraint).toBeNull();
       expect(result.contextCurrency.allowedQuota).toBe(true);
       expect(result.currencyMode.allowedQuota).toBe(true);
-      expect(result.meritDestination.destinations).toEqual([]);
     });
   });
 });

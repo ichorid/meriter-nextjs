@@ -8,7 +8,6 @@ import { RoleHierarchyFactor } from './factors/role-hierarchy.factor';
 import { SocialCurrencyConstraintFactor } from './factors/social-currency-constraint.factor';
 import { ContextCurrencyModeFactor } from './factors/context-currency-mode.factor';
 import { CurrencyModeFactor } from './factors/currency-mode.factor';
-import { MeritDestinationFactor } from './factors/merit-destination.factor';
 import {
   VoteFactorContext,
   VoteConstraintResult,
@@ -16,17 +15,15 @@ import {
   SocialCurrencyConstraintResult,
   ContextCurrencyModeResult,
   CurrencyModeResult,
-  MeritDestinationResult,
 } from './factors/vote-factor.types';
 
 /**
  * Vote Factor Service
  * 
- * Orchestrates evaluation of 4 core factors + 1 composer:
+ * Orchestrates evaluation of 3 core factors + 1 composer:
  * - Factor 1: Role Hierarchy (permission)
  * - Factor 2: Social Currency Constraint (self/teammate)
  * - Factor 3: Context Currency Mode (community/content/role/direction)
- * - Factor 4: Merit Destination (routing)
  * - CurrencyModeFactor (composer): Combines Factors 2 + 3 into a final currency mode result
  * 
  * Composes factor results into final vote constraint result.
@@ -40,7 +37,6 @@ export class VoteFactorService {
     private socialConstraintFactor: SocialCurrencyConstraintFactor,
     private contextCurrencyModeFactor: ContextCurrencyModeFactor,
     private currencyModeFactor: CurrencyModeFactor,
-    private meritDestinationFactor: MeritDestinationFactor,
     private permissionContextService: PermissionContextService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
@@ -174,31 +170,6 @@ export class VoteFactorService {
   }
 
   /**
-   * Evaluate Factor 4: Merit Destination
-   * 
-   * Determines where merits go after vote based on community type and settings.
-   */
-  async evaluateMeritDestination(
-    communityId: string,
-    effectiveBeneficiaryId: string,
-    amount: number,
-  ): Promise<MeritDestinationResult> {
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      return { destinations: [] };
-    }
-
-    const context: VoteFactorContext = {
-      userId: '', // Not needed for merit destination
-      communityId,
-      effectiveBeneficiaryId,
-      community,
-    };
-
-    return this.meritDestinationFactor.evaluate(context, amount);
-  }
-
-  /**
    * Evaluate all factors and return combined result
    * 
    * This is the main entry point for factor evaluation.
@@ -241,12 +212,11 @@ export class VoteFactorService {
     };
 
     // Evaluate all factors
-    const [roleHierarchy, socialConstraint, contextCurrency, currencyMode, meritDestination] = await Promise.all([
+    const [roleHierarchy, socialConstraint, contextCurrency, currencyMode] = await Promise.all([
       this.roleHierarchyFactor.evaluate(context),
       this.socialConstraintFactor.evaluate(context),
       this.contextCurrencyModeFactor.evaluate(context),
       this.currencyModeFactor.evaluate(context),
-      this.meritDestinationFactor.evaluate(context, 0), // Amount set to 0 for evaluation phase; actual amount provided during routing/withdrawal
     ]);
 
     return {
@@ -254,7 +224,6 @@ export class VoteFactorService {
       socialConstraint,
       contextCurrency,
       currencyMode,
-      meritDestination,
     };
   }
 }
