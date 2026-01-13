@@ -172,7 +172,17 @@ jest.mock('@tanstack/react-query', () => ({
     data: undefined,
     isLoading: false,
     error: null,
+    isFetched: false,
   })),
+  useQueries: jest.fn(({ queries }: { queries: any[] }) => {
+    // Return array of query results matching the queries array
+    return queries.map(() => ({
+      data: undefined,
+      isLoading: false,
+      error: null,
+      isFetched: false,
+    }));
+  }),
   useMutation: jest.fn(() => ({
     mutateAsync: jest.fn(),
     mutate: jest.fn(),
