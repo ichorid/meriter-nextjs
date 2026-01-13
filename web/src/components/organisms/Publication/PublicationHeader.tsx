@@ -130,16 +130,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     return role?.role === 'lead';
   }, [communityId, user?.id, user?.globalRole, userRoles]);
 
-  // Check if post is forwardable (team group, not poll, not already forwarded)
+  // Check if post is forwardable (admin/superadmin only, not poll, not already forwarded)
   const canForward = useMemo(() => {
     if (!communityId || !community) return false;
-    if (community.typeTag !== 'team') return false;
+    // Only admins (leads) and superadmins can forward
+    if (!isLead) return false;
     const postType = (publication as any).postType || 'basic';
     if (postType === 'poll') return false;
     const forwardStatus = (publication as any).forwardStatus;
     if (forwardStatus === 'forwarded') return false;
     return true;
-  }, [communityId, community, publication]);
+  }, [communityId, community, publication, isLead]);
 
   // Check if post is pending forward approval
   const isPendingForward = useMemo(() => {
