@@ -94,6 +94,48 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const canUseWallet = useMemo(() => {
         return canUseWalletForVoting(walletBalance, community);
     }, [walletBalance, community]);
+    
+    // Determine currencySource from community settings
+    const currencySource = useMemo(() => {
+        if (isOwnPost) {
+            // Own posts always use wallet-only
+            return 'wallet-only';
+        }
+        return community?.votingSettings?.currencySource || 
+            (community?.typeTag === 'marathon-of-good' ? 'quota-only' : 
+             community?.typeTag === 'future-vision' ? 'wallet-only' : 'quota-and-wallet');
+    }, [community, isOwnPost]);
+    
+    // Determine which hint text to show
+    const votingMechanicsText = useMemo(() => {
+        if (isOwnPost) {
+            return t("ownPostVotingMechanics");
+        }
+        if (currencySource === 'quota-only') {
+            return t("votingMechanicsQuotaOnly");
+        }
+        if (currencySource === 'wallet-only') {
+            return t("votingMechanicsWalletOnly");
+        }
+        return t("votingMechanics");
+    }, [isOwnPost, currencySource, t]);
+    
+    // Determine if quota bar should be shown
+    const showQuotaBar = useMemo(() => {
+        if (isOwnPost) return false; // Own posts don't use quota
+        if (currencySource === 'wallet-only') return false; // Wallet-only doesn't show quota bar
+        if (currencySource === 'quota-only') return quotaRemaining > 0; // Quota-only shows bar only if quota > 0
+        // quota-and-wallet: show bar only if quota > 0
+        return quotaRemaining > 0;
+    }, [isOwnPost, currencySource, quotaRemaining]);
+    
+    // Determine if wallet bar should be shown
+    const showWalletBar = useMemo(() => {
+        if (currencySource === 'quota-only') return false; // Quota-only doesn't show wallet bar
+        if (currencySource === 'wallet-only') return walletBalance > 0; // Wallet-only shows bar only if wallet > 0
+        // quota-and-wallet: show bar only if wallet > 0
+        return walletBalance > 0 && canUseWallet;
+    }, [currencySource, walletBalance, canUseWallet]);
 
     // Calculate maximum available merits based on voting mode
     // maxPlus is already correctly calculated in VotingPopup based on effectiveVotingMode:
@@ -136,7 +178,31 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             };
         }
 
-        // Upvotes: use quota first, then wallet
+        // For wallet-only mode, use wallet only (no quota)
+        if (currencySource === 'wallet-only') {
+            return {
+                quotaAmount: 0,
+                walletAmount: voteAmount,
+                quotaBefore: quotaRemaining,
+                quotaAfter: quotaRemaining,
+                walletBefore: walletBalance,
+                walletAfter: Math.max(0, walletBalance - voteAmount),
+            };
+        }
+
+        // For quota-only mode, use quota only (no wallet)
+        if (currencySource === 'quota-only') {
+            return {
+                quotaAmount: voteAmount,
+                walletAmount: 0,
+                quotaBefore: quotaRemaining,
+                quotaAfter: Math.max(0, quotaRemaining - voteAmount),
+                walletBefore: walletBalance,
+                walletAfter: walletBalance,
+            };
+        }
+
+        // For quota-and-wallet (standard) mode: use quota first, then wallet
         const quotaAmount = Math.min(voteAmount, quotaRemaining);
         const walletAmount = Math.max(0, voteAmount - quotaRemaining);
         return {
@@ -147,7 +213,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             walletBefore: walletBalance,
             walletAfter: Math.max(0, walletBalance - walletAmount),
         };
-    }, [absAmount, isPositive, quotaRemaining, walletBalance, isOwnPost]);
+    }, [absAmount, isPositive, quotaRemaining, walletBalance, isOwnPost, currencySource]);
 
     // Determine which source is active (for UI display)
     const activeSource = useMemo(() => {
@@ -439,7 +505,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 {/* Explanation - keep the mechanics hint */}
                 {!hideQuota && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
-                        {isOwnPost ? t("ownPostVotingMechanics") : t("votingMechanics")}
+                        {votingMechanicsText}
                     </p>
                 )}
             </div>
@@ -450,8 +516,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 <div className="flex flex-col gap-4">
                     {/* Progress Bars - Show vote distribution */}
                     <div className="flex gap-2">
-                        {/* Daily Quota Progress Bar - Hide for own posts */}
-                        {!isOwnPost && (
+                        {/* Daily Quota Progress Bar */}
+                        {showQuotaBar && (
                         <div className="flex-1 flex flex-col gap-2">
                             <div className="text-sm font-medium text-base-content">
                                 {t("dailyQuotaLabel")}
@@ -483,8 +549,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         </div>
                         )}
 
-                        {/* Wallet Progress Bar - Always show if wallet can be used */}
-                        {canUseWallet && (
+                        {/* Wallet Progress Bar */}
+                        {showWalletBar && (
                             <div className="flex-1 flex flex-col gap-2">
                                 <div className="text-sm font-medium text-base-content">
                                     {t("walletLabel")}

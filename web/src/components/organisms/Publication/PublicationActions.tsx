@@ -11,6 +11,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { ResourcePermissions } from '@/types/api-v1';
 import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
@@ -100,6 +101,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const t = useTranslations('shared');
+  const tComments = useTranslations('comments');
   const myId = user?.id;
   const testAuthMode = isTestAuthMode();
   const isSuperadmin = user?.globalRole === 'superadmin';
@@ -156,6 +158,11 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Get community info to check typeTag
   const { data: community } = useCommunity(communityId || '');
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+  
+  // Get quota for balance checks
+  const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
+  const quotaData = communityId ? quotasMap.get(communityId) : null;
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
 
   // Mutual exclusivity logic
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
@@ -193,8 +200,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     // If voting for own post, must use wallet only
     if (isEffectiveBeneficiary) {
       if (currentBalance === 0) {
-        // Show alert if no wallet balance
-        alert(t('cannotVoteOwnPostNoWallet'));
+        // Show toast notification if no wallet balance
+        addToast(tComments('cannotVoteOwnPostNoWallet'), 'error');
         return;
       }
       // Force wallet-only mode for own posts
@@ -202,32 +209,51 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       return;
     }
     
+    // Determine currencySource from community settings
+    const currencySource = community?.votingSettings?.currencySource || 
+      (community?.typeTag === 'marathon-of-good' ? 'quota-only' : 
+       community?.typeTag === 'future-vision' ? 'wallet-only' : 'quota-and-wallet');
+    
+    // Determine voting mode based on currencySource
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
     if (isProject) {
       mode = 'wallet-only';
     } else {
-      // Check currencySource from votingSettings first
-      const currencySource = community?.votingSettings?.currencySource;
       if (currencySource === 'quota-only') {
         mode = 'quota-only';
       } else if (currencySource === 'wallet-only') {
         mode = 'wallet-only';
       } else if (currencySource === 'quota-and-wallet') {
         mode = 'standard';
-      } else {
-        // Backward compatibility: use typeTag defaults
-        if (community?.typeTag === 'future-vision') {
-          // Future Vision: wallet-only (M), no quota (Q)
-          mode = 'wallet-only';
-        } else if (community?.typeTag === 'marathon-of-good') {
-          // Marathon-of-Good: quota-only (Q), no wallet (M)
-          mode = 'quota-only';
-        } else {
-          // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
-          mode = 'standard';
-        }
       }
     }
+    
+    // Check balances before opening dialog
+    const hasQuota = quotaRemaining > 0;
+    const hasWallet = currentBalance > 0;
+    
+    // If no quota and no wallet, show toast notification and don't open dialog
+    if (!hasQuota && !hasWallet) {
+      addToast(tComments('cannotVoteNoMerits'), 'error');
+      return;
+    }
+    
+    // Check restrictions based on currencySource
+    if (currencySource === 'quota-only') {
+      // If quota-only and no quota, show toast notification
+      if (!hasQuota) {
+        addToast(tComments('cannotVoteNoQuotaQuotaOnly'), 'error');
+        return;
+      }
+    } else if (currencySource === 'wallet-only') {
+      // If wallet-only and no wallet, show toast notification
+      if (!hasWallet) {
+        addToast(tComments('cannotVoteNoWalletWalletOnly'), 'error');
+        return;
+      }
+    }
+    // For quota-and-wallet (standard), dialog will handle showing/hiding bars based on available balances
+    
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
 
