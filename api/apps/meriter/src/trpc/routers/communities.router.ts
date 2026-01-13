@@ -49,6 +49,7 @@ export const communitiesRouter = router({
           allowEditByOthers: community.settings?.allowEditByOthers ?? false,
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
           allowWithdraw: community.settings?.allowWithdraw ?? true,
+          forwardRule: community.settings?.forwardRule ?? 'standard',
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)

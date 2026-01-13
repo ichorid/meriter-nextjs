@@ -78,6 +78,7 @@ export interface UpdateCommunityDto {
     allowEditByOthers?: boolean;
     canPayPostFromQuota?: boolean;
     allowWithdraw?: boolean;
+    forwardRule?: 'standard' | 'project';
     language?: 'en' | 'ru';
   };
   votingSettings?: {
@@ -525,6 +526,9 @@ export class CommunityService {
       if ('allowWithdraw' in dto.settings) {
         settingsUpdate['settings.allowWithdraw'] = Boolean(dto.settings.allowWithdraw);
         this.logger.log(`Updating allowWithdraw to: ${Boolean(dto.settings.allowWithdraw)} for community ${communityId}`);
+      }
+      if (dto.settings.forwardRule !== undefined) {
+        settingsUpdate['settings.forwardRule'] = dto.settings.forwardRule;
       }
       if (dto.settings.language !== undefined) {
         settingsUpdate['settings.language'] = dto.settings.language;
