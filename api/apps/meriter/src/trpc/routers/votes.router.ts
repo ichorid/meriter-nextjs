@@ -521,10 +521,28 @@ async function createVoteLogic(
     communityId,
   );
 
-  // Special case: Marathon of Good is quota-only for posts/comments (for everyone, including viewers).
+  // Check currencySource from votingSettings first (highest priority)
+  const currencySource = community?.votingSettings?.currencySource;
+  if (currencySource && (input.targetType === 'publication' || input.targetType === 'vote')) {
+    if (currencySource === 'quota-only' && walletAmount > 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This community only allows quota voting. Please use daily quota to vote.',
+      });
+    }
+    if (currencySource === 'wallet-only' && quotaAmount > 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This community only allows wallet voting. Please use wallet merits to vote.',
+      });
+    }
+  }
+
+  // Backward compatibility: Special case: Marathon of Good is quota-only for posts/comments (if currencySource not set).
   if (
     (input.targetType === 'publication' || input.targetType === 'vote') &&
     community?.typeTag === 'marathon-of-good' &&
+    !currencySource &&
     walletAmount > 0
   ) {
     throw new TRPCError({
@@ -542,10 +560,11 @@ async function createVoteLogic(
     });
   }
 
-  // Special case: Future Vision blocks quota voting (wallet only) for posts/comments.
+  // Backward compatibility: Special case: Future Vision blocks quota voting (wallet only) for posts/comments (if currencySource not set).
   if (
     (input.targetType === 'publication' || input.targetType === 'vote') &&
     community?.typeTag === 'future-vision' &&
+    !currencySource &&
     quotaAmount > 0
   ) {
     throw new TRPCError({

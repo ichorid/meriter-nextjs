@@ -58,6 +58,7 @@ interface CommunityRulesEditorProps {
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-same-team';
+      currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only';
     };
   }) => Promise<void>;
 }
@@ -142,6 +143,20 @@ function setAllowedRolesForAction(
   return updatedRules;
 }
 
+// Helper function to determine default currencySource
+function getDefaultCurrencySource(
+  votingSettings?: { currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only' },
+  typeTag?: string
+): 'quota-and-wallet' | 'quota-only' | 'wallet-only' {
+  if (votingSettings?.currencySource) {
+    return votingSettings.currencySource;
+  }
+  // Backward compatibility: use typeTag defaults
+  if (typeTag === 'marathon-of-good') return 'quota-only';
+  if (typeTag === 'future-vision') return 'wallet-only';
+  return 'quota-and-wallet';
+}
+
 export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   community,
   onSave,
@@ -158,6 +173,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   // Settings state
   const [startingMerits, setStartingMerits] = useState<string>(
     String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100)
+  );
+  
+  const [quotaRecipients, setQuotaRecipients] = useState<Role[]>(
+    (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']
   );
 
   const [linkedCurrencies, setLinkedCurrencies] = useState<string[]>(
@@ -186,6 +205,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   );
   const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-same-team'>(
     (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any'
+  );
+  
+  const [currencySource, setCurrencySource] = useState<'quota-and-wallet' | 'quota-only' | 'wallet-only'>(
+    getDefaultCurrencySource(community.votingSettings, community.typeTag)
   );
 
   const { user } = useAuth();
@@ -218,7 +241,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
     votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+    currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
+    quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
   });
 
   // History of rule changes
@@ -294,7 +319,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setEditWindowMinutes(String(community.settings?.editWindowMinutes ?? 30));
     setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
     setVotingRestriction((community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any');
+    setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
+    setQuotaRecipients((community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']);
 
     // Update original state
     setOriginalPermissionRules(JSON.parse(JSON.stringify(initialRules)));
@@ -308,7 +335,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+      currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
+      quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
     });
   }, [community]);
 
@@ -336,14 +365,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         allowEditByOthers,
       };
       
-      // Get quota recipients from VIEW_COMMUNITY action (all roles that can view)
-      const quotaRecipients = getAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY);
-      
       const dataToSave = {
         permissionRules,
         meritSettings: {
           dailyQuota: parseInt(dailyEmission, 10) || 100,
-          quotaRecipients,
+          quotaRecipients: quotaRecipients,
           canEarn: true, // These are controlled by permissionRules now
           canSpend: true,
           startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100,
@@ -352,6 +378,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         settings: settingsToSave,
         votingSettings: {
           votingRestriction,
+          currencySource,
         },
       };
       
@@ -369,7 +396,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         editWindowMinutes,
         allowEditByOthers,
         votingRestriction,
+        currencySource,
         startingMerits,
+        quotaRecipients: [...quotaRecipients],
       });
       // Save to history
       saveToHistory(permissionRules, linkedCurrencies);
@@ -400,7 +429,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setEditWindowMinutes(originalSettings.editWindowMinutes);
     setAllowEditByOthers(originalSettings.allowEditByOthers);
     setVotingRestriction(originalSettings.votingRestriction);
+    setCurrencySource(originalSettings.currencySource);
     setStartingMerits(originalSettings.startingMerits);
+    setQuotaRecipients([...originalSettings.quotaRecipients]);
     setValidationErrors({});
   };
 
@@ -415,7 +446,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       editWindowMinutes !== originalSettings.editWindowMinutes ||
       allowEditByOthers !== originalSettings.allowEditByOthers ||
       votingRestriction !== originalSettings.votingRestriction ||
-      startingMerits !== originalSettings.startingMerits
+      currencySource !== originalSettings.currencySource ||
+      startingMerits !== originalSettings.startingMerits ||
+      JSON.stringify(quotaRecipients.sort()) !== JSON.stringify(originalSettings.quotaRecipients.sort())
     );
 
     return rulesChanged || linkedCurrenciesChanged || settingsChanged;
@@ -792,17 +825,17 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           <div className="space-y-2">
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
               const checkboxId = `merit-role-${role}`;
-              const isAllowed = viewAllowedRoles.includes(role);
+              const isAllowed = quotaRecipients.includes(role);
               return (
                 <div key={role} className="flex items-center gap-2.5">
                   <Checkbox
                     id={checkboxId}
                     checked={isAllowed}
                     onCheckedChange={(checked) => {
-                      const newAllowedRoles = checked
-                        ? [...viewAllowedRoles, role]
-                        : viewAllowedRoles.filter(r => r !== role);
-                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY, newAllowedRoles));
+                      const newQuotaRecipients = checked
+                        ? [...quotaRecipients, role]
+                        : quotaRecipients.filter(r => r !== role);
+                      setQuotaRecipients(newQuotaRecipients);
                     }}
                   />
                   <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
@@ -920,6 +953,25 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             <SelectContent>
               <SelectItem value="any">{tSettings('votingRestrictionOptions.any')}</SelectItem>
               <SelectItem value="not-same-team">{tSettings('votingRestrictionOptions.notSameTeam')}</SelectItem>
+            </SelectContent>
+          </Select>
+        </BrandFormControl>
+
+        <BrandFormControl
+          label={tSettings('currencySource')}
+          helperText={tSettings('currencySourceHelp')}
+        >
+          <Select
+            value={currencySource}
+            onValueChange={(value) => setCurrencySource(value as 'quota-and-wallet' | 'quota-only' | 'wallet-only')}
+          >
+            <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="quota-and-wallet">{tSettings('currencySourceOptions.quotaAndWallet')}</SelectItem>
+              <SelectItem value="quota-only">{tSettings('currencySourceOptions.quotaOnly')}</SelectItem>
+              <SelectItem value="wallet-only">{tSettings('currencySourceOptions.walletOnly')}</SelectItem>
             </SelectContent>
           </Select>
         </BrandFormControl>

@@ -106,6 +106,7 @@ export const CommunityVotingSettingsSchema = z.object({
   awardsMerits: z.boolean().optional(),
   meritConversion: CommunityMeritConversionSchema.optional(),
   votingRestriction: z.enum(["any", "not-same-team"]).optional(),
+  currencySource: z.enum(["quota-and-wallet", "quota-only", "wallet-only"]).optional(),
   // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
   // Note: 'not-same-group' renamed to 'not-same-team' for clarity
 });

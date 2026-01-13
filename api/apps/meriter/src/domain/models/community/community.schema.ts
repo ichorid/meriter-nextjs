@@ -64,6 +64,7 @@ export interface CommunityVotingSettings {
   awardsMerits: boolean;
   meritConversion?: CommunityMeritConversion;
   votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
+  currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only'; // Source of merits for voting
 }
 
 /**
@@ -242,6 +243,10 @@ export class CommunitySchemaClass implements Community {
         enum: ['any', 'not-same-team'],
         // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
         // Note: 'not-same-group' renamed to 'not-same-team' for clarity
+      },
+      currencySource: {
+        type: String,
+        enum: ['quota-and-wallet', 'quota-only', 'wallet-only'],
       },
     },
     default: {

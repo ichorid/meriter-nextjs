@@ -28,6 +28,7 @@ interface VotingPanelProps {
     community?: Community | null;
     error?: string;
     isViewer?: boolean;
+    isOwnPost?: boolean;
     inline?: boolean;
     images?: string[];
     onImagesChange?: (images: string[]) => void;
@@ -56,6 +57,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     community,
     error,
     isViewer = false,
+    isOwnPost = false,
     inline = false,
     images = [],
     onImagesChange,
@@ -93,21 +95,37 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         return canUseWalletForVoting(walletBalance, community);
     }, [walletBalance, community]);
 
-    // Calculate maximum available merits
-    // For upvotes: quota + wallet
-    // For downvotes: wallet only (quota cannot be used for downvotes)
+    // Calculate maximum available merits based on voting mode
+    // maxPlus is already correctly calculated in VotingPopup based on effectiveVotingMode:
+    // - wallet-only: walletBalance
+    // - quota-only: quotaRemaining
+    // - standard/mixed: quotaRemaining + walletBalance
+    // For downvotes, use walletBalance (downvotes always use wallet only)
     const maxAvailableMerits = useMemo(() => {
         if (!isPositive) {
             return walletBalance; // Downvotes use wallet only
         }
-        return quotaRemaining + walletBalance; // Upvotes use quota first, then wallet
-    }, [isPositive, quotaRemaining, walletBalance]);
+        // For upvotes, use maxPlus which is correctly calculated based on voting mode
+        return maxPlus;
+    }, [isPositive, walletBalance, maxPlus]);
 
     // Calculate vote breakdown: quota vs wallet
     const voteBreakdown = useMemo(() => {
         const voteAmount = absAmount;
         if (!isPositive) {
             // Downvotes use wallet only (quota cannot be used for downvotes)
+            return {
+                quotaAmount: 0,
+                walletAmount: voteAmount,
+                quotaBefore: quotaRemaining,
+                quotaAfter: quotaRemaining,
+                walletBefore: walletBalance,
+                walletAfter: Math.max(0, walletBalance - voteAmount),
+            };
+        }
+
+        // For own posts, use wallet only (no quota)
+        if (isOwnPost) {
             return {
                 quotaAmount: 0,
                 walletAmount: voteAmount,
@@ -129,7 +147,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             walletBefore: walletBalance,
             walletAfter: Math.max(0, walletBalance - walletAmount),
         };
-    }, [absAmount, isPositive, quotaRemaining, walletBalance]);
+    }, [absAmount, isPositive, quotaRemaining, walletBalance, isOwnPost]);
 
     // Determine which source is active (for UI display)
     const activeSource = useMemo(() => {
@@ -238,15 +256,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 setAmount(0);
                 return;
             }
-            // Clamp to available merits (quota + wallet)
-            // For upvotes, use maxAvailableMerits (quota + wallet)
+            // Clamp to available merits
+            // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
             // For downvotes, use wallet only
             const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
             const minByMerits = -maxAvailableMerits;
             
-            // Also respect maxPlus and maxMinus if set (but maxAvailableMerits takes priority for upvotes)
+            // Use maxAvailableMerits for upvotes, maxMinus for downvotes
             const maxLimit = isPositive 
-                ? maxAvailableMerits // For upvotes, always use maxAvailableMerits (quota + wallet)
+                ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                 : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
             const minLimit = maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits;
             
@@ -272,12 +290,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 // Try to parse what we have so far
                 const partialValue = isNegative ? -Number(numericMatch[0]) : Number(numericMatch[0]);
                 if (!isNaN(partialValue)) {
-                    // For upvotes, use maxAvailableMerits (quota + wallet)
+                    // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
                     // For downvotes, use wallet only
                     const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
                     const minByMerits = -maxAvailableMerits;
                     const maxLimit = isPositive 
-                        ? maxAvailableMerits // For upvotes, always use maxAvailableMerits (quota + wallet)
+                        ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                         : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
                     const minLimit = maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits;
                     const clampedValue = Math.max(minLimit, Math.min(maxLimit, partialValue));
@@ -380,8 +398,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return;
         }
         
-        // For upvotes, always use maxAvailableMerits (quota + wallet)
-        const maxLimit = isPositive ? maxAvailableMerits : (maxPlus > 0 ? maxPlus : maxAvailableMerits);
+        // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
+        // For downvotes, use maxPlus (walletBalance)
+        const maxLimit = isPositive ? maxAvailableMerits : (maxMinus > 0 ? maxMinus : walletBalance);
         const clampedAmount = Math.min(maxLimit, newAmount);
         setAmount(clampedAmount);
         setInputValue(Math.abs(clampedAmount).toString());
@@ -420,7 +439,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 {/* Explanation - keep the mechanics hint */}
                 {!hideQuota && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
-                        {t("votingMechanics")}
+                        {isOwnPost ? t("ownPostVotingMechanics") : t("votingMechanics")}
                     </p>
                 )}
             </div>
@@ -431,7 +450,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 <div className="flex flex-col gap-4">
                     {/* Progress Bars - Show vote distribution */}
                     <div className="flex gap-2">
-                        {/* Daily Quota Progress Bar */}
+                        {/* Daily Quota Progress Bar - Hide for own posts */}
+                        {!isOwnPost && (
                         <div className="flex-1 flex flex-col gap-2">
                             <div className="text-sm font-medium text-base-content">
                                 {t("dailyQuotaLabel")}
@@ -461,8 +481,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 </div>
                             </div>
                         </div>
+                        )}
 
-                        {/* Wallet Progress Bar */}
+                        {/* Wallet Progress Bar - Always show if wallet can be used */}
                         {canUseWallet && (
                             <div className="flex-1 flex flex-col gap-2">
                                 <div className="text-sm font-medium text-base-content">
@@ -470,7 +491,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 </div>
                                 <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                                     {/* Progress fill - shows how much of wallet will be used */}
-                                    {/* For upvotes: only fill when quota is fully used */}
+                                    {/* For upvotes: only fill when quota is fully used (or for own posts, always fill) */}
                                     {/* For downvotes: always fill */}
                                     {(() => {
                                         const fillPercent = absAmount > 0 && voteBreakdown.walletAmount > 0

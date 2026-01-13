@@ -187,6 +187,21 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   }
 
   const handleVoteClick = () => {
+    // Check if user is voting for own post (author or beneficiary)
+    const isEffectiveBeneficiary = isAuthor || isBeneficiary;
+    
+    // If voting for own post, must use wallet only
+    if (isEffectiveBeneficiary) {
+      if (currentBalance === 0) {
+        // Show alert if no wallet balance
+        alert(t('cannotVoteOwnPostNoWallet'));
+        return;
+      }
+      // Force wallet-only mode for own posts
+      useUIStore.getState().openVotingPopup(publicationId, 'publication', 'wallet-only');
+      return;
+    }
+    
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
     if (isProject) {
       mode = 'wallet-only';
@@ -416,11 +431,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
                     title={t('totalVotesTooltip')}
                   >
                     ({totalVotes > 0 ? '+' : ''}{totalVotes})
-                  </span>
-                )}
-                {commentCount > 0 && (
-                  <span className="text-xs font-medium text-base-content/50 group-hover:text-base-content/70 transition-colors ml-1">
-                    · {commentCount}
                   </span>
                 )}
               </div>

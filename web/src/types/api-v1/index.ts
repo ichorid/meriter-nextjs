@@ -316,6 +316,7 @@ export interface CommunityVotingSettings {
   awardsMerits: boolean;
   meritConversion?: CommunityMeritConversion;
   votingRestriction?: 'any' | 'not-same-team'; // Restriction on who can vote for whom
+  currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only'; // Source of merits for voting
   // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
 }
 

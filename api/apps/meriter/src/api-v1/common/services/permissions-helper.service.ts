@@ -10,6 +10,7 @@ import { PermissionContextService } from '../../../domain/services/permission-co
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
+import { ActionType } from '../../../domain/common/constants/action-types.constants';
 
 /**
  * Service to calculate and batch-calculate permissions for resources
@@ -116,22 +117,42 @@ export class PermissionsHelperService {
 
     // Determine vote disabled reason
     // Only determine reason if canVote is false
-    // NOTE: Self-voting and teammate voting are now ALLOWED with wallet-only constraint
-    // Currency constraints are enforced in VoteService, not here
     let voteDisabledReason: string | undefined;
     if (!canVote) {
-      // Community should always exist here due to check above
-      // So we can safely use community here
-      voteDisabledReason = this.getVoteDisabledReason(
-        user,
-        userRole,
-        community,
-        isAuthor,
-        isBeneficiary,
-        hasBeneficiary,
-        isProject,
-        publicationId,
-      );
+      // Check if canVoteForOwnPosts is the reason (HIGH PRIORITY)
+      if (context.isEffectiveBeneficiary) {
+        const effectiveRules = this.communityService.getEffectivePermissionRules(community);
+        const voteRule = effectiveRules.find(
+          rule => rule.role === userRole && rule.action === ActionType.VOTE
+        );
+        if (voteRule?.conditions?.canVoteForOwnPosts === false) {
+          voteDisabledReason = 'voteDisabled.isAuthor';
+        } else {
+          // Community should always exist here due to check above
+          voteDisabledReason = this.getVoteDisabledReason(
+            user,
+            userRole,
+            community,
+            isAuthor,
+            isBeneficiary,
+            hasBeneficiary,
+            isProject,
+            publicationId,
+          );
+        }
+      } else {
+        // Community should always exist here due to check above
+        voteDisabledReason = this.getVoteDisabledReason(
+          user,
+          userRole,
+          community,
+          isAuthor,
+          isBeneficiary,
+          hasBeneficiary,
+          isProject,
+          publicationId,
+        );
+      }
     }
 
     return {

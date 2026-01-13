@@ -558,6 +558,8 @@
         "requiresComment": "Requires comment",
         "commentRequired": "Comment is required for voting on a post",
         "votingMechanics": "You can vote FOR a post or AGAINST it.\nFor voting FOR, merits from your daily quota are spent first, and after it is exceeded, merits from your wallet.\nFor voting AGAINST, only wallet merits can be used.",
+        "ownPostVotingMechanics": "You are voting for your own post. Only wallet merits can be used for this.",
+        "cannotVoteOwnPostNoWallet": "Voting on your own posts is only possible with wallet merits, but you have 0 in your account",
         "walletBalance": "Accumulated merits",
         "dailyQuota": "Daily quota",
         "whatWillHappen": "What will happen if you vote:",
@@ -761,6 +763,13 @@
                 "notOwn": "Users can vote for others' posts, but not their own",
                 "notSameGroup": "Only for posts from users in different teams",
                 "notSameTeam": "Only for posts from users in different teams"
+            },
+            "currencySource": "Source of merits for voting",
+            "currencySourceHelp": "Choose where merits for voting in this community can be taken from",
+            "currencySourceOptions": {
+                "quotaAndWallet": "Quota and Wallet",
+                "quotaOnly": "Quota Only",
+                "walletOnly": "Wallet Only"
             },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",

@@ -75,6 +75,18 @@ export class RoleHierarchyFactor {
       return { allowed: false, reason: `No matching rule found for role=${userRole}, action=${action}` };
     }
 
+    // STEP 5.5: HIGH PRIORITY CHECK - canVoteForOwnPosts condition (voting only)
+    // This check has the highest priority - if canVoteForOwnPosts is false, user cannot vote for own posts
+    // regardless of other rules
+    if (action === ActionType.VOTE && matchingRule.conditions?.canVoteForOwnPosts !== undefined) {
+      if (context.isEffectiveBeneficiary && !matchingRule.conditions.canVoteForOwnPosts) {
+        this.logger.debug(
+          `[evaluate] HIGH PRIORITY BLOCK: Cannot vote for own posts (canVoteForOwnPosts=false)`,
+        );
+        return { allowed: false, reason: 'Cannot vote for own posts (canVoteForOwnPosts=false)' };
+      }
+    }
+
     // STEP 6: Check if rule allows the action
     if (!matchingRule.allowed) {
       return { allowed: false, reason: `Rule explicitly denies: role=${userRole}, action=${action}` };
@@ -229,18 +241,8 @@ export class RoleHierarchyFactor {
       return false; // Hidden communities are not visible
     }
 
-    // Check canVoteForOwnPosts (voting only)
-    if (action === ActionType.VOTE && conditions.canVoteForOwnPosts !== undefined) {
-      this.logger.debug(
-        `[evaluateConditions] canVoteForOwnPosts check: isEffectiveBeneficiary=${context.isEffectiveBeneficiary}, canVoteForOwnPosts=${conditions.canVoteForOwnPosts}`,
-      );
-      if (context.isEffectiveBeneficiary && !conditions.canVoteForOwnPosts) {
-        this.logger.debug(
-          `[evaluateConditions] BLOCKED: Cannot vote for own posts (canVoteForOwnPosts=false)`,
-        );
-        return false; // Cannot vote for own posts if canVoteForOwnPosts is false
-      }
-    }
+    // Note: canVoteForOwnPosts is now checked at STEP 5.5 with highest priority,
+    // so it's not checked here again
 
     // Check participantsCannotVoteForLead (voting only)
     if (action === ActionType.VOTE && conditions.participantsCannotVoteForLead) {

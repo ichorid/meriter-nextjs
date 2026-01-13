@@ -81,6 +81,7 @@ export interface UpdateCommunityDto {
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-same-team';
+    currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only';
     spendsMerits?: boolean;
     awardsMerits?: boolean;
     meritConversion?: {

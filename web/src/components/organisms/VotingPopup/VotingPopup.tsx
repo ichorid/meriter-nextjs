@@ -11,6 +11,7 @@ import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useCommunity } from '@/hooks/api';
+import { usePublication } from '@/hooks/api/usePublications';
 import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useFeaturesConfig } from '@/hooks/useConfig';
@@ -47,6 +48,22 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(targetCommunityId || '');
   
+  // Get publication to check if user is voting for own post
+  const { data: publication } = usePublication(
+    votingTargetType === 'publication' && activeVotingTarget ? activeVotingTarget : ''
+  );
+  
+  // Check if user is voting for own post (author or beneficiary)
+  const isOwnPost = useMemo(() => {
+    if (!user?.id || !publication || votingTargetType !== 'publication') return false;
+    const authorId = publication.authorId;
+    const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
+    const isAuthor = !!(authorId && user.id === authorId);
+    const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
+    const isBeneficiary = !!(hasBeneficiary && beneficiaryId && user.id === beneficiaryId);
+    return isAuthor || isBeneficiary;
+  }, [user?.id, publication, votingTargetType]);
+  
   // Check if user is a viewer
   const isViewer = useMemo(() => {
     if (!user?.id || !targetCommunityId || !community) return false;
@@ -55,8 +72,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     return role?.role === 'viewer';
   }, [user?.id, user?.globalRole, userRoles, targetCommunityId, community]);
 
-  // Force quota-only mode for viewers
-  const effectiveVotingMode = isViewer ? 'quota-only' : votingMode;
+  // Force wallet-only mode for own posts, quota-only mode for viewers
+  const effectiveVotingMode = isOwnPost ? 'wallet-only' : (isViewer ? 'quota-only' : votingMode);
 
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
@@ -84,15 +101,16 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Check if wallet can be used for voting
   const canUseWallet = canUseWalletForVoting(walletBalance, community);
 
-  // Calculate maxPlus based on effective voting mode (quota-only for viewers)
+  // Calculate maxPlus based on effective voting mode
   let maxPlus = 0;
   if (effectiveVotingMode === 'wallet-only') {
     maxPlus = walletBalance || 0;
   } else if (effectiveVotingMode === 'quota-only') {
     maxPlus = freePlusAmount;
   } else {
-    // In mixed mode, include wallet only if it can be used
-    maxPlus = freePlusAmount + (canUseWallet ? (walletBalance || 0) : 0);
+    // In mixed mode (standard), always include both quota and wallet
+    // Use quotaRemaining directly (not freePlusAmount which is a fallback)
+    maxPlus = quotaRemaining + (walletBalance || 0);
   }
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
@@ -394,6 +412,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           community={community}
           error={formData.error}
           isViewer={isViewer}
+          isOwnPost={isOwnPost}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
         />

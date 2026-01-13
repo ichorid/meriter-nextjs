@@ -23,13 +23,14 @@ export class ContextCurrencyModeFactor {
    * Evaluate context currency mode
    * 
    * Priority order (first match wins):
-   * 1. Marathon of Good + post/comment → quota-only
-   * 2. Future Vision + post/comment → wallet-only
-   * 3. Project → wallet-only
-   * 4. Poll → wallet-only
-   * 5. Downvote → wallet-only
-   * 6. Viewer role → quota-only (if role in quotaRecipients)
-   * 7. Default → both-allowed (quota preferred)
+   * 1. currencySource from votingSettings (if set) → quota-only / wallet-only / quota-and-wallet
+   * 2. Marathon of Good + post/comment → quota-only (backward compatibility)
+   * 3. Future Vision + post/comment → wallet-only (backward compatibility)
+   * 4. Project → wallet-only
+   * 5. Poll → wallet-only
+   * 6. Downvote → wallet-only
+   * 7. Viewer role → quota-only (if role in quotaRecipients)
+   * 8. Default → both-allowed (quota preferred)
    * 
    * @param context Vote factor context
    * @returns Context currency mode result
@@ -41,8 +42,6 @@ export class ContextCurrencyModeFactor {
       throw new Error('Community is required for context currency mode evaluation');
     }
 
-    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
-    const isFutureVision = community.typeTag === 'future-vision';
     const isProjectContent = postType === 'project' || isProject === true;
     // Note: Polls are handled separately via polls router, not through vote service
     // The vote service only handles targetType 'publication' | 'vote' (where 'vote' means comment)
@@ -50,8 +49,38 @@ export class ContextCurrencyModeFactor {
     const isDownvote = direction === 'down';
     const isViewer = userRole === COMMUNITY_ROLE_VIEWER;
 
-    // Priority 1: Marathon of Good + post/comment → quota-only
-    if (isMarathonOfGood && (targetType === 'publication' || targetType === 'vote')) {
+    // Priority 1: currencySource from votingSettings (if set)
+    const currencySource = community.votingSettings?.currencySource;
+    if (currencySource && (targetType === 'publication' || targetType === 'vote')) {
+      if (currencySource === 'quota-only') {
+        this.logger.debug(
+          `[evaluate] currencySource=quota-only: community=${community.id}`,
+        );
+        return {
+          allowedQuota: true,
+          allowedWallet: false,
+          requiredCurrency: 'quota',
+          reason: 'Community voting settings allow quota-only voting',
+        };
+      } else if (currencySource === 'wallet-only') {
+        this.logger.debug(
+          `[evaluate] currencySource=wallet-only: community=${community.id}`,
+        );
+        return {
+          allowedQuota: false,
+          allowedWallet: true,
+          requiredCurrency: 'wallet',
+          reason: 'Community voting settings allow wallet-only voting',
+        };
+      } else if (currencySource === 'quota-and-wallet') {
+        // Continue to check other priorities (viewer role, etc.)
+        // But allow both quota and wallet
+      }
+    }
+
+    // Priority 2: Marathon of Good + post/comment → quota-only (backward compatibility)
+    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
+    if (isMarathonOfGood && (targetType === 'publication' || targetType === 'vote') && !currencySource) {
       this.logger.debug(
         `[evaluate] Marathon of Good + post/comment → quota-only: community=${community.id}`,
       );
@@ -63,8 +92,9 @@ export class ContextCurrencyModeFactor {
       };
     }
 
-    // Priority 2: Future Vision + post/comment → wallet-only
-    if (isFutureVision && (targetType === 'publication' || targetType === 'vote')) {
+    // Priority 3: Future Vision + post/comment → wallet-only (backward compatibility)
+    const isFutureVision = community.typeTag === 'future-vision';
+    if (isFutureVision && (targetType === 'publication' || targetType === 'vote') && !currencySource) {
       this.logger.debug(
         `[evaluate] Future Vision + post/comment → wallet-only: community=${community.id}`,
       );
