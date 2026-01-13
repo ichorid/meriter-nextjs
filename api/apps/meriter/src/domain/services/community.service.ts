@@ -161,14 +161,26 @@ export class CommunityService {
       dbRulesMap.set(key, rule);
     }
 
-    // Merge: DB rules override defaults, but include all default rules
+    // Merge: DB rules override defaults, but merge conditions from defaults
     const mergedRules: PermissionRule[] = [];
     const processedKeys = new Set<string>();
 
-    // First, add all DB rules (these override defaults)
+    // First, merge DB rules with defaults (DB rules override, but conditions are merged)
     for (const dbRule of community.permissionRules) {
       const key = `${dbRule.role}:${dbRule.action}`;
-      mergedRules.push(dbRule);
+      const defaultRule = defaultRulesMap.get(key);
+      
+      // Merge conditions: DB conditions override defaults, but include defaults if not in DB
+      const mergedConditions = defaultRule?.conditions
+        ? { ...defaultRule.conditions, ...dbRule.conditions }
+        : dbRule.conditions;
+      
+      mergedRules.push({
+        ...dbRule,
+        conditions: mergedConditions && Object.keys(mergedConditions).length > 0
+          ? mergedConditions
+          : undefined,
+      });
       processedKeys.add(key);
     }
 

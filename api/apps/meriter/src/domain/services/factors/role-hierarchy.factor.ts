@@ -37,18 +37,10 @@ export class RoleHierarchyFactor {
       return { allowed: false, reason: 'No action specified' };
     }
 
-    // STEP 1: Check superadmin status (special bypass)
+    // STEP 1: Get user and community first (needed for canVoteForOwnPosts check)
     const user = await this.userService.getUserById(userId);
     if (!user) {
       return { allowed: false, reason: 'User not found' };
-    }
-
-    const isSuperadmin = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
-    if (isSuperadmin) {
-      // Superadmin can always perform actions (no further checks needed)
-      // Note: Self-voting is now a currency constraint, not a permission block
-      this.logger.debug(`[evaluate] Superadmin bypass for userId=${userId}, action=${action}`);
-      return { allowed: true };
     }
 
     // STEP 2: Get community
@@ -76,15 +68,24 @@ export class RoleHierarchyFactor {
     }
 
     // STEP 5.5: HIGH PRIORITY CHECK - canVoteForOwnPosts condition (voting only)
-    // This check has the highest priority - if canVoteForOwnPosts is false, user cannot vote for own posts
-    // regardless of other rules
+    // This check has the HIGHEST priority - applies even to superadmin
+    // If canVoteForOwnPosts is false, user cannot vote for own posts regardless of role
     if (action === ActionType.VOTE && matchingRule.conditions?.canVoteForOwnPosts !== undefined) {
       if (context.isEffectiveBeneficiary && !matchingRule.conditions.canVoteForOwnPosts) {
         this.logger.debug(
-          `[evaluate] HIGH PRIORITY BLOCK: Cannot vote for own posts (canVoteForOwnPosts=false)`,
+          `[evaluate] HIGH PRIORITY BLOCK: Cannot vote for own posts (canVoteForOwnPosts=false), userId=${userId}, isSuperadmin=${user.globalRole === GLOBAL_ROLE_SUPERADMIN}`,
         );
         return { allowed: false, reason: 'Cannot vote for own posts (canVoteForOwnPosts=false)' };
       }
+    }
+
+    // STEP 6: Check superadmin status (bypass for most checks, but not canVoteForOwnPosts)
+    const isSuperadmin = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+    if (isSuperadmin) {
+      // Superadmin can bypass most permission checks, but canVoteForOwnPosts was already checked above
+      // Note: Self-voting currency constraint is still enforced in VoteService
+      this.logger.debug(`[evaluate] Superadmin bypass for userId=${userId}, action=${action}`);
+      return { allowed: true };
     }
 
     // STEP 6: Check if rule allows the action

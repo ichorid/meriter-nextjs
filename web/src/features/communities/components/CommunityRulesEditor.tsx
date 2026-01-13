@@ -816,15 +816,15 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             checked={participantsCannotVoteForLead}
             onCheckedChange={(checked) => {
               let updatedRules = permissionRules;
-              // Update conditions for all roles that have VOTE rules
+              // Update conditions for all roles - create rules if they don't exist
               const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
               for (const role of roles) {
                 const rule = findRule(updatedRules, role, ActionType.VOTE);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
-                    conditions: { participantsCannotVoteForLead: checked as boolean },
-                  });
-                }
+                // If rule exists, update it; if not, create it with default allowed=true
+                updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
+                  allowed: rule?.allowed ?? true,
+                  conditions: { participantsCannotVoteForLead: checked as boolean },
+                });
               }
               setPermissionRules(updatedRules);
             }}
@@ -1139,7 +1139,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           </Button>
         </div>
         </div>
-        )}
       </div>
 
       {/* Preview Toggle and Actions */}

@@ -88,7 +88,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           <Link href={routes.communities}>
             <button
               className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.communities
-                ? 'bg-primary text-primary-content'
+                ? 'bg-base-300 text-base-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
             >
@@ -111,7 +111,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           <Link href={routes.notifications}>
             <button
               className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
-                ? 'bg-primary text-primary-content'
+                ? 'bg-base-300 text-base-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
             >
@@ -165,7 +165,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <Link href={routes.profile}>
           <button
             className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
-              ? 'bg-primary text-primary-content'
+              ? 'bg-base-300 text-base-content'
               : 'hover:bg-base-300 text-base-content'
               }`}
           >
@@ -200,7 +200,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           <Link href={routes.about}>
             <button
               className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.about
-                ? 'bg-primary text-primary-content'
+                ? 'bg-base-300 text-base-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
             >
@@ -223,7 +223,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           <Link href={`${routes.profile}/favorites`}>
             <button
               className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
-                ? 'bg-primary text-primary-content'
+                ? 'bg-base-300 text-base-content'
                 : 'hover:bg-base-300 text-base-content'
                 }`}
             >
