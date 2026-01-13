@@ -1390,11 +1390,10 @@ export const publicationsRouter = router({
       const sourceCommunityId = publication.getCommunityId.getValue();
       const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
 
-      // Validate: must be in a team group
-      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+      if (!sourceCommunity) {
         throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Can only forward posts from team groups',
+          code: 'NOT_FOUND',
+          message: 'Source community not found',
         });
       }
 
@@ -1547,11 +1546,10 @@ export const publicationsRouter = router({
       const sourceCommunityId = publication.getCommunityId.getValue();
       const sourceCommunity = await ctx.communityService.getCommunity(sourceCommunityId);
 
-      // Validate: must be in a team group
-      if (!sourceCommunity || sourceCommunity.typeTag !== 'team') {
+      if (!sourceCommunity) {
         throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Can only forward posts from team groups',
+          code: 'NOT_FOUND',
+          message: 'Source community not found',
         });
       }
 
@@ -1601,6 +1599,9 @@ export const publicationsRouter = router({
       // Leads can forward posts for free from their community (no wallet cost)
       // Note: This endpoint is already restricted to leads/superadmins only (line 1116)
 
+      // Get forward rule from source community settings
+      const forwardRule = sourceCommunity.settings?.forwardRule || 'standard';
+
       // Get original publication data
       const originalAuthorId = publication.getAuthorId.getValue();
       const originalBeneficiaryId = publication.getBeneficiaryId?.getValue();
@@ -1629,10 +1630,63 @@ export const publicationsRouter = router({
         },
       );
 
-      // Update original publication: mark as forwarded
-      await ctx.publicationService.markAsForwarded(publicationId, targetCommunityId);
+      const newPublicationId = newPublication.getId.getValue();
 
-      return { success: true, forwardedPublicationId: newPublication.getId.getValue() };
+      // Handle different forward rules
+      if (forwardRule === 'project') {
+        // 'project' mode: transfer votes and delete original
+        
+        // Get all votes on the original publication
+        const originalVotes = await ctx.voteService.getVotesOnPublication(publicationId);
+        
+        if (originalVotes.length > 0) {
+          // Update all votes to point to the new publication and target community
+          if (ctx.connection?.db) {
+            await ctx.connection.db.collection('votes').updateMany(
+              {
+                targetType: 'publication',
+                targetId: publicationId,
+              },
+              {
+                $set: {
+                  targetId: newPublicationId,
+                  communityId: targetCommunityId,
+                  updatedAt: new Date(),
+                },
+              }
+            );
+
+            // Recalculate metrics for the new publication by summing all votes
+            let totalScore = 0;
+            for (const vote of originalVotes) {
+              const voteAmount = (vote.amountQuota || 0) + (vote.amountWallet || 0);
+              const voteDirection = vote.direction === 'up' ? 1 : -1;
+              totalScore += voteAmount * voteDirection;
+            }
+
+            // Update publication metrics directly if score changed
+            if (totalScore !== 0) {
+              const newPub = await ctx.publicationService.getPublication(newPublicationId);
+              if (newPub) {
+                // Use vote method to update metrics properly
+                newPub.vote(totalScore);
+                await ctx.connection.db.collection('publications').updateOne(
+                  { id: newPublicationId },
+                  { $set: newPub.toSnapshot() }
+                );
+              }
+            }
+          }
+        }
+
+        // Delete the original publication (soft delete)
+        await ctx.publicationService.deletePublication(publicationId, userId);
+      } else {
+        // 'standard' mode: mark as forwarded, keep original
+        await ctx.publicationService.markAsForwarded(publicationId, targetCommunityId);
+      }
+
+      return { success: true, forwardedPublicationId: newPublicationId };
     }),
 
   /**
