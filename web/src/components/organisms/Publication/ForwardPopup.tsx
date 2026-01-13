@@ -8,6 +8,7 @@ import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { useProposeForward, useForward } from '@/hooks/api/usePublications';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
+import { BottomPortal } from '@/shared/components/bottom-portal';
 
 interface ForwardPopupProps {
   publicationId: string;
@@ -112,9 +113,15 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-background rounded-xl p-6 w-full max-w-md mx-4 shadow-lg max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between mb-4">
+    <BottomPortal>
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
+        <div 
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
+          onClick={onClose}
+        />
+        <div className="relative z-10">
+          <div className="bg-background rounded-xl p-6 w-full max-w-md mx-4 shadow-lg max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">
             {isLead ? 'Forward Post' : 'Propose Forward'}
           </h2>
@@ -126,10 +133,10 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
           >
             <X size={16} />
           </Button>
-        </div>
+            </div>
 
-        {/* Search input */}
-        <div className="mb-4">
+            {/* Search input */}
+            <div className="mb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
             <Input
@@ -140,16 +147,16 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
               className="pl-9 h-10"
             />
           </div>
-        </div>
+            </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
           {isLead
             ? 'Select a target group to forward this post to:'
             : 'Select a target group to propose forwarding this post to:'}
-        </p>
+            </p>
 
-        {/* Communities list with scrolling */}
-        <div className="flex-1 overflow-y-auto space-y-4 mb-6">
+            {/* Communities list with scrolling */}
+            <div className="flex-1 overflow-y-auto space-y-4 mb-6">
           {/* Special Communities Section */}
           {filteredSpecialCommunities.length > 0 && (
             <div>
@@ -213,20 +220,22 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
               {searchQuery ? 'No communities found' : 'No communities available'}
             </p>
           )}
-        </div>
+            </div>
 
-        <div className="flex gap-2 justify-end pt-4 border-t">
-          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={!selectedTarget || isSubmitting}
-          >
-            {isSubmitting ? 'Processing...' : isLead ? 'Forward' : 'Propose'}
-          </Button>
+            <div className="flex gap-2 justify-end pt-4 border-t">
+              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={!selectedTarget || isSubmitting}
+              >
+                {isSubmitting ? 'Processing...' : isLead ? 'Forward' : 'Propose'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </BottomPortal>
   );
 };
