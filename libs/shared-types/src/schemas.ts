@@ -86,6 +86,7 @@ export const CommunitySettingsSchema = z.object({
   editWindowMinutes: z.number().int().min(0).default(30), // Number of minutes after creation that participants can edit publications (0 = no time limit)
   allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
   canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
+  allowWithdraw: z.boolean().default(true), // Whether users can withdraw merits from their own posts
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -538,6 +539,7 @@ export const UpdateCommunityDtoSchema = z.object({
     editWindowMinutes: z.number().int().min(0).optional(),
     allowEditByOthers: z.boolean().optional(),
     canPayPostFromQuota: z.boolean().optional(),
+    allowWithdraw: z.boolean().optional(),
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),

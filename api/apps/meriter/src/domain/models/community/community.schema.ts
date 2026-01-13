@@ -42,6 +42,11 @@ export interface CommunitySettings {
    * If false, posts can only be paid from wallet merits.
    */
   canPayPostFromQuota?: boolean;
+  /**
+   * Whether users can withdraw merits from their own posts.
+   * If false, the "Withdraw merits" button is disabled.
+   */
+  allowWithdraw?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -272,6 +277,7 @@ export class CommunitySchemaClass implements Community {
       editWindowMinutes: { type: Number, default: 30 },
       allowEditByOthers: { type: Boolean, default: false },
       canPayPostFromQuota: { type: Boolean, default: false },
+      allowWithdraw: { type: Boolean, default: true },
     },
     default: {},
   })

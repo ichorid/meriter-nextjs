@@ -55,6 +55,7 @@ interface CommunityRulesEditorProps {
       forwardCost?: number;
       editWindowMinutes?: number;
       allowEditByOthers?: boolean;
+      allowWithdraw?: boolean;
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-same-team';
@@ -203,6 +204,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [allowEditByOthers, setAllowEditByOthers] = useState<boolean>(
     community.settings?.allowEditByOthers ?? false
   );
+  const [allowWithdraw, setAllowWithdraw] = useState<boolean>(
+    community.settings?.allowWithdraw ?? true
+  );
   const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-same-team'>(
     (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any'
   );
@@ -240,6 +244,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     forwardCost: String(community.settings?.forwardCost ?? 1),
     editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+    allowWithdraw: community.settings?.allowWithdraw ?? true,
     votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
@@ -318,6 +323,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setForwardCost(String(community.settings?.forwardCost ?? 1));
     setEditWindowMinutes(String(community.settings?.editWindowMinutes ?? 30));
     setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
+    setAllowWithdraw(community.settings?.allowWithdraw ?? true);
     setVotingRestriction((community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any');
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
@@ -334,6 +340,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       forwardCost: String(community.settings?.forwardCost ?? 1),
       editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+      allowWithdraw: community.settings?.allowWithdraw ?? true,
       votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
@@ -363,6 +370,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         forwardCost: parseInt(forwardCost, 10),
         editWindowMinutes: Number.isFinite(editWindowMinutesValue) ? editWindowMinutesValue : 30,
         allowEditByOthers,
+        allowWithdraw,
       };
       
       const dataToSave = {
@@ -399,6 +407,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         forwardCost,
         editWindowMinutes,
         allowEditByOthers,
+        allowWithdraw,
         votingRestriction,
         currencySource,
         startingMerits,
@@ -432,6 +441,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setForwardCost(originalSettings.forwardCost);
     setEditWindowMinutes(originalSettings.editWindowMinutes);
     setAllowEditByOthers(originalSettings.allowEditByOthers);
+    setAllowWithdraw(originalSettings.allowWithdraw);
     setVotingRestriction(originalSettings.votingRestriction);
     setCurrencySource(originalSettings.currencySource);
     setStartingMerits(originalSettings.startingMerits);
@@ -449,6 +459,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       forwardCost !== originalSettings.forwardCost ||
       editWindowMinutes !== originalSettings.editWindowMinutes ||
       allowEditByOthers !== originalSettings.allowEditByOthers ||
+      allowWithdraw !== originalSettings.allowWithdraw ||
       votingRestriction !== originalSettings.votingRestriction ||
       currencySource !== originalSettings.currencySource ||
       startingMerits !== originalSettings.startingMerits ||
@@ -879,6 +890,17 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
               />
               <Label htmlFor="allowEditByOthers" className="text-sm cursor-pointer">
                 {t('allowEditByOthers')}
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="allowWithdraw"
+                checked={allowWithdraw}
+                onCheckedChange={(checked) => setAllowWithdraw(checked as boolean)}
+              />
+              <Label htmlFor="allowWithdraw" className="text-sm cursor-pointer">
+                {t('allowWithdraw')}
               </Label>
             </div>
 

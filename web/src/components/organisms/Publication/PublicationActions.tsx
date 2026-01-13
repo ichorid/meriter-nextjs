@@ -166,7 +166,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   // Mutual exclusivity logic
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
-  const showWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary) && maxWithdrawAmount > 0;
+  // Check if community allows withdrawals
+  const allowWithdraw = community?.settings?.allowWithdraw ?? true;
+  const canShowWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary);
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
 
@@ -476,16 +478,22 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
             </button>
             
             {/* Withdraw button - centered below score */}
-            {showWithdraw && (
+            {canShowWithdraw && (
               <button
                 onClick={handleWithdrawClick}
-                disabled={maxWithdrawAmount <= 0}
+                disabled={!allowWithdraw || maxWithdrawAmount <= 0}
                 className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
-                  maxWithdrawAmount <= 0
+                  (!allowWithdraw || maxWithdrawAmount <= 0)
                     ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
                     : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
                 }`}
-                title={maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined}
+                title={
+                  !allowWithdraw
+                    ? t('cannotWithdrawInCommunity')
+                    : maxWithdrawAmount <= 0
+                    ? t('noVotesToWithdraw')
+                    : undefined
+                }
               >
                 {t('withdraw')}
               </button>

@@ -77,6 +77,7 @@ export interface UpdateCommunityDto {
     editWindowMinutes?: number;
     allowEditByOthers?: boolean;
     canPayPostFromQuota?: boolean;
+    allowWithdraw?: boolean;
     language?: 'en' | 'ru';
   };
   votingSettings?: {
@@ -482,6 +483,11 @@ export class CommunityService {
         settingsUpdate['settings.canPayPostFromQuota'] = Boolean(dto.settings.canPayPostFromQuota);
         this.logger.log(`Updating canPayPostFromQuota to: ${Boolean(dto.settings.canPayPostFromQuota)} for community ${communityId}`);
       }
+      // Explicitly handle allowWithdraw - always update if present (including false)
+      if ('allowWithdraw' in dto.settings) {
+        settingsUpdate['settings.allowWithdraw'] = Boolean(dto.settings.allowWithdraw);
+        this.logger.log(`Updating allowWithdraw to: ${Boolean(dto.settings.allowWithdraw)} for community ${communityId}`);
+      }
       if (dto.settings.language !== undefined) {
         settingsUpdate['settings.language'] = dto.settings.language;
       }
@@ -576,7 +582,7 @@ export class CommunityService {
       throw new NotFoundException('Community not found');
     }
 
-    this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
+    this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, allowWithdraw: ${(updatedCommunity as any).settings?.allowWithdraw}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
     this.logger.log(`[UPDATE] After save, votingSettings.currencySource: ${(updatedCommunity as any).votingSettings?.currencySource}, full votingSettings: ${JSON.stringify((updatedCommunity as any).votingSettings)}`);
 
     return (updatedCommunity as unknown) as Community;

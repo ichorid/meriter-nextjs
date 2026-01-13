@@ -48,6 +48,7 @@ export const communitiesRouter = router({
           editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
           allowEditByOthers: community.settings?.allowEditByOthers ?? false,
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
+          allowWithdraw: community.settings?.allowWithdraw ?? true,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
