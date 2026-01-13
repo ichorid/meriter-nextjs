@@ -757,6 +757,12 @@
             "pollCostHelp": "Cost in wallet merits to create a poll. Set to 0 to make polls free.",
             "forwardCost": "Forward Cost",
             "forwardCostHelp": "Cost in wallet merits to forward a post. Set to 0 to make forwarding free.",
+            "forwardRule": "Forward rules for posts from this community",
+            "forwardRuleHelp": "Choose how posts from this community should be forwarded",
+            "forwardRuleOptions": {
+                "standard": "Standard (post is forwarded without votes, original is preserved)",
+                "project": "Project (post is forwarded with all votes, original is deleted)"
+            },
             "canPayPostFromQuota": "Can pay post from quota",
             "canPayPostFromQuotaHelp": "If disabled, posts can only be paid from wallet merits",
             "currencyNames": "Currency Names",
@@ -1040,6 +1046,7 @@
         "title": "Communities",
         "specialCommunities": "Special Communities",
         "yourCommunities": "Your Communities",
+        "searchPlaceholder": "Search communities...",
         "leads": "Leads",
         "leadsHelper": "This is a list of all Team Leads registered on the platform. If you want to join one of the teams, offer your help, or share something important, please contact its Lead: their contacts are available in their profile.",
         "dontShowAgain": "Don't show again",
