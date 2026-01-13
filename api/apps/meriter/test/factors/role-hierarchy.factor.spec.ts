@@ -74,6 +74,17 @@ describe('RoleHierarchyFactor', () => {
         globalRole: GLOBAL_ROLE_SUPERADMIN,
       } as any);
 
+      permissionService.getUserRoleInCommunity.mockResolvedValue('participant' as any);
+      
+      // Mock getEffectivePermissionRules to return a rule that allows the action
+      communityService.getEffectivePermissionRules.mockReturnValue([
+        {
+          role: 'participant',
+          action: ActionType.VOTE,
+          allowed: true,
+        } as any,
+      ]);
+
       const result = await factor.evaluate({
         userId: 'user1',
         communityId: 'community1',
