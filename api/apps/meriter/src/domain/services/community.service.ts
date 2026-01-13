@@ -240,6 +240,7 @@ export class CommunityService {
 
   async onModuleInit() {
     await this.ensureBaseCommunities();
+    await this.ensureAllUsersInBaseCommunities();
   }
 
   private async ensureBaseCommunities() {
@@ -372,6 +373,43 @@ export class CommunityService {
       // Update existing community to ensure it's marked as priority
       this.logger.log('Updating "Support" community to set isPriority=true...');
       await this.updateCommunity(support.id, { isPriority: true });
+    }
+  }
+
+  /**
+   * Ensure all users are members of base communities
+   * Called on server startup to sync all users to base communities
+   */
+  private async ensureAllUsersInBaseCommunities(): Promise<void> {
+    this.logger.log('Ensuring all users are in base communities...');
+    
+    try {
+      // Get all users (without pagination to process all)
+      const allUsers = await this.userModel.find({}).lean();
+      this.logger.log(`Found ${allUsers.length} users to check`);
+      
+      let processedCount = 0;
+      let errorsCount = 0;
+      
+      for (const user of allUsers) {
+        try {
+          await this.userService.ensureUserInBaseCommunities(user.id);
+          processedCount++;
+        } catch (error) {
+          errorsCount++;
+          this.logger.error(
+            `Failed to ensure user ${user.id} in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+        }
+      }
+      
+      this.logger.log(
+        `Base communities sync completed: ${processedCount} users processed, ${errorsCount} errors`
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to ensure all users in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
