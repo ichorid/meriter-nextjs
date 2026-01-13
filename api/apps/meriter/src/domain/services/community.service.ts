@@ -225,6 +225,8 @@ export class CommunityService {
       ...community.votingSettings,
       votingRestriction:
         community.votingSettings.votingRestriction ?? defaults.votingRestriction,
+      currencySource:
+        community.votingSettings.currencySource ?? defaults.currencySource,
       meritConversion:
         community.votingSettings.meritConversion ?? defaults.meritConversion,
     };
@@ -494,6 +496,9 @@ export class CommunityService {
       if (dto.votingSettings.votingRestriction !== undefined) {
         votingSettingsUpdate['votingSettings.votingRestriction'] = dto.votingSettings.votingRestriction;
       }
+      if (dto.votingSettings.currencySource !== undefined) {
+        votingSettingsUpdate['votingSettings.currencySource'] = dto.votingSettings.currencySource;
+      }
       if (dto.votingSettings.spendsMerits !== undefined) {
         votingSettingsUpdate['votingSettings.spendsMerits'] = dto.votingSettings.spendsMerits;
       }
@@ -572,6 +577,7 @@ export class CommunityService {
     }
 
     this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
+    this.logger.log(`[UPDATE] After save, votingSettings.currencySource: ${(updatedCommunity as any).votingSettings?.currencySource}, full votingSettings: ${JSON.stringify((updatedCommunity as any).votingSettings)}`);
 
     return (updatedCommunity as unknown) as Community;
   }

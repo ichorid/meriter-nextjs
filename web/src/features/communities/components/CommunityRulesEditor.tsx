@@ -382,6 +382,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         },
       };
       
+      console.log('[CommunityRulesEditor] Saving data:', JSON.stringify(dataToSave, null, 2));
+      console.log('[CommunityRulesEditor] currencySource value:', currencySource);
+      console.log('[CommunityRulesEditor] votingSettings:', JSON.stringify(dataToSave.votingSettings, null, 2));
+      
       await onSave(dataToSave);
       setValidationErrors({});
       // Update original state after successful save

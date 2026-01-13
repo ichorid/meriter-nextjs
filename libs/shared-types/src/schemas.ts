@@ -539,12 +539,7 @@ export const UpdateCommunityDtoSchema = z.object({
     allowEditByOthers: z.boolean().optional(),
     canPayPostFromQuota: z.boolean().optional(),
   }).passthrough().optional(),
-  votingSettings: z.object({
-    spendsMerits: z.boolean().optional(),
-    awardsMerits: z.boolean().optional(),
-    meritConversion: CommunityMeritConversionSchema.optional(),
-    votingRestriction: z.enum(["any", "not-own", "not-same-group"]).optional(),
-  }).optional(),
+  votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
   isPriority: z.boolean().optional(),
 }).passthrough();

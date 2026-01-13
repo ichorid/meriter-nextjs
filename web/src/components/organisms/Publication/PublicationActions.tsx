@@ -205,15 +205,28 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
     if (isProject) {
       mode = 'wallet-only';
-    } else if (community?.typeTag === 'future-vision') {
-      // Future Vision: wallet-only (M), no quota (Q)
-      mode = 'wallet-only';
-    } else if (community?.typeTag === 'marathon-of-good') {
-      // Marathon-of-Good: quota-only (Q), no wallet (M)
-      mode = 'quota-only';
     } else {
-      // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
-      mode = 'standard';
+      // Check currencySource from votingSettings first
+      const currencySource = community?.votingSettings?.currencySource;
+      if (currencySource === 'quota-only') {
+        mode = 'quota-only';
+      } else if (currencySource === 'wallet-only') {
+        mode = 'wallet-only';
+      } else if (currencySource === 'quota-and-wallet') {
+        mode = 'standard';
+      } else {
+        // Backward compatibility: use typeTag defaults
+        if (community?.typeTag === 'future-vision') {
+          // Future Vision: wallet-only (M), no quota (Q)
+          mode = 'wallet-only';
+        } else if (community?.typeTag === 'marathon-of-good') {
+          // Marathon-of-Good: quota-only (Q), no wallet (M)
+          mode = 'quota-only';
+        } else {
+          // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
+          mode = 'standard';
+        }
+      }
     }
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };

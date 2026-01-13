@@ -259,6 +259,8 @@ export const communitiesRouter = router({
 
       console.log(`[CommunitiesRouter] Updating community ${input.id}, received data: ${JSON.stringify(input.data)}`);
       console.log(`[CommunitiesRouter] Settings in received data: ${JSON.stringify(input.data.settings)}`);
+      console.log(`[CommunitiesRouter] VotingSettings in received data: ${JSON.stringify(input.data.votingSettings)}`);
+      console.log(`[CommunitiesRouter] currencySource in votingSettings: ${input.data.votingSettings?.currencySource}`);
       console.log(`[CommunitiesRouter] canPayPostFromQuota in settings: ${input.data.settings?.canPayPostFromQuota}`);
       
       const community = await ctx.communityService.updateCommunity(
