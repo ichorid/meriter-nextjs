@@ -87,6 +87,7 @@ export const CommunitySettingsSchema = z.object({
   allowEditByOthers: z.boolean().default(false), // Allow participants to edit publications created by others in the same community
   canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
   allowWithdraw: z.boolean().default(true), // Whether users can withdraw merits from their own posts
+  forwardRule: z.enum(["standard", "project"]).default("standard"), // Forward rule: 'standard' = forward without votes, keep original; 'project' = forward with votes, delete original
 });
 
 export const CommunityMeritConversionSchema = z.object({

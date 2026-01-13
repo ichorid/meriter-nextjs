@@ -47,6 +47,12 @@ export interface CommunitySettings {
    * If false, the "Withdraw merits" button is disabled.
    */
   allowWithdraw?: boolean;
+  /**
+   * Forward rule for posts from this community.
+   * 'standard': Post is forwarded without votes, original is preserved.
+   * 'project': Post is forwarded with all votes, original is deleted.
+   */
+  forwardRule?: 'standard' | 'project';
 }
 
 export interface CommunityMeritConversion {
@@ -278,6 +284,7 @@ export class CommunitySchemaClass implements Community {
       allowEditByOthers: { type: Boolean, default: false },
       canPayPostFromQuota: { type: Boolean, default: false },
       allowWithdraw: { type: Boolean, default: true },
+      forwardRule: { type: String, enum: ['standard', 'project'], default: 'standard' },
     },
     default: {},
   })
