@@ -56,6 +56,7 @@ interface CommunityRulesEditorProps {
       editWindowMinutes?: number;
       allowEditByOthers?: boolean;
       allowWithdraw?: boolean;
+      forwardRule?: 'standard' | 'project';
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-same-team';
@@ -214,6 +215,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [currencySource, setCurrencySource] = useState<'quota-and-wallet' | 'quota-only' | 'wallet-only'>(
     getDefaultCurrencySource(community.votingSettings, community.typeTag)
   );
+  
+  const [forwardRule, setForwardRule] = useState<'standard' | 'project'>(
+    (community.settings?.forwardRule as 'standard' | 'project') || 'standard'
+  );
 
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -245,6 +250,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
     allowWithdraw: community.settings?.allowWithdraw ?? true,
+    forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
     votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
@@ -324,6 +330,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setEditWindowMinutes(String(community.settings?.editWindowMinutes ?? 30));
     setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
     setAllowWithdraw(community.settings?.allowWithdraw ?? true);
+    setForwardRule((community.settings?.forwardRule as 'standard' | 'project') || 'standard');
     setVotingRestriction((community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any');
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
@@ -341,6 +348,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       allowWithdraw: community.settings?.allowWithdraw ?? true,
+      forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
       votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
@@ -371,6 +379,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         editWindowMinutes: Number.isFinite(editWindowMinutesValue) ? editWindowMinutesValue : 30,
         allowEditByOthers,
         allowWithdraw,
+        forwardRule,
       };
       
       const dataToSave = {
@@ -408,6 +417,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         editWindowMinutes,
         allowEditByOthers,
         allowWithdraw,
+        forwardRule,
         votingRestriction,
         currencySource,
         startingMerits,
@@ -442,6 +452,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setEditWindowMinutes(originalSettings.editWindowMinutes);
     setAllowEditByOthers(originalSettings.allowEditByOthers);
     setAllowWithdraw(originalSettings.allowWithdraw);
+    setForwardRule(originalSettings.forwardRule);
     setVotingRestriction(originalSettings.votingRestriction);
     setCurrencySource(originalSettings.currencySource);
     setStartingMerits(originalSettings.startingMerits);
@@ -460,6 +471,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       editWindowMinutes !== originalSettings.editWindowMinutes ||
       allowEditByOthers !== originalSettings.allowEditByOthers ||
       allowWithdraw !== originalSettings.allowWithdraw ||
+      forwardRule !== originalSettings.forwardRule ||
       votingRestriction !== originalSettings.votingRestriction ||
       currencySource !== originalSettings.currencySource ||
       startingMerits !== originalSettings.startingMerits ||
@@ -941,6 +953,24 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 onChange={(e) => setForwardCost(e.target.value)}
                 className="h-11 rounded-xl w-full"
               />
+            </BrandFormControl>
+
+            <BrandFormControl
+              label={tSettings('forwardRule')}
+              helperText={tSettings('forwardRuleHelp')}
+            >
+              <Select
+                value={forwardRule}
+                onValueChange={(value) => setForwardRule(value as 'standard' | 'project')}
+              >
+                <SelectTrigger className="h-11 rounded-xl w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">{tSettings('forwardRuleOptions.standard')}</SelectItem>
+                  <SelectItem value="project">{tSettings('forwardRuleOptions.project')}</SelectItem>
+                </SelectContent>
+              </Select>
             </BrandFormControl>
           </>
         )}
