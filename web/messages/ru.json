@@ -521,6 +521,7 @@
         "voteInstruction": "Выберите кол-во голосов, которое вы хотите отдать.",
         "dailyQuotaLabel": "Дневная квота",
         "walletLabel": "Кошелёк",
+        "walletLabelQuotaExhausted": "Квота уже потрачена. Кошелёк:",
         "available": "Доступно",
         "of": "из",
         "giveVote": "Отдать голос",

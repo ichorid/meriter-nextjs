@@ -528,6 +528,7 @@
         "voteInstruction": "Choose the number of votes you want to give.",
         "dailyQuotaLabel": "Daily quota",
         "walletLabel": "Wallet",
+        "walletLabelQuotaExhausted": "Quota already spent. Wallet:",
         "available": "Available",
         "of": "of",
         "giveVote": "Give vote",

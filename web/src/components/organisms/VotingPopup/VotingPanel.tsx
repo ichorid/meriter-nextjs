@@ -553,7 +553,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {showWalletBar && (
                             <div className="flex-1 flex flex-col gap-2">
                                 <div className="text-sm font-medium text-base-content">
-                                    {t("walletLabel")}
+                                    {currencySource === 'quota-and-wallet' && quotaRemaining === 0
+                                        ? t("walletLabelQuotaExhausted")
+                                        : t("walletLabel")}
                                 </div>
                                 <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
                                     {/* Progress fill - shows how much of wallet will be used */}
