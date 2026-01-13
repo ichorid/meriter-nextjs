@@ -759,7 +759,8 @@
             "votingRestrictionOptions": {
                 "any": "Anyone can vote for any post",
                 "notOwn": "Users can vote for others' posts, but not their own",
-                "notSameGroup": "Only for posts from users in different teams"
+                "notSameGroup": "Only for posts from users in different teams",
+                "notSameTeam": "Only for posts from users in different teams"
             },
             "hashtags": "Hashtags",
             "hashtagsPlaceholder": "Type hashtag and press Enter",

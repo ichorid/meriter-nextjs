@@ -17,6 +17,8 @@ import type {
     Transaction,
     Invite,
     UserCommunityRole,
+    PermissionRule,
+    PermissionRuleConditions,
     CreatePublicationDto,
     CreateCommentDto,
     UpdateCommentDto,
@@ -105,6 +107,8 @@ export type {
     Transaction,
     Invite,
     UserCommunityRole,
+    PermissionRule,
+    PermissionRuleConditions,
     CreatePublicationDto,
     CreateCommentDto,
     UpdateCommentDto,
@@ -350,6 +354,7 @@ export interface CommunityWithComputedFields extends Community {
   // Computed fields added by API
   meritSettings?: CommunityMeritSettings;
   votingSettings?: CommunityVotingSettings;
+  permissionRules?: PermissionRule[];
   // Legacy fields (for backwards compatibility)
   postingRules?: LegacyPostingRules;
   votingRules?: LegacyVotingRules;

@@ -25,11 +25,19 @@ export const communitiesRouter = router({
       const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
       const adminIds = adminRoles.map(role => role.userId);
 
+      // Extract legacy fields if they exist in the document (they may not be in TypeScript interface)
+      const communityDoc = community as any;
+      
       return {
         ...community,
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
+        // Legacy fields for backward compatibility
+        postingRules: communityDoc.postingRules,
+        votingRules: communityDoc.votingRules,
+        visibilityRules: communityDoc.visibilityRules,
+        meritRules: communityDoc.meritRules,
         settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,
@@ -264,11 +272,19 @@ export const communitiesRouter = router({
       const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
       const adminIds = adminRoles.map(role => role.userId);
 
+      // Extract legacy fields if they exist in the document (they may not be in TypeScript interface)
+      const communityDoc = community as any;
+      
       return {
         ...community,
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
+        // Legacy fields for backward compatibility
+        postingRules: communityDoc.postingRules,
+        votingRules: communityDoc.votingRules,
+        visibilityRules: communityDoc.visibilityRules,
+        meritRules: communityDoc.meritRules,
           settings: {
           currencyNames: community.settings?.currencyNames,
           dailyEmission: community.settings?.dailyEmission as number,

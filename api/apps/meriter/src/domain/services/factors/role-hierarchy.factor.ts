@@ -114,6 +114,9 @@ export class RoleHierarchyFactor {
 
     // STEP 9: Evaluate rule conditions (requiresTeamMembership, etc.)
     if (matchingRule.conditions) {
+      this.logger.debug(
+        `[evaluate] Evaluating conditions for role=${userRole}, action=${action}, conditions=${JSON.stringify(matchingRule.conditions)}`,
+      );
       const conditionsMet = await this.evaluateConditions(
         userId,
         community,
@@ -123,6 +126,9 @@ export class RoleHierarchyFactor {
       );
 
       if (!conditionsMet) {
+        this.logger.debug(
+          `[evaluate] Conditions not met for role=${userRole}, action=${action}`,
+        );
         return { allowed: false, reason: 'Rule conditions not met' };
       }
     }
@@ -221,6 +227,27 @@ export class RoleHierarchyFactor {
     // Check isHidden
     if (conditions.isHidden) {
       return false; // Hidden communities are not visible
+    }
+
+    // Check canVoteForOwnPosts (voting only)
+    if (action === ActionType.VOTE && conditions.canVoteForOwnPosts !== undefined) {
+      this.logger.debug(
+        `[evaluateConditions] canVoteForOwnPosts check: isEffectiveBeneficiary=${context.isEffectiveBeneficiary}, canVoteForOwnPosts=${conditions.canVoteForOwnPosts}`,
+      );
+      if (context.isEffectiveBeneficiary && !conditions.canVoteForOwnPosts) {
+        this.logger.debug(
+          `[evaluateConditions] BLOCKED: Cannot vote for own posts (canVoteForOwnPosts=false)`,
+        );
+        return false; // Cannot vote for own posts if canVoteForOwnPosts is false
+      }
+    }
+
+    // Check participantsCannotVoteForLead (voting only)
+    if (action === ActionType.VOTE && conditions.participantsCannotVoteForLead) {
+      const userRole = await this.permissionService.getUserRoleInCommunity(userId, community.id);
+      if (userRole === 'participant' && context.authorRole === 'lead') {
+        return false; // Participants cannot vote for lead posts
+      }
     }
 
     return true;

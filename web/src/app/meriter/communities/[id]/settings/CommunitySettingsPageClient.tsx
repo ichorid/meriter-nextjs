@@ -48,10 +48,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
     }, [communityLoading, rolesLoading, hasAccess, user, communityId, router]);
 
     const handleRulesSave = async (rules: {
-        postingRules?: any;
-        votingRules?: any;
-        visibilityRules?: any;
-        meritRules?: any;
+        permissionRules?: any;
         meritSettings?: any;
         linkedCurrencies?: string[];
         settings?: {
@@ -61,13 +58,11 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
             forwardCost?: number;
             editWindowMinutes?: number;
             allowEditByOthers?: boolean;
-            canPayPostFromQuota?: boolean;
         };
         votingSettings?: {
-            votingRestriction?: 'any' | 'not-own' | 'not-same-group';
+            votingRestriction?: 'any' | 'not-same-team';
         };
     }) => {
-        console.log('Saving rules with canPayPostFromQuota:', rules.settings?.canPayPostFromQuota);
         await updateCommunity.mutateAsync({
             id: communityId,
             data: rules,

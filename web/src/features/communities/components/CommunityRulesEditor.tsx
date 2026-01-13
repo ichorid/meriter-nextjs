@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
-import type { CommunityWithComputedFields, LegacyPostingRules, LegacyVotingRules, LegacyVisibilityRules, LegacyMeritRules } from '@/types/api-v1';
+import type { CommunityWithComputedFields, PermissionRule } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/shadcn/select';
 import { useResetDailyQuota } from '@/hooks/api';
@@ -18,16 +18,31 @@ import { cn } from '@/lib/utils';
 
 const TEAM_ROLES = ['lead', 'participant'] as const;
 
+// ActionType constants (matching backend)
+const ActionType = {
+  POST_PUBLICATION: 'post_publication',
+  CREATE_POLL: 'create_poll',
+  EDIT_PUBLICATION: 'edit_publication',
+  DELETE_PUBLICATION: 'delete_publication',
+  VOTE: 'vote',
+  COMMENT: 'comment',
+  EDIT_COMMENT: 'edit_comment',
+  DELETE_COMMENT: 'delete_comment',
+  EDIT_POLL: 'edit_poll',
+  DELETE_POLL: 'delete_poll',
+  VIEW_COMMUNITY: 'view_community',
+} as const;
+
+type Role = 'superadmin' | 'lead' | 'participant' | 'viewer';
+type ActionTypeValue = typeof ActionType[keyof typeof ActionType];
+
 interface CommunityRulesEditorProps {
   community: CommunityWithComputedFields;
   onSave: (rules: {
-    postingRules?: LegacyPostingRules;
-    votingRules?: LegacyVotingRules;
-    visibilityRules?: LegacyVisibilityRules;
-    meritRules?: LegacyMeritRules;
+    permissionRules?: PermissionRule[];
     meritSettings?: {
       dailyQuota?: number;
-      quotaRecipients?: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+      quotaRecipients?: Role[];
       canEarn?: boolean;
       canSpend?: boolean;
       startingMerits?: number;
@@ -38,11 +53,93 @@ interface CommunityRulesEditorProps {
       postCost?: number;
       pollCost?: number;
       forwardCost?: number;
+      editWindowMinutes?: number;
+      allowEditByOthers?: boolean;
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-same-team';
     };
   }) => Promise<void>;
+}
+
+// Helper functions for working with permissionRules
+function getRuleKey(role: Role, action: string): string {
+  return `${role}:${action}`;
+}
+
+function findRule(rules: PermissionRule[], role: Role, action: string): PermissionRule | undefined {
+  return rules.find(r => r.role === role && r.action === action);
+}
+
+function getRuleAllowed(rules: PermissionRule[], role: Role, action: string): boolean {
+  const rule = findRule(rules, role, action);
+  return rule?.allowed ?? false;
+}
+
+function updateRule(
+  rules: PermissionRule[],
+  role: Role,
+  action: string,
+  updates: { allowed?: boolean; conditions?: PermissionRule['conditions'] }
+): PermissionRule[] {
+  const key = getRuleKey(role, action);
+  const existingRule = findRule(rules, role, action);
+  // Merge conditions: if updates.conditions is provided, merge with existing conditions
+  let mergedConditions: PermissionRule['conditions'] | undefined;
+  if (updates.conditions !== undefined) {
+    mergedConditions = { ...existingRule?.conditions, ...updates.conditions };
+    // Remove undefined values from conditions, but keep false values
+    if (mergedConditions) {
+      Object.keys(mergedConditions).forEach(key => {
+        const value = mergedConditions![key as keyof typeof mergedConditions];
+        if (value === undefined) {
+          delete mergedConditions![key as keyof typeof mergedConditions];
+        }
+      });
+    }
+  } else {
+    mergedConditions = existingRule?.conditions;
+  }
+
+  const newRule: PermissionRule = {
+    role,
+    action,
+    allowed: updates.allowed ?? existingRule?.allowed ?? false,
+    conditions: mergedConditions && Object.keys(mergedConditions).length > 0 
+      ? mergedConditions 
+      : undefined,
+  };
+
+  if (existingRule) {
+    return rules.map(r => (r.role === role && r.action === action) ? newRule : r);
+  } else {
+    return [...rules, newRule];
+  }
+}
+
+function getAllowedRolesForAction(rules: PermissionRule[], action: string): Role[] {
+  const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+  return roles.filter(role => getRuleAllowed(rules, role, action));
+}
+
+function setAllowedRolesForAction(
+  rules: PermissionRule[],
+  action: string,
+  allowedRoles: Role[]
+): PermissionRule[] {
+  const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+  let updatedRules = [...rules];
+
+  for (const role of roles) {
+    const isAllowed = allowedRoles.includes(role);
+    const currentAllowed = getRuleAllowed(updatedRules, role, action);
+    
+    if (isAllowed !== currentAllowed) {
+      updatedRules = updateRule(updatedRules, role, action, { allowed: isAllowed });
+    }
+  }
+
+  return updatedRules;
 }
 
 export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
@@ -51,46 +148,16 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 }) => {
   const t = useTranslations('communities.rules');
 
-  const [postingRules, setPostingRules] = useState<LegacyPostingRules>(community.postingRules || {
-    allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    requiresTeamMembership: false,
-    onlyTeamLead: false,
-    autoMembership: false,
-  });
+  // Initialize permissionRules from community
+  const initialPermissionRules = useMemo(() => {
+    return community.permissionRules || [];
+  }, [community.permissionRules]);
 
-  const [votingRules, setVotingRules] = useState<LegacyVotingRules>(community.votingRules || {
-    allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    canVoteForOwnPosts: false,
-    participantsCannotVoteForLead: false,
-    spendsMerits: true,
-    awardsMerits: true,
-  });
-
-  const [visibilityRules, setVisibilityRules] = useState<LegacyVisibilityRules>(community.visibilityRules || {
-    visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    isHidden: false,
-    teamOnly: false,
-  });
-
-  const [meritRules, setMeritRules] = useState<LegacyMeritRules>(
-    community.meritRules || 
-    (community.meritSettings ? {
-      dailyQuota: community.meritSettings.dailyQuota,
-      quotaRecipients: community.meritSettings.quotaRecipients,
-      canEarn: community.meritSettings.canEarn,
-      canSpend: community.meritSettings.canSpend,
-      startingMerits: community.meritSettings.startingMerits,
-    } : {
-      dailyQuota: 100,
-      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-      canEarn: true,
-      canSpend: true,
-    })
-  );
+  const [permissionRules, setPermissionRules] = useState<PermissionRule[]>(initialPermissionRules);
   
-  // Separate state for startingMerits initialized from meritSettings or meritRules
+  // Settings state
   const [startingMerits, setStartingMerits] = useState<string>(
-    String(community.meritSettings?.startingMerits ?? community.meritRules?.startingMerits ?? community.meritSettings?.dailyQuota ?? community.meritRules?.dailyQuota ?? 100)
+    String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100)
   );
 
   const [linkedCurrencies, setLinkedCurrencies] = useState<string[]>(
@@ -100,7 +167,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
   // Additional settings fields
   const [dailyEmission, setDailyEmission] = useState<string>(
-    String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100)
+    String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100)
   );
   const [postCost, setPostCost] = useState<string>(
     String(community.settings?.postCost ?? 1)
@@ -135,37 +202,31 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [showHistory, setShowHistory] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
 
-  // Store original rules and settings for reset functionality
-  const [originalRules, setOriginalRules] = useState({
-    postingRules: { ...postingRules },
-    votingRules: { ...votingRules },
-    visibilityRules: { ...visibilityRules },
-    meritRules: { ...meritRules },
-    linkedCurrencies: [...linkedCurrencies],
-  });
+  // Store original permissionRules for reset functionality
+  const [originalPermissionRules, setOriginalPermissionRules] = useState<PermissionRule[]>(
+    JSON.parse(JSON.stringify(initialPermissionRules))
+  );
 
   // Store original settings for change detection
   const [originalSettings, setOriginalSettings] = useState({
-    dailyEmission: String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100),
+    permissionRules: JSON.parse(JSON.stringify(initialPermissionRules)),
+    linkedCurrencies: [...(community.linkedCurrencies || [])],
+    dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100),
     postCost: String(community.settings?.postCost ?? 1),
     pollCost: String(community.settings?.pollCost ?? 1),
     forwardCost: String(community.settings?.forwardCost ?? 1),
     editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
     votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+    startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
   });
 
   // History of rule changes
   interface RulesHistoryEntry {
     id: string;
     timestamp: string;
-    rules: {
-      postingRules: any;
-      votingRules: any;
-      visibilityRules: any;
-      meritRules: any;
-      linkedCurrencies: string[];
-    };
+    permissionRules: PermissionRule[];
+    linkedCurrencies: string[];
   }
 
   const getHistoryKey = () => `community_rules_history_${community.id}`;
@@ -180,18 +241,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     }
   };
 
-  const saveToHistory = (rules: {
-    postingRules: any;
-    votingRules: any;
-    visibilityRules: any;
-    meritRules: any;
-    linkedCurrencies: string[];
-  }) => {
+  const saveToHistory = (permissionRules: PermissionRule[], linkedCurrencies: string[]) => {
     const history = getHistory();
     const entry: RulesHistoryEntry = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
-      rules: JSON.parse(JSON.stringify(rules)), // Deep clone
+      permissionRules: JSON.parse(JSON.stringify(permissionRules)),
+      linkedCurrencies: JSON.parse(JSON.stringify(linkedCurrencies)),
     };
 
     // Keep only last 10 entries
@@ -201,103 +257,64 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   };
 
   const restoreFromHistory = (entry: RulesHistoryEntry) => {
-    setPostingRules(JSON.parse(JSON.stringify(entry.rules.postingRules)));
-    setVotingRules(JSON.parse(JSON.stringify(entry.rules.votingRules)));
-    setVisibilityRules(JSON.parse(JSON.stringify(entry.rules.visibilityRules)));
-    setMeritRules(JSON.parse(JSON.stringify(entry.rules.meritRules)));
-    setLinkedCurrencies([...entry.rules.linkedCurrencies]);
+    setPermissionRules(JSON.parse(JSON.stringify(entry.permissionRules)));
+    setLinkedCurrencies([...entry.linkedCurrencies]);
     setValidationErrors({});
     addToast(t('historyRestored'), 'success');
   };
 
-  // Initialize original rules when community changes
+  // Use ref to track previous community data to avoid unnecessary updates
+  const prevCommunityRef = useRef<string>('');
+  
+  // Initialize state when community changes
   useEffect(() => {
-    const initialPostingRules = community.postingRules || {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      requiresTeamMembership: false,
-      onlyTeamLead: false,
-      autoMembership: false,
-    };
-    const initialVotingRules = community.votingRules || {
-      allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      canVoteForOwnPosts: false,
-      participantsCannotVoteForLead: false,
-      spendsMerits: true,
-      awardsMerits: true,
-    };
-    const initialVisibilityRules = community.visibilityRules || {
-      visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-      isHidden: false,
-      teamOnly: false,
-    };
-    const initialMeritRules = community.meritRules || 
-      (community.meritSettings ? {
-        dailyQuota: community.meritSettings.dailyQuota,
-        quotaRecipients: community.meritSettings.quotaRecipients,
-        canEarn: community.meritSettings.canEarn,
-        canSpend: community.meritSettings.canSpend,
-        startingMerits: community.meritSettings.startingMerits,
-      } : {
-        dailyQuota: 100,
-        quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-        canEarn: true,
-        canSpend: true,
-      });
-    const initialLinkedCurrencies = community.linkedCurrencies || [];
-
-    setOriginalRules({
-      postingRules: JSON.parse(JSON.stringify(initialPostingRules)),
-      votingRules: JSON.parse(JSON.stringify(initialVotingRules)),
-      visibilityRules: JSON.parse(JSON.stringify(initialVisibilityRules)),
-      meritRules: JSON.parse(JSON.stringify(initialMeritRules)),
-      linkedCurrencies: [...initialLinkedCurrencies],
+    const communityKey = JSON.stringify({
+      id: community.id,
+      permissionRules: community.permissionRules,
+      linkedCurrencies: community.linkedCurrencies,
+      settings: community.settings,
+      meritSettings: community.meritSettings,
+      votingSettings: community.votingSettings,
     });
+    
+    // Only update if community data actually changed
+    if (prevCommunityRef.current === communityKey) {
+      return;
+    }
+    
+    prevCommunityRef.current = communityKey;
+    
+    const initialRules = community.permissionRules || [];
+    setPermissionRules(JSON.parse(JSON.stringify(initialRules)));
+    setLinkedCurrencies([...(community.linkedCurrencies || [])]);
+    setDailyEmission(String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100));
+    setPostCost(String(community.settings?.postCost ?? 1));
+    setPollCost(String(community.settings?.pollCost ?? 1));
+    setForwardCost(String(community.settings?.forwardCost ?? 1));
+    setEditWindowMinutes(String(community.settings?.editWindowMinutes ?? 30));
+    setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
+    setVotingRestriction((community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any');
+    setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
 
-    // Initialize original settings
+    // Update original state
+    setOriginalPermissionRules(JSON.parse(JSON.stringify(initialRules)));
     setOriginalSettings({
-      dailyEmission: String(community.settings?.dailyEmission || community.meritRules?.dailyQuota || 100),
+      permissionRules: JSON.parse(JSON.stringify(initialRules)),
+      linkedCurrencies: [...(community.linkedCurrencies || [])],
+      dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100),
       postCost: String(community.settings?.postCost ?? 1),
       pollCost: String(community.settings?.pollCost ?? 1),
       forwardCost: String(community.settings?.forwardCost ?? 1),
       editWindowMinutes: String(community.settings?.editWindowMinutes ?? 30),
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+      startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
     });
-  }, [community.id]);
+  }, [community]);
 
   const validateRules = (): boolean => {
     const errors: Record<string, string> = {};
-
-    // Validate posting rules
-    if (postingRules.requiresTeamMembership && postingRules.allowedRoles) {
-      // If requiresTeamMembership is true, allowedRoles should only include team roles
-      const hasNonTeamRole = postingRules.allowedRoles.some((role: string) => !TEAM_ROLES.includes(role as typeof TEAM_ROLES[number]));
-      if (hasNonTeamRole) {
-        errors.postingRules = t('validationErrors.requiresTeamMembershipConflict');
-      }
-    }
-
-    if (postingRules.onlyTeamLead && !postingRules.requiresTeamMembership) {
-      errors.postingRules = t('validationErrors.onlyTeamLeadRequiresMembership');
-    }
-
-    // Validate voting rules
-    if (votingRules.participantsCannotVoteForLead && !votingRules.allowedRoles?.includes('participant')) {
-      errors.votingRules = t('validationErrors.participantsCannotVoteConflict');
-    }
-
-    // Validate visibility rules
-    if (visibilityRules.isHidden && visibilityRules.visibleToRoles && visibilityRules.visibleToRoles.length > 0) {
-      errors.visibilityRules = t('validationErrors.hiddenButVisible');
-    }
-
-    if (visibilityRules.teamOnly && visibilityRules.visibleToRoles) {
-      const hasNonTeamRole = visibilityRules.visibleToRoles.some((role: string) => !TEAM_ROLES.includes(role as typeof TEAM_ROLES[number]));
-      if (hasNonTeamRole) {
-        errors.visibilityRules = t('validationErrors.teamOnlyConflict');
-      }
-    }
-
+    // Add validation logic if needed
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -319,17 +336,17 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         allowEditByOthers,
       };
       
+      // Get quota recipients from VIEW_COMMUNITY action (all roles that can view)
+      const quotaRecipients = getAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY);
+      
       const dataToSave = {
-        postingRules,
-        votingRules,
-        visibilityRules,
-        meritRules,
+        permissionRules,
         meritSettings: {
-          dailyQuota: meritRules.dailyQuota,
-          quotaRecipients: meritRules.quotaRecipients,
-          canEarn: meritRules.canEarn,
-          canSpend: meritRules.canSpend,
-          startingMerits: parseInt(startingMerits, 10) || meritRules.dailyQuota,
+          dailyQuota: parseInt(dailyEmission, 10) || 100,
+          quotaRecipients,
+          canEarn: true, // These are controlled by permissionRules now
+          canSpend: true,
+          startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100,
         },
         linkedCurrencies,
         settings: settingsToSave,
@@ -340,17 +357,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       
       await onSave(dataToSave);
       setValidationErrors({});
-      // Update original rules after successful save
-      const savedRules = {
-        postingRules: { ...postingRules },
-        votingRules: { ...votingRules },
-        visibilityRules: { ...visibilityRules },
-        meritRules: { ...meritRules },
-        linkedCurrencies: [...linkedCurrencies],
-      };
-      setOriginalRules(savedRules);
-      // Update original settings after successful save
+      // Update original state after successful save
+      setOriginalPermissionRules(JSON.parse(JSON.stringify(permissionRules)));
       setOriginalSettings({
+        permissionRules: JSON.parse(JSON.stringify(permissionRules)),
+        linkedCurrencies: [...linkedCurrencies],
         dailyEmission,
         postCost,
         pollCost,
@@ -358,9 +369,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         editWindowMinutes,
         allowEditByOthers,
         votingRestriction,
+        startingMerits,
       });
       // Save to history
-      saveToHistory(savedRules);
+      saveToHistory(permissionRules, linkedCurrencies);
     } finally {
       setIsSaving(false);
     }
@@ -379,12 +391,8 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   };
 
   const handleReset = () => {
-    setPostingRules({ ...originalRules.postingRules });
-    setVotingRules({ ...originalRules.votingRules });
-    setVisibilityRules({ ...originalRules.visibilityRules });
-    setMeritRules({ ...originalRules.meritRules });
-    setLinkedCurrencies([...originalRules.linkedCurrencies]);
-    // Reset settings
+    setPermissionRules(JSON.parse(JSON.stringify(originalPermissionRules)));
+    setLinkedCurrencies([...originalSettings.linkedCurrencies]);
     setDailyEmission(originalSettings.dailyEmission);
     setPostCost(originalSettings.postCost);
     setPollCost(originalSettings.pollCost);
@@ -392,20 +400,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setEditWindowMinutes(originalSettings.editWindowMinutes);
     setAllowEditByOthers(originalSettings.allowEditByOthers);
     setVotingRestriction(originalSettings.votingRestriction);
+    setStartingMerits(originalSettings.startingMerits);
     setValidationErrors({});
   };
 
   const hasChanges = () => {
-    // Check rules changes
-    const rulesChanged = (
-      JSON.stringify(postingRules) !== JSON.stringify(originalRules.postingRules) ||
-      JSON.stringify(votingRules) !== JSON.stringify(originalRules.votingRules) ||
-      JSON.stringify(visibilityRules) !== JSON.stringify(originalRules.visibilityRules) ||
-      JSON.stringify(meritRules) !== JSON.stringify(originalRules.meritRules) ||
-      JSON.stringify(linkedCurrencies) !== JSON.stringify(originalRules.linkedCurrencies)
-    );
-
-    // Check settings changes
+    const rulesChanged = JSON.stringify(permissionRules) !== JSON.stringify(originalPermissionRules);
+    const linkedCurrenciesChanged = JSON.stringify(linkedCurrencies) !== JSON.stringify(originalSettings.linkedCurrencies);
     const settingsChanged = (
       dailyEmission !== originalSettings.dailyEmission ||
       postCost !== originalSettings.postCost ||
@@ -413,20 +414,18 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       forwardCost !== originalSettings.forwardCost ||
       editWindowMinutes !== originalSettings.editWindowMinutes ||
       allowEditByOthers !== originalSettings.allowEditByOthers ||
-      votingRestriction !== originalSettings.votingRestriction
+      votingRestriction !== originalSettings.votingRestriction ||
+      startingMerits !== originalSettings.startingMerits
     );
 
-    return rulesChanged || settingsChanged;
+    return rulesChanged || linkedCurrenciesChanged || settingsChanged;
   };
 
   const exportRules = () => {
     const rulesData = {
       communityId: community.id,
       communityName: community.name,
-      postingRules,
-      votingRules,
-      visibilityRules,
-      meritRules,
+      permissionRules,
       linkedCurrencies,
       exportedAt: new Date().toISOString(),
     };
@@ -460,14 +459,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           const rulesData = JSON.parse(content);
 
           // Validate imported data
-          if (!rulesData.postingRules || !rulesData.votingRules || !rulesData.visibilityRules || !rulesData.meritRules) {
+          if (!rulesData.permissionRules || !Array.isArray(rulesData.permissionRules)) {
             throw new Error('Invalid rules format');
           }
 
-          setPostingRules(rulesData.postingRules);
-          setVotingRules(rulesData.votingRules);
-          setVisibilityRules(rulesData.visibilityRules);
-          setMeritRules(rulesData.meritRules);
+          setPermissionRules(rulesData.permissionRules);
           setLinkedCurrencies(rulesData.linkedCurrencies || []);
           setValidationErrors({});
 
@@ -482,7 +478,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     input.click();
   };
 
-
   const addCurrency = () => {
     if (newCurrency.trim() && !linkedCurrencies.includes(newCurrency.trim())) {
       setLinkedCurrencies([...linkedCurrencies, newCurrency.trim()]);
@@ -493,6 +488,26 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const removeCurrency = (currency: string) => {
     setLinkedCurrencies(linkedCurrencies.filter(c => c !== currency));
   };
+
+  // Computed values for UI
+  const postingAllowedRoles = getAllowedRolesForAction(permissionRules, ActionType.POST_PUBLICATION);
+  const votingAllowedRoles = getAllowedRolesForAction(permissionRules, ActionType.VOTE);
+  const viewAllowedRoles = getAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY);
+
+  // Get conditions for POST_PUBLICATION action (using first role that has the action)
+  const postingRule = permissionRules.find(r => r.action === ActionType.POST_PUBLICATION);
+  const postingRequiresTeamMembership = postingRule?.conditions?.requiresTeamMembership ?? false;
+  const postingOnlyTeamLead = postingRule?.conditions?.onlyTeamLead ?? false;
+
+  // Get conditions for VOTE action
+  const voteRule = permissionRules.find(r => r.action === ActionType.VOTE);
+  const canVoteForOwnPosts = voteRule?.conditions?.canVoteForOwnPosts ?? false;
+  const participantsCannotVoteForLead = voteRule?.conditions?.participantsCannotVoteForLead ?? false;
+
+  // Get conditions for VIEW_COMMUNITY action
+  const viewRule = permissionRules.find(r => r.action === ActionType.VIEW_COMMUNITY);
+  const isHidden = viewRule?.conditions?.isHidden ?? false;
+  const teamOnly = viewRule?.conditions?.teamOnly ?? false;
 
   return (
     <div className="space-y-8">
@@ -510,9 +525,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       {/* Posting Rules */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('postingRules')}</h2>
-        {validationErrors.postingRules && (
-          <p className="text-red-600 text-sm">{validationErrors.postingRules}</p>
-        )}
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
@@ -522,17 +534,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 <div key={role} className="flex items-center gap-2.5">
                   <Checkbox
                     id={checkboxId}
-                    checked={postingRules.allowedRoles.includes(role)}
+                    checked={postingAllowedRoles.includes(role)}
                     onCheckedChange={(checked) => {
-                      if (checked) {
-                        const currentRoles = postingRules.allowedRoles || [];
-                        if (!currentRoles.includes(role)) {
-                          setPostingRules({ ...postingRules, allowedRoles: [...currentRoles, role] });
-                        }
-                      } else {
-                        const currentRoles = postingRules.allowedRoles || [];
-                        setPostingRules({ ...postingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
-                      }
+                      const newAllowedRoles = checked
+                        ? [...postingAllowedRoles, role]
+                        : postingAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.POST_PUBLICATION, newAllowedRoles));
                     }}
                   />
                   <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
@@ -547,8 +554,21 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="requiresTeamMembership"
-            checked={postingRules.requiresTeamMembership}
-            onCheckedChange={(checked) => setPostingRules({ ...postingRules, requiresTeamMembership: checked as boolean })}
+            checked={postingRequiresTeamMembership}
+            onCheckedChange={(checked) => {
+              // Update conditions for all roles that have POST_PUBLICATION rules
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
+                    conditions: { requiresTeamMembership: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="requiresTeamMembership" className="text-sm cursor-pointer">
             {t('requiresTeamMembership')}
@@ -558,22 +578,23 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="onlyTeamLead"
-            checked={postingRules.onlyTeamLead}
-            onCheckedChange={(checked) => setPostingRules({ ...postingRules, onlyTeamLead: checked as boolean })}
+            checked={postingOnlyTeamLead}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
+                    conditions: { onlyTeamLead: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="onlyTeamLead" className="text-sm cursor-pointer">
             {t('onlyTeamLead')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="autoMembership"
-            checked={postingRules.autoMembership}
-            onCheckedChange={(checked) => setPostingRules({ ...postingRules, autoMembership: checked as boolean })}
-          />
-          <Label htmlFor="autoMembership" className="text-sm cursor-pointer">
-            {t('autoMembership')}
           </Label>
         </div>
 
@@ -594,9 +615,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       {/* Voting Rules */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('votingRules')}</h2>
-        {validationErrors.votingRules && (
-          <p className="text-red-600 text-sm">{validationErrors.votingRules}</p>
-        )}
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
@@ -606,17 +624,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 <div key={role} className="flex items-center gap-2.5">
                   <Checkbox
                     id={checkboxId}
-                    checked={votingRules.allowedRoles.includes(role)}
+                    checked={votingAllowedRoles.includes(role)}
                     onCheckedChange={(checked) => {
-                      if (checked) {
-                        const currentRoles = votingRules.allowedRoles || [];
-                        if (!currentRoles.includes(role)) {
-                          setVotingRules({ ...votingRules, allowedRoles: [...currentRoles, role] });
-                        }
-                      } else {
-                        const currentRoles = votingRules.allowedRoles || [];
-                        setVotingRules({ ...votingRules, allowedRoles: currentRoles.filter((r: string) => r !== role) });
-                      }
+                      const newAllowedRoles = checked
+                        ? [...votingAllowedRoles, role]
+                        : votingAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VOTE, newAllowedRoles));
                     }}
                   />
                   <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
@@ -631,8 +644,21 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="canVoteForOwnPosts"
-            checked={votingRules.canVoteForOwnPosts}
-            onCheckedChange={(checked) => setVotingRules({ ...votingRules, canVoteForOwnPosts: checked as boolean })}
+            checked={canVoteForOwnPosts}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              // Update conditions for all roles - create rules if they don't exist
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VOTE);
+                // If rule exists, update it; if not, create it with default allowed=true
+                updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
+                  allowed: rule?.allowed ?? true,
+                  conditions: { canVoteForOwnPosts: checked as boolean },
+                });
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="canVoteForOwnPosts" className="text-sm cursor-pointer">
             {t('canVoteForOwnPosts')}
@@ -642,33 +668,24 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="participantsCannotVoteForLead"
-            checked={votingRules.participantsCannotVoteForLead}
-            onCheckedChange={(checked) => setVotingRules({ ...votingRules, participantsCannotVoteForLead: checked as boolean })}
+            checked={participantsCannotVoteForLead}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              // Update conditions for all roles that have VOTE rules
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VOTE);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
+                    conditions: { participantsCannotVoteForLead: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="participantsCannotVoteForLead" className="text-sm cursor-pointer">
             {t('participantsCannotVoteForLead')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="spendsMerits"
-            checked={votingRules.spendsMerits}
-            onCheckedChange={(checked) => setVotingRules({ ...votingRules, spendsMerits: checked as boolean })}
-          />
-          <Label htmlFor="spendsMerits" className="text-sm cursor-pointer">
-            {t('spendsMerits')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="awardsMerits"
-            checked={votingRules.awardsMerits}
-            onCheckedChange={(checked) => setVotingRules({ ...votingRules, awardsMerits: checked as boolean })}
-          />
-          <Label htmlFor="awardsMerits" className="text-sm cursor-pointer">
-            {t('awardsMerits')}
           </Label>
         </div>
       </div>
@@ -676,9 +693,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       {/* Visibility Rules */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('visibilityRules')}</h2>
-        {validationErrors.visibilityRules && (
-          <p className="text-red-600 text-sm">{validationErrors.visibilityRules}</p>
-        )}
 
         <BrandFormControl label={t('visibleToRoles')}>
           <div className="space-y-2">
@@ -688,17 +702,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
                 <div key={role} className="flex items-center gap-2.5">
                   <Checkbox
                     id={checkboxId}
-                    checked={visibilityRules.visibleToRoles.includes(role)}
+                    checked={viewAllowedRoles.includes(role)}
                     onCheckedChange={(checked) => {
-                      if (checked) {
-                        const currentRoles = visibilityRules.visibleToRoles || [];
-                        if (!currentRoles.includes(role)) {
-                          setVisibilityRules({ ...visibilityRules, visibleToRoles: [...currentRoles, role] });
-                        }
-                      } else {
-                        const currentRoles = visibilityRules.visibleToRoles || [];
-                        setVisibilityRules({ ...visibilityRules, visibleToRoles: currentRoles.filter((r: string) => r !== role) });
-                      }
+                      const newAllowedRoles = checked
+                        ? [...viewAllowedRoles, role]
+                        : viewAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY, newAllowedRoles));
                     }}
                   />
                   <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
@@ -713,8 +722,20 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="isHidden"
-            checked={visibilityRules.isHidden}
-            onCheckedChange={(checked) => setVisibilityRules({ ...visibilityRules, isHidden: checked as boolean })}
+            checked={isHidden}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
+                    conditions: { isHidden: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="isHidden" className="text-sm cursor-pointer">
             {t('isHidden')}
@@ -724,8 +745,20 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="flex items-center gap-2.5">
           <Checkbox
             id="teamOnly"
-            checked={visibilityRules.teamOnly}
-            onCheckedChange={(checked) => setVisibilityRules({ ...visibilityRules, teamOnly: checked as boolean })}
+            checked={teamOnly}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
+                    conditions: { teamOnly: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
           />
           <Label htmlFor="teamOnly" className="text-sm cursor-pointer">
             {t('teamOnly')}
@@ -733,19 +766,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         </div>
       </div>
 
-      {/* Merit Rules */}
+      {/* Merit Settings */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-brand-text-primary">{t('meritRules')}</h2>
 
         <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
           <Input
             value={dailyEmission}
-            onChange={(e) => {
-              setDailyEmission(e.target.value);
-              // Also update meritRules.dailyQuota to keep them in sync
-              const value = parseInt(e.target.value, 10) || 0;
-              setMeritRules({ ...meritRules, dailyQuota: value });
-            }}
+            onChange={(e) => setDailyEmission(e.target.value)}
             type="number"
             className="h-11 rounded-xl w-full"
           />
@@ -754,12 +782,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
           <Input
             value={startingMerits}
-            onChange={(e) => {
-              setStartingMerits(e.target.value);
-              // Also update meritRules.startingMerits to keep them in sync
-              const value = parseInt(e.target.value, 10) || 0;
-              setMeritRules({ ...meritRules, startingMerits: value });
-            }}
+            onChange={(e) => setStartingMerits(e.target.value)}
             type="number"
             className="h-11 rounded-xl w-full"
           />
@@ -769,21 +792,17 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           <div className="space-y-2">
             {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
               const checkboxId = `merit-role-${role}`;
+              const isAllowed = viewAllowedRoles.includes(role);
               return (
                 <div key={role} className="flex items-center gap-2.5">
                   <Checkbox
                     id={checkboxId}
-                    checked={meritRules.quotaRecipients.includes(role)}
+                    checked={isAllowed}
                     onCheckedChange={(checked) => {
-                      if (checked) {
-                        const currentRoles = meritRules.quotaRecipients || [];
-                        if (!currentRoles.includes(role)) {
-                          setMeritRules({ ...meritRules, quotaRecipients: [...currentRoles, role] });
-                        }
-                      } else {
-                        const currentRoles = meritRules.quotaRecipients || [];
-                        setMeritRules({ ...meritRules, quotaRecipients: currentRoles.filter((r: string) => r !== role) });
-                      }
+                      const newAllowedRoles = checked
+                        ? [...viewAllowedRoles, role]
+                        : viewAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY, newAllowedRoles));
                     }}
                   />
                   <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
@@ -794,28 +813,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             })}
           </div>
         </BrandFormControl>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="canEarn"
-            checked={meritRules.canEarn}
-            onCheckedChange={(checked) => setMeritRules({ ...meritRules, canEarn: checked as boolean })}
-          />
-          <Label htmlFor="canEarn" className="text-sm cursor-pointer">
-            {t('canEarn')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="canSpend"
-            checked={meritRules.canSpend}
-            onCheckedChange={(checked) => setMeritRules({ ...meritRules, canSpend: checked as boolean })}
-          />
-          <Label htmlFor="canSpend" className="text-sm cursor-pointer">
-            {t('canSpend')}
-          </Label>
-        </div>
       </div>
 
       {/* Quota and Cost Settings */}
@@ -1065,35 +1062,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             <h3 className="text-lg font-semibold text-brand-text-primary">{t('preview')}</h3>
           </div>
           <div className="p-4 space-y-6">
-            {/* Posting Rules Preview */}
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-brand-text-primary">{t('postingRules')}</h4>
+              <h4 className="text-sm font-semibold text-brand-text-primary">Permission Rules</h4>
               <pre className="text-xs bg-base-200 p-2 rounded shadow-none overflow-auto">
-                {JSON.stringify(postingRules, null, 2)}
-              </pre>
-            </div>
-
-            {/* Voting Rules Preview */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-brand-text-primary">{t('votingRules')}</h4>
-              <pre className="text-xs bg-base-200 p-2 rounded shadow-none overflow-auto">
-                {JSON.stringify(votingRules, null, 2)}
-              </pre>
-            </div>
-
-            {/* Visibility Rules Preview */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-brand-text-primary">{t('visibilityRules')}</h4>
-              <pre className="text-xs bg-base-200 p-2 rounded shadow-none overflow-auto">
-                {JSON.stringify(visibilityRules, null, 2)}
-              </pre>
-            </div>
-
-            {/* Merit Rules Preview */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-semibold text-brand-text-primary">{t('meritRules')}</h4>
-              <pre className="text-xs bg-base-200 p-2 rounded shadow-none overflow-auto">
-                {JSON.stringify(meritRules, null, 2)}
+                {JSON.stringify(permissionRules, null, 2)}
               </pre>
             </div>
           </div>

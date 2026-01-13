@@ -96,6 +96,13 @@ export interface UpdateCommunityDto {
     startingMerits?: number;
   };
   isPriority?: boolean;
+  permissionRules?: PermissionRule[];
+  // Legacy rules fields (for backward compatibility)
+  postingRules?: any;
+  votingRules?: any;
+  visibilityRules?: any;
+  meritRules?: any;
+  linkedCurrencies?: string[];
 }
 
 @Injectable()
@@ -521,6 +528,29 @@ export class CommunityService {
 
       // Merge meritSettings into updateData
       Object.assign(updateData, meritSettingsUpdate);
+    }
+
+    // Handle permissionRules (new system)
+    if (dto.permissionRules !== undefined) {
+      updateData.permissionRules = dto.permissionRules;
+    }
+
+    // Handle legacy rules fields (postingRules, votingRules, visibilityRules, meritRules)
+    // These are stored for backward compatibility even though permissionRules is the new system
+    if (dto.postingRules !== undefined) {
+      updateData.postingRules = dto.postingRules;
+    }
+    if (dto.votingRules !== undefined) {
+      updateData.votingRules = dto.votingRules;
+    }
+    if (dto.visibilityRules !== undefined) {
+      updateData.visibilityRules = dto.visibilityRules;
+    }
+    if (dto.meritRules !== undefined) {
+      updateData.meritRules = dto.meritRules;
+    }
+    if (dto.linkedCurrencies !== undefined) {
+      updateData.linkedCurrencies = dto.linkedCurrencies;
     }
 
     this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
