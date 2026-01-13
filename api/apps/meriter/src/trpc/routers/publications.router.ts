@@ -1415,6 +1415,14 @@ export const publicationsRouter = router({
         });
       }
 
+      // Validate: forward proposal can only be made from team communities
+      if (sourceCommunity.typeTag !== 'team') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Forward proposals can only be made from team groups',
+        });
+      }
+
       // Validate: target community supports the post type
       const targetSupports = await ctx.permissionService.targetCommunitySupportsPostType(
         targetCommunityId,
