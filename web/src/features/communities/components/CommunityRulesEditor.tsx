@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { Label } from '@/components/ui/shadcn/label';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2 } from 'lucide-react';
+import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import type { CommunityWithComputedFields, PermissionRule } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/shadcn/select';
@@ -233,6 +233,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [showPreview, setShowPreview] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
+  
+  // Collapsible sections state
+  const [isPostingRulesOpen, setIsPostingRulesOpen] = useState(true);
+  const [isVotingRulesOpen, setIsVotingRulesOpen] = useState(true);
+  const [isVisibilityRulesOpen, setIsVisibilityRulesOpen] = useState(true);
+  const [isMeritSettingsOpen, setIsMeritSettingsOpen] = useState(true);
+  const [isConfigurationOpen, setIsConfigurationOpen] = useState(true);
+  const [isLinkedCurrenciesOpen, setIsLinkedCurrenciesOpen] = useState(true);
 
   // Store original permissionRules for reset functionality
   const [originalPermissionRules, setOriginalPermissionRules] = useState<PermissionRule[]>(
@@ -570,21 +578,33 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const teamOnly = viewRule?.conditions?.teamOnly ?? false;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {Object.keys(validationErrors).length > 0 && (
-        <div className="p-3 bg-red-50 shadow-none rounded-lg">
-          <p className="text-red-600 font-bold mb-2">{t('validationErrors.title')}</p>
+        <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 shadow-none rounded-xl">
+          <p className="text-red-600 dark:text-red-400 font-bold mb-2">{t('validationErrors.title')}</p>
           <div className="space-y-1">
             {Object.entries(validationErrors).map(([key, message]) => (
-              <p key={key} className="text-red-600 text-sm">• {message}</p>
+              <p key={key} className="text-red-600 dark:text-red-400 text-sm">• {message}</p>
             ))}
           </div>
         </div>
       )}
 
       {/* Posting Rules */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{t('postingRules')}</h2>
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <button
+          onClick={() => setIsPostingRulesOpen(!isPostingRulesOpen)}
+          className="w-full p-5 border-b border-base-300/50 flex items-center justify-between hover:bg-base-200/50 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-brand-text-primary">{t('postingRules')}</h2>
+          {isPostingRulesOpen ? (
+            <ChevronUp className="w-5 h-5 text-base-content/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-base-content/50" />
+          )}
+        </button>
+        {isPostingRulesOpen && (
+        <div className="p-5 space-y-5">
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
@@ -611,311 +631,57 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           </div>
         </BrandFormControl>
 
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="requiresTeamMembership"
-            checked={postingRequiresTeamMembership}
-            onCheckedChange={(checked) => {
-              // Update conditions for all roles that have POST_PUBLICATION rules
-              let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
-                    conditions: { requiresTeamMembership: checked as boolean },
-                  });
+        <div className="space-y-3 pt-2 border-t border-base-300/30">
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="requiresTeamMembership"
+              checked={postingRequiresTeamMembership}
+              onCheckedChange={(checked) => {
+                // Update conditions for all roles that have POST_PUBLICATION rules
+                let updatedRules = permissionRules;
+                const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+                for (const role of roles) {
+                  const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
+                  if (rule) {
+                    updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
+                      conditions: { requiresTeamMembership: checked as boolean },
+                    });
+                  }
                 }
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="requiresTeamMembership" className="text-sm cursor-pointer">
-            {t('requiresTeamMembership')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="onlyTeamLead"
-            checked={postingOnlyTeamLead}
-            onCheckedChange={(checked) => {
-              let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
-                    conditions: { onlyTeamLead: checked as boolean },
-                  });
-                }
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="onlyTeamLead" className="text-sm cursor-pointer">
-            {t('onlyTeamLead')}
-          </Label>
-        </div>
-
-        <BrandFormControl 
-          label={tSettings('postCost')}
-          helperText={tSettings('postCostHelp')}
-        >
-          <Input
-            type="number"
-            min="0"
-            value={postCost}
-            onChange={(e) => setPostCost(e.target.value)}
-            className="h-11 rounded-xl w-full"
-          />
-        </BrandFormControl>
-      </div>
-
-      {/* Voting Rules */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{t('votingRules')}</h2>
-
-        <BrandFormControl label={t('allowedRoles')}>
-          <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
-              const checkboxId = `voting-role-${role}`;
-              return (
-                <div key={role} className="flex items-center gap-2.5">
-                  <Checkbox
-                    id={checkboxId}
-                    checked={votingAllowedRoles.includes(role)}
-                    onCheckedChange={(checked) => {
-                      const newAllowedRoles = checked
-                        ? [...votingAllowedRoles, role]
-                        : votingAllowedRoles.filter(r => r !== role);
-                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VOTE, newAllowedRoles));
-                    }}
-                  />
-                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
-                    {t(`roles.${role}`)}
-                  </Label>
-                </div>
-              );
-            })}
+                setPermissionRules(updatedRules);
+              }}
+            />
+            <Label htmlFor="requiresTeamMembership" className="text-sm cursor-pointer">
+              {t('requiresTeamMembership')}
+            </Label>
           </div>
-        </BrandFormControl>
 
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="canVoteForOwnPosts"
-            checked={canVoteForOwnPosts}
-            onCheckedChange={(checked) => {
-              let updatedRules = permissionRules;
-              // Update conditions for all roles - create rules if they don't exist
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.VOTE);
-                // If rule exists, update it; if not, create it with default allowed=true
-                updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
-                  allowed: rule?.allowed ?? true,
-                  conditions: { canVoteForOwnPosts: checked as boolean },
-                });
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="canVoteForOwnPosts" className="text-sm cursor-pointer">
-            {t('canVoteForOwnPosts')}
-          </Label>
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="participantsCannotVoteForLead"
-            checked={participantsCannotVoteForLead}
-            onCheckedChange={(checked) => {
-              let updatedRules = permissionRules;
-              // Update conditions for all roles that have VOTE rules
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.VOTE);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
-                    conditions: { participantsCannotVoteForLead: checked as boolean },
-                  });
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="onlyTeamLead"
+              checked={postingOnlyTeamLead}
+              onCheckedChange={(checked) => {
+                let updatedRules = permissionRules;
+                const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+                for (const role of roles) {
+                  const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
+                  if (rule) {
+                    updatedRules = updateRule(updatedRules, role, ActionType.POST_PUBLICATION, {
+                      conditions: { onlyTeamLead: checked as boolean },
+                    });
+                  }
                 }
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="participantsCannotVoteForLead" className="text-sm cursor-pointer">
-            {t('participantsCannotVoteForLead')}
-          </Label>
-        </div>
-      </div>
-
-      {/* Visibility Rules */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{t('visibilityRules')}</h2>
-
-        <BrandFormControl label={t('visibleToRoles')}>
-          <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
-              const checkboxId = `visibility-role-${role}`;
-              return (
-                <div key={role} className="flex items-center gap-2.5">
-                  <Checkbox
-                    id={checkboxId}
-                    checked={viewAllowedRoles.includes(role)}
-                    onCheckedChange={(checked) => {
-                      const newAllowedRoles = checked
-                        ? [...viewAllowedRoles, role]
-                        : viewAllowedRoles.filter(r => r !== role);
-                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY, newAllowedRoles));
-                    }}
-                  />
-                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
-                    {t(`roles.${role}`)}
-                  </Label>
-                </div>
-              );
-            })}
+                setPermissionRules(updatedRules);
+              }}
+            />
+            <Label htmlFor="onlyTeamLead" className="text-sm cursor-pointer">
+              {t('onlyTeamLead')}
+            </Label>
           </div>
-        </BrandFormControl>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="isHidden"
-            checked={isHidden}
-            onCheckedChange={(checked) => {
-              let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
-                    conditions: { isHidden: checked as boolean },
-                  });
-                }
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="isHidden" className="text-sm cursor-pointer">
-            {t('isHidden')}
-          </Label>
         </div>
-
-        <div className="flex items-center gap-2.5">
-          <Checkbox
-            id="teamOnly"
-            checked={teamOnly}
-            onCheckedChange={(checked) => {
-              let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
-              for (const role of roles) {
-                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
-                if (rule) {
-                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
-                    conditions: { teamOnly: checked as boolean },
-                  });
-                }
-              }
-              setPermissionRules(updatedRules);
-            }}
-          />
-          <Label htmlFor="teamOnly" className="text-sm cursor-pointer">
-            {t('teamOnly')}
-          </Label>
-        </div>
-      </div>
-
-      {/* Merit Settings */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{t('meritRules')}</h2>
-
-        <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
-          <Input
-            value={dailyEmission}
-            onChange={(e) => setDailyEmission(e.target.value)}
-            type="number"
-            className="h-11 rounded-xl w-full"
-          />
-        </BrandFormControl>
-
-        <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
-          <Input
-            value={startingMerits}
-            onChange={(e) => setStartingMerits(e.target.value)}
-            type="number"
-            className="h-11 rounded-xl w-full"
-          />
-        </BrandFormControl>
-
-        <BrandFormControl label={t('quotaRecipients')}>
-          <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
-              const checkboxId = `merit-role-${role}`;
-              const isAllowed = quotaRecipients.includes(role);
-              return (
-                <div key={role} className="flex items-center gap-2.5">
-                  <Checkbox
-                    id={checkboxId}
-                    checked={isAllowed}
-                    onCheckedChange={(checked) => {
-                      const newQuotaRecipients = checked
-                        ? [...quotaRecipients, role]
-                        : quotaRecipients.filter(r => r !== role);
-                      setQuotaRecipients(newQuotaRecipients);
-                    }}
-                  />
-                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
-                    {t(`roles.${role}`)}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
-        </BrandFormControl>
-      </div>
-
-      {/* Quota and Cost Settings */}
-      <div className="space-y-4 border-t border-base-300 pt-6">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{tSettings('configuration')}</h2>
 
         {(isSuperadmin || isUserLead) && (
           <>
-            <BrandFormControl
-              label={t('editWindowMinutes')}
-              helperText={t('editWindowMinutesHelp')}
-            >
-              <Input
-                type="number"
-                min="0"
-                value={editWindowMinutes}
-                onChange={(e) => setEditWindowMinutes(e.target.value)}
-                className="h-11 rounded-xl w-full"
-              />
-            </BrandFormControl>
-
-            <div className="flex items-center gap-2.5">
-              <Checkbox
-                id="allowEditByOthers"
-                checked={allowEditByOthers}
-                onCheckedChange={(checked) => setAllowEditByOthers(checked as boolean)}
-              />
-              <Label htmlFor="allowEditByOthers" className="text-sm cursor-pointer">
-                {t('allowEditByOthers')}
-              </Label>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <Checkbox
-                id="allowWithdraw"
-                checked={allowWithdraw}
-                onCheckedChange={(checked) => setAllowWithdraw(checked as boolean)}
-              />
-              <Label htmlFor="allowWithdraw" className="text-sm cursor-pointer">
-                {t('allowWithdraw')}
-              </Label>
-            </div>
-
             <BrandFormControl
               label={tSettings('postCost')}
               helperText={tSettings('postCostHelp')}
@@ -974,26 +740,100 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             </BrandFormControl>
           </>
         )}
-
-        {canResetQuota && (
-          <BrandFormControl
-            label={tSettings('resetQuota')}
-            helperText={tSettings('resetQuotaDescription')}
-          >
-            <Button
-              variant="outline"
-              size="default"
-              onClick={handleResetDailyQuota}
-              disabled={resetDailyQuota.isPending}
-              className="rounded-xl active:scale-[0.98]"
-            >
-              {resetDailyQuota.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              {resetDailyQuota.isPending
-                ? tSettings('saving')
-                : tSettings('resetQuota')}
-            </Button>
-          </BrandFormControl>
+        </div>
         )}
+      </div>
+
+      {/* Voting Rules */}
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <button
+          onClick={() => setIsVotingRulesOpen(!isVotingRulesOpen)}
+          className="w-full p-5 border-b border-base-300/50 flex items-center justify-between hover:bg-base-200/50 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-brand-text-primary">{t('votingRules')}</h2>
+          {isVotingRulesOpen ? (
+            <ChevronUp className="w-5 h-5 text-base-content/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-base-content/50" />
+          )}
+        </button>
+        {isVotingRulesOpen && (
+        <div className="p-5 space-y-5">
+
+        <BrandFormControl label={t('allowedRoles')}>
+          <div className="space-y-2.5">
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `voting-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={votingAllowedRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      const newAllowedRoles = checked
+                        ? [...votingAllowedRoles, role]
+                        : votingAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VOTE, newAllowedRoles));
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </BrandFormControl>
+
+        <div className="space-y-3 pt-2 border-t border-base-300/30">
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="canVoteForOwnPosts"
+            checked={canVoteForOwnPosts}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              // Update conditions for all roles - create rules if they don't exist
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VOTE);
+                // If rule exists, update it; if not, create it with default allowed=true
+                updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
+                  allowed: rule?.allowed ?? true,
+                  conditions: { canVoteForOwnPosts: checked as boolean },
+                });
+              }
+              setPermissionRules(updatedRules);
+            }}
+          />
+          <Label htmlFor="canVoteForOwnPosts" className="text-sm cursor-pointer">
+            {t('canVoteForOwnPosts')}
+          </Label>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="participantsCannotVoteForLead"
+            checked={participantsCannotVoteForLead}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              // Update conditions for all roles that have VOTE rules
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VOTE);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VOTE, {
+                    conditions: { participantsCannotVoteForLead: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
+          />
+          <Label htmlFor="participantsCannotVoteForLead" className="text-sm cursor-pointer">
+            {t('participantsCannotVoteForLead')}
+          </Label>
+        </div>
+        </div>
 
         <BrandFormControl
           label={tSettings('votingRestriction')}
@@ -1031,12 +871,249 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             </SelectContent>
           </Select>
         </BrandFormControl>
+        </div>
+        )}
+      </div>
+
+      {/* Visibility Rules */}
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <button
+          onClick={() => setIsVisibilityRulesOpen(!isVisibilityRulesOpen)}
+          className="w-full p-5 border-b border-base-300/50 flex items-center justify-between hover:bg-base-200/50 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-brand-text-primary">{t('visibilityRules')}</h2>
+          {isVisibilityRulesOpen ? (
+            <ChevronUp className="w-5 h-5 text-base-content/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-base-content/50" />
+          )}
+        </button>
+        {isVisibilityRulesOpen && (
+        <div className="p-5 space-y-5">
+
+        <BrandFormControl label={t('visibleToRoles')}>
+          <div className="space-y-2.5">
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `visibility-role-${role}`;
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={viewAllowedRoles.includes(role)}
+                    onCheckedChange={(checked) => {
+                      const newAllowedRoles = checked
+                        ? [...viewAllowedRoles, role]
+                        : viewAllowedRoles.filter(r => r !== role);
+                      setPermissionRules(setAllowedRolesForAction(permissionRules, ActionType.VIEW_COMMUNITY, newAllowedRoles));
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </BrandFormControl>
+
+        <div className="space-y-3 pt-2 border-t border-base-300/30">
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="isHidden"
+            checked={isHidden}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
+                    conditions: { isHidden: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
+          />
+          <Label htmlFor="isHidden" className="text-sm cursor-pointer">
+            {t('isHidden')}
+          </Label>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <Checkbox
+            id="teamOnly"
+            checked={teamOnly}
+            onCheckedChange={(checked) => {
+              let updatedRules = permissionRules;
+              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              for (const role of roles) {
+                const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
+                if (rule) {
+                  updatedRules = updateRule(updatedRules, role, ActionType.VIEW_COMMUNITY, {
+                    conditions: { teamOnly: checked as boolean },
+                  });
+                }
+              }
+              setPermissionRules(updatedRules);
+            }}
+          />
+          <Label htmlFor="teamOnly" className="text-sm cursor-pointer">
+            {t('teamOnly')}
+          </Label>
+        </div>
+        </div>
+        </div>
+        )}
+      </div>
+
+      {/* Merit Settings */}
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <button
+          onClick={() => setIsMeritSettingsOpen(!isMeritSettingsOpen)}
+          className="w-full p-5 border-b border-base-300/50 flex items-center justify-between hover:bg-base-200/50 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-brand-text-primary">{t('meritRules')}</h2>
+          {isMeritSettingsOpen ? (
+            <ChevronUp className="w-5 h-5 text-base-content/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-base-content/50" />
+          )}
+        </button>
+        {isMeritSettingsOpen && (
+        <div className="p-5 space-y-5">
+
+        <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
+          <Input
+            value={dailyEmission}
+            onChange={(e) => setDailyEmission(e.target.value)}
+            type="number"
+            className="h-11 rounded-xl w-full"
+          />
+        </BrandFormControl>
+
+        <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
+          <Input
+            value={startingMerits}
+            onChange={(e) => setStartingMerits(e.target.value)}
+            type="number"
+            className="h-11 rounded-xl w-full"
+          />
+        </BrandFormControl>
+
+        <BrandFormControl label={t('quotaRecipients')}>
+          <div className="space-y-2.5">
+            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+              const checkboxId = `merit-role-${role}`;
+              const isAllowed = quotaRecipients.includes(role);
+              return (
+                <div key={role} className="flex items-center gap-2.5">
+                  <Checkbox
+                    id={checkboxId}
+                    checked={isAllowed}
+                    onCheckedChange={(checked) => {
+                      const newQuotaRecipients = checked
+                        ? [...quotaRecipients, role]
+                        : quotaRecipients.filter(r => r !== role);
+                      setQuotaRecipients(newQuotaRecipients);
+                    }}
+                  />
+                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                    {t(`roles.${role}`)}
+                  </Label>
+                </div>
+              );
+            })}
+          </div>
+        </BrandFormControl>
+        </div>
+        )}
+      </div>
+
+      {/* Configuration Settings */}
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <button
+          onClick={() => setIsConfigurationOpen(!isConfigurationOpen)}
+          className="w-full p-5 border-b border-base-300/50 flex items-center justify-between hover:bg-base-200/50 transition-colors"
+        >
+          <h2 className="text-lg font-semibold text-brand-text-primary">{tSettings('configuration')}</h2>
+          {isConfigurationOpen ? (
+            <ChevronUp className="w-5 h-5 text-base-content/50" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-base-content/50" />
+          )}
+        </button>
+        {isConfigurationOpen && (
+        <div className="p-5 space-y-5">
+
+        {(isSuperadmin || isUserLead) && (
+          <>
+            <BrandFormControl
+              label={t('editWindowMinutes')}
+              helperText={t('editWindowMinutesHelp')}
+            >
+              <Input
+                type="number"
+                min="0"
+                value={editWindowMinutes}
+                onChange={(e) => setEditWindowMinutes(e.target.value)}
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="allowEditByOthers"
+                checked={allowEditByOthers}
+                onCheckedChange={(checked) => setAllowEditByOthers(checked as boolean)}
+              />
+              <Label htmlFor="allowEditByOthers" className="text-sm cursor-pointer">
+                {t('allowEditByOthers')}
+              </Label>
+            </div>
+
+            <div className="flex items-center gap-2.5">
+              <Checkbox
+                id="allowWithdraw"
+                checked={allowWithdraw}
+                onCheckedChange={(checked) => setAllowWithdraw(checked as boolean)}
+              />
+              <Label htmlFor="allowWithdraw" className="text-sm cursor-pointer">
+                {t('allowWithdraw')}
+              </Label>
+            </div>
+          </>
+        )}
+
+        {canResetQuota && (
+          <BrandFormControl
+            label={tSettings('resetQuota')}
+            helperText={tSettings('resetQuotaDescription')}
+          >
+            <Button
+              variant="outline"
+              size="default"
+              onClick={handleResetDailyQuota}
+              disabled={resetDailyQuota.isPending}
+              className="rounded-xl active:scale-[0.98]"
+            >
+              {resetDailyQuota.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {resetDailyQuota.isPending
+                ? tSettings('saving')
+                : tSettings('resetQuota')}
+            </Button>
+          </BrandFormControl>
+        )}
+        </div>
+        )}
       </div>
 
       {/* Linked Currencies */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-brand-text-primary">{t('linkedCurrencies')}</h2>
-
+      <div className="bg-base-100 rounded-xl border border-base-300/50 overflow-hidden">
+        <div className="p-5 border-b border-base-300/50">
+          <h2 className="text-lg font-semibold text-brand-text-primary">{t('linkedCurrencies')}</h2>
+        </div>
+        <div className="p-5 space-y-4">
         <div className="space-y-2">
           {linkedCurrencies.map((currency) => (
             <div key={currency} className="flex items-center justify-between p-2 bg-base-200 rounded-md shadow-none">
@@ -1061,6 +1138,8 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             {t('add')}
           </Button>
         </div>
+        </div>
+        )}
       </div>
 
       {/* Preview Toggle and Actions */}
