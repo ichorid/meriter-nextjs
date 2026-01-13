@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Info, Users, Star } from 'lucide-react';
@@ -29,9 +29,41 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { data: unreadFavoritesData } = useUnreadFavoritesCount();
   const unreadFavoritesCount = unreadFavoritesData?.count ?? 0;
   const t = useTranslations('common');
+  const tCommunities = useTranslations('communities');
 
   // Get user's communities with wallets and quotas
-  const { communityIds, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
+  const { communities: allCommunities, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
+
+  // Group communities into special and non-special
+  const { specialCommunities, userCommunities } = useMemo(() => {
+    const special: typeof allCommunities = [];
+    const userComms: typeof allCommunities = [];
+
+    allCommunities.forEach(community => {
+      const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'team-projects' || community.typeTag === 'support';
+      if (isSpecial) {
+        special.push(community);
+      } else {
+        userComms.push(community);
+      }
+    });
+
+    // Sort special communities: marathon-of-good, future-vision, team-projects, support
+    special.sort((a, b) => {
+      const order: Record<string, number> = {
+        'marathon-of-good': 1,
+        'future-vision': 2,
+        'team-projects': 3,
+        'support': 4,
+      };
+      return (order[a.typeTag || ''] || 999) - (order[b.typeTag || ''] || 999);
+    });
+
+    return {
+      specialCommunities: special,
+      userCommunities: userComms,
+    };
+  }, [allCommunities]);
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -245,37 +277,77 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
       <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
         {/* Community Cards or Avatars */}
-        <div className="flex flex-col gap-1 min-w-0">
-          {isAuthenticated && !communitiesLoading && communityIds.length === 0 && wallets.length > 0 && (
-            <div className="text-xs text-base-content/50 px-2">
-              {t('noCommunitiesFound')}
-            </div>
-          )}
+        <div className="flex flex-col gap-3 min-w-0">
           {isAuthenticated && communitiesLoading && (
             <div className="text-xs text-base-content/50 px-2">
               {t('loadingCommunities')}
             </div>
           )}
-          {isAuthenticated && communityIds.map((communityId: string) => {
-            const wallet = walletsMap.get(communityId);
-            const quota = quotasMap.get(communityId);
+          {isAuthenticated && !communitiesLoading && specialCommunities.length === 0 && userCommunities.length === 0 && wallets.length > 0 && (
+            <div className="text-xs text-base-content/50 px-2">
+              {t('noCommunitiesFound')}
+            </div>
+          )}
 
-            return (
-              <CommunityCard
-                key={communityId}
-                communityId={communityId}
-                pathname={pathname}
-                isExpanded={isExpanded}
-                hideDescription={true}
-                wallet={wallet ? { balance: wallet.balance || 0, communityId } : undefined}
-                quota={quota && typeof quota.remainingToday === 'number' ? {
-                  remainingToday: quota.remainingToday,
-                  dailyQuota: quota.dailyQuota ?? 0
-                } : undefined}
-              />
-            );
-          })}
+          {/* Section 1: Special Communities */}
+          {isAuthenticated && specialCommunities.length > 0 && (
+            <div className="flex flex-col gap-1 min-w-0">
+              {isExpanded && (
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('specialCommunities')}
+                </p>
+              )}
+              {specialCommunities.map((community) => {
+                const wallet = walletsMap.get(community.id);
+                const quota = quotasMap.get(community.id);
 
+                return (
+                  <CommunityCard
+                    key={community.id}
+                    communityId={community.id}
+                    pathname={pathname}
+                    isExpanded={isExpanded}
+                    hideDescription={true}
+                    wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                    quota={quota && typeof quota.remainingToday === 'number' ? {
+                      remainingToday: quota.remainingToday,
+                      dailyQuota: quota.dailyQuota ?? 0
+                    } : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {/* Section 2: User's Communities */}
+          {isAuthenticated && userCommunities.length > 0 && (
+            <div className="flex flex-col gap-1 min-w-0">
+              {isExpanded && (
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('yourCommunities')}
+                </p>
+              )}
+              {userCommunities.map((community) => {
+                const wallet = walletsMap.get(community.id);
+                const quota = quotasMap.get(community.id);
+
+                return (
+                  <CommunityCard
+                    key={community.id}
+                    communityId={community.id}
+                    pathname={pathname}
+                    isExpanded={isExpanded}
+                    hideDescription={true}
+                    wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                    quota={quota && typeof quota.remainingToday === 'number' ? {
+                      remainingToday: quota.remainingToday,
+                      dailyQuota: quota.dailyQuota ?? 0
+                    } : undefined}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </aside>
