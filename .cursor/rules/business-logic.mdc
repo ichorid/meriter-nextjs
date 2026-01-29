@@ -1,0 +1,92 @@
+---
+description: Core business logic rules for Merit system. Include when working with voting, merits, wallets, publications, or permissions.
+globs:
+  - api/apps/meriter/src/domain/**/*
+  - api/apps/meriter/src/trpc/**/*
+  - web/src/features/**/*
+  - web/src/components/**/Vote*
+  - web/src/components/**/Merit*
+alwaysApply: false
+---
+
+# Meriter Business Logic
+
+## Merit System Overview
+
+Users participate in communities by earning and spending **merits**:
+- **Quota**: Daily free merits for voting (refreshes daily, community-specific amount)
+- **Wallet**: Accumulated merits in a community (permanent until spent)
+
+## Voting Mechanics
+
+### Vote Types
+- **Publication votes**: Direct votes on publications
+- **Comment votes**: Votes on comments (controlled by feature flag)
+- **Poll votes**: Separate system from merit voting
+
+### Currency Rules
+| Action | Quota | Wallet |
+|--------|-------|--------|
+| Upvote | ✅ First | ✅ Then wallet |
+| Downvote | ❌ Never | ✅ Only wallet |
+| Self-vote | ❌ Never | ✅ Only wallet |
+
+### Voting Flow
+1. User specifies amount (can combine quota + wallet)
+2. System validates: quotaAmount ≤ available quota, walletAmount ≤ wallet balance
+3. Quota used first for upvotes, then wallet
+4. Merits credited to recipient's wallet
+5. Transaction record created
+
+### Key Validations
+- Cannot vote with quotaAmount=0 AND walletAmount=0
+- Cannot exceed quota + wallet combined
+- Self-voting requires wallet-only (currency constraint, not permission block)
+
+## Permission System
+
+### Architecture
+```
+tRPC Router → PermissionService.canVote() → PermissionContextService → PermissionRuleEngine
+```
+
+### Permission vs Currency Constraint
+- **Permission block**: User CANNOT perform action (returns FORBIDDEN)
+- **Currency constraint**: User CAN perform action but with restricted currency (e.g., wallet-only)
+
+### Key Files
+- `api/apps/meriter/src/domain/permission/` — Permission services
+- `api/apps/meriter/src/domain/vote/` — Vote services
+
+## Publications
+
+### Structure
+- Content with optional images
+- Author (creator)
+- Community association
+- Metrics: plusVotes, minusVotes, sum (net score)
+
+### Withdraw Rules
+- Only recipient can withdraw accumulated votes
+- Withdraw available when sum > 0
+- Withdrawn merits go to recipient's wallet
+
+## Feature Flags
+
+Check these environment variables before implementing gated features:
+- `ENABLE_COMMENT_VOTING` / `NEXT_PUBLIC_ENABLE_COMMENT_VOTING`
+- `ENABLE_COMMENT_IMAGE_UPLOADS` / `NEXT_PUBLIC_ENABLE_COMMENT_IMAGE_UPLOADS`
+
+Feature flags must be checked at ALL layers:
+1. Frontend UI (hide/show)
+2. Frontend API client (validate before request)
+3. Backend API (validate before processing)
+4. Backend service (validate before business logic)
+
+## Common Mistakes to Avoid
+
+❌ Checking permissions in VoteService (should be in Router via PermissionService)
+❌ Allowing quota for downvotes
+❌ Allowing quota for self-votes
+❌ Forgetting to update both frontend AND backend for contract changes
+❌ Not checking feature flags at all layers

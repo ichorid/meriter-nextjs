@@ -1,0 +1,227 @@
+---
+description: React and Next.js patterns for frontend development. Include when working with components, hooks, or pages.
+globs:
+  - web/src/**/*
+alwaysApply: false
+---
+
+# Frontend Patterns (React + Next.js)
+
+## Tech Stack
+- React 19 + Next.js 16 (App Router)
+- TypeScript (strict)
+- TanStack Query + tRPC client
+- Tailwind CSS
+- Zustand (state management)
+
+## Component Guidelines
+
+### Component Structure
+```typescript
+// components/feature/FeatureName.tsx
+
+'use client'; // Only if using hooks/interactivity
+
+import { useState } from 'react';
+import { useFeatureData } from '@/hooks/useFeatureData';
+import { Button } from '@/components/ui/Button';
+
+interface FeatureNameProps {
+  id: string;
+  onComplete?: () => void;
+}
+
+export function FeatureName({ id, onComplete }: FeatureNameProps) {
+  const { data, isLoading } = useFeatureData(id);
+  const [localState, setLocalState] = useState(false);
+
+  if (isLoading) return <LoadingSkeleton />;
+
+  return (
+    <div className="...">
+      {/* Component content */}
+    </div>
+  );
+}
+```
+
+### Component Rules
+- One component per file
+- Props interface defined above component
+- Named exports (not default)
+- 'use client' only when necessary
+- Destructure props in function signature
+
+## Data Fetching
+
+### tRPC (Authenticated)
+```typescript
+// hooks/usePublications.ts
+import { trpc } from '@/lib/trpc';
+
+export function usePublications(communityId: string) {
+  return trpc.publication.getByCommunity.useQuery(
+    { communityId },
+    { enabled: !!communityId }
+  );
+}
+
+export function useCreatePublication() {
+  const utils = trpc.useUtils();
+  
+  return trpc.publication.create.useMutation({
+    onSuccess: () => {
+      utils.publication.getByCommunity.invalidate();
+    },
+  });
+}
+```
+
+### REST (Unauthenticated)
+```typescript
+// hooks/usePublicData.ts
+import { useQuery } from '@tanstack/react-query';
+
+export function usePublicData() {
+  return useQuery({
+    queryKey: ['publicData'],
+    queryFn: async () => {
+      const res = await fetch('/api/rest/public-endpoint');
+      return res.json();
+    },
+  });
+}
+```
+
+## State Management
+
+### Zustand Store Pattern
+```typescript
+// stores/feature.store.ts
+import { create } from 'zustand';
+
+interface FeatureState {
+  items: Item[];
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+  addItem: (item: Item) => void;
+}
+
+export const useFeatureStore = create<FeatureState>((set) => ({
+  items: [],
+  selectedId: null,
+  setSelectedId: (id) => set({ selectedId: id }),
+  addItem: (item) => set((state) => ({ 
+    items: [...state.items, item] 
+  })),
+}));
+```
+
+### When to Use What
+| State Type | Solution |
+|------------|----------|
+| Server data | TanStack Query (tRPC) |
+| Global UI state | Zustand |
+| Form state | React Hook Form or local state |
+| Component state | useState/useReducer |
+| URL state | Next.js searchParams |
+
+## Styling (Tailwind)
+
+### Class Organization
+```tsx
+<div 
+  className={cn(
+    // Layout
+    "flex flex-col items-center",
+    // Spacing
+    "p-4 gap-2",
+    // Visual
+    "bg-white rounded-lg shadow",
+    // Interactive
+    "hover:bg-gray-50 transition-colors",
+    // Conditional
+    isActive && "ring-2 ring-blue-500"
+  )}
+/>
+```
+
+### Use `cn()` Utility
+```typescript
+// lib/utils.ts
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+```
+
+## App Router Patterns
+
+### Page Structure
+```typescript
+// app/community/[id]/page.tsx
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}
+
+export default async function CommunityPage({ params, searchParams }: PageProps) {
+  const { id } = await params;
+  const { tab } = await searchParams;
+  
+  return <CommunityView id={id} initialTab={tab} />;
+}
+```
+
+### Loading & Error
+```typescript
+// app/community/[id]/loading.tsx
+export default function Loading() {
+  return <CommunitySkeleton />;
+}
+
+// app/community/[id]/error.tsx
+'use client';
+export default function Error({ error, reset }: { error: Error; reset: () => void }) {
+  return <ErrorDisplay error={error} onRetry={reset} />;
+}
+```
+
+## Custom Hooks Pattern
+```typescript
+// hooks/useVoting.ts
+import { useState, useCallback } from 'react';
+import { trpc } from '@/lib/trpc';
+
+export function useVoting(publicationId: string) {
+  const [isVoting, setIsVoting] = useState(false);
+  const utils = trpc.useUtils();
+
+  const voteMutation = trpc.vote.create.useMutation({
+    onMutate: () => setIsVoting(true),
+    onSettled: () => setIsVoting(false),
+    onSuccess: () => {
+      utils.publication.getById.invalidate({ id: publicationId });
+    },
+  });
+
+  const vote = useCallback((amount: number) => {
+    voteMutation.mutate({ publicationId, amount });
+  }, [publicationId, voteMutation]);
+
+  return { vote, isVoting, error: voteMutation.error };
+}
+```
+
+## Common Mistakes
+
+❌ Using `useEffect` for data fetching (use TanStack Query)
+❌ Prop drilling more than 2 levels (use Zustand or Context)
+❌ Inline styles instead of Tailwind
+❌ Default exports for components
+❌ Business logic in components (extract to hooks)
+❌ Forgetting 'use client' for interactive components
+❌ Mutating state directly in Zustand

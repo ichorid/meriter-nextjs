@@ -1,0 +1,67 @@
+---
+description: Local development commands for Linux/macOS. Include when need to run, build, or test the project.
+globs: []
+alwaysApply: false
+---
+
+# Local Development Commands (Linux/macOS)
+
+## Start Servers
+
+**Terminal 1 — API:**
+```bash
+cd api
+DOMAIN=localhost pnpm dev
+# Runs on http://localhost:8002
+```
+
+**Terminal 2 — Web:**
+```bash
+cd web
+DOMAIN=localhost \
+NEXT_PUBLIC_FAKE_DATA_MODE=true \
+NEXT_PUBLIC_TEST_AUTH_MODE=true \
+pnpm dev
+# Runs on http://localhost:8001
+```
+
+## Key Commands
+```bash
+# Install dependencies
+pnpm install
+
+# Lint (REQUIRED before commit)
+pnpm lint
+pnpm lint:fix
+
+# Build
+pnpm build
+
+# Run tests
+pnpm test
+
+# Type check
+pnpm typecheck
+```
+
+## Ports
+- **8001** — Next.js (frontend)
+- **8002** — NestJS (backend API)
+- **8080** — Caddy (optional reverse proxy)
+
+## Common Issues
+
+**"Failed to fetch" tRPC errors:**
+→ Comment out `NEXT_PUBLIC_API_URL` in `web/.env`
+
+**"DOMAIN environment variable is required":**
+→ Add `DOMAIN=localhost` to both `api/.env` and `web/.env`
+
+**Kill processes on ports:**
+```bash
+lsof -ti:8001 | xargs kill -9
+lsof -ti:8002 | xargs kill -9
+```
+
+## Full Setup Guide
+See `docs/LOCAL_SETUP.md` for detailed instructions.
