@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -27,6 +27,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const router = useRouter();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
+  const { user: currentUser } = useAuth();
 
   const { data: user, isLoading, error, isFetched } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
@@ -35,6 +36,21 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const [contactsExpanded, setContactsExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.contactsExpanded`, true);
   const [rolesExpanded, setRolesExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.rolesExpanded`, true);
   const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.meritsExpanded`, true);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showAssignLeadDialog, setShowAssignLeadDialog] = useState(false);
+
+  // Check if viewing own profile
+  const isOwnProfile = useMemo(() => {
+    return currentUser?.id === userId;
+  }, [currentUser?.id, userId]);
+
+  // Get invitable communities for current user
+  const { data: invitableCommunitiesData } = useInvitableCommunities(userId);
+  const invitableCommunities = invitableCommunitiesData?.data || [];
+  const hasTeamsToInvite = invitableCommunities.length > 0;
+
+  // Check if current user is superadmin
+  const isSuperadmin = currentUser?.globalRole === 'superadmin';
 
   // Handle 404 - redirect to not-found if user doesn't exist
   useEffect(() => {
