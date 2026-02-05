@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { useTheme } from '@/shared/lib/theme-provider';
 
 interface TappalkaMeritIconProps {
   onDragStart?: () => void;
@@ -17,6 +18,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   size = 'md',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
+  const { resolvedTheme } = useTheme();
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -81,7 +83,10 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
           alt="Мерит"
           className={cn(
             'w-full h-full object-contain transition-all duration-200 select-none',
-            isDragging && 'brightness-75',
+            // Invert colors in dark mode to make dark icon visible on dark background
+            resolvedTheme === 'dark' && 'invert brightness-110',
+            // Reduce brightness when dragging (works in both themes)
+            isDragging && (resolvedTheme === 'dark' ? 'brightness-90' : 'brightness-75'),
           )}
           draggable={false}
         />
