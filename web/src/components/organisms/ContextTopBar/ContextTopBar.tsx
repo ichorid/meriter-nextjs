@@ -360,8 +360,8 @@ export const CommunityTopBar: React.FC<{
                 variant="ghost"
                 size="sm"
                 className="lg:hidden rounded-xl active:scale-[0.98] px-2"
-                aria-label={t('tappalka') || 'Tappalka'}
-                title={t('tappalka') || 'Tappalka'}
+                aria-label={t('tappalka') || 'Earn Merits'}
+                title={t('tappalka') || 'Заработать мериты'}
               >
                 <Scale size={18} className="text-base-content/70" />
               </Button>

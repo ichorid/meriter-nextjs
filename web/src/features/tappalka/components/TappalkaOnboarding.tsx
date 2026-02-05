@@ -30,10 +30,12 @@ export const TappalkaOnboarding: React.FC<TappalkaOnboardingProps> = ({
       )}
       onClick={(e) => e.stopPropagation()}
     >
-          {/* Drag handle */}
-          <div className="flex justify-center pt-4 pb-2">
-            <div className="w-12 h-1.5 bg-base-content/20 rounded-full" />
-          </div>
+          {/* Drag handle - only show for bottom sheet (not inline) */}
+          {!inline && (
+            <div className="flex justify-center pt-4 pb-2">
+              <div className="w-12 h-1.5 bg-base-content/20 rounded-full" />
+            </div>
+          )}
 
           {/* Close button */}
           <button
@@ -90,7 +92,7 @@ export const TappalkaOnboarding: React.FC<TappalkaOnboardingProps> = ({
   if (inline) {
     // Render inline without portal and backdrop (for use inside Dialog)
     return (
-      <div className="flex items-end justify-center min-h-full p-4">
+      <div className="flex items-start justify-center min-h-full p-4 pt-8">
         {content}
       </div>
     );
