@@ -10,7 +10,8 @@ interface TappalkaHeaderProps {
   currentComparisons: number;
   comparisonsRequired: number;
   meritBalance: number;
-  onBack: () => void;
+  onBack?: () => void;
+  showBackButton?: boolean;
   className?: string;
 }
 
@@ -19,6 +20,7 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
   comparisonsRequired,
   meritBalance,
   onBack,
+  showBackButton = false,
   className,
 }) => {
   // Calculate progress percentage
@@ -33,22 +35,24 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
         className,
       )}
     >
-      {/* Top row: Back button and title */}
+      {/* Top row: Back button (if shown) and title */}
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onBack}
-          className="h-8 w-8 p-0 rounded-full hover:bg-base-200 dark:hover:bg-base-800"
-          aria-label="Назад"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        {showBackButton && onBack && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onBack}
+            className="h-8 w-8 p-0 rounded-full hover:bg-base-200 dark:hover:bg-base-800"
+            aria-label="Назад"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
         <h1 className="text-lg font-semibold text-base-content flex-1">
           Сравнение постов
         </h1>
-        {/* Balance on the right */}
-        <div className="flex items-center gap-1.5 text-sm">
+        {/* Balance on the right - with padding to avoid overlap with close button */}
+        <div className="flex items-center gap-1.5 text-sm pr-12">
           <span className="text-base-content/60">Баланс:</span>
           <span className="font-semibold text-base-content">
             {meritBalance > 0 ? `+${formatMerits(meritBalance)}` : formatMerits(meritBalance)}

@@ -1065,7 +1065,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {/* Tappalka Modal */}
             <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>
                 <DialogContent 
-                    className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-base-200 [&>button]:hidden"
+                    className="max-w-4xl w-full h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto p-0 bg-base-200 sm:rounded-lg"
                     onInteractOutside={(e) => {
                         // Prevent closing on outside click
                         e.preventDefault();
