@@ -28,7 +28,7 @@ describe('Users - Get All Leads', () => {
   let lead1Id: string;
   let lead2Id: string;
   let participantId: string;
-  let viewerId: string;
+  let participant2Id: string;
 
   // Test community IDs
   let community1Id: string;
@@ -53,7 +53,7 @@ describe('Users - Get All Leads', () => {
     lead1Id = uid();
     lead2Id = uid();
     participantId = uid();
-    viewerId = uid();
+    participant2Id = uid();
 
     community1Id = uid();
     community2Id = uid();
@@ -70,8 +70,12 @@ describe('Users - Get All Leads', () => {
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
 
+    // Also clean up any legacy 'viewer' roles that might exist from old data
+    // This ensures no validation errors from deprecated role
+    await userCommunityRoleModel.deleteMany({ role: 'viewer' });
+
     // Authenticate tRPC calls in tests (protectedProcedure requires an authenticated user)
-    (global as any).testUserId = viewerId;
+    (global as any).testUserId = participant2Id;
     (global as any).testUserGlobalRole = undefined;
   });
 
@@ -144,11 +148,11 @@ describe('Users - Get All Leads', () => {
           updatedAt: new Date(),
         },
         {
-          id: viewerId,
+          id: participant2Id,
           authProvider: 'telegram',
-          authId: `tg-${viewerId}`,
-          displayName: 'Viewer',
-          username: 'viewer',
+          authId: `tg-${participant2Id}`,
+          displayName: 'Participant 2',
+          username: 'participant2',
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -190,9 +194,9 @@ describe('Users - Get All Leads', () => {
         },
         {
           id: uid(),
-          userId: viewerId,
+          userId: participant2Id,
           communityId: community1Id,
-          role: 'viewer',
+          role: 'participant',
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -208,7 +212,7 @@ describe('Users - Get All Leads', () => {
       expect(userIds).toContain(lead1Id);
       expect(userIds).toContain(lead2Id);
       expect(userIds).not.toContain(participantId);
-      expect(userIds).not.toContain(viewerId);
+      expect(userIds).not.toContain(participant2Id);
 
       // Check user data structure
       const lead1 = response.data.find((u: any) => u.id === lead1Id);
