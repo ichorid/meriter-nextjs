@@ -266,7 +266,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         ) : pair ? (
           <>
             {/* Posts comparison */}
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 w-full max-w-6xl">
+            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 w-full max-w-6xl">
               {/* Post A */}
               <div className="flex-1 w-full md:max-w-md">
                 <TappalkaPostCard
@@ -281,14 +281,42 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                 />
               </div>
 
-              {/* VS indicator */}
+              {/* VS indicator and Merit icon (mobile: between posts, desktop: VS only) */}
               <div className="flex-shrink-0">
-                <div className="flex flex-col items-center gap-2">
-                  <div className="text-2xl md:text-4xl font-bold text-base-content/50">
-                    VS
+                <div className="flex flex-col items-center gap-6 md:gap-2">
+                  {/* VS indicator - hidden on mobile, shown on desktop */}
+                  <div className="hidden md:flex flex-col items-center gap-2">
+                    <div className="text-4xl font-bold text-base-content/50">
+                      VS
+                    </div>
+                    {isSubmitting && (
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                    )}
                   </div>
+                  
+                  {/* Merit icon - shown on mobile between posts, hidden on desktop */}
+                  <div className="flex md:hidden flex-col items-center gap-2">
+                    <TappalkaMeritIcon
+                      onDragStart={handleDragStart}
+                      onDragEnd={handleDragEnd}
+                      size="lg"
+                      disabled={isVotingDisabled}
+                      className={cn(
+                        'transition-all duration-200',
+                        draggedPostId && 'opacity-70 scale-90',
+                        isVotingDisabled && 'opacity-50 cursor-not-allowed',
+                      )}
+                    />
+                    <p className="text-xs text-base-content/50 text-center max-w-[180px]">
+                      Перетащите на пост, который вам больше нравится
+                    </p>
+                  </div>
+                  
+                  {/* Loading indicator for mobile */}
                   {isSubmitting && (
-                    <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                    <div className="md:hidden">
+                      <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                    </div>
                   )}
                 </div>
               </div>
@@ -308,8 +336,8 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
               </div>
             </div>
 
-            {/* Merit icon (draggable) */}
-            <div className="flex flex-col items-center gap-2 mt-4">
+            {/* Merit icon (draggable) - desktop only */}
+            <div className="hidden md:flex flex-col items-center gap-2 mt-4">
               <p className="text-sm text-base-content/60 mb-2">
                 Перетащите мерит на пост, который вам больше нравится
               </p>
