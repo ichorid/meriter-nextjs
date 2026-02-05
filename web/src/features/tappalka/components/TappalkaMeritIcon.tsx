@@ -1,0 +1,100 @@
+'use client';
+
+import React, { useState, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+
+interface TappalkaMeritIconProps {
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
+}
+
+export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
+  onDragStart,
+  onDragEnd,
+  className,
+  size = 'md',
+}) => {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      setIsDragging(true);
+      
+      // Set drag image (optional - can customize the drag preview)
+      const dragImage = e.currentTarget.cloneNode(true) as HTMLElement;
+      dragImage.style.opacity = '0.8';
+      dragImage.style.transform = 'rotate(15deg)';
+      document.body.appendChild(dragImage);
+      e.dataTransfer.setDragImage(dragImage, 0, 0);
+      
+      // Set drag data
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', 'merit');
+      
+      // Call custom handler
+      onDragStart?.();
+      
+      // Clean up drag image after a short delay
+      setTimeout(() => {
+        document.body.removeChild(dragImage);
+      }, 0);
+    },
+    [onDragStart],
+  );
+
+  const handleDragEnd = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      setIsDragging(false);
+      onDragEnd?.();
+    },
+    [onDragEnd],
+  );
+
+  const sizeClasses = {
+    sm: 'w-12 h-12',
+    md: 'w-16 h-16',
+    lg: 'w-20 h-20',
+  };
+
+  return (
+    <div
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={cn(
+        'relative cursor-grab active:cursor-grabbing transition-all duration-200',
+        'hover:scale-110 hover:rotate-12',
+        isDragging && 'opacity-50 scale-90 rotate-12',
+        sizeClasses[size],
+        className,
+      )}
+      role="button"
+      aria-label="Перетащите мерит на пост"
+      tabIndex={0}
+    >
+      {/* Merit icon - using SVG from public */}
+      <div className="relative w-full h-full">
+        <img
+          src="/meriter/merit.svg"
+          alt="Мерит"
+          className={cn(
+            'w-full h-full object-contain transition-all duration-200 select-none',
+            isDragging && 'brightness-75',
+          )}
+          draggable={false}
+        />
+      </div>
+      
+      {/* Glow effect when dragging */}
+      {isDragging && (
+        <div className="absolute inset-0 rounded-full bg-yellow-400/30 blur-md -z-10 animate-pulse" />
+      )}
+      
+      {/* Hover glow */}
+      <div className="absolute inset-0 rounded-full bg-yellow-400/0 hover:bg-yellow-400/20 blur-md -z-10 transition-all duration-200" />
+    </div>
+  );
+};
+
