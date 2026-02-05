@@ -123,7 +123,7 @@ function updateRule(
 }
 
 function getAllowedRolesForAction(rules: PermissionRule[], action: string): Role[] {
-  const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+  const roles: Role[] = ['superadmin', 'lead', 'participant'];
   return roles.filter(role => getRuleAllowed(rules, role, action));
 }
 
@@ -132,7 +132,7 @@ function setAllowedRolesForAction(
   action: string,
   allowedRoles: Role[]
 ): PermissionRule[] {
-  const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+  const roles: Role[] = ['superadmin', 'lead', 'participant'];
   let updatedRules = [...rules];
 
   for (const role of roles) {
@@ -143,6 +143,9 @@ function setAllowedRolesForAction(
       updatedRules = updateRule(updatedRules, role, action, { allowed: isAllowed });
     }
   }
+  
+  // Remove any rules for 'viewer' role (deprecated)
+  updatedRules = updatedRules.filter(rule => rule.role !== 'viewer');
 
   return updatedRules;
 }
@@ -169,7 +172,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
   // Initialize permissionRules from community
   const initialPermissionRules = useMemo(() => {
-    return community.permissionRules || [];
+    const rules = community.permissionRules || [];
+    // Filter out deprecated 'viewer' role rules
+    return rules.filter(rule => rule.role !== 'viewer');
   }, [community.permissionRules]);
 
   const [permissionRules, setPermissionRules] = useState<PermissionRule[]>(initialPermissionRules);
@@ -351,7 +356,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     
     prevCommunityRef.current = communityKey;
     
-    const initialRules = community.permissionRules || [];
+    const initialRules = (community.permissionRules || []).filter(rule => rule.role !== 'viewer');
     setPermissionRules(JSON.parse(JSON.stringify(initialRules)));
     setLinkedCurrencies([...(community.linkedCurrencies || [])]);
     setDailyEmission(String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100));
@@ -438,8 +443,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         ? (votingRestriction[0] as 'any' | 'not-same-team') || 'any'
         : votingRestriction || 'any';
       
+      // Filter out deprecated 'viewer' role from permissionRules
+      const validPermissionRules = permissionRules.filter(rule => rule.role !== 'viewer');
+      
       const dataToSave = {
-        permissionRules,
+        permissionRules: validPermissionRules,
         meritSettings: {
           dailyQuota: parseInt(dailyEmission, 10) || 100,
           quotaRecipients: validQuotaRecipients,
@@ -660,7 +668,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+            {(['superadmin', 'lead', 'participant'] as const).map((role) => {
               const checkboxId = `posting-role-${role}`;
               return (
                 <div key={role} className="flex items-center gap-2.5">
@@ -691,7 +699,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
               onCheckedChange={(checked) => {
                 // Update conditions for all roles that have POST_PUBLICATION rules
                 let updatedRules = permissionRules;
-                const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+                const roles: Role[] = ['superadmin', 'lead', 'participant'];
                 for (const role of roles) {
                   const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
                   if (rule) {
@@ -714,7 +722,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
               checked={postingOnlyTeamLead}
               onCheckedChange={(checked) => {
                 let updatedRules = permissionRules;
-                const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+                const roles: Role[] = ['superadmin', 'lead', 'participant'];
                 for (const role of roles) {
                   const rule = findRule(updatedRules, role, ActionType.POST_PUBLICATION);
                   if (rule) {
@@ -814,7 +822,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('allowedRoles')}>
           <div className="space-y-2.5">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+            {(['superadmin', 'lead', 'participant'] as const).map((role) => {
               const checkboxId = `voting-role-${role}`;
               return (
                 <div key={role} className="flex items-center gap-2.5">
@@ -845,7 +853,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             onCheckedChange={(checked) => {
               let updatedRules = permissionRules;
               // Update conditions for all roles - create rules if they don't exist
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              const roles: Role[] = ['superadmin', 'lead', 'participant'];
               for (const role of roles) {
                 const rule = findRule(updatedRules, role, ActionType.VOTE);
                 // If rule exists, update it; if not, create it with default allowed=true
@@ -869,7 +877,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             onCheckedChange={(checked) => {
               let updatedRules = permissionRules;
               // Update conditions for all roles - create rules if they don't exist
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              const roles: Role[] = ['superadmin', 'lead', 'participant'];
               for (const role of roles) {
                 const rule = findRule(updatedRules, role, ActionType.VOTE);
                 // If rule exists, update it; if not, create it with default allowed=true
@@ -945,7 +953,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl label={t('visibleToRoles')}>
           <div className="space-y-2.5">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+            {(['superadmin', 'lead', 'participant'] as const).map((role) => {
               const checkboxId = `visibility-role-${role}`;
               return (
                 <div key={role} className="flex items-center gap-2.5">
@@ -975,7 +983,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             checked={isHidden}
             onCheckedChange={(checked) => {
               let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              const roles: Role[] = ['superadmin', 'lead', 'participant'];
               for (const role of roles) {
                 const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
                 if (rule) {
@@ -998,7 +1006,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             checked={teamOnly}
             onCheckedChange={(checked) => {
               let updatedRules = permissionRules;
-              const roles: Role[] = ['superadmin', 'lead', 'participant', 'viewer'];
+              const roles: Role[] = ['superadmin', 'lead', 'participant'];
               for (const role of roles) {
                 const rule = findRule(updatedRules, role, ActionType.VIEW_COMMUNITY);
                 if (rule) {
