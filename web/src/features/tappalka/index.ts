@@ -6,4 +6,11 @@ export {
   useTappalkaProgress,
   useTappalkaOnboarding,
 } from './hooks';
+export {
+  TappalkaPostCard,
+  TappalkaHeader,
+  TappalkaMeritIcon,
+  TappalkaOnboarding,
+  TappalkaScreen,
+} from './components';
 
