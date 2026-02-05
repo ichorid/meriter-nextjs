@@ -13,7 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -59,6 +59,8 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Plus } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { TappalkaScreen } from '@/features/tappalka';
+import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -92,6 +94,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const searchQuery = searchParams?.get('q') || '';
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
+    const [showTappalkaModal, setShowTappalkaModal] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     // Handle search query change
@@ -643,6 +646,19 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     {tCommunities('createPost')}
                                 </Button>
                             )}
+                            {/* Tappalka Button - show only if enabled */}
+                            {comms?.tappalkaSettings?.enabled && (
+                                <Button
+                                    onClick={() => setShowTappalkaModal(true)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                                    aria-label={tCommunities('tappalka') || 'Tappalka'}
+                                >
+                                    <Scale size={16} />
+                                    {tCommunities('tappalka') || 'Тапалка'}
+                                </Button>
+                            )}
                             {/* Search Button */}
                             <Button
                                 variant="ghost"
@@ -1043,6 +1059,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </div>
                 </BottomActionSheet>
             )}
+
+            {/* Tappalka Modal */}
+            <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+                    <TappalkaScreen
+                        communityId={chatId}
+                        onClose={() => setShowTappalkaModal(false)}
+                    />
+                </DialogContent>
+            </Dialog>
 
         </AdaptiveLayout>
     );
