@@ -112,11 +112,18 @@ export const CommunityVotingSettingsSchema = z.object({
   votingRestriction: z.preprocess(
     (val) => {
       // Normalize votingRestriction: handle array case (legacy data) and ensure it's a string
+      if (val === undefined || val === null) return undefined;
       if (Array.isArray(val)) {
         // If it's an array, take the first valid value
-        return (val[0] === 'any' || val[0] === 'not-same-team') ? val[0] : 'any';
+        const first = val[0];
+        return (first === 'any' || first === 'not-same-team') ? first : 'any';
       }
-      return val;
+      // If it's already a string, return as is
+      if (typeof val === 'string' && (val === 'any' || val === 'not-same-team')) {
+        return val;
+      }
+      // Invalid value, default to 'any'
+      return 'any';
     },
     z.enum(["any", "not-same-team"]).optional()
   ),

@@ -244,10 +244,24 @@ export const communitiesRouter = router({
    * Update a community
    */
   update: protectedProcedure
-    .input(z.object({
-      id: z.string(),
-      data: UpdateCommunityDtoSchema,
-    }))
+    .input(z.preprocess(
+      (input: any) => {
+        // Normalize votingRestriction if it's an array (legacy data) BEFORE validation
+        if (input?.data?.votingSettings?.votingRestriction !== undefined) {
+          const restriction = input.data.votingSettings.votingRestriction;
+          if (Array.isArray(restriction)) {
+            input.data.votingSettings.votingRestriction = (restriction[0] === 'any' || restriction[0] === 'not-same-team') 
+              ? restriction[0] 
+              : 'any';
+          }
+        }
+        return input;
+      },
+      z.object({
+        id: z.string(),
+        data: UpdateCommunityDtoSchema,
+      })
+    ))
     .mutation(async ({ ctx, input }) => {
       const isAdmin = await ctx.communityService.isUserAdmin(input.id, ctx.user.id);
       const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
