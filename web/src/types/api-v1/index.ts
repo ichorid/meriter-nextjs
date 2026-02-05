@@ -263,7 +263,9 @@ export type NotificationType =
     | "poll"
     | "favorite_update"
     | "system"
-    | "forward_proposal";
+    | "forward_proposal"
+    | "team_join_request"
+    | "team_invitation";
 
 export interface Notification {
     id: string;
@@ -274,6 +276,9 @@ export interface Notification {
     createdAt: string;
     url?: string; // URL to navigate to related content
     relatedId?: string; // ID of related content (publication, comment, etc.)
+    metadata?: {
+        [key: string]: any; // Additional metadata (e.g., invitationId, communityId, etc.)
+    };
     actor?: {
         id: string;
         name: string;

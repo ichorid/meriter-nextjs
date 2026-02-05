@@ -44,7 +44,7 @@ export function useInviteToTeam() {
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
       
-      addToast('Пользователь успешно приглашён в команду', 'success');
+      addToast('Приглашение отправлено', 'success');
     },
     onError: (error) => {
       const message = error.message || 'Не удалось пригласить пользователя';
@@ -93,5 +93,50 @@ export function useInvitableCommunities(targetUserId: string) {
  */
 export function useMyLeadCommunities() {
   return trpc.users.getMyLeadCommunities.useQuery();
+}
+
+/**
+ * Hook to accept a team invitation
+ */
+export function useAcceptTeamInvitation() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+
+  return trpc.users.acceptTeamInvitation.useMutation({
+    onSuccess: () => {
+      // Invalidate relevant queries
+      utils.notifications.getAll.invalidate();
+      utils.users.getMe.invalidate();
+      utils.users.getUserRoles.invalidate();
+      utils.users.getUserProfile.invalidate();
+      
+      addToast('Приглашение принято', 'success');
+    },
+    onError: (error) => {
+      const message = error.message || 'Не удалось принять приглашение';
+      addToast(message, 'error');
+    },
+  });
+}
+
+/**
+ * Hook to reject a team invitation
+ */
+export function useRejectTeamInvitation() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+
+  return trpc.users.rejectTeamInvitation.useMutation({
+    onSuccess: () => {
+      // Invalidate relevant queries
+      utils.notifications.getAll.invalidate();
+      
+      addToast('Приглашение отклонено', 'success');
+    },
+    onError: (error) => {
+      const message = error.message || 'Не удалось отклонить приглашение';
+      addToast(message, 'error');
+    },
+  });
 }
 

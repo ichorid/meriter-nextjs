@@ -67,7 +67,7 @@ export function InviteToTeamDialog({
         <DialogHeader>
           <DialogTitle>Выберите команду</DialogTitle>
           <DialogDescription>
-            Пользователь будет добавлен как участник в выбранную команду.
+            Пользователю будет отправлено приглашение в выбранную команду. Он сможет принять или отклонить его.
           </DialogDescription>
         </DialogHeader>
 

@@ -45,13 +45,31 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     return currentUser?.id === userId;
   }, [currentUser?.id, userId]);
 
-  // Get invitable communities for current user
-  const { data: invitableCommunitiesData } = useInvitableCommunities(userId);
-  const invitableCommunities = invitableCommunitiesData?.data || [];
-  const hasTeamsToInvite = invitableCommunities.length > 0;
-
   // Check if current user is superadmin
   const isSuperadmin = currentUser?.globalRole === 'superadmin';
+
+  // Get invitable communities for current user
+  const { data: invitableCommunitiesData, isLoading: invitableCommunitiesLoading } = useInvitableCommunities(userId);
+  // getInvitableCommunities returns array directly, not wrapped in { data: [...] }
+  const invitableCommunities = Array.isArray(invitableCommunitiesData) 
+    ? invitableCommunitiesData 
+    : invitableCommunitiesData?.data || [];
+  const hasTeamsToInvite = !invitableCommunitiesLoading && invitableCommunities.length > 0;
+  
+  // Debug: log values to understand why button might not show
+  React.useEffect(() => {
+    if (!isOwnProfile) {
+      console.log('Invite button debug:', {
+        isOwnProfile,
+        hasTeamsToInvite,
+        isSuperadmin,
+        invitableCommunitiesLoading,
+        invitableCommunitiesCount: invitableCommunities.length,
+        invitableCommunities,
+        shouldShow: !isOwnProfile && (hasTeamsToInvite || isSuperadmin),
+      });
+    }
+  }, [isOwnProfile, hasTeamsToInvite, isSuperadmin, invitableCommunitiesLoading, invitableCommunities.length]);
 
   // Handle 404 - redirect to not-found if user doesn't exist
   useEffect(() => {
@@ -205,31 +223,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
             )}
           </div>
 
-          {/* Action Buttons (only for other users) */}
-          {!isOwnProfile && (hasTeamsToInvite || isSuperadmin) && (
-            <div className="mb-4 flex gap-2">
-              {hasTeamsToInvite && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowInviteDialog(true)}
-                  className="rounded-xl flex-1"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Пригласить в команду
-                </Button>
-              )}
-              {isSuperadmin && (
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAssignLeadDialog(true)}
-                  className="rounded-xl flex-1"
-                >
-                  <UserCog className="mr-2 h-4 w-4" />
-                  Назначить лидом
-                </Button>
-              )}
-            </div>
-          )}
 
           {/* Info Sections */}
           <div className="space-y-0">
@@ -490,6 +483,36 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                   expanded={meritsExpanded}
                   onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
                 />
+              </>
+            )}
+
+            {/* Action Buttons (at the bottom) */}
+            {!isOwnProfile && (hasTeamsToInvite || isSuperadmin) && (
+              <>
+                {/* Show separator if there's any content above */}
+                {(about || bio || (isRepresentativeOrMember && educationalInstitution) || (showContacts && contacts && (contacts.email || contacts.messenger)) || showRolesSection || (!rolesLoading && communityIds.length > 0)) && <Separator className="bg-base-300 my-0" />}
+                <div className="bg-base-100 py-4 flex gap-2">
+                  {hasTeamsToInvite && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowInviteDialog(true)}
+                      className="rounded-xl flex-1"
+                    >
+                      <Users className="mr-2 h-4 w-4" />
+                      Пригласить в команду
+                    </Button>
+                  )}
+                  {isSuperadmin && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowAssignLeadDialog(true)}
+                      className="rounded-xl flex-1"
+                    >
+                      <UserCog className="mr-2 h-4 w-4" />
+                      Назначить лидом
+                    </Button>
+                  )}
+                </div>
               </>
             )}
           </div>
