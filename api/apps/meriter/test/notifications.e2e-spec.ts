@@ -641,11 +641,21 @@ describe('Notifications E2E Tests', () => {
       );
 
       await waitFor(async () => {
-        const count = await notificationModel.countDocuments({ userId: testUserId });
+        const count = await notificationModel.countDocuments({ 
+          userId: testUserId,
+          type: 'vote',
+          'metadata.publicationId': testPublicationId,
+        });
         return count > 0;
       });
 
-      const notifications = await notificationModel.find({ userId: testUserId }).lean();
+      // Find vote notification with publicationId in metadata
+      const notifications = await notificationModel.find({ 
+        userId: testUserId,
+        type: 'vote',
+        'metadata.publicationId': testPublicationId,
+      }).lean();
+      
       expect(notifications.length).toBeGreaterThan(0);
 
       const notification = notifications[0];
