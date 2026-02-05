@@ -31,6 +31,7 @@ import { CategoryService } from '../domain/services/category.service';
 import { AboutService } from '../domain/services/about.service';
 import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { TappalkaService } from '../domain/services/tappalka.service';
+import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -66,6 +67,7 @@ export class TrpcService {
     private aboutService: AboutService,
     private voteFactorService: VoteFactorService,
     private tappalkaService: TappalkaService,
+    private teamJoinRequestService: TeamJoinRequestService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -107,6 +109,7 @@ export class TrpcService {
       aboutService: this.aboutService,
       voteFactorService: this.voteFactorService,
       tappalkaService: this.tappalkaService,
+      teamJoinRequestService: this.teamJoinRequestService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

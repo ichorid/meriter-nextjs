@@ -60,6 +60,10 @@ import {
   TappalkaProgressSchemaClass,
   TappalkaProgressSchema,
 } from './domain/models/tappalka/tappalka-progress.schema';
+import {
+  TeamJoinRequestSchemaClass,
+  TeamJoinRequestSchema,
+} from './domain/models/team-join-request/team-join-request.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -89,6 +93,7 @@ import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
 import { TappalkaService } from './domain/services/tappalka.service';
+import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -123,6 +128,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: AboutCategorySchemaClass.name, schema: AboutCategorySchema },
       { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
       { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
+      { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
     ]),
   ],
   providers: [
@@ -154,6 +160,7 @@ import { EventBus } from './domain/events/event-bus';
     CategoryService,
     AboutService,
     TappalkaService,
+    TeamJoinRequestService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -194,6 +201,7 @@ import { EventBus } from './domain/events/event-bus';
     CategoryService,
     AboutService,
     TappalkaService,
+    TeamJoinRequestService,
 
     // Export vote factor services
     RoleHierarchyFactor,

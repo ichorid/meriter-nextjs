@@ -382,6 +382,13 @@ export class NotificationService {
       case 'vote':
       case 'beneficiary':
       case 'publication':
+      case 'team_join_request': {
+        const communityId = notification.metadata?.communityId;
+        if (communityId) {
+          return `/meriter/communities/${communityId}/members`;
+        }
+        return undefined;
+      }
       case 'forward_proposal': {
         const { communityId, publicationId, targetId, targetType } = metadata;
         if (!communityId || !publicationId) {
