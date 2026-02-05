@@ -16,6 +16,10 @@ import { SearchInput } from '@/components/molecules/SearchInput';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddMeritsDialog } from '@/components/organisms/Community/AddMeritsDialog';
 import { Coins } from 'lucide-react';
+import { useTeamRequestsForLead, useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
+import { TeamRequestCard } from '@/components/molecules/TeamRequestCard/TeamRequestCard';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { Separator } from '@/components/ui/shadcn/separator';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -37,6 +41,16 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     });
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
     const { data: _userRoles = [] } = useUserRoles(user?.id || '');
+    
+    // Get team join requests (only for team communities and admins)
+    const { data: requestsData } = useTeamRequestsForLead(
+        isTeam && isAdmin ? communityId : ''
+    );
+    const { mutate: approveRequest, isPending: isApproving } = useApproveTeamRequest();
+    const { mutate: rejectRequest, isPending: isRejecting } = useRejectTeamRequest();
+    const addToast = useToastStore((state) => state.addToast);
+    
+    const requests = requestsData || [];
 
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;
@@ -56,6 +70,36 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }))) {
             removeMember({ id: communityId, userId });
+        }
+    };
+
+    const handleApproveRequest = (requestId: string) => {
+        approveRequest(
+            { requestId },
+            {
+                onSuccess: () => {
+                    addToast(t('teamRequests.approved'), 'success');
+                },
+                onError: (error: any) => {
+                    addToast(error.message || t('teamRequests.approveFailed'), 'error');
+                },
+            }
+        );
+    };
+
+    const handleRejectRequest = (requestId: string) => {
+        if (confirm(t('teamRequests.confirmReject'))) {
+            rejectRequest(
+                { requestId },
+                {
+                    onSuccess: () => {
+                        addToast(t('teamRequests.rejected'), 'success');
+                    },
+                    onError: (error: any) => {
+                        addToast(error.message || t('teamRequests.rejectFailed'), 'error');
+                    },
+                }
+            );
         }
     };
 
@@ -107,6 +151,29 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                                 className="w-full"
                             />
                         </div>
+                        
+                        {/* Team Join Requests Section (only for team communities and admins) */}
+                        {isTeam && isAdmin && requests.length > 0 && (
+                            <div className="mb-4">
+                                <h3 className="text-sm font-medium text-base-content/60 mb-2">
+                                    {t('teamRequests.title')}
+                                </h3>
+                                <div className="space-y-2">
+                                    {requests.map((request) => (
+                                        <TeamRequestCard
+                                            key={request.id}
+                                            request={request}
+                                            onApprove={handleApproveRequest}
+                                            onReject={handleRejectRequest}
+                                            isApproving={isApproving}
+                                            isRejecting={isRejecting}
+                                        />
+                                    ))}
+                                </div>
+                                {members.length > 0 && <Separator className="my-4" />}
+                            </div>
+                        )}
+                        
                         {members.length > 0 ? (
                             <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
                                 {members.map((member) => (

@@ -11,4 +11,5 @@ export * from './useQuota';
 export * from './useCommunityQuota';
 export * from './useCommunityMembers';
 export * from './useFavorites';
+export * from './useTeamRequests';
 

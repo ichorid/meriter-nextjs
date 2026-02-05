@@ -22,6 +22,7 @@ import { useInvitableCommunities } from '@/hooks/api/useTeams';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
 import { AssignLeadDialog } from '@/components/organisms/Profile/AssignLeadDialog';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
+import { JoinTeamButton } from '@/components/molecules/JoinTeamButton/JoinTeamButton';
 
 export function UserProfilePageClient({ userId }: { userId: string }) {
   const router = useRouter();
@@ -401,14 +402,22 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                                   {leadTeamRoles.map((role) => (
                                     <div
                                       key={role.id}
-                                      className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50"
+                                      className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50 flex items-center justify-between gap-3"
                                     >
-                                      <p className="text-sm font-medium text-base-content">
-                                        {t('leadLabel')}
-                                      </p>
-                                      <p className="text-xs text-base-content/60 mt-0.5">
-                                        {tCommon('team')}: "{role.communityName || role.communityId || ''}"
-                                      </p>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-base-content">
+                                          {t('leadLabel')}
+                                        </p>
+                                        <p className="text-xs text-base-content/60 mt-0.5">
+                                          {tCommon('team')}: "{role.communityName || role.communityId || ''}"
+                                        </p>
+                                      </div>
+                                      {!isOwnProfile && role.communityId && (
+                                        <JoinTeamButton
+                                          communityId={role.communityId}
+                                          communityName={role.communityName || role.communityId}
+                                        />
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -427,23 +436,31 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                                     return (
                                       <div
                                         key={role.id}
-                                        className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50"
+                                        className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50 flex items-center justify-between gap-3"
                                       >
-                                        <p className="text-sm font-medium text-base-content">
-                                          {tCommon('participant')}
-                                        </p>
-                                        <p className="text-xs text-base-content/60 mt-0.5">
-                                          {tCommon('team')}: "{role.communityName || role.communityId || ''}"
-                                        </p>
-                                        {teamLead && (
-                                          <p className="text-xs text-base-content/60 mt-1.5">
-                                            <Link 
-                                              href={routes.userProfile(teamLead.id)}
-                                              className="hover:text-base-content transition-colors underline"
-                                            >
-                                              {t('contactTeamRepresentative')}
-                                            </Link>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium text-base-content">
+                                            {tCommon('participant')}
                                           </p>
+                                          <p className="text-xs text-base-content/60 mt-0.5">
+                                            {tCommon('team')}: "{role.communityName || role.communityId || ''}"
+                                          </p>
+                                          {teamLead && (
+                                            <p className="text-xs text-base-content/60 mt-1.5">
+                                              <Link 
+                                                href={routes.userProfile(teamLead.id)}
+                                                className="hover:text-base-content transition-colors underline"
+                                              >
+                                                {t('contactTeamRepresentative')}
+                                              </Link>
+                                            </p>
+                                          )}
+                                        </div>
+                                        {!isOwnProfile && role.communityId && (
+                                          <JoinTeamButton
+                                            communityId={role.communityId}
+                                            communityName={role.communityName || role.communityId}
+                                          />
                                         )}
                                       </div>
                                     );
