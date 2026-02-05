@@ -208,7 +208,7 @@ describe('Forward Permissions', () => {
         id: uid(),
         userId: viewerId,
         communityId: teamCommunityId,
-        role: 'viewer',
+        role: 'participant',
         createdAt: new Date(),
         updatedAt: new Date(),
       },

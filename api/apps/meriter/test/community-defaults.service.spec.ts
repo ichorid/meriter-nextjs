@@ -9,7 +9,7 @@ describe('CommunityDefaultsService', () => {
   // Helper function to find a rule by role and action
   function findRule(
     rules: PermissionRule[],
-    role: 'superadmin' | 'lead' | 'participant' | 'viewer',
+    role: 'superadmin' | 'lead' | 'participant',
     action: ActionType,
   ): PermissionRule | undefined {
     return rules.find(r => r.role === role && r.action === action);
@@ -18,7 +18,7 @@ describe('CommunityDefaultsService', () => {
   // Helper function to count occurrences of a rule
   function countRuleOccurrences(
     rules: PermissionRule[],
-    role: 'superadmin' | 'lead' | 'participant' | 'viewer',
+    role: 'superadmin' | 'lead' | 'participant',
     action: ActionType,
   ): number {
     return rules.filter(r => r.role === role && r.action === action).length;
@@ -82,10 +82,7 @@ describe('CommunityDefaultsService', () => {
       expect(findRule(rules, 'participant', ActionType.COMMENT)?.allowed).toBe(true);
       expect(findRule(rules, 'participant', ActionType.VIEW_COMMUNITY)?.allowed).toBe(true);
 
-      // Viewer should only have VIEW_COMMUNITY
-      expect(findRule(rules, 'viewer', ActionType.VIEW_COMMUNITY)?.allowed).toBe(true);
-      expect(findRule(rules, 'viewer', ActionType.VOTE)).toBeUndefined();
-      expect(findRule(rules, 'viewer', ActionType.POST_PUBLICATION)).toBeUndefined();
+      // Note: Viewer role has been removed - all users are now participants by default
     });
 
     it('should have participant:VOTE rule without canVoteForOwnPosts condition (handled by currency constraint)', () => {
@@ -132,9 +129,7 @@ describe('CommunityDefaultsService', () => {
       const fvLeadPost = findRule(futureVisionRules, 'lead', ActionType.POST_PUBLICATION);
       expect(fvLeadPost).toEqual(baseLeadPost);
 
-      const baseViewerView = findRule(baseRules, 'viewer', ActionType.VIEW_COMMUNITY);
-      const fvViewerView = findRule(futureVisionRules, 'viewer', ActionType.VIEW_COMMUNITY);
-      expect(fvViewerView).toEqual(baseViewerView);
+      // Note: Viewer role has been removed - all users are now participants by default
     });
 
     it('should have exactly one participant:VOTE rule (no duplicates)', () => {
@@ -160,14 +155,8 @@ describe('CommunityDefaultsService', () => {
       expect(participantVoteRule?.conditions).toBeUndefined();
     });
 
-    it('should add viewer:VOTE rule', () => {
-      const rules = service.getDefaultPermissionRules('marathon-of-good');
-      const viewerVoteRule = findRule(rules, 'viewer', ActionType.VOTE);
-
-      expect(viewerVoteRule).toBeDefined();
-      expect(viewerVoteRule?.allowed).toBe(true);
-      expect(viewerVoteRule?.conditions).toBeUndefined();
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // Tests for viewer role have been removed as the role no longer exists
 
     it('should preserve all other base rules unchanged', () => {
       const baseRules = service.getDefaultPermissionRules();
@@ -237,13 +226,8 @@ describe('CommunityDefaultsService', () => {
       expect(participantVoteRule?.conditions?.canVoteForOwnPosts).toBeUndefined();
     });
 
-    it('should override viewer:VIEW_COMMUNITY with allowed: false', () => {
-      const rules = service.getDefaultPermissionRules('team');
-      const viewerViewRule = findRule(rules, 'viewer', ActionType.VIEW_COMMUNITY);
-
-      expect(viewerViewRule).toBeDefined();
-      expect(viewerViewRule?.allowed).toBe(false);
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // Tests for viewer role have been removed as the role no longer exists
 
     it('should preserve all other base rules unchanged', () => {
       const baseRules = service.getDefaultPermissionRules();
@@ -285,18 +269,18 @@ describe('CommunityDefaultsService', () => {
       const futureVisionRules = service.getDefaultPermissionRules('future-vision');
       expect(futureVisionRules.length).toBe(baseRuleCount);
 
-      // Marathon-of-good adds 1 rule (viewer:VOTE) and overrides 1 (participant:VOTE)
-      // So count should be baseRuleCount + 1
+      // Marathon-of-good overrides 1 rule (participant:VOTE) without adding new ones (viewer role removed)
+      // So count should be the same
       const marathonRules = service.getDefaultPermissionRules('marathon-of-good');
-      expect(marathonRules.length).toBe(baseRuleCount + 1);
+      expect(marathonRules.length).toBe(baseRuleCount);
 
       // Support overrides 1 rule (participant:VOTE) without adding new ones
       // So count should be the same
       const supportRules = service.getDefaultPermissionRules('support');
       expect(supportRules.length).toBe(baseRuleCount);
 
-      // Team overrides 4 rules (participant:POST_PUBLICATION, participant:CREATE_POLL, 
-      // participant:VOTE, viewer:VIEW_COMMUNITY) without adding new ones
+      // Team overrides 3 rules (participant:POST_PUBLICATION, participant:CREATE_POLL, 
+      // participant:VOTE) without adding new ones (viewer role removed)
       // So count should be the same
       const teamRules = service.getDefaultPermissionRules('team');
       expect(teamRules.length).toBe(baseRuleCount);
@@ -338,15 +322,13 @@ describe('CommunityDefaultsService', () => {
       const marathonRules = service.getDefaultPermissionRules('marathon-of-good');
       const marathonParticipantVote = findRule(marathonRules, 'participant', ActionType.VOTE);
       expect(marathonParticipantVote?.allowed).toBe(true);
-      const marathonViewerVote = findRule(marathonRules, 'viewer', ActionType.VOTE);
-      expect(marathonViewerVote?.allowed).toBe(true);
+      // Note: Viewer role has been removed - all users are now participants by default
 
       // Test team
       const teamRules = service.getDefaultPermissionRules('team');
       const teamParticipantPost = findRule(teamRules, 'participant', ActionType.POST_PUBLICATION);
       expect(teamParticipantPost?.conditions?.requiresTeamMembership).toBe(true);
-      const teamViewerView = findRule(teamRules, 'viewer', ActionType.VIEW_COMMUNITY);
-      expect(teamViewerView?.allowed).toBe(false);
+      // Note: Viewer role has been removed - all users are now participants by default
 
       // Test support
       const supportRules = service.getDefaultPermissionRules('support');

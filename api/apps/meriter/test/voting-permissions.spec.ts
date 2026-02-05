@@ -142,7 +142,7 @@ describe('Voting Permissions', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -161,7 +161,7 @@ describe('Voting Permissions', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -245,7 +245,7 @@ describe('Voting Permissions', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -264,7 +264,7 @@ describe('Voting Permissions', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -283,7 +283,7 @@ describe('Voting Permissions', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -313,9 +313,9 @@ describe('Voting Permissions', () => {
       { id: uid(), userId: lead2Id, communityId: visionCommunityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: lead2Id, communityId: regularCommunityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: lead2Id, communityId: team2CommunityId, role: 'lead', createdAt: now, updatedAt: now },
-      { id: uid(), userId: viewerId, communityId: marathonCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
-      { id: uid(), userId: viewerId, communityId: visionCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
-      { id: uid(), userId: viewerId, communityId: regularCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
+      { id: uid(), userId: viewerId, communityId: marathonCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: viewerId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: viewerId, communityId: regularCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
     // Create publications
@@ -548,36 +548,9 @@ describe('Voting Permissions', () => {
       });
     });
 
-    describe('Viewers', () => {
-      it('should allow viewer to vote for leads in marathon-of-good community', async () => {
-        const canVote = await permissionService.canVote(viewerId, marathonPubId);
-        expect(canVote).toBe(true);
-      });
-
-      it('should not allow viewer to vote in regular communities', async () => {
-        const canVote = await permissionService.canVote(viewerId, regularPubId);
-        expect(canVote).toBe(false);
-      });
-
-      it('should not allow viewer to vote in future-vision community', async () => {
-        const canVote = await permissionService.canVote(viewerId, visionPubId);
-        expect(canVote).toBe(false);
-      });
-
-      it('should allow viewer to vote for own posts in marathon-of-good (currency constraint in VoteService)', async () => {
-        // Viewers can vote in marathon-of-good, including self-voting (with wallet-only constraint)
-        // But since viewers are quota-only and self-voting requires wallet, it effectively won't work
-        // Permission-wise, it's allowed
-        const pub = await publicationService.createPublication(viewerId, {
-          communityId: marathonCommunityId,
-          content: 'Viewer publication',
-          type: 'text',
-        });
-
-        const canVote = await permissionService.canVote(viewerId, pub.getId.getValue());
-        expect(canVote).toBe(true); // Self-voting allowed (wallet-only constraint in VoteService)
-      });
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // Tests for viewer role have been removed as the role no longer exists
+    // The viewerId user now has participant role and behaves like any other participant
   });
 
   describe('Inside Team Communities', () => {

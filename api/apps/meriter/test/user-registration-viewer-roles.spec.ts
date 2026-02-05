@@ -143,7 +143,7 @@ describe('User Registration - Viewer Role Assignment', () => {
   });
 
   describe('User registration without invite', () => {
-    it('should assign viewer roles to marathon-of-good and future-vision when user is created', async () => {
+    it('should assign participant roles to marathon-of-good and future-vision when user is created', async () => {
       const newUserId = uid();
 
       // Create a new user (simulating registration without invite)
@@ -162,13 +162,13 @@ describe('User Registration - Viewer Role Assignment', () => {
       // Call ensureUserInBaseCommunities (this is called after user creation in auth flow)
       await userService.ensureUserInBaseCommunities(newUserId);
 
-      // Verify user has viewer role in marathon-of-good
+      // Verify user has participant role in marathon-of-good (viewer role removed)
       const marathonRole = await userCommunityRoleService.getRole(
         newUserId,
         marathonCommunityId,
       );
       expect(marathonRole).toBeDefined();
-      expect(marathonRole?.role).toBe('viewer');
+      expect(marathonRole?.role).toBe('participant');
 
       // Verify user is member of marathon-of-good
       const marathonCommunity = await communityService.getCommunity(marathonCommunityId);
@@ -181,13 +181,13 @@ describe('User Registration - Viewer Role Assignment', () => {
       });
       expect(marathonWallet).toBeDefined();
 
-      // Verify user has viewer role in future-vision
+      // Verify user has participant role in future-vision (viewer role removed)
       const visionRole = await userCommunityRoleService.getRole(
         newUserId,
         visionCommunityId,
       );
       expect(visionRole).toBeDefined();
-      expect(visionRole?.role).toBe('viewer');
+      expect(visionRole?.role).toBe('participant');
 
       // Verify user is member of future-vision
       const visionCommunity = await communityService.getCommunity(visionCommunityId);
@@ -225,21 +225,21 @@ describe('User Registration - Viewer Role Assignment', () => {
       // Now call ensureUserInBaseCommunities
       await userService.ensureUserInBaseCommunities(newUserId);
 
-      // Verify user still has participant role (not overwritten to viewer)
+      // Verify user still has participant role (not overwritten)
       const marathonRole = await userCommunityRoleService.getRole(
         newUserId,
         marathonCommunityId,
       );
       expect(marathonRole).toBeDefined();
-      expect(marathonRole?.role).toBe('participant'); // Should remain participant, not changed to viewer
+      expect(marathonRole?.role).toBe('participant'); // Should remain participant
 
-      // Verify user still has viewer role in future-vision (since they had no role there)
+      // Verify user has participant role in future-vision (viewer role removed, all users are participants)
       const visionRole = await userCommunityRoleService.getRole(
         newUserId,
         visionCommunityId,
       );
       expect(visionRole).toBeDefined();
-      expect(visionRole?.role).toBe('viewer'); // Should get viewer since no existing role
+      expect(visionRole?.role).toBe('participant'); // Should get participant since viewer role removed
     });
 
     it('should be idempotent - calling multiple times should not change roles', async () => {
@@ -263,20 +263,20 @@ describe('User Registration - Viewer Role Assignment', () => {
       await userService.ensureUserInBaseCommunities(newUserId);
       await userService.ensureUserInBaseCommunities(newUserId);
 
-      // Verify user still has viewer roles
+      // Verify user has participant roles (viewer role removed)
       const marathonRole = await userCommunityRoleService.getRole(
         newUserId,
         marathonCommunityId,
       );
       expect(marathonRole).toBeDefined();
-      expect(marathonRole?.role).toBe('viewer');
+      expect(marathonRole?.role).toBe('participant');
 
       const visionRole = await userCommunityRoleService.getRole(
         newUserId,
         visionCommunityId,
       );
       expect(visionRole).toBeDefined();
-      expect(visionRole?.role).toBe('viewer');
+      expect(visionRole?.role).toBe('participant');
 
       // Verify only one role document exists for each community
       const marathonRoles = await userCommunityRoleModel.find({

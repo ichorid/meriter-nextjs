@@ -209,7 +209,7 @@ describe('Posting Permissions', () => {
       { id: uid(), userId: lead1Id, communityId: marathonCommunityId, role: 'lead', createdAt: now, updatedAt: now },
       { id: uid(), userId: lead1Id, communityId: visionCommunityId, role: 'lead', createdAt: now, updatedAt: now },
       
-      { id: uid(), userId: viewerId, communityId: marathonCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
+      { id: uid(), userId: viewerId, communityId: marathonCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
   });
 
@@ -239,10 +239,8 @@ describe('Posting Permissions', () => {
       expect(canCreate).toBe(true);
     });
 
-    it('should NOT allow viewer to create publication in marathon-of-good', async () => {
-      const canCreate = await permissionService.canCreatePublication(viewerId, marathonCommunityId);
-      expect(canCreate).toBe(false);
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // The viewerId user now has participant role and can create publications like any participant
   });
 
   describe('Regular Communities', () => {
@@ -273,10 +271,8 @@ describe('Posting Permissions', () => {
       expect(canCreate).toBe(true);
     });
 
-    it('should NOT allow viewer to create publication in support group', async () => {
-      const canCreate = await permissionService.canCreatePublication(viewerId, supportCommunityId);
-      expect(canCreate).toBe(false);
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // The viewerId user now has participant role and can create publications like any participant
   });
 });
 

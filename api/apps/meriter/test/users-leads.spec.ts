@@ -208,7 +208,7 @@ describe('Users - Get All Leads', () => {
           id: uid(),
           userId: viewerId,
           communityId: community1Id,
-          role: 'viewer',
+          role: 'participant',
           createdAt: new Date(),
           updatedAt: new Date(),
         },

@@ -164,7 +164,7 @@ describe('API Permissions Integration', () => {
     await userCommunityRoleService.setRole(participant2Id, regularCommunityId, 'participant');
     await userCommunityRoleService.setRole(participant1Id, teamCommunityId, 'participant');
     await userCommunityRoleService.setRole(lead1Id, regularCommunityId, 'lead');
-    await userCommunityRoleService.setRole(viewerId, regularCommunityId, 'viewer');
+    await userCommunityRoleService.setRole(viewerId, regularCommunityId, 'participant');
 
     // Create test resources
     const publication = await publicationService.createPublication(participant1Id, {

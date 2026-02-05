@@ -500,50 +500,9 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
       expect(result.members[0].quota?.remainingToday).toBe(0);
     });
 
-    it('should set quota to 0 for viewers except in marathon-of-good', async () => {
-      await communityModel.create({
-        id: testCommunityId,
-        name: 'Regular Community',
-        telegramChatId: `chat_${testCommunityId}_${Date.now()}`,
-        members: [testUserId1],
-        settings: {
-          dailyEmission: 100,
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      await userModel.create({
-        id: testUserId1,
-        authProvider: 'telegram',
-        authId: `user_${testUserId1}`,
-        displayName: 'User One',
-        username: 'user1',
-        communityMemberships: [testCommunityId],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      await userCommunityRoleModel.create({
-        id: uid(),
-        userId: testUserId1,
-        communityId: testCommunityId,
-        role: 'viewer',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
-
-      expect(result.members[0].quota?.dailyQuota).toBe(0);
-      expect(result.members[0].quota?.usedToday).toBe(0);
-      expect(result.members[0].quota?.remainingToday).toBe(0);
-    });
+    // Note: Viewer role has been removed - all users are now participants by default
+    // This test has been removed as viewer-specific quota logic no longer exists
+    // Participants receive quota based on community settings
 
     it('should allow quota for viewers in marathon-of-good', async () => {
       await communityModel.create({
@@ -579,7 +538,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
         id: uid(),
         userId: testUserId1,
         communityId: testCommunityId,
-        role: 'viewer',
+        role: 'participant',
         createdAt: new Date(),
         updatedAt: new Date(),
       });

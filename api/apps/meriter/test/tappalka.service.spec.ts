@@ -603,7 +603,8 @@ describe('TappalkaService', () => {
       );
 
       expect(result.nextPair).toBeDefined();
-      expect(result.noMorePosts).toBe(false);
+      // noMorePosts is only set when nextPair is null, so it should be undefined when nextPair exists
+      expect(result.noMorePosts).toBeUndefined();
     });
 
     it('should return noMorePosts if no more pairs available', async () => {
@@ -631,11 +632,10 @@ describe('TappalkaService', () => {
       // Since we only have 2 posts and they're both used, and after showCost deduction they might not be eligible,
       // nextPair should be null/undefined
       if (result.nextPair) {
-        // If nextPair exists, it means posts are still eligible
-        // But we expect noMorePosts to be true when there are no more pairs
-        // This depends on the actual implementation
-        expect(result.noMorePosts).toBe(false);
+        // If nextPair exists, noMorePosts should be undefined (not set)
+        expect(result.noMorePosts).toBeUndefined();
       } else {
+        // If no nextPair, noMorePosts should be true
         expect(result.noMorePosts).toBe(true);
       }
     });

@@ -228,8 +228,8 @@ describe('Communities Visibility Filtering', () => {
     await communityService.addMember(community1Id, participantId);
     await userService.addCommunityMembership(participantId, community1Id);
 
-    // Viewer is viewer in community1
-    await userCommunityRoleService.setRole(viewerId, community1Id, 'viewer');
+    // Viewer is participant in community1 (viewer role removed)
+    await userCommunityRoleService.setRole(viewerId, community1Id, 'participant');
     await communityService.addMember(community1Id, viewerId);
     await userService.addCommunityMembership(viewerId, community1Id);
   });
@@ -329,7 +329,7 @@ describe('Communities Visibility Filtering', () => {
       expect(result.data).toBeDefined();
       const communityIds = result.data.map((c: Community) => c.id);
       
-      // Viewer should see community1 (viewer role)
+      // Viewer (now participant) should see community1 (participant role)
       expect(communityIds).toContain(community1Id);
       
       // Should NOT see other communities

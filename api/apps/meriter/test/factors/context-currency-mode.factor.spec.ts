@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContextCurrencyModeFactor } from '../../src/domain/services/factors/context-currency-mode.factor';
 import { CommunityService } from '../../src/domain/services/community.service';
-import { COMMUNITY_ROLE_VIEWER } from '../../src/domain/common/constants/roles.constants';
 
 describe('ContextCurrencyModeFactor', () => {
   let factor: ContextCurrencyModeFactor;
@@ -113,54 +112,8 @@ describe('ContextCurrencyModeFactor', () => {
     });
   });
 
-  describe('Viewer role', () => {
-    it('should return quota-only for viewers if in quotaRecipients', async () => {
-      const community = {
-        id: 'community1',
-        typeTag: 'custom',
-      };
-
-      communityService.getEffectiveMeritSettings.mockReturnValue({
-        quotaRecipients: ['viewer', 'participant', 'lead'],
-        dailyQuota: 10,
-      } as any);
-
-      const result = await factor.evaluate({
-        userId: 'user1',
-        communityId: 'community1',
-        community: community as any,
-        targetType: 'publication',
-        userRole: COMMUNITY_ROLE_VIEWER,
-      });
-
-      expect(result.allowedQuota).toBe(true);
-      expect(result.allowedWallet).toBe(false);
-      expect(result.requiredCurrency).toBe('quota');
-    });
-
-    it('should return both false if viewer not in quotaRecipients', async () => {
-      const community = {
-        id: 'community1',
-        typeTag: 'custom',
-      };
-
-      communityService.getEffectiveMeritSettings.mockReturnValue({
-        quotaRecipients: ['participant', 'lead'],
-        dailyQuota: 10,
-      } as any);
-
-      const result = await factor.evaluate({
-        userId: 'user1',
-        communityId: 'community1',
-        community: community as any,
-        targetType: 'publication',
-        userRole: COMMUNITY_ROLE_VIEWER,
-      });
-
-      expect(result.allowedQuota).toBe(false);
-      expect(result.allowedWallet).toBe(false);
-    });
-  });
+  // Note: Viewer role has been removed - all users are now participants by default
+  // Tests for viewer role have been removed as the role no longer exists
 
   describe('Default case', () => {
     it('should return both-allowed for default case', async () => {

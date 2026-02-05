@@ -162,7 +162,7 @@ describe('PermissionsHelperService', () => {
       name: 'Marathon of Good',
       typeTag: 'marathon-of-good',
       votingRules: {
-        allowedRoles: ['participant', 'lead', 'viewer'],
+        allowedRoles: ['participant', 'lead'],
         canVoteForOwnPosts: false,
       },
       postingRules: {
@@ -189,7 +189,7 @@ describe('PermissionsHelperService', () => {
     await userCommunityRoleService.setRole(participant1Id, marathonCommunityId, 'participant');
     await userCommunityRoleService.setRole(participant1Id, futureVisionCommunityId, 'participant');
     await userCommunityRoleService.setRole(lead1Id, regularCommunityId, 'lead');
-    await userCommunityRoleService.setRole(viewerId, marathonCommunityId, 'viewer');
+    await userCommunityRoleService.setRole(viewerId, marathonCommunityId, 'participant');
     await userCommunityRoleService.setRole(authorId, regularCommunityId, 'participant'); // Author needs role for tests
     await userCommunityRoleService.setRole(authorId, futureVisionCommunityId, 'participant'); // Author needs role for future-vision tests
   });
