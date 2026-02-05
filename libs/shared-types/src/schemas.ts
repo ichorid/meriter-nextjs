@@ -13,6 +13,7 @@ import {
   STAGES,
   HELP_NEEDED,
 } from "./taxonomy";
+import { TappalkaSettingsSchema } from "./tappalka";
 
 // Metrics schemas extending base VotableMetricsSchema
 export const PublicationMetricsSchema = VotableMetricsSchema.extend({
@@ -544,6 +545,7 @@ export const UpdateCommunityDtoSchema = z.object({
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
+  tappalkaSettings: TappalkaSettingsSchema.partial().optional(),
   isPriority: z.boolean().optional(),
 }).passthrough();
 

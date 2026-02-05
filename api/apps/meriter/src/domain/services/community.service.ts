@@ -106,6 +106,16 @@ export interface UpdateCommunityDto {
   visibilityRules?: any;
   meritRules?: any;
   linkedCurrencies?: string[];
+  tappalkaSettings?: {
+    enabled?: boolean;
+    categories?: string[];
+    winReward?: number;
+    userReward?: number;
+    comparisonsRequired?: number;
+    showCost?: number;
+    minRating?: number;
+    onboardingText?: string;
+  };
 }
 
 @Injectable()
@@ -617,6 +627,38 @@ export class CommunityService {
     }
     if (dto.linkedCurrencies !== undefined) {
       updateData.linkedCurrencies = dto.linkedCurrencies;
+    }
+
+    // Handle tappalkaSettings
+    if (dto.tappalkaSettings) {
+      const tappalkaSettingsUpdate: any = {};
+      if (dto.tappalkaSettings.enabled !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.enabled'] = Boolean(dto.tappalkaSettings.enabled);
+      }
+      if (dto.tappalkaSettings.categories !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.categories'] = dto.tappalkaSettings.categories;
+      }
+      if (dto.tappalkaSettings.winReward !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.winReward'] = dto.tappalkaSettings.winReward;
+      }
+      if (dto.tappalkaSettings.userReward !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.userReward'] = dto.tappalkaSettings.userReward;
+      }
+      if (dto.tappalkaSettings.comparisonsRequired !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.comparisonsRequired'] = dto.tappalkaSettings.comparisonsRequired;
+      }
+      if (dto.tappalkaSettings.showCost !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.showCost'] = dto.tappalkaSettings.showCost;
+      }
+      if (dto.tappalkaSettings.minRating !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.minRating'] = dto.tappalkaSettings.minRating;
+      }
+      if (dto.tappalkaSettings.onboardingText !== undefined) {
+        tappalkaSettingsUpdate['tappalkaSettings.onboardingText'] = dto.tappalkaSettings.onboardingText || null;
+      }
+
+      // Merge tappalkaSettings into updateData
+      Object.assign(updateData, tappalkaSettingsUpdate);
     }
 
     this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
