@@ -175,19 +175,6 @@ function ProfilePageComponent() {
           </div>
         </div>
 
-        {/* Foldable Invite Input Section - Only show if user has lead/participant roles */}
-        {userRolesArray.some(r => r.role === 'lead' || r.role === 'participant') && (
-          <div>
-            <Separator className="bg-base-300" />
-            <FoldableInviteInput />
-          </div>
-        )}
-
-        {/* Use Invite Section (for viewers) */}
-        <div className="mt-6">
-          <UseInvite />
-        </div>
-
         {/* Create Team Dialog */}
         <CreateTeamDialog
           open={showCreateTeamDialog}
