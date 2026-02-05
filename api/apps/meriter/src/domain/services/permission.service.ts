@@ -415,7 +415,7 @@ export class PermissionService {
    * Check if user can forward a publication
    * Returns true if:
    * - Publication is in a team group
-   * - User is a member of the source community (lead, participant, or viewer)
+   * - User is a member of the source community (lead or participant)
    * - Post type is 'basic' or 'project' (not 'poll')
    */
   async canForwardPublication(

@@ -156,12 +156,7 @@ export class CommunityDefaultsService {
       allowed: true,
     });
 
-    // Viewers can vote in marathon-of-good (quota-only)
-    rules.push({
-      role: 'viewer',
-      action: ActionType.VOTE,
-      allowed: true,
-    });
+    // Note: Viewer role has been removed. All users are now participants by default.
 
     return rules;
   }
@@ -239,12 +234,7 @@ export class CommunityDefaultsService {
       allowed: true,
     });
 
-    // Viewers cannot see team communities
-    rules.push({
-      role: 'viewer',
-      action: ActionType.VIEW_COMMUNITY,
-      allowed: false,
-    });
+    // Note: Viewer role has been removed. All users are now participants by default.
 
     return rules;
   }
@@ -273,12 +263,6 @@ export class CommunityDefaultsService {
 
     // Everyone can vote (self-voting requires wallet, enforced in VoteService)
     rules.push({
-      role: 'viewer',
-      action: ActionType.VOTE,
-      allowed: true,
-    });
-
-    rules.push({
       role: 'participant',
       action: ActionType.VOTE,
       allowed: true,
@@ -290,12 +274,7 @@ export class CommunityDefaultsService {
       allowed: true,
     });
 
-    // Everyone can view
-    rules.push({
-      role: 'viewer',
-      action: ActionType.VIEW_COMMUNITY,
-      allowed: true,
-    });
+    // Note: Viewer role has been removed. All users are now participants by default.
 
     return rules;
   }
@@ -306,7 +285,7 @@ export class CommunityDefaultsService {
   getDefaultMeritSettings(typeTag?: string): CommunityMeritSettings {
     const baseDefaults: CommunityMeritSettings = {
       dailyQuota: 100,
-      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
+      quotaRecipients: ['superadmin', 'lead', 'participant'],
       canEarn: true,
       canSpend: true,
       startingMerits: 100,
@@ -317,7 +296,7 @@ export class CommunityDefaultsService {
       case 'marathon-of-good':
         return {
           ...baseDefaults,
-          quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
+          quotaRecipients: ['superadmin', 'lead', 'participant'],
         };
 
       case 'future-vision':
@@ -342,7 +321,7 @@ export class CommunityDefaultsService {
         return {
           ...baseDefaults,
           dailyQuota: 10, // 10 comments per day (or 100, as requested)
-          quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'], // Everyone gets quota for voting
+          quotaRecipients: ['superadmin', 'lead', 'participant'], // Everyone gets quota for voting
           canEarn: false, // No merits earned from posts
           canSpend: false, // No merits spent on posts
         };
