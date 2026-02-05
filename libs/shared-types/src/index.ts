@@ -71,6 +71,20 @@ export {
     FeedItemSchema,
 } from './schemas';
 
+// Export Tappalka schemas
+export {
+    TappalkaSettingsSchema,
+    TappalkaPostSchema,
+    TappalkaPairSchema,
+    TappalkaProgressSchema,
+    TappalkaChoiceResultSchema,
+    GetTappalkaPairInputSchema,
+    SubmitTappalkaChoiceInputSchema,
+    GetTappalkaProgressInputSchema,
+    MarkTappalkaOnboardingSeenInputSchema,
+    UpdateTappalkaSettingsInputSchema,
+} from './tappalka';
+
 // Export taxonomy constants
 export {
     IMPACT_AREAS,
@@ -129,6 +143,20 @@ export type {
     PublicationFeedItem,
     PollFeedItem,
 } from './schemas';
+
+// Export Tappalka types
+export type {
+    TappalkaSettings,
+    TappalkaPost,
+    TappalkaPair,
+    TappalkaProgress,
+    TappalkaChoiceResult,
+    GetTappalkaPairInput,
+    SubmitTappalkaChoiceInput,
+    GetTappalkaProgressInput,
+    MarkTappalkaOnboardingSeenInput,
+    UpdateTappalkaSettingsInput,
+} from './tappalka';
 
 // Additional utility types
 export interface UpdatesFrequencySettings {
