@@ -128,10 +128,25 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
   const isAuthor = !!(myId && authorId && myId === authorId);
   const isBeneficiary = !!(hasBeneficiary && myId && beneficiaryId && myId === beneficiaryId);
-  const currentScore = publication.metrics?.score || 0;
+  
+  // Get fresh publication data from cache if available (to get updated score after tappalka)
+  const publicationId = getPublicationIdentifier(publication);
+  const { data: freshPublication } = trpc.publications.getById.useQuery(
+    { id: publicationId },
+    {
+      enabled: !!publicationId,
+      staleTime: 0, // Always consider stale to get fresh data
+      refetchOnMount: false, // Don't refetch on mount, just use cache if available
+      refetchOnWindowFocus: false,
+    },
+  );
+  
+  // Use fresh data if available, otherwise fall back to prop data
+  const effectivePublication = freshPublication || publication;
+  const currentScore = effectivePublication.metrics?.score || 0;
 
-  // Calculate withdraw amounts
-  const totalWithdrawn = publication.withdrawals?.totalWithdrawn || 0;
+  // Calculate withdraw amounts (use effectivePublication for fresh data)
+  const totalWithdrawn = effectivePublication.withdrawals?.totalWithdrawn || 0;
   const availableForWithdrawal = Math.max(0, currentScore - totalWithdrawn);
   const maxWithdrawAmount = ((isAuthor && !hasBeneficiary) || isBeneficiary)
     ? Math.floor(10 * availableForWithdrawal) / 10
@@ -172,8 +187,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const canShowWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary);
   const showVote = !isAuthor && !isBeneficiary;
   const showVoteForAuthor = isAuthor && hasBeneficiary;
-
-  const publicationId = getPublicationIdentifier(publication);
 
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
