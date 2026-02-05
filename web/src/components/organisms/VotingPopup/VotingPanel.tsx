@@ -27,7 +27,6 @@ interface VotingPanelProps {
     walletBalance?: number;
     community?: Community | null;
     error?: string;
-    isViewer?: boolean;
     isOwnPost?: boolean;
     inline?: boolean;
     images?: string[];
@@ -56,7 +55,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     walletBalance = 0,
     community,
     error,
-    isViewer = false,
     isOwnPost = false,
     inline = false,
     images = [],
@@ -758,7 +756,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     <ImageGallery
                         images={images}
                         onImagesChange={onImagesChange}
-                        disabled={isViewer}
                         className="w-full"
                     />
                 </div>

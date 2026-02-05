@@ -16,7 +16,7 @@ interface LeadCardProps {
     avatarUrl?: string | null;
     totalMerits?: number;
     leadCommunities?: string[];
-    role?: 'lead' | 'participant' | 'viewer' | 'superadmin';
+    role?: 'lead' | 'participant' | 'superadmin';
     showRoleChip?: boolean;
     hideTeamInfo?: boolean;
     onClick?: () => void;
@@ -61,14 +61,12 @@ export const LeadCard: React.FC<LeadCardProps> = ({
         const roleLabels: Record<string, string> = {
             lead: t('lead'),
             participant: t('participant'),
-            viewer: t('viewer'),
             superadmin: t('superadmin'),
         };
 
         const roleVariants: Record<string, 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error'> = {
             lead: 'secondary',
             participant: 'secondary',
-            viewer: 'secondary',
             superadmin: 'error',
         };
 

@@ -44,7 +44,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Use shared hook for community data
   const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
 
-  // Get user role to check if viewer
+  // Get user role in community
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(targetCommunityId || '');
   
@@ -64,16 +64,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     return isAuthor || isBeneficiary;
   }, [user?.id, publication, votingTargetType]);
   
-  // Check if user is a viewer
-  const isViewer = useMemo(() => {
-    if (!user?.id || !targetCommunityId || !community) return false;
-    if (user.globalRole === 'superadmin') return false;
-    const role = userRoles.find(r => r.communityId === targetCommunityId);
-    return role?.role === 'viewer';
-  }, [user?.id, user?.globalRole, userRoles, targetCommunityId, community]);
-
-  // Force wallet-only mode for own posts, quota-only mode for viewers
-  const effectiveVotingMode = isOwnPost ? 'wallet-only' : (isViewer ? 'quota-only' : votingMode);
+  // Force wallet-only mode for own posts
+  const effectiveVotingMode = isOwnPost ? 'wallet-only' : votingMode;
 
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
@@ -201,7 +193,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       quotaRemaining,
       walletBalance,
       effectiveVotingMode,
-      isViewer,
       'quotaRemaining type': typeof quotaRemaining,
       'walletBalance type': typeof walletBalance,
     });
@@ -257,10 +248,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     } else {
       // Downvotes use wallet only (quota cannot be used for downvotes)
       console.log('[VotingPopup] Calculating downvote amounts');
-      if (isViewer) {
-        updateVotingFormData({ error: t('downvoteViewerReason') });
-        return;
-      }
       if (!canUseWallet) {
         updateVotingFormData({ error: t('downvoteRequiresBalance') });
         return;
@@ -413,7 +400,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           walletBalance={walletBalance}
           community={community}
           error={formData.error}
-          isViewer={isViewer}
           isOwnPost={isOwnPost}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}

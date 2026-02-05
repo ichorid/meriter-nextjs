@@ -28,7 +28,7 @@ export function MeritsAndQuotaSection({ userId, communityIds, userRoles, expande
         return map;
     }, [userRoles]);
 
-    // Filter communities where viewer has permission
+    // Filter communities where user has permission
     const communitiesWithPermission = useMemo(() => {
         return communityIds.filter(communityId => {
             // Check permission for this community - we'll do it in the component

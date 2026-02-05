@@ -90,11 +90,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     return teamRoles.filter(r => r.role === 'participant');
   }, [teamRoles]);
 
-  const isOnlyViewer = React.useMemo(() => {
-    const hasLeadOrParticipant = userRoles.some(r => r.role === 'lead' || r.role === 'participant');
-    return !hasLeadOrParticipant && userRoles.some(r => r.role === 'viewer');
-  }, [userRoles]);
-
   const hasLeadOrParticipantRoles = React.useMemo(() => {
     return userRoles.some(r => r.role === 'lead' || r.role === 'participant');
   }, [userRoles]);
@@ -119,7 +114,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   }, [firstParticipantTeamId, firstTeamMembersData, tCommon]);
 
   const hasTeamRoles = leadTeamRoles.length > 0 || participantTeamRoles.length > 0;
-  const showRolesSection = isOnlyViewer || hasLeadOrParticipantRoles;
+  const showRolesSection = hasLeadOrParticipantRoles;
 
   // Get unique community IDs from user roles
   const communityIds = useMemo(() => {
@@ -344,15 +339,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                       </p>
                       <p className="text-sm text-base-content">
                         {tCommon('superadmin')}
-                      </p>
-                    </div>
-                  ) : isOnlyViewer ? (
-                    <div>
-                      <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                        {t('role')}
-                      </p>
-                      <p className="text-sm text-base-content">
-                        {tCommon('viewer')}
                       </p>
                     </div>
                   ) : hasLeadOrParticipantRoles ? (

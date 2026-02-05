@@ -305,7 +305,7 @@ export interface NotificationPreferences {
 // Community merit and voting settings types (computed fields from API)
 export interface CommunityMeritSettings {
   dailyQuota: number;
-  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  quotaRecipients: ('superadmin' | 'lead' | 'participant')[];
   canEarn: boolean;
   canSpend: boolean;
   startingMerits?: number;
@@ -327,6 +327,7 @@ export interface CommunityVotingSettings {
 }
 
 // Legacy rule types (for backwards compatibility with old API responses)
+// Note: 'viewer' role has been removed, but these types are kept for backward compatibility with old data
 export interface LegacyPostingRules {
   allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
   requiresTeamMembership?: boolean;

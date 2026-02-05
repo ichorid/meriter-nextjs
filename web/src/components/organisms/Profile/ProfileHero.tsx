@@ -58,13 +58,6 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
     return teamRoles.filter(r => r.role === 'participant');
   }, [teamRoles]);
 
-  // Check if user is only viewer (has viewer role but no lead/participant roles at all)
-  const isOnlyViewer = React.useMemo(() => {
-    if (user?.globalRole === 'superadmin') return false;
-    const hasLeadOrParticipant = userRoles.some(r => r.role === 'lead' || r.role === 'participant');
-    return !hasLeadOrParticipant && userRoles.some(r => r.role === 'viewer');
-  }, [user?.globalRole, userRoles]);
-
   // Check if user has any lead/participant roles (in any communities, not just teams)
   const hasLeadOrParticipantRoles = React.useMemo(() => {
     return userRoles.some(r => r.role === 'lead' || r.role === 'participant');
@@ -120,9 +113,8 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
   
   // Show roles section if:
   // - user is superadmin, OR
-  // - user is only viewer, OR
   // - user has lead/participant roles (even if teams are still loading)
-  const showRolesSection = user?.globalRole === 'superadmin' || isOnlyViewer || hasLeadOrParticipantRoles;
+  const showRolesSection = user?.globalRole === 'superadmin' || hasLeadOrParticipantRoles;
 
   return (
     <div className="relative bg-base-100 overflow-hidden">
@@ -319,15 +311,6 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
                     </p>
                     <p className="text-sm text-base-content">
                       {tCommon('superadmin')}
-                    </p>
-                  </div>
-                ) : isOnlyViewer ? (
-                  <div>
-                    <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                      {t('role')}
-                    </p>
-                    <p className="text-sm text-base-content">
-                      {tCommon('viewer')}
                     </p>
                   </div>
                 ) : hasLeadOrParticipantRoles ? (

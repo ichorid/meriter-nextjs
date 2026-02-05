@@ -7,7 +7,7 @@ export interface CommunityMember {
     displayName: string;
     avatarUrl?: string;
     globalRole: string;
-    role?: 'lead' | 'participant' | 'viewer' | 'superadmin';
+    role?: 'lead' | 'participant' | 'superadmin';
     walletBalance?: number; // New: permanent merits balance
     quota?: { // New: daily quota information
         dailyQuota: number;

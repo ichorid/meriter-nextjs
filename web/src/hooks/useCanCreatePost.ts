@@ -11,7 +11,7 @@ const POST_PUBLICATION_ACTION = 'post_publication';
  */
 function hasPermissionForAction(
   rules: PermissionRule[],
-  role: 'superadmin' | 'lead' | 'participant' | 'viewer',
+  role: 'superadmin' | 'lead' | 'participant',
   action: string
 ): boolean {
   const rule = rules.find(r => r.role === role && r.action === action);
@@ -59,7 +59,7 @@ export function useCanCreatePost(communityId?: string): {
     }
 
     // Get user's role in the community
-    let userRole: 'superadmin' | 'lead' | 'participant' | 'viewer' | null = null;
+    let userRole: 'superadmin' | 'lead' | 'participant' | null = null;
     
     // Check global superadmin role first
     if (user.globalRole === 'superadmin') {
@@ -67,8 +67,8 @@ export function useCanCreatePost(communityId?: string): {
     } else {
       // Get role from UserCommunityRole
       const role = userRoles.find(r => r.communityId === communityId);
-      if (role?.role) {
-        userRole = role.role as 'lead' | 'participant' | 'viewer';
+      if (role?.role && role.role !== 'viewer') {
+        userRole = role.role as 'lead' | 'participant';
       }
     }
 
@@ -95,7 +95,7 @@ export function useCanCreatePost(communityId?: string): {
     return {
       canCreate: false,
       isLoading: false,
-      reason: `${userRole === 'participant' ? 'Participants' : userRole === 'viewer' ? 'Viewers' : 'Users'} are not allowed to create content in this community`,
+      reason: `${userRole === 'participant' ? 'Participants' : 'Users'} are not allowed to create content in this community`,
     };
   }, [
     user?.id,

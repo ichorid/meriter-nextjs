@@ -10,7 +10,7 @@ interface MemberCardWithMeritsProps {
     displayName: string;
     username?: string;
     avatarUrl?: string | null;
-    role?: 'lead' | 'participant' | 'viewer' | 'superadmin';
+    role?: 'lead' | 'participant' | 'superadmin';
     communityId: string;
     showRoleChip: boolean;
     hideTeamInfo: boolean;

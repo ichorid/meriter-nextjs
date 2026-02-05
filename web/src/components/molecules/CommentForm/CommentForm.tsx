@@ -55,7 +55,6 @@ export const CommentForm: React.FC<CommentFormProps> = ({
                 dailyQuota={maxAmount}
                 usedToday={0}
                 error={loading ? "Submitting..." : undefined}
-                isViewer={false}
                 inline={true}
             />
         </div>

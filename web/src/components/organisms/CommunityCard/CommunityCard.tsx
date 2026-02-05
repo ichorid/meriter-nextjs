@@ -62,7 +62,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
 
-    // Only show badge for lead and participant (not viewer, not superadmin)
+    // Only show badge for lead and participant (not superadmin)
     if (role?.role === 'lead') {
       return { role: 'lead', label: t('lead'), variant: 'secondary' as const };
     }
@@ -108,7 +108,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
 
   // Determine what to show in the subtitle
-  const showMerits = canEarnPermanentMerits && wallet && userRole !== 'viewer';
+  const showMerits = canEarnPermanentMerits && wallet;
   const showQuota = hasQuota && dailyQuota > 0;
   const showIndicators = showMerits || showQuota;
 

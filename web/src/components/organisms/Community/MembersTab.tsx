@@ -122,9 +122,9 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                         : communityRoleStr;
                     
                     // Get translated role label if role exists and is a valid role type
-                    const validRoles = ['superadmin', 'lead', 'participant', 'viewer'] as const;
+                    const validRoles = ['superadmin', 'lead', 'participant'] as const;
                     const roleBadge = displayRole && validRoles.includes(displayRole as typeof validRoles[number])
-                        ? tCommon(displayRole as 'superadmin' | 'lead' | 'participant' | 'viewer')
+                        ? tCommon(displayRole as 'superadmin' | 'lead' | 'participant')
                         : undefined;
                     
                     return (
