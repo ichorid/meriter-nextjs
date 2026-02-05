@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import type { TappalkaPost } from '../types';
@@ -15,6 +15,7 @@ interface TappalkaPostCardProps {
   onDrop?: () => void;
   onDragEnter?: () => void;
   onDragLeave?: () => void;
+  onPostClick?: () => void;
   disabled?: boolean;
 }
 
@@ -25,6 +26,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
   onDrop,
   onDragEnter,
   onDragLeave,
+  onPostClick,
   disabled = false,
 }) => {
   const handleDragOver = useCallback(
@@ -115,6 +117,71 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     return post.description;
   }, [post.description, descriptionIsHtml, sanitizeHtml]);
 
+  // Track pointer position to distinguish click from drag
+  const [pointerDownPos, setPointerDownPos] = useState<{ x: number; y: number } | null>(null);
+  const [hasMoved, setHasMoved] = useState(false);
+
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      // Don't open modal if disabled
+      if (disabled) return;
+      
+      // Don't open modal if no handler provided
+      if (!onPostClick) return;
+      
+      // If we have drag handlers, check if pointer moved (was a drag, not a click)
+      if (onDrop && pointerDownPos) {
+        const distance = Math.sqrt(
+          Math.pow(e.clientX - pointerDownPos.x, 2) + Math.pow(e.clientY - pointerDownPos.y, 2)
+        );
+        // If pointer moved more than 5px, it was a drag, not a click
+        if (distance > 5 || hasMoved) {
+          return;
+        }
+      }
+      
+      // Don't open modal if clicking on interactive elements
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('a') || target.closest('[role="button"]')) {
+        return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      onPostClick();
+    },
+    [onPostClick, disabled, onDrop, pointerDownPos, hasMoved],
+  );
+
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only track pointer position if we have drag handlers
+    if (onDrop) {
+      setPointerDownPos({ x: e.clientX, y: e.clientY });
+      setHasMoved(false);
+    }
+  }, [onDrop]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Check if pointer moved significantly (drag, not click)
+    if (onDrop && pointerDownPos) {
+      const distance = Math.sqrt(
+        Math.pow(e.clientX - pointerDownPos.x, 2) + Math.pow(e.clientY - pointerDownPos.y, 2)
+      );
+      if (distance > 5) {
+        setHasMoved(true);
+      }
+    }
+  }, [onDrop, pointerDownPos]);
+
+  const handlePointerUp = useCallback(() => {
+    // Don't clear immediately - let click handler check first
+    // Clear after click handler has had time to execute
+    setTimeout(() => {
+      setPointerDownPos(null);
+      setHasMoved(false);
+    }, 150);
+  }, []);
+
   return (
     <div
       className={cn(
@@ -125,13 +192,17 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
           : isDropTarget
             ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-blue-400/20'
             : 'border-base-300 dark:border-base-700',
-        onDrop && !disabled && 'cursor-pointer',
+        (onDrop || onPostClick) && !disabled && 'cursor-pointer',
         disabled && 'opacity-75 cursor-not-allowed',
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onClick={handleCardClick}
     >
       {/* Image */}
       {post.imageUrl && (

@@ -17,6 +17,10 @@ import {
 } from './';
 import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
+import { PublicationCardComponent } from '@/components/organisms/Publication';
+import { trpc } from '@/lib/trpc/client';
+import { useWallets } from '@/hooks/api';
 
 interface TappalkaScreenProps {
   communityId: string;
@@ -35,6 +39,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [votedSessionId, setVotedSessionId] = useState<string | null>(null);
+  const [viewingPostId, setViewingPostId] = useState<string | null>(null);
 
   // Hooks
   const { data: progress, isLoading: progressLoading } = useTappalkaProgress(communityId);
@@ -44,6 +49,13 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   );
   const submitChoice = useTappalkaChoice();
   const markOnboardingSeen = useTappalkaOnboarding();
+  const { data: wallets = [] } = useWallets();
+
+  // Fetch full publication data when viewing
+  const { data: viewingPublication, isLoading: isLoadingPublication } = trpc.publications.getById.useQuery(
+    { id: viewingPostId! },
+    { enabled: !!viewingPostId },
+  );
 
   // Reset voting state when pair changes
   useEffect(() => {
@@ -264,6 +276,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDrop={() => handlePostDrop(pair.postA.id)}
                   onDragEnter={() => handleDragEnter(pair.postA.id)}
                   onDragLeave={handleDragLeave}
+                  onPostClick={() => setViewingPostId(pair.postA.id)}
                   disabled={isVotingDisabled}
                 />
               </div>
@@ -289,6 +302,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDrop={() => handlePostDrop(pair.postB.id)}
                   onDragEnter={() => handleDragEnter(pair.postB.id)}
                   onDragLeave={handleDragLeave}
+                  onPostClick={() => setViewingPostId(pair.postB.id)}
                   disabled={isVotingDisabled}
                 />
               </div>
@@ -314,6 +328,24 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
           </>
         ) : null}
       </div>
+
+      {/* Publication View Modal */}
+      <Dialog open={!!viewingPostId} onOpenChange={(open) => !open && setViewingPostId(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Просмотр поста</DialogTitle>
+          {isLoadingPublication ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+            </div>
+          ) : viewingPublication ? (
+            <PublicationCardComponent
+              publication={viewingPublication as any}
+              wallets={wallets}
+              showCommunityAvatar={false}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
