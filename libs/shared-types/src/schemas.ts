@@ -109,7 +109,17 @@ export const CommunityVotingSettingsSchema = z.object({
   spendsMerits: z.boolean().optional(),
   awardsMerits: z.boolean().optional(),
   meritConversion: CommunityMeritConversionSchema.optional(),
-  votingRestriction: z.enum(["any", "not-same-team"]).optional(),
+  votingRestriction: z.preprocess(
+    (val) => {
+      // Normalize votingRestriction: handle array case (legacy data) and ensure it's a string
+      if (Array.isArray(val)) {
+        // If it's an array, take the first valid value
+        return (val[0] === 'any' || val[0] === 'not-same-team') ? val[0] : 'any';
+      }
+      return val;
+    },
+    z.enum(["any", "not-same-team"]).optional()
+  ),
   currencySource: z.enum(["quota-and-wallet", "quota-only", "wallet-only"]).optional(),
   // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
   // Note: 'not-same-group' renamed to 'not-same-team' for clarity

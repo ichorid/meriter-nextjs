@@ -568,7 +568,19 @@ export class CommunityService {
       // Only merge nested properties if they exist
       const votingSettingsUpdate: any = {};
       if (dto.votingSettings.votingRestriction !== undefined) {
-        votingSettingsUpdate['votingSettings.votingRestriction'] = dto.votingSettings.votingRestriction;
+        // Normalize votingRestriction: handle array case (legacy data) and ensure it's a string
+        let normalizedRestriction: 'any' | 'not-same-team' | undefined = undefined;
+        const restriction = dto.votingSettings.votingRestriction;
+        if (Array.isArray(restriction)) {
+          // If it's an array, take the first valid value
+          normalizedRestriction = (restriction[0] as 'any' | 'not-same-team') || 'any';
+        } else if (typeof restriction === 'string' && (restriction === 'any' || restriction === 'not-same-team')) {
+          normalizedRestriction = restriction;
+        } else {
+          // Invalid value, default to 'any'
+          normalizedRestriction = 'any';
+        }
+        votingSettingsUpdate['votingSettings.votingRestriction'] = normalizedRestriction;
       }
       if (dto.votingSettings.currencySource !== undefined) {
         votingSettingsUpdate['votingSettings.currencySource'] = dto.votingSettings.currencySource;
