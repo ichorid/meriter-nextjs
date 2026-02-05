@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import type { TappalkaPost } from '../types';
 import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
+import DOMPurify from 'dompurify';
 
 interface TappalkaPostCardProps {
   post: TappalkaPost;
@@ -84,6 +85,37 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     return name.substring(0, 2).toUpperCase();
   };
 
+  // Check if content contains HTML tags
+  const isHtmlContent = useCallback((text: string): boolean => {
+    return text && typeof text === 'string' && text.includes('<') && text.includes('>');
+  }, []);
+
+  // Sanitize HTML content
+  const sanitizeHtml = useCallback((html: string): string => {
+    if (typeof window === 'undefined') return html;
+    return DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'blockquote', 'code'],
+      ALLOWED_ATTR: ['href', 'target', 'rel'],
+    });
+  }, []);
+
+  const titleIsHtml = useMemo(() => isHtmlContent(post.title || ''), [post.title, isHtmlContent]);
+  const descriptionIsHtml = useMemo(() => isHtmlContent(post.description || ''), [post.description, isHtmlContent]);
+
+  const sanitizedTitle = useMemo(() => {
+    if (titleIsHtml && post.title) {
+      return sanitizeHtml(post.title);
+    }
+    return post.title;
+  }, [post.title, titleIsHtml, sanitizeHtml]);
+
+  const sanitizedDescription = useMemo(() => {
+    if (descriptionIsHtml && post.description) {
+      return sanitizeHtml(post.description);
+    }
+    return post.description;
+  }, [post.description, descriptionIsHtml, sanitizeHtml]);
+
   return (
     <div
       className={cn(
@@ -115,16 +147,30 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       <div className="flex flex-col flex-1 p-4 gap-3">
         {/* Title */}
         {post.title && (
-          <h3 className="text-lg font-semibold text-base-content line-clamp-2">
-            {post.title}
-          </h3>
+          titleIsHtml ? (
+            <div
+              className="text-lg font-semibold text-base-content line-clamp-2 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0"
+              dangerouslySetInnerHTML={{ __html: sanitizedTitle }}
+            />
+          ) : (
+            <h3 className="text-lg font-semibold text-base-content line-clamp-2">
+              {post.title}
+            </h3>
+          )
         )}
 
         {/* Description */}
         {post.description && (
-          <p className="text-sm text-base-content/70 line-clamp-3 flex-1">
-            {post.description}
-          </p>
+          descriptionIsHtml ? (
+            <div
+              className="text-sm text-base-content/70 line-clamp-3 flex-1 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0"
+              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+            />
+          ) : (
+            <p className="text-sm text-base-content/70 line-clamp-3 flex-1">
+              {post.description}
+            </p>
+          )
         )}
 
         {/* Author */}
