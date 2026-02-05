@@ -1056,8 +1056,7 @@
         "other": "Other",
         "localGroups": {
             "title": "Local",
-            "viewerNote": "Your current role in the project is Viewer. Local groups are only available to Project Participants.",
-            "contactNote": "If you want to become a Participant, contact one of the Leads."
+            "noTeamNote": "You are not part of a team. If you want, you can create your own team (button in your profile) or apply to join an existing one – button in the lead's profile, list of leads below on this page."
         },
         "joinTeam": {
             "title": "Join a Team",

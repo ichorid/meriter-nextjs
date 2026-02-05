@@ -168,36 +168,11 @@ export default function CommunitiesPage() {
                         </button>
                         {joinTeamExpanded && (
                             <div className="flex flex-col gap-4">
-                                <p className="text-sm text-base-content/60">
-                                    {tCommunities('joinTeam.subtitle')}
-                                </p>
-
-                                {/* Local Groups Notification */}
-                                <div className="pt-6 border-t border-base-300 mt-2">
-                                    <div className="flex flex-col items-start gap-1">
-                                        {/* Title */}
-                                        <div className="flex flex-row items-center pb-1.5 pr-5 gap-2.5">
-                                            <h2 className="text-[15px] leading-[120%] tracking-[0.374px] text-base-content/60">
-                                                {tCommunities('localGroups.title')}
-                                            </h2>
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex flex-col items-center w-full py-5 gap-3">
-                                            {/* Note 1: Viewer role notification */}
-                                            <div className="flex flex-row justify-center items-center w-full">
-                                                <p className="text-[15px] leading-[130%] text-center tracking-[0.374px] text-base-content/60">
-                                                    {tCommunities('localGroups.viewerNote')}
-                                                </p>
-                                            </div>
-
-                                            {/* Note 2: Contact note */}
-                                            <div className="flex flex-row justify-center items-center w-full">
-                                                <p className="text-[15px] leading-[130%] text-center tracking-[0.374px] text-base-content/60">
-                                                    {tCommunities('localGroups.contactNote')}
-                                                </p>
-                                            </div>
-                                        </div>
+                                <div className="flex flex-col items-center w-full py-5 gap-3">
+                                    <div className="flex flex-row justify-center items-center w-full">
+                                        <p className="text-[15px] leading-[130%] text-center tracking-[0.374px] text-base-content/60">
+                                            {tCommunities('localGroups.noTeamNote')}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
