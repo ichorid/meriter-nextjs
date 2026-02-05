@@ -62,6 +62,7 @@ export const notificationsRouter = router({
           createdAt: notification.createdAt.toISOString(),
           url,
           relatedId: notification.metadata?.publicationId,
+          metadata: notification.metadata, // Include metadata for action buttons (e.g., invitationId)
         };
 
         // Add actor if available

@@ -389,6 +389,13 @@ export class NotificationService {
         }
         return undefined;
       }
+      case 'team_invitation': {
+        const communityId = notification.metadata?.communityId;
+        if (communityId) {
+          return `/meriter/communities/${communityId}`;
+        }
+        return undefined;
+      }
       case 'forward_proposal': {
         const { communityId, publicationId, targetId, targetType } = metadata;
         if (!communityId || !publicationId) {

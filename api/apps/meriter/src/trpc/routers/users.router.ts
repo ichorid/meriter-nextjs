@@ -517,6 +517,7 @@ export const usersRouter = router({
   /**
    * Invite user to a team
    * Only leads can invite to their teams
+   * Creates an invitation that requires user confirmation
    */
   inviteToTeam: protectedProcedure
     .input(
@@ -526,10 +527,46 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.userService.inviteToTeam(
+      await ctx.teamInvitationService.createInvitation(
         ctx.user.id,
         input.targetUserId,
         input.communityId,
+      );
+      return { success: true };
+    }),
+
+  /**
+   * Accept a team invitation
+   * User accepts an invitation to join a team
+   */
+  acceptTeamInvitation: protectedProcedure
+    .input(
+      z.object({
+        invitationId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.teamInvitationService.acceptInvitation(
+        input.invitationId,
+        ctx.user.id,
+      );
+      return { success: true };
+    }),
+
+  /**
+   * Reject a team invitation
+   * User rejects an invitation to join a team
+   */
+  rejectTeamInvitation: protectedProcedure
+    .input(
+      z.object({
+        invitationId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.teamInvitationService.rejectInvitation(
+        input.invitationId,
+        ctx.user.id,
       );
       return { success: true };
     }),

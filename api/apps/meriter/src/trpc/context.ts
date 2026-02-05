@@ -33,6 +33,7 @@ import { AboutService } from '../domain/services/about.service';
 import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { TappalkaService } from '../domain/services/tappalka.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
+import { TeamInvitationService } from '../domain/services/team-invitation.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -65,6 +66,7 @@ export interface CreateContextOptions {
   voteFactorService: VoteFactorService;
   tappalkaService: TappalkaService;
   teamJoinRequestService: TeamJoinRequestService;
+  teamInvitationService: TeamInvitationService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -109,6 +111,7 @@ export async function createContext(opts: CreateContextOptions) {
     voteFactorService,
     tappalkaService,
     teamJoinRequestService,
+    teamInvitationService,
     connection,
     configService,
     cookieManager,
@@ -202,6 +205,7 @@ export async function createContext(opts: CreateContextOptions) {
     voteFactorService,
     tappalkaService,
     teamJoinRequestService,
+    teamInvitationService,
     connection,
     configService,
     cookieManager,

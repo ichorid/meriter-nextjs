@@ -504,40 +504,29 @@ export class UserService implements OnModuleInit {
   }
 
   /**
-   * Invite user to a team (local community)
-   * Only leads can invite to their teams
+   * Add user to a team (local community)
+   * Internal method that performs the actual addition of user to team
+   * Used by TeamInvitationService when invitation is accepted
    */
-  async inviteToTeam(
+  async addUserToTeam(
     inviterId: string,
     targetUserId: string,
     communityId: string,
   ): Promise<void> {
     this.logger.log(
-      `Inviting user ${targetUserId} to team ${communityId} by ${inviterId}`,
+      `Adding user ${targetUserId} to team ${communityId} (invited by ${inviterId})`,
     );
 
-    // 1. Check that inviter is lead in this community
-    const inviterRole = await this.userCommunityRoleService.getRole(
-      inviterId,
-      communityId,
-    );
-    const inviter = await this.getUserById(inviterId);
-    const isSuperadmin = inviter?.globalRole === GLOBAL_ROLE_SUPERADMIN;
-    
-    if (inviterRole?.role !== 'lead' && !isSuperadmin) {
-      throw new ForbiddenException('Only leads can invite to team');
-    }
-
-    // 2. Check that community is a team (not global)
+    // 1. Check that community is a team (not global)
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
     }
     if (community.typeTag !== 'team') {
-      throw new BadRequestException('Can only invite to team communities');
+      throw new BadRequestException('Can only add to team communities');
     }
 
-    // 3. Check that target is not already a member
+    // 2. Check that target is not already a member
     const targetRole = await this.userCommunityRoleService.getRole(
       targetUserId,
       communityId,
@@ -548,14 +537,14 @@ export class UserService implements OnModuleInit {
       );
     }
 
-    // 4. Assign participant role
+    // 3. Assign participant role
     await this.userCommunityRoleService.setRole(
       targetUserId,
       communityId,
       'participant',
     );
 
-    // 5. Create wallet
+    // 4. Create wallet
     const currency = community.settings?.currencyNames || {
       singular: 'merit',
       plural: 'merits',
@@ -567,13 +556,30 @@ export class UserService implements OnModuleInit {
       currency,
     );
 
-    // 6. Add to lists
+    // 5. Add to lists
     await this.communityService.addMember(communityId, targetUserId);
     await this.addCommunityMembership(targetUserId, communityId);
 
     this.logger.log(
-      `User ${targetUserId} successfully invited to team ${communityId}`,
+      `User ${targetUserId} successfully added to team ${communityId}`,
     );
+  }
+
+  /**
+   * Invite user to a team (local community)
+   * Only leads can invite to their teams
+   * Creates an invitation that requires user confirmation
+   * @deprecated Use TeamInvitationService.createInvitation instead
+   */
+  async inviteToTeam(
+    inviterId: string,
+    targetUserId: string,
+    communityId: string,
+  ): Promise<void> {
+    // This method is kept for backwards compatibility
+    // It now delegates to addUserToTeam for direct addition (used by TeamJoinRequestService)
+    // For new invitations with confirmation, use TeamInvitationService.createInvitation
+    await this.addUserToTeam(inviterId, targetUserId, communityId);
   }
 
   /**
