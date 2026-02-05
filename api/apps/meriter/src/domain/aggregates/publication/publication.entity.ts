@@ -18,7 +18,19 @@ export class Metrics extends BaseMetrics {
   }
 
   static fromSnapshot(data: { upvotes: number; downvotes: number; commentCount: number; score?: number }): Metrics {
-    return new Metrics(data.upvotes, data.downvotes, data.commentCount);
+    // If score is provided and differs from calculated score, adjust upvotes to preserve the stored score
+    // This is necessary because tappalka updates score directly without updating upvotes/downvotes
+    let adjustedUpvotes = data.upvotes;
+    if (data.score !== undefined) {
+      const calculatedScore = data.upvotes - data.downvotes;
+      const scoreDifference = data.score - calculatedScore;
+      // Adjust upvotes to match the stored score (tappalka bonuses are added to score)
+      // Only adjust if difference is significant (to handle floating point precision)
+      if (Math.abs(scoreDifference) > 0.0001) {
+        adjustedUpvotes = Math.max(0, data.upvotes + scoreDifference); // Ensure upvotes doesn't go negative
+      }
+    }
+    return new Metrics(adjustedUpvotes, data.downvotes, data.commentCount);
   }
 
   protected createNew(upvotes: number, downvotes: number): this {

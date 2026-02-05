@@ -208,7 +208,10 @@ export const favoritesRouter = router({
           metrics: {
             upvotes: snapshot.metrics.upvotes,
             downvotes: snapshot.metrics.downvotes,
-            score: snapshot.metrics.upvotes - snapshot.metrics.downvotes,
+            // Use stored score if available (includes tappalka bonuses), otherwise calculate
+            score: snapshot.metrics.score !== undefined 
+              ? snapshot.metrics.score 
+              : snapshot.metrics.upvotes - snapshot.metrics.downvotes,
             commentCount: snapshot.metrics.commentCount,
           },
           meta: {
