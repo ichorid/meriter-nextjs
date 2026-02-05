@@ -13,9 +13,14 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import Link from 'next/link';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User as UserIcon, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { User as UserIcon, ChevronDown, ChevronUp, Mail, Users, UserCog } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { Button } from '@/components/ui/shadcn/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { useInvitableCommunities } from '@/hooks/api/useTeams';
+import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
+import { AssignLeadDialog } from '@/components/organisms/Profile/AssignLeadDialog';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 
 export function UserProfilePageClient({ userId }: { userId: string }) {
@@ -182,6 +187,32 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
               </p>
             )}
           </div>
+
+          {/* Action Buttons (only for other users) */}
+          {!isOwnProfile && (hasTeamsToInvite || isSuperadmin) && (
+            <div className="mb-4 flex gap-2">
+              {hasTeamsToInvite && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowInviteDialog(true)}
+                  className="rounded-xl flex-1"
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  Пригласить в команду
+                </Button>
+              )}
+              {isSuperadmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAssignLeadDialog(true)}
+                  className="rounded-xl flex-1"
+                >
+                  <UserCog className="mr-2 h-4 w-4" />
+                  Назначить лидом
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Info Sections */}
           <div className="space-y-0">
@@ -431,6 +462,25 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Invite to Team Dialog */}
+      {!isOwnProfile && hasTeamsToInvite && (
+        <InviteToTeamDialog
+          open={showInviteDialog}
+          onClose={() => setShowInviteDialog(false)}
+          targetUserId={userId}
+          communities={invitableCommunities}
+        />
+      )}
+
+      {/* Assign Lead Dialog */}
+      {!isOwnProfile && isSuperadmin && (
+        <AssignLeadDialog
+          open={showAssignLeadDialog}
+          onClose={() => setShowAssignLeadDialog(false)}
+          targetUserId={userId}
+        />
+      )}
     </AdaptiveLayout>
   );
 }

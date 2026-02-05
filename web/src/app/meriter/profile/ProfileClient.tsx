@@ -19,14 +19,16 @@ import { Separator } from '@/components/ui/shadcn/separator';
 import { routes } from '@/lib/constants/routes';
 import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Users } from 'lucide-react';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { CreateTeamDialog } from '@/components/organisms/Profile/CreateTeamDialog';
 
 function ProfilePageComponent() {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const { user, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [showCreateTeamDialog, setShowCreateTeamDialog] = useState(false);
 
   const { data: roles } = useUserRoles(user?.id || '');
   const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>('profile.meritsExpanded', true);
@@ -162,6 +164,21 @@ function ProfilePageComponent() {
           </div>
         )}
 
+        {/* Create Team Button */}
+        <div>
+          <Separator className="bg-base-300" />
+          <div className="p-4">
+            <Button
+              onClick={() => setShowCreateTeamDialog(true)}
+              className="w-full rounded-xl"
+              variant="outline"
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Создать команду
+            </Button>
+          </div>
+        </div>
+
         {/* Foldable Invite Input Section - Only show if user has lead/participant roles */}
         {userRolesArray.some(r => r.role === 'lead' || r.role === 'participant') && (
           <div>
@@ -174,6 +191,12 @@ function ProfilePageComponent() {
         <div className="mt-6">
           <UseInvite />
         </div>
+
+        {/* Create Team Dialog */}
+        <CreateTeamDialog
+          open={showCreateTeamDialog}
+          onClose={() => setShowCreateTeamDialog(false)}
+        />
       </div>
     </AdaptiveLayout>
   );
