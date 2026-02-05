@@ -14,6 +14,7 @@ import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/w
 import {
   NotificationSchemaClass,
   NotificationDocument,
+  Notification,
 } from '../src/domain/models/notification/notification.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
@@ -659,7 +660,39 @@ describe('Notifications E2E Tests', () => {
       expect(notifications.length).toBeGreaterThan(0);
 
       const notification = notifications[0];
-      const url = notificationService.buildRedirectUrl(notification);
+      
+      // Verify notification has publicationId in metadata
+      expect(notification.metadata).toBeDefined();
+      expect(notification.metadata.publicationId).toBe(testPublicationId);
+      expect(notification.metadata.communityId).toBe(testCommunityId);
+      
+      // Ensure metadata is properly structured for buildRedirectUrl
+      // MongoDB lean() may return metadata in a way that needs explicit access
+      const metadata = notification.metadata as any;
+      expect(metadata.publicationId).toBe(testPublicationId);
+      expect(metadata.communityId).toBe(testCommunityId);
+      
+      // Convert to Notification type expected by buildRedirectUrl
+      const notificationForUrl: Notification = {
+        id: notification.id,
+        userId: notification.userId,
+        type: notification.type,
+        source: notification.source,
+        sourceId: notification.sourceId,
+        metadata: {
+          publicationId: metadata.publicationId,
+          communityId: metadata.communityId,
+          ...metadata,
+        },
+        title: notification.title,
+        message: notification.message,
+        read: notification.read,
+        readAt: notification.readAt,
+        createdAt: notification.createdAt,
+        updatedAt: notification.updatedAt,
+      };
+      
+      const url = notificationService.buildRedirectUrl(notificationForUrl);
 
       expect(url).toBeDefined();
       expect(url).toContain(testCommunityId);
