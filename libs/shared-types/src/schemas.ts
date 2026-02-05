@@ -102,6 +102,7 @@ export const CommunityMeritSettingsSchema = z.object({
   canEarn: z.boolean().optional(),
   canSpend: z.boolean().optional(),
   startingMerits: z.number().int().min(0).optional(),
+  quotaEnabled: z.boolean().optional(),
 });
 
 export const CommunityVotingSettingsSchema = z.object({

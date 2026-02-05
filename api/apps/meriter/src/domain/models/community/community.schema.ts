@@ -67,6 +67,7 @@ export interface CommunityMeritSettings {
   canEarn: boolean;
   canSpend: boolean;
   startingMerits?: number;
+  quotaEnabled?: boolean;
 }
 
 // Voting settings (configuration like merit conversion, not permissions)
@@ -250,6 +251,7 @@ export class CommunitySchemaClass implements Community {
       canEarn: Boolean,
       canSpend: Boolean,
       startingMerits: Number,
+      quotaEnabled: Boolean,
     },
     default: {
       dailyQuota: 100,
@@ -257,6 +259,7 @@ export class CommunitySchemaClass implements Community {
       canEarn: true,
       canSpend: true,
       startingMerits: 100,
+      quotaEnabled: true,
     },
   })
   meritSettings?: CommunityMeritSettings;

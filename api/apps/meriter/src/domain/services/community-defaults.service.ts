@@ -315,6 +315,7 @@ export class CommunityDefaultsService {
       canEarn: true,
       canSpend: true,
       startingMerits: 100,
+      quotaEnabled: true,
     };
 
     switch (typeTag) {
