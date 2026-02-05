@@ -183,9 +183,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     community.meritSettings?.quotaEnabled ?? true
   );
   
-  const [quotaRecipients, setQuotaRecipients] = useState<Role[]>(
-    (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']
-  );
+  const [quotaRecipients, setQuotaRecipients] = useState<Role[]>(() => {
+    const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
+    // Filter out 'viewer' as it's not allowed in the schema
+    return recipients.filter((r): r is Role => r !== 'viewer');
+  });
 
   const [linkedCurrencies, setLinkedCurrencies] = useState<string[]>(
     community.linkedCurrencies || []
@@ -214,9 +216,14 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [allowWithdraw, setAllowWithdraw] = useState<boolean>(
     community.settings?.allowWithdraw ?? true
   );
-  const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-same-team'>(
-    (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any'
-  );
+  const [votingRestriction, setVotingRestriction] = useState<'any' | 'not-same-team'>(() => {
+    const restriction = community.votingSettings?.votingRestriction;
+    // Handle case where restriction might be an array (legacy data)
+    if (Array.isArray(restriction)) {
+      return (restriction[0] as 'any' | 'not-same-team') || 'any';
+    }
+    return (restriction as 'any' | 'not-same-team') || 'any';
+  });
   
   const [currencySource, setCurrencySource] = useState<'quota-and-wallet' | 'quota-only' | 'wallet-only'>(
     getDefaultCurrencySource(community.votingSettings, community.typeTag)
@@ -265,10 +272,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
     allowWithdraw: community.settings?.allowWithdraw ?? true,
     forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
-    votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+    votingRestriction: (() => {
+      const restriction = community.votingSettings?.votingRestriction;
+      if (Array.isArray(restriction)) {
+        return (restriction[0] as 'any' | 'not-same-team') || 'any';
+      }
+      return (restriction as 'any' | 'not-same-team') || 'any';
+    })(),
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
-    quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
+    quotaRecipients: (() => {
+      const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
+      return recipients.filter((r): r is Role => r !== 'viewer');
+    })(),
     quotaEnabled: community.meritSettings?.quotaEnabled ?? true,
   });
 
@@ -346,10 +362,16 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
     setAllowWithdraw(community.settings?.allowWithdraw ?? true);
     setForwardRule((community.settings?.forwardRule as 'standard' | 'project') || 'standard');
-    setVotingRestriction((community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any');
+    const restriction = community.votingSettings?.votingRestriction;
+    if (Array.isArray(restriction)) {
+      setVotingRestriction((restriction[0] as 'any' | 'not-same-team') || 'any');
+    } else {
+      setVotingRestriction((restriction as 'any' | 'not-same-team') || 'any');
+    }
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
-    setQuotaRecipients((community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']);
+    const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
+    setQuotaRecipients(recipients.filter((r): r is Role => r !== 'viewer'));
     setQuotaEnabled(community.meritSettings?.quotaEnabled ?? true);
 
     // Update original state
@@ -365,10 +387,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       allowWithdraw: community.settings?.allowWithdraw ?? true,
       forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
-      votingRestriction: (community.votingSettings?.votingRestriction as 'any' | 'not-same-team') || 'any',
+      votingRestriction: (() => {
+      const restriction = community.votingSettings?.votingRestriction;
+      if (Array.isArray(restriction)) {
+        return (restriction[0] as 'any' | 'not-same-team') || 'any';
+      }
+      return (restriction as 'any' | 'not-same-team') || 'any';
+    })(),
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
-      quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
+      quotaRecipients: (() => {
+      const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
+      return recipients.filter((r): r is Role => r !== 'viewer');
+    })(),
       quotaEnabled: community.meritSettings?.quotaEnabled ?? true,
     });
   }, [community]);
@@ -399,11 +430,19 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         forwardRule,
       };
       
+      // Filter out 'viewer' from quotaRecipients as it's not allowed in the schema
+      const validQuotaRecipients = quotaRecipients.filter((r): r is Role => r !== 'viewer');
+      
+      // Ensure votingRestriction is a string, not an array
+      const validVotingRestriction: 'any' | 'not-same-team' = Array.isArray(votingRestriction)
+        ? (votingRestriction[0] as 'any' | 'not-same-team') || 'any'
+        : votingRestriction || 'any';
+      
       const dataToSave = {
         permissionRules,
         meritSettings: {
           dailyQuota: parseInt(dailyEmission, 10) || 100,
-          quotaRecipients: quotaRecipients,
+          quotaRecipients: validQuotaRecipients,
           canEarn: true, // These are controlled by permissionRules now
           canSpend: true,
           startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100,
@@ -412,7 +451,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         linkedCurrencies,
         settings: settingsToSave,
         votingSettings: {
-          votingRestriction,
+          votingRestriction: validVotingRestriction,
           currencySource,
         },
       };
@@ -1021,7 +1060,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
             <BrandFormControl label={t('quotaRecipients')}>
               <div className="space-y-2.5">
-                {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+                {(['superadmin', 'lead', 'participant'] as const).map((role) => {
                   const checkboxId = `merit-role-${role}`;
                   const isAllowed = quotaRecipients.includes(role);
                   return (
