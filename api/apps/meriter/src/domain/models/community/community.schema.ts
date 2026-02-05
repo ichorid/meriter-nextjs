@@ -78,6 +78,26 @@ export interface CommunityVotingSettings {
   currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only'; // Source of merits for voting
 }
 
+// Tappalka settings (configuration for post comparison mechanic)
+export interface CommunityTappalkaSettings {
+  /** Whether tappalka is enabled for this community */
+  enabled: boolean;
+  /** Category IDs to include in tappalka. Empty array = all categories */
+  categories: string[];
+  /** Merits awarded to winning post (emission). Default: 1 */
+  winReward: number;
+  /** Merits awarded to user for completing comparisons. Default: 1 */
+  userReward: number;
+  /** Number of comparisons required to earn userReward. Default: 10 */
+  comparisonsRequired: number;
+  /** Cost per post show (deducted from both posts). Default: 0.1 */
+  showCost: number;
+  /** Minimum post rating to participate. Default: 1 */
+  minRating: number;
+  /** Custom onboarding text. If empty, use default */
+  onboardingText?: string;
+}
+
 /**
  * PermissionRule
  * 
@@ -146,6 +166,7 @@ export interface Community {
   permissionRules?: PermissionRule[]; // Granular permission rules - replaces postingRules, votingRules, visibilityRules
   meritSettings?: CommunityMeritSettings; // Merit configuration (dailyQuota, quotaRecipients, etc.)
   votingSettings?: CommunityVotingSettings; // Voting configuration (meritConversion, etc.)
+  tappalkaSettings?: CommunityTappalkaSettings; // Tappalka configuration (post comparison mechanic)
   settings: CommunitySettings;
   hashtags: string[];
   hashtagDescriptions?: Record<string, string>;
@@ -266,6 +287,30 @@ export class CommunitySchemaClass implements Community {
     },
   })
   votingSettings?: CommunityVotingSettings;
+
+  // Tappalka settings (configuration for post comparison mechanic)
+  @Prop({
+    type: {
+      enabled: { type: Boolean, default: false },
+      categories: { type: [String], default: [] },
+      winReward: { type: Number, default: 1 },
+      userReward: { type: Number, default: 1 },
+      comparisonsRequired: { type: Number, default: 10 },
+      showCost: { type: Number, default: 0.1 },
+      minRating: { type: Number, default: 1 },
+      onboardingText: { type: String },
+    },
+    default: {
+      enabled: false,
+      categories: [],
+      winReward: 1,
+      userReward: 1,
+      comparisonsRequired: 10,
+      showCost: 0.1,
+      minRating: 1,
+    },
+  })
+  tappalkaSettings?: CommunityTappalkaSettings;
 
   @Prop({
     type: {
