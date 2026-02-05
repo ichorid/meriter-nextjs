@@ -302,14 +302,22 @@ describe('Tappalka E2E', () => {
     expect(finalProgress.meritBalance).toBe(5); // Updated wallet balance
 
     // Step 8: Verify that posts received winReward (check a few posts)
-    const samplePost = await publicationModel.findOne({ id: postIds[0] }).lean();
-    expect(samplePost?.metrics.score).toBeGreaterThan(10); // Should have received winReward
+    // Since we always choose postA as winner, find a post that has score > 10 (meaning it won at least once)
+    // Note: posts start with score 10, winReward is 1, showCost is 0.1
+    // If a post wins once: 10 - 0.1 + 1 = 10.9
+    // But if it's shown multiple times and wins, it could be higher
+    // If it's shown but loses: 10 - 0.1 = 9.9
+    const allPosts = await publicationModel.find({ id: { $in: postIds } }).lean();
+    const winningPosts = allPosts.filter((p) => p.metrics.score > 10);
+    expect(winningPosts.length).toBeGreaterThan(0); // At least one post should have won
+    // Check that at least one post that won has score > 10
+    const sampleWinningPost = winningPosts[0];
+    expect(sampleWinningPost?.metrics.score).toBeGreaterThan(10); // Should have received winReward
 
     // Step 9: Verify that showCost was deducted from posts
     // Posts that were shown should have lower rating (showCost deducted)
     // But winners also got winReward, so net change depends on whether they won or lost
-    const allPosts = await publicationModel.find({ id: { $in: postIds } }).lean();
-    // At least some posts should have been modified (showCost deducted)
+    // At least some posts should have been modified (showCost deducted or winReward added)
     const modifiedPosts = allPosts.filter((p) => p.metrics.score !== 10);
     expect(modifiedPosts.length).toBeGreaterThan(0);
   });
