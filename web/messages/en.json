@@ -1483,7 +1483,9 @@
             "reply": "Replies",
             "vote": "Votes",
             "invite": "Invites",
-            "forward_proposal": "Forward Proposals"
+            "forward_proposal": "Forward Proposals",
+            "team_join_request": "Join Requests",
+            "team_invitation": "Team Invitations"
         },
         "preferences": {
             "title": "Notification Preferences",
@@ -1495,7 +1497,9 @@
             "publications": "Publications",
             "polls": "Polls",
             "system": "System",
-            "forward_proposal": "Forward Proposals"
+            "forward_proposal": "Forward Proposals",
+            "team_join_request": "Join Requests",
+            "team_invitation": "Team Invitations"
         },
         "ariaLabels": {
             "markAsRead": "Mark as read",

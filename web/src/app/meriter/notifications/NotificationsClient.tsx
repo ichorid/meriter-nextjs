@@ -28,6 +28,7 @@ import {
   useNotificationPreferences,
   useUpdatePreferences as useUpdatePrefs,
 } from '@/hooks/api/useNotifications';
+import { useAcceptTeamInvitation, useRejectTeamInvitation } from '@/hooks/api/useTeams';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { NotificationType } from '@/types/api-v1';
@@ -61,6 +62,8 @@ export default function NotificationsPage() {
 
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
+  const acceptInvitation = useAcceptTeamInvitation();
+  const rejectInvitation = useRejectTeamInvitation();
 
   // Helper function to recursively fetch all remaining pages
   const fetchAllRemainingPages = React.useCallback(async () => {
@@ -180,6 +183,10 @@ export default function NotificationsPage() {
         return '🔔';
       case 'forward_proposal':
         return '➡️';
+      case 'team_join_request':
+        return '👥';
+      case 'team_invitation':
+        return '📨';
       default:
         return '🔔';
     }
@@ -311,7 +318,52 @@ export default function NotificationsPage() {
                           </AvatarFallback>
                         </Avatar>
                       )}
-                      {!notification.read && (
+                      {/* Action buttons for team invitations */}
+                      {notification.type === 'team_invitation' && !notification.read && notification.metadata?.invitationId && (
+                        <div className="flex items-center gap-2 mr-2" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const invitationId = notification.metadata?.invitationId;
+                              if (invitationId) {
+                                acceptInvitation.mutate({ invitationId });
+                                markAsRead.mutate({ id: notification.id });
+                              }
+                            }}
+                            disabled={acceptInvitation.isPending || rejectInvitation.isPending}
+                            className="h-7 px-3 text-xs rounded-lg"
+                          >
+                            {acceptInvitation.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              'Да'
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const invitationId = notification.metadata?.invitationId;
+                              if (invitationId) {
+                                rejectInvitation.mutate({ invitationId });
+                                markAsRead.mutate({ id: notification.id });
+                              }
+                            }}
+                            disabled={acceptInvitation.isPending || rejectInvitation.isPending}
+                            className="h-7 px-3 text-xs rounded-lg"
+                          >
+                            {rejectInvitation.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              'Нет'
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      {!notification.read && notification.type !== 'team_invitation' && (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();

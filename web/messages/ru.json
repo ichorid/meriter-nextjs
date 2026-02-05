@@ -1480,7 +1480,9 @@
             "reply": "Ответы",
             "vote": "Голоса",
             "invite": "Приглашения",
-            "forward_proposal": "Предложения пересылки"
+            "forward_proposal": "Предложения пересылки",
+            "team_join_request": "Запросы на вступление",
+            "team_invitation": "Приглашения в команду"
         },
         "preferences": {
             "title": "Настройки уведомлений",
@@ -1492,7 +1494,9 @@
             "publications": "Публикации",
             "polls": "Опросы",
             "system": "Системные",
-            "forward_proposal": "Предложения пересылки"
+            "forward_proposal": "Предложения пересылки",
+            "team_join_request": "Запросы на вступление",
+            "team_invitation": "Приглашения в команду"
         },
         "ariaLabels": {
             "markAsRead": "Отметить как прочитанное",
