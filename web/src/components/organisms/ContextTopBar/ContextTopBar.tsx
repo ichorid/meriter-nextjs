@@ -11,7 +11,6 @@ import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { InviteMenu } from '@/components/molecules/FabMenu/InviteMenu';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 
 export interface ContextTopBarProps {

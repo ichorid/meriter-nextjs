@@ -31,7 +31,6 @@ import {
   UserCommunityRoleSchemaClass,
   UserCommunityRoleSchema,
 } from './domain/models/user-community-role/user-community-role.schema';
-import { InviteSchemaClass, InviteSchema } from './domain/models/invite/invite.schema';
 import {
   NotificationSchemaClass,
   NotificationSchema,
@@ -116,7 +115,6 @@ import { EventBus } from './domain/events/event-bus';
       { name: UserSettingsSchemaClass.name, schema: UserSettingsSchema },
       { name: CommentSchemaClass.name, schema: CommentSchema },
       { name: UserCommunityRoleSchemaClass.name, schema: UserCommunityRoleSchema },
-      { name: InviteSchemaClass.name, schema: InviteSchema },
       { name: NotificationSchemaClass.name, schema: NotificationSchema },
       { name: FavoriteSchemaClass.name, schema: FavoriteSchema },
       { name: QuotaUsageSchemaClass.name, schema: QuotaUsageSchema },

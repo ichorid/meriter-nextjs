@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import { useAllLeads } from '@/hooks/api/useUsers';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { LeadCard } from '@/components/molecules/LeadCard/LeadCard';
@@ -172,7 +171,6 @@ export default function CommunitiesPage() {
                                 <p className="text-sm text-base-content/60">
                                     {tCommunities('joinTeam.subtitle')}
                                 </p>
-                                <InviteInput />
 
                                 {/* Local Groups Notification */}
                                 <div className="pt-6 border-t border-base-300 mt-2">
