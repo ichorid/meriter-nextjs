@@ -41,6 +41,10 @@ describe('Marathon/Future Vision integration (e2e)', () => {
     await userModel.deleteMany({});
     await walletModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
+
+    // Also clean up any legacy 'viewer' roles that might exist from old data
+    // This ensures no validation errors from deprecated role
+    await userCommunityRoleModel.deleteMany({ role: 'viewer' });
   });
 
   afterAll(async () => {
@@ -103,7 +107,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
           dailyEmission: 10,
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -125,7 +129,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
           dailyEmission: 10, // base emission can be non-zero; effective quota must still be 0 for future-vision
         },
         votingRules: {
-          allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
+          allowedRoles: ['superadmin', 'lead', 'participant'],
           canVoteForOwnPosts: false,
           participantsCannotVoteForLead: false,
           spendsMerits: true,
@@ -141,8 +145,8 @@ describe('Marathon/Future Vision integration (e2e)', () => {
 
     // Roles are read from UserCommunityRole
     await userCommunityRoleModel.create([
-      // voter is viewer in marathon (viewers can vote with quota, but cannot use wallet)
-      { id: uid(), userId: voterId, communityId: marathonCommunityId, role: 'viewer', createdAt: now, updatedAt: now },
+      // voter is participant in marathon (participants can vote with quota, but cannot use wallet)
+      { id: uid(), userId: voterId, communityId: marathonCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       // voter is participant in future-vision (wallet voting)
       { id: uid(), userId: voterId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       // author is participant in both
