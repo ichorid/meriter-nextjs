@@ -233,13 +233,17 @@ export const walletsRouter = router({
         });
       }
 
+      // Check if quota is enabled in community settings
+      const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
+      
       // Calculate effective daily quota with special-group + viewer rules
-      const baseDailyQuota = community.settings?.dailyEmission || 0;
+      const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
       const userRole = await ctx.permissionService.getUserRoleInCommunity(
         actualUserId,
         input.communityId,
       );
       const dailyQuota =
+        !quotaEnabled ||
         community.typeTag === 'future-vision' ||
         (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good')
           ? 0

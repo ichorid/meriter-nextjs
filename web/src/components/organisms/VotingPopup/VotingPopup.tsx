@@ -84,14 +84,16 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Get quota for the community
   const { quotasMap } = useCommunityQuotas(targetCommunityId ? [targetCommunityId] : []);
   const quotaData = targetCommunityId ? quotasMap.get(targetCommunityId) : null;
-  const quotaRemaining = quotaData?.remainingToday ?? 0;
-  const dailyQuota = quotaData?.dailyQuota ?? 0;
-  const usedToday = quotaData?.usedToday ?? 0;
+  
+  // Check if quota is enabled in community settings
+  const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
+  const quotaRemaining = quotaEnabled ? (quotaData?.remainingToday ?? 0) : 0;
+  const dailyQuota = quotaEnabled ? (quotaData?.dailyQuota ?? 0) : 0;
+  const usedToday = quotaEnabled ? (quotaData?.usedToday ?? 0) : 0;
   const freePlus = quotaRemaining;
   const freeMinus = 0; // Downvotes typically don't have free quota
 
   // Get free balance as fallback (different API endpoint)
-  const { data: freeBalance } = useFreeBalance(targetCommunityId);
   const freePlusAmount = quotaRemaining > 0 ? quotaRemaining : (typeof freeBalance === 'number' ? freeBalance : 0);
 
   // Note: Quota and wallet optimistic updates are handled by mutation hooks

@@ -91,9 +91,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   const hasQuota = React.useMemo(() => {
     if (!community?.meritSettings || !userRole) return false;
-    const { dailyQuota, quotaRecipients } = community.meritSettings;
-    // User has quota if dailyQuota > 0 and their role is in quotaRecipients
-    return dailyQuota > 0 && quotaRecipients.includes(userRole);
+    const { dailyQuota, quotaRecipients, quotaEnabled } = community.meritSettings;
+    // User has quota if quotaEnabled is true, dailyQuota > 0 and their role is in quotaRecipients
+    return quotaEnabled !== false && dailyQuota > 0 && quotaRecipients.includes(userRole);
   }, [community?.meritSettings, userRole]);
 
   // Check if it's marathon-of-good

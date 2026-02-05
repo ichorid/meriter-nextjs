@@ -477,6 +477,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const hasQuota =
         !!comms?.meritSettings &&
         !!userRoleInCommunity &&
+        comms.meritSettings.quotaEnabled !== false &&
         comms.meritSettings.dailyQuota > 0 &&
         comms.meritSettings.quotaRecipients.includes(userRoleInCommunity);
 

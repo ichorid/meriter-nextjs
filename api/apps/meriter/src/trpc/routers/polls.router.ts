@@ -172,6 +172,11 @@ async function getRemainingQuota(
     return 0;
   }
 
+  // Check if quota is enabled in community settings
+  if (community?.meritSettings?.quotaEnabled === false) {
+    return 0;
+  }
+
   if (
     !community.settings?.dailyEmission ||
     typeof community.settings.dailyEmission !== 'number'

@@ -340,6 +340,11 @@ async function getRemainingQuota(
     return 0;
   }
 
+  // Check if quota is enabled in community settings
+  if (community?.meritSettings?.quotaEnabled === false) {
+    return 0;
+  }
+
   if (
     !community.settings?.dailyEmission ||
     typeof community.settings.dailyEmission !== 'number'
@@ -581,6 +586,14 @@ async function createVoteLogic(
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Quota cannot be used for downvotes',
+    });
+  }
+
+  // Check if quota is enabled before allowing quota usage
+  if (quotaAmount > 0 && community?.meritSettings?.quotaEnabled === false) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Quota is disabled for this community',
     });
   }
 

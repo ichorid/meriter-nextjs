@@ -59,6 +59,15 @@ export class QuotaResetService {
       return null;
     }
 
+    // Check if quota is enabled in community settings
+    if (community?.meritSettings?.quotaEnabled === false) {
+      return {
+        dailyQuota: 0,
+        usedToday: 0,
+        remainingToday: 0,
+      };
+    }
+
     // Check if community has quota configured
     if (!community.settings?.dailyEmission || typeof community.settings.dailyEmission !== 'number') {
       return null;
