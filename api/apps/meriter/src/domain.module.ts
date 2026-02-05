@@ -57,6 +57,10 @@ import {
   AboutArticleSchemaClass,
   AboutArticleSchema,
 } from './domain/models/about/about-article.schema';
+import {
+  TappalkaProgressSchemaClass,
+  TappalkaProgressSchema,
+} from './domain/models/tappalka/tappalka-progress.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -86,6 +90,7 @@ import { CategoryService } from './domain/services/category.service';
 import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
+import { TappalkaService } from './domain/services/tappalka.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -120,6 +125,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: CategorySchemaClass.name, schema: CategorySchema },
       { name: AboutCategorySchemaClass.name, schema: AboutCategorySchema },
       { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
+      { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
     ]),
   ],
   providers: [
@@ -151,6 +157,7 @@ import { EventBus } from './domain/events/event-bus';
     QuotaUsageService,
     CategoryService,
     AboutService,
+    TappalkaService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -191,6 +198,7 @@ import { EventBus } from './domain/events/event-bus';
     QuotaUsageService,
     CategoryService,
     AboutService,
+    TappalkaService,
 
     // Export vote factor services
     RoleHierarchyFactor,
