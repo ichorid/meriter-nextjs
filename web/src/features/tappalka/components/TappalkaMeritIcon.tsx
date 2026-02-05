@@ -9,6 +9,7 @@ interface TappalkaMeritIconProps {
   onDragEnd?: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
 }
 
 export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
@@ -16,12 +17,17 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   onDragEnd,
   className,
   size = 'md',
+  disabled = false,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const { resolvedTheme } = useTheme();
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
+      if (disabled) {
+        e.preventDefault();
+        return;
+      }
       setIsDragging(true);
       
       // Set drag image (optional - can customize the drag preview)
@@ -43,7 +49,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
         document.body.removeChild(dragImage);
       }, 0);
     },
-    [onDragStart],
+    [onDragStart, disabled],
   );
 
   const handleDragEnd = useCallback(
@@ -62,19 +68,20 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
 
   return (
     <div
-      draggable
+      draggable={!disabled}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={cn(
-        'relative cursor-grab active:cursor-grabbing transition-all duration-200',
-        'hover:scale-110 hover:rotate-12',
+        'relative transition-all duration-200',
+        !disabled && 'cursor-grab active:cursor-grabbing hover:scale-110 hover:rotate-12',
+        disabled && 'cursor-not-allowed opacity-50',
         isDragging && 'opacity-50 scale-90 rotate-12',
         sizeClasses[size],
         className,
       )}
       role="button"
-      aria-label="Перетащите мерит на пост"
-      tabIndex={0}
+      aria-label={disabled ? 'Голосование уже сделано' : 'Перетащите мерит на пост'}
+      tabIndex={disabled ? -1 : 0}
     >
       {/* Merit icon - using SVG from public */}
       <div className="relative w-full h-full">

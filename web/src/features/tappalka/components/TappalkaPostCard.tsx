@@ -15,6 +15,7 @@ interface TappalkaPostCardProps {
   onDrop?: () => void;
   onDragEnter?: () => void;
   onDragLeave?: () => void;
+  disabled?: boolean;
 }
 
 export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
@@ -24,37 +25,35 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
   onDrop,
   onDragEnter,
   onDragLeave,
+  disabled = false,
 }) => {
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
-      if (onDrop) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      if (disabled || !onDrop) return;
+      e.preventDefault();
+      e.stopPropagation();
     },
-    [onDrop],
+    [onDrop, disabled],
   );
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
-      if (onDrop) {
-        e.preventDefault();
-        e.stopPropagation();
-        onDrop();
-      }
+      if (disabled || !onDrop) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onDrop();
     },
-    [onDrop],
+    [onDrop, disabled],
   );
 
   const handleDragEnter = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
-      if (onDrop) {
-        e.preventDefault();
-        e.stopPropagation();
-        onDragEnter?.();
-      }
+      if (disabled || !onDrop) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onDragEnter?.();
     },
-    [onDrop, onDragEnter],
+    [onDrop, onDragEnter, disabled],
   );
 
   const handleDragLeave = useCallback(
@@ -126,7 +125,8 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
           : isDropTarget
             ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-blue-400/20'
             : 'border-base-300 dark:border-base-700',
-        onDrop && 'cursor-pointer',
+        onDrop && !disabled && 'cursor-pointer',
+        disabled && 'opacity-75 cursor-not-allowed',
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}

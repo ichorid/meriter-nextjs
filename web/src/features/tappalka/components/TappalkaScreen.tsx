@@ -34,6 +34,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const [dropTargetPostId, setDropTargetPostId] = useState<string | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [votedSessionId, setVotedSessionId] = useState<string | null>(null);
 
   // Hooks
   const { data: progress, isLoading: progressLoading } = useTappalkaProgress(communityId);
@@ -43,6 +44,16 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   );
   const submitChoice = useTappalkaChoice();
   const markOnboardingSeen = useTappalkaOnboarding();
+
+  // Reset voting state when pair changes
+  useEffect(() => {
+    if (pair && votedSessionId && votedSessionId !== pair.sessionId) {
+      setVotedSessionId(null);
+      setSelectedPostId(null);
+      setDraggedPostId(null);
+      setDropTargetPostId(null);
+    }
+  }, [pair?.sessionId, votedSessionId]);
 
   // Show onboarding if not seen
   const showOnboarding = progress && !progress.onboardingSeen;
@@ -56,11 +67,16 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     }
   }, [communityId, markOnboardingSeen]);
 
+  // Check if voting is disabled for current pair
+  const isVotingDisabled = pair ? votedSessionId === pair.sessionId : false;
+
   // Handle drag start
   const handleDragStart = useCallback(() => {
+    // Prevent dragging if already voted for this pair
+    if (isVotingDisabled) return;
     // Merit icon is being dragged
     setDraggedPostId('merit');
-  }, []);
+  }, [isVotingDisabled]);
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
@@ -71,12 +87,17 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   // Handle drop on post
   const handlePostDrop = useCallback(
     async (postId: string) => {
-      if (!pair || isSubmitting || !draggedPostId) return;
+      // Prevent multiple votes for the same pair
+      if (!pair || isSubmitting || !draggedPostId || votedSessionId === pair.sessionId) return;
 
       const otherPostId = postId === pair.postA.id ? pair.postB.id : pair.postA.id;
 
+      // Immediately mark this session as voted to prevent duplicate votes
+      setVotedSessionId(pair.sessionId);
       setSelectedPostId(postId);
       setIsSubmitting(true);
+      setDraggedPostId(null);
+      setDropTargetPostId(null);
 
       try {
         const result = await submitChoice.mutateAsync({
@@ -94,38 +115,38 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
           );
         }
 
-        // If nextPair is provided, use it; otherwise refetch
+        // Quickly switch to next pair (short delay for visual feedback)
         if (result.nextPair) {
-          // Update pair in cache would be handled by the mutation
-          // For now, we'll refetch to get the new pair
           setTimeout(() => {
             refetchPair();
             setSelectedPostId(null);
-          }, 1000); // Show animation for 1 second
+            setVotedSessionId(null);
+          }, 300); // Short delay for visual feedback
         } else if (result.noMorePosts) {
           addToast('Больше нет постов для сравнения', 'info');
           setTimeout(() => {
             setSelectedPostId(null);
-          }, 1000);
+            setVotedSessionId(null);
+          }, 300);
         } else {
           // Refetch to get next pair
           setTimeout(() => {
             refetchPair();
             setSelectedPostId(null);
-          }, 1000);
+            setVotedSessionId(null);
+          }, 300);
         }
       } catch (error) {
         console.error('Failed to submit choice:', error);
         const message = error instanceof Error ? error.message : 'Не удалось отправить выбор';
         addToast(message, 'error');
         setSelectedPostId(null);
+        setVotedSessionId(null);
       } finally {
         setIsSubmitting(false);
-        setDraggedPostId(null);
-        setDropTargetPostId(null);
       }
     },
-    [pair, isSubmitting, draggedPostId, communityId, submitChoice, progress, addToast, refetchPair],
+    [pair, isSubmitting, draggedPostId, votedSessionId, communityId, submitChoice, progress, addToast, refetchPair],
   );
 
   // Handle drag enter (for visual feedback)
@@ -243,6 +264,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDrop={() => handlePostDrop(pair.postA.id)}
                   onDragEnter={() => handleDragEnter(pair.postA.id)}
                   onDragLeave={handleDragLeave}
+                  disabled={isVotingDisabled}
                 />
               </div>
 
@@ -267,6 +289,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDrop={() => handlePostDrop(pair.postB.id)}
                   onDragEnter={() => handleDragEnter(pair.postB.id)}
                   onDragLeave={handleDragLeave}
+                  disabled={isVotingDisabled}
                 />
               </div>
             </div>
@@ -280,9 +303,11 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 size="lg"
+                disabled={isVotingDisabled}
                 className={cn(
                   'transition-all duration-200',
                   draggedPostId && 'opacity-70 scale-90',
+                  isVotingDisabled && 'opacity-50 cursor-not-allowed',
                 )}
               />
             </div>
