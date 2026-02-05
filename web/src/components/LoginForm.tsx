@@ -376,7 +376,6 @@ export function LoginForm({
                                         </div>
                                     )}
                                 </div>
-                            </div>
                         </>
                     )}
                 </CardContent>
