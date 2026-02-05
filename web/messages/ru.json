@@ -682,6 +682,18 @@
                 "remove": "Удалить участника",
                 "confirmRemove": "Удалить {name} из сообщества?",
                 "addMerits": "Начислить мериты",
+                "teamRequests": {
+                    "title": "Заявки на вступление",
+                    "approve": "Принять",
+                    "reject": "Отклонить",
+                    "approving": "Принятие...",
+                    "rejecting": "Отклонение...",
+                    "approved": "Заявка принята",
+                    "rejected": "Заявка отклонена",
+                    "approveFailed": "Не удалось принять заявку",
+                    "rejectFailed": "Не удалось отклонить заявку",
+                    "confirmReject": "Вы уверены, что хотите отклонить эту заявку?"
+                },
                 "addMeritsDialog": {
                     "title": "Начислить мериты {name}",
                     "amountLabel": "Количество меритов",
@@ -1330,6 +1342,14 @@
         "participantOfTeam": "Участник команды \"{teamName}\"",
         "contactTeamRepresentative": "Связаться с лидом этой команды",
         "leadDescription": "Лид – куратор команды, с которым вы можете связаться по любым относящимся к этой команде вопросам.",
+        "joinTeam": {
+            "button": "Вступить",
+            "submitting": "Отправка...",
+            "requestPending": "На рассмотрении",
+            "requestPendingTooltip": "Ваша заявка уже на рассмотрении лидом команды",
+            "requestSubmitted": "Вашу заявку рассмотрят",
+            "requestFailed": "Не удалось подать заявку"
+        },
         "roleTypes": {
             "lead": "Лид",
             "participant": "Участник",

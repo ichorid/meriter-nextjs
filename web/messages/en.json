@@ -689,6 +689,18 @@
                 "remove": "Remove member",
                 "confirmRemove": "Remove {name} from community?",
                 "addMerits": "Add merits",
+                "teamRequests": {
+                    "title": "Join Requests",
+                    "approve": "Approve",
+                    "reject": "Reject",
+                    "approving": "Approving...",
+                    "rejecting": "Rejecting...",
+                    "approved": "Request approved",
+                    "rejected": "Request rejected",
+                    "approveFailed": "Failed to approve request",
+                    "rejectFailed": "Failed to reject request",
+                    "confirmReject": "Are you sure you want to reject this request?"
+                },
                 "addMeritsDialog": {
                     "title": "Add merits to {name}",
                     "amountLabel": "Amount of merits",
@@ -1333,6 +1345,14 @@
         "participantOfTeam": "Participant of team \"{teamName}\"",
         "contactTeamRepresentative": "Contact this team's lead",
         "leadDescription": "Lead – team curator you can contact for any questions related to this team.",
+        "joinTeam": {
+            "button": "Join",
+            "submitting": "Submitting...",
+            "requestPending": "Pending",
+            "requestPendingTooltip": "Your request is already under review by the team lead",
+            "requestSubmitted": "Your request will be reviewed",
+            "requestFailed": "Failed to submit request"
+        },
         "roleTypes": {
             "lead": "Lead",
             "participant": "Participant",
