@@ -4,6 +4,7 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface TappalkaHeaderProps {
   currentComparisons: number;
@@ -50,7 +51,7 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
         <div className="flex items-center gap-1.5 text-sm">
           <span className="text-base-content/60">Баланс:</span>
           <span className="font-semibold text-base-content">
-            {meritBalance > 0 ? `+${meritBalance}` : meritBalance}
+            {meritBalance > 0 ? `+${formatMerits(meritBalance)}` : formatMerits(meritBalance)}
           </span>
         </div>
       </div>

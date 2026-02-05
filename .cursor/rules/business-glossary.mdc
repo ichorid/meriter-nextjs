@@ -1,0 +1,146 @@
+---
+description: Core terminology and concepts for Meriter platform. Reference when implementing any feature.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Meriter Business Glossary
+
+> Reference this file to understand core concepts before implementing any feature.
+
+## Platform Overview
+
+**Meriter** — merit-based social platform where users earn and spend "merits" (internal currency) to promote their ideas and projects.
+
+**Current Status:** MVP "Marathon of Good" — gamified platform for schoolchildren doing good deeds.
+
+**Key Principle:** The more merits you have earned for the community, the higher your trust level, the easier it is to get support from community members.
+
+---
+
+## Core Concepts
+
+### Merit
+Unit of reputation/currency within a community.
+
+**Properties:**
+- Numeric, can have fractional part (1 merit, 1.5 merits)
+- Community-specific: each community has its own merits
+- **EXCEPTION:** All global communities share the SAME merit (meta-community Meriter)
+- Each user individually accumulates and spends their merits
+
+### Quota
+Daily "burnable" merits. Auto-credited to a separate account, unused quota expires.
+
+**Rules:**
+- NOT mixed with main wallet
+- Amount CANNOT exceed single credit amount — excess burns
+- NOT used for system fee payments (only global merits)
+- When both quota and merits can be used — quota is spent FIRST
+
+### Wallet
+Accumulated merits of a user in a specific community. Unlike quota — does NOT expire, accumulates.
+
+### Fee (Commission)
+System commission for an action (publishing, commenting). Merits are BURNED — not transferred to anyone.
+
+---
+
+## Rating Concepts
+
+### Post Rating
+Sum of merits "attached" to a post through comments. Can be positive or negative.
+
+### Maximum Rating
+Total merits collected by a post throughout history (historical metric).
+
+### Rates (Multipliers)
+Merit multipliers for specific communities or content types.
+
+**Examples:**
+- ×2: 1 user merit = 2 merits on post
+- ×0.1: 1 user merit = 0.1 merits on post
+- ×10: 1 user merit = 10 merits on post
+
+**Configuration:**
+- Set by superadmin for global communities
+- Displayed as ×2, ×10, ×0.1, etc.
+
+---
+
+## Community Types
+
+### Global Community (Public Group)
+Community created by platform administration.
+
+**Properties:**
+- All users are members by default (immediately after registration)
+- Share ONE common merit between themselves
+- Merits earned in one global community can be spent in another global community
+- User CANNOT leave a global community
+- List of global communities can expand
+
+### Local Community (Private Group)
+Community created and managed by users.
+
+**Properties:**
+- Has its OWN merit (separate from global)
+- Full set of settings available to lead
+- User can be member of ANY number of local communities
+- User can be lead of ANY number of communities
+- User can voluntarily leave any local community
+- Lead CANNOT delete community — only request deletion from administration
+
+### Lead
+Administrator of a local community (creator or appointed). Has access to community settings.
+
+---
+
+## Actions
+
+### Post Forwarding
+Moving a post from one community to another.
+
+**Two modes:**
+- **Copy** — without merits, original preserved (DEFAULT)
+- **Transfer** — with merits, original deleted
+
+### Merit Withdrawal
+Transferring merits from post rating to author's wallet. Post rating decreases.
+
+### Post Closing
+Deleting post to profile archive. Closed post CANNOT be re-published.
+
+---
+
+## Mechanics
+
+### Tappalka
+Mechanism for comparing two posts for merit emission. User sees two posts, chooses better one — chosen post receives merit (emission).
+
+### Emission
+Creation of new merits by the system. Happens through tappalka, from administration, or as welcome merits.
+
+### Stop-Loss
+Minimum rating/merit threshold below which post stops being shown in tappalka. Set by post owner.
+
+---
+
+## MVP-Specific Terms
+
+| Universal Term | MVP Term |
+|----------------|----------|
+| Local community | Team group |
+| Lead of local community | Team lead |
+| Global community | Public group |
+
+### "Image of Future" (ОБ / Obraz Budushchego)
+Global community for publishing visions of ideal future. Main game community in "Marathon of Good".
+
+### "Marathon of Good" (МД / Marafon Dobra)
+Global community for reports on actually done good deeds. Main source of merit earning.
+
+### Team Group
+Local community in MVP context. Created by participants to unite like-minded people.

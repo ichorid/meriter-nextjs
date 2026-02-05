@@ -16,6 +16,7 @@ import {
   TappalkaOnboarding,
 } from './';
 import { cn } from '@/lib/utils';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface TappalkaScreenProps {
   communityId: string;
@@ -88,7 +89,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         // Show success message if reward earned
         if (result.rewardEarned && result.userMeritsEarned) {
           addToast(
-            `Поздравляем! Вы получили ${result.userMeritsEarned} меритов за ${progress?.comparisonsRequired || 10} сравнений!`,
+            `Поздравляем! Вы получили ${formatMerits(result.userMeritsEarned)} меритов за ${progress?.comparisonsRequired || 10} сравнений!`,
             'success',
           );
         }
@@ -166,10 +167,11 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   // Show onboarding if not seen
   if (showOnboarding) {
     return (
-      <>
+      <div className="flex flex-col min-h-screen bg-base-200">
         <TappalkaOnboarding
           text={progress.onboardingText || ''}
           onDismiss={handleOnboardingDismiss}
+          inline={true}
         />
         {/* Show loading while marking onboarding as seen */}
         {markOnboardingSeen.isPending && (
@@ -177,7 +179,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
             <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
           </div>
         )}
-      </>
+      </div>
     );
   }
 

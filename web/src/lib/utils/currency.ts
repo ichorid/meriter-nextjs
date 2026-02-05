@@ -32,3 +32,14 @@ export function formatCurrencyAmount(amount: number, currency: CurrencyNames): s
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value);
 }
+
+/**
+ * Format merits to 1 decimal place
+ * Examples: 10.7, 10.0 -> 10, 0.5 -> 0.5
+ */
+export function formatMerits(value: number): string {
+  // Round to 1 decimal place
+  const rounded = Math.round(value * 10) / 10;
+  // Format to 1 decimal place, but remove trailing zeros
+  return rounded.toFixed(1).replace(/\.0$/, '');
+}

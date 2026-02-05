@@ -5,6 +5,7 @@ import { useOtherUserQuota } from '@/hooks/api/useQuota';
 import { useOtherUserWallet } from '@/hooks/api/useWallet';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useTranslations } from 'next-intl';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface UserCommunityMeritsProps {
     userId: string;
@@ -51,7 +52,7 @@ export function UserCommunityMerits({ userId, communityId, communityName, canVie
                 {wallet?.balance !== undefined && (
                     <div className="flex items-center gap-1 text-sm">
                         <span className="font-semibold text-base-content">
-                            {wallet.balance.toLocaleString()}
+                            {formatMerits(wallet.balance)}
                         </span>
                         <span className="text-base-content/60">{tCommon('permanentMerits')}</span>
                     </div>

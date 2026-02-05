@@ -1,0 +1,183 @@
+---
+description: Merit system business logic - emission, wallet, quota, spending, rates. Apply when working with merit-related features.
+globs:
+  - "**/merit*.ts"
+  - "**/wallet*.ts"
+  - "**/quota*.ts"
+  - "**/transaction*.ts"
+  - "**/balance*.ts"
+alwaysApply: false
+---
+
+# Merit System Business Logic
+
+> Complete rules for merit handling: earning, spending, quota, fees, and rates.
+
+---
+
+## Two Account Types
+
+| Type | Description | Expires? | For Fee? |
+|------|-------------|----------|----------|
+| **Wallet** | Accumulated merits | No | Yes |
+| **Quota** | Daily burnable merits | Yes, excess burns | No |
+
+### Usage Priority
+When both merits and quota can be used for an action:
+1. **FIRST** spend **quota**
+2. **THEN** spend **wallet**
+
+---
+
+## Earning Merits
+
+### Methods of Earning
+
+| Method | Source | Emission Type |
+|--------|--------|---------------|
+| Tappalka | 10 comparisons = 1 merit | System emission |
+| Welcome merits | At registration | System emission |
+| From administration | Direct credit | Manual emission |
+| From posts | Positive comments from others | User transfer |
+| Daily quota | Auto-credit (if enabled) | System emission |
+
+### Starting Merits
+At registration user receives **100 global merits** to wallet.
+
+### Earning from Posts
+1. Other users leave positive comments under posts
+2. Merits transfer from their wallets to post rating
+3. Post author can **withdraw** earned merits to their wallet at any time
+4. Upon withdrawal, post rating decreases
+
+---
+
+## Spending Merits
+
+### System Fee (Merits BURNED)
+
+| Action | Cost | Paid From |
+|--------|------|-----------|
+| Post publication | 1 merit (configurable) | Global merits |
+| Comment | 0.1 merit (configurable) | Global merits |
+| Poll participation | Community-configurable | Global merits |
+
+**IMPORTANT:** Fee is ALWAYS paid from GLOBAL merits, even in local communities.
+
+### Voting for Content
+
+| Action | Effect | Paid From |
+|--------|--------|-----------|
+| Positive comment | Post rating increases | Quota (priority) → Wallet |
+| Negative comment | Post rating decreases | Wallet ONLY |
+| Self-vote (if allowed) | Rating increases | Wallet ONLY |
+| Poll vote | Vote weight = merit amount | Community merits |
+
+---
+
+## Voting Rules
+
+### For Others' Posts
+- Upvote: quota first, then wallet
+- Downvote: wallet ONLY
+
+### For Own Posts
+- Wallet ONLY (if allowed by community settings)
+- Quota voting for own posts is PROHIBITED
+
+### For Teammates' Posts
+Teammates = members of same local communities as the voter.
+
+- **Default:** Merits allowed for everything, quota only for non-teammates
+- Configurable per community
+
+---
+
+## Quota Rules
+
+### Core Quota Rules
+1. Credited daily in amount set in community settings
+2. Quota balance CANNOT exceed single credit amount — excess BURNS
+3. Used same as regular merits, BUT with restrictions
+4. NOT used for system fee payment
+
+### Quota Restrictions
+- ❌ Cannot vote with quota for own posts
+- ❌ Cannot pay fee for posts/comments with quota
+- ❌ Cannot use quota for downvotes
+
+---
+
+## Negative Post Rating
+
+### What Happens When Rating Goes Negative
+
+**Scenario:**
+1. User publishes post
+2. Other users vote against (negative comments)
+3. Post rating goes negative
+
+**Consequences:**
+- After **24 hours** negative balance is **DEDUCTED from author's wallet**
+- Author must close post before this to avoid deduction
+- Upon closing, post goes to profile archive
+
+### Protection from Negative
+- Author can close post and withdraw all merits before 24 hours expire
+- Closed post stored in profile archive
+- Closed post **CANNOT be re-published**
+
+---
+
+## Rates (Multipliers)
+
+### How Rates Work
+Multipliers change ratio "merit from user" → "merit on post".
+
+**Examples:**
+- ×2: 1 merit from user = 2 merits on post
+- ×0.1: 1 merit from user = 0.1 merits on post
+- ×10: 1 merit from user = 10 merits on post
+
+### Rate Application
+- Set by superadmin for global communities
+- Displayed in UI as "×2", "×10", "×0.1", etc.
+- Planned use for content differentiation:
+  - Good deeds (MД): increased multiplier (×2-×5)
+  - Entertainment content: decreased multiplier (×0.1)
+
+---
+
+## Implementation Rules
+
+### Balance Checks (in order)
+```
+1. Check fee availability (global wallet)
+2. Check voting amount availability:
+   a. If upvote: check quota first, then wallet
+   b. If downvote: check wallet only
+   c. If self-vote: check wallet only (quota forbidden)
+3. Deduct fee first
+4. Process voting amount
+```
+
+### Transaction Integrity
+- All merit operations must be atomic
+- If fee deduction fails — entire operation fails
+- If voting deduction fails — refund fee and fail operation
+
+### Negative Balance Handling
+- Wallets CAN go negative (for 24-hour grace period on posts)
+- Quota CANNOT go negative
+- System must schedule negative balance collection after 24 hours
+
+---
+
+## Future Features (v2.0+)
+
+### Post Investment
+Users will be able to invest merits in others' posts, receiving percentage of collected merits.
+*Requires serious business logic development.*
+
+### Team Merit Sharing
+Ability to split merits earned by a post among team members (when full projects feature appears).

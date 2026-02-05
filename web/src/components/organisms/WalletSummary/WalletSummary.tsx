@@ -4,6 +4,7 @@ import { Badge } from '@/components/atoms/Badge/Badge';
 import { Button } from '@/components/ui/shadcn/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User } from 'lucide-react';
+import { formatMerits } from '@/lib/utils/currency';
 
 // Frontend-specific Wallet interface for UI display
 // Extends the base Wallet from shared-types
@@ -39,7 +40,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
           <CardTitle>Wallets</CardTitle>
           {total > 0 && (
             <Badge variant="primary" size="md" className="font-bold">
-              {total.toLocaleString()} {currency || 'tokens'}
+              {formatMerits(total)} {currency || 'tokens'}
             </Badge>
           )}
         </div>
@@ -69,7 +70,7 @@ export const WalletSummary: React.FC<WalletSummaryProps> = ({
                   <div>
                     <div className="font-medium">{wallet.currency}</div>
                     <div className="text-sm text-base-content/60">
-                      {wallet.balance.toLocaleString()} {wallet.currency}
+                      {formatMerits(wallet.balance)} {wallet.currency}
                     </div>
                   </div>
                 </div>

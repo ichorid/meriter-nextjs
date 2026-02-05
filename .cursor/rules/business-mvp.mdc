@@ -1,0 +1,269 @@
+---
+description: MVP "Marathon of Good" specific business logic and community configurations. ALWAYS apply when working on MVP features.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+# MVP "Marathon of Good" Business Logic
+
+> Specific rules for current MVP implementation. Critical for understanding platform context.
+
+---
+
+## About MVP
+
+**Marathon of Good** — platform for running a game organized by project partners.
+
+**Target Audience:** Schoolchildren
+
+**Game Goal:** Collect as many merits as possible and use them to promote "Images of Future" (posts in ОБ) that the user likes.
+
+---
+
+## MVP Terminology Mapping
+
+| Universal Term | MVP Term |
+|----------------|----------|
+| Local community | Team group |
+| Lead of local community | Team lead |
+| Global community | Public group |
+
+---
+
+## Global Communities in MVP
+
+MVP has **4 global communities**:
+
+### 1. Image of Future (ОБ / Obraz Budushchego)
+
+**Main game community.** Participants publish their "images of future" and compete to promote them.
+
+**Key Settings:**
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| `canWithdrawMerits` | **No** | Merits stay on post forever |
+| `canVoteSelf` | **Yes** | Can support own ОБ |
+| `quotaEnabled` | No | Tappalka is main source |
+| `tappalkaEnabled` | No | Only voting |
+| `postFee` | 1 merit | Standard |
+| `commentFee` | 0.1 merit | Standard |
+
+**Special Feature:** Periodically administration rewards authors of highest-rated posts.
+
+---
+
+### 2. Marathon of Good (МД / Marafon Dobra)
+
+**For reports on actually done good deeds.** Main source of merit earning through voting.
+
+**Key Settings:**
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| `canWithdrawMerits` | **Yes** | Main earning method |
+| `canVoteSelf` | No | Standard |
+| `quotaEnabled` | **No** | Tappalka handles everything |
+| `tappalkaEnabled` | **Yes** | Main emission |
+| `rateMultiplier` | Planned ×2-×5 | Encourage good deeds |
+| `postFee` | 1 merit | Standard |
+| `commentFee` | 0.1 merit | Standard |
+
+**Planned Rates:** When additional public groups appear (e.g., entertainment content) — multiplier for MД will be ×2-×5, for entertainment ×0.1.
+
+---
+
+### 3. Projects
+
+**For publishing ideas and projects "in progress".**
+
+**Key Settings:**
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| `canWithdrawMerits` | **No** | Only after transfer to MД |
+| `canVoteSelf` | **Yes** | Can support own project |
+| `quotaEnabled` | No | — |
+| `tappalkaEnabled` | **Yes** | Emission |
+| `postFee` | 1 merit | Standard |
+| `commentFee` | 0.1 merit | Standard |
+
+**Special Feature:** When project is completed, post can be **transferred** to MД community — and there all earned merits can be withdrawn. This is the ONLY case of transfer with merits.
+
+---
+
+### 4. Feedback
+
+**For suggestions, questions, and wishes to administration.**
+
+**Key Settings:**
+
+| Setting | Value | Reason |
+|---------|-------|--------|
+| `postFee` | **0** | Free feedback |
+| `commentFee` | **0** | Free feedback |
+| `quotaEnabled` | No | — |
+| `canVote` (users) | **No** | Only superadmin credits |
+| `canWithdrawMerits` | **Yes** | Can withdraw to wallet |
+| `tappalkaEnabled` | No | — |
+
+**Special Feature:** Merits credited **ONLY by superadmin** — users cannot vote for posts. Withdrawing merits works as usual — so posts participate in economy.
+
+**Note:** If "spamming" starts — fee may be enabled.
+
+---
+
+## Settings Summary Table
+
+| Setting | Default | ОБ | МД | Projects | Feedback | Local |
+|---------|---------|----|----|----------|----------|-------|
+| canWithdrawMerits | Yes | **No** | Yes | **No** | Yes | Config |
+| canVoteSelf | No | **Yes** | No | **Yes** | No | Config |
+| canVoteTeammates | Yes | Yes | Yes | Yes | — | Config |
+| quotaEnabled | No | No | No | No | No | Config |
+| rateMultiplier | ×1 | ×1 | ×1 (plan ×2-5) | ×1 | — | Config |
+| postFee | 1 | 1 | 1 | 1 | **0** | Config |
+| commentFee | 0.1 | 0.1 | 0.1 | 0.1 | **0** | Config |
+| tappalkaEnabled | No | No | **Yes** | **Yes** | No | Config |
+| welcomeMerits | — | — | — | — | — | Config |
+| editTimeLimit | 30 min | 30 min | 30 min | 30 min | 30 min | Config |
+| visibility | All | All | All | All | All | Config |
+
+---
+
+## Main User Flow
+
+### 1. Registration
+1. Select authorization method
+2. Fill profile (name, about)
+3. Optionally: enter invite code
+4. Automatic:
+   - "Member" role in all global communities
+   - 100 welcome merits
+   - Additional role by invite code (if any)
+
+### 2. Publishing Ideas
+- User publishes their images of future in **ОБ**
+- Goal: collect maximum merits for their image
+
+### 3. Earning Merits
+
+**Method A: Good Deeds (МД)**
+1. Do a good deed in real life
+2. Post report in **МД** community
+3. Receive positive comments from others
+4. Withdraw earned merits to wallet
+5. Use to support posts in ОБ
+
+**Method B: Projects**
+1. Post idea/project in **Projects** community
+2. Collect merits through comments (cannot withdraw)
+3. Complete project in real life
+4. Transfer post to **МД**
+5. Withdraw all earned merits
+
+**Method C: Tappalka**
+1. Participate in tappalka (МД or Projects)
+2. Get 1 merit for 10 comparisons
+3. Use to support posts
+
+### 4. Spending Merits
+- Pay fee for publications and comments
+- Positive comments on posts in ОБ
+- Participate in polls
+
+### 5. Teams (Optional)
+- Create local community (team group)
+- Invite like-minded people
+- Communicate, organize activities
+
+### 6. Feedback
+- Questions and suggestions — to **Feedback** community
+- Superadmin can credit merits for valuable feedback
+
+---
+
+## MVP Roles
+
+### Basic Path
+```
+Registration
+    │
+    ▼
+Member of all global communities
+    │
+    ├──► Join local ──► Team member
+    │
+    └──► Create local ──► Team lead
+```
+
+### Administrative Roles
+- **Global community lead** — given to organizers
+- **Superadmin** — technical team and main organizers
+
+---
+
+## Local Communities in MVP
+
+### Team Groups
+- Created by users
+- All settings at lead's discretion
+- Own internal currency (separate from global merits)
+
+### Restrictions
+- Post forwarding — ALWAYS copy without merits
+- Lead CANNOT delete community — only request
+
+---
+
+## Implementation Checklist
+
+### Community Initialization
+```
+On platform setup:
+1. Create "Image of Future" (ОБ) with settings above
+2. Create "Marathon of Good" (МД) with settings above
+3. Create "Projects" with settings above
+4. Create "Feedback" with settings above
+5. Enable tappalka for МД and Projects
+6. Disable quota for all (tappalka is emission source)
+```
+
+### User Registration
+```
+1. Standard registration flow
+2. Auto-join all 4 global communities
+3. Credit 100 global merits
+4. If invite code: process additional role/community
+```
+
+### Post Transfer from Projects to МД
+```
+This is SPECIAL CASE:
+1. Check post is in Projects
+2. Check target is МД
+3. Transfer mode = WITH merits
+4. Delete original from Projects
+5. Create new in МД with same rating
+6. Now user can withdraw merits
+```
+
+---
+
+## MVP Success Metrics
+
+### Functional
+- [ ] User can register and receive starting merits
+- [ ] User can publish posts in all global communities
+- [ ] User can vote for posts (positive/negative)
+- [ ] Tappalka works and credits merits
+- [ ] Post forwarding from Projects to МД works
+- [ ] Local community creation works
+
+### Economic
+- [ ] Fee for posts is deducted
+- [ ] Fee for comments is deducted
+- [ ] Emission through tappalka works
+- [ ] Merit withdrawal from posts works (where allowed)

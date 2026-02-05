@@ -1,0 +1,282 @@
+---
+description: Users, roles, permissions, and registration business logic. Apply when working with user-related features.
+globs:
+  - "**/user*.ts"
+  - "**/role*.ts"
+  - "**/permission*.ts"
+  - "**/auth*.ts"
+  - "**/invite*.ts"
+alwaysApply: false
+---
+
+# Users and Permissions Business Logic
+
+> Complete rules for user profiles, roles, permissions, and registration.
+
+---
+
+## User Data Model
+
+### User-Filled Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| name | Yes | Display name |
+| about | Yes | Short description |
+| avatar | No | Profile image |
+| contacts | No | Contact methods |
+
+### System Fields
+
+| Field | Description |
+|-------|-------------|
+| roles | List of roles for each community |
+| activity | Summaries of posts and votes |
+| favorites | Posts marked as favorite |
+| merits | Merit amount in each community |
+| quota | Current quota balance in communities with quota |
+| archive | User's closed posts |
+
+---
+
+## Roles
+
+Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different communities.
+
+### Community Member
+**Base role.** Assigned upon joining a community.
+
+**Rights:**
+- Publish posts (if allowed by settings)
+- Comment on posts
+- Vote for posts
+- Participate in polls
+- Participate in tappalka
+- Create local communities
+
+### Lead (Local Community)
+**Administrator of local community.** Creator or appointed by them.
+
+**Rights (in addition to member):**
+- Access to community settings
+- Member management
+- Content moderation
+- Credit merits to members
+
+**Restrictions:**
+- CANNOT delete community (only request from administration)
+- CANNOT change post forwarding mode (always copy without merits)
+
+### Global Community Administrator
+**Appointed by superadmin.** Administers specific global community.
+
+**Rights:**
+- All lead rights for their global community
+- Configure global community parameters
+- Manage post categories
+
+### Superadministrator
+**Full platform access.**
+
+**Rights:**
+- Administrator of ALL global communities
+- Access to settings of ALL local communities
+- Create global communities
+- Appoint global community administrators
+- Direct merit credit to ANY user
+- Configure rates (multipliers) for communities
+- Delete communities
+
+---
+
+## Community Membership Rules
+
+### Joining
+- User automatically becomes member of **ALL global communities** at registration
+- Joins local communities voluntarily
+
+### Multiple Membership
+- User can be member of **ANY number** of communities
+- User can be lead of **ANY number** of communities
+
+### Leaving
+- From local community — can leave at will
+- From global community — **CANNOT** leave
+
+### Community Deletion
+- Lead **CANNOT** delete community independently
+- Can only submit deletion request to administration
+
+---
+
+## Registration
+
+### Registration Process
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ 1. Select authorization method                          │
+│    (Yandex / SMS / Call / E-mail)                       │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│ 2. Fill profile                                         │
+│    - Name (required)                                    │
+│    - About (required)                                   │
+│    - Avatar (optional)                                  │
+│    - Contacts (optional)                                │
+│    - Invite code (optional)                             │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│ 3. Automatic actions                                    │
+│    - "Member" role in all global communities            │
+│    - +100 welcome merits                                │
+│    - Additional role by invite code (if entered)        │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Starting Merits
+At registration user receives **100 global merits** to wallet.
+
+---
+
+## Invite Codes
+
+> **Status:** Temporary workaround. Will be replaced with full member management system.
+
+### Current Implementation
+Invite codes — main tool for granting roles to users.
+
+**Code Types:**
+
+| Type | Effect |
+|------|--------|
+| Join community | Member role in specified community |
+| Create community | Generates new community, assigns user as lead |
+| Superadmin role | Grants superadministrator rights |
+
+### Current Implementation Issues
+- Create confusion when forwarding
+- Inconvenient for team management
+
+### Planned Replacement (v1.5+)
+"Add to team" button for leads:
+- Search users by name (like GitHub)
+- Direct community invitation
+- No need to generate and pass codes
+
+---
+
+## Authorization
+
+### Implemented Methods
+- Yandex
+- SMS
+- Call
+- E-mail
+
+### Planned Methods
+- Messengers (Telegram, etc.)
+- Google
+
+### Future (When Valuable Resources Appear)
+- Authorization via Gosuslugi (Government Services)
+- For withdrawing material values
+- Will allow identity verification
+
+---
+
+## Lead Change
+
+> **Status:** Not implemented. Planned for P1.
+
+### Planned Mechanics
+- Current lead can transfer rights to another member
+- Or appoint additional lead
+- Superadmin can forcefully appoint new lead
+
+---
+
+## Implementation Rules
+
+### Role Assignment
+```
+1. On registration:
+   - Create user record
+   - Assign "Member" role to all global communities
+   - Credit 100 welcome merits
+   - Process invite code if provided
+
+2. On community join:
+   - Assign "Member" role
+   - Credit welcome merits (if configured)
+
+3. On community creation:
+   - Create community
+   - Assign "Lead" role to creator
+```
+
+### Permission Checks
+```
+For each action:
+1. Get user roles in target community
+2. Check action permission for role
+3. Check community settings for action
+4. Return allowed/denied
+```
+
+### Permission Hierarchy
+```
+Superadmin > Global Admin > Lead > Member
+```
+
+### Special Permission Cases
+```
+- Self-voting: check community.canVoteSelf setting
+- Teammate voting: check community.canVoteTeammates setting
+- Merit withdrawal: check community.canWithdrawMerits setting
+- Post publishing: check community.canPublish setting
+```
+
+---
+
+## Role-Based Access Control
+
+### Permission Matrix
+
+| Action | Member | Lead | Global Admin | Superadmin |
+|--------|--------|------|--------------|------------|
+| Publish posts | ✓* | ✓ | ✓ | ✓ |
+| Comment | ✓* | ✓ | ✓ | ✓ |
+| Vote | ✓* | ✓ | ✓ | ✓ |
+| Participate in tappalka | ✓ | ✓ | ✓ | ✓ |
+| Create local community | ✓ | ✓ | ✓ | ✓ |
+| Manage members | ✗ | ✓ | ✓ | ✓ |
+| Edit settings | ✗ | ✓ | ✓ | ✓ |
+| Moderate content | ✗ | ✓ | ✓ | ✓ |
+| Credit merits | ✗ | ✓ | ✓ | ✓ |
+| Manage categories | ✗ | ✗ | ✓ | ✓ |
+| Configure rates | ✗ | ✗ | ✗ | ✓ |
+| Create global community | ✗ | ✗ | ✗ | ✓ |
+| Delete community | ✗ | ✗ | ✗ | ✓ |
+
+*Depends on community settings
+
+---
+
+## User Activity Tracking
+
+### Metrics to Track
+
+| Metric | Description |
+|--------|-------------|
+| posts_count | Total posts created |
+| comments_count | Total comments left |
+| votes_given | Total votes given to others |
+| votes_received | Total votes received |
+| merits_earned | Total merits earned |
+| merits_spent | Total merits spent |
+| tappalka_comparisons | Total tappalka comparisons |

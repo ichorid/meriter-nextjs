@@ -5,6 +5,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import type { TappalkaPost } from '../types';
 import { cn } from '@/lib/utils';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface TappalkaPostCardProps {
   post: TappalkaPost;
@@ -142,7 +143,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
             </span>
             {post.rating !== undefined && (
               <span className="text-xs text-base-content/60">
-                {post.rating > 0 ? `+${post.rating}` : post.rating} меритов
+                {post.rating > 0 ? `+${formatMerits(post.rating)}` : formatMerits(post.rating)} меритов
               </span>
             )}
           </div>

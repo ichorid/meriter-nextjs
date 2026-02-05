@@ -19,6 +19,7 @@ import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
 import { isTestAuthMode } from '@/config';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
+import { formatMerits } from '@/lib/utils/currency';
 
 // Local Publication type definition
 interface Publication {
@@ -459,7 +460,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
                 <span className={`text-lg font-semibold tabular-nums transition-colors ${
                   currentScore > 0 ? "text-success group-hover:text-success/80" : currentScore < 0 ? "text-error group-hover:text-error/80" : "text-base-content/40 group-hover:text-base-content/60"
                 }`}>
-                  {currentScore > 0 ? '+' : ''}{currentScore}
+                  {currentScore > 0 ? '+' : ''}{formatMerits(currentScore)}
                 </span>
                 {totalVotes !== undefined && 
                  typeof totalVotes === 'number' && 
@@ -471,7 +472,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
                     className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
                     title={t('totalVotesTooltip')}
                   >
-                    ({totalVotes > 0 ? '+' : ''}{totalVotes})
+                    ({totalVotes > 0 ? '+' : ''}{formatMerits(totalVotes)})
                   </span>
                 )}
               </div>

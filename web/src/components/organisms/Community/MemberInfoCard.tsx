@@ -4,6 +4,7 @@ import React from 'react';
 import { InfoCard } from '@/components/ui/InfoCard';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useTranslations } from 'next-intl';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface MemberInfoCardProps {
     memberId: string;
@@ -55,7 +56,7 @@ export function MemberInfoCard({
             {walletBalance !== undefined && (
                 <div className="flex items-center gap-1 text-xs text-brand-text-secondary">
                     <span className="font-semibold text-brand-text-primary">
-                        {walletBalance.toLocaleString()}
+                        {formatMerits(walletBalance)}
                     </span>
                     <span>{tCommon('permanentMerits')}</span>
                 </div>

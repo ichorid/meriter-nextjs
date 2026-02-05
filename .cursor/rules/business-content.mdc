@@ -1,0 +1,326 @@
+---
+description: Posts, polls, comments, and voting business logic. Apply when working with content features.
+globs:
+  - "**/post*.ts"
+  - "**/poll*.ts"
+  - "**/comment*.ts"
+  - "**/vote*.ts"
+  - "**/rating*.ts"
+alwaysApply: false
+---
+
+# Content Business Logic
+
+> Complete rules for posts, polls, comments, and voting mechanics.
+
+---
+
+## Base Post
+
+Main content type on the platform. All other types inherit from base post.
+
+### User-Filled Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| title | Yes | Post title |
+| description | Yes | Main text |
+| images | No | Attached images |
+| categories | No | From list defined by community admin |
+
+### System Fields
+
+| Field | Description |
+|-------|-------------|
+| createdAt | Creation timestamp |
+| author | Creator user |
+| community | Where post is published |
+| permalink | URL for sharing |
+| rating | Current merit amount on post |
+| maxRating | Historical maximum rating value |
+| comments | List of comments on post |
+
+---
+
+## Poll
+
+Inherits from base post.
+
+### Differences from Base Post
+
+| Characteristic | Base Post | Poll |
+|----------------|-----------|------|
+| Own rating | Yes | No |
+| Weighted comments | Yes | Neutral only |
+| Additional fields | — | Question, answer options |
+| Time limit | No | Optional |
+
+### Poll-Specific Fields
+
+| Field | Description |
+|-------|-------------|
+| question | Poll question text |
+| options | List of voting options |
+| deadline | Optional voting close time |
+
+### Poll Voting
+- Costs user merits (amount configured in community)
+- Vote weight = amount of merits spent
+- After deadline, new votes are NOT accepted
+
+---
+
+## Post Rating
+
+### Rating Calculation
+- Rating = sum of merits "attached" to post through comments
+- Positive comments increase rating
+- Negative comments decrease rating
+- CAN be negative
+
+### Merit Withdrawal from Post
+- Author can withdraw merits from post rating to their wallet
+- Upon withdrawal, post rating decreases
+- Withdrawal availability determined by community settings
+
+### Negative Rating Consequences
+- If rating goes negative → after 24 hours negative amount is DEDUCTED from author's wallet
+- Author can close post before 24 hours to avoid deduction
+
+---
+
+## Post Lifecycle
+
+```
+┌─────────────┐
+│   Create    │ ─── fee deducted from wallet
+└──────┬──────┘
+       │
+       ▼
+┌─────────────┐
+│   Active    │ ─── receives votes, participates in tappalka
+└──────┬──────┘
+       │
+       ├─────────────────────────────────────┐
+       │                                     │
+       ▼                                     ▼
+┌─────────────┐                    ┌─────────────────┐
+│  Forwarded  │                    │ Closed (archive)│
+│ (to another)│                    │ cannot re-publish│
+└─────────────┘                    └─────────────────┘
+```
+
+### Editing
+- Available within time set in community settings
+- Default: 30 minutes after publication
+- After time expires — only closing or forwarding
+
+### Post Closing
+- Post removed from feed
+- Saved in user's profile archive
+- **CANNOT be re-published**
+- Remaining merits on post can be withdrawn before closing
+
+---
+
+## Post Forwarding
+
+### Forwarding Modes
+
+| Mode | Description | When Used |
+|------|-------------|-----------|
+| **Copy** | Without merits, original preserved | Default |
+| **Transfer** | With merits, original deleted | "Projects" → "MД" |
+
+### Rules by Community Type
+
+| From | To | Mode |
+|------|-----|------|
+| Global | Global | Configured by admin |
+| Local | Any | ALWAYS copy without merits |
+| "Projects" | "MД" | Transfer with merits |
+
+### Restrictions
+- For local communities, forward mode is ALWAYS locked: copy without merits
+- Local community lead CANNOT change this default
+
+---
+
+## Comments
+
+### Comment Types
+
+| Type | Effect | Paid From |
+|------|--------|-----------|
+| **Positive (Upvote)** | Merits transfer to post, rating increases | Quota → Wallet |
+| **Neutral** | Text only, no merits | Free (fee still applies) |
+| **Negative (Downvote)** | Merits removed from post, rating decreases, merits BURN | Wallet ONLY |
+
+### Comment Data Model
+
+| Field | Description |
+|-------|-------------|
+| weight | Merits brought/removed (0 for neutral) |
+| body | Comment text |
+| author | Comment author |
+| createdAt | Creation timestamp |
+| permalink | URL for sharing |
+
+---
+
+## Comment Costs
+
+### Comment Fee
+- Default: **0.1 merit**
+- Paid in **GLOBAL** merits (not community merits)
+- Merits **BURN** (not transferred to anyone)
+- Configurable per community
+
+### What Gets Paid
+- Fee pays for the RIGHT to leave a comment
+- Comment weight (merits on post) — separate expense
+
+**Example:**
+1. User wants to leave positive comment for 10 merits
+2. Deducted: 0.1 merit fee + 10 merits for post = 10.1 merits
+3. Fee (0.1) burns, 10 merits go to post rating
+
+---
+
+## Voting Rules
+
+### Payment Sources
+
+| Action | Source | Priority |
+|--------|--------|----------|
+| Upvote other's post | Quota → Wallet | Quota first |
+| Downvote any post | Wallet ONLY | — |
+| Vote for own post | Wallet ONLY | Quota forbidden |
+| Vote for teammate's post | Configurable | Default: same as other's |
+
+### Restrictions by Post Type
+
+| Post Type | Positive | Negative | Neutral |
+|-----------|----------|----------|---------|
+| Base post | ✅ | ✅ | ✅ |
+| Poll | ❌ | ❌ | ✅ |
+
+### Self-Voting
+- Default: **PROHIBITED**
+- Can be enabled in community settings
+- If enabled — wallet ONLY, never quota
+
+### Teammate Voting
+Teammates = members of same local communities as voter.
+
+- Default: merits allowed, quota only for non-teammates
+- Configurable per community
+
+---
+
+## Comment Workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ User selects comment type                               │
+├───────────────┬───────────────┬─────────────────────────┤
+│   Positive    │   Neutral     │      Negative           │
+└───────┬───────┴───────┬───────┴────────────┬────────────┘
+        │               │                    │
+        ▼               ▼                    ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────────────┐
+│ Select weight │ │ Enter text    │ │ Select weight         │
+│ (1+ merits)   │ │               │ │ (1+ merits)           │
+└───────┬───────┘ └───────┬───────┘ └───────────┬───────────┘
+        │               │                    │
+        ▼               ▼                    ▼
+┌─────────────────────────────────────────────────────────┐
+│ Check balance (wallet/quota sufficient?)                │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│ Deduct fee (0.1 global merits)                          │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        ▼                   ▼                   ▼
+┌───────────────┐ ┌───────────────┐ ┌───────────────────────┐
+│ Transfer to   │ │ Nothing       │ │ Remove from post      │
+│ post rating   │ │               │ │ (merits BURN)         │
+└───────────────┘ └───────────────┘ └───────────────────────┘
+```
+
+---
+
+## Tappalka and Posts
+
+### Participation Conditions
+1. Tappalka enabled for community
+2. Post rating ≥ minimum threshold (default 1 merit)
+3. Post rating ≥ author's stop-loss setting
+4. Post not closed
+
+### Exit from Tappalka
+Post stops being shown if:
+- Rating drops below minimum threshold
+- Rating drops below author's stop-loss
+- No funds to pay for showing (neither on post nor from author)
+
+### Stop-Loss
+- Set by post owner
+- Minimum rating threshold below which post not shown
+- Protection from "draining" merits on shows of losing post
+
+### IMPORTANT: Cannot Disable Tappalka Show
+- Author **CANNOT** choose "don't show in tappalka"
+- Only ways to remove post from tappalka:
+  1. Set high stop-loss
+  2. Close post and withdraw all merits
+
+### What Post Gets in Tappalka
+- When chosen by user: +1 merit (emission, not from user's wallet)
+- When not chosen: nothing (but 0.1 for show still deducted)
+
+---
+
+## Project Post Type (v2.0)
+
+*Deferred to version 2.0 — requires verification mechanics development.*
+
+### Concept
+Assumes collecting and attracting resources for implementing a specific idea.
+
+### Differences from Base Post
+- Additional "resources" fields: money, help, etc. — everything needed for implementation
+- Filled by user at creation
+
+### Planned Logic (v2.0+)
+
+**Project Statuses:**
+- Idea
+- In Progress
+- Completed
+
+**Completion Verification:**
+- Author clicks "project completed"
+- Project goes to completed listing
+- Verifiers (schools, NGOs, trusted people) confirm
+- Verifiers bear responsibility in amount of merits on post
+- On fraud — fine deducted from their account
+
+**Current Solution:**
+Use "base post + poll" combination, provide place for resource list in post.
+
+---
+
+## Future Features
+
+### Comments on Comments
+- Comments on comments will work same as comments on posts
+- Comments will have their own merit rating
+- Can withdraw merits from own comments
+
+### Comment Merit Withdrawal
+- Can you withdraw from your upvoted comment — requires development
+- If comment downvoted to negative — same rules as posts apply (24-hour deduction)

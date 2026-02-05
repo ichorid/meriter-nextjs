@@ -1,0 +1,181 @@
+---
+description: Community types, settings, and interaction rules. Apply when working with community features.
+globs:
+  - "**/communit*.ts"
+  - "**/group*.ts"
+  - "**/settings*.ts"
+alwaysApply: false
+---
+
+# Communities Business Logic
+
+> Complete rules for community types, settings, and interactions.
+
+---
+
+## Community Types
+
+### Global Communities (Public Groups)
+
+Created by platform administration.
+
+**Characteristics:**
+- All users are members by default, immediately after registration
+- Share ONE common merit between all global communities
+- Merits earned in one global community can be spent in another global community
+- User CANNOT leave a global community
+- List of global communities can expand
+
+### Local Communities (Private Groups)
+
+Created and managed by users.
+
+**Characteristics:**
+- Have their OWN merit (separate from global)
+- Full set of settings available to lead
+- User can be member of ANY number of local communities
+- User can be lead of ANY number of communities
+- User can voluntarily leave any local community
+- Lead CANNOT delete community — only request deletion from administration
+
+---
+
+## Community Data Model
+
+### User-Filled Fields
+
+| Field | Description |
+|-------|-------------|
+| Name | Display name of community |
+| Description | Text description of goals and rules |
+| Avatar | Community image |
+| Cover | Background image |
+| Currency Name | What merits are called in this community |
+| Type | Local or Global |
+
+### System Fields
+
+| Field | Description |
+|-------|-------------|
+| createdAt | Creation timestamp |
+| members | Users who are members of community |
+| posts | Posts belonging to this community |
+| settings | Configuration (see below) |
+
+---
+
+## Community Settings (Complete List)
+
+### Content Publishing
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `canPublish` | Who can publish posts (by roles) | All members |
+| `postFee` | Post publication cost (in global merits) | 1 merit |
+| `commentFee` | Comment cost (in global merits) | 0.1 merit |
+| `canEditPosts` | Can members edit posts | Yes |
+| `editTimeLimit` | Edit time after publication | 30 minutes |
+
+### Merits and Voting
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `canWithdrawMerits` | Can merits be withdrawn from posts | Yes |
+| `canVoteSelf` | Can vote for own posts | No (quota never, wallet configurable) |
+| `canVoteTeammates` | Can vote for teammates' posts | Yes |
+| `whoCanVote` | Who can vote (by roles) | All members |
+| `quotaEnabled` | Is quota enabled in community | No |
+| `quotaAmount` | Daily quota size | — |
+| `welcomeMerits` | Starting merits upon joining | — |
+| `rateMultiplier` | Merit multiplier (rate) | 1 |
+
+### Tappalka
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `tappalkaEnabled` | Is tappalka enabled | No |
+| `tappalkaShowCost` | Cost of showing post in tappalka | 0.1 merit |
+| `tappalkaWinReward` | Reward for being chosen in tappalka | 1 merit |
+| `tappalkaMinRating` | Minimum rating for tappalka participation | 1 merit |
+
+### Post Forwarding
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `forwardMode` | Forwarding mode: `copy` or `transfer` | copy |
+| `forwardKeepMerits` | Are merits preserved on forward | No (for copy) |
+
+**IMPORTANT:** For local communities, forward mode is ALWAYS `copy` without merits (NOT editable by lead).
+
+### Visibility
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `visibility` | Who sees the community | All |
+
+---
+
+## Settings Import/Export
+
+JSON import/export of community settings is provided for:
+- Quick community creation from template
+- Configuration backup
+- Settings migration between environments
+
+---
+
+## Global and Local Community Interaction
+
+### Action Payment Rules
+- Fee for posts and comments in ANY community (including local) is paid in **GLOBAL** merits
+- Voting in local community — with LOCAL merits of that community
+- If no local merits — can vote with global merits (for polls)
+
+### Forwarding Between Communities
+
+| From | To | Mode |
+|------|-----|------|
+| Global | Global | Configured by admin |
+| Local | Any | ALWAYS copy without merits |
+| "Projects" | "MД" | Transfer WITH merits (special MVP rule) |
+
+---
+
+## Implementation Notes
+
+### Community Creation
+```
+1. Validate required fields
+2. Set type (global/local)
+3. Apply default settings
+4. If local: assign creator as lead
+5. If global: require superadmin permission
+```
+
+### Member Join Logic
+```
+Global community:
+- Auto-join all users at registration
+- No leave option
+
+Local community:
+- Join via invite or request
+- Leave anytime
+```
+
+### Settings Validation
+```
+- quotaAmount required if quotaEnabled=true
+- forwardMode cannot be changed for local communities
+- rateMultiplier only editable by superadmin for global communities
+```
+
+---
+
+## Future Features (v2.0+)
+
+### Community Wallet
+Local community will be able to act as participant in global communities:
+- Admin posts on behalf of community
+- Community receives and spends merits
+- Separate balance from members' personal wallets

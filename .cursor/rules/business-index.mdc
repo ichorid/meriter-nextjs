@@ -1,0 +1,156 @@
+---
+description: Master index of Meriter business rules. ALWAYS read this first to understand project context.
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: true
+---
+
+# Meriter Business Rules — Master Index
+
+> Start here. This document provides overview of all business logic rules.
+
+---
+
+## Platform Overview
+
+**Meriter** — merit-based social platform where users earn and spend "merits" (internal currency) to promote their ideas and projects.
+
+**Current Status:** MVP "Marathon of Good" — gamified platform for schoolchildren doing good deeds.
+
+**Core Principle:** More merits earned = higher trust = easier to get community support.
+
+---
+
+## Quick Reference: Key Rules
+
+### Merit System Fundamentals
+- **Two account types:** Wallet (permanent) + Quota (daily, burns)
+- **Usage priority:** Quota FIRST, then Wallet
+- **Fee payment:** ALWAYS from GLOBAL merits
+- **Starting merits:** 100 at registration
+
+### Community Types
+- **Global:** All users auto-joined, share ONE merit, cannot leave
+- **Local:** User-created, own merit, can leave
+
+### Content Rules
+- **Post fee:** 1 merit (global)
+- **Comment fee:** 0.1 merit (global)
+- **Self-voting:** Wallet only (if enabled), NEVER quota
+- **Negative rating:** Deducted from author wallet after 24h
+
+### Tappalka
+- **10 comparisons = 1 merit** to user
+- **Show cost:** 0.1 merit per post (both posts pay)
+- **Win reward:** 1 merit (emission)
+
+---
+
+## Business Rules File Structure
+
+| File | Content | When to Use |
+|------|---------|-------------|
+| `business-glossary.mdc` | All terminology and concepts | Understanding any term |
+| `business-merits.mdc` | Merit system, wallet, quota, fees | Working with balances |
+| `business-communities.mdc` | Community types, all settings | Community features |
+| `business-content.mdc` | Posts, polls, comments, voting | Content features |
+| `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
+| `business-users.mdc` | Users, roles, permissions | Auth, permissions |
+| `business-mvp.mdc` | MVP-specific settings | **ALWAYS** (auto-applied) |
+| `business-features-status.mdc` | What's implemented | Planning work |
+
+---
+
+## MVP Communities Quick Reference
+
+| Community | Withdraw? | Self-vote? | Tappalka? | Fee? |
+|-----------|-----------|------------|-----------|------|
+| **ОБ** (Image of Future) | No | Yes | No | Standard |
+| **МД** (Marathon of Good) | Yes | No | Yes | Standard |
+| **Projects** | No | Yes | Yes | Standard |
+| **Feedback** | Yes | No | No | Free |
+
+---
+
+## Critical Implementation Rules
+
+### 1. Fee Always Global
+```
+ANY community (including local) →
+  Fee paid in GLOBAL merits →
+    Merits BURNED
+```
+
+### 2. Voting Source Priority
+```
+Upvote: Quota → Wallet
+Downvote: Wallet ONLY
+Self-vote: Wallet ONLY (quota forbidden)
+```
+
+### 3. Local Community Forwarding
+```
+Local → Any = ALWAYS copy WITHOUT merits
+(Lead cannot change this)
+```
+
+### 4. Special Case: Projects → МД
+```
+Projects → МД = TRANSFER WITH merits
+(Only case of transfer with merits between communities)
+```
+
+### 5. Negative Rating Handling
+```
+Rating < 0 → Wait 24h → Deduct from author wallet
+Author can close post before 24h to avoid deduction
+Closed post → Archive (cannot re-publish)
+```
+
+---
+
+## Permission Quick Reference
+
+| Action | Check |
+|--------|-------|
+| Publish | community.canPublish + user has role |
+| Comment | community.commentFee available |
+| Vote | community.whoCanVote + source available |
+| Self-vote | community.canVoteSelf + wallet available |
+| Withdraw | community.canWithdrawMerits |
+| Tappalka | community.tappalkaEnabled + rating >= min |
+
+---
+
+## Before Implementing Any Feature
+
+1. ✅ Read relevant business rules file
+2. ✅ Check feature status (implemented/not)
+3. ✅ Check dependencies
+4. ✅ Check MVP scope
+5. ✅ Follow existing code patterns
+6. ✅ Consider all community settings
+7. ✅ Handle all role permissions
+8. ✅ Follow merit flow rules
+
+---
+
+## Related Documentation
+
+| Document | Location | Content |
+|----------|----------|---------|
+| AI Development Context | `docs/AI_DEVELOPMENT_CONTEXT.md` | How to work with this project |
+| Cursor Workflow | `docs/CURSOR-WORKFLOW.md` | Step-by-step workflow |
+| PRD Template | `docs/templates/PRD-TEMPLATE.md` | For new features |
+| Architecture | `ARCHITECTURE.md` | Technical architecture |
+| Business Logic (full) | `BUSINESS_LOGIC_DOCUMENTATION.md` | Complete business logic |
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | January 2026 | Initial structured version |
+| 1.1 | February 2026 | Module split, decision integration |

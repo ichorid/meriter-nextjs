@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface QuotaDisplayProps {
   balance?: number;
@@ -78,7 +79,7 @@ export function QuotaDisplay({
                       return (
                         <>
                           {parts[0]}
-                          <span className="font-semibold">{balance}</span>
+                          <span className="font-semibold">{formatMerits(balance)}</span>
                           {parts[1]}
                         </>
                       );
@@ -95,16 +96,16 @@ export function QuotaDisplay({
                   const text = tCommon('youHaveMerits', { count: balance });
                   // Replace the number with a bold version
                   const parts = text.split(String(balance));
-                  if (parts.length === 2) {
-                    return (
-                      <>
-                        {parts[0]}
-                        <span className="font-semibold">{balance}</span>
-                        {parts[1]}
-                      </>
-                    );
-                  }
-                  return text;
+                    if (parts.length === 2) {
+                      return (
+                        <>
+                          {parts[0]}
+                          <span className="font-semibold">{formatMerits(balance)}</span>
+                          {parts[1]}
+                        </>
+                      );
+                    }
+                    return text;
                 })()}
               </span>
             )
@@ -215,7 +216,7 @@ export function QuotaDisplay({
             title={tCommon('meritsAndQuota')}
           >
             <span className="text-base-content/60">{tCommon('yourMerits')}:</span>
-            <span className="font-semibold text-base-content">{balance}</span>
+            <span className="font-semibold text-base-content">{formatMerits(balance)}</span>
             {currencyIconUrl && (
               <img
                 src={currencyIconUrl}

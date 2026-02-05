@@ -193,27 +193,30 @@ export class TappalkaService {
     const authorName = author?.displayName || post.authorDisplay || 'Unknown';
     const authorAvatarUrl = author?.avatarUrl;
 
-    // Get first image if available
-    const imageUrl =
-      post.images && post.images.length > 0
-        ? post.images[0]
-        : post.imageUrl;
+    // Get first image if available - ensure it's a string or undefined
+    let imageUrl: string | undefined = undefined;
+    if (post.images && Array.isArray(post.images) && post.images.length > 0) {
+      imageUrl = String(post.images[0]);
+    } else if (post.imageUrl) {
+      imageUrl = String(post.imageUrl);
+    }
 
-    // Get first category if available
-    const categoryId =
-      post.categories && post.categories.length > 0
-        ? post.categories[0]
-        : undefined;
+    // Get first category if available - ensure it's a string or undefined
+    let categoryId: string | undefined = undefined;
+    if (post.categories && Array.isArray(post.categories) && post.categories.length > 0) {
+      categoryId = String(post.categories[0]);
+    }
 
+    // Ensure all types match schema
     return {
-      id: post.id,
-      title: post.title || '',
-      description: post.description || '',
-      imageUrl,
-      authorName,
-      authorAvatarUrl,
-      rating: post.metrics?.score || 0,
-      categoryId,
+      id: String(post.id), // Ensure it's a string (not ObjectId)
+      title: String(post.title || ''),
+      description: String(post.description || ''),
+      imageUrl, // string | undefined
+      authorName: String(authorName),
+      authorAvatarUrl: authorAvatarUrl ? String(authorAvatarUrl) : undefined,
+      rating: Number(post.metrics?.score || 0), // Ensure it's a number
+      categoryId, // string | undefined
     };
   }
 
@@ -302,14 +305,30 @@ export class TappalkaService {
     // 4. Get next pair for seamless UX
     const nextPair = await this.getPair(communityId, userId);
 
-    return {
+    // Build result object ensuring all types match schema
+    // Ensure newCount is an integer (required by schema: z.number().int())
+    const newComparisonCount = Math.floor(Number(newCount));
+    
+    // Build result with required fields
+    const result: TappalkaChoiceResult = {
       success: true,
-      newComparisonCount: newCount,
-      userMeritsEarned: rewardEarned ? userReward : undefined,
-      rewardEarned,
-      nextPair: nextPair ?? undefined,
-      noMorePosts: !nextPair,
+      newComparisonCount,
+      rewardEarned: Boolean(rewardEarned),
     };
+
+    // Include optional fields only if they have meaningful values
+    if (rewardEarned && userReward > 0) {
+      result.userMeritsEarned = Number(userReward);
+    }
+
+    if (nextPair !== null) {
+      result.nextPair = nextPair;
+    } else {
+      // If no next pair, indicate that there are no more posts
+      result.noMorePosts = true;
+    }
+
+    return result;
   }
 
   /**
@@ -463,8 +482,8 @@ export class TappalkaService {
       }
 
       return {
-        newCount: rewardEarned ? 0 : newCount,
-        rewardEarned,
+        newCount: Math.floor(rewardEarned ? 0 : newCount),
+        rewardEarned: Boolean(rewardEarned),
       };
     }
 

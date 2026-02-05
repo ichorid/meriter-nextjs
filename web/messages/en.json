@@ -678,6 +678,7 @@
             "byRating": "By Rating",
             "loadMore": "Load more",
             "createPost": "Create Post",
+            "tappalka": "Tappalka",
             "joinByInvite": "Or join by invite",
             "publications": "Publications",
             "deleted": "Deleted",
@@ -723,7 +724,8 @@
             "subtitle": "Manage settings for {communityName}",
             "tabs": {
                 "general": "General",
-                "rules": "Rules"
+                "rules": "Rules",
+                "tappalka": "Tappalka"
             },
             "communityProfile": "Community Profile",
             "name": "Name",
@@ -1070,6 +1072,7 @@
         "createPost": "Create Post",
         "createPoll": "Create Poll",
         "createProject": "Create Project",
+        "tappalka": "Tappalka",
         "rules": {
             "title": "Community Rules",
             "communityNotFound": "Community not found",
@@ -1153,7 +1156,44 @@
         },
         "noVisionPosts": "No future posts yet",
         "visionCommunityNotFound": "Future community not found",
-        "currency": "Currency"
+        "currency": "Currency",
+        "tappalka": {
+            "title": "Tappalka Settings",
+            "description": "Configure the post comparison mechanic (Tappalka) for this community.",
+            "fields": {
+                "enabled": "Enable Tappalka",
+                "enabledHelp": "Enable the post comparison mechanic for this community",
+                "enabledOn": "Enabled",
+                "enabledOff": "Disabled",
+                "categories": "Categories",
+                "categoriesHelp": "Select categories to include in Tappalka. Leave empty to include all categories.",
+                "winReward": "Win Reward",
+                "winRewardHelp": "Merits awarded to the winning post (emission). Default: 1",
+                "userReward": "User Reward",
+                "userRewardHelp": "Merits awarded to user for completing comparisons. Default: 1",
+                "comparisonsRequired": "Comparisons Required",
+                "comparisonsRequiredHelp": "Number of comparisons required to earn user reward. Default: 10",
+                "showCost": "Show Cost",
+                "showCostHelp": "Cost per post show (deducted from both posts). Default: 0.1",
+                "minRating": "Minimum Rating",
+                "minRatingHelp": "Minimum post rating to participate in Tappalka. Default: 1",
+                "onboardingText": "Onboarding Text",
+                "onboardingTextHelp": "Custom text shown to users when they first open Tappalka. Leave empty to use default text.",
+                "onboardingTextPlaceholder": "Enter custom onboarding text..."
+            },
+            "validation": {
+                "errors": "Please fix validation errors",
+                "winRewardInvalid": "Win reward must be a positive number",
+                "userRewardInvalid": "User reward must be a positive number",
+                "comparisonsRequiredInvalid": "Comparisons required must be at least 1",
+                "showCostInvalid": "Show cost must be a non-negative number",
+                "minRatingInvalid": "Minimum rating must be a non-negative number"
+            },
+            "save": "Save Settings",
+            "saving": "Saving...",
+            "saveSuccess": "Tappalka settings saved successfully",
+            "saveError": "Failed to save tappalka settings"
+        }
     },
     "registration": {
         "title": "Registration",

@@ -10,32 +10,26 @@ interface TappalkaOnboardingProps {
   text: string;
   onDismiss: () => void;
   className?: string;
+  /** If true, renders without BottomPortal and backdrop (for use inside Dialog) */
+  inline?: boolean;
 }
 
 export const TappalkaOnboarding: React.FC<TappalkaOnboardingProps> = ({
   text,
   onDismiss,
   className,
+  inline = false,
 }) => {
-  return (
-    <BottomPortal>
-      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-          onClick={onDismiss}
-          aria-hidden="true"
-        />
-        
-        {/* Bottom sheet card */}
-        <div
-          className={cn(
-            'relative z-10 w-full max-w-2xl bg-base-100 rounded-t-3xl shadow-2xl',
-            'transform transition-transform duration-300 ease-out translate-y-0',
-            className,
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
+  const content = (
+    <div
+      className={cn(
+        'relative w-full max-w-2xl bg-base-100 rounded-t-3xl shadow-2xl',
+        'transform transition-transform duration-300 ease-out translate-y-0',
+        inline ? 'rounded-3xl' : '',
+        className,
+      )}
+      onClick={(e) => e.stopPropagation()}
+    >
           {/* Drag handle */}
           <div className="flex justify-center pt-4 pb-2">
             <div className="w-12 h-1.5 bg-base-content/20 rounded-full" />
@@ -91,6 +85,30 @@ export const TappalkaOnboarding: React.FC<TappalkaOnboardingProps> = ({
             </Button>
           </div>
         </div>
+  );
+
+  if (inline) {
+    // Render inline without portal and backdrop (for use inside Dialog)
+    return (
+      <div className="flex items-end justify-center min-h-full p-4">
+        {content}
+      </div>
+    );
+  }
+
+  // Render with portal and backdrop (standalone)
+  return (
+    <BottomPortal>
+      <div className="fixed inset-0 z-50 pointer-events-auto flex items-end justify-center">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+          onClick={onDismiss}
+          aria-hidden="true"
+        />
+        
+        {/* Bottom sheet card */}
+        {content}
       </div>
     </BottomPortal>
   );

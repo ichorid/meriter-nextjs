@@ -7,6 +7,7 @@ import { User } from 'lucide-react';
 import { Badge } from '@/components/atoms/Badge';
 import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface LeadCardProps {
     id: string;
@@ -51,7 +52,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     const teamName = leadCommunities.length > 0 ? leadCommunities[0] : '';
     
     // Format merits display
-    const meritsDisplay = totalMerits !== undefined ? totalMerits.toLocaleString() : '0';
+    const meritsDisplay = totalMerits !== undefined ? formatMerits(totalMerits) : '0';
 
     // Get role label and variant for badge
     const getRoleBadge = () => {
@@ -140,7 +141,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                         )}
                         {permanentMerits !== undefined && (
                             <div className="flex items-center gap-1 text-xs leading-[120%] text-base-content/60">
-                                <span className="font-semibold text-base-content">{permanentMerits.toLocaleString()}</span>
+                                <span className="font-semibold text-base-content">{formatMerits(permanentMerits)}</span>
                                 <span className="text-base-content/60">{t('permanentMerits')}</span>
                             </div>
                         )}

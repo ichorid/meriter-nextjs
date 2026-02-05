@@ -1,0 +1,235 @@
+---
+description: Tappalka (comparison mechanism) business logic. Apply when working with tappalka features.
+globs:
+  - "**/tappalka*.ts"
+  - "**/tap*.ts"
+  - "**/comparison*.ts"
+  - "**/emission*.ts"
+alwaysApply: false
+---
+
+# Tappalka Business Logic
+
+> Complete rules for the post comparison mechanism and merit emission.
+
+---
+
+## Concept
+
+Tappalka — main method of merit emission and earning for users.
+
+**Core Mechanic:**
+1. User is shown 2 random posts from community
+2. They choose which one they like more
+3. Chosen post receives merit (emission)
+4. For a series of comparisons, user receives reward
+
+---
+
+## Comparison Process
+
+```
+┌─────────────────────────────────────────────────────────┐
+│           User opens Tappalka                           │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│    System selects 2 random posts from community         │
+│    (user's OWN posts are NOT shown)                     │
+└───────────────────────────┬─────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│         User chooses one of two                         │
+└───────┬───────────────────────────────┬─────────────────┘
+        │                               │
+        ▼                               ▼
+┌───────────────────┐         ┌───────────────────────────┐
+│  Chosen post      │         │   Unchosen post           │
+│  +1 merit         │         │   0 merits                │
+│  (emission)       │         │   (but show fee still     │
+└───────────────────┘         │    deducted)              │
+                              └───────────────────────────┘
+```
+
+### User Reward
+- For **10 successfully completed comparisons** = **1 merit** to wallet
+- Merits credited as emission (not from other users)
+
+---
+
+## Tappalka Parameters
+
+### Base Parameters (Admin-Configurable)
+
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `tappalkaShowCost` | 0.1 merit | Cost of one post show |
+| `tappalkaWinReward` | 1 merit | Reward for post being chosen |
+| `tappalkaMinRating` | 1 merit | Minimum rating for participation |
+| `tappalkaUserReward` | 1 merit per 10 comparisons | User reward |
+
+### Show Cost
+- Each post show in tappalka costs **0.1 merit**
+- Paid from post rating OR author's wallet
+- Deducted from **BOTH** posts in pair (winner AND loser)
+
+---
+
+## Post Participation in Tappalka
+
+### Participation Conditions
+1. Tappalka enabled for community
+2. Post rating ≥ minimum threshold (default 1 merit)
+3. Post rating ≥ author's stop-loss setting
+4. Post not closed
+
+### Exit from Tappalka
+Post stops being shown if:
+- Rating drops below minimum threshold
+- Rating drops below author's stop-loss
+- No funds for show payment (neither on post nor from author)
+
+### Stop-Loss
+- Set by post owner
+- Minimum rating/merit threshold for showing
+- Protection from "draining" merits on shows of losing post
+
+### IMPORTANT: Cannot Disable Tappalka Show
+- Author **CANNOT** choose "don't show in tappalka"
+- Only ways to remove post from tappalka:
+  1. Set high stop-loss
+  2. Close post and withdraw all merits
+
+---
+
+## Filtering in Tappalka
+
+### By Categories
+Tappalka can filter posts by categories:
+- User selects categories of interest
+- Only posts from selected categories are shown
+
+### By Content Type (Planned)
+- Base posts compared with base posts
+- Projects with projects (when implemented)
+- Polls do NOT participate in tappalka
+
+---
+
+## Enabling Tappalka
+
+### For Which Communities
+- By default **DISABLED**
+- In MVP: enabled only for **"Marathon of Good"** and **"Projects"**
+- Configured separately for each community
+
+### Connection with Quota
+**DECISION:** Quota in global communities is **DISABLED** immediately after tappalka appears.
+
+Logic: tappalka becomes main emission source, quota no longer needed to ensure activity.
+
+---
+
+## Abuse Protection
+
+### Own Posts Not Shown
+- User NEVER sees their own posts in tappalka
+- Excludes possibility of "boosting" own posts
+
+### Show Cost
+- Both posts pay for show, even loser
+- Makes creating "junk" posts for participation unprofitable
+
+### Minimum Rating
+- New posts without merits don't get into tappalka immediately
+- Need to first get support through comments
+
+---
+
+## Tappalka Economics
+
+### Emission Balance
+
+**Per one comparison:**
+- Expense: 0.2 merit (0.1 × 2 posts for show)
+- Income: 1 merit to winner
+- Net emission: 0.8 merit
+
+**Per 10 comparisons:**
+- Expense: 2 merits (shows)
+- Income to posts: 10 merits (10 winners)
+- Income to user: 1 merit
+- Net emission: 9 merits
+
+### Inflation Control
+- Fee for posts and comments burns merits
+- Negative comments burn merits
+- Negative ratings deduct merits from wallets
+
+---
+
+## Implementation Rules
+
+### Post Selection Algorithm
+```
+1. Get all posts where:
+   - community = current community
+   - tappalkaEnabled = true
+   - rating >= tappalkaMinRating
+   - rating >= stopLoss (if set)
+   - author != currentUser
+   - closed = false
+   - canPayShowCost = true (rating > 0.1 OR author.wallet > 0.1)
+2. Random select 2 posts
+3. Ensure posts are different
+4. Return pair to user
+```
+
+### Show Cost Deduction
+```
+For each post in pair:
+1. Try deduct from post rating
+2. If insufficient, deduct from author wallet
+3. If both insufficient, exclude post from future selections
+```
+
+### Win Processing
+```
+1. Increment chosen post rating by tappalkaWinReward (emission)
+2. Update user comparison count
+3. If user.comparisonCount >= 10:
+   - Credit 1 merit to user wallet (emission)
+   - Reset comparison count
+```
+
+### Transaction Atomicity
+```
+All tappalka operations must be atomic:
+- Both show costs deducted together
+- Win reward credited after deductions confirmed
+- User reward credited after comparison recorded
+```
+
+---
+
+## Metrics to Track
+
+### Per Community
+- Total comparisons per day
+- Total emission per day
+- Average post participation rate
+- Stop-loss trigger frequency
+
+### Per Post
+- Show count
+- Win count
+- Win rate
+- Merits earned from tappalka
+- Merits spent on shows
+
+### Per User
+- Comparisons completed
+- Merits earned from tappalka participation
+- Tappalka session duration

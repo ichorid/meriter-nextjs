@@ -60,7 +60,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Plus } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { TappalkaScreen } from '@/features/tappalka';
-import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -568,6 +568,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         showPermanent: canEarnPermanentMerits,
                         showDaily: hasQuota,
                     } : undefined}
+                    onTappalkaClick={() => setShowTappalkaModal(true)}
+                    tappalkaEnabled={comms?.tappalkaSettings?.enabled ?? false}
                 />
             }
         >
@@ -1062,13 +1064,32 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
             {/* Tappalka Modal */}
             <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+                <DialogContent 
+                    className="max-w-4xl max-h-[90vh] overflow-y-auto p-0 bg-base-200 [&>button]:hidden"
+                    onInteractOutside={(e) => {
+                        // Prevent closing on outside click
+                        e.preventDefault();
+                    }}
+                >
+                    <DialogTitle className="sr-only">
+                        {tCommunities('tappalka') || 'Tappalka'}
+                    </DialogTitle>
                     <TappalkaScreen
                         communityId={chatId}
                         onClose={() => setShowTappalkaModal(false)}
                     />
                 </DialogContent>
             </Dialog>
+            {/* Custom overlay style for Tappalka modal */}
+            {showTappalkaModal && (
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                        [data-radix-dialog-overlay][data-state="open"] {
+                            background-color: rgba(0, 0, 0, 0.4) !important;
+                        }
+                    `
+                }} />
+            )}
 
         </AdaptiveLayout>
     );
