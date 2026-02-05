@@ -666,30 +666,10 @@ describe('Notifications E2E Tests', () => {
       expect(notification.metadata.publicationId).toBe(testPublicationId);
       expect(notification.metadata.communityId).toBe(testCommunityId);
       
-      // Ensure metadata is properly structured for buildRedirectUrl
-      // MongoDB lean() may return metadata in a way that needs explicit access
-      const metadata = notification.metadata as any;
-      expect(metadata.publicationId).toBe(testPublicationId);
-      expect(metadata.communityId).toBe(testCommunityId);
-      
       // Convert to Notification type expected by buildRedirectUrl
       const notificationForUrl: Notification = {
-        id: notification.id,
-        userId: notification.userId,
-        type: notification.type,
-        source: notification.source,
-        sourceId: notification.sourceId,
-        metadata: {
-          publicationId: metadata.publicationId,
-          communityId: metadata.communityId,
-          ...metadata,
-        },
-        title: notification.title,
-        message: notification.message,
-        read: notification.read,
-        readAt: notification.readAt,
-        createdAt: notification.createdAt,
-        updatedAt: notification.updatedAt,
+        ...notification,
+        metadata: notification.metadata as any,
       };
       
       const url = notificationService.buildRedirectUrl(notificationForUrl);

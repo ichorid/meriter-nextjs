@@ -379,7 +379,18 @@ export class NotificationService {
         return `/meriter/communities/${communityId}?post=${resolvedPublicationId}`;
       }
 
-      case 'vote':
+      case 'vote': {
+        // Use explicit property access instead of destructuring to handle metadata correctly
+        const communityId = metadata?.communityId;
+        const publicationId = metadata?.publicationId;
+        if (communityId && publicationId) {
+          return `/meriter/communities/${communityId}?post=${publicationId}`;
+        }
+        if (communityId) {
+          return `/meriter/communities/${communityId}/members`;
+        }
+        return undefined;
+      }
       case 'beneficiary':
       case 'publication':
       case 'team_join_request': {
