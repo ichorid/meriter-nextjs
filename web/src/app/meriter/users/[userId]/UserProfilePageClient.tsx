@@ -55,21 +55,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     ? invitableCommunitiesData 
     : invitableCommunitiesData?.data || [];
   const hasTeamsToInvite = !invitableCommunitiesLoading && invitableCommunities.length > 0;
-  
-  // Debug: log values to understand why button might not show
-  React.useEffect(() => {
-    if (!isOwnProfile) {
-      console.log('Invite button debug:', {
-        isOwnProfile,
-        hasTeamsToInvite,
-        isSuperadmin,
-        invitableCommunitiesLoading,
-        invitableCommunitiesCount: invitableCommunities.length,
-        invitableCommunities,
-        shouldShow: !isOwnProfile && (hasTeamsToInvite || isSuperadmin),
-      });
-    }
-  }, [isOwnProfile, hasTeamsToInvite, isSuperadmin, invitableCommunitiesLoading, invitableCommunities.length]);
 
   // Handle 404 - redirect to not-found if user doesn't exist
   useEffect(() => {
