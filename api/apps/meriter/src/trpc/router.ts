@@ -15,6 +15,7 @@ import { uploadsRouter } from './routers/uploads.router';
 import { favoritesRouter } from './routers/favorites.router';
 import { categoriesRouter } from './routers/categories.router';
 import { aboutRouter } from './routers/about.router';
+import { tappalkaRouter } from './routers/tappalka.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -37,6 +38,7 @@ export const appRouter = router({
   favorites: favoritesRouter,
   categories: categoriesRouter,
   about: aboutRouter,
+  tappalka: tappalkaRouter,
 });
 
 export type AppRouter = typeof appRouter;
