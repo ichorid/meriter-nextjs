@@ -11,6 +11,7 @@ import { Check, RotateCcw, Eye, EyeOff, Download, Upload, History, Loader2, Chev
 import type { CommunityWithComputedFields, PermissionRule } from '@/types/api-v1';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/shadcn/select';
+import { Switch } from '@/components/ui/shadcn/switch';
 import { useResetDailyQuota } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -46,6 +47,7 @@ interface CommunityRulesEditorProps {
       canEarn?: boolean;
       canSpend?: boolean;
       startingMerits?: number;
+      quotaEnabled?: boolean;
     };
     linkedCurrencies?: string[];
     settings?: {
@@ -177,6 +179,10 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100)
   );
   
+  const [quotaEnabled, setQuotaEnabled] = useState<boolean>(
+    community.meritSettings?.quotaEnabled ?? true
+  );
+  
   const [quotaRecipients, setQuotaRecipients] = useState<Role[]>(
     (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']
   );
@@ -263,6 +269,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
     quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
+    quotaEnabled: community.meritSettings?.quotaEnabled ?? true,
   });
 
   // History of rule changes
@@ -343,6 +350,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
     setQuotaRecipients((community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer']);
+    setQuotaEnabled(community.meritSettings?.quotaEnabled ?? true);
 
     // Update original state
     setOriginalPermissionRules(JSON.parse(JSON.stringify(initialRules)));
@@ -398,6 +406,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           canEarn: true, // These are controlled by permissionRules now
           canSpend: true,
           startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100,
+          quotaEnabled: quotaEnabled,
         },
         linkedCurrencies,
         settings: settingsToSave,
@@ -430,6 +439,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         currencySource,
         startingMerits,
         quotaRecipients: [...quotaRecipients],
+        quotaEnabled,
       });
       // Save to history
       saveToHistory(permissionRules, linkedCurrencies);
@@ -465,6 +475,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setCurrencySource(originalSettings.currencySource);
     setStartingMerits(originalSettings.startingMerits);
     setQuotaRecipients([...originalSettings.quotaRecipients]);
+    setQuotaEnabled(originalSettings.quotaEnabled);
     setValidationErrors({});
   };
 
@@ -483,7 +494,8 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       votingRestriction !== originalSettings.votingRestriction ||
       currencySource !== originalSettings.currencySource ||
       startingMerits !== originalSettings.startingMerits ||
-      JSON.stringify(quotaRecipients.sort()) !== JSON.stringify(originalSettings.quotaRecipients.sort())
+      JSON.stringify(quotaRecipients.sort()) !== JSON.stringify(originalSettings.quotaRecipients.sort()) ||
+      quotaEnabled !== originalSettings.quotaEnabled
     );
 
     return rulesChanged || linkedCurrenciesChanged || settingsChanged;
@@ -983,14 +995,56 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         {isMeritSettingsOpen && (
         <div className="p-5 space-y-5">
 
-        <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
-          <Input
-            value={dailyEmission}
-            onChange={(e) => setDailyEmission(e.target.value)}
-            type="number"
-            className="h-11 rounded-xl w-full"
-          />
+        <BrandFormControl 
+          label={t('quotaEnabled') || 'Квота включена'} 
+          helperText={t('quotaEnabledHelp') || 'Если квота выключена, она не будет доступна в сообществе'}
+        >
+          <div className="flex items-center gap-3">
+            <Switch checked={quotaEnabled} onCheckedChange={setQuotaEnabled} />
+            <Label className="text-sm font-medium">
+              {quotaEnabled ? (t('quotaEnabledOn') || 'Включена') : (t('quotaEnabledOff') || 'Выключена')}
+            </Label>
+          </div>
         </BrandFormControl>
+
+        {quotaEnabled && (
+          <>
+            <BrandFormControl label={tSettings('dailyEmission')} helperText={tSettings('dailyEmissionHelp')}>
+              <Input
+                value={dailyEmission}
+                onChange={(e) => setDailyEmission(e.target.value)}
+                type="number"
+                className="h-11 rounded-xl w-full"
+              />
+            </BrandFormControl>
+
+            <BrandFormControl label={t('quotaRecipients')}>
+              <div className="space-y-2.5">
+                {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
+                  const checkboxId = `merit-role-${role}`;
+                  const isAllowed = quotaRecipients.includes(role);
+                  return (
+                    <div key={role} className="flex items-center gap-2.5">
+                      <Checkbox
+                        id={checkboxId}
+                        checked={isAllowed}
+                        onCheckedChange={(checked) => {
+                          const newQuotaRecipients = checked
+                            ? [...quotaRecipients, role]
+                            : quotaRecipients.filter(r => r !== role);
+                          setQuotaRecipients(newQuotaRecipients);
+                        }}
+                      />
+                      <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
+                        {t(`roles.${role}`)}
+                      </Label>
+                    </div>
+                  );
+                })}
+              </div>
+            </BrandFormControl>
+          </>
+        )}
 
         <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
           <Input
@@ -999,32 +1053,6 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
             type="number"
             className="h-11 rounded-xl w-full"
           />
-        </BrandFormControl>
-
-        <BrandFormControl label={t('quotaRecipients')}>
-          <div className="space-y-2.5">
-            {(['superadmin', 'lead', 'participant', 'viewer'] as const).map((role) => {
-              const checkboxId = `merit-role-${role}`;
-              const isAllowed = quotaRecipients.includes(role);
-              return (
-                <div key={role} className="flex items-center gap-2.5">
-                  <Checkbox
-                    id={checkboxId}
-                    checked={isAllowed}
-                    onCheckedChange={(checked) => {
-                      const newQuotaRecipients = checked
-                        ? [...quotaRecipients, role]
-                        : quotaRecipients.filter(r => r !== role);
-                      setQuotaRecipients(newQuotaRecipients);
-                    }}
-                  />
-                  <Label htmlFor={checkboxId} className="text-sm cursor-pointer">
-                    {t(`roles.${role}`)}
-                  </Label>
-                </div>
-              );
-            })}
-          </div>
         </BrandFormControl>
         </div>
         )}
@@ -1085,7 +1113,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           </>
         )}
 
-        {canResetQuota && (
+        {canResetQuota && quotaEnabled && (
           <BrandFormControl
             label={tSettings('resetQuota')}
             helperText={tSettings('resetQuotaDescription')}

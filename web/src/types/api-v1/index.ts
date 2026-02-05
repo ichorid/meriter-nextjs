@@ -304,6 +304,7 @@ export interface CommunityMeritSettings {
   canEarn: boolean;
   canSpend: boolean;
   startingMerits?: number;
+  quotaEnabled?: boolean;
 }
 
 export interface CommunityMeritConversion {
