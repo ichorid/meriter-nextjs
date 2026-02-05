@@ -63,7 +63,6 @@ export interface User {
   meritStats?: {
     [communityId: string]: number;
   };
-  inviteCode?: string;
   communityTags: string[];
   communityMemberships: string[];
   authenticators?: Authenticator[];
@@ -124,9 +123,6 @@ export class UserSchemaClass implements User {
   meritStats?: {
     [communityId: string]: number;
   };
-
-  @Prop()
-  inviteCode?: string;
 
   @Prop({ type: [String], default: [] })
   communityTags!: string[];

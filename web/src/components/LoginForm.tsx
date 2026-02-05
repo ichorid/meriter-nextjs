@@ -35,7 +35,7 @@ import {
 import { Separator } from "@/components/ui/shadcn/separator";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
-import { ChevronDown, ChevronUp, Phone, Mail } from "lucide-react";
+import { Phone, Mail } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
@@ -73,10 +73,6 @@ export function LoginForm({
     // Local loading state for OAuth authentication
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-    // State for invite code input
-    const [inviteCode, setInviteCode] = useState("");
-    const [inviteCodeExpanded, setInviteCodeExpanded] = useState(false);
-
     console.log("LoginForm", enabledProviders, authnEnabled, smsEnabled);
 
     // State for auth dialogs
@@ -99,26 +95,9 @@ export function LoginForm({
         }
     }, [authError, addToast]);
 
-    // Helper function to construct redirect URL with invite code if present
+    // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
-        const baseUrl = returnTo || "/meriter/profile";
-
-        // If invite code is present, append it as a query parameter
-        if (inviteCode.trim()) {
-            try {
-                // Parse the base URL to handle existing query parameters
-                const url = new URL(baseUrl, typeof window !== "undefined" ? window.location.origin : "http://localhost");
-                url.searchParams.set("invite", inviteCode.trim());
-                // Return pathname + search (relative URL)
-                return url.pathname + url.search;
-            } catch (e) {
-                // If URL parsing fails (e.g., relative path without origin), use simple concatenation
-                const separator = baseUrl.includes("?") ? "&" : "?";
-                return `${baseUrl}${separator}invite=${encodeURIComponent(inviteCode.trim())}`;
-            }
-        }
-
-        return baseUrl;
+        return returnTo || "/meriter/profile";
     };
 
     // Handle fake authentication
@@ -371,41 +350,6 @@ export function LoginForm({
                                         )}
                                     </>
                                 )}
-
-                                {/* Collapsible Invite Code Input - always visible */}
-                                <div className="border rounded-lg overflow-hidden">
-                                    <button
-                                        type="button"
-                                        onClick={() => setInviteCodeExpanded(!inviteCodeExpanded)}
-                                        className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/50 transition-colors text-left"
-                                    >
-                                        <div className="text-sm font-medium">{tReg("inviteCodeLabel")}</div>
-                                        {inviteCodeExpanded ? (
-                                            <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                                        ) : (
-                                            <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
-                                        )}
-                                    </button>
-                                    {inviteCodeExpanded && (
-                                        <div className="px-4 pb-4 pt-2 border-t space-y-3">
-                                            <p className="text-xs text-muted-foreground leading-relaxed">
-                                                {tReg("inviteDescription")}
-                                            </p>
-                                            <BrandFormControl
-                                                label={undefined}
-                                                error={undefined}
-                                            >
-                                                <Input
-                                                    value={inviteCode}
-                                                    onChange={(e) => setInviteCode(e.target.value)}
-                                                    placeholder={tReg("inviteCodePlaceholder")}
-                                                    autoCapitalize="none"
-                                                    autoComplete="off"
-                                                    className="h-11 rounded-xl w-full"
-                                                />
-                                            </BrandFormControl>
-                                        </div>
-                                    )}
 
                                     {/* Fake Data Mode Authentication */}
                                     {fakeDataMode && (

@@ -98,7 +98,7 @@ export const CommunityMeritConversionSchema = z.object({
 
 export const CommunityMeritSettingsSchema = z.object({
   dailyQuota: z.number().int().min(0).optional(),
-  quotaRecipients: z.array(z.enum(["superadmin", "lead", "participant", "viewer"])).optional(),
+  quotaRecipients: z.array(z.enum(["superadmin", "lead", "participant"])).optional(),
   canEarn: z.boolean().optional(),
   canSpend: z.boolean().optional(),
   startingMerits: z.number().int().min(0).optional(),
@@ -131,7 +131,7 @@ export const PermissionRuleConditionsSchema = z.object({
 });
 
 export const PermissionRuleSchema = z.object({
-  role: z.enum(["superadmin", "lead", "participant", "viewer"]),
+  role: z.enum(["superadmin", "lead", "participant"]),
   action: z.string(), // ActionType enum value
   allowed: z.boolean(),
   conditions: PermissionRuleConditionsSchema.optional(),
@@ -151,7 +151,7 @@ export const UserCommunityRoleSchema = IdentifiableSchema.merge(
 ).extend({
   userId: z.string(),
   communityId: z.string(),
-  role: z.enum(["lead", "participant", "viewer"]), // В БД 'lead', в переводах 'representative'
+  role: z.enum(["lead", "participant"]), // В БД 'lead', в переводах 'representative'
 });
 
 // Invite schema
@@ -191,7 +191,6 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   globalRole: z.enum(["superadmin"]).optional(), // Глобальная роль (только для суперадминов)
   profile: UserProfileSchema.default({ isVerified: false }),
   meritStats: z.record(z.string(), z.number().int().min(0)).optional(), // Статистика меритов по коммьюнити (только для lead)
-  inviteCode: z.string().optional(), // Код, использованный при регистрации
   teamId: z.string().optional(), // ID команды, к которой принадлежит пользователь
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
