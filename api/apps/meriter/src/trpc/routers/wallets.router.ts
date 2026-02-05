@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { COMMUNITY_ROLE_VIEWER, GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
 /**
  * Synchronize credit transactions between Marathon of Good and Future Vision wallets
@@ -244,8 +244,7 @@ export const walletsRouter = router({
       );
       const dailyQuota =
         !quotaEnabled ||
-        community.typeTag === 'future-vision' ||
-        (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good')
+        community.typeTag === 'future-vision'
           ? 0
           : baseDailyQuota;
       const today = new Date();
@@ -492,8 +491,7 @@ export const walletsRouter = router({
         input.communityId,
       );
       const dailyQuota =
-        community.typeTag === 'future-vision' ||
-        (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good')
+        community.typeTag === 'future-vision'
           ? 0
           : baseDailyQuota;
       const today = new Date();

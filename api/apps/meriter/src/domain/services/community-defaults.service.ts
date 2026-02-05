@@ -64,11 +64,10 @@ export class CommunityDefaultsService {
    * Base rules that apply to all community types
    */
   private getBaseRules(): PermissionRule[] {
-    const _roles: Array<'superadmin' | 'lead' | 'participant' | 'viewer'> = [
+    const _roles: Array<'superadmin' | 'lead' | 'participant'> = [
       'superadmin',
       'lead',
       'participant',
-      'viewer',
     ];
     const rules: PermissionRule[] = [];
 
@@ -136,11 +135,7 @@ export class CommunityDefaultsService {
       { role: 'participant', action: ActionType.VIEW_COMMUNITY, allowed: true },
     );
 
-    // Viewer permissions
-    rules.push(
-      { role: 'viewer', action: ActionType.VIEW_COMMUNITY, allowed: true },
-      // Viewers cannot post, vote (except in marathon-of-good), comment, edit, or delete
-    );
+    // Note: Viewer role has been removed. All users are now participants by default.
 
     return rules;
   }

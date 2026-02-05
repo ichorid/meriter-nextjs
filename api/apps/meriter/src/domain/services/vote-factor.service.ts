@@ -111,7 +111,7 @@ export class VoteFactorService {
     postType?: string,
     isProject?: boolean,
     direction?: 'up' | 'down',
-    userRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null,
+    userRole?: 'superadmin' | 'lead' | 'participant' | null,
   ): Promise<ContextCurrencyModeResult> {
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
@@ -145,7 +145,7 @@ export class VoteFactorService {
     postType?: string,
     isProject?: boolean,
     direction?: 'up' | 'down',
-    userRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null,
+    userRole?: 'superadmin' | 'lead' | 'participant' | null,
     sharedTeamCommunities?: string[],
   ): Promise<CurrencyModeResult> {
     const community = await this.communityService.getCommunity(communityId);

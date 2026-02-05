@@ -9,7 +9,7 @@ import { VoteService } from '../../../domain/services/vote.service';
 import { PermissionContextService } from '../../../domain/services/permission-context.service';
 import { VoteCommentResolverService } from './vote-comment-resolver.service';
 import { ResourcePermissions } from '../interfaces/resource-permissions.interface';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER } from '../../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
 import { ActionType } from '../../../domain/common/constants/action-types.constants';
 
 /**
@@ -415,12 +415,7 @@ export class PermissionsHelperService {
       return 'voteDisabled.roleNotAllowed';
     }
 
-    // Check viewer restrictions (viewers can only vote in marathon-of-good and team-projects)
-    if (userRole === COMMUNITY_ROLE_VIEWER && 
-        community.typeTag !== 'marathon-of-good' && 
-        community.typeTag !== 'team-projects') {
-      return 'voteDisabled.viewerNotAllowed';
-    }
+    // Note: viewer role removed - all users are now participants
 
     return undefined as any;
   }

@@ -8,7 +8,7 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
 import { PermissionService } from './permission.service';
-import { COMMUNITY_ROLE_VIEWER } from '../common/constants/roles.constants';
+// Note: COMMUNITY_ROLE_VIEWER removed - all users are now participants
 
 interface QuotaInfo {
   dailyQuota: number;
@@ -81,12 +81,9 @@ export class QuotaResetService {
       communityId,
     );
 
-    // Viewers get zero quota in all communities EXCEPT marathon-of-good
     // Future Vision communities don't use quota regardless of role
-    if (
-      (userRole === COMMUNITY_ROLE_VIEWER && community.typeTag !== 'marathon-of-good') ||
-      community.typeTag === 'future-vision'
-    ) {
+    // Note: viewer role removed - all users are now participants
+    if (community.typeTag === 'future-vision') {
       return {
         dailyQuota: 0,
         usedToday: 0,

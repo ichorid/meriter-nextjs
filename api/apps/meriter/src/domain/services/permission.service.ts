@@ -41,7 +41,7 @@ export class PermissionService {
   async getUserRoleInCommunity(
     userId: string,
     communityId: string,
-  ): Promise<'superadmin' | 'lead' | 'participant' | 'viewer' | null> {
+  ): Promise<'superadmin' | 'lead' | 'participant' | null> {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
     this.logger.log(

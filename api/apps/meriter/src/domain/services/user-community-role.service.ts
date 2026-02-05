@@ -55,7 +55,7 @@ export class UserCommunityRoleService {
    */
   async getUsersByRole(
     communityId: string,
-    role: 'lead' | 'participant' | 'viewer',
+    role: 'lead' | 'participant',
   ): Promise<UserCommunityRole[]> {
     return this.userCommunityRoleModel
       .find({
@@ -88,7 +88,7 @@ export class UserCommunityRoleService {
   async setRole(
     userId: string,
     communityId: string,
-    role: 'lead' | 'participant' | 'viewer',
+    role: 'lead' | 'participant',
     skipSync: boolean = false, // Recursion guard to prevent infinite loops
   ): Promise<UserCommunityRoleDocument> {
     // Get existing role to check previous role for sync
@@ -190,7 +190,7 @@ export class UserCommunityRoleService {
   async hasRole(
     userId: string,
     communityId: string,
-    role: 'lead' | 'participant' | 'viewer',
+    role: 'lead' | 'participant',
   ): Promise<boolean> {
     const userRole = await this.getRole(userId, communityId);
     return userRole?.role === role;
@@ -201,7 +201,7 @@ export class UserCommunityRoleService {
    */
   async getCommunitiesByRole(
     userId: string,
-    role: 'lead' | 'participant' | 'viewer',
+    role: 'lead' | 'participant',
   ): Promise<string[]> {
     const roles = await this.userCommunityRoleModel
       .find({
@@ -218,7 +218,7 @@ export class UserCommunityRoleService {
    * Returns unique user IDs that have the specified role in at least one community
    */
   async getAllUsersByRole(
-    role: 'lead' | 'participant' | 'viewer',
+    role: 'lead' | 'participant',
   ): Promise<string[]> {
     const userIds = await this.userCommunityRoleModel
       .distinct('userId', {

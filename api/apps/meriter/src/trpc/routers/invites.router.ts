@@ -339,8 +339,8 @@ export const invitesRouter = router({
         // Find marathon-of-good community (if exists)
         const marathonCommunity = await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
         if (marathonCommunity) {
-          // Assign viewer role
-          await ctx.userCommunityRoleService.setRole(userId, marathonCommunity.id, 'viewer');
+          // Assign participant role (viewer role removed)
+          await ctx.userCommunityRoleService.setRole(userId, marathonCommunity.id, 'participant');
           
           // Add user to community members
           await ctx.communityService.addMember(marathonCommunity.id, userId);
@@ -357,8 +357,8 @@ export const invitesRouter = router({
         // Find future-vision community (if exists)
         const visionCommunity = await ctx.communityService.getCommunityByTypeTag('future-vision');
         if (visionCommunity) {
-          // Assign viewer role
-          await ctx.userCommunityRoleService.setRole(userId, visionCommunity.id, 'viewer');
+          // Assign participant role (viewer role removed)
+          await ctx.userCommunityRoleService.setRole(userId, visionCommunity.id, 'participant');
           
           // Add user to community members
           await ctx.communityService.addMember(visionCommunity.id, userId);

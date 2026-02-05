@@ -154,18 +154,14 @@ export const usersRouter = router({
       );
       
       // Add virtual roles for communities where user is a member but doesn't have a role
-      // Default to 'participant' role for team communities, 'viewer' for special communities
+      // Default to 'participant' role for all communities (viewer role removed)
       const virtualRoles = await Promise.all(
         missingRoleCommunityIds.map(async (communityId) => {
           const community = await ctx.communityService.getCommunity(communityId);
           if (!community) return null;
           
-          // Determine default role based on community type
-          // For team communities (typeTag === 'team' or undefined), default to 'participant'
-          // For special communities, default to 'viewer'
-          const defaultRole = (community.typeTag === 'team' || !community.typeTag) 
-            ? 'participant' 
-            : 'viewer';
+          // All users default to 'participant' role (viewer role removed)
+          const defaultRole = 'participant';
           
           return {
             id: `virtual-${communityId}`, // Virtual ID

@@ -286,16 +286,16 @@ export class UserService implements OnModuleInit {
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, futureVision.id);
 
-        // 4. Assign viewer role if user has no role (joining without invite)
+        // 4. Assign participant role if user has no role (joining without invite)
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
             userId,
             futureVision.id,
-            'viewer',
+            'participant',
             true, // skipSync to prevent recursion
           );
           this.logger.log(
-            `Assigned viewer role to user ${userId} in Future Vision (no invite)`,
+            `Assigned participant role to user ${userId} in Future Vision (no invite)`,
           );
         }
 
@@ -333,16 +333,16 @@ export class UserService implements OnModuleInit {
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, marathonOfGood.id);
 
-        // 4. Assign viewer role if user has no role (joining without invite)
+        // 4. Assign participant role if user has no role (joining without invite)
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
             userId,
             marathonOfGood.id,
-            'viewer',
+            'participant',
             true, // skipSync to prevent recursion
           );
           this.logger.log(
-            `Assigned viewer role to user ${userId} in Marathon of Good (no invite)`,
+            `Assigned participant role to user ${userId} in Marathon of Good (no invite)`,
           );
         }
 
@@ -382,17 +382,17 @@ export class UserService implements OnModuleInit {
         // 3. Add community to user's memberships
         await this.addCommunityMembership(userId, teamProjects.id);
 
-        // 4. Assign viewer role if user has no role (joining without invite)
-        // Everyone gets viewer role by default, can vote (comment)
+        // 4. Assign participant role if user has no role (joining without invite)
+        // Everyone gets participant role by default
         if (!existingRole) {
           await this.userCommunityRoleService.setRole(
             userId,
             teamProjects.id,
-            'viewer',
+            'participant',
             true, // skipSync to prevent recursion
           );
           this.logger.log(
-            `Assigned viewer role to user ${userId} in Team Projects (no invite)`,
+            `Assigned participant role to user ${userId} in Team Projects (no invite)`,
           );
         }
 

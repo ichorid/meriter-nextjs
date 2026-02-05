@@ -9,17 +9,18 @@ import { Document } from 'mongoose';
  *
  * Roles:
  * - 'lead' - Leader/Representative of the community (in DB: 'lead', in UI: 'representative')
- * - 'participant' - Active participant
- * - 'viewer' - Read-only access
+ * - 'participant' - Active participant (full member with all rights)
  *
  * Global role 'superadmin' is stored in User.globalRole, not here.
+ * 
+ * Note: Role 'viewer' has been removed. All users are now 'participant' by default.
  */
 
 export interface UserCommunityRole {
   id: string;
   userId: string;
   communityId: string;
-  role: 'lead' | 'participant' | 'viewer';
+  role: 'lead' | 'participant';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -37,10 +38,10 @@ export class UserCommunityRoleSchemaClass implements UserCommunityRole {
 
   @Prop({
     required: true,
-    enum: ['lead', 'participant', 'viewer'],
+    enum: ['lead', 'participant'],
     index: true,
   })
-  role!: 'lead' | 'participant' | 'viewer';
+  role!: 'lead' | 'participant';
 
   @Prop({ required: true })
   createdAt!: Date;

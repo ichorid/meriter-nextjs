@@ -63,7 +63,7 @@ export interface CommunityMeritConversion {
 // Merit settings (configuration, not permissions)
 export interface CommunityMeritSettings {
   dailyQuota: number;
-  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+  quotaRecipients: ('superadmin' | 'lead' | 'participant')[];
   canEarn: boolean;
   canSpend: boolean;
   startingMerits?: number;
@@ -106,7 +106,7 @@ export interface CommunityTappalkaSettings {
  * Conditions can be used to add additional constraints.
  */
 export interface PermissionRule {
-  role: 'superadmin' | 'lead' | 'participant' | 'viewer';
+  role: 'superadmin' | 'lead' | 'participant';
   action: ActionType;
   allowed: boolean; // explicit allow/deny
   conditions?: {
@@ -145,7 +145,7 @@ export interface PermissionContext {
   isTeamMember?: boolean;
   hasTeamMembership?: boolean; // user has membership in any team-type community
   isTeamCommunity?: boolean; // resource is in a team-type community
-  authorRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null;
+  authorRole?: 'superadmin' | 'lead' | 'participant' | null;
   sharedTeamCommunities?: string[]; // team communities shared between voter and effective beneficiary
   hasVotes?: boolean;
   hasComments?: boolean;
@@ -255,7 +255,7 @@ export class CommunitySchemaClass implements Community {
     },
     default: {
       dailyQuota: 100,
-      quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
+      quotaRecipients: ['superadmin', 'lead', 'participant'],
       canEarn: true,
       canSpend: true,
       startingMerits: 100,

@@ -93,7 +93,7 @@ export interface UpdateCommunityDto {
   };
   meritSettings?: {
     dailyQuota?: number;
-    quotaRecipients?: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
+    quotaRecipients?: ('superadmin' | 'lead' | 'participant')[];
     canEarn?: boolean;
     canSpend?: boolean;
     startingMerits?: number;
@@ -1054,12 +1054,7 @@ export class CommunityService {
               if: {
                 $or: [
                   { $eq: ['$isFutureVision', true] },
-                  {
-                    $and: [
-                      { $eq: ['$userRole', 'viewer'] },
-                      { $ne: ['$isMarathonOfGood', true] },
-                    ],
-                  },
+                  // Note: viewer role removed - all users are now participants
                 ],
               },
               then: 0,

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { COMMUNITY_ROLE_VIEWER } from '../../domain/common/constants/roles.constants';
 import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
@@ -557,13 +556,7 @@ async function createVoteLogic(
     });
   }
 
-  // Viewers can only vote with quota (no wallet voting) in all communities.
-  if (userRole === COMMUNITY_ROLE_VIEWER && walletAmount > 0) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Viewers can only vote using daily quota, not wallet merits.',
-    });
-  }
+  // Note: viewer role removed - all users are now participants
 
   // Backward compatibility: Special case: Future Vision blocks quota voting (wallet only) for posts/comments (if currencySource not set).
   if (

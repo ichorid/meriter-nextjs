@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { COMMUNITY_ROLE_VIEWER } from '../../common/constants/roles.constants';
 import { CommunityService } from '../community.service';
 import { ContextCurrencyModeResult, VoteFactorContext } from './vote-factor.types';
 
@@ -47,7 +46,7 @@ export class ContextCurrencyModeFactor {
     // The vote service only handles targetType 'publication' | 'vote' (where 'vote' means comment)
     const isPoll = false;
     const isDownvote = direction === 'down';
-    const isViewer = userRole === COMMUNITY_ROLE_VIEWER;
+    // Note: viewer role removed - all users are now participants
 
     // Priority 1: currencySource from votingSettings (if set)
     const currencySource = community.votingSettings?.currencySource;
@@ -73,7 +72,7 @@ export class ContextCurrencyModeFactor {
           reason: 'Community voting settings allow wallet-only voting',
         };
       } else if (currencySource === 'quota-and-wallet') {
-        // Continue to check other priorities (viewer role, etc.)
+        // Continue to check other priorities
         // But allow both quota and wallet
       }
     }
@@ -146,32 +145,7 @@ export class ContextCurrencyModeFactor {
       };
     }
 
-    // Priority 6: Viewer role → quota-only (if role in quotaRecipients)
-    if (isViewer) {
-      // Get effective merit settings (DB overrides defaults)
-      const effectiveMeritSettings = this.communityService.getEffectiveMeritSettings(community);
-      const quotaRecipients = effectiveMeritSettings.quotaRecipients || [];
-      
-      // Only allow quota if viewer is in quotaRecipients list
-      if (quotaRecipients.includes('viewer')) {
-        this.logger.debug(
-          `[evaluate] Viewer role → quota-only: userRole=${userRole}, quotaRecipients includes viewer`,
-        );
-        return {
-          allowedQuota: true,
-          allowedWallet: false,
-          requiredCurrency: 'quota',
-          reason: 'Viewers can only vote using daily quota, not wallet merits',
-        };
-      } else {
-        // Viewer not in quotaRecipients → cannot vote at all (this should be caught by Factor 1, but return both false)
-        return {
-          allowedQuota: false,
-          allowedWallet: false,
-          reason: 'Viewers are not allowed to vote (not in quotaRecipients)',
-        };
-      }
-    }
+    // Note: Viewer role removed - all users are now participants
 
     // Priority 7: Default → both-allowed (quota preferred)
     // Also check if role is in quotaRecipients for quota allowance

@@ -13,7 +13,7 @@ export interface VoteFactorContext extends PermissionContext {
   postType?: string;
   isProject?: boolean;
   direction?: 'up' | 'down';
-  userRole?: 'superadmin' | 'lead' | 'participant' | 'viewer' | null;
+  userRole?: 'superadmin' | 'lead' | 'participant' | null;
   effectiveBeneficiaryId?: string;
   sharedTeamCommunities?: string[];
 }

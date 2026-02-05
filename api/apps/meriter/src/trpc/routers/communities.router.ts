@@ -3,7 +3,7 @@ import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema, IdInputSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_VIEWER, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
 export const communitiesRouter = router({
@@ -143,15 +143,7 @@ export const communitiesRouter = router({
   create: protectedProcedure
     .input(CreateCommunityDtoSchema)
     .mutation(async ({ ctx, input }) => {
-      // Check if user is a viewer - viewers cannot create communities
-      const userRoles = await ctx.userCommunityRoleService.getUserRoles(ctx.user.id);
-      const hasViewerRole = userRoles.some(role => role.role === COMMUNITY_ROLE_VIEWER);
-      if (hasViewerRole) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Viewer users cannot create communities',
-        });
-      }
+      // Note: viewer role removed - all users can create communities
 
       // Only superadmin can set isPriority
       const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
@@ -669,7 +661,7 @@ export const communitiesRouter = router({
     .input(z.object({
       userId: z.string(),
       communityId: z.string(),
-      role: z.enum(['lead', 'participant', 'viewer']),
+      role: z.enum(['lead', 'participant']),
     }))
     .mutation(async ({ ctx, input }) => {
       // Only superadmin can update roles
@@ -700,7 +692,7 @@ export const communitiesRouter = router({
   getUsersByRole: protectedProcedure
     .input(z.object({
       communityId: z.string(),
-      role: z.enum(['lead', 'participant', 'viewer']),
+      role: z.enum(['lead', 'participant']),
     }))
     .query(async ({ ctx, input }) => {
       // Check if user can view roles (superadmin or lead in the community)
