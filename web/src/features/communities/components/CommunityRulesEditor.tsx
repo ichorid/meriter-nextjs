@@ -34,7 +34,7 @@ const ActionType = {
   VIEW_COMMUNITY: 'view_community',
 } as const;
 
-type Role = 'superadmin' | 'lead' | 'participant' | 'viewer';
+type Role = 'superadmin' | 'lead' | 'participant';
 type ActionTypeValue = typeof ActionType[keyof typeof ActionType];
 
 interface CommunityRulesEditorProps {
