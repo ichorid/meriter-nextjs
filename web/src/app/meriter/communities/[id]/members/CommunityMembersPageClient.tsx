@@ -41,6 +41,13 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     });
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
     const { data: _userRoles = [] } = useUserRoles(user?.id || '');
+
+    // Check if user is admin (superadmin or lead of this community)
+    const isAdmin = community?.isAdmin;
+
+    // Determine if we should show role chip and hide team info
+    const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+    const isTeam = community?.typeTag === 'team';
     
     // Get team join requests (only for team communities and admins)
     const { data: requestsData } = useTeamRequestsForLead(
@@ -52,15 +59,8 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     
     const requests = requestsData || [];
 
-    // Check if user is admin (superadmin or lead of this community)
-    const isAdmin = community?.isAdmin;
-
     // Check if current user can view merits/quota for other users
     const { canView: canViewMerits } = useCanViewUserMerits(communityId);
-
-    // Determine if we should show role chip and hide team info
-    const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
-    const isTeam = community?.typeTag === 'team';
     const showRoleChip = isMarathonOrFutureVision || isTeam;
     const hideTeamInfo = isTeam;
 
