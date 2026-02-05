@@ -3,7 +3,6 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { InviteInput } from '@/components/molecules/InviteInput/InviteInput';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface JoinTeamProps {
@@ -49,7 +48,6 @@ export function JoinTeam({
               {defaultDescription}
             </p>
           )}
-          <InviteInput />
 
           {/* Local Groups Notification */}
           {showLocalGroupsNote && (
