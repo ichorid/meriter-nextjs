@@ -513,4 +513,68 @@ export const usersRouter = router({
       );
       return { frequency: updated.updatesFrequency };
     }),
+
+  /**
+   * Invite user to a team
+   * Only leads can invite to their teams
+   */
+  inviteToTeam: protectedProcedure
+    .input(
+      z.object({
+        targetUserId: z.string(),
+        communityId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.userService.inviteToTeam(
+        ctx.user.id,
+        input.targetUserId,
+        input.communityId,
+      );
+      return { success: true };
+    }),
+
+  /**
+   * Assign user as lead of a community
+   * Only superadmins can assign leads
+   */
+  assignLead: protectedProcedure
+    .input(
+      z.object({
+        targetUserId: z.string(),
+        communityId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.userService.assignLead(
+        ctx.user.id,
+        input.targetUserId,
+        input.communityId,
+      );
+      return { success: true };
+    }),
+
+  /**
+   * Get communities where current user is lead and target user is not a member
+   * Used for inviting users to teams
+   */
+  getInvitableCommunities: protectedProcedure
+    .input(
+      z.object({
+        targetUserId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.userService.getInvitableCommunities(
+        ctx.user.id,
+        input.targetUserId,
+      );
+    }),
+
+  /**
+   * Get communities where current user is lead
+   */
+  getMyLeadCommunities: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.userService.getLeadCommunities(ctx.user.id);
+  }),
 });
