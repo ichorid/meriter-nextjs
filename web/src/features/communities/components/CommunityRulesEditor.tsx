@@ -369,6 +369,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
       quotaRecipients: (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant', 'viewer'],
+      quotaEnabled: community.meritSettings?.quotaEnabled ?? true,
     });
   }, [community]);
 

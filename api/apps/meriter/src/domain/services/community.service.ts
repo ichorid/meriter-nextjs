@@ -97,6 +97,7 @@ export interface UpdateCommunityDto {
     canEarn?: boolean;
     canSpend?: boolean;
     startingMerits?: number;
+    quotaEnabled?: boolean;
   };
   isPriority?: boolean;
   permissionRules?: PermissionRule[];
@@ -600,6 +601,9 @@ export class CommunityService {
       }
       if (dto.meritSettings.startingMerits !== undefined) {
         meritSettingsUpdate['meritSettings.startingMerits'] = dto.meritSettings.startingMerits;
+      }
+      if (dto.meritSettings.quotaEnabled !== undefined) {
+        meritSettingsUpdate['meritSettings.quotaEnabled'] = dto.meritSettings.quotaEnabled;
       }
 
       // Merge meritSettings into updateData
