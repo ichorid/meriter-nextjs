@@ -78,7 +78,6 @@ import { UserUpdatesService } from './domain/services/user-updates.service';
 import { UserSettingsService } from './domain/services/user-settings.service';
 import { CommentService } from './domain/services/comment.service';
 import { UserCommunityRoleService } from './domain/services/user-community-role.service';
-import { InviteService } from './domain/services/invite.service';
 import { PermissionService } from './domain/services/permission.service';
 import { MeritService } from './domain/services/merit.service';
 import { NotificationService } from './domain/services/notification.service';
@@ -148,7 +147,6 @@ import { EventBus } from './domain/events/event-bus';
     UserSettingsService,
     CommentService,
     UserCommunityRoleService,
-    InviteService,
     PermissionService,
     MeritService,
     NotificationService,
@@ -189,7 +187,6 @@ import { EventBus } from './domain/events/event-bus';
     UserSettingsService,
     CommentService,
     UserCommunityRoleService,
-    InviteService,
     PermissionService,
     MeritService,
     NotificationService,

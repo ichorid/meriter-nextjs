@@ -11,7 +11,6 @@ import { useRouter } from 'next/navigation';
 import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
 import { routes } from '@/lib/constants/routes';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { FoldableInviteInput } from './FoldableInviteInput';
 
 import type { User } from '@/types/api-v1';
 
@@ -244,13 +243,6 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
             </>
           )}
 
-          {/* Invite Code - Show after "About" if user has no lead/participant roles */}
-          {!hasLeadOrParticipantRoles && (
-            <>
-              {(about || bio) && <Separator className="bg-base-300 my-0" />}
-              <FoldableInviteInput />
-            </>
-          )}
 
           {/* Educational Institution */}
           {isRepresentativeOrMember && educationalInstitution && (

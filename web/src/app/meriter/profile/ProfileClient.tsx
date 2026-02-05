@@ -8,16 +8,13 @@ import { useUserRoles, useMeritStats } from '@/hooks/api/useProfile';
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
-import { UseInvite } from '@/components/organisms/Profile/UseInvite';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
-import { FoldableInviteInput } from '@/components/organisms/Profile/FoldableInviteInput';
 import { useProfileData } from '@/hooks/useProfileData';
 import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuotaSection';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/shadcn/button';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { routes } from '@/lib/constants/routes';
-import { InviteHandler } from '@/components/InviteHandler';
 import Link from 'next/link';
 import { Loader2, Users } from 'lucide-react';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -106,7 +103,6 @@ function ProfilePageComponent() {
 
   return (
     <AdaptiveLayout>
-      <InviteHandler />
       <div className="space-y-0">
         {/* Profile Hero Section */}
         {isEditing ? (

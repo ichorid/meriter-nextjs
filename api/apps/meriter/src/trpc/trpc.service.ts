@@ -13,7 +13,6 @@ import { VoteService } from '../domain/services/vote.service';
 import { PollService } from '../domain/services/poll.service';
 import { PollCastService } from '../domain/services/poll-cast.service';
 import { NotificationService } from '../domain/services/notification.service';
-import { InviteService } from '../domain/services/invite.service';
 import { QuotaUsageService } from '../domain/services/quota-usage.service';
 import { PermissionService } from '../domain/services/permission.service';
 import { FavoriteService } from '../domain/services/favorite.service';
@@ -50,7 +49,6 @@ export class TrpcService {
     private pollService: PollService,
     private pollCastService: PollCastService,
     private notificationService: NotificationService,
-    private inviteService: InviteService,
     private quotaUsageService: QuotaUsageService,
     private permissionService: PermissionService,
     private favoriteService: FavoriteService,
@@ -92,7 +90,6 @@ export class TrpcService {
       pollService: this.pollService,
       pollCastService: this.pollCastService,
       notificationService: this.notificationService,
-      inviteService: this.inviteService,
       quotaUsageService: this.quotaUsageService,
       permissionService: this.permissionService,
       favoriteService: this.favoriteService,

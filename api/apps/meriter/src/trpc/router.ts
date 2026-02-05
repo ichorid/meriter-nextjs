@@ -9,7 +9,6 @@ import { votesRouter } from './routers/votes.router';
 import { pollsRouter } from './routers/polls.router';
 import { walletsRouter } from './routers/wallets.router';
 import { notificationsRouter } from './routers/notifications.router';
-import { invitesRouter } from './routers/invites.router';
 import { searchRouter } from './routers/search.router';
 import { uploadsRouter } from './routers/uploads.router';
 import { favoritesRouter } from './routers/favorites.router';
@@ -32,7 +31,6 @@ export const appRouter = router({
   polls: pollsRouter,
   wallets: walletsRouter,
   notifications: notificationsRouter,
-  invites: invitesRouter,
   search: searchRouter,
   uploads: uploadsRouter,
   favorites: favoritesRouter,

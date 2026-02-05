@@ -12,7 +12,6 @@ import { VoteService } from '../domain/services/vote.service';
 import { PollService } from '../domain/services/poll.service';
 import { PollCastService } from '../domain/services/poll-cast.service';
 import { NotificationService } from '../domain/services/notification.service';
-import { InviteService } from '../domain/services/invite.service';
 import { QuotaUsageService } from '../domain/services/quota-usage.service';
 import { PermissionService } from '../domain/services/permission.service';
 import { FavoriteService } from '../domain/services/favorite.service';
@@ -47,7 +46,6 @@ export interface CreateContextOptions {
   pollService: PollService;
   pollCastService: PollCastService;
   notificationService: NotificationService;
-  inviteService: InviteService;
   quotaUsageService: QuotaUsageService;
   permissionService: PermissionService;
   favoriteService: FavoriteService;
@@ -91,7 +89,6 @@ export async function createContext(opts: CreateContextOptions) {
     voteService,
     pollService,
     notificationService,
-    inviteService,
     quotaUsageService,
     permissionService,
     favoriteService,
@@ -184,7 +181,6 @@ export async function createContext(opts: CreateContextOptions) {
     pollService,
     pollCastService,
     notificationService,
-    inviteService,
     quotaUsageService,
     permissionService,
     favoriteService,
