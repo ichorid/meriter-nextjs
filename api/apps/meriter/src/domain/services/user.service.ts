@@ -2,6 +2,8 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ForbiddenException,
+  BadRequestException,
   Inject,
   forwardRef,
   OnModuleInit,
@@ -13,6 +15,7 @@ import type { User } from '../models/user/user.schema';
 import {
   CommunitySchemaClass,
   CommunityDocument,
+  type Community,
 } from '../models/community/community.schema';
 import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
@@ -498,6 +501,184 @@ export class UserService implements OnModuleInit {
   async getUserCommunities(userId: string): Promise<string[]> {
     const user = await this.userModel.findOne({ id: userId }).lean();
     return user?.communityMemberships || [];
+  }
+
+  /**
+   * Invite user to a team (local community)
+   * Only leads can invite to their teams
+   */
+  async inviteToTeam(
+    inviterId: string,
+    targetUserId: string,
+    communityId: string,
+  ): Promise<void> {
+    this.logger.log(
+      `Inviting user ${targetUserId} to team ${communityId} by ${inviterId}`,
+    );
+
+    // 1. Check that inviter is lead in this community
+    const inviterRole = await this.userCommunityRoleService.getRole(
+      inviterId,
+      communityId,
+    );
+    const inviter = await this.getUserById(inviterId);
+    const isSuperadmin = inviter?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+    
+    if (inviterRole?.role !== 'lead' && !isSuperadmin) {
+      throw new ForbiddenException('Only leads can invite to team');
+    }
+
+    // 2. Check that community is a team (not global)
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    if (community.typeTag !== 'team') {
+      throw new BadRequestException('Can only invite to team communities');
+    }
+
+    // 3. Check that target is not already a member
+    const targetRole = await this.userCommunityRoleService.getRole(
+      targetUserId,
+      communityId,
+    );
+    if (targetRole) {
+      throw new BadRequestException(
+        'User is already a member of this community',
+      );
+    }
+
+    // 4. Assign participant role
+    await this.userCommunityRoleService.setRole(
+      targetUserId,
+      communityId,
+      'participant',
+    );
+
+    // 5. Create wallet
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await this.walletService.createOrGetWallet(
+      targetUserId,
+      communityId,
+      currency,
+    );
+
+    // 6. Add to lists
+    await this.communityService.addMember(communityId, targetUserId);
+    await this.addCommunityMembership(targetUserId, communityId);
+
+    this.logger.log(
+      `User ${targetUserId} successfully invited to team ${communityId}`,
+    );
+  }
+
+  /**
+   * Assign user as lead of a community
+   * Only superadmins can assign leads
+   */
+  async assignLead(
+    adminId: string,
+    targetUserId: string,
+    communityId: string,
+  ): Promise<void> {
+    this.logger.log(
+      `Assigning user ${targetUserId} as lead in ${communityId} by admin ${adminId}`,
+    );
+
+    // 1. Check that admin is superadmin
+    const admin = await this.getUserById(adminId);
+    if (admin?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+      throw new ForbiddenException('Only superadmins can assign leads');
+    }
+
+    // 2. Check that community exists
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+
+    // 3. Assign lead role
+    await this.userCommunityRoleService.setRole(
+      targetUserId,
+      communityId,
+      'lead',
+    );
+
+    // 4. Ensure wallet exists
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await this.walletService.createOrGetWallet(
+      targetUserId,
+      communityId,
+      currency,
+    );
+
+    // 5. Add to lists (if not already added)
+    const isMember = await this.communityService.isUserMember(
+      communityId,
+      targetUserId,
+    );
+    if (!isMember) {
+      await this.communityService.addMember(communityId, targetUserId);
+      await this.addCommunityMembership(targetUserId, communityId);
+    }
+
+    this.logger.log(
+      `Admin ${adminId} assigned ${targetUserId} as lead in ${communityId}`,
+    );
+  }
+
+  /**
+   * Get communities where user is lead
+   */
+  async getLeadCommunities(userId: string): Promise<Community[]> {
+    const roles = await this.userCommunityRoleService.getUserRoles(userId);
+    const leadRoles = roles.filter((r) => r.role === 'lead');
+    const communityIds = leadRoles.map((r) => r.communityId);
+
+    if (communityIds.length === 0) {
+      return [];
+    }
+
+    const communities = await Promise.all(
+      communityIds.map((id) => this.communityService.getCommunity(id)),
+    );
+
+    return communities.filter((c): c is Community => c !== null);
+  }
+
+  /**
+   * Get communities where current user is lead and target user is not a member
+   * Used for inviting users to teams
+   */
+  async getInvitableCommunities(
+    currentUserId: string,
+    targetUserId: string,
+  ): Promise<Community[]> {
+    // Get communities where current user is lead
+    const leadCommunities = await this.getLeadCommunities(currentUserId);
+
+    // Get communities where target user is already a member
+    const targetRoles = await this.userCommunityRoleService.getUserRoles(
+      targetUserId,
+    );
+    const targetCommunityIds = new Set(
+      targetRoles.map((r) => r.communityId.toString()),
+    );
+
+    // Filter: only team communities where target is not a member
+    return leadCommunities.filter(
+      (c) =>
+        c.typeTag === 'team' &&
+        !targetCommunityIds.has(c.id.toString()),
+    );
   }
 
   async isUserMemberOfCommunity(

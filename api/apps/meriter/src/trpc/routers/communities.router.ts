@@ -138,6 +138,22 @@ export const communitiesRouter = router({
     }),
 
   /**
+   * Create a team (local community) by user
+   * User becomes lead of the new team
+   */
+  createTeam: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(2).max(100),
+        description: z.string().max(1000).optional(),
+        avatarUrl: z.string().url().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.communityService.createTeamByUser(ctx.user.id, input);
+    }),
+
+  /**
    * Create a new community
    */
   create: protectedProcedure

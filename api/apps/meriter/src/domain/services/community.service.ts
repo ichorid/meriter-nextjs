@@ -25,6 +25,7 @@ import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.hel
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 
@@ -134,6 +135,8 @@ export class CommunityService {
     private userService: UserService,
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
+    @Inject(forwardRef(() => WalletService))
+    private walletService: WalletService,
     private communityDefaultsService: CommunityDefaultsService,
   ) {}
 
@@ -730,6 +733,45 @@ export class CommunityService {
     }
 
     return false;
+  }
+
+  /**
+   * Create a team (local community) by a user
+   * User becomes lead of the new team
+   */
+  async createTeamByUser(
+    userId: string,
+    data: { name: string; description?: string; avatarUrl?: string },
+  ): Promise<Community> {
+    this.logger.log(`Creating team by user ${userId}: ${data.name}`);
+
+    // 1. Create community with typeTag 'team'
+    const community = await this.createCommunity({
+      name: data.name,
+      description: data.description,
+      avatarUrl: data.avatarUrl,
+      typeTag: 'team',
+    });
+
+    // 2. Assign creator as lead
+    await this.userCommunityRoleService.setRole(userId, community.id, 'lead');
+
+    // 3. Create wallet for user in community
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await this.walletService.createOrGetWallet(userId, community.id, currency);
+
+    // 4. Add user to community members list
+    await this.addMember(community.id, userId);
+
+    // 5. Add community to user's memberships
+    await this.userService.addCommunityMembership(userId, community.id);
+
+    this.logger.log(`Team created: ${community.id} by user ${userId}`);
+    return community;
   }
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
