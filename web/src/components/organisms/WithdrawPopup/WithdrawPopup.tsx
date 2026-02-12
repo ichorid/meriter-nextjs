@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useUIStore } from '@/stores/ui.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
@@ -10,6 +10,7 @@ import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { VotingPanel } from '../VotingPopup/VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { trpc } from '@/lib/trpc/client';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -36,6 +37,23 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   const withdrawFromVoteMutation = useWithdrawFromVote();
 
   const isOpen = !!activeWithdrawTarget && !!withdrawTargetType;
+
+  // Fetch publication for investment split preview (only when publication withdrawal)
+  const { data: publication } = trpc.publications.getById.useQuery(
+    { id: activeWithdrawTarget ?? '' },
+    {
+      enabled: isOpen && withdrawTargetType === 'publication' && !!activeWithdrawTarget,
+    }
+  );
+  const hasInvestments = (publication?.investments?.length ?? 0) > 0;
+  const investorSharePercent = publication?.investorSharePercent ?? 0;
+  const investmentSplit = useMemo(() => {
+    if (!hasInvestments || !formData.amount || formData.amount <= 0) return null;
+    const amount = formData.amount;
+    const investorTotal = Math.floor(amount * (investorSharePercent / 100));
+    const authorAmount = amount - investorTotal;
+    return { investorTotal, authorAmount };
+  }, [hasInvestments, formData.amount, investorSharePercent]);
 
   // Use shared hook for community data
   const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
@@ -145,6 +163,8 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     withdrawFromPublicationMutation.isPending || 
     withdrawFromVoteMutation.isPending;
 
+  const tInvesting = useTranslations('investing');
+
   return (
     <BottomPortal>
       <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
@@ -152,7 +172,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
           className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
           onClick={handleClose}
         />
-        <div className="relative z-10">
+        <div className="relative z-10 flex flex-col gap-4">
           <VotingPanel
           onClose={handleClose}
           amount={formData.amount}
@@ -173,6 +193,28 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
           hideImages={true}
           title={popupTitle}
         />
+          {isWithdrawal && hasInvestments && investmentSplit && (
+            <div className="rounded-lg border border-base-content/10 bg-base-200/50 p-4 space-y-2 text-sm">
+              <p className="font-medium">
+                {tInvesting('contractTerms', {
+                  defaultValue: 'Contract: {percent}% to investors',
+                  percent: investorSharePercent,
+                })}
+              </p>
+              <p className="text-base-content/80">
+                {tInvesting('investorsReceive', {
+                  defaultValue: 'Investors will receive: {amount} merits',
+                  amount: investmentSplit.investorTotal,
+                })}
+              </p>
+              <p className="text-base-content/80">
+                {tInvesting('youReceive', {
+                  defaultValue: 'You will receive: {amount} merits',
+                  amount: investmentSplit.authorAmount,
+                })}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </BottomPortal>
