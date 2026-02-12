@@ -15,6 +15,7 @@ import { favoritesRouter } from './routers/favorites.router';
 import { categoriesRouter } from './routers/categories.router';
 import { aboutRouter } from './routers/about.router';
 import { tappalkaRouter } from './routers/tappalka.router';
+import { investmentRouter } from './routers/investment.router';
 import { teamsRouter } from './routers/teams.router';
 
 /**
@@ -38,6 +39,7 @@ export const appRouter = router({
   categories: categoriesRouter,
   about: aboutRouter,
   tappalka: tappalkaRouter,
+  investments: investmentRouter,
   teams: teamsRouter,
 });
 
