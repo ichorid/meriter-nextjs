@@ -248,6 +248,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           postType: (pubItem as any).postType,
           isProject: (pubItem as any).isProject,
           withdrawals: (pubItem as any).withdrawals || { totalWithdrawn: 0 },
+          investingEnabled: (pubItem as any).investingEnabled,
+          investorSharePercent: (pubItem as any).investorSharePercent,
+          investmentPool: (pubItem as any).investmentPool ?? 0,
+          investmentPoolTotal: (pubItem as any).investmentPoolTotal ?? 0,
         }}
         onVote={handleVote}
         onComment={handleComment}

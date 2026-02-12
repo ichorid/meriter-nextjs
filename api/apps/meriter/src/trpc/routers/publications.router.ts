@@ -569,6 +569,13 @@ export const publicationsRouter = router({
       mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
       mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
 
+      // Investment fields (from document)
+      mappedPublication.investingEnabled = (doc as any)?.investingEnabled ?? false;
+      mappedPublication.investorSharePercent = (doc as any)?.investorSharePercent ?? undefined;
+      mappedPublication.investmentPool = (doc as any)?.investmentPool ?? 0;
+      mappedPublication.investmentPoolTotal = (doc as any)?.investmentPoolTotal ?? 0;
+      mappedPublication.investments = (doc as any)?.investments ?? [];
+
       // Enrich edit history with user data
       if (editHistory && editHistory.length > 0) {
         mappedPublication.editHistory = editHistory.map((entry: any) => {

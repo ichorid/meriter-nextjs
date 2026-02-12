@@ -78,6 +78,11 @@ export class Publication implements EditableEntity {
     private readonly deletedAt: Date | null,
     private readonly createdAt: Date,
     private updatedAt: Date,
+    private readonly investingEnabled?: boolean,
+    private readonly investorSharePercent?: number,
+    private readonly investmentPool?: number,
+    private readonly investmentPoolTotal?: number,
+    private readonly investments?: Array<{ investorId: string; amount: number; createdAt: Date; updatedAt: Date }>,
   ) { }
 
   static create(
@@ -133,6 +138,11 @@ export class Publication implements EditableEntity {
       null, // deletedAt
       new Date(),
       new Date(),
+      undefined, // investingEnabled
+      undefined, // investorSharePercent
+      undefined, // investmentPool
+      undefined, // investmentPoolTotal
+      undefined, // investments
     );
   }
 
@@ -166,6 +176,11 @@ export class Publication implements EditableEntity {
       snapshot.deletedAt ? (snapshot.deletedAt instanceof Date ? snapshot.deletedAt : new Date(snapshot.deletedAt)) : null,
       snapshot.createdAt instanceof Date ? snapshot.createdAt : new Date(snapshot.createdAt),
       snapshot.updatedAt instanceof Date ? snapshot.updatedAt : new Date(snapshot.updatedAt),
+      snapshot.investingEnabled,
+      snapshot.investorSharePercent,
+      snapshot.investmentPool,
+      snapshot.investmentPoolTotal,
+      snapshot.investments,
     );
   }
 
@@ -332,6 +347,11 @@ export class Publication implements EditableEntity {
       deletedAt: this.deletedAt || undefined,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
+      investingEnabled: this.investingEnabled,
+      investorSharePercent: this.investorSharePercent,
+      investmentPool: this.investmentPool,
+      investmentPoolTotal: this.investmentPoolTotal,
+      investments: this.investments,
     };
   }
 }

@@ -16,6 +16,9 @@ import { ResourcePermissions } from '@/types/api-v1';
 import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
+import { useInvestors } from '@/hooks/api/useInvestments';
+import { InvestorBar } from '@/shared/components/investor-bar';
+import { InvestButton } from '@/components/organisms/InvestButton';
 import { isTestAuthMode } from '@/config';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
@@ -174,6 +177,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Get community info to check typeTag
   const { data: community } = useCommunity(communityId || '');
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+
+  // Investment data (only when post has investing enabled)
+  const investingEnabled = (publication as any).investingEnabled ?? false;
+  const investorSharePercent = (publication as any).investorSharePercent ?? 50;
+  const investmentPool = (publication as any).investmentPool ?? 0;
+  const investmentPoolTotal = (publication as any).investmentPoolTotal ?? 0;
+  const { data: investorsData } = useInvestors(investingEnabled ? publicationId : undefined);
+  const investments = investorsData ?? [];
   
   // Get quota for balance checks
   const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
@@ -415,6 +426,21 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
+      {/* Investment section: pool indicator + InvestorBar (only when investingEnabled) */}
+      {investingEnabled && (
+        <div className="mb-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-base-content/70">💰</span>
+            <span className="text-sm font-medium tabular-nums">{investmentPool} merits</span>
+          </div>
+          <InvestorBar
+            investments={investments}
+            investmentPool={investmentPool}
+            investmentPoolTotal={investmentPoolTotal}
+            investorSharePercent={investorSharePercent}
+          />
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         {/* Left side: Favorite, Share, Dev Add Vote */}
         <div className="flex items-center gap-4">
@@ -491,7 +517,22 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
               </div>
             </button>
             
-            {/* Withdraw button - centered below score */}
+            {/* Invest button (Add merits for author, Invest for others) when investingEnabled */}
+            {investingEnabled && myId && (
+              <InvestButton
+                postId={publicationId}
+                communityId={communityId || ''}
+                isAuthor={isAuthor}
+                investingEnabled={investingEnabled}
+                investorSharePercent={investorSharePercent}
+                investmentPool={investmentPool}
+                investmentPoolTotal={investmentPoolTotal}
+                investorCount={investments.length}
+                walletBalance={currentBalance}
+                onSuccess={updateAll}
+              />
+            )}
+            {/* Withdraw button for author/beneficiary */}
             {canShowWithdraw && (
               <button
                 onClick={handleWithdrawClick}

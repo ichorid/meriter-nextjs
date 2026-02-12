@@ -233,6 +233,10 @@ export class CommunityFeedService {
           deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
+          investingEnabled: snapshot.investingEnabled ?? false,
+          investorSharePercent: snapshot.investorSharePercent,
+          investmentPool: snapshot.investmentPool ?? 0,
+          investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
         };
       },
     );
