@@ -53,6 +53,14 @@ export interface CommunitySettings {
    * 'project': Post is forwarded with all votes, original is deleted.
    */
   forwardRule?: 'standard' | 'project';
+  /** Enable merit investment in posts */
+  investingEnabled?: boolean;
+  /** Minimum investor share percentage (1-99) */
+  investorShareMin?: number;
+  /** Maximum investor share percentage (1-99) */
+  investorShareMax?: number;
+  /** Neutral comments only, no weighted votes (separate feature) */
+  tappalkaOnlyMode?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -333,6 +341,10 @@ export class CommunitySchemaClass implements Community {
       canPayPostFromQuota: { type: Boolean, default: false },
       allowWithdraw: { type: Boolean, default: true },
       forwardRule: { type: String, enum: ['standard', 'project'], default: 'standard' },
+      investingEnabled: { type: Boolean, default: false },
+      investorShareMin: { type: Number, default: 1 },
+      investorShareMax: { type: Number, default: 99 },
+      tappalkaOnlyMode: { type: Boolean, default: false },
     },
     default: {},
   })
