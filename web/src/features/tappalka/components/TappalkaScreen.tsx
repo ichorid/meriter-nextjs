@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import {
@@ -40,6 +40,12 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [votedSessionId, setVotedSessionId] = useState<string | null>(null);
   const [viewingPostId, setViewingPostId] = useState<string | null>(null);
+  const [isTokenHovered, setIsTokenHovered] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showDragHint, setShowDragHint] = useState(false);
+  const [dragHintShown, setDragHintShown] = useState(0);
+  const dragHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hooks
   const { data: progress, isLoading: progressLoading } = useTappalkaProgress(communityId);
@@ -64,8 +70,57 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       setSelectedPostId(null);
       setDraggedPostId(null);
       setDropTargetPostId(null);
+      setIsDragging(false);
     }
   }, [pair?.sessionId, votedSessionId]);
+
+  // Check if voting is disabled for current pair (must be before useEffect that uses it)
+  const isVotingDisabled = pair ? votedSessionId === pair.sessionId : false;
+
+  // Show drag hint animation logic
+  useEffect(() => {
+    // Check if user has seen drag hint before
+    const hasSeenHint = typeof window !== 'undefined' && localStorage.getItem('tappalka_drag_hint_seen') === 'true';
+    
+    if (!pair || pairLoading || isVotingDisabled || hasSeenHint || dragHintShown >= 2) {
+      return;
+    }
+
+    // Show hint on first entry or after 4 seconds of inactivity
+    const showHint = () => {
+      if (!isDragging && !isTokenHovered && dragHintShown < 2) {
+        setShowDragHint(true);
+        setDragHintShown(prev => prev + 1);
+        
+        // Hide after animation
+        setTimeout(() => {
+          setShowDragHint(false);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('tappalka_drag_hint_seen', 'true');
+          }
+        }, 1400);
+      }
+    };
+
+    // Show immediately on first entry
+    if (dragHintShown === 0) {
+      const timer = setTimeout(showHint, 500);
+      return () => clearTimeout(timer);
+    }
+
+    // Show after 4 seconds of inactivity
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (!isDragging && !isTokenHovered && dragHintShown < 2) {
+        showHint();
+      }
+    }, 4000);
+
+    return () => {
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current);
+      }
+    };
+  }, [pair, pairLoading, isVotingDisabled, isDragging, isTokenHovered, dragHintShown]);
 
   // Show onboarding if not seen
   const showOnboarding = progress && !progress.onboardingSeen;
@@ -79,21 +134,25 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     }
   }, [communityId, markOnboardingSeen]);
 
-  // Check if voting is disabled for current pair
-  const isVotingDisabled = pair ? votedSessionId === pair.sessionId : false;
-
   // Handle drag start
   const handleDragStart = useCallback(() => {
     // Prevent dragging if already voted for this pair
     if (isVotingDisabled) return;
     // Merit icon is being dragged
     setDraggedPostId('merit');
+    setIsDragging(true);
+    setShowDragHint(false);
+    // Clear inactivity timeout
+    if (inactivityTimeoutRef.current) {
+      clearTimeout(inactivityTimeoutRef.current);
+    }
   }, [isVotingDisabled]);
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
     setDraggedPostId(null);
     setDropTargetPostId(null);
+    setIsDragging(false);
   }, []);
 
   // Handle drop on post
@@ -278,6 +337,8 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDragLeave={handleDragLeave}
                   onPostClick={() => setViewingPostId(pair.postA.id)}
                   disabled={isVotingDisabled}
+                  isTokenHovered={isTokenHovered}
+                  isDragging={isDragging}
                 />
               </div>
 
@@ -299,8 +360,11 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                     <TappalkaMeritIcon
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
+                      onHoverChange={setIsTokenHovered}
                       size="lg"
                       disabled={isVotingDisabled}
+                      isTokenHovered={isTokenHovered}
+                      isDragging={isDragging}
                       className={cn(
                         'transition-all duration-200',
                         draggedPostId && 'opacity-70 scale-90',
@@ -308,7 +372,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                       )}
                     />
                     <p className="text-xs text-base-content/50 text-center max-w-[180px]">
-                      Перетащите на пост, который вам больше нравится
+                      Зажмите и перетащите мерит на выбранный пост
                     </p>
                   </div>
                   
@@ -332,26 +396,62 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDragLeave={handleDragLeave}
                   onPostClick={() => setViewingPostId(pair.postB.id)}
                   disabled={isVotingDisabled}
+                  isTokenHovered={isTokenHovered}
+                  isDragging={isDragging}
                 />
               </div>
             </div>
 
             {/* Merit icon (draggable) - desktop only */}
-            <div className="hidden md:flex flex-col items-center gap-2 mt-4">
+            <div className="hidden md:flex flex-col items-center gap-2 mt-4 relative">
               <p className="text-sm text-base-content/60 mb-2">
-                Перетащите мерит на пост, который вам больше нравится
+                Зажмите и перетащите мерит на выбранный пост
               </p>
-              <TappalkaMeritIcon
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                size="lg"
-                disabled={isVotingDisabled}
-                className={cn(
-                  'transition-all duration-200',
-                  draggedPostId && 'opacity-70 scale-90',
-                  isVotingDisabled && 'opacity-50 cursor-not-allowed',
+              <div className="relative">
+                <TappalkaMeritIcon
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onHoverChange={setIsTokenHovered}
+                  size="lg"
+                  disabled={isVotingDisabled}
+                  isTokenHovered={isTokenHovered}
+                  isDragging={isDragging}
+                  className={cn(
+                    'transition-all duration-200',
+                    draggedPostId && 'opacity-70 scale-90',
+                    isVotingDisabled && 'opacity-50 cursor-not-allowed',
+                  )}
+                />
+                
+                {/* Drag hint animation - ghost cursor/hand */}
+                {showDragHint && (
+                  <div
+                    className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none z-50"
+                    style={{
+                      animation: 'drag-hint 1.4s ease-out',
+                    }}
+                  >
+                    <div className="relative">
+                      {/* Ghost cursor/hand icon */}
+                      <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg">
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"
+                          />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
                 )}
-              />
+              </div>
             </div>
           </>
         ) : null}

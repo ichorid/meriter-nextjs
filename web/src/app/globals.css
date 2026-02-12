@@ -686,6 +686,33 @@
   animation: quota-flash 400ms ease-out;
 }
 
+@keyframes drag-hint {
+  0% {
+    opacity: 0;
+    transform: translateX(0) translateY(0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  35% {
+    opacity: 1;
+    transform: translateX(-65px) translateY(-8px) scale(1.1);
+  }
+  65% {
+    opacity: 1;
+    transform: translateX(-65px) translateY(-8px) scale(1.1);
+  }
+  85% {
+    opacity: 0.8;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0) translateY(0) scale(0.8);
+  }
+}
+
 @keyframes quota-flash {
   0% {
     transform: scale(1);

@@ -17,6 +17,8 @@ interface TappalkaPostCardProps {
   onDragLeave?: () => void;
   onPostClick?: () => void;
   disabled?: boolean;
+  isTokenHovered?: boolean; // Token is being hovered
+  isDragging?: boolean; // Token is being dragged
 }
 
 export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
@@ -28,6 +30,8 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
   onDragLeave,
   onPostClick,
   disabled = false,
+  isTokenHovered = false,
+  isDragging = false,
 }) => {
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -189,6 +193,19 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     }, 150);
   }, []);
 
+  // Calculate drop zone glow intensity
+  // Idle: opacity 0.15 * 0.2 = 0.03 (very subtle)
+  // Hover: opacity 0.15 * 1.6 = 0.24
+  // Dragging: opacity 0.15 * 2.2 = 0.33
+  const baseGlowOpacity = 0.15;
+  const idleOpacity = baseGlowOpacity * 0.2; // 20% of base for idle
+  const dropZoneGlowOpacity = isDragging 
+    ? baseGlowOpacity * 2.2 
+    : isTokenHovered 
+      ? baseGlowOpacity * 1.6 
+      : idleOpacity;
+  const dropZoneGlowScale = isDragging ? 2.2 : isTokenHovered ? 1.6 : 1;
+
   return (
     <div
       className={cn(
@@ -199,9 +216,17 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
           : isDropTarget
             ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-blue-400/20'
             : 'border-base-300 dark:border-base-700',
+        // Add border when dragging
+        isDragging && !isSelected && !isDropTarget && 'border-blue-400/35',
         (onDrop || onPostClick) && !disabled && 'cursor-pointer',
         disabled && 'opacity-75 cursor-not-allowed',
       )}
+      style={{
+        // Drop zone glow - always visible, intensity varies
+        boxShadow: !isSelected && !isDropTarget
+          ? `0 0 0 ${1 * dropZoneGlowScale}px rgba(120, 160, 255, ${dropZoneGlowOpacity}), 0 6px 18px rgba(0,0,0,0.45)`
+          : undefined,
+      }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
