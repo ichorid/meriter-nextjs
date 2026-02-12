@@ -7,7 +7,7 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
-import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Scale } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -372,9 +372,10 @@ export const CommunityTopBar: React.FC<{
                 onClick={onTappalkaClick}
                 variant="outline"
                 size="sm"
-                className="lg:hidden rounded-xl active:scale-[0.98] px-3 h-9 text-sm font-medium border border-input bg-base-200 hover:bg-base-300 text-base-content whitespace-nowrap"
+                className="lg:hidden rounded-xl active:scale-[0.98] px-3 h-9 text-sm font-medium border border-input bg-base-200 hover:bg-base-300 text-base-content whitespace-nowrap inline-flex items-center justify-center gap-2"
                 aria-label={t('tappalka') || 'Earn Merits'}
               >
+                <Scale size={16} />
                 Заработать
               </Button>
             )}
