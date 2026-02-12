@@ -76,6 +76,18 @@ export const UpdateUserProfileSchema = z.object({
   profile: ProfileFieldsSchema.optional(),
 });
 
+// Investment schemas (merit investment in posts)
+export const InvestmentSchema = z.object({
+  investorId: z.string(),
+  amount: z.number().int().min(0),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const InvestmentContractSchema = z.object({
+  investorSharePercent: z.number().int().min(1).max(99),
+});
+
 export const CommunitySettingsSchema = z.object({
   iconUrl: z.string().url().optional(),
   currencyNames: CurrencySchema,
@@ -89,6 +101,11 @@ export const CommunitySettingsSchema = z.object({
   canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
   allowWithdraw: z.boolean().default(true), // Whether users can withdraw merits from their own posts
   forwardRule: z.enum(["standard", "project"]).default("standard"), // Forward rule: 'standard' = forward without votes, keep original; 'project' = forward with votes, delete original
+  // Investment settings
+  investingEnabled: z.boolean().default(false),
+  investorShareMin: z.number().int().min(1).max(99).default(1),
+  investorShareMax: z.number().int().min(1).max(99).default(99),
+  tappalkaOnlyMode: z.boolean().default(false),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -292,6 +309,12 @@ export const PublicationSchema = IdentifiableSchema.merge(
     editedBy: z.string(),
     editedAt: z.date(),
   })).optional().default([]),
+  // Investment fields
+  investingEnabled: z.boolean().optional().default(false),
+  investorSharePercent: z.number().int().min(1).max(99).optional(),
+  investmentPool: z.number().int().min(0).optional().default(0),
+  investmentPoolTotal: z.number().int().min(0).optional().default(0),
+  investments: z.array(InvestmentSchema).optional().default([]),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -408,7 +431,22 @@ export const CreatePublicationDtoSchema = z.object({
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
+  // Investment contract (immutable after creation)
+  investingEnabled: z.boolean().optional().default(false),
+  investorSharePercent: z.number().int().min(1).max(99).optional(),
 })
+  .refine(
+    (data) => {
+      // Require investorSharePercent when investingEnabled is true
+      if (data.investingEnabled === true) {
+        return data.investorSharePercent !== undefined;
+      }
+      return true;
+    },
+    {
+      message: "investorSharePercent is required when investingEnabled is true",
+    }
+  )
   .refine(
     (data) => {
       // Require impactArea and stage when postType is 'project'
@@ -559,6 +597,11 @@ export const UpdateCommunityDtoSchema = z.object({
     allowEditByOthers: z.boolean().optional(),
     canPayPostFromQuota: z.boolean().optional(),
     allowWithdraw: z.boolean().optional(),
+    // Investment settings
+    investingEnabled: z.boolean().optional(),
+    investorShareMin: z.number().int().min(1).max(99).optional(),
+    investorShareMax: z.number().int().min(1).max(99).optional(),
+    tappalkaOnlyMode: z.boolean().optional(),
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
@@ -791,6 +834,12 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).optional(),
   deleted: z.boolean().optional().default(false),
   deletedAt: z.date().optional(),
+  // Investment fields
+  investingEnabled: z.boolean().optional().default(false),
+  investorSharePercent: z.number().int().min(1).max(99).optional(),
+  investmentPool: z.number().int().min(0).optional().default(0),
+  investmentPoolTotal: z.number().int().min(0).optional().default(0),
+  investments: z.array(InvestmentSchema).optional().default([]),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
@@ -827,6 +876,9 @@ export type Poll = z.infer<typeof PollSchema>;
 export type PollCast = z.infer<typeof PollCastSchema>;
 export type Wallet = z.infer<typeof WalletSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
+
+export type Investment = z.infer<typeof InvestmentSchema>;
+export type InvestmentContract = z.infer<typeof InvestmentContractSchema>;
 
 // Export rule types
 export type PermissionRule = z.infer<typeof PermissionRuleSchema>;
