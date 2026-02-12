@@ -165,8 +165,10 @@ export function ImageGalleryDisplay({
         return typeof window !== "undefined"
             ? createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+                    className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center"
                     onClick={handleClose}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                 >
                     {/* Close button */}
                     <button
@@ -197,9 +199,18 @@ export function ImageGalleryDisplay({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
                                 handlePrev();
                             }}
-                            className="absolute left-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            onTouchStart={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            className="absolute left-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
                             aria-label="Previous image"
                         >
                             <ChevronLeft size={28} />
@@ -224,9 +235,18 @@ export function ImageGalleryDisplay({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
                                 handleNext();
                             }}
-                            className="absolute right-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            onTouchStart={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            className="absolute right-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
                             aria-label="Next image"
                         >
                             <ChevronRight size={28} />
@@ -304,8 +324,10 @@ export function ImageGalleryDisplay({
                 images[viewingIndex] &&
                 createPortal(
                     <div
-                        className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+                        className="fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center"
                         onClick={handleClose}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                     >
                         {/* Close button */}
                         <button
@@ -336,9 +358,18 @@ export function ImageGalleryDisplay({
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     handlePrev();
                                 }}
-                                className="absolute left-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                className="absolute left-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
                                 aria-label="Previous image"
                             >
                                 <ChevronLeft size={28} />
@@ -363,9 +394,18 @@ export function ImageGalleryDisplay({
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    e.preventDefault();
                                     handleNext();
                                 }}
-                                className="absolute right-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
+                                onMouseDown={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                onTouchStart={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                                className="absolute right-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
                                 aria-label="Next image"
                             >
                                 <ChevronRight size={28} />

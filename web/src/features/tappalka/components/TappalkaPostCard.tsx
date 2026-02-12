@@ -140,9 +140,16 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
         }
       }
       
-      // Don't open modal if clicking on interactive elements
+      // Don't open modal if clicking on interactive elements or image gallery
       const target = e.target as HTMLElement;
-      if (target.closest('button') || target.closest('a') || target.closest('[role="button"]')) {
+      if (
+        target.closest('button') || 
+        target.closest('a') || 
+        target.closest('[role="button"]') ||
+        target.closest('img') ||
+        target.closest('[class*="image-gallery"]') ||
+        target.closest('[class*="gallery"]')
+      ) {
         return;
       }
 
