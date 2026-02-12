@@ -1,0 +1,1 @@
+export { InvestDialog } from './InvestDialog';
