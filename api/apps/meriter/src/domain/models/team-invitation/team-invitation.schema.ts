@@ -80,3 +80,4 @@ TeamInvitationSchema.index({ inviterId: 1, status: 1 });
 // Index for querying user's invitations
 TeamInvitationSchema.index({ targetUserId: 1, status: 1 });
 
+
