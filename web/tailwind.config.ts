@@ -119,8 +119,8 @@ const config: Config = {
           to: { height: '0' },
         },
         'pulse-scale': {
-          '0%, 55.8%': { transform: 'scale(1)' },
-          '27.9%': { transform: 'scale(1.05)' },
+          '0%, 44.4%, 100%': { transform: 'scale(1)' },
+          '22.2%': { transform: 'scale(1.05)' },
         },
         'drag-hint': {
           '0%': {
@@ -133,11 +133,37 @@ const config: Config = {
           },
           '35%': {
             opacity: '1',
-            transform: 'translateX(-65px) translateY(-8px) scale(1.1)',
+            transform: 'translateX(-60px) translateY(-8px) scale(1.1)',
           },
           '65%': {
             opacity: '1',
-            transform: 'translateX(-65px) translateY(-8px) scale(1.1)',
+            transform: 'translateX(-60px) translateY(-8px) scale(1.1)',
+          },
+          '85%': {
+            opacity: '0.8',
+            transform: 'translateX(0) translateY(0) scale(1)',
+          },
+          '100%': {
+            opacity: '0',
+            transform: 'translateX(0) translateY(0) scale(0.8)',
+          },
+        },
+        'drag-hint-mobile': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateX(0) translateY(0) scale(0.8)',
+          },
+          '15%': {
+            opacity: '1',
+            transform: 'translateX(0) translateY(0) scale(1)',
+          },
+          '35%': {
+            opacity: '1',
+            transform: 'translateX(0) translateY(-60px) scale(1.1)',
+          },
+          '65%': {
+            opacity: '1',
+            transform: 'translateX(0) translateY(-60px) scale(1.1)',
           },
           '85%': {
             opacity: '0.8',
@@ -154,6 +180,7 @@ const config: Config = {
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-scale': 'pulse-scale 5.4s ease-in-out infinite', // 2.4s animation + 3s pause
         'drag-hint': 'drag-hint 1.4s ease-out',
+        'drag-hint-mobile': 'drag-hint-mobile 1.4s ease-out',
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',

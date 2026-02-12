@@ -697,11 +697,11 @@
   }
   35% {
     opacity: 1;
-    transform: translateX(-65px) translateY(-8px) scale(1.1);
+    transform: translateX(-60px) translateY(-8px) scale(1.1);
   }
   65% {
     opacity: 1;
-    transform: translateX(-65px) translateY(-8px) scale(1.1);
+    transform: translateX(-60px) translateY(-8px) scale(1.1);
   }
   85% {
     opacity: 0.8;

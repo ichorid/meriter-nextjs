@@ -193,18 +193,21 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     }, 150);
   }, []);
 
-  // Calculate drop zone glow intensity
-  // Idle: opacity 0.15 * 0.2 = 0.03 (very subtle)
-  // Hover: opacity 0.15 * 1.6 = 0.24
-  // Dragging: opacity 0.15 * 2.2 = 0.33
+  // Drop zone glow: accentColor rgba(120, 160, 255)
+  // Idle: ~0.2 of hover opacity (very subtle outline)
+  // Hover token: glow ×1.6
+  // During drag: glow ×2.2 + 1px border accent 0.35
+  const accentRgb = '120, 160, 255';
   const baseGlowOpacity = 0.15;
-  const idleOpacity = baseGlowOpacity * 0.2; // 20% of base for idle
-  const dropZoneGlowOpacity = isDragging 
-    ? baseGlowOpacity * 2.2 
-    : isTokenHovered 
-      ? baseGlowOpacity * 1.6 
+  const idleOpacity = baseGlowOpacity * 0.2;
+  const hoverOpacity = baseGlowOpacity * 1.6;
+  const dragOpacity = baseGlowOpacity * 2.2;
+  const dropZoneGlowOpacity = isDragging
+    ? dragOpacity
+    : isTokenHovered
+      ? hoverOpacity
       : idleOpacity;
-  const dropZoneGlowScale = isDragging ? 2.2 : isTokenHovered ? 1.6 : 1;
+  const glowSpread = isDragging ? 2.2 : isTokenHovered ? 1.6 : 1;
 
   return (
     <div
@@ -217,16 +220,19 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
           : isDropTarget
             ? 'border-blue-400 bg-blue-50/50 dark:bg-blue-950/20 shadow-blue-400/20'
             : 'border-base-300 dark:border-base-700',
-        // Add border when dragging
-        isDragging && !isSelected && !isDropTarget && 'border-blue-400/35',
         (onDrop || onPostClick) && !disabled && 'cursor-pointer',
         disabled && 'opacity-75 cursor-not-allowed',
       )}
       style={{
-        // Drop zone glow - always visible, intensity varies
+        // Drop zone glow - outer outline, no layout change
         boxShadow: !isSelected && !isDropTarget
-          ? `0 0 0 ${1 * dropZoneGlowScale}px rgba(120, 160, 255, ${dropZoneGlowOpacity}), 0 6px 18px rgba(0,0,0,0.45)`
+          ? `0 0 0 ${1 * glowSpread}px rgba(${accentRgb}, ${dropZoneGlowOpacity}), 0 6px 18px rgba(0,0,0,0.45)`
           : undefined,
+        // 1px accent border when dragging (no layout change)
+        outline: isDragging && !isSelected && !isDropTarget
+          ? `1px solid rgba(${accentRgb}, 0.35)`
+          : 'none',
+        outlineOffset: -1,
       }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}

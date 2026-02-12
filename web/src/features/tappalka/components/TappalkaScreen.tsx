@@ -92,13 +92,8 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         setShowDragHint(true);
         setDragHintShown(prev => prev + 1);
         
-        // Hide after animation
-        setTimeout(() => {
-          setShowDragHint(false);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('tappalka_drag_hint_seen', 'true');
-          }
-        }, 1400);
+        // Hide after animation (flag set on real drag, not here)
+        setTimeout(() => setShowDragHint(false), 1400);
       }
     };
 
@@ -138,7 +133,10 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const handleDragStart = useCallback(() => {
     // Prevent dragging if already voted for this pair
     if (isVotingDisabled) return;
-    // Merit icon is being dragged
+    // Merit icon is being dragged - mark hint as seen (never show again after real drag)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('tappalka_drag_hint_seen', 'true');
+    }
     setDraggedPostId('merit');
     setIsDragging(true);
     setShowDragHint(false);
@@ -380,22 +378,45 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   </div>
                   
                   {/* Merit icon - shown on mobile between posts, hidden on desktop */}
-                  <div className="flex md:hidden flex-col items-center gap-2">
-                    <TappalkaMeritIcon
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
-                      onHoverChange={setIsTokenHovered}
-                      onTouchDragMove={handleTouchDragMove}
-                      size="lg"
-                      disabled={isVotingDisabled}
-                      isTokenHovered={isTokenHovered}
-                      isDragging={isDragging}
-                      className={cn(
-                        'transition-all duration-200',
-                        draggedPostId && 'opacity-70 scale-90',
-                        isVotingDisabled && 'opacity-50 cursor-not-allowed',
+                  <div className="flex md:hidden flex-col items-center gap-2 relative">
+                    <div className="relative">
+                      <TappalkaMeritIcon
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
+                        onHoverChange={setIsTokenHovered}
+                        onTouchDragMove={handleTouchDragMove}
+                        size="lg"
+                        disabled={isVotingDisabled}
+                        isTokenHovered={isTokenHovered}
+                        isDragging={isDragging}
+                        className={cn(
+                          'transition-all duration-200',
+                          draggedPostId && 'opacity-70 scale-90',
+                          isVotingDisabled && 'opacity-50 cursor-not-allowed',
+                        )}
+                      />
+                      {showDragHint && (
+                        <div
+                          className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none z-50 animate-drag-hint-mobile"
+                        >
+                          <div className="w-8 h-8 bg-white/30 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg">
+                            <svg
+                              className="w-5 h-5 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"
+                              />
+                            </svg>
+                          </div>
+                        </div>
                       )}
-                    />
+                    </div>
                     <p className="text-xs text-base-content/50 text-center max-w-[180px]">
                       Зажмите и перетащите мерит на выбранный пост
                     </p>
@@ -449,13 +470,10 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   )}
                 />
                 
-                {/* Drag hint animation - ghost cursor/hand */}
+                {/* Drag hint animation - ghost cursor/hand (pointer-events: none) */}
                 {showDragHint && (
                   <div
-                    className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none z-50"
-                    style={{
-                      animation: 'drag-hint 1.4s ease-out',
-                    }}
+                    className="absolute -top-12 left-1/2 -translate-x-1/2 pointer-events-none z-50 animate-drag-hint"
                   >
                     <div className="relative">
                       {/* Ghost cursor/hand icon */}
