@@ -208,6 +208,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
 
   return (
     <div
+      data-tappalka-post-id={post.id}
       className={cn(
         'relative flex flex-col bg-base-100 rounded-xl shadow-lg overflow-hidden transition-all duration-300',
         'border-2',

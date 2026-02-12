@@ -148,13 +148,6 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     }
   }, [isVotingDisabled]);
 
-  // Handle drag end
-  const handleDragEnd = useCallback(() => {
-    setDraggedPostId(null);
-    setDropTargetPostId(null);
-    setIsDragging(false);
-  }, []);
-
   // Handle drop on post
   const handlePostDrop = useCallback(
     async (postId: string) => {
@@ -219,6 +212,37 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     },
     [pair, isSubmitting, draggedPostId, votedSessionId, communityId, submitChoice, progress, addToast, refetchPair],
   );
+
+  // Handle drag end (releasePoint for mobile touch: drop on card under finger)
+  const handleDragEnd = useCallback(
+    (releasePoint?: { x: number; y: number }) => {
+      if (releasePoint && typeof document !== 'undefined') {
+        const el = document.elementFromPoint(releasePoint.x, releasePoint.y);
+        const card = el?.closest('[data-tappalka-post-id]');
+        const postId = card?.getAttribute('data-tappalka-post-id');
+        if (postId && (postId === pair?.postA.id || postId === pair?.postB.id)) {
+          handlePostDrop(postId);
+        }
+      }
+      setDraggedPostId(null);
+      setDropTargetPostId(null);
+      setIsDragging(false);
+    },
+    [pair?.postA.id, pair?.postB.id, handlePostDrop],
+  );
+
+  // Touch drag move: update drop target from element under finger (mobile)
+  const handleTouchDragMove = useCallback((x: number, y: number) => {
+    if (typeof document === 'undefined') return;
+    const el = document.elementFromPoint(x, y);
+    const card = el?.closest('[data-tappalka-post-id]');
+    const postId = card?.getAttribute('data-tappalka-post-id');
+    if (postId && (postId === pair?.postA.id || postId === pair?.postB.id)) {
+      setDropTargetPostId(postId);
+    } else {
+      setDropTargetPostId(null);
+    }
+  }, [pair?.postA.id, pair?.postB.id]);
 
   // Handle drag enter (for visual feedback)
   const handleDragEnter = useCallback((postId: string) => {
@@ -361,6 +385,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
                       onHoverChange={setIsTokenHovered}
+                      onTouchDragMove={handleTouchDragMove}
                       size="lg"
                       disabled={isVotingDisabled}
                       isTokenHovered={isTokenHovered}
@@ -412,6 +437,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onHoverChange={setIsTokenHovered}
+                  onTouchDragMove={handleTouchDragMove}
                   size="lg"
                   disabled={isVotingDisabled}
                   isTokenHovered={isTokenHovered}

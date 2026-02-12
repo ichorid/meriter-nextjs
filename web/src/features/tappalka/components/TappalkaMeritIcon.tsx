@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 
 interface TappalkaMeritIconProps {
   onDragStart?: () => void;
-  onDragEnd?: () => void;
+  onDragEnd?: (releasePoint?: { x: number; y: number }) => void;
   onHoverChange?: (isHovered: boolean) => void;
+  onTouchDragMove?: (x: number, y: number) => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
@@ -18,6 +19,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   onDragStart,
   onDragEnd,
   onHoverChange,
+  onTouchDragMove,
   className,
   size = 'md',
   disabled = false,
@@ -31,6 +33,11 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hasInteractedRef = useRef(false);
+  
+  // Touch drag state for mobile
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const touchElementRef = useRef<HTMLDivElement | null>(null);
+  const isTouchDraggingRef = useRef(false);
 
   // Track if user has dragged once (disable pulse after first drag)
   useEffect(() => {
@@ -126,6 +133,87 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
     setIsActive(false);
   }, []);
 
+  // Touch handlers for mobile drag
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      const touch = e.touches[0];
+      if (disabled || !touch) {
+        if (disabled) e.preventDefault();
+        return;
+      }
+      
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+      isTouchDraggingRef.current = false;
+      setIsActive(true);
+      hasInteractedRef.current = true;
+      // Don't lock scroll yet – only after movement threshold
+    },
+    [disabled],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      const touch = e.touches[0];
+      if (disabled || !touchStartPosRef.current || !touch) return;
+      
+      const deltaX = Math.abs(touch.clientX - touchStartPosRef.current.x);
+      const deltaY = Math.abs(touch.clientY - touchStartPosRef.current.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      // If moved more than 10px, consider it a drag and prevent scroll
+      if (distance > 10 && !isTouchDraggingRef.current) {
+        isTouchDraggingRef.current = true;
+        setIsDragging(true);
+        setIsActive(false);
+        setShowTooltip(false);
+        document.body.style.overflow = 'hidden';
+        document.body.style.touchAction = 'none';
+        onDragStart?.();
+        e.preventDefault();
+      }
+      
+      if (isTouchDraggingRef.current) {
+        e.preventDefault();
+        onTouchDragMove?.(touch.clientX, touch.clientY);
+      }
+    },
+    [disabled, onDragStart, onTouchDragMove],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLDivElement>) => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+      
+      if (disabled) return;
+      
+      setIsActive(false);
+      
+      if (isTouchDraggingRef.current) {
+        const releasePoint = e.changedTouches[0]
+          ? { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY }
+          : undefined;
+        setIsDragging(false);
+        isTouchDraggingRef.current = false;
+        onDragEnd?.(releasePoint);
+      }
+      
+      touchStartPosRef.current = null;
+    },
+    [disabled, onDragEnd],
+  );
+
+  const handleTouchCancel = useCallback(() => {
+    // Restore scrolling
+    document.body.style.overflow = '';
+    document.body.style.touchAction = '';
+    
+    setIsActive(false);
+    setIsDragging(false);
+    isTouchDraggingRef.current = false;
+    touchStartPosRef.current = null;
+  }, []);
+
   // Combine internal and external dragging state
   const isActuallyDragging = isDragging || externalDragging;
 
@@ -140,11 +228,16 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
 
   return (
     <div
+      ref={touchElementRef}
       draggable={!disabled}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       onMouseEnter={() => {
         if (!disabled) {
           setIsHovered(true);
@@ -171,6 +264,9 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
         'flex items-center justify-center',
         className,
       )}
+      style={{
+        touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming)
+      }}
       role="button"
       aria-label={disabled ? 'Голосование уже сделано' : 'Зажмите и перетащите знак на выбранный пост'}
       tabIndex={disabled ? -1 : 0}
