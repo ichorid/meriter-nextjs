@@ -50,6 +50,10 @@ export const communitiesRouter = router({
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
           allowWithdraw: community.settings?.allowWithdraw ?? true,
           forwardRule: community.settings?.forwardRule ?? 'standard',
+          investingEnabled: community.settings?.investingEnabled ?? false,
+          investorShareMin: community.settings?.investorShareMin ?? 1,
+          investorShareMax: community.settings?.investorShareMax ?? 99,
+          tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)

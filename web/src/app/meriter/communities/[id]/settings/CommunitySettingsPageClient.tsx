@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { TappalkaSettingsForm } from '@/features/communities/components/TappalkaSettingsForm';
+import { InvestingSettingsForm } from '@/features/communities/components/InvestingSettingsForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity, useUpdateCommunity } from '@/hooks/api/useCommunities';
@@ -73,6 +74,20 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
 
     const handleTappalkaSave = async (data: {
         tappalkaSettings?: any;
+    }) => {
+        await updateCommunity.mutateAsync({
+            id: communityId,
+            data,
+        });
+    };
+
+    const handleInvestingSave = async (data: {
+        settings?: {
+            investingEnabled?: boolean;
+            investorShareMin?: number;
+            investorShareMax?: number;
+            tappalkaOnlyMode?: boolean;
+        };
     }) => {
         await updateCommunity.mutateAsync({
             id: communityId,
@@ -167,7 +182,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         >
             <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 bg-base-200 rounded-xl p-1">
+                    <TabsList className="grid w-full grid-cols-4 bg-base-200 rounded-xl p-1">
                         <TabsTrigger 
                             value="general"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
@@ -179,6 +194,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
                             {t('tabs.rules') || tRules('title') || 'Rules'}
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="investing"
+                            className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                        >
+                            {t('tabs.investing') || 'Investing'}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="tappalka"
@@ -194,6 +215,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                         <CommunityRulesEditor
                             community={community}
                             onSave={handleRulesSave}
+                        />
+                    </TabsContent>
+                    <TabsContent value="investing" className="mt-6">
+                        <InvestingSettingsForm
+                            community={community}
+                            onSave={handleInvestingSave}
                         />
                     </TabsContent>
                     <TabsContent value="tappalka" className="mt-6">
