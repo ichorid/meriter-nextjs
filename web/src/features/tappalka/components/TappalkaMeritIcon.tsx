@@ -258,7 +258,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
         isActive && !isActuallyDragging && 'scale-[0.97]',
         isHovered && !isActuallyDragging && !isActive && 'scale-[1.04]',
         // Idle pulse animation (disabled after first drag or on hover/active)
-        !hasDraggedOnce && !isHovered && !isActive && !isActuallyDragging && !disabled && 'animate-pulse-scale',
+        !hasDraggedOnce && !isHovered && !isActive && !isActuallyDragging && !disabled && 'animate-tappalka-pulse-scale',
         // Hitbox
         hitboxSize,
         'flex items-center justify-center',

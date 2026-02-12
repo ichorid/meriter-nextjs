@@ -686,6 +686,21 @@
   animation: quota-flash 400ms ease-out;
 }
 
+/* Tappalka: merit icon idle pulse (1→1.05→1, 2.4s cycle + 3s pause) */
+@keyframes tappalka-pulse-scale {
+  0%, 44.4%, 100% {
+    transform: scale(1);
+  }
+  22.2% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-tappalka-pulse-scale {
+  animation: tappalka-pulse-scale 5.4s ease-in-out infinite;
+}
+
+/* Tappalka: drag hint (desktop - toward left card) */
 @keyframes drag-hint {
   0% {
     opacity: 0;
@@ -711,6 +726,49 @@
     opacity: 0;
     transform: translateX(0) translateY(0) scale(0.8);
   }
+}
+
+/* Tappalka: drag hint mobile (toward top card) */
+@keyframes drag-hint-mobile {
+  0% {
+    opacity: 0;
+    transform: translateX(0) translateY(0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  35% {
+    opacity: 1;
+    transform: translateX(0) translateY(-60px) scale(1.1);
+  }
+  65% {
+    opacity: 1;
+    transform: translateX(0) translateY(-60px) scale(1.1);
+  }
+  85% {
+    opacity: 0.8;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0) translateY(0) scale(0.8);
+  }
+}
+
+.animate-drag-hint,
+.animate-drag-hint-mobile {
+  animation-duration: 1.4s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.animate-drag-hint {
+  animation-name: drag-hint;
+}
+
+.animate-drag-hint-mobile {
+  animation-name: drag-hint-mobile;
 }
 
 @keyframes quota-flash {
