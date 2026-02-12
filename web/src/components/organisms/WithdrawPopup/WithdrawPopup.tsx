@@ -47,6 +47,18 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   );
   const hasInvestments = (publication?.investments?.length ?? 0) > 0;
   const investorSharePercent = publication?.investorSharePercent ?? 0;
+
+  // Use shared hook for community data
+  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
+
+  // Use shared hook for form data management (must be before investmentSplit which uses formData)
+  const { formData, handleCommentChange } = usePopupFormData({
+    isOpen,
+    formData: activeWithdrawFormData,
+    defaultFormData: { comment: '', amount: 0, error: '' },
+    updateFormData: updateWithdrawFormData,
+  });
+
   const investmentSplit = useMemo(() => {
     if (!hasInvestments || !formData.amount || formData.amount <= 0) return null;
     const amount = formData.amount;
@@ -54,17 +66,6 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     const authorAmount = amount - investorTotal;
     return { investorTotal, authorAmount };
   }, [hasInvestments, formData.amount, investorSharePercent]);
-
-  // Use shared hook for community data
-  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
-
-  // Use shared hook for form data management
-  const { formData, handleCommentChange } = usePopupFormData({
-    isOpen,
-    formData: activeWithdrawFormData,
-    defaultFormData: { comment: '', amount: 0, error: '' },
-    updateFormData: updateWithdrawFormData,
-  });
 
   const handleAmountChange = (amount: number) => {
     // Ensure amount is always positive for withdrawals
