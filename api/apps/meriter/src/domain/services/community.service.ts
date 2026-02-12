@@ -81,6 +81,10 @@ export interface UpdateCommunityDto {
     allowWithdraw?: boolean;
     forwardRule?: 'standard' | 'project';
     language?: 'en' | 'ru';
+    investingEnabled?: boolean;
+    investorShareMin?: number;
+    investorShareMax?: number;
+    tappalkaOnlyMode?: boolean;
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-same-team';
@@ -558,6 +562,22 @@ export class CommunityService {
       }
       if (dto.settings.language !== undefined) {
         settingsUpdate['settings.language'] = dto.settings.language;
+      }
+      if ('investingEnabled' in dto.settings) {
+        settingsUpdate['settings.investingEnabled'] = Boolean(
+          dto.settings.investingEnabled,
+        );
+      }
+      if (dto.settings.investorShareMin !== undefined) {
+        settingsUpdate['settings.investorShareMin'] = dto.settings.investorShareMin;
+      }
+      if (dto.settings.investorShareMax !== undefined) {
+        settingsUpdate['settings.investorShareMax'] = dto.settings.investorShareMax;
+      }
+      if ('tappalkaOnlyMode' in dto.settings) {
+        settingsUpdate['settings.tappalkaOnlyMode'] = Boolean(
+          dto.settings.tappalkaOnlyMode,
+        );
       }
 
       // Merge settings into updateData

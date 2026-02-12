@@ -281,6 +281,35 @@ export const communitiesRouter = router({
         });
       }
 
+      // Validate investment settings if present
+      const invSettings = input.data.settings;
+      if (
+        invSettings &&
+        (invSettings.investorShareMin !== undefined ||
+          invSettings.investorShareMax !== undefined)
+      ) {
+        const min = invSettings.investorShareMin ?? 1;
+        const max = invSettings.investorShareMax ?? 99;
+        if (min < 1 || min > 99) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMin must be between 1 and 99',
+          });
+        }
+        if (max < 1 || max > 99) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMax must be between 1 and 99',
+          });
+        }
+        if (min > max) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMin must be less than or equal to investorShareMax',
+          });
+        }
+      }
+
       console.log(`[CommunitiesRouter] Updating community ${input.id}, received data: ${JSON.stringify(input.data)}`);
       console.log(`[CommunitiesRouter] Settings in received data: ${JSON.stringify(input.data.settings)}`);
       console.log(`[CommunitiesRouter] VotingSettings in received data: ${JSON.stringify(input.data.votingSettings)}`);
@@ -322,6 +351,10 @@ export const communitiesRouter = router({
             editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
             allowEditByOthers: community.settings?.allowEditByOthers ?? false,
             canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
+            investingEnabled: community.settings?.investingEnabled ?? false,
+            investorShareMin: community.settings?.investorShareMin ?? 1,
+            investorShareMax: community.settings?.investorShareMax ?? 99,
+            tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
