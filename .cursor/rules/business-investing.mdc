@@ -1,0 +1,370 @@
+---
+description: Investment mechanics business logic — investing merits in posts for share of earnings. Apply when working with investment features.
+globs:
+  - "**/invest*.ts"
+  - "**/contract*.ts"
+  - "**/dividend*.ts"
+  - "**/pool*.ts"
+alwaysApply: false
+---
+
+# Investment Business Logic
+
+> Complete rules for merit investment in posts, profit distribution, and related mechanics.
+
+---
+
+## Concept
+
+Investment — a mechanic allowing users to invest merits in other users' posts, funding their tappalka shows, and receiving a percentage of what the post earns.
+
+**Core Flow:**
+1. Author publishes a post and enables investing, setting investor share percentage
+2. Other users invest merits in the post — these merits go to the **investment pool**
+3. Post earns merits through tappalka wins
+4. When author withdraws merits, a share (per contract) is distributed among investors proportionally
+
+**Key Principle:** Investor evaluates growth potential (will the audience choose this post in tappalka?) and stakes their merits. The more popular the post — the more both author and investors earn.
+
+**Important Terminology:** This is **SROI (Social Return On Investment)** — social capital that behaves differently from traditional ROI.
+
+---
+
+## Investment Contract
+
+### Contract Creation
+
+When publishing a post in a community with investing enabled, author can:
+- **Enable investing** — checkbox at post creation
+- **Set investor share percentage** — share of earnings distributed among investors
+
+Contract can ONLY be created at post creation time. A post published without a contract cannot gain one later (including after transfer between communities).
+
+### Contract Properties
+
+**Percentage Constraints:**
+- Minimum and maximum percentage set in community settings (Investing tab)
+- Range: **1% to 99%** (configurable per community via `investorShareMin` / `investorShareMax`)
+- Author chooses a specific value within the allowed range
+
+**CRITICAL: Contract is IMMUTABLE**
+- Percentage is fixed at post creation and CANNOT be changed by author or admin
+- This protects investors from manipulation
+- Future versions may allow contract changes (only increasing investor share)
+
+---
+
+## Post Accounts and Show Cost Priority
+
+With investing enabled, a post has additional accounting:
+
+```
+Post:
+  ├── rating              ← earned merits (from tappalka wins, comments)
+  ├── investmentPool      ← funded by INVESTORS ONLY
+  └── maxRating           ← historical maximum
+```
+
+### Key Rule: Author Deposits Go to Rating
+- When author adds merits to their own post, they go to **post rating** (main account)
+- Author's deposits do NOT make them an investment participant
+- Author does NOT receive any share from investor distribution
+- Investment pool is funded **ONLY by investors**
+
+### Show Cost Deduction Priority (Canonical — Single Source of Truth)
+
+When tappalka deducts 0.1 merit per show, sources are tried in this order:
+
+| Priority | Source | When depleted |
+|----------|--------|---------------|
+| 1 | `investmentPool` | Move to next |
+| 2 | `rating` | Move to next |
+| 3 | `author.wallet` | Post exits tappalka |
+
+If all three sources are empty, the post stops participating in tappalka.
+
+---
+
+## Investment Process
+
+### For Investor
+
+1. User sees post with "Invest" button (not shown to post author)
+2. Investment dialog shows: contract terms (X%), current pool total, investor count
+3. User enters amount — dialog calculates their resulting share percentage
+4. On confirmation, merits transfer from user's wallet to `investmentPool`
+
+**Restrictions:**
+- **No minimum/maximum investment amount** — users can invest any amount
+- Investment can ONLY be made from **wallet** (NOT from quota)
+- Investment is **IRREVOCABLE** — cannot be withdrawn or cancelled
+
+### For Author (Promoting Own Post)
+- Author can add merits to their post's **rating** (main account)
+- This is NOT an investment — author gets no investor share
+- Author sees "Add merits" button instead of "Invest"
+
+---
+
+## Investor Share Tracking
+
+### Record Structure
+- **One record per investor per post** — repeat investments are ACCUMULATED
+- If investor invests again, their existing record is updated: `amount += newAmount`
+- This prevents spam from multiple small investments by same user
+
+### Share Calculation
+Investor's share = their total investment / sum of ALL investments
+
+**Example:**
+- Vasya invested 100 merits
+- Petya invested 50 merits
+- Sasha invested 50 merits
+- Total investment pool: 200 merits
+- Shares: Vasya 50%, Petya 25%, Sasha 25%
+
+---
+
+## Merit Withdrawal (Profit Distribution)
+
+### Single Pool Principle
+
+**CRITICAL:** When author withdraws merits, distribution happens from a **single pool** — the post's total available merits (rating). There is no separation between "earned from tappalka" and "earned from comments" at withdrawal time. Everything on the post rating is distributed according to the contract.
+
+### Withdrawal Rules
+
+1. Author initiates withdrawal (partial or full amount from rating)
+2. `investorShare = withdrawAmount × contractPercent%` — distributed among investors proportionally
+3. `authorShare = withdrawAmount − investorShare` — goes to author's wallet
+4. Post rating decreases by withdrawal amount
+5. All investors receive notifications with their share
+
+### Distribution Example
+
+**Given:**
+- Post rating: 1000 merits
+- Contract: 20% to investors
+- Investors: Vasya (50%), Petya (25%), Sasha (25%)
+- Author withdraws 500 merits
+
+**Calculation:**
+- To investors: 500 × 20% = 100 merits
+  - Vasya: 100 × 50% = 50 merits
+  - Petya: 100 × 25% = 25 merits
+  - Sasha: 100 × 25% = 25 merits
+- To author: 500 − 100 = 400 merits
+
+### Author's Own Merits in the Pool
+
+**Accepted scenario (CEO-approved):** If author deposited 10,000 merits to post rating with 20% investor share, and an investor put in 1 merit, then when author withdraws — the investor's share is calculated from the entire withdrawable amount per contract. This is intentional and accepted behavior. No special protection is implemented.
+
+---
+
+## Post Closing with Investments
+
+### Closing = Automatic Full Withdrawal + Pool Return
+
+There is no "close without withdrawal". Closing a post with investments triggers an automatic sequence:
+
+```
+Author clicks "Close post"
+        │
+        ▼
+Step 1: Return unspent investmentPool to investors (proportional to contributions)
+        │
+        ▼
+Step 2: Auto-withdraw ALL remaining rating per contract
+        (X% to investors proportionally, rest to author)
+        │
+        ▼
+Step 3: Post archived. All investors notified with final earnings.
+```
+
+### No Refund / No Cancellation
+
+**CRITICAL:** There is NO investment refund and NO investment cancellation mid-lifecycle.
+
+- Invested merits are spent on tappalka shows — they cannot be returned
+- The only "return" events are: (a) unspent pool on close, (b) profit distribution on withdrawal/close
+- When post closes, investors receive notification: `"Post closed — your total earnings: X merits"`
+
+### Pool Return Example
+- Total invested: 200 merits (Vasya 100, Petya 50, Sasha 50)
+- Spent on shows: 100 merits (50% consumed)
+- Remaining pool: 100 merits
+- Return: Vasya 50, Petya 25, Sasha 25
+- Then remaining rating is distributed per contract on top of this
+
+---
+
+## Negative Rating
+
+**Negative rating IS possible** with investments, if the community has downvoting enabled (`tappalkaOnlyMode` is OFF).
+
+- If community allows upvote/downvote comments, post rating can go negative
+- Standard 24-hour rule applies: negative balance deducted from author's wallet after 24h
+- This is independent of investment mechanics — it's a community setting
+- **Recommended config** for investment communities: enable `tappalkaOnlyMode` to avoid this scenario
+
+---
+
+## Tappalka-Only Mode
+
+> This is a **separate community setting**, independent of investing. It will have its own full spec. Mentioned here only for context.
+
+`tappalkaOnlyMode: boolean` (default: false) — when enabled, comments are neutral only (no weight), no upvote/downvote, rating formed exclusively through tappalka. Recommended configuration for investment communities:
+
+```
+tappalkaEnabled = true
+tappalkaOnlyMode = true
+investingEnabled = true
+```
+
+---
+
+## Abuse Protection
+
+| Protection | How It Works |
+|------------|-------------|
+| **Immutable contract** | Author cannot reduce percentage after attracting investments |
+| **Transparency** | Investment total, investor list with visual bar, and contract terms all visible before investing. Exact calculation shown at withdrawal. |
+| **Author ≠ Investor** | Author deposits go to post rating as "promotion", not investment pool. Author does NOT receive investor share. |
+| **Investor risk** | Investment is a risk. If post is unpopular in tappalka, merits burn on shows without return. Communicated in investment dialog. |
+
+---
+
+## Interaction with Other Mechanics
+
+### Post Forwarding with Investments
+- **Copy:** Investments are NOT transferred (same as merits)
+- **Transfer (Projects → МД):** Investment contract and pool transfer with the post
+
+### Contract on Transfer
+If a post is transferred from a community where `investingEnabled = false` to one where it's `true`, the post does NOT gain a contract. Contracts are created only at post creation time.
+
+### Quota
+Quota CANNOT be used for investing. Only wallet merits allowed.
+
+### Self-Voting
+If community allows self-voting, author's self-vote merits go to post rating (not investment pool). Standard self-voting rules apply.
+
+---
+
+## Notifications
+
+| Event | Recipient | Message |
+|-------|-----------|---------|
+| New investment received | Post author | "User X invested N merits in your post" |
+| Author withdrew merits | All investors | "Author withdrew N merits. Your share: M merits" |
+| Post closed | All investors | "Post closed. Your total earnings: M merits" |
+| Investment pool depleted | Post author | "Investment pool depleted, shows now from rating/wallet" |
+
+---
+
+## UI Behavior Notes
+
+> Detailed UI specs (dialogs, layouts, visual bar design) belong in the PRD. This section covers only business-relevant UI rules.
+
+- Post card shows: investment pool balance, current rating, max rating, investor count
+- **Investor list with visual segmented bar** displayed on post — shows each investor's proportional share
+- "Invest" button visible only when `investingEnabled = true` on post; not shown to post author (author sees "Add merits")
+- Investment dialog must show contract terms, irrevocability warning, and projected share calculation
+- Withdrawal dialog must show exact split between author and investors before confirmation
+
+---
+
+## Community Settings (Investing Tab)
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `investingEnabled` | Enable investment mechanic | false |
+| `investorShareMin` | Minimum investor share % | 1 |
+| `investorShareMax` | Maximum investor share % | 99 |
+| `tappalkaOnlyMode` | Disable weighted comments (separate feature) | false |
+
+---
+
+## MVP Configuration
+
+### Marathon of Good (МД) — WITH Investing
+```
+investingEnabled = true
+investorShareMin = 1
+investorShareMax = 99
+tappalkaOnlyMode = true (recommended)
+```
+
+### All Other Communities — NO Changes
+- ОБ, Projects, Feedback, Local communities: `investingEnabled = false`
+
+---
+
+## Data Model
+
+### New Post Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `investingEnabled` | boolean | Whether investing is allowed for this post |
+| `investorSharePercent` | number | Percentage for investors (1-99, immutable) |
+| `investmentPool` | number | Current balance of investment pool |
+| `investmentPoolTotal` | number | Total ever invested (for analytics) |
+| `investments` | Investment[] | List of investor records |
+
+### Investment Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `investorId` | ObjectId | Reference to user |
+| `amount` | number | Total invested amount (accumulated across multiple investments) |
+| `createdAt` | Date | First investment timestamp |
+| `updatedAt` | Date | Last investment timestamp |
+
+**Note:** One record per investor per post. Repeat investments update existing record (`amount += newAmount`, `updatedAt = now`).
+
+### New Community Settings Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `investingEnabled` | boolean | Enable investing in this community |
+| `investorShareMin` | number | Minimum investor share % (default: 1) |
+| `investorShareMax` | number | Maximum investor share % (default: 99) |
+| `tappalkaOnlyMode` | boolean | Neutral comments only (separate feature) |
+
+---
+
+## Dependencies
+
+```
+Tappalka (implemented) ──► Investing
+                              │
+                              ├──► Investment pool on post
+                              ├──► Contract at post creation
+                              ├──► Updated withdrawal dialog
+                              ├──► Investor list + visual bar
+                              └──► Investor notifications
+
+Separately:
+tappalkaOnlyMode setting ──► "Tappalka only" mode (no votes)
+```
+
+---
+
+## Future Features (v2.0+)
+
+### Volunteer Share in Distribution
+Authors will be able to include volunteers (people who helped with the project) in the merit distribution. **Strictly future** — not designed or implemented now.
+
+### Investor Dashboard
+Portfolio of investments, SROI per post, total returns.
+
+### Automatic Reinvestment
+Auto-invest earned profits back into posts.
+
+### Investment Rating
+Success metric for investors (track record).
+
+### Profit Calculation Modes
+Two modes (admin-configurable):
+- **From all earnings** (default, current) — investors share from total post rating
+- **From future earnings only** — investors share only from merits earned after their investment (requires tracking rating at investment time)
