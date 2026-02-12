@@ -257,6 +257,29 @@
         "withdraw": "Withdraw",
         "deposit": "Deposit"
     },
+    "investing": {
+        "contractTerms": "Contract: {percent}% to investors",
+        "investorsReceive": "Investors will receive: {amount} merits",
+        "youReceive": "You will receive: {amount} merits",
+        "addMerits": "Add merits",
+        "invest": "Invest",
+        "investing": "Investing...",
+        "investSuccess": "Successfully invested {amount} merits",
+        "investError": "Investment failed",
+        "dialogTitle": "Invest in this post",
+        "poolTotal": "Pool total",
+        "investorCount": "{count} investor(s)",
+        "amountLabel": "Amount (merits)",
+        "balance": "Balance: {balance} merits",
+        "yourShare": "You will receive ~{percent}% of each withdrawal (to investors)",
+        "irrevocableWarning": "Investment is irrevocable. Merits cannot be withdrawn until the author withdraws from the post.",
+        "noInvestorsYet": "No investors yet",
+        "meritsInPool": "{amount} merits in pool",
+        "authorShare": "Author ({percent}%)",
+        "investor": "Investor",
+        "investedBy": "{amount} merits from {count} investor(s)",
+        "pool": "Pool: {amount}"
+    },
     "shared": {
         "balance": "Balance:",
         "withdraw": "Withdraw merits",
@@ -326,6 +349,12 @@
             "minutes": "{count}m ago",
             "hours": "{count}h ago",
             "days": "{count}d ago"
+        },
+        "deleteConfirmation": {
+            "investmentTitle": "Delete post with investments",
+            "investmentMessage": "Unspent investment pool ({pool} merits) will be returned to investors. Remaining rating ({rating} merits) will be distributed: {percent}% to investors, rest to you. Are you sure you want to delete?",
+            "permanentTitle": "Permanently Delete Post",
+            "permanentMessage": "This will permanently delete this post and cannot be undone. Are you sure?"
         }
     },
     "login": {
@@ -737,7 +766,8 @@
             "tabs": {
                 "general": "General",
                 "rules": "Rules",
-                "tappalka": "Tappalka"
+                "tappalka": "Tappalka",
+                "investing": "Investing"
             },
             "communityProfile": "Community Profile",
             "name": "Name",
@@ -930,6 +960,11 @@
                 "poll": "Poll",
                 "project": "Project"
             },
+            "investing": {
+                "enable": "Enable investing",
+                "shareLabel": "Investor share (%)",
+                "sharePreview": "Investors will receive {percent}% of all earnings"
+            },
             "pollCreatePrompt": "Polls have their own creation form with options and voting settings.",
             "goToPollCreate": "Create Poll",
             "showPreview": "Show Preview",
@@ -1083,6 +1118,29 @@
         "createPost": "Create Post",
         "createPoll": "Create Poll",
         "createProject": "Create Project",
+        "investing": {
+            "title": "Investing Settings",
+            "description": "Allow post authors to enable merit investment. Investors receive a share of withdrawals.",
+            "saveSuccess": "Investing settings saved",
+            "saveError": "Failed to save investing settings",
+            "saving": "Saving...",
+            "save": "Save Settings",
+            "fields": {
+                "investingEnabled": "Enable investing",
+                "investingEnabledHelp": "Allow authors to enable investment on their posts",
+                "enabled": "Enabled",
+                "disabled": "Disabled",
+                "investorShareRange": "Investor share range (%)",
+                "investorShareRangeHelp": "Min and max allowed for post authors when setting investor share",
+                "tappalkaOnlyMode": "Tappalka only mode",
+                "tappalkaOnlyModeHelp": "Separate feature — disables weighted comments. Flag only."
+            },
+            "validation": {
+                "errors": "Please fix validation errors",
+                "shareRange": "Must be between 1 and 99",
+                "minLessMax": "Min must be less than or equal to Max"
+            }
+        },
         "tappalka": "Tappalka",
         "rules": {
             "title": "Community Rules",
