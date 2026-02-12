@@ -91,6 +91,9 @@ export class TappalkaService {
     const { categories, minRating, showCost } = tappalkaSettings;
 
     // Build query: post must be able to pay showCost from pool and/or rating
+    // - investmentPool >= showCost: pool pays, no minRating needed
+    // - metrics.score >= minScore: rating pays, minRating applies
+    // - pool+score >= showCost AND (pool >= showCost OR score >= minRating): hybrid, minRating applies when paying from rating
     const minScore = Math.max(minRating, showCost);
     const query: any = {
       communityId,
@@ -101,17 +104,27 @@ export class TappalkaService {
         { investmentPool: { $gte: showCost } },
         { 'metrics.score': { $gte: minScore } },
         {
-          $expr: {
-            $gte: [
-              {
-                $add: [
-                  { $ifNull: ['$investmentPool', 0] },
-                  { $ifNull: ['$metrics.score', 0] },
+          $and: [
+            {
+              $expr: {
+                $gte: [
+                  {
+                    $add: [
+                      { $ifNull: ['$investmentPool', 0] },
+                      { $ifNull: ['$metrics.score', 0] },
+                    ],
+                  },
+                  showCost,
                 ],
               },
-              showCost,
-            ],
-          },
+            },
+            {
+              $or: [
+                { investmentPool: { $gte: showCost } },
+                { 'metrics.score': { $gte: minRating } },
+              ],
+            },
+          ],
         },
       ],
     };
@@ -363,19 +376,40 @@ export class TappalkaService {
 
     let remainingCost = cost;
 
-    // 1. Try investment pool first
-    if (currentPool > 0 && remainingCost > 0) {
+    // 1. Try investment pool first (atomic: conditional update to prevent negative)
+    if (remainingCost > 0 && currentPool > 0) {
       const fromPool = Math.min(currentPool, remainingCost);
-      await this.publicationModel.updateOne(
-        { id: post.id },
+      // Only deduct if pool has enough (handles concurrent updates)
+      const result = await this.publicationModel.findOneAndUpdate(
+        { id: post.id, investmentPool: { $gte: fromPool } },
         { $inc: { investmentPool: -fromPool } },
-      );
-      remainingCost -= fromPool;
-      this.logger.debug(
-        `Deducted ${fromPool} from post ${post.id} investment pool`,
-      );
+        { new: true }
+      ).lean().exec();
+      if (result) {
+        remainingCost -= fromPool;
+        this.logger.debug(
+          `Deducted ${fromPool} from post ${post.id} investment pool`,
+        );
+      } else {
+        // Pool was reduced by another op - re-fetch and retry once with actual available
+        const fresh = await this.publicationModel.findOne({ id: post.id }).lean().exec();
+        const actualPool = fresh?.investmentPool ?? 0;
+        const actualDeduct = Math.min(actualPool, remainingCost);
+        if (actualDeduct > 0) {
+          const retryResult = await this.publicationModel.findOneAndUpdate(
+            { id: post.id, investmentPool: { $gte: actualDeduct } },
+            { $inc: { investmentPool: -actualDeduct } },
+          ).exec();
+          if (retryResult) {
+            remainingCost -= actualDeduct;
+            this.logger.debug(
+              `Deducted ${actualDeduct} from post ${post.id} investment pool (retry)`,
+            );
+          }
+        }
+      }
       // Notify author when pool is depleted and we move to rating/wallet
-      if (fromPool > 0 && remainingCost > 0) {
+      if (remainingCost > 0) {
         try {
           await this.notificationService.createNotification({
             userId: post.authorId,

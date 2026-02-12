@@ -1341,7 +1341,7 @@ export const publicationsRouter = router({
       await ctx.publicationService.reduceScore(input.publicationId, amount);
 
       // Get updated wallet balance
-      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
+      const wallet = await ctx.walletService.getWallet(beneficiaryId, communityId);
       const balance = wallet ? wallet.getBalance() : 0;
 
       return {
