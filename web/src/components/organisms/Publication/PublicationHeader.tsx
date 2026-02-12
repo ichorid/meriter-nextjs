@@ -121,6 +121,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       staleTime: 0,
     },
   );
+  const { data: publicationForDelete } = trpc.publications.getById.useQuery(
+    { id: effectivePublicationId },
+    {
+      enabled: showDeleteModal && !!effectivePublicationId,
+      staleTime: 0,
+    },
+  );
+  const hasInvestments = (publicationForDelete?.investments?.length ?? 0) > 0;
+  const investmentPool = publicationForDelete?.investmentPool ?? 0;
+  const investorSharePercent = publicationForDelete?.investorSharePercent ?? 0;
+  const currentScore = publicationForDelete?.metrics?.score ?? 0;
   
   // Check if user is a lead
   const isLead = useMemo(() => {
@@ -386,8 +397,21 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         onConfirm={handleDelete}
         itemType={isPoll ? 'poll' : 'post'}
         isLoading={isPoll ? deletePoll.isPending : (isAlreadyDeleted ? permanentDeletePublication.isPending : deletePublication.isPending)}
-        title={isAlreadyDeleted ? 'Permanently Delete Post' : undefined}
-        message={isAlreadyDeleted ? 'This will permanently delete this post and cannot be undone. Are you sure?' : undefined}
+        title={
+          isAlreadyDeleted ? t('deleteConfirmation.permanentTitle', { defaultValue: 'Permanently Delete Post' }) :
+          hasInvestments ? t('deleteConfirmation.investmentTitle', { defaultValue: 'Delete post with investments' }) : undefined
+        }
+        message={
+          isAlreadyDeleted ? t('deleteConfirmation.permanentMessage', { defaultValue: 'This will permanently delete this post and cannot be undone. Are you sure?' }) :
+          hasInvestments
+            ? t('deleteConfirmation.investmentMessage', {
+                defaultValue: 'Unspent investment pool ({pool} merits) will be returned to investors. Remaining rating ({rating} merits) will be distributed: {percent}% to investors, rest to you. Are you sure you want to delete?',
+                pool: investmentPool,
+                rating: currentScore,
+                percent: investorSharePercent,
+              })
+            : undefined
+        }
       />
 
       {/* Publication Details Popup */}
