@@ -61,6 +61,7 @@ import { Plus } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { TappalkaScreen } from '@/features/tappalka';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
+import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -636,18 +637,24 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
                     <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-3">
-                            {/* Create Post Button - first in filters row, desktop only */}
+                            {/* Create Menu - desktop only, shows dropdown with "Create Post" and "Create Poll" */}
                             {canCreatePost.canCreate && (
-                                <Button
-                                    onClick={() => router.push(`/meriter/communities/${chatId}/create`)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
-                                    aria-label={tCommunities('createPost')}
-                                >
-                                    <Plus size={16} />
-                                    {tCommunities('createPost')}
-                                </Button>
+                                <div className="hidden lg:block">
+                                    <CreateMenu
+                                        communityId={chatId}
+                                        trigger={
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                                                aria-label={tCommunities('createPost')}
+                                            >
+                                                <Plus size={16} />
+                                                {tCommunities('createPost')}
+                                            </Button>
+                                        }
+                                    />
+                                </div>
                             )}
                             {/* Tappalka Button - show only if enabled */}
                             {comms?.tappalkaSettings?.enabled && (

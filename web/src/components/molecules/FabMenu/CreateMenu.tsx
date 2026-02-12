@@ -124,14 +124,28 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         </Button>
     );
 
+    // Clone trigger and add onClick handler if it's a React element
+    const triggerWithHandler = trigger && React.isValidElement(trigger)
+        ? React.cloneElement(trigger as React.ReactElement<any>, {
+            onClick: (e: React.MouseEvent) => {
+                e.stopPropagation();
+                // Call original onClick if it exists
+                if ((trigger as React.ReactElement<any>).props.onClick) {
+                    (trigger as React.ReactElement<any>).props.onClick(e);
+                }
+                setIsOpen(!isOpen);
+            },
+        })
+        : trigger;
+
     // Always render, but hide with CSS when needed
     return (
         <div className={`relative ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
-            {trigger || defaultTrigger}
+            {triggerWithHandler || defaultTrigger}
 
             {/* Menu Dropdown */}
             {isOpen && !permissionLoading && (
-                <div className="absolute right-0 bottom-full mb-2 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
+                <div className="absolute right-0 bottom-full mb-2 lg:bottom-auto lg:top-full lg:mt-2 lg:mb-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
                     <div className="py-2">
                         {canCreate ? (
                             <>
