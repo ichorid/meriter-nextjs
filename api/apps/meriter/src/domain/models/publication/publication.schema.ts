@@ -20,6 +20,13 @@ export interface PublicationMetrics {
   commentCount: number;
 }
 
+export interface PublicationInvestment {
+  investorId: string;
+  amount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Publication {
   id: string;
   communityId: string;
@@ -56,6 +63,12 @@ export interface Publication {
     editedBy: string;
     editedAt: Date;
   }>;
+  // Investment fields
+  investingEnabled?: boolean;
+  investorSharePercent?: number;
+  investmentPool?: number;
+  investmentPoolTotal?: number;
+  investments?: PublicationInvestment[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -179,6 +192,30 @@ export class PublicationSchemaClass implements Publication {
     editedAt: Date;
   }>;
 
+  // Investment fields
+  @Prop({ default: false })
+  investingEnabled?: boolean;
+
+  @Prop()
+  investorSharePercent?: number;
+
+  @Prop({ default: 0 })
+  investmentPool?: number;
+
+  @Prop({ default: 0 })
+  investmentPoolTotal?: number;
+
+  @Prop({
+    type: [{
+      investorId: { type: String, required: true },
+      amount: { type: Number, required: true },
+      createdAt: { type: Date, required: true },
+      updatedAt: { type: Date, required: true },
+    }],
+    default: [],
+  })
+  investments?: PublicationInvestment[];
+
   @Prop({ required: true })
   createdAt!: Date;
 
@@ -199,3 +236,4 @@ PublicationSchema.index({ hashtags: 1 });
 PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community
+PublicationSchema.index({ 'investments.investorId': 1 }); // For investment lookups
