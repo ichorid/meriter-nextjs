@@ -13,6 +13,8 @@ import {
 } from '../models/publication/publication.schema';
 import { WalletService } from './wallet.service';
 import { CommunityService } from './community.service';
+import { NotificationService } from './notification.service';
+import { UserService } from './user.service';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -51,6 +53,8 @@ export class InvestmentService {
     private publicationModel: Model<PublicationDocument>,
     private walletService: WalletService,
     private communityService: CommunityService,
+    private notificationService: NotificationService,
+    private userService: UserService,
   ) {}
 
   /**
@@ -167,6 +171,23 @@ export class InvestmentService {
       amount: inv.amount,
       sharePercent: totalInvested > 0 ? (inv.amount / totalInvested) * 100 : 0,
     }));
+
+    // Notify post author: INVESTMENT_RECEIVED
+    try {
+      const investor = await this.userService.getUser(investorId);
+      const investorName = investor?.displayName || 'Someone';
+      await this.notificationService.createNotification({
+        userId: post.authorId,
+        type: 'investment_received',
+        source: 'user',
+        sourceId: investorId,
+        metadata: { postId, communityId: post.communityId, investorId, amount },
+        title: 'Investment received',
+        message: `${investorName} invested ${amount} merits in your post`,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to create investment_received notification: ${err}`);
+    }
 
     return {
       postId,
@@ -330,6 +351,32 @@ export class InvestmentService {
       );
     }
 
+    // Notify each investor: INVESTMENT_DISTRIBUTED
+    try {
+      const author = await this.userService.getUser(post.authorId);
+      const authorName = author?.displayName || 'Author';
+      await Promise.all(
+        investorDistributions.map((dist) =>
+          this.notificationService.createNotification({
+            userId: dist.investorId,
+            type: 'investment_distributed',
+            source: 'user',
+            sourceId: post.authorId,
+            metadata: {
+              postId,
+              communityId: post.communityId,
+              withdrawAmount,
+              amount: dist.amount,
+            },
+            title: 'Investment distributed',
+            message: `${authorName} withdrew ${withdrawAmount} merits. Your share: ${dist.amount} merits`,
+          }),
+        ),
+      );
+    } catch (err) {
+      this.logger.warn(`Failed to create investment_distributed notifications: ${err}`);
+    }
+
     return {
       authorAmount,
       investorDistributions,
@@ -422,6 +469,33 @@ export class InvestmentService {
         investorDistributions: [],
       };
       totalRatingDistributed = currentScore;
+    }
+
+    // Notify each investor: POST_CLOSED_INVESTMENT (total earnings = pool return + rating distribution)
+    if (investments.length > 0) {
+      try {
+        const totalByInvestor = new Map<string, number>();
+        for (const p of poolReturned) {
+          totalByInvestor.set(p.investorId, (totalByInvestor.get(p.investorId) ?? 0) + p.amount);
+        }
+        for (const d of ratingDistributed.investorDistributions) {
+          totalByInvestor.set(d.investorId, (totalByInvestor.get(d.investorId) ?? 0) + d.amount);
+        }
+        await Promise.all(
+          Array.from(totalByInvestor.entries()).map(([invId, total]) =>
+            this.notificationService.createNotification({
+              userId: invId,
+              type: 'post_closed_investment',
+              source: 'system',
+              metadata: { postId, communityId: post.communityId, totalEarnings: total },
+              title: 'Post closed',
+              message: `Post closed. Your total earnings: ${total} merits`,
+            }),
+          ),
+        );
+      } catch (err) {
+        this.logger.warn(`Failed to create post_closed_investment notifications: ${err}`);
+      }
     }
 
     return {

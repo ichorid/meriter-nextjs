@@ -14,7 +14,11 @@ export type NotificationType =
   | 'quota'
   | 'forward_proposal'
   | 'team_join_request'
-  | 'team_invitation';
+  | 'team_invitation'
+  | 'investment_received'
+  | 'investment_distributed'
+  | 'post_closed_investment'
+  | 'investment_pool_depleted';
 
 export type NotificationSource = 'user' | 'system' | 'community';
 
@@ -47,7 +51,7 @@ export class NotificationSchemaClass implements Notification {
 
   @Prop({
     required: true,
-    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation'],
+    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation', 'investment_received', 'investment_distributed', 'post_closed_investment', 'investment_pool_depleted'],
     index: true,
   })
   type!: NotificationType;

@@ -19,6 +19,7 @@ import {
 import { MeritService } from './merit.service';
 import { WalletService } from './wallet.service';
 import { UserService } from './user.service';
+import { NotificationService } from './notification.service';
 import type {
   TappalkaPair,
   TappalkaPost,
@@ -50,6 +51,7 @@ export class TappalkaService {
     private meritService: MeritService,
     private walletService: WalletService,
     private userService: UserService,
+    private notificationService: NotificationService,
   ) {}
 
   /**
@@ -372,6 +374,21 @@ export class TappalkaService {
       this.logger.debug(
         `Deducted ${fromPool} from post ${post.id} investment pool`,
       );
+      // Notify author when pool is depleted and we move to rating/wallet
+      if (fromPool > 0 && remainingCost > 0) {
+        try {
+          await this.notificationService.createNotification({
+            userId: post.authorId,
+            type: 'investment_pool_depleted',
+            source: 'system',
+            metadata: { postId: post.id, communityId: post.communityId },
+            title: 'Investment pool depleted',
+            message: 'Investment pool depleted, shows now from rating/wallet',
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to create investment_pool_depleted notification: ${err}`);
+        }
+      }
       if (remainingCost <= 0) return;
     }
 

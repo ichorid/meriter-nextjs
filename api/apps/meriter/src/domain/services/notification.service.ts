@@ -456,6 +456,26 @@ export class NotificationService {
         return `/meriter/communities/${communityId}`;
       }
 
+      case 'investment_received':
+      case 'investment_distributed':
+      case 'investment_pool_depleted': {
+        const communityId = metadata?.communityId;
+        const postId = metadata?.postId;
+        if (communityId && postId) {
+          return `/meriter/communities/${communityId}?post=${postId}`;
+        }
+        return undefined;
+      }
+
+      case 'post_closed_investment': {
+        const communityId = metadata?.communityId;
+        const postId = metadata?.postId;
+        if (communityId && postId) {
+          return `/meriter/communities/${communityId}?post=${postId}`;
+        }
+        return undefined;
+      }
+
       case 'mention':
       case 'system':
       default:
