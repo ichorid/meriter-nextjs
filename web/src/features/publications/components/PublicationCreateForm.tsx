@@ -120,6 +120,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const isTeamCommunity = community?.typeTag === 'team';
   const isFutureVision = community?.typeTag === 'future-vision';
   const canCreateProjects = ENABLE_PROJECT_POSTS && (isGoodDeedsMarathon || isTeamCommunity);
+  const communityInvestingEnabled = community?.settings?.investingEnabled ?? false;
+  const investorShareMin = community?.settings?.investorShareMin ?? 1;
+  const investorShareMax = community?.settings?.investorShareMax ?? 99;
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
 
@@ -144,6 +147,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   const [categories, setCategories] = useState<string[]>((initialData as any)?.categories || []);
+  const [investingEnabled, setInvestingEnabled] = useState<boolean>((initialData as any)?.investingEnabled ?? false);
+  const [investorSharePercent, setInvestorSharePercent] = useState<number>((initialData as any)?.investorSharePercent ?? 30);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
@@ -405,6 +410,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           methods: methods.length > 0 ? methods : undefined,
           stage: stage || undefined,
           helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
+          investingEnabled: investingEnabled || undefined,
+          investorSharePercent: investingEnabled ? investorSharePercent : undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -669,6 +676,58 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 </div>
               </CollapsibleSection>
             </>
+          )}
+
+          {/* Investment contract - only when community allows */}
+          {communityInvestingEnabled && !isEditMode && (
+            <div className="space-y-4 p-4 rounded-lg border border-base-content/10 bg-base-200/30">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="investingEnabled"
+                  checked={investingEnabled}
+                  onCheckedChange={(checked) => setInvestingEnabled(checked === true)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="investingEnabled" className="text-sm font-medium cursor-pointer">
+                  {t('investing.enable', { defaultValue: 'Enable investing' })}
+                </Label>
+              </div>
+              {investingEnabled && (
+                <div className="space-y-3 pl-6">
+                  <BrandFormControl
+                    label={t('investing.shareLabel', { defaultValue: 'Investor share (%)' })}
+                    helperText={t('investing.sharePreview', {
+                      defaultValue: 'Investors will receive {percent}% of all earnings',
+                      percent: investorSharePercent,
+                    })}
+                  >
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        min={investorShareMin}
+                        max={investorShareMax}
+                        value={investorSharePercent}
+                        onChange={(e) => setInvestorSharePercent(parseInt(e.target.value, 10))}
+                        className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-base-content/20"
+                        disabled={isSubmitting}
+                      />
+                      <Input
+                        type="number"
+                        min={investorShareMin}
+                        max={investorShareMax}
+                        value={investorSharePercent}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value, 10);
+                          if (!Number.isNaN(v)) setInvestorSharePercent(Math.min(investorShareMax, Math.max(investorShareMin, v)));
+                        }}
+                        className="w-20 h-9"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </BrandFormControl>
+                </div>
+              )}
+            </div>
           )}
 
           <BrandFormControl
