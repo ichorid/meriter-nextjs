@@ -41,6 +41,17 @@ export interface PublicationDocument {
   }>;
   createdAt: Date;
   updatedAt: Date;
+  // Investment fields
+  investingEnabled?: boolean;
+  investorSharePercent?: number;
+  investmentPool?: number;
+  investmentPoolTotal?: number;
+  investments?: Array<{
+    investorId: string;
+    amount: number;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
 }
 
 /**

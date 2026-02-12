@@ -788,6 +788,27 @@ export const publicationsRouter = router({
         });
       }
 
+      // Validate investment contract if investingEnabled
+      if (input.investingEnabled) {
+        const investingEnabled =
+          community.settings?.investingEnabled ?? false;
+        if (!investingEnabled) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Investing is not enabled for this community',
+          });
+        }
+        const min = community.settings?.investorShareMin ?? 1;
+        const max = community.settings?.investorShareMax ?? 99;
+        const percent = input.investorSharePercent;
+        if (percent == null || percent < min || percent > max) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Investor share must be between ${min}% and ${max}%`,
+          });
+        }
+      }
+
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
       const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
@@ -968,13 +989,45 @@ export const publicationsRouter = router({
       // Check permissions
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);
 
-      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
-      // exactly as if they withdrew everything just before deletion.
       const publication = await ctx.publicationService.getPublication(input.id);
       if (!publication) {
         throw new NotFoundError('Publication', input.id);
       }
-      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
+
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      const hasInvestments =
+        pubDoc?.investments && pubDoc.investments.length > 0;
+
+      if (hasInvestments) {
+        const result = await ctx.investmentService.handlePostClose(input.id);
+        const beneficiaryId =
+          publication.getEffectiveBeneficiary().getValue();
+        const communityId = publication.getCommunityId.getValue();
+        if (result.ratingDistributed.authorAmount > 0) {
+          await processWithdrawal(
+            beneficiaryId,
+            communityId,
+            input.id,
+            result.ratingDistributed.authorAmount,
+            'publication_withdrawal',
+            ctx,
+          );
+        }
+        if (result.totalRatingDistributed > 0) {
+          await ctx.publicationService.reduceScore(
+            input.id,
+            result.totalRatingDistributed,
+          );
+        }
+      } else {
+        await autoWithdrawPublicationBalanceBeforeDelete(
+          input.id,
+          publication,
+          ctx,
+        );
+      }
 
       await ctx.publicationService.deletePublication(input.id, ctx.user.id);
       return { success: true };
@@ -1007,15 +1060,50 @@ export const publicationsRouter = router({
       // Check permissions - permanent delete uses the same permissions as delete
       await checkPermissionInHandler(ctx, 'delete', 'publication', input);
 
-      // If the publication has a positive balance, auto-withdraw it to the effective beneficiary
-      // exactly as if they withdrew everything just before deletion.
       const publication = await ctx.publicationService.getPublication(input.id);
       if (!publication) {
         throw new NotFoundError('Publication', input.id);
       }
-      await autoWithdrawPublicationBalanceBeforeDelete(input.id, publication, ctx);
 
-      await ctx.publicationService.permanentDeletePublication(input.id, ctx.user.id);
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      const hasInvestments =
+        pubDoc?.investments && pubDoc.investments.length > 0;
+
+      if (hasInvestments) {
+        const result = await ctx.investmentService.handlePostClose(input.id);
+        const beneficiaryId =
+          publication.getEffectiveBeneficiary().getValue();
+        const communityId = publication.getCommunityId.getValue();
+        if (result.ratingDistributed.authorAmount > 0) {
+          await processWithdrawal(
+            beneficiaryId,
+            communityId,
+            input.id,
+            result.ratingDistributed.authorAmount,
+            'publication_withdrawal',
+            ctx,
+          );
+        }
+        if (result.totalRatingDistributed > 0) {
+          await ctx.publicationService.reduceScore(
+            input.id,
+            result.totalRatingDistributed,
+          );
+        }
+      } else {
+        await autoWithdrawPublicationBalanceBeforeDelete(
+          input.id,
+          publication,
+          ctx,
+        );
+      }
+
+      await ctx.publicationService.permanentDeletePublication(
+        input.id,
+        ctx.user.id,
+      );
       return { success: true };
     }),
 
@@ -1208,17 +1296,39 @@ export const publicationsRouter = router({
       // Get effective beneficiary
       const effectiveBeneficiary = publication.getEffectiveBeneficiary();
       const beneficiaryId = effectiveBeneficiary.getValue();
-
-      // Process withdrawal (handles marathon bridge)
       const communityId = publication.getCommunityId.getValue();
-      const { targetCommunityId } = await processWithdrawal(
-        beneficiaryId,
-        communityId,
+
+      // If post has investments, split between author and investors
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
         input.publicationId,
-        amount,
-        'publication_withdrawal',
-        ctx,
       );
+      const hasInvestments =
+        pubDoc?.investments && pubDoc.investments.length > 0;
+
+      if (hasInvestments && pubDoc?.investorSharePercent != null) {
+        const distribution =
+          await ctx.investmentService.distributeOnWithdrawal(
+            input.publicationId,
+            amount,
+          );
+        await processWithdrawal(
+          beneficiaryId,
+          communityId,
+          input.publicationId,
+          distribution.authorAmount,
+          'publication_withdrawal',
+          ctx,
+        );
+      } else {
+        await processWithdrawal(
+          beneficiaryId,
+          communityId,
+          input.publicationId,
+          amount,
+          'publication_withdrawal',
+          ctx,
+        );
+      }
 
       // Reduce publication score
       await ctx.publicationService.reduceScore(input.publicationId, amount);

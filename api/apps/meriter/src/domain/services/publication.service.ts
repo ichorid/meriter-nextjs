@@ -41,6 +41,8 @@ export interface CreatePublicationDto {
   methods?: string[];
   stage?: string;
   helpNeeded?: string[];
+  investingEnabled?: boolean;
+  investorSharePercent?: number;
 }
 
 @Injectable()
@@ -113,6 +115,11 @@ export class PublicationService {
       title: dto.title,
       description: dto.description,
       categories: dto.categories || [],
+      investingEnabled: dto.investingEnabled ?? false,
+      investorSharePercent: dto.investorSharePercent,
+      investmentPool: 0,
+      investmentPoolTotal: 0,
+      investments: [],
     });
 
     // Publish domain event
@@ -134,6 +141,14 @@ export class PublicationService {
     // Direct Mongoose query
     const doc = await this.publicationModel.findOne({ id }).lean();
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
+  }
+
+  /** Get raw publication document (for investment checks, etc.) */
+  async getPublicationDocument(
+    id: string,
+  ): Promise<IPublicationDocument | null> {
+    const doc = await this.publicationModel.findOne({ id }).lean().exec();
+    return doc as IPublicationDocument | null;
   }
 
   async getPublicationsByCommunity(
