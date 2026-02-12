@@ -32,6 +32,7 @@ import { CategoryService } from '../domain/services/category.service';
 import { AboutService } from '../domain/services/about.service';
 import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { TappalkaService } from '../domain/services/tappalka.service';
+import { InvestmentService } from '../domain/services/investment.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 
@@ -65,6 +66,7 @@ export interface CreateContextOptions {
   aboutService: AboutService;
   voteFactorService: VoteFactorService;
   tappalkaService: TappalkaService;
+  investmentService: InvestmentService;
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   connection: Connection;
@@ -110,6 +112,7 @@ export async function createContext(opts: CreateContextOptions) {
     aboutService,
     voteFactorService,
     tappalkaService,
+    investmentService,
     teamJoinRequestService,
     teamInvitationService,
     connection,
@@ -204,6 +207,7 @@ export async function createContext(opts: CreateContextOptions) {
     aboutService,
     voteFactorService,
     tappalkaService,
+    investmentService,
     teamJoinRequestService,
     teamInvitationService,
     connection,

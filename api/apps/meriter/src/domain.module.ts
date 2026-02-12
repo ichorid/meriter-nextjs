@@ -97,6 +97,7 @@ import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
 import { TappalkaService } from './domain/services/tappalka.service';
+import { InvestmentService } from './domain/services/investment.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
 
@@ -166,6 +167,7 @@ import { EventBus } from './domain/events/event-bus';
     CategoryService,
     AboutService,
     TappalkaService,
+    InvestmentService,
     TeamJoinRequestService,
     TeamInvitationService,
 
@@ -208,6 +210,7 @@ import { EventBus } from './domain/events/event-bus';
     CategoryService,
     AboutService,
     TappalkaService,
+    InvestmentService,
     TeamJoinRequestService,
     TeamInvitationService,
 
