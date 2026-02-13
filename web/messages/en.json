@@ -975,6 +975,7 @@
         "editHistory": "Edit History",
         "noEditsYet": "No edits yet",
         "create": {
+            "postSettings": "Post settings",
             "title": "Create Publication",
             "editTitle": "Edit Publication",
             "update": "Update",

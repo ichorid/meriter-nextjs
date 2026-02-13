@@ -39,6 +39,7 @@ export function PostSettingsReadOnly({
   helpNeeded = [],
 }: PostSettingsReadOnlyProps) {
   const t = useTranslations('publications.create');
+  const tTaxonomy = useTranslations('publications.create.taxonomy');
   const { data: allCategories } = useCategories();
   const categoryNames = React.useMemo(() => {
     if (!allCategories) return {};
@@ -79,7 +80,7 @@ export function PostSettingsReadOnly({
             {title && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('title', { defaultValue: 'Title' })}
+                  {t('fields.title', { defaultValue: 'Title' })}
                 </dt>
                 <dd className="text-base-content/90">{title}</dd>
               </div>
@@ -87,7 +88,7 @@ export function PostSettingsReadOnly({
             {description && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('description', { defaultValue: 'Description' })}
+                  {t('fields.description', { defaultValue: 'Description' })}
                 </dt>
                 <dd className="text-base-content/80 whitespace-pre-wrap">{description}</dd>
               </div>
@@ -105,7 +106,7 @@ export function PostSettingsReadOnly({
         {ENABLE_HASHTAGS && hashtags.length > 0 && (
           <div>
             <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-              {t('hashtags', { defaultValue: 'Hashtags' })}
+              {t('fields.hashtags', { defaultValue: 'Hashtags' })}
             </dt>
             <dd className="flex flex-wrap gap-1">
               {hashtags.map((tag) => (
@@ -123,7 +124,7 @@ export function PostSettingsReadOnly({
         {categories.length > 0 && (
           <div>
             <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-              {t('categories', { defaultValue: 'Categories' })}
+              {t('fields.categories', { defaultValue: 'Categories' })}
             </dt>
             <dd className="flex flex-wrap gap-1">
               {categories.map((id) => (
@@ -143,7 +144,7 @@ export function PostSettingsReadOnly({
             {impactArea && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('impactArea', { defaultValue: 'Impact area' })}
+                  {tTaxonomy('impactArea', { defaultValue: 'Impact area' })}
                 </dt>
                 <dd className="text-base-content/80">{impactAreaLabel}</dd>
               </div>
@@ -151,7 +152,7 @@ export function PostSettingsReadOnly({
             {stage && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('stage', { defaultValue: 'Stage' })}
+                  {tTaxonomy('stage', { defaultValue: 'Stage' })}
                 </dt>
                 <dd className="text-base-content/80">
                   {STAGES.includes(stage as never) ? translateStage(stage as never) : stage}
@@ -161,7 +162,7 @@ export function PostSettingsReadOnly({
             {beneficiaries.length > 0 && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('beneficiaries', { defaultValue: 'Beneficiaries' })}
+                  {tTaxonomy('beneficiaries', { defaultValue: 'Beneficiaries' })}
                 </dt>
                 <dd className="flex flex-wrap gap-1">
                   {beneficiaries.map((b) => (
@@ -178,7 +179,7 @@ export function PostSettingsReadOnly({
             {methods.length > 0 && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('methods', { defaultValue: 'Methods' })}
+                  {tTaxonomy('methods', { defaultValue: 'Methods' })}
                 </dt>
                 <dd className="flex flex-wrap gap-1">
                   {methods.map((m) => (
@@ -195,7 +196,7 @@ export function PostSettingsReadOnly({
             {helpNeeded.length > 0 && (
               <div>
                 <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-                  {t('helpNeeded', { defaultValue: 'Help needed' })}
+                  {tTaxonomy('helpNeeded', { defaultValue: 'Help needed' })}
                 </dt>
                 <dd className="flex flex-wrap gap-1">
                   {helpNeeded.map((h) => (
