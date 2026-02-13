@@ -128,8 +128,14 @@ export class PostClosingService {
         0,
       );
 
+      // totalEarned = total merits ever credited to post (lifetime); fallback to current score for legacy posts
+      const totalEarned =
+        (post.lifetimeCredits != null && post.lifetimeCredits > 0)
+          ? post.lifetimeCredits
+          : result.totalRatingDistributed;
+
       closingSummary = {
-        totalEarned: result.totalRatingDistributed,
+        totalEarned,
         distributedToInvestors,
         authorReceived: result.ratingDistributed.authorAmount,
         spentOnShows: Math.max(0, investmentPoolTotal - currentPool),

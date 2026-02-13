@@ -71,6 +71,8 @@ export interface PublicationDocument {
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
   inactivityWarningNotified?: boolean;
+  /** Total merits ever credited to this post (votes, author top-up, tappalka wins). Used for closingSummary.totalEarned. */
+  lifetimeCredits?: number;
 }
 
 /**

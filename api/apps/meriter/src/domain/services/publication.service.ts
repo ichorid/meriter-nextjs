@@ -291,9 +291,14 @@ export class PublicationService {
     if (direction === 'up' && amount > 0) {
       snapshot.lastEarnedAt = new Date();
     }
+    const updateOp: Record<string, unknown> = { $set: snapshot };
+    // Track total ever earned for closingSummary.totalEarned (only positive credits)
+    if (voteAmount > 0) {
+      updateOp.$inc = { lifetimeCredits: voteAmount };
+    }
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
-      { $set: snapshot },
+      updateOp,
     );
 
     return publication;

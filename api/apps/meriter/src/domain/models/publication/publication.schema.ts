@@ -92,6 +92,8 @@ export interface Publication {
   investmentPoolTotal?: number;
   /** One record per investor per post; repeat investments accumulate in amount. */
   investments?: PublicationInvestment[];
+  /** Total merits ever credited to this post (votes, author top-up, tappalka wins). Never decreased. Used for closingSummary.totalEarned. */
+  lifetimeCredits?: number;
   // Post advanced settings (TTL, tappalka)
   ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
   ttlExpiresAt?: Date | null;
@@ -264,6 +266,9 @@ export class PublicationSchemaClass implements Publication {
     default: [],
   })
   investments?: PublicationInvestment[];
+
+  @Prop({ default: 0 })
+  lifetimeCredits?: number;
 
   // Post advanced settings (TTL, tappalka)
   @Prop({ type: Number, enum: [7, 14, 30, 60, 90, null], default: null })

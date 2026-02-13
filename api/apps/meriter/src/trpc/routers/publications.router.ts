@@ -1643,9 +1643,13 @@ export const publicationsRouter = router({
               if (newPub) {
                 // Use vote method to update metrics properly
                 newPub.vote(totalScore);
+                const updateOp: Record<string, unknown> = { $set: newPub.toSnapshot() };
+                if (totalScore > 0) {
+                  updateOp.$inc = { lifetimeCredits: totalScore };
+                }
                 await ctx.connection.db.collection('publications').updateOne(
                   { id: newPublicationId },
-                  { $set: newPub.toSnapshot() }
+                  updateOp,
                 );
               }
             }

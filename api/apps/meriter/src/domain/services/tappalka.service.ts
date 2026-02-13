@@ -331,7 +331,10 @@ export class TappalkaService {
     const now = new Date();
     await this.publicationModel.updateOne(
       { id: winnerPostId },
-      { $inc: { 'metrics.score': winReward }, $set: { lastEarnedAt: now } },
+      {
+        $inc: { 'metrics.score': winReward, lifetimeCredits: winReward },
+        $set: { lastEarnedAt: now },
+      },
     );
 
     this.logger.debug(
