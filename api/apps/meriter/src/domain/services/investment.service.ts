@@ -44,6 +44,30 @@ export interface HandlePostCloseResult {
   totalRatingDistributed: number;
 }
 
+/** C-3: Single investor entry in investment breakdown */
+export interface InvestmentBreakdownInvestor {
+  userId: string;
+  username: string;
+  avatarUrl?: string;
+  amount: number;
+  sharePercent: number;
+  firstInvestDate: Date;
+  lastInvestDate: Date;
+}
+
+/** C-3: Full investment breakdown for a post (public, for transparency) */
+export interface InvestmentBreakdownResult {
+  contractPercent: number;
+  poolBalance: number;
+  poolTotal: number;
+  investorCount: number;
+  investors: InvestmentBreakdownInvestor[];
+  ttlDays: number | null;
+  ttlExpiresAt: Date | null;
+  stopLoss: number;
+  noAuthorWalletSpend: boolean;
+}
+
 @Injectable()
 export class InvestmentService {
   private readonly logger = new Logger(InvestmentService.name);
@@ -231,6 +255,54 @@ export class InvestmentService {
       sharePercent:
         totalInvested > 0 ? (inv.amount / totalInvested) * 100 : 0,
     }));
+  }
+
+  /**
+   * C-3: Get full investment breakdown for a post (public).
+   * Returns contract, pool stats, per-investor list with user info and dates.
+   */
+  async getInvestmentBreakdown(
+    postId: string,
+  ): Promise<InvestmentBreakdownResult> {
+    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+    if (!post) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const investments = post.investments || [];
+    const totalInvested = investments.reduce(
+      (sum: number, inv: PublicationInvestment) => sum + inv.amount,
+      0,
+    );
+
+    const investors: InvestmentBreakdownInvestor[] = await Promise.all(
+      investments.map(async (inv: PublicationInvestment) => {
+        const user = await this.userService.getUserById(inv.investorId);
+        const sharePercent =
+          totalInvested > 0 ? (inv.amount / totalInvested) * 100 : 0;
+        return {
+          userId: inv.investorId,
+          username: user?.displayName ?? 'Unknown',
+          avatarUrl: user?.avatarUrl,
+          amount: inv.amount,
+          sharePercent,
+          firstInvestDate: inv.createdAt,
+          lastInvestDate: inv.updatedAt,
+        };
+      }),
+    );
+
+    return {
+      contractPercent: post.investorSharePercent ?? 0,
+      poolBalance: post.investmentPool ?? 0,
+      poolTotal: post.investmentPoolTotal ?? 0,
+      investorCount: investors.length,
+      investors,
+      ttlDays: post.ttlDays ?? null,
+      ttlExpiresAt: post.ttlExpiresAt ?? null,
+      stopLoss: post.stopLoss ?? 0,
+      noAuthorWalletSpend: post.noAuthorWalletSpend ?? false,
+    };
   }
 
   /**

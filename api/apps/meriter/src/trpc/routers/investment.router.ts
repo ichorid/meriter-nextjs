@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { NotFoundException } from '@nestjs/common';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 
 const InvestInputSchema = z.object({
@@ -27,6 +27,23 @@ export const investmentRouter = router({
         const investments =
           await ctx.investmentService.getInvestmentsByPost(input.postId);
         return investments;
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: err.message,
+          });
+        }
+        throw err;
+      }
+    }),
+
+  /** C-3: Full investment breakdown (public — anyone can view). */
+  getInvestmentBreakdown: publicProcedure
+    .input(z.object({ postId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await ctx.investmentService.getInvestmentBreakdown(input.postId);
       } catch (err) {
         if (err instanceof NotFoundException) {
           throw new TRPCError({
