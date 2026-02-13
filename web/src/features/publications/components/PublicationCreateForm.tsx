@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
-import { Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -123,6 +123,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const communityInvestingEnabled = community?.settings?.investingEnabled ?? false;
   const investorShareMin = community?.settings?.investorShareMin ?? 1;
   const investorShareMax = community?.settings?.investorShareMax ?? 99;
+  const requireTTLForInvestPosts = community?.settings?.requireTTLForInvestPosts ?? false;
+  const tappalkaEnabled = (community as { tappalkaSettings?: { enabled?: boolean } })?.tappalkaSettings?.enabled ?? false;
   // Get post cost from community settings (default to 1 if not set)
   const postCost = community?.settings?.postCost ?? 1;
 
@@ -149,6 +151,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [categories, setCategories] = useState<string[]>((initialData as any)?.categories || []);
   const [investingEnabled, setInvestingEnabled] = useState<boolean>((initialData as any)?.investingEnabled ?? false);
   const [investorSharePercent, setInvestorSharePercent] = useState<number>((initialData as any)?.investorSharePercent ?? 30);
+  const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
+  const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
+  const [noAuthorWalletSpend, setNoAuthorWalletSpend] = useState<boolean>((initialData as any)?.noAuthorWalletSpend ?? false);
+  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
@@ -199,6 +205,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       if (!stage) {
         newErrors.stage = t('errors.stageRequired') || 'Stage is required for project posts';
       }
+    }
+
+    // Advanced: TTL required when community requires it for invest posts
+    if (requireTTLForInvestPosts && investingEnabled && (ttlDays == null || ttlDays === undefined)) {
+      newErrors.ttlDays = t('advanced.ttlRequiredForInvest', { defaultValue: 'TTL is required for posts with investing in this community' });
+    }
+    if (stopLoss < 0) {
+      newErrors.stopLoss = t('advanced.stopLossMin', { defaultValue: 'Stop-loss must be 0 or greater' });
     }
 
     setErrors(newErrors);
@@ -412,6 +426,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
           investingEnabled: investingEnabled || undefined,
           investorSharePercent: investingEnabled ? investorSharePercent : undefined,
+          ttlDays: ttlDays ?? undefined,
+          stopLoss: stopLoss ?? 0,
+          noAuthorWalletSpend: noAuthorWalletSpend || undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -678,56 +695,140 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             </>
           )}
 
-          {/* Investment contract - only when community allows */}
-          {communityInvestingEnabled && !isEditMode && (
-            <div className="space-y-4 p-4 rounded-lg border border-base-content/10 bg-base-200/30">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="investingEnabled"
-                  checked={investingEnabled}
-                  onCheckedChange={(checked) => setInvestingEnabled(checked === true)}
-                  disabled={isSubmitting}
-                />
-                <Label htmlFor="investingEnabled" className="text-sm font-medium cursor-pointer">
-                  {t('investing.enable', { defaultValue: 'Enable investing' })}
-                </Label>
-              </div>
-              {investingEnabled && (
-                <div className="space-y-3 pl-6">
-                  <BrandFormControl
-                    label={t('investing.shareLabel', { defaultValue: 'Investor share (%)' })}
-                    helperText={t('investing.sharePreview', {
-                      defaultValue: 'Investors will receive {percent}% of all earnings',
-                      percent: investorSharePercent,
-                    })}
-                  >
-                    <div className="flex items-center gap-4">
-                      <input
-                        type="range"
-                        min={investorShareMin}
-                        max={investorShareMax}
-                        value={investorSharePercent}
-                        onChange={(e) => setInvestorSharePercent(parseInt(e.target.value, 10))}
-                        className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-base-content/20"
+          {/* Advanced Settings - collapsible, only when community has investing or tappalka */}
+          {(communityInvestingEnabled || tappalkaEnabled) && !isEditMode && (
+            <CollapsibleSection
+              title={t('advanced.title', { defaultValue: 'Advanced settings' })}
+              open={openAdvancedSettings}
+              setOpen={setOpenAdvancedSettings}
+            >
+              <div className="space-y-6 pt-1">
+                {/* Investing: only when community allows */}
+                {communityInvestingEnabled && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Checkbox
+                        id="investingEnabled"
+                        checked={investingEnabled}
+                        onCheckedChange={(checked) => setInvestingEnabled(checked === true)}
                         disabled={isSubmitting}
                       />
+                      <Label htmlFor="investingEnabled" className="text-sm font-medium cursor-pointer">
+                        {t('investing.enable', { defaultValue: 'Open for investments' })}
+                      </Label>
+                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-500" title={t('advanced.immutableHint', { defaultValue: 'Cannot be changed after publishing' })}>
+                        <AlertTriangle className="h-4 w-4" aria-hidden />
+                        <span className="text-xs">{t('advanced.immutableHint', { defaultValue: 'Cannot be changed after publishing' })}</span>
+                      </span>
+                    </div>
+                    {investingEnabled && (
+                      <div className="pl-6 space-y-2">
+                        <BrandFormControl
+                          label={t('investing.shareLabel', { defaultValue: 'Investor share (%)' }) + ` (${investorShareMin}–${investorShareMax})`}
+                          helperText={t('advanced.investorShareHelp', { defaultValue: 'Percentage of withdrawn merits distributed to investors. Cannot be changed after publishing.' })}
+                        >
+                          <div className="flex items-center gap-4">
+                            <input
+                              type="range"
+                              min={investorShareMin}
+                              max={investorShareMax}
+                              value={investorSharePercent}
+                              onChange={(e) => setInvestorSharePercent(parseInt(e.target.value, 10))}
+                              className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-base-content/20"
+                              disabled={isSubmitting}
+                            />
+                            <Input
+                              type="number"
+                              min={investorShareMin}
+                              max={investorShareMax}
+                              value={investorSharePercent}
+                              onChange={(e) => {
+                                const v = parseInt(e.target.value, 10);
+                                if (!Number.isNaN(v)) setInvestorSharePercent(Math.min(investorShareMax, Math.max(investorShareMin, v)));
+                              }}
+                              className="w-20 h-9"
+                              disabled={isSubmitting}
+                            />
+                          </div>
+                        </BrandFormControl>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* TTL, stop-loss, wallet: only when tappalka enabled */}
+                {tappalkaEnabled && (
+                  <>
+                    <BrandFormControl
+                      label={t('advanced.ttlLabel', { defaultValue: 'Time to live (TTL)' })}
+                      helperText={t('advanced.ttlHelp', { defaultValue: 'Post will automatically close after this period. Cannot be reduced after publishing.' })}
+                      error={errors.ttlDays}
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Select
+                          value={ttlDays == null ? 'indefinite' : String(ttlDays)}
+                          onValueChange={(v) => setTtlDays(v === 'indefinite' ? null : (Number(v) as 7 | 14 | 30 | 60 | 90))}
+                          disabled={isSubmitting}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder={t('advanced.ttlPlaceholder', { defaultValue: 'Select TTL' })} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="7">{t('advanced.ttlDays', { n: 7, defaultValue: '7 days' })}</SelectItem>
+                            <SelectItem value="14">{t('advanced.ttlDays', { n: 14, defaultValue: '14 days' })}</SelectItem>
+                            <SelectItem value="30">{t('advanced.ttlDays', { n: 30, defaultValue: '30 days' })}</SelectItem>
+                            <SelectItem value="60">{t('advanced.ttlDays', { n: 60, defaultValue: '60 days' })}</SelectItem>
+                            <SelectItem value="90">{t('advanced.ttlDays', { n: 90, defaultValue: '90 days' })}</SelectItem>
+                            <SelectItem value="indefinite" disabled={requireTTLForInvestPosts && investingEnabled}>
+                              {t('advanced.ttlIndefinite', { defaultValue: 'Indefinite' })}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {(requireTTLForInvestPosts && investingEnabled) && (
+                          <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-500 text-xs">
+                            <AlertTriangle className="h-4 w-4" aria-hidden />
+                            {t('advanced.immutableHint', { defaultValue: 'Cannot be changed after publishing' })}
+                          </span>
+                        )}
+                      </div>
+                    </BrandFormControl>
+
+                    <BrandFormControl
+                      label={t('advanced.stopLossLabel', { defaultValue: 'Minimum rating for tappalka (0 = disabled)' })}
+                      helperText={t('advanced.stopLossHelp', { defaultValue: 'Post exits tappalka if rating drops below this value. Can be changed later.' })}
+                      error={errors.stopLoss}
+                    >
                       <Input
                         type="number"
-                        min={investorShareMin}
-                        max={investorShareMax}
-                        value={investorSharePercent}
+                        min={0}
+                        value={stopLoss}
                         onChange={(e) => {
                           const v = parseInt(e.target.value, 10);
-                          if (!Number.isNaN(v)) setInvestorSharePercent(Math.min(investorShareMax, Math.max(investorShareMin, v)));
+                          if (!Number.isNaN(v) && v >= 0) setStopLoss(v);
                         }}
-                        className="w-20 h-9"
+                        className="w-32"
                         disabled={isSubmitting}
                       />
+                    </BrandFormControl>
+
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="noAuthorWalletSpend"
+                        checked={noAuthorWalletSpend}
+                        onCheckedChange={(checked) => setNoAuthorWalletSpend(checked === true)}
+                        disabled={isSubmitting}
+                      />
+                      <Label htmlFor="noAuthorWalletSpend" className="text-sm font-medium cursor-pointer">
+                        {t('advanced.noAuthorWalletSpendLabel', { defaultValue: "Don't spend from my wallet on tappalka shows" })}
+                      </Label>
                     </div>
-                  </BrandFormControl>
-                </div>
-              )}
-            </div>
+                    <p className="text-xs text-muted-foreground pl-6">
+                      {t('advanced.noAuthorWalletSpendHelp', { defaultValue: 'If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later.' })}
+                    </p>
+                  </>
+                )}
+              </div>
+            </CollapsibleSection>
           )}
 
           <BrandFormControl
