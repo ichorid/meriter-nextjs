@@ -16,6 +16,7 @@ import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Publication and Comment Edit Permissions', () => {
   jest.setTimeout(60000);
@@ -196,16 +197,14 @@ describe('Publication and Comment Edit Permissions', () => {
       { id: uid(), userId: otherLeadId, communityId: otherCommunityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
 
-    // Set up wallet balances for all users to allow publication creation
-    // Publication creation requires 1 wallet merit
+    // Set up wallet balances for all users to allow publication creation.
+    // Fee for posts is ALWAYS paid from global wallet (GLOBAL_COMMUNITY_ID).
     const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(authorId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(participantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(otherLeadId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(superadminId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(superadminId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(authorId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherLeadId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
@@ -613,10 +612,10 @@ describe('Publication and Comment Edit Permissions', () => {
         { id: uid(), userId: teamParticipant2Id, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
       ]);
 
-      // Set up wallet balances for team participants
+      // Post fee is paid from global wallet
       const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-      await walletService.addTransaction(teamParticipant1Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-      await walletService.addTransaction(teamParticipant2Id, teamCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+      await walletService.addTransaction(teamParticipant1Id, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+      await walletService.addTransaction(teamParticipant2Id, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
     });
 
     it('should allow team participant to edit another team participant\'s publication', async () => {

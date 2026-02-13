@@ -13,6 +13,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Publication Edit - Participant Author Scenario', () => {
   jest.setTimeout(60000);
@@ -127,9 +128,9 @@ describe('Publication Edit - Participant Author Scenario', () => {
       },
     ]);
 
-    // Set up wallet balance for participant author
+    // Post fee is paid from global wallet
     const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await walletService.addTransaction(participantAuthorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantAuthorId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {

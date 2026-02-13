@@ -14,6 +14,7 @@ import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.sc
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Post editing by other participants (allowEditByOthers)', () => {
   jest.setTimeout(60000);
@@ -122,11 +123,11 @@ describe('Post editing by other participants (allowEditByOthers)', () => {
       { id: uid(), userId: leadId, communityId, role: 'lead', createdAt: now, updatedAt: now },
     ]);
 
-    // Set up wallet balances for all users
+    // Post fee is paid from global wallet
     const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(otherParticipantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(authorId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherParticipantId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
