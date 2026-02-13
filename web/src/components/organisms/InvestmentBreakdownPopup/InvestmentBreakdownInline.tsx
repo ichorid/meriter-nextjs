@@ -110,20 +110,6 @@ export function InvestmentBreakdownInline({ postId, compact = false }: Investmen
           ))}
         </ul>
       </div>
-
-      {/* Total stats */}
-      <div className="pt-3 border-t border-base-300 space-y-1 text-sm text-base-content/70">
-        <p className="flex justify-between">
-          <span>{t('poolLabel', { defaultValue: 'Pool' })}</span>
-          <span className="tabular-nums">{breakdown.poolBalance} merits</span>
-        </p>
-        <p className="flex justify-between">
-          <span>{t('totalInvested', { defaultValue: 'Total invested' })}</span>
-          <span className="tabular-nums">
-            {breakdown.poolTotal} merits · {t('investorCount', { count: breakdown.investorCount, defaultValue: 'investor(s)' })}
-          </span>
-        </p>
-      </div>
     </>
   );
 
