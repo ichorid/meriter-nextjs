@@ -43,7 +43,8 @@ function deriveAppUrl(): string {
     if (process.env.APP_URL) {
       return process.env.APP_URL;
     }
-    if (isBuildTime) {
+    // Build time or development: no DOMAIN required
+    if (isBuildTime || process.env.NODE_ENV === 'development') {
       return 'http://localhost';
     }
     throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
@@ -142,7 +143,7 @@ function getDomainConfig(): string {
   // Server-side: require DOMAIN env var (already validated by deriveAppUrl, but double-check)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
   if (!domain) {
-    if (isBuildTime) {
+    if (isBuildTime || process.env.NODE_ENV === 'development') {
       return 'localhost';
     }
     throw new Error(
