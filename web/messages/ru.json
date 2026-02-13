@@ -284,6 +284,8 @@
         "noAuthorWalletSpendYes": "Автор не тратит свой кошелёк на показы",
         "noAuthorWalletSpendNo": "Автор может тратить свой кошелёк на показы",
         "repeatInvestment": "Вы уже вложили {existing} меритов. После этого: всего {total} меритов, доля ~{percent}%",
+        "repeatInvestmentCurrent": "Вы уже вложили: {existing} меритов, доля {currentPercent}%.",
+        "repeatInvestmentAfter": "Будет: {total} меритов, доля {percent}%.",
         "noInvestorsYet": "Пока нет инвесторов",
         "meritsInPool": "{amount} меритов в пуле",
         "meritsAmount": "{amount} меритов",

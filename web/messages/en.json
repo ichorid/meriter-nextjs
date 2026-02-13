@@ -289,6 +289,8 @@
         "noAuthorWalletSpendYes": "Author won't spend from wallet on shows",
         "noAuthorWalletSpendNo": "Author can spend from wallet on shows",
         "repeatInvestment": "You already invested {existing} merits. After this: total {total} merits, share ~{percent}%",
+        "repeatInvestmentCurrent": "You already invested: {existing} merits, share {currentPercent}%.",
+        "repeatInvestmentAfter": "After this: {total} merits, share {percent}%.",
         "noInvestorsYet": "No investors yet",
         "meritsInPool": "{amount} merits in pool",
         "meritsAmount": "{amount} merits",

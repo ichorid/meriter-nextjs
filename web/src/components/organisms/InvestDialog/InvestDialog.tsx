@@ -76,6 +76,11 @@ export function InvestDialog({
     return (myNewTotal / newPoolTotal) * 100;
   }, [myNewTotal, newPoolTotal]);
 
+  const myCurrentSharePercent = useMemo(() => {
+    if (poolTotal <= 0) return 0;
+    return (myExistingAmount / poolTotal) * 100;
+  }, [myExistingAmount, poolTotal]);
+
   const ttlClosesInDays = useMemo(() => {
     if (!ttlExpiresAt) return null;
     const exp = typeof ttlExpiresAt === 'string' ? new Date(ttlExpiresAt) : ttlExpiresAt;
@@ -222,17 +227,24 @@ export function InvestDialog({
                 </div>
               )}
 
-              {/* Repeat investment line */}
+              {/* Repeat investment: current state + after this investment */}
               {myExistingAmount > 0 && (
-                <p className="text-sm text-base-content/80">
-                  {t('repeatInvestment', {
-                    existing: myExistingAmount,
-                    total: myNewTotal,
-                    percent: mySharePercentAmongInvestors.toFixed(1),
-                    defaultValue:
-                      'You already invested {existing} merits. After this: total {total} merits, share ~{percent}%',
-                  })}
-                </p>
+                <div className="text-sm text-base-content/80 space-y-0.5">
+                  <p>
+                    {t('repeatInvestmentCurrent', {
+                      existing: myExistingAmount,
+                      currentPercent: myCurrentSharePercent.toFixed(1),
+                      defaultValue: 'You already invested: {existing} merits, share {currentPercent}%.',
+                    })}
+                  </p>
+                  <p>
+                    {t('repeatInvestmentAfter', {
+                      total: myNewTotal,
+                      percent: mySharePercentAmongInvestors.toFixed(1),
+                      defaultValue: 'After this: {total} merits, share {percent}%.',
+                    })}
+                  </p>
+                </div>
               )}
 
               {/* Warning box */}
