@@ -37,6 +37,8 @@ interface VotingPanelProps {
     hideDirectionToggle?: boolean;
     hideImages?: boolean;
     title?: string;
+    /** When set and hideQuota, used as submit button label instead of withdrawButton */
+    submitButtonLabel?: string;
     onSubmitSimple?: () => void;
 }
 
@@ -64,6 +66,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     hideDirectionToggle = false,
     hideImages = false,
     title,
+    submitButtonLabel,
     onSubmitSimple,
 }) => {
     const t = useTranslations("comments");
@@ -779,7 +782,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? tShared("withdrawButton") : t("giveVote")}
+                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("giveVote")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
