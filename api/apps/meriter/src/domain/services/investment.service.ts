@@ -154,6 +154,8 @@ export class InvestmentService {
         amount: addedAmount,
         createdAt: existing.createdAt,
         updatedAt: now,
+        totalEarnings: existing.totalEarnings ?? 0,
+        earningsHistory: existing.earningsHistory ?? [],
       };
     } else {
       updatedInvestments = [
@@ -163,6 +165,8 @@ export class InvestmentService {
           amount,
           createdAt: now,
           updatedAt: now,
+          totalEarnings: 0,
+          earningsHistory: [],
         },
       ];
     }
@@ -357,11 +361,13 @@ export class InvestmentService {
    * C-4: Round investor shares to 0.01; any remainder goes to author.
    * Follows business-investing.mdc strictly.
    * When session is provided (transaction), notifications are skipped (caller notifies after commit).
+   * F-1: Records totalEarnings and earningsHistory per investor; earningsReason defaults to 'withdrawal', use 'close' when called from handlePostClose.
    */
   async distributeOnWithdrawal(
     postId: string,
     withdrawAmount: number,
     session?: ClientSession,
+    earningsReason: 'withdrawal' | 'close' = 'withdrawal',
   ): Promise<DistributeOnWithdrawalResult> {
     const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
     if (!post) {
@@ -436,6 +442,27 @@ export class InvestmentService {
         session,
       );
     }
+
+    // F-1: Update per-investor totalEarnings and earningsHistory
+    const updateOptions = session ? { session } : {};
+    await Promise.all(
+      investorDistributions.map((dist) =>
+        this.publicationModel.updateOne(
+          { id: postId, 'investments.investorId': dist.investorId },
+          {
+            $inc: { 'investments.$.totalEarnings': dist.amount },
+            $push: {
+              'investments.$.earningsHistory': {
+                amount: dist.amount,
+                date: new Date(),
+                reason: earningsReason,
+              },
+            },
+          },
+          updateOptions,
+        ),
+      ),
+    );
 
     // C-10: Notify each investor (skip when inside transaction; caller notifies after commit)
     if (!session) {
@@ -560,6 +587,27 @@ export class InvestmentService {
           { $set: { investmentPool: 0 } },
           session ? { session } : {},
         );
+
+        // F-1: Record pool_return in each investor's totalEarnings and earningsHistory
+        const updateOpts = session ? { session } : {};
+        await Promise.all(
+          poolReturned.map((p) =>
+            this.publicationModel.updateOne(
+              { id: postId, 'investments.investorId': p.investorId },
+              {
+                $inc: { 'investments.$.totalEarnings': p.amount },
+                $push: {
+                  'investments.$.earningsHistory': {
+                    amount: p.amount,
+                    date: new Date(),
+                    reason: 'pool_return' as const,
+                  },
+                },
+              },
+              updateOpts,
+            ),
+          ),
+        );
       }
     }
 
@@ -569,6 +617,7 @@ export class InvestmentService {
         postId,
         currentScore,
         session,
+        'close',
       );
       totalRatingDistributed = currentScore;
     } else if (currentScore > 0 && investments.length === 0) {

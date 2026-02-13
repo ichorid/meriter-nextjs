@@ -77,11 +77,36 @@ export const UpdateUserProfileSchema = z.object({
 });
 
 // Investment schemas (merit investment in posts)
+export const InvestmentEarningsReasonSchema = z.enum([
+  'withdrawal',
+  'pool_return',
+  'close',
+]);
+export type InvestmentEarningsReason = z.infer<
+  typeof InvestmentEarningsReasonSchema
+>;
+
+export const InvestmentEarningsHistoryEntrySchema = z.object({
+  amount: z.number(),
+  date: z.string().datetime(),
+  reason: InvestmentEarningsReasonSchema,
+});
+export type InvestmentEarningsHistoryEntry = z.infer<
+  typeof InvestmentEarningsHistoryEntrySchema
+>;
+
 export const InvestmentSchema = z.object({
   investorId: z.string(),
   amount: z.number().int().min(0),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
+  /** F-1: Accumulated total received by this investor from this post. */
+  totalEarnings: z.number().min(0).default(0),
+  /** F-1: Per-event history (withdrawal share, pool return, close). */
+  earningsHistory: z
+    .array(InvestmentEarningsHistoryEntrySchema)
+    .optional()
+    .default([]),
 });
 
 export const InvestmentContractSchema = z.object({

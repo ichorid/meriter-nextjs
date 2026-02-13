@@ -20,11 +20,22 @@ export interface PublicationMetrics {
   commentCount: number;
 }
 
+/** F-1: Per-event earnings entry (withdrawal, pool return, close). */
+export interface PublicationInvestmentEarningsEntry {
+  amount: number;
+  date: Date;
+  reason: 'withdrawal' | 'pool_return' | 'close';
+}
+
 export interface PublicationInvestment {
   investorId: string;
   amount: number;
   createdAt: Date;
   updatedAt: Date;
+  /** F-1: Accumulated total received by this investor from this post. */
+  totalEarnings?: number;
+  /** F-1: Per-event history. */
+  earningsHistory?: PublicationInvestmentEarningsEntry[];
 }
 
 /** D-1: Summary stored when post is closed. */
@@ -236,6 +247,19 @@ export class PublicationSchemaClass implements Publication {
       amount: { type: Number, required: true },
       createdAt: { type: Date, required: true },
       updatedAt: { type: Date, required: true },
+      totalEarnings: { type: Number, default: 0 },
+      earningsHistory: {
+        type: [{
+          amount: { type: Number, required: true },
+          date: { type: Date, required: true },
+          reason: {
+            type: String,
+            enum: ['withdrawal', 'pool_return', 'close'],
+            required: true,
+          },
+        }],
+        default: [],
+      },
     }],
     default: [],
   })
