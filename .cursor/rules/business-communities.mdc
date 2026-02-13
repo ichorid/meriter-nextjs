@@ -15,16 +15,24 @@ alwaysApply: false
 
 ## Community Types
 
-### Global Communities (Public Groups)
+### Priority Communities (use Global Merit)
 
-Created by platform administration.
+Communities that share the user's **global wallet**. Includes:
+- МД (Marathon of Good), ОБ (Image of Future), Projects, Support (Feedback)
+
+**Definition:** `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` OR `isPriority === true`
 
 **Characteristics:**
-- All users are members by default, immediately after registration
-- Share ONE common merit between all global communities
-- Merits earned in one global community can be spent in another global community
-- User CANNOT leave a global community
-- List of global communities can expand
+- All users are members by default (for main MVP communities)
+- One wallet for all — earning in МД = spending in ОБ, etc.
+- Fee, voting, withdrawal, tappalka — all from global wallet
+- User CANNOT leave (for MVP global communities)
+
+### Global Communities (Public Groups)
+
+Created by platform administration. May include both priority and non-priority communities.
+
+**Priority communities** (МД, ОБ, Projects, Support) use **global merit** — one wallet shared across them all. See above.
 
 ### Local Communities (Private Groups)
 
@@ -128,7 +136,8 @@ JSON import/export of community settings is provided for:
 
 ### Action Payment Rules
 - Fee for posts and comments in ANY community (including local) is paid in **GLOBAL** merits
-- Voting in local community — with LOCAL merits of that community
+- Voting in **priority** community (МД, ОБ, Projects, Support) — with **GLOBAL** merits
+- Voting in **local** community — with **LOCAL** merits of that community
 - If no local merits — can vote with global merits (for polls)
 
 ### Forwarding Between Communities

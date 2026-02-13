@@ -15,6 +15,25 @@ alwaysApply: false
 
 ---
 
+## Global Merit
+
+**One wallet for priority communities.** Users have a single **global wallet** used for:
+- All fee payments (post, comment, poll) in **any** community
+- Voting, withdrawal, tappalka rewards, investments in **priority communities** (МД, ОБ, Projects, Support)
+
+**MD↔OB sync removed.** Previously МД and ОБ had separate wallets with sync. Now: one global wallet — no sync logic.
+
+| Context | Wallet Used |
+|---------|-------------|
+| Fee (any community) | Global |
+| Voting in priority community | Global |
+| Voting in local community | Local community wallet |
+| Withdrawal in priority community | Global |
+| Tappalka reward in priority community | Global |
+| Investment in priority community post | Global |
+
+---
+
 ## Two Account Types
 
 | Type | Description | Expires? | For Fee? |
@@ -66,12 +85,14 @@ At registration user receives **100 global merits** to wallet.
 
 ### Voting for Content
 
-| Action | Effect | Paid From |
-|--------|--------|-----------|
-| Positive comment | Post rating increases | Quota (priority) → Wallet |
-| Negative comment | Post rating decreases | Wallet ONLY |
-| Self-vote (if allowed) | Rating increases | Wallet ONLY |
-| Poll vote | Vote weight = merit amount | Community merits |
+| Action | Effect | Paid From (Priority Community) | Paid From (Local) |
+|--------|--------|-------------------------------|-------------------|
+| Positive comment | Post rating increases | Quota (if enabled) → Global wallet | Quota → Local wallet |
+| Negative comment | Post rating decreases | Global wallet ONLY | Local wallet ONLY |
+| Self-vote (if allowed) | Rating increases | Global wallet ONLY | Local wallet ONLY |
+| Poll vote | Vote weight = merit amount | Global merits | Local merits |
+
+**Priority communities** = МД, ОБ, Projects, Support (typeTag or isPriority).
 
 ---
 
@@ -152,13 +173,14 @@ Multipliers change ratio "merit from user" → "merit on post".
 
 ### Balance Checks (in order)
 ```
-1. Check fee availability (global wallet)
-2. Check voting amount availability:
-   a. If upvote: check quota first, then wallet
+1. Check fee availability — ALWAYS global wallet (any community)
+2. Determine voting wallet: priority community → global; local → local
+3. Check voting amount availability:
+   a. If upvote: check quota first (if enabled), then wallet
    b. If downvote: check wallet only
    c. If self-vote: check wallet only (quota forbidden)
-3. Deduct fee first
-4. Process voting amount
+4. Deduct fee first
+5. Process voting amount
 ```
 
 ### Transaction Integrity

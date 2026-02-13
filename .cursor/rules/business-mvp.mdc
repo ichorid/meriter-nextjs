@@ -20,6 +20,8 @@ alwaysApply: true
 
 **Game Goal:** Collect as many merits as possible and use them to promote "Images of Future" (posts in ОБ) that the user likes.
 
+**Main currency:** Global merit. One wallet for МД, ОБ, Projects, Support. Quota is disabled in priority communities — tappalka and voting are the emission sources.
+
 ---
 
 ## MVP Terminology Mapping
@@ -34,7 +36,14 @@ alwaysApply: true
 
 ## Global Communities in MVP
 
-MVP has **4 global communities**:
+MVP has **4 priority communities** (all use global merit, quota disabled):
+
+| Community | typeTag | Uses global merit |
+|-----------|---------|-------------------|
+| МД | marathon-of-good | Yes |
+| ОБ | future-vision | Yes |
+| Projects | team-projects | Yes |
+| Feedback | support | Yes |
 
 ### 1. Image of Future (ОБ / Obraz Budushchego)
 
@@ -141,7 +150,7 @@ MVP has **4 global communities**:
 3. Optionally: enter invite code
 4. Automatic:
    - "Member" role in all global communities
-   - 100 welcome merits
+   - 100 welcome merits to **global wallet**
    - Additional role by invite code (if any)
 
 ### 2. Publishing Ideas
@@ -154,8 +163,8 @@ MVP has **4 global communities**:
 1. Do a good deed in real life
 2. Post report in **МД** community
 3. Receive positive comments from others
-4. Withdraw earned merits to wallet
-5. Use to support posts in ОБ
+4. Withdraw earned merits to **global wallet**
+5. Use to support posts in ОБ (same wallet)
 
 **Method B: Projects**
 1. Post idea/project in **Projects** community
