@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PublicationHeader } from './PublicationHeader';
 import { PublicationContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
@@ -31,11 +31,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   onCategoryClick,
 }) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-
-  // Check if we're on the community feed page (not the detail page)
-  const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
 
   // Check if this is a poll
   const isPoll = publication.type === 'poll';
@@ -84,20 +79,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       return;
     }
 
-    // If on community feed page, set query parameter to show side panel
-    // BUT only if screen is wide enough (adaptive panel logic)
-    // Default limit: 1280px
-    const ADAPTIVE_PANEL_MIN_WIDTH = 1280;
-    const isWideScreen = typeof window !== 'undefined' && window.innerWidth >= ADAPTIVE_PANEL_MIN_WIDTH;
-
-    if (isOnCommunityFeedPage && isWideScreen) {
-      const params = new URLSearchParams(searchParams?.toString() || '');
-      params.set('post', postSlug);
-      router.push(`${pathname}?${params.toString()}`);
-    } else {
-      // Otherwise, navigate to detail page
-      router.push(`/meriter/communities/${communityId}/posts/${postSlug}`);
-    }
+    // Always navigate to post detail page. Votes/comments panel opens only via the score button click.
+    router.push(`/meriter/communities/${communityId}/posts/${postSlug}`);
   };
 
   // Render poll card

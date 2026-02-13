@@ -284,16 +284,15 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     useUIStore.getState().openVotingPopup(publicationId, 'publication', mode);
   };
 
-  const handleCommentClick = () => {
+  const handleCommentClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!publicationId || !communityId) return;
-    
-    // If on community feed page, set query parameter to show side panel
+    // If on community feed page, set query parameter to show votes/comments panel
     if (isOnCommunityFeedPage) {
       const params = new URLSearchParams(searchParams?.toString() || '');
       params.set('post', publicationId);
       router.push(`${pathname}?${params.toString()}`);
     } else {
-      // Otherwise, navigate to detail page
       router.push(`/meriter/communities/${communityId}/posts/${publicationId}`);
     }
   };
