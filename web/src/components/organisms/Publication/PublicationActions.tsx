@@ -17,8 +17,8 @@ import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
 import { useInvestors } from '@/hooks/api/useInvestments';
-import { InvestorBar } from '@/shared/components/investor-bar';
 import { InvestButton } from '@/components/organisms/InvestButton';
+import { InvestmentBreakdownPopup } from '@/components/organisms/InvestmentBreakdownPopup';
 import { isTestAuthMode } from '@/config';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
@@ -106,6 +106,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const pathname = usePathname();
   const t = useTranslations('shared');
   const tComments = useTranslations('comments');
+  const tInvesting = useTranslations('investing');
   const myId = user?.id;
   const testAuthMode = isTestAuthMode();
   const isSuperadmin = user?.globalRole === 'superadmin';
@@ -185,7 +186,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const investmentPoolTotal = (publication as any).investmentPoolTotal ?? 0;
   const { data: investorsData } = useInvestors(investingEnabled ? publicationId : undefined);
   const investments = investorsData ?? [];
-  
+  const [breakdownPostId, setBreakdownPostId] = useState<string | null>(null);
+
   // Get quota for balance checks
   const { quotasMap } = useCommunityQuotas(communityId ? [communityId] : []);
   const quotaData = communityId ? quotasMap.get(communityId) : null;
@@ -425,18 +427,27 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
-      {/* Investment section: pool indicator + InvestorBar (only when investingEnabled) */}
+      {/* Investment block: compact, clickable → breakdown popup (C-7) */}
       {investingEnabled && (
-        <div className="mb-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-base-content/70">💰</span>
-            <span className="text-sm font-medium tabular-nums">{investmentPool} merits</span>
-          </div>
-          <InvestorBar
-            investments={investments}
-            investmentPool={investmentPool}
-            investmentPoolTotal={investmentPoolTotal}
-            investorSharePercent={investorSharePercent}
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setBreakdownPostId(publicationId ?? null);
+            }}
+            className="flex items-center gap-2 text-sm text-base-content/70 hover:text-base-content/90 hover:bg-base-200 rounded-lg px-2 py-1.5 transition-colors"
+            title={tInvesting('viewBreakdown', { defaultValue: 'View investment breakdown' })}
+          >
+            <span>💰</span>
+            <span className="font-medium tabular-nums">{investmentPool} merits</span>
+            <span className="text-base-content/50">·</span>
+            <span>{investments.length} {tInvesting('investorsCompact', { count: investments.length, defaultValue: 'investors' })}</span>
+          </button>
+          <InvestmentBreakdownPopup
+            postId={breakdownPostId}
+            open={!!breakdownPostId && breakdownPostId === publicationId}
+            onOpenChange={(open) => !open && setBreakdownPostId(null)}
           />
         </div>
       )}

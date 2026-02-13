@@ -284,7 +284,14 @@
         "investedBy": "{amount} меритов от {count} инвестор(ов)",
         "pool": "Пул: {amount}",
         "noMeritsMessage": "У вас нет меритов для инвестирования, сперва заработайте их",
-        "earnMeritsButton": "Заработать мериты"
+        "earnMeritsButton": "Заработать мериты",
+        "viewBreakdown": "Подробнее об инвестициях",
+        "investorsCompact": "инвесторов",
+        "breakdownTitle": "Инвестиции",
+        "investorList": "Инвесторы",
+        "firstInvest": "Первая",
+        "lastInvest": "Последняя",
+        "totalInvested": "Всего вложено"
     },
     "shared": {
         "balance": "Баланс:",

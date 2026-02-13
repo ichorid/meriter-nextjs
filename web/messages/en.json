@@ -289,7 +289,14 @@
         "investedBy": "{amount} merits from {count} investor(s)",
         "pool": "Pool: {amount}",
         "noMeritsMessage": "You have no merits to invest. Earn some first.",
-        "earnMeritsButton": "Earn merits"
+        "earnMeritsButton": "Earn merits",
+        "viewBreakdown": "View investment breakdown",
+        "investorsCompact": "investors",
+        "breakdownTitle": "Investments",
+        "investorList": "Investors",
+        "firstInvest": "First",
+        "lastInvest": "Last",
+        "totalInvested": "Total invested"
     },
     "shared": {
         "balance": "Balance:",
