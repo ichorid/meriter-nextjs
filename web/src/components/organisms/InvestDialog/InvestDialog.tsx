@@ -116,12 +116,20 @@ export function InvestDialog({
             </div>
 
             {amount > 0 && (
-              <p className="text-sm font-medium text-primary">
-                {t('yourShare', {
-                  defaultValue: 'You will receive ~{percent}% of each withdrawal (to investors)',
-                  percent: myShareOfInvestorPortion.toFixed(1),
-                })}
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-primary">
+                  {t('yourShare', {
+                    defaultValue: 'You will receive ~{percent}%* of each withdrawal (to investors)',
+                    percent: myShareOfInvestorPortion.toFixed(1),
+                  })}
+                </p>
+                <p className="text-xs text-base-content/60 italic">
+                  {t('yourShareFootnote', {
+                    defaultValue:
+                      'The percentage may change when other investors put funds into the post – income is always shared proportionally to total investments. You can always invest again to increase your share.',
+                  })}
+                </p>
+              </div>
             )}
 
             <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
