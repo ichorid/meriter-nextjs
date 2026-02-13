@@ -75,11 +75,12 @@ export class QuotaResetService {
 
     const dailyQuota = community.settings.dailyEmission;
 
-    // Check user role
-    const userRole = await this.permissionService.getUserRoleInCommunity(
+    // Check user role (for future role-based quota rules)
+    const _userRole = await this.permissionService.getUserRoleInCommunity(
       userId,
       communityId,
     );
+    void _userRole;
 
     // Future Vision communities don't use quota regardless of role
     // Note: viewer role removed - all users are now participants

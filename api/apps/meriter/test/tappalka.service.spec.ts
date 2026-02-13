@@ -20,7 +20,7 @@ import {
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import { createTestUser, createTestCommunity } from './helpers/fixtures';
+import { createTestUser } from './helpers/fixtures';
 
 describe('TappalkaService', () => {
   jest.setTimeout(30000);
@@ -256,9 +256,12 @@ describe('TappalkaService', () => {
       });
       await createTestUserDoc({ id: testUserId2 });
 
-      const post1 = await createTestPublication(testUserId2, { categories: [testCategoryId] });
-      const post2 = await createTestPublication(testUserId2, { categories: [testCategoryId2] });
-      const post3 = await createTestPublication(testUserId2, { categories: [] });
+      const _post1 = await createTestPublication(testUserId2, { categories: [testCategoryId] });
+      const _post2 = await createTestPublication(testUserId2, { categories: [testCategoryId2] });
+      const _post3 = await createTestPublication(testUserId2, { categories: [] });
+      void _post1;
+      void _post2;
+      void _post3;
 
       const posts = await tappalkaService.getEligiblePosts(testCommunityId, testUserId);
       expect(posts.length).toBe(3);
@@ -323,7 +326,8 @@ describe('TappalkaService', () => {
 
     it('should return a pair of posts with sessionId', async () => {
       await createTestCommunityWithTappalka();
-      const user2 = await createTestUserDoc({ id: testUserId2 });
+      const _user2 = await createTestUserDoc({ id: testUserId2 });
+      void _user2;
 
       const post1 = await createTestPublication(testUserId2);
       const post2 = await createTestPublication(testUserId2);
@@ -340,7 +344,8 @@ describe('TappalkaService', () => {
 
     it('should return posts with correct structure', async () => {
       await createTestCommunityWithTappalka();
-      const user2 = await createTestUserDoc({ id: testUserId2, displayName: 'User 2' });
+      const _user2 = await createTestUserDoc({ id: testUserId2, displayName: 'User 2' });
+      void _user2;
       const post1 = await createTestPublication(testUserId2, {
         title: 'Post 1',
         description: 'Description 1',
@@ -361,7 +366,8 @@ describe('TappalkaService', () => {
       
       // Check structure of both posts
       const postA = pair?.postA.id === post1.id ? pair.postA : pair?.postB;
-      const postB = pair?.postA.id === post2.id ? pair.postA : pair?.postB;
+      const _postB = pair?.postA.id === post2.id ? pair.postA : pair?.postB;
+      void _postB;
       
       if (postA?.id === post1.id) {
         expect(postA.title).toBe('Post 1');
@@ -610,7 +616,8 @@ describe('TappalkaService', () => {
     it('should return noMorePosts if no more pairs available', async () => {
       await createTestCommunityWithTappalka();
       await createTestUserDoc({ id: testUserId });
-      const user2 = await createTestUserDoc({ id: testUserId2 });
+      const _user2 = await createTestUserDoc({ id: testUserId2 });
+      void _user2;
 
       const winner = await createTestPublication(testUserId2);
       const loser = await createTestPublication(testUserId2);

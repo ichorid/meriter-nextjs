@@ -238,10 +238,11 @@ export const walletsRouter = router({
       
       // Calculate effective daily quota with special-group rules
       const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
-      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
         actualUserId,
         input.communityId,
       );
+      void _userRole;
       const dailyQuota =
         !quotaEnabled ||
         community.typeTag === 'future-vision'
@@ -486,10 +487,11 @@ export const walletsRouter = router({
 
       // Calculate effective daily quota with special-group rules
       const baseDailyQuota = community.settings?.dailyEmission || 0;
-      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
         userId,
         input.communityId,
       );
+      void _userRole;
       const dailyQuota =
         community.typeTag === 'future-vision'
           ? 0

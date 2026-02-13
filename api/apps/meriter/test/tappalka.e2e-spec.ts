@@ -139,7 +139,7 @@ describe('Tappalka E2E', () => {
     });
 
     // Create user roles
-    const role1 = await userCommunityRoleModel.create({
+    const _role1 = await userCommunityRoleModel.create({
       id: uid(),
       userId,
       communityId,
@@ -148,7 +148,7 @@ describe('Tappalka E2E', () => {
       updatedAt: now,
     });
 
-    const role2 = await userCommunityRoleModel.create({
+    const _role2 = await userCommunityRoleModel.create({
       id: uid(),
       userId: userId2,
       communityId,
@@ -157,7 +157,7 @@ describe('Tappalka E2E', () => {
       updatedAt: now,
     });
 
-    const role3 = await userCommunityRoleModel.create({
+    const _role3 = await userCommunityRoleModel.create({
       id: uid(),
       userId: userId3,
       communityId,
@@ -244,7 +244,7 @@ describe('Tappalka E2E', () => {
 
     // Step 5: Make 10 comparisons
     let currentPair = firstPair;
-    let totalComparisons = 0;
+    let _totalComparisons = 0;
 
     for (let i = 0; i < 10; i++) {
       // Submit choice (always choose postA as winner)
@@ -257,7 +257,7 @@ describe('Tappalka E2E', () => {
 
       expect(result.success).toBe(true);
       expect(result.newComparisonCount).toBeDefined();
-      totalComparisons++;
+      _totalComparisons++;
 
       // Check progress after each comparison
       const progress = await trpcQuery(app, 'tappalka.getProgress', {

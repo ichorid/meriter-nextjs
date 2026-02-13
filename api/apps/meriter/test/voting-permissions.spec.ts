@@ -58,7 +58,7 @@ describe('Voting Permissions', () => {
 
   // Test publication IDs
   let marathonPubId: string;
-  let visionPubId: string;
+  let _visionPubId: string;
   let regularPubId: string;
   let team1PubId: string;
 
@@ -112,7 +112,7 @@ describe('Voting Permissions', () => {
     team2CommunityId = uid();
 
     marathonPubId = uid();
-    visionPubId = uid();
+    _visionPubId = uid();
     regularPubId = uid();
     team1PubId = uid();
   });
@@ -331,7 +331,7 @@ describe('Voting Permissions', () => {
       content: 'Vision publication',
       type: 'text',
     });
-    visionPubId = visionPub.getId.getValue();
+    _visionPubId = visionPub.getId.getValue();
 
     const regularPub = await publicationService.createPublication(lead2Id, {
       communityId: regularCommunityId,

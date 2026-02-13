@@ -507,7 +507,31 @@ async function createVoteLogic(
   const walletAmount = input.walletAmount ?? 0;
   const totalAmount = quotaAmount + walletAmount;
 
-  if (totalAmount <= 0) {
+  // commentMode validation: which comment/vote types are allowed in this community
+  const commentMode =
+    community.settings?.commentMode ??
+    (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all');
+  if (commentMode === 'neutralOnly' && totalAmount !== 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'This community only allows neutral comments',
+    });
+  }
+  if (commentMode === 'weightedOnly' && totalAmount === 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'This community requires comments to have merit weight',
+    });
+  }
+
+  // Allow totalAmount === 0 only for neutralOnly (neutral comment); otherwise require positive weight
+  if (totalAmount < 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Vote amount cannot be negative',
+    });
+  }
+  if (totalAmount === 0 && commentMode !== 'neutralOnly') {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'At least one of quotaAmount or walletAmount must be greater than zero',
@@ -520,10 +544,11 @@ async function createVoteLogic(
 
   // Role-specific and community-specific voting rules should be enforced BEFORE balance/quota checks
   // so we don't mask the real reason with "Insufficient quota/balance" errors.
-  const userRole = await ctx.permissionService.getUserRoleInCommunity(
+  const _userRole = await ctx.permissionService.getUserRoleInCommunity(
     ctx.user.id,
     communityId,
   );
+  void _userRole;
 
   // Check currencySource from votingSettings first (highest priority)
   const currencySource = community?.votingSettings?.currencySource;
