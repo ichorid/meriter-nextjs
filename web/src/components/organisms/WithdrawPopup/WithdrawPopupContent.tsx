@@ -109,7 +109,10 @@ export function WithdrawPopupContent({
 
       onClose();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('errorSubmitting') || 'Failed to submit';
+      let message = err instanceof Error ? err.message : t('errorSubmitting') || 'Failed to submit';
+      if (message === 'This community only allows neutral comments') {
+        message = t('voteDisabled.neutralOnlyError');
+      }
       onUpdateError(message);
     }
   };

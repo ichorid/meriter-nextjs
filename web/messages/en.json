@@ -369,7 +369,8 @@
             "ownPostNotAllowed": "Voting on your own posts is not allowed in this community",
             "viewerNotMarathon": "Viewers can only vote in marathon-of-good communities",
             "teammateInSpecialGroup": "You cannot vote for your teammates in this community",
-            "commentVotingDisabled": "Voting on comments is disabled. You can only vote on posts/publications."
+            "commentVotingDisabled": "Voting on comments is disabled. You can only vote on posts/publications.",
+            "neutralOnlyError": "This community only allows neutral comments"
         },
         "loggingOut": "Logging out...",
         "confirmLogout": "Confirm Logout",

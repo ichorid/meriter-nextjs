@@ -27,6 +27,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   communityId,
 }) => {
   const t = useTranslations('comments');
+  const tShared = useTranslations('shared');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
   const enableCommentImageUploads = features.commentImageUploads;
@@ -387,9 +388,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
       console.error('[VotingPopup] Error submitting vote:', err);
-      const message = err instanceof Error ? err.message : t('errorCommenting');
-      
-      // Show error in toast notification
+      let message = err instanceof Error ? err.message : t('errorCommenting');
+      if (message === 'This community only allows neutral comments') {
+        message = tShared('voteDisabled.neutralOnlyError');
+      }
       addToast(message, 'error');
     }
   };
