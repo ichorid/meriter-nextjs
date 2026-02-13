@@ -87,65 +87,70 @@ export class PostClosingService {
     let result: HandlePostCloseResult;
     let closingSummary: PublicationClosingSummary;
 
-    await this.connection.withTransaction(async (session) => {
-      result = await this.investmentService.handlePostClose(postId, session);
+    const session = await this.connection.startSession();
+    try {
+      await session.withTransaction(async () => {
+        result = await this.investmentService.handlePostClose(postId, session);
 
-      if (result.ratingDistributed.authorAmount > 0) {
-        await this.walletService.addTransaction(
-          beneficiaryId,
-          communityId,
-          'credit',
-          result.ratingDistributed.authorAmount,
-          'personal',
-          'publication_withdrawal',
-          postId,
-          currency,
-          `Withdrawal from publication ${postId} (post closed)`,
-          session,
+        if (result.ratingDistributed.authorAmount > 0) {
+          await this.walletService.addTransaction(
+            beneficiaryId,
+            communityId,
+            'credit',
+            result.ratingDistributed.authorAmount,
+            'personal',
+            'publication_withdrawal',
+            postId,
+            currency,
+            `Withdrawal from publication ${postId} (post closed)`,
+            session,
+          );
+        }
+
+        if (result.totalRatingDistributed > 0) {
+          await this.publicationService.reduceScore(
+            postId,
+            result.totalRatingDistributed,
+            session,
+          );
+        }
+
+        const poolReturnedTotal = result.poolReturned.reduce(
+          (sum, p) => sum + p.amount,
+          0,
         );
-      }
-
-      if (result.totalRatingDistributed > 0) {
-        await this.publicationService.reduceScore(
-          postId,
-          result.totalRatingDistributed,
-          session,
+        const distributedToInvestors = result.ratingDistributed.investorDistributions.reduce(
+          (sum, d) => sum + d.amount,
+          0,
         );
-      }
 
-      const poolReturnedTotal = result.poolReturned.reduce(
-        (sum, p) => sum + p.amount,
-        0,
-      );
-      const distributedToInvestors = result.ratingDistributed.investorDistributions.reduce(
-        (sum, d) => sum + d.amount,
-        0,
-      );
+        closingSummary = {
+          totalEarned: result.totalRatingDistributed + currentPool,
+          distributedToInvestors,
+          authorReceived: result.ratingDistributed.authorAmount,
+          spentOnShows: Math.max(0, investmentPoolTotal - currentPool),
+          poolReturned: poolReturnedTotal,
+        };
 
-      closingSummary = {
-        totalEarned: result.totalRatingDistributed + currentPool,
-        distributedToInvestors,
-        authorReceived: result.ratingDistributed.authorAmount,
-        spentOnShows: Math.max(0, investmentPoolTotal - currentPool),
-        poolReturned: poolReturnedTotal,
-      };
-
-      const now = new Date();
-      await this.publicationModel.updateOne(
-        { id: postId },
-        {
-          $set: {
-            status: 'closed',
-            closedAt: now,
-            closeReason: reason,
-            closingSummary,
-            investmentPool: 0,
-            'metrics.score': 0,
+        const now = new Date();
+        await this.publicationModel.updateOne(
+          { id: postId },
+          {
+            $set: {
+              status: 'closed',
+              closedAt: now,
+              closeReason: reason,
+              closingSummary,
+              investmentPool: 0,
+              'metrics.score': 0,
+            },
           },
-        },
-        { session },
-      );
-    });
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
 
     const res = result!;
     const summary = closingSummary!;
