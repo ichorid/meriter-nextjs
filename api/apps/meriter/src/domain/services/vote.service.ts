@@ -93,14 +93,13 @@ export class VoteService {
     // Permission checks are handled by PermissionService in the tRPC router before this method is called
     // This method only handles business logic validation (amounts, quota/wallet restrictions, post types)
 
-    // Validate that at least one amount is positive
-    if (amountQuota <= 0 && amountWallet <= 0) {
-      throw new BadRequestException('At least one of amountQuota or amountWallet must be greater than zero');
-    }
-
     // Validate amounts are non-negative
     if (amountQuota < 0 || amountWallet < 0) {
       throw new BadRequestException('Vote amounts cannot be negative');
+    }
+    // Allow both zero only for neutral comments (commentMode=neutralOnly is enforced in router)
+    if (amountQuota === 0 && amountWallet === 0 && !(comment?.trim?.())) {
+      throw new BadRequestException('Neutral comment must include comment text');
     }
 
     // Validate comment is provided (can be empty string but field must exist)
@@ -138,42 +137,46 @@ export class VoteService {
     const beneficiaryTeamCommunities = await this.getTeamCommunitiesForUser(effectiveBeneficiaryId);
     const sharedTeamCommunities = voterTeamCommunities.filter(id => beneficiaryTeamCommunities.includes(id));
 
-    // Evaluate currency mode using factorized service (Factors 2 + 3)
-    const currencyMode = await this.voteFactorService.evaluateCurrencyMode(
-      userId,
-      communityId,
-      effectiveBeneficiaryId,
-      targetType,
-      postType,
-      isProject,
-      direction,
-      userRole,
-      sharedTeamCommunities,
-    );
+    const totalAmount = amountQuota + amountWallet;
+    const isNeutralComment = totalAmount === 0;
 
-    // Validate amounts against currency mode result
-    if (!currencyMode.allowedQuota && amountQuota > 0) {
-      throw new BadRequestException(
-        currencyMode.reason || 'Quota voting is not allowed for this vote',
+    // For neutral comments (0,0), skip currency mode validation
+    if (!isNeutralComment) {
+      const currencyMode = await this.voteFactorService.evaluateCurrencyMode(
+        userId,
+        communityId,
+        effectiveBeneficiaryId,
+        targetType,
+        postType,
+        isProject,
+        direction,
+        userRole,
+        sharedTeamCommunities,
       );
-    }
 
-    if (!currencyMode.allowedWallet && amountWallet > 0) {
-      throw new BadRequestException(
-        currencyMode.reason || 'Wallet voting is not allowed for this vote',
-      );
-    }
+      if (!currencyMode.allowedQuota && amountQuota > 0) {
+        throw new BadRequestException(
+          currencyMode.reason || 'Quota voting is not allowed for this vote',
+        );
+      }
 
-    if (currencyMode.requiredCurrency === 'quota' && amountQuota <= 0) {
-      throw new BadRequestException(
-        currencyMode.reason || 'Quota voting is required for this vote',
-      );
-    }
+      if (!currencyMode.allowedWallet && amountWallet > 0) {
+        throw new BadRequestException(
+          currencyMode.reason || 'Wallet voting is not allowed for this vote',
+        );
+      }
 
-    if (currencyMode.requiredCurrency === 'wallet' && amountWallet <= 0) {
-      throw new BadRequestException(
-        currencyMode.reason || 'Wallet voting is required for this vote',
-      );
+      if (currencyMode.requiredCurrency === 'quota' && amountQuota <= 0) {
+        throw new BadRequestException(
+          currencyMode.reason || 'Quota voting is required for this vote',
+        );
+      }
+
+      if (currencyMode.requiredCurrency === 'wallet' && amountWallet <= 0) {
+        throw new BadRequestException(
+          currencyMode.reason || 'Wallet voting is required for this vote',
+        );
+      }
     }
 
     // Allow multiple votes on the same content - remove the duplicate check
@@ -198,7 +201,6 @@ export class VoteService {
     this.logger.log(`Vote created successfully: ${vote.id}`);
 
     // Publish domain event for notifications
-    const totalAmount = amountQuota + amountWallet;
     if (targetType === 'publication') {
       await this.eventBus.publish(
         new PublicationVotedEvent(targetId, userId, totalAmount, direction),
