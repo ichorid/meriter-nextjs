@@ -43,6 +43,10 @@ export interface CreatePublicationDto {
   helpNeeded?: string[];
   investingEnabled?: boolean;
   investorSharePercent?: number;
+  ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+  ttlExpiresAt?: Date | null;
+  stopLoss?: number;
+  noAuthorWalletSpend?: boolean;
 }
 
 @Injectable()
@@ -108,6 +112,12 @@ export class PublicationService {
     // Save to database using Mongoose directly
     // Include additional fields from DTO that are not in the aggregate snapshot
     const publicationSnapshot = publication.toSnapshot();
+    const createdAt = new Date();
+    const ttlExpiresAt =
+      dto.ttlDays != null && dto.ttlDays > 0
+        ? new Date(createdAt.getTime() + dto.ttlDays * 24 * 60 * 60 * 1000)
+        : dto.ttlExpiresAt ?? null;
+
     await this.publicationModel.create({
       ...publicationSnapshot,
       postType: dto.postType || 'basic',
@@ -120,6 +130,10 @@ export class PublicationService {
       investmentPool: 0,
       investmentPoolTotal: 0,
       investments: [],
+      ttlDays: dto.ttlDays ?? null,
+      ttlExpiresAt,
+      stopLoss: dto.stopLoss ?? 0,
+      noAuthorWalletSpend: dto.noAuthorWalletSpend ?? false,
     });
 
     // Publish domain event

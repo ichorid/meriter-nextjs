@@ -69,6 +69,11 @@ export interface Publication {
   investmentPool?: number;
   investmentPoolTotal?: number;
   investments?: PublicationInvestment[];
+  // Post advanced settings (TTL, tappalka)
+  ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+  ttlExpiresAt?: Date | null;
+  stopLoss?: number;
+  noAuthorWalletSpend?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -215,6 +220,19 @@ export class PublicationSchemaClass implements Publication {
     default: [],
   })
   investments?: PublicationInvestment[];
+
+  // Post advanced settings (TTL, tappalka)
+  @Prop({ type: Number, enum: [7, 14, 30, 60, 90, null], default: null })
+  ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+
+  @Prop({ type: Date, default: null })
+  ttlExpiresAt?: Date | null;
+
+  @Prop({ default: 0 })
+  stopLoss?: number;
+
+  @Prop({ default: false })
+  noAuthorWalletSpend?: boolean;
 
   @Prop({ required: true })
   createdAt!: Date;

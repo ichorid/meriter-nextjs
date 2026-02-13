@@ -111,6 +111,13 @@ export const CommunitySettingsSchema = z.object({
   commentMode: z
     .enum(['all', 'neutralOnly', 'weightedOnly'])
     .default('all'),
+  // Investment constraints for posts
+  /** When true, posts with investing enabled must have TTL set (no indefinite). */
+  requireTTLForInvestPosts: z.boolean().default(false),
+  /** Max allowed TTL in days for posts in this community. Null = no limit. */
+  maxTTL: z.number().int().min(1).nullable().optional(),
+  /** Days without earning after which post can be auto-closed. Default 7. */
+  inactiveCloseDays: z.number().int().min(0).default(7),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -320,6 +327,14 @@ export const PublicationSchema = IdentifiableSchema.merge(
   investmentPool: z.number().int().min(0).optional().default(0),
   investmentPoolTotal: z.number().int().min(0).optional().default(0),
   investments: z.array(InvestmentSchema).optional().default([]),
+  // Post advanced settings (TTL, tappalka)
+  /** TTL in days: 7, 14, 30, 60, 90, or null (indefinite). ttlExpiresAt = createdAt + ttlDays */
+  ttlDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
+  ttlExpiresAt: z.date().nullable().optional(),
+  /** Minimum rating for tappalka; below this post is not shown. Default 0 (disabled). */
+  stopLoss: z.number().int().min(0).optional().default(0),
+  /** If true, do not spend from author wallet on tappalka shows. Default false. */
+  noAuthorWalletSpend: z.boolean().optional().default(false),
 });
 
 export const CommentAuthorMetaSchema = z.object({
@@ -439,6 +454,10 @@ export const CreatePublicationDtoSchema = z.object({
   // Investment contract (immutable after creation)
   investingEnabled: z.boolean().optional().default(false),
   investorSharePercent: z.number().int().min(1).max(99).optional(),
+  // Post advanced settings
+  ttlDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
+  stopLoss: z.number().int().min(0).optional().default(0),
+  noAuthorWalletSpend: z.boolean().optional().default(false),
 })
   .refine(
     (data) => {
@@ -606,6 +625,9 @@ export const UpdateCommunityDtoSchema = z.object({
     investingEnabled: z.boolean().optional(),
     investorShareMin: z.number().int().min(1).max(99).optional(),
     investorShareMax: z.number().int().min(1).max(99).optional(),
+    requireTTLForInvestPosts: z.boolean().optional(),
+    maxTTL: z.number().int().min(1).nullable().optional(),
+    inactiveCloseDays: z.number().int().min(0).optional(),
     tappalkaOnlyMode: z.boolean().optional(),
     commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
   }).passthrough().optional(),
@@ -846,6 +868,11 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   investmentPool: z.number().int().min(0).optional().default(0),
   investmentPoolTotal: z.number().int().min(0).optional().default(0),
   investments: z.array(InvestmentSchema).optional().default([]),
+  // Post advanced settings
+  ttlDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
+  ttlExpiresAt: z.date().nullable().optional(),
+  stopLoss: z.number().int().min(0).optional().default(0),
+  noAuthorWalletSpend: z.boolean().optional().default(false),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

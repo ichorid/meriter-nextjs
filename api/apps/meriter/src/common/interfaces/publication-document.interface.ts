@@ -52,6 +52,11 @@ export interface PublicationDocument {
     createdAt: Date;
     updatedAt: Date;
   }>;
+  // Post advanced settings (TTL, tappalka)
+  ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+  ttlExpiresAt?: Date | null;
+  stopLoss?: number;
+  noAuthorWalletSpend?: boolean;
 }
 
 /**

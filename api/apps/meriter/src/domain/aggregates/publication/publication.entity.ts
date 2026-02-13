@@ -83,6 +83,10 @@ export class Publication implements EditableEntity {
     private readonly investmentPool?: number,
     private readonly investmentPoolTotal?: number,
     private readonly investments?: Array<{ investorId: string; amount: number; createdAt: Date; updatedAt: Date }>,
+    private readonly ttlDays?: 7 | 14 | 30 | 60 | 90 | null,
+    private readonly ttlExpiresAt?: Date | null,
+    private readonly stopLoss?: number,
+    private readonly noAuthorWalletSpend?: boolean,
   ) { }
 
   static create(
@@ -106,6 +110,10 @@ export class Publication implements EditableEntity {
       methods?: string[];
       stage?: string;
       helpNeeded?: string[];
+      ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+      ttlExpiresAt?: Date | null;
+      stopLoss?: number;
+      noAuthorWalletSpend?: boolean;
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
@@ -138,11 +146,15 @@ export class Publication implements EditableEntity {
       null, // deletedAt
       new Date(),
       new Date(),
-      undefined, // investingEnabled
+      undefined, // investingEnabled (set by service on persist)
       undefined, // investorSharePercent
       undefined, // investmentPool
       undefined, // investmentPoolTotal
       undefined, // investments
+      options.ttlDays ?? null,
+      options.ttlExpiresAt ?? null,
+      options.stopLoss ?? 0,
+      options.noAuthorWalletSpend ?? false,
     );
   }
 
@@ -181,6 +193,10 @@ export class Publication implements EditableEntity {
       snapshot.investmentPool,
       snapshot.investmentPoolTotal,
       snapshot.investments,
+      snapshot.ttlDays ?? null,
+      snapshot.ttlExpiresAt != null ? (snapshot.ttlExpiresAt instanceof Date ? snapshot.ttlExpiresAt : new Date(snapshot.ttlExpiresAt)) : null,
+      snapshot.stopLoss ?? 0,
+      snapshot.noAuthorWalletSpend ?? false,
     );
   }
 
@@ -352,6 +368,10 @@ export class Publication implements EditableEntity {
       investmentPool: this.investmentPool,
       investmentPoolTotal: this.investmentPoolTotal,
       investments: this.investments,
+      ttlDays: this.ttlDays ?? undefined,
+      ttlExpiresAt: this.ttlExpiresAt ?? undefined,
+      stopLoss: this.stopLoss ?? 0,
+      noAuthorWalletSpend: this.noAuthorWalletSpend ?? false,
     };
   }
 }

@@ -59,6 +59,12 @@ export interface CommunitySettings {
   investorShareMin?: number;
   /** Maximum investor share percentage (1-99) */
   investorShareMax?: number;
+  /** When true, posts with investing enabled must have TTL set (no indefinite). */
+  requireTTLForInvestPosts?: boolean;
+  /** Max allowed TTL in days for posts. Null = no limit. */
+  maxTTL?: number | null;
+  /** Days without earning after which post can be auto-closed. Default 7. */
+  inactiveCloseDays?: number;
   /**
    * Neutral comments only, no weighted votes.
    * @deprecated Use commentMode instead. When true, equivalent to commentMode === 'neutralOnly'. Kept for backward compat.
@@ -349,6 +355,9 @@ export class CommunitySchemaClass implements Community {
       investingEnabled: { type: Boolean, default: false },
       investorShareMin: { type: Number, default: 1 },
       investorShareMax: { type: Number, default: 99 },
+      requireTTLForInvestPosts: { type: Boolean, default: false },
+      maxTTL: { type: Number, default: null },
+      inactiveCloseDays: { type: Number, default: 7 },
       tappalkaOnlyMode: { type: Boolean, default: false }, // deprecated: use commentMode
       commentMode: {
         type: String,
