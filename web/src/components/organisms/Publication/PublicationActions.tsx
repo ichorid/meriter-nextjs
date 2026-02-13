@@ -19,6 +19,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
 import { PostMetrics } from './PostMetrics';
 import { PostActions } from './PostActions';
+import { ClosePostDialog } from './ClosePostDialog';
 
 // Local Publication type definition
 interface Publication {
@@ -112,6 +113,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const t = useTranslations('shared');
   const tComments = useTranslations('comments');
   const tInvesting = useTranslations('investing');
+  const tPostClosing = useTranslations('postClosing');
   const myId = user?.id;
   const testAuthMode = isTestAuthMode();
   const isSuperadmin = user?.globalRole === 'superadmin';
@@ -120,6 +122,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const utils = trpc.useUtils();
   const [isAddingVote, setIsAddingVote] = useState(false);
   const [isAddingNegativeVote, setIsAddingNegativeVote] = useState(false);
+  const [showClosePostDialog, setShowClosePostDialog] = useState(false);
   
   // Check if we're on the community feed page (not the detail page)
   const isOnCommunityFeedPage = pathname?.match(/^\/meriter\/communities\/[^/]+$/);
@@ -446,6 +449,28 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     (publication as { ttlExpiresAt?: Date | string | null })?.ttlExpiresAt ??
     null;
 
+  const isPoll = publication.type === 'poll';
+  const showClosePostButton =
+    isAuthor &&
+    publicationId &&
+    !isPoll &&
+    publicationStatus === 'active';
+  const canEdit = publication.permissions?.canEdit ?? false;
+
+  const handleClosePostClick = () => setShowClosePostDialog(true);
+  const handleSettingsClick = () => {
+    if (communityId && publicationId) {
+      router.push(`/meriter/communities/${communityId}/edit/${publicationId}`);
+    }
+  };
+
+  const publicationForClose = effectivePublication as {
+    investments?: Array<{ investorId: string; amount: number }>;
+    investmentPool?: number;
+    investorSharePercent?: number;
+  };
+  const closeDialogInvestments = publicationForClose?.investments ?? [];
+
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
       <PostMetrics
@@ -471,21 +496,17 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         closingSummary={closingSummary}
       />
       <PostActions
+        isAuthor={isAuthor}
+        isBeneficiary={isBeneficiary}
+        isClosed={isClosed}
+        hideVoteAndScore={hideVoteAndScore}
         publicationIdForFavorite={publicationIdForFavorite}
         targetType={targetType}
         communityId={communityId}
         hasShareUrl={!!(publication.slug || (publication.type === 'poll' && publication.id))}
         onShareClick={handleShareClick}
-        showDevButtons={!!(testAuthMode && isSuperadmin && publicationId && communityId)}
-        isAddingVote={isAddingVote}
-        isAddingNegativeVote={isAddingNegativeVote}
-        onDevAddPositiveVote={handleDevAddPositiveVote}
-        onDevAddNegativeVote={handleDevAddNegativeVote}
-        isClosed={isClosed}
         onCommentOnlyClick={handleCommentOnlyClick}
-        hideVoteAndScore={hideVoteAndScore}
-        onCommentClick={handleCommentClick}
-        showInvestButton={!!(investingEnabled && myId)}
+        showAddMerits={isAuthor && investingEnabled && !!myId}
         investButtonProps={{
           postId: publicationId,
           communityId: communityId || '',
@@ -503,17 +524,46 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         allowWithdraw={allowWithdraw}
         maxWithdrawAmount={maxWithdrawAmount}
         withdrawDisabledTitle={withdrawDisabledTitle}
-        showVoteButton={!hideVoteAndScore && !isClosed}
+        showMoreMenu={isAuthor && !isClosed && (showClosePostButton || canEdit || (testAuthMode && isSuperadmin))}
+        showCloseInMore={showClosePostButton}
+        showSettingsInMore={canEdit}
+        onClosePostClick={handleClosePostClick}
+        onSettingsClick={handleSettingsClick}
+        showInvestButton={!isAuthor && investingEnabled && !!myId}
+        showVoteButton={!hideVoteAndScore && !isClosed && !isAuthor && !isBeneficiary}
         canVote={canVote}
         onVoteClick={handleVoteClick}
         voteTooltipText={voteTooltipText}
+        showAdminButtons={!!(testAuthMode && isSuperadmin && publicationId && communityId)}
+        isAddingVote={isAddingVote}
+        isAddingNegativeVote={isAddingNegativeVote}
+        onDevAddPositiveVote={handleDevAddPositiveVote}
+        onDevAddNegativeVote={handleDevAddNegativeVote}
         shareTitle={t('share')}
         commentsTitle={t('comments')}
         voteLabel={t('vote')}
         withdrawLabel={t('withdraw')}
-        cannotWithdrawInCommunity={t('cannotWithdrawInCommunity')}
-        noVotesToWithdraw={t('noVotesToWithdraw')}
+        closePostTitle={tPostClosing('closePostTitle', { defaultValue: 'Close post' })}
+        settingsTitle={t('edit', { defaultValue: 'Settings' })}
       />
+      {showClosePostDialog &&
+        publicationId &&
+        (effectivePublication || publication) && (
+          <ClosePostDialog
+            open={showClosePostDialog}
+            onOpenChange={setShowClosePostDialog}
+            publicationId={publicationId}
+            currentScore={effectivePublication.metrics?.score ?? 0}
+            hasInvestments={(closeDialogInvestments?.length ?? 0) > 0}
+            investmentPool={publicationForClose?.investmentPool ?? 0}
+            investorSharePercent={publicationForClose?.investorSharePercent ?? 0}
+            investments={closeDialogInvestments.map((inv: { investorId: string; amount: number }) => ({
+              investorId: inv.investorId,
+              amount: inv.amount,
+            }))}
+            onSuccess={updateAll}
+          />
+        )}
     </div>
   );
 };
