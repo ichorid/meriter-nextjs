@@ -366,7 +366,7 @@ describe('Global Merit E2E', () => {
       expect(authorGlobal?.getBalance()).toBe(17); // 10 - 1 fee + 8 withdrawal
     });
 
-    it('withdrawal from local community post credits local wallet', async () => {
+    it('withdrawal from local community post credits global wallet', async () => {
       const now = new Date();
       const authorId = uid();
       const voterId = uid();
@@ -428,8 +428,9 @@ describe('Global Merit E2E', () => {
       const result = await trpcMutation(app, 'publications.withdraw', { publicationId: pub.id, amount: 6 });
       expect(result.amount).toBe(6);
 
-      const authorLocal = await walletService.getWallet(authorId, localId);
-      expect(authorLocal?.getBalance()).toBe(6);
+      // Withdrawal always credits global wallet (MeritResolver: withdrawal → GLOBAL_COMMUNITY_ID)
+      const authorGlobal = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      expect(authorGlobal?.getBalance()).toBe(15); // 10 - 1 post fee + 6 withdrawal
     });
   });
 

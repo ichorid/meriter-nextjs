@@ -46,10 +46,15 @@ describe('MeritResolverService', () => {
   });
 
   describe('non-fee operations with local community', () => {
-    const operations = ['voting', 'withdrawal', 'tappalka_reward', 'investment'] as const;
+    it.each(['voting', 'tappalka_reward', 'investment'] as const)(
+      'returns community.id for "%s" with local community',
+      (op) => {
+        expect(service.getWalletCommunityId(localCommunity, op)).toBe('team-id');
+      },
+    );
 
-    it.each(operations)('returns community.id for "%s" with local community', (op) => {
-      expect(service.getWalletCommunityId(localCommunity, op)).toBe('team-id');
+    it('returns GLOBAL for "withdrawal" with local community (withdrawal always uses global wallet)', () => {
+      expect(service.getWalletCommunityId(localCommunity, 'withdrawal')).toBe(GLOBAL_COMMUNITY_ID);
     });
   });
 
@@ -73,8 +78,11 @@ describe('MeritResolverService', () => {
       );
     });
 
-    it('throws for undefined community', () => {
-      expect(() => service.getWalletCommunityId(undefined, 'withdrawal')).toThrow(
+    it('throws for undefined community on operations that require community', () => {
+      // withdrawal does not require community (returns GLOBAL)
+      expect(service.getWalletCommunityId(undefined, 'withdrawal')).toBe(GLOBAL_COMMUNITY_ID);
+      // voting requires community
+      expect(() => service.getWalletCommunityId(undefined, 'voting')).toThrow(
         'Community is required for non-fee merit operations',
       );
     });
