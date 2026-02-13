@@ -575,7 +575,7 @@ export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
     return quota > 0 || wallet > 0;
   },
   {
-    message: "At least one of quotaAmount or walletAmount must be non-zero",
+    message: "At least one of quotaAmount or walletAmount must be greater than zero",
   }
 );
 
@@ -593,7 +593,7 @@ export const CreateTargetlessVoteDtoSchema = z
       return quota > 0 || wallet > 0;
     },
     {
-      message: "At least one of quotaAmount or walletAmount must be non-zero",
+      message: "At least one of quotaAmount or walletAmount must be greater than zero",
     }
   );
 
@@ -639,7 +639,7 @@ export const CreatePollCastDtoSchema = z
       return quota > 0 || wallet > 0;
     },
     {
-      message: "At least one of quotaAmount or walletAmount must be non-zero",
+      message: "At least one of quotaAmount or walletAmount must be greater than zero",
     }
   );
 
@@ -765,7 +765,7 @@ export const VoteWithCommentDtoSchema = z.object({
     // Allow weighted vote OR neutral comment (0,0 with comment text)
     return hasWeight || hasComment;
   },
-  { message: "At least one of quotaAmount or walletAmount must be non-zero, or a comment is required" }
+  { message: "At least one of quotaAmount or walletAmount must be greater than zero, or a comment is required" }
 );
 
 // API Response schemas
