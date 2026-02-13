@@ -19,6 +19,7 @@ import '@/lib/utils/auth-debug';
 
 import enMessages from '../../messages/en.json';
 import ruMessages from '../../messages/ru.json';
+import { useIntlPortalStore } from '@/stores/intl-portal.store';
 
 interface ClientRootLayoutProps {
   children: React.ReactNode;
@@ -67,6 +68,7 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
   const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [messages, setMessages] = useState(enMessages);
   const hasInitializedLocale = useRef(false);
+  const setIntlPortal = useIntlPortalStore((s) => s.setIntl);
 
   useEffect(() => {
     // Only run once after mount to avoid hydration mismatches and infinite loops
@@ -102,6 +104,11 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
       document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax${secureFlag}`;
     }
   }, []); // Empty deps - only run once after mount
+
+  // Sync locale and messages to portal store so portaled content (e.g. WithdrawPopup) has intl context
+  useEffect(() => {
+    setIntlPortal(locale, messages as Record<string, unknown>);
+  }, [locale, messages, setIntlPortal]);
 
   // Note: Auth config is now provided via RuntimeConfigProvider which uses tRPC
   // These are fallback values used only during initial render before runtime config loads

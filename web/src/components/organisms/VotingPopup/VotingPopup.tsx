@@ -14,6 +14,7 @@ import { useCommunity } from '@/hooks/api';
 import { usePublication } from '@/hooks/api/usePublications';
 import { VotingPanel } from './VotingPanel';
 import { BottomPortal } from '@/shared/components/bottom-portal';
+import { IntlPortalWrapper } from '@/components/providers/IntlPortalWrapper';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { canUseWalletForVoting } from './voting-utils';
@@ -379,6 +380,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   return (
     <BottomPortal>
+      <IntlPortalWrapper>
       <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
         <div 
           className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10" 
@@ -406,6 +408,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         />
         </div>
       </div>
+      </IntlPortalWrapper>
     </BottomPortal>
   );
 };
