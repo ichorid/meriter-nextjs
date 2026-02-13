@@ -317,7 +317,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be greater than zero');
       });
     });
 
@@ -495,7 +495,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be greater than zero');
       });
     });
 
@@ -531,7 +531,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be non-zero');
+        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be greater than zero');
       });
     });
 
