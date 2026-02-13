@@ -90,16 +90,14 @@ export class TappalkaService {
 
     const { categories, minRating, showCost } = tappalkaSettings;
 
-    // Build query: post must be able to pay showCost from pool and/or rating
-    // - investmentPool >= showCost: pool pays, no minRating needed
-    // - metrics.score >= minScore: rating pays, minRating applies
-    // - pool+score >= showCost AND (pool >= showCost OR score >= minRating): hybrid, minRating applies when paying from rating
+    // Build query: post must be able to pay showCost from pool and/or rating (C-5: rating only down to stopLoss)
+    // Spendable = pool + max(0, score - stopLoss). Post eligible if spendable >= showCost (and minRating when using rating).
     const minScore = Math.max(minRating, showCost);
     const query: any = {
       communityId,
       authorId: { $ne: excludeUserId }, // Exclude user's own posts
       deleted: { $ne: true }, // Not deleted
-      deletedAt: null, // Not deleted (double check)
+      deletedAt: null,
       $or: [
         { investmentPool: { $gte: showCost } },
         { 'metrics.score': { $gte: minScore } },
@@ -111,7 +109,17 @@ export class TappalkaService {
                   {
                     $add: [
                       { $ifNull: ['$investmentPool', 0] },
-                      { $ifNull: ['$metrics.score', 0] },
+                      {
+                        $max: [
+                          0,
+                          {
+                            $subtract: [
+                              { $ifNull: ['$metrics.score', 0] },
+                              { $ifNull: ['$stopLoss', 0] },
+                            ],
+                          },
+                        ],
+                      },
                     ],
                   },
                   showCost,
@@ -364,8 +372,8 @@ export class TappalkaService {
   }
 
   /**
-   * Deduct showCost from post
-   * Priority: investmentPool → rating → author.wallet
+   * Deduct showCost from post.
+   * C-5: Priority per business-investing.mdc — investmentPool → rating (down to stopLoss) → author.wallet (unless noAuthorWalletSpend).
    */
   private async deductShowCost(
     post: PublicationDocument,
@@ -373,13 +381,14 @@ export class TappalkaService {
   ): Promise<void> {
     const currentPool = post.investmentPool ?? 0;
     const currentRating = post.metrics?.score || 0;
+    const stopLoss = post.stopLoss ?? 0;
+    const noAuthorWalletSpend = post.noAuthorWalletSpend ?? false;
 
     let remainingCost = cost;
 
     // 1. Try investment pool first (atomic: conditional update to prevent negative)
     if (remainingCost > 0 && currentPool > 0) {
       const fromPool = Math.min(currentPool, remainingCost);
-      // Only deduct if pool has enough (handles concurrent updates)
       const result = await this.publicationModel.findOneAndUpdate(
         { id: post.id, investmentPool: { $gte: fromPool } },
         { $inc: { investmentPool: -fromPool } },
@@ -391,7 +400,6 @@ export class TappalkaService {
           `Deducted ${fromPool} from post ${post.id} investment pool`,
         );
       } else {
-        // Pool was reduced by another op - re-fetch and retry once with actual available
         const fresh = await this.publicationModel.findOne({ id: post.id }).lean().exec();
         const actualPool = fresh?.investmentPool ?? 0;
         const actualDeduct = Math.min(actualPool, remainingCost);
@@ -408,7 +416,6 @@ export class TappalkaService {
           }
         }
       }
-      // Notify author when pool is depleted and we move to rating/wallet
       if (remainingCost > 0) {
         try {
           await this.notificationService.createNotification({
@@ -417,7 +424,7 @@ export class TappalkaService {
             source: 'system',
             metadata: { postId: post.id, communityId: post.communityId },
             title: 'Investment pool depleted',
-            message: 'Investment pool depleted, shows now from rating/wallet',
+            message: 'Investment pool depleted. Shows now deducted from post rating.',
           });
         } catch (err) {
           this.logger.warn(`Failed to create investment_pool_depleted notification: ${err}`);
@@ -426,19 +433,41 @@ export class TappalkaService {
       if (remainingCost <= 0) return;
     }
 
-    // 2. Try rating
-    if (currentRating >= remainingCost) {
+    // 2. Try rating (do not reduce below stopLoss)
+    const availableFromRating = Math.max(0, currentRating - stopLoss);
+    if (availableFromRating > 0 && remainingCost > 0) {
+      const fromRating = Math.min(remainingCost, availableFromRating);
       await this.publicationModel.updateOne(
         { id: post.id },
-        { $inc: { 'metrics.score': -remainingCost } },
+        { $inc: { 'metrics.score': -fromRating } },
       );
+      remainingCost -= fromRating;
       this.logger.debug(
-        `Deducted ${remainingCost} from post ${post.id} rating`,
+        `Deducted ${fromRating} from post ${post.id} rating (stopLoss=${stopLoss})`,
+      );
+      if (remainingCost <= 0) return;
+    }
+
+    // 3. Remaining cost: author wallet or post exits tappalka
+    if (noAuthorWalletSpend) {
+      try {
+        await this.notificationService.createNotification({
+          userId: post.authorId,
+          type: 'investment_pool_depleted',
+          source: 'system',
+          metadata: { postId: post.id, communityId: post.communityId },
+          title: 'Post exited tappalka',
+          message: 'Post exited tappalka — no funds available for shows.',
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to create post-exited-tappalka notification: ${err}`);
+      }
+      this.logger.debug(
+        `Post ${post.id} exited tappalka (noAuthorWalletSpend, remainingCost=${remainingCost})`,
       );
       return;
     }
 
-    // 3. Deduct from author's wallet (remainingCost > currentRating or rating was 0)
     const community = await this.communityModel
       .findOne({ id: post.communityId })
       .lean()
@@ -450,14 +479,6 @@ export class TappalkaService {
 
     const currency = (community as unknown as Community).settings
       .currencyNames;
-
-    if (currentRating > 0) {
-      await this.publicationModel.updateOne(
-        { id: post.id },
-        { $set: { 'metrics.score': 0 } },
-      );
-      remainingCost -= currentRating;
-    }
 
     if (remainingCost > 0) {
       await this.walletService.addTransaction(
@@ -471,11 +492,10 @@ export class TappalkaService {
         currency,
         `Tappalka show cost for post ${post.id}`,
       );
+      this.logger.debug(
+        `Deducted ${remainingCost} from author wallet for post ${post.id}`,
+      );
     }
-
-    this.logger.debug(
-      `Deducted from post ${post.id}: rating=${currentRating}, wallet=${remainingCost}`,
-    );
   }
 
   /**
