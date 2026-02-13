@@ -274,7 +274,9 @@
         "authorShare": "Автор ({percent}%)",
         "investor": "Инвестор",
         "investedBy": "{amount} меритов от {count} инвестор(ов)",
-        "pool": "Пул: {amount}"
+        "pool": "Пул: {amount}",
+        "noMeritsMessage": "У вас нет меритов для инвестирования, сперва заработайте их",
+        "earnMeritsButton": "Заработать мериты"
     },
     "shared": {
         "balance": "Баланс:",

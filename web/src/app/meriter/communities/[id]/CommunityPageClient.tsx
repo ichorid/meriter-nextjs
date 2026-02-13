@@ -278,6 +278,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
+    // Open tappalka modal when navigating with ?tappalka=1 (e.g. from "Earn merits" in invest dialog)
+    const tappalkaParam = searchParams?.get('tappalka');
+    useEffect(() => {
+        if (tappalkaParam === '1' && comms?.tappalkaSettings?.enabled) {
+            setShowTappalkaModal(true);
+            const params = new URLSearchParams(searchParams?.toString() ?? '');
+            params.delete('tappalka');
+            const query = params.toString();
+            router.replace(pathname ? `${pathname}${query ? `?${query}` : ''}` : pathname ?? '');
+        }
+    }, [tappalkaParam, comms?.tappalkaSettings?.enabled, pathname, router, searchParams]);
+
     // Enable periodic polling for this community (refresh content and quota every 30s)
     useCommunityPolling(chatId);
 

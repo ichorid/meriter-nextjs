@@ -279,7 +279,9 @@
         "authorShare": "Author ({percent}%)",
         "investor": "Investor",
         "investedBy": "{amount} merits from {count} investor(s)",
-        "pool": "Pool: {amount}"
+        "pool": "Pool: {amount}",
+        "noMeritsMessage": "You have no merits to invest. Earn some first.",
+        "earnMeritsButton": "Earn merits"
     },
     "shared": {
         "balance": "Balance:",
