@@ -39,7 +39,7 @@ export function PostSettingsReadOnly({
   helpNeeded = [],
 }: PostSettingsReadOnlyProps) {
   const t = useTranslations('publications.create');
-  const { data: allCategories } = useCategories(communityId);
+  const { data: allCategories } = useCategories();
   const categoryNames = React.useMemo(() => {
     if (!allCategories) return {};
     return Object.fromEntries(allCategories.map((c) => [c.id, c.name]));
