@@ -8,6 +8,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Wallets/Votes E2E (credit and vote)', () => {
   jest.setTimeout(60000);
@@ -105,12 +106,12 @@ describe('Wallets/Votes E2E (credit and vote)', () => {
       { id: uid(), userId: voterId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // publications.create charges the author's wallet by community.settings.postCost.
+    // Future Vision is priority community: fee and voting use GLOBAL wallet
     await walletModel.create([
       {
         id: uid(),
         userId: voterId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,
@@ -120,7 +121,7 @@ describe('Wallets/Votes E2E (credit and vote)', () => {
       {
         id: uid(),
         userId: authorId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,

@@ -28,7 +28,7 @@ describe('Special Groups Merit Accumulation', () => {
   let testDb: TestDatabaseHelper;
   let connection: Connection;
 
-  let communityService: CommunityService;
+  let _communityService: CommunityService;
   let publicationService: PublicationService;
   let walletService: WalletService;
 
@@ -87,7 +87,7 @@ describe('Special Groups Merit Accumulation', () => {
     // Wait for onModuleInit to complete
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    communityService = app.get<CommunityService>(CommunityService);
+    _communityService = app.get<CommunityService>(CommunityService);
     publicationService = app.get<PublicationService>(PublicationService);
     walletService = app.get<WalletService>(WalletService);
 
@@ -788,14 +788,9 @@ describe('Special Groups Merit Accumulation', () => {
       expect(debitTx?.amount).toBe(5);
     });
 
-    it('should NOT sync when debiting from regular community wallet', async () => {
-      // Get the Future Vision and Marathon communities
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up balances in all wallets
+    it('should debit from local wallet only when voting on local community (not from global)', async () => {
+      // With global merit: priority communities use global wallet; local uses local wallet.
+      // Vote on regular (local) community → only regular community wallet debited.
       await walletService.addTransaction(
         voterId,
         regularCommunityId,
@@ -810,37 +805,21 @@ describe('Special Groups Merit Accumulation', () => {
 
       await walletService.addTransaction(
         voterId,
-        marathonCommunityIdUsed,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
         'test_setup',
         'test',
         { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
+        'Test setup - Global',
       );
 
-      await walletService.addTransaction(
-        voterId,
-        fvCommunityId,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Verify initial balances
       const regularWalletBefore = await walletService.getWallet(voterId, regularCommunityId);
-      const marathonWalletBefore = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(voterId, fvCommunityId);
+      const globalWalletBefore = await walletService.getWallet(voterId, GLOBAL_COMMUNITY_ID);
       expect(regularWalletBefore?.getBalance()).toBe(10);
-      expect(marathonWalletBefore?.getBalance()).toBe(10);
-      expect(fvWalletBefore?.getBalance()).toBe(10);
+      expect(globalWalletBefore?.getBalance()).toBe(10);
 
-      // Vote with wallet merits on regular community publication
       (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
@@ -850,58 +829,21 @@ describe('Special Groups Merit Accumulation', () => {
         comment: 'Test vote with wallet',
       });
 
-      // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Verify only regular community wallet was debited
       const regularWalletAfter = await walletService.getWallet(voterId, regularCommunityId);
-      const marathonWalletAfter = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(voterId, fvCommunityId);
+      const globalWalletAfter = await walletService.getWallet(voterId, GLOBAL_COMMUNITY_ID);
 
-      expect(regularWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(marathonWalletAfter?.getBalance()).toBe(10); // Unchanged
-      expect(fvWalletAfter?.getBalance()).toBe(10); // Unchanged
+      expect(regularWalletAfter?.getBalance()).toBe(7); // 10 - 3, local debited
+      expect(globalWalletAfter?.getBalance()).toBe(10); // Unchanged
 
-      // Verify NO sync transactions were created
-      const marathonSyncTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-      });
-
-      const fvSyncTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-      });
-
-      expect(marathonSyncTransaction).toBeFalsy();
-      expect(fvSyncTransaction).toBeFalsy();
-
-      // Verify only regular community has debit transaction
-      const regularDebitTransaction = await transactionModel.findOne({
-        walletId: regularWalletAfter.getId.getValue(),
+      const regularDebitTx = await transactionModel.findOne({
+        walletId: regularWalletAfter!.getId.getValue(),
         referenceType: 'publication_vote',
         referenceId: regularPubId,
-        type: 'vote',
       });
-
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: regularPubId,
-        type: 'vote',
-      });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: regularPubId,
-        type: 'vote',
-      });
-
-      expect(regularDebitTransaction).toBeTruthy();
-      expect(regularDebitTransaction?.amount).toBe(3);
-      expect(marathonDebitTransaction).toBeFalsy();
-      expect(fvDebitTransaction).toBeFalsy();
+      expect(regularDebitTx).toBeTruthy();
+      expect(regularDebitTx?.amount).toBe(3);
     });
   });
 

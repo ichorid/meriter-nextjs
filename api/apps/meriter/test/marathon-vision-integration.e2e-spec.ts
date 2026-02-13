@@ -9,6 +9,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Marathon/Future Vision integration (e2e)', () => {
   jest.setTimeout(60000);
@@ -154,26 +155,12 @@ describe('Marathon/Future Vision integration (e2e)', () => {
       { id: uid(), userId: authorId, communityId: visionCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // publications.create now requires wallet merits when community.settings.postCost is unset
-    // (defaults to 1). This test focuses on special-group voting semantics, so we seed wallets
-    // to keep publication creation unblocked without changing community settings.
+    // Priority communities (Marathon, Future Vision) use GLOBAL wallet for fee and voting
     await walletModel.create([
-      // Wallet for voter in future-vision (wallet voting)
       {
         id: uid(),
         userId: voterId,
-        communityId: visionCommunityId,
-        balance: 100,
-        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        lastUpdated: now,
-        createdAt: now,
-        updatedAt: now,
-      },
-      // Wallets for author so they can create publications in both communities
-      {
-        id: uid(),
-        userId: authorId,
-        communityId: marathonCommunityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,
@@ -183,7 +170,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
       {
         id: uid(),
         userId: authorId,
-        communityId: visionCommunityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,
@@ -203,36 +190,16 @@ describe('Marathon/Future Vision integration (e2e)', () => {
       isProject: false,
     });
 
-    // voter: can vote with quota in marathon
+    // voter: with global merit, marathon uses global wallet (quota disabled in MVP)
     (global as any).testUserId = voterId;
-    await trpcMutation(app, 'votes.createWithComment', {
+    const marathonVote = await trpcMutation(app, 'votes.createWithComment', {
       targetType: 'publication',
       targetId: marathonPub.id,
-      quotaAmount: 3,
-      walletAmount: 0,
+      quotaAmount: 0,
+      walletAmount: 5,
       comment: 'Great deed!',
     });
-
-    const quota = await trpcQuery(app, 'wallets.getQuota', {
-      userId: voterId,
-      communityId: marathonCommunityId,
-    });
-    expect(quota.dailyQuota).toBe(10);
-    expect(quota.used).toBe(3);
-    expect(quota.remaining).toBe(7);
-
-    // voter: cannot vote with wallet in marathon
-    await withSuppressedErrors(['BAD_REQUEST'], async () => {
-      const walletVoteInMarathon = await trpcMutationWithError(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: marathonPub.id,
-        quotaAmount: 0,
-        walletAmount: 5,
-        comment: 'Wallet vote attempt',
-      });
-      expect(walletVoteInMarathon.error?.code).toBe('BAD_REQUEST');
-      expect(walletVoteInMarathon.error?.message).toContain('Marathon of Good only allows quota voting');
-    });
+    expect(marathonVote.amountWallet).toBe(5);
 
     // Create a publication in future-vision by author
     (global as any).testUserId = authorId;

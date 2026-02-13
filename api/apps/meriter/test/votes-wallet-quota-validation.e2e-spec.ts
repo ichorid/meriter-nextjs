@@ -17,6 +17,7 @@ import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Votes Wallet and Quota Validation (e2e)', () => {
   jest.setTimeout(60000); // Set timeout for all tests in this suite
@@ -197,7 +198,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       },
     ]);
 
-    // Seed wallets (both communities for convenience)
+    // Seed wallets: local community uses community wallet; Future Vision (priority) uses GLOBAL wallet
     await walletModel.create([
       {
         id: uid(),
@@ -230,7 +231,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       {
         id: uid(),
         userId: testUserId,
-        communityId: futureVisionCommunityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -244,7 +245,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       {
         id: uid(),
         userId: testUserId2,
-        communityId: futureVisionCommunityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -440,14 +441,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
     });
 
-    it('should deduct wallet balance for wallet-only votes in Future Vision', async () => {
-      // Set global testUserId for AllowAllGuard to use
+    it('should deduct from global wallet for wallet-only votes in Future Vision', async () => {
       (global as any).testUserId = testUserId;
-      
-      const walletBefore = await walletService.getWallet(testUserId, futureVisionCommunityId);
+
+      const walletBefore = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
-      // Vote with 5 wallet
       await trpcMutation(app, 'votes.create', {
         targetType: 'publication',
         targetId: futureVisionPublicationId,
@@ -455,8 +454,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         walletAmount: 5,
       });
 
-      // Verify wallet was deducted
-      const walletAfter = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      const walletAfter = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 5);
     });
