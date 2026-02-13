@@ -34,6 +34,7 @@ import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
 import { PostClosingService } from '../domain/services/post-closing.service';
+import { MeritResolverService } from '../domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 
@@ -69,6 +70,7 @@ export interface CreateContextOptions {
   tappalkaService: TappalkaService;
   investmentService: InvestmentService;
   postClosingService: PostClosingService;
+  meritResolverService: MeritResolverService;
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   connection: Connection;
@@ -116,6 +118,7 @@ export async function createContext(opts: CreateContextOptions) {
     tappalkaService,
     investmentService,
     postClosingService,
+    meritResolverService,
     teamJoinRequestService,
     teamInvitationService,
     connection,
@@ -212,6 +215,7 @@ export async function createContext(opts: CreateContextOptions) {
     tappalkaService,
     investmentService,
     postClosingService,
+    meritResolverService,
     teamJoinRequestService,
     teamInvitationService,
     connection,

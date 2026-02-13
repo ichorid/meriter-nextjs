@@ -77,19 +77,8 @@ export class ContextCurrencyModeFactor {
       }
     }
 
-    // Priority 2: Marathon of Good + post/comment → quota-only (backward compatibility)
-    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
-    if (isMarathonOfGood && (targetType === 'publication' || targetType === 'vote') && !currencySource) {
-      this.logger.debug(
-        `[evaluate] Marathon of Good + post/comment → quota-only: community=${community.id}`,
-      );
-      return {
-        allowedQuota: true,
-        allowedWallet: false,
-        requiredCurrency: 'quota',
-        reason: 'Marathon of Good only allows quota voting on posts and comments',
-      };
-    }
+    // Priority 2: Marathon of Good — with global merit, quota disabled in MVP; wallet (global) is used.
+    // No quota-only restriction.
 
     // Priority 3: Future Vision + post/comment → wallet-only (backward compatibility)
     const isFutureVision = community.typeTag === 'future-vision';
@@ -150,7 +139,7 @@ export class ContextCurrencyModeFactor {
     // Priority 7: Default → both-allowed (quota preferred)
     // Also check if role is in quotaRecipients for quota allowance
     const effectiveMeritSettings = this.communityService.getEffectiveMeritSettings(community);
-    const quotaRecipients = effectiveMeritSettings.quotaRecipients || [];
+    const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
     const canUseQuota = userRole ? quotaRecipients.includes(userRole) : true;
     
     this.logger.debug(

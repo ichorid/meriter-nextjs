@@ -4,10 +4,12 @@ import { TRPCError } from '@trpc/server';
 import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
+import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
+import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 
 /**
- * Helper function to process withdrawal and credit wallet
- * Always credits the same community wallet, then syncs Marathon/Future Vision wallets
+ * Helper function to process withdrawal and credit wallet.
+ * Uses MeritResolver: credits to global wallet for priority communities, community wallet for local.
  */
 async function processWithdrawal(
   beneficiaryId: string,
@@ -26,20 +28,32 @@ async function processWithdrawal(
   // Check if merits are awarded
   const effectiveVotingSettings = ctx.communityService.getEffectiveVotingSettings(publicationCommunity);
   if (!effectiveVotingSettings.awardsMerits) {
-    // No credits if awardsMerits is false
     const currency = publicationCommunity.settings?.currencyNames || {
       singular: 'merit',
       plural: 'merits',
       genitive: 'merits',
     };
+    const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
+      publicationCommunity,
+      'withdrawal',
+    );
     return {
-      targetCommunityId: publicationCommunityId,
+      targetCommunityId,
       currency,
     };
   }
 
-  // Credit the same community wallet
-  const currency = publicationCommunity.settings?.currencyNames || {
+  // Credit to wallet: global for priority communities, community for local
+  const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
+    publicationCommunity,
+    'withdrawal',
+  );
+
+  const targetCommunity =
+    targetCommunityId === GLOBAL_COMMUNITY_ID
+      ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
+      : publicationCommunity;
+  const currency = targetCommunity?.settings?.currencyNames || {
     singular: 'merit',
     plural: 'merits',
     genitive: 'merits',
@@ -49,7 +63,7 @@ async function processWithdrawal(
 
   await ctx.walletService.addTransaction(
     beneficiaryId,
-    publicationCommunityId,
+    targetCommunityId,
     'credit',
     amount,
     'personal',
@@ -59,274 +73,15 @@ async function processWithdrawal(
     description,
   );
 
-  // Synchronize credit with the other wallet (Marathon/Future Vision)
-  await syncCreditForMarathonAndFutureVision(
-    beneficiaryId,
-    publicationCommunityId,
-    amount,
-    referenceType,
-    publicationId,
-    description,
-    ctx,
-  );
-
   return {
-    targetCommunityId: publicationCommunityId,
+    targetCommunityId,
     currency,
   };
 }
 
 /**
- * Synchronize debit transactions between Marathon of Good and Future Vision wallets
- * If debiting from MD or OB, debit from both wallets simultaneously
- */
-async function syncDebitForMarathonAndFutureVision(
-  userId: string,
-  communityId: string,
-  amount: number,
-  transactionType: string,
-  referenceId: string,
-  description: string,
-  ctx: any,
-): Promise<void> {
-  const community = await ctx.communityService.getCommunity(communityId);
-  if (!community) {
-    return; // Community not found, skip sync
-  }
-
-  const isMarathon = community.typeTag === 'marathon-of-good';
-  const isFutureVision = community.typeTag === 'future-vision';
-
-  // For regular communities (not Marathon or Future Vision), just debit from current community
-  if (!isMarathon && !isFutureVision) {
-    const currentCurrency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    await ctx.walletService.addTransaction(
-      userId,
-      communityId,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      currentCurrency,
-      description,
-    );
-    return;
-  }
-
-  // Get both communities
-  const marathonCommunity = isMarathon 
-    ? community 
-    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
-  const futureVisionCommunity = isFutureVision
-    ? community
-    : await ctx.communityService.getCommunityByTypeTag('future-vision');
-
-  // If both communities exist, sync balances and debit from both
-  if (marathonCommunity && futureVisionCommunity) {
-    const mdCurrency = marathonCommunity.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    // Get current balances to ensure synchronization
-    const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
-    const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
-
-    const mdBalance = mdWallet?.getBalance() ?? 0;
-    const fvBalance = fvWallet?.getBalance() ?? 0;
-
-    // Synchronize balances if they differ (credit the wallet with lower balance)
-    if (mdBalance !== fvBalance) {
-      const balanceDiff = Math.abs(mdBalance - fvBalance);
-      if (mdBalance < fvBalance) {
-        // MD has less, credit it to match FV
-        await ctx.walletService.addTransaction(
-          userId,
-          marathonCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}`,
-          mdCurrency,
-          `Balance sync: Future Vision → Marathon of Good`,
-        );
-      } else {
-        // FV has less, credit it to match MD
-        await ctx.walletService.addTransaction(
-          userId,
-          futureVisionCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}`,
-          fvCurrency,
-          `Balance sync: Marathon of Good → Future Vision`,
-        );
-      }
-    }
-
-    // Debit from both wallets simultaneously
-    await Promise.all([
-      ctx.walletService.addTransaction(
-        userId,
-        marathonCommunity.id,
-        'debit',
-        amount,
-        'personal',
-        transactionType,
-        referenceId,
-        mdCurrency,
-        `${description} (Marathon of Good)`,
-      ),
-      ctx.walletService.addTransaction(
-        userId,
-        futureVisionCommunity.id,
-        'debit',
-        amount,
-        'personal',
-        transactionType,
-        referenceId,
-        fvCurrency,
-        `${description} (Future Vision)`,
-      ),
-    ]);
-  } else {
-    // Only one community exists, debit only from the current community
-    const currentCurrency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    await ctx.walletService.addTransaction(
-      userId,
-      communityId,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      currentCurrency,
-      description,
-    );
-  }
-}
-
-/**
- * Synchronize credit transactions between Marathon of Good and Future Vision wallets
- * If crediting to MD or FV, also credit the other wallet with the same amount
- */
-async function syncCreditForMarathonAndFutureVision(
-  userId: string,
-  communityId: string,
-  amount: number,
-  transactionType: string,
-  referenceId: string,
-  description: string,
-  ctx: any,
-): Promise<void> {
-  // Skip if amount is 0
-  if (amount <= 0) {
-    return;
-  }
-
-  const community = await ctx.communityService.getCommunity(communityId);
-  if (!community) {
-    return; // Community not found, skip sync
-  }
-
-  const isMarathon = community.typeTag === 'marathon-of-good';
-  const isFutureVision = community.typeTag === 'future-vision';
-
-  // For regular communities (not Marathon or Future Vision), skip sync
-  if (!isMarathon && !isFutureVision) {
-    return;
-  }
-
-  // Get both communities
-  const marathonCommunity = isMarathon 
-    ? community 
-    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
-  const futureVisionCommunity = isFutureVision
-    ? community
-    : await ctx.communityService.getCommunityByTypeTag('future-vision');
-
-  // If both communities exist, credit the other wallet to keep them synchronized
-  if (marathonCommunity && futureVisionCommunity) {
-    // Get current balances after the credit was added
-    const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
-    const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
-
-    const mdBalance = mdWallet?.getBalance() ?? 0;
-    const fvBalance = fvWallet?.getBalance() ?? 0;
-
-    if (isMarathon) {
-      // Credit was added to Marathon, also credit Future Vision to match
-      const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-
-      // Credit Future Vision to match Marathon balance
-      if (fvBalance < mdBalance) {
-        const balanceDiff = mdBalance - fvBalance;
-        await ctx.walletService.addTransaction(
-          userId,
-          futureVisionCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}_${referenceId}`,
-          fvCurrency,
-          `Balance sync: ${description} (Future Vision)`,
-        );
-      }
-    } else if (isFutureVision) {
-      // Credit was added to Future Vision, also credit Marathon to match
-      const mdCurrency = marathonCommunity.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-
-      // Credit Marathon to match Future Vision balance
-      if (mdBalance < fvBalance) {
-        const balanceDiff = fvBalance - mdBalance;
-        await ctx.walletService.addTransaction(
-          userId,
-          marathonCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}_${referenceId}`,
-          mdCurrency,
-          `Balance sync: ${description} (Marathon of Good)`,
-        );
-      }
-    }
-  }
-}
-
-/**
- * Helper to calculate remaining quota for a user in a community
+ * Helper to calculate remaining quota for a user in a community.
+ * Priority communities: quota disabled in MVP, return 0.
  */
 async function getRemainingQuota(
   userId: string,
@@ -334,8 +89,8 @@ async function getRemainingQuota(
   community: any,
   connection: any,
 ): Promise<number> {
-  // Future Vision has no quota - wallet voting only
-  if (community?.typeTag === 'future-vision') {
+  // Priority communities use global merit, quota disabled in MVP
+  if (isPriorityCommunity(community)) {
     return 0;
   }
 
@@ -587,21 +342,8 @@ async function createVoteLogic(
     }
   }
 
-  // Backward compatibility: Special case: Marathon of Good is quota-only for posts/comments (if currencySource not set).
-  if (
-    (input.targetType === 'publication' || input.targetType === 'vote') &&
-    community?.typeTag === 'marathon-of-good' &&
-    !currencySource &&
-    walletAmount > 0
-  ) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message:
-        'Marathon of Good only allows quota voting on posts and comments. Please use daily quota to vote.',
-    });
-  }
-
   // Note: viewer role removed - all users are now participants
+  // With global merit, Marathon uses global wallet (quota disabled in MVP). No quota-only restriction.
 
   // Backward compatibility: Special case: Future Vision blocks quota voting (wallet only) for posts/comments (if currencySource not set).
   if (
@@ -652,11 +394,15 @@ async function createVoteLogic(
     }
   }
 
-  // Check wallet balance
+  // Check wallet balance (global for priority communities, community for local)
+  const walletCommunityId = ctx.meritResolverService.getWalletCommunityId(
+    community,
+    'voting',
+  );
   if (walletAmount > 0) {
     const walletBalance = await getWalletBalance(
       ctx.user.id,
-      communityId,
+      walletCommunityId,
       ctx.walletService,
     );
 
@@ -692,19 +438,29 @@ async function createVoteLogic(
     );
   }
 
-  // Deduct from wallet if wallet amount was used (with sync for MD/OB)
+  // Deduct from wallet if wallet amount was used (global for priority, community for local)
   if (walletAmount > 0) {
     const transactionType =
       input.targetType === 'publication' ? 'publication_vote' : 'vote_vote';
-    
-    await syncDebitForMarathonAndFutureVision(
+    const targetCommunity =
+      walletCommunityId === GLOBAL_COMMUNITY_ID
+        ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
+        : community;
+    const currency = targetCommunity?.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await ctx.walletService.addTransaction(
       ctx.user.id,
-      communityId,
+      walletCommunityId,
+      'debit',
       walletAmount,
+      'personal',
       transactionType,
       input.targetId,
+      currency,
       `Vote on ${input.targetType} ${input.targetId}`,
-      ctx,
     );
   }
 
