@@ -60,6 +60,7 @@ export class InvestmentService {
   /**
    * Process investment: deduct from investor wallet, add to post's investment pool.
    * Accumulates if investor already has a record.
+   * C-2: Validates post exists, investingEnabled, not deleted, not author, wallet balance; wallet-only.
    */
   async processInvestment(
     postId: string,
@@ -79,8 +80,12 @@ export class InvestmentService {
       throw new BadRequestException('This post does not accept investments');
     }
 
+    if (post.deleted) {
+      throw new BadRequestException('Cannot invest in a deleted post');
+    }
+
     if (post.authorId === investorId) {
-      throw new BadRequestException('Author cannot invest in their own post');
+      throw new BadRequestException('Cannot invest in your own post');
     }
 
     const community = await this.communityService.getCommunity(post.communityId);
