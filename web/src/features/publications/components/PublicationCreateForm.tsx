@@ -154,12 +154,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
   const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
   const [noAuthorWalletSpend, setNoAuthorWalletSpend] = useState<boolean>((initialData as any)?.noAuthorWalletSpend ?? false);
-  const hasAdvancedSettings =
-    (initialData as any)?.investingEnabled ||
-    (initialData as any)?.ttlDays != null ||
-    (initialData as any)?.stopLoss !== 0 ||
-    (initialData as any)?.noAuthorWalletSpend;
-  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(!!(initialData && hasAdvancedSettings));
+  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(true);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
