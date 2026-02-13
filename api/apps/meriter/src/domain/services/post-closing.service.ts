@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { ClientSession, Connection, Model } from 'mongoose';
 import {
   PublicationSchemaClass,
   PublicationDocument,
@@ -87,69 +87,86 @@ export class PostClosingService {
     let result: HandlePostCloseResult;
     let closingSummary: PublicationClosingSummary;
 
-    const session = await this.connection.startSession();
-    try {
-      await session.withTransaction(async () => {
-        result = await this.investmentService.handlePostClose(postId, session);
+    const runCloseLogic = async (session: ClientSession | undefined) => {
+      result = await this.investmentService.handlePostClose(postId, session);
 
-        if (result.ratingDistributed.authorAmount > 0) {
-          await this.walletService.addTransaction(
-            beneficiaryId,
-            communityId,
-            'credit',
-            result.ratingDistributed.authorAmount,
-            'personal',
-            'publication_withdrawal',
-            postId,
-            currency,
-            `Withdrawal from publication ${postId} (post closed)`,
-            session,
-          );
-        }
-
-        if (result.totalRatingDistributed > 0) {
-          await this.publicationService.reduceScore(
-            postId,
-            result.totalRatingDistributed,
-            session,
-          );
-        }
-
-        const poolReturnedTotal = result.poolReturned.reduce(
-          (sum, p) => sum + p.amount,
-          0,
+      if (result.ratingDistributed.authorAmount > 0) {
+        await this.walletService.addTransaction(
+          beneficiaryId,
+          communityId,
+          'credit',
+          result.ratingDistributed.authorAmount,
+          'personal',
+          'publication_withdrawal',
+          postId,
+          currency,
+          `Withdrawal from publication ${postId} (post closed)`,
+          session,
         );
-        const distributedToInvestors = result.ratingDistributed.investorDistributions.reduce(
-          (sum, d) => sum + d.amount,
-          0,
+      }
+
+      if (result.totalRatingDistributed > 0) {
+        await this.publicationService.reduceScore(
+          postId,
+          result.totalRatingDistributed,
+          session,
         );
+      }
 
-        closingSummary = {
-          totalEarned: result.totalRatingDistributed + currentPool,
-          distributedToInvestors,
-          authorReceived: result.ratingDistributed.authorAmount,
-          spentOnShows: Math.max(0, investmentPoolTotal - currentPool),
-          poolReturned: poolReturnedTotal,
-        };
+      const poolReturnedTotal = result.poolReturned.reduce(
+        (sum, p) => sum + p.amount,
+        0,
+      );
+      const distributedToInvestors = result.ratingDistributed.investorDistributions.reduce(
+        (sum, d) => sum + d.amount,
+        0,
+      );
 
-        const now = new Date();
-        await this.publicationModel.updateOne(
-          { id: postId },
-          {
-            $set: {
-              status: 'closed',
-              closedAt: now,
-              closeReason: reason,
-              closingSummary,
-              investmentPool: 0,
-              'metrics.score': 0,
-            },
+      closingSummary = {
+        totalEarned: result.totalRatingDistributed + currentPool,
+        distributedToInvestors,
+        authorReceived: result.ratingDistributed.authorAmount,
+        spentOnShows: Math.max(0, investmentPoolTotal - currentPool),
+        poolReturned: poolReturnedTotal,
+      };
+
+      const now = new Date();
+      await this.publicationModel.updateOne(
+        { id: postId },
+        {
+          $set: {
+            status: 'closed',
+            closedAt: now,
+            closeReason: reason,
+            closingSummary,
+            investmentPool: 0,
+            'metrics.score': 0,
           },
-          { session },
+        },
+        session ? { session } : {},
+      );
+    };
+
+    const transactionErrorMsg =
+      'Transaction numbers are only allowed on a replica set member or mongos';
+
+    try {
+      const session = await this.connection.startSession();
+      try {
+        await session.withTransaction(async () => runCloseLogic(session));
+      } finally {
+        await session.endSession();
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes(transactionErrorMsg)) {
+        this.logger.warn(
+          'MongoDB standalone detected; running post close without transaction',
         );
-      });
-    } finally {
-      await session.endSession();
+        await runCloseLogic(undefined);
+      } else {
+        throw err;
+      }
     }
 
     const res = result!;
