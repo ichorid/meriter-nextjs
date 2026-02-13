@@ -13,6 +13,7 @@ import { WalletService } from '../src/domain/services/wallet.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Community Post/Poll Cost Configuration (e2e)', () => {
   jest.setTimeout(60000);
@@ -247,10 +248,10 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         },
       });
 
-      // Add wallet balance for the test
+      // Post fee is always charged from global wallet (MeritResolver: fee → GLOBAL_COMMUNITY_ID)
       await walletService.addTransaction(
         testLeadId,
-        testCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -264,12 +265,12 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         'Test credit',
       );
 
-      // Get initial wallet balance
-      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      // Get initial global wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBeGreaterThanOrEqual(3);
 
-      // Create publication (should consume 3 wallet merits)
+      // Create publication (should consume 3 merits from global wallet)
       const created = await trpcMutation(app, 'publications.create', {
         communityId: testCommunityId,
         title: 'Test Publication',
@@ -281,13 +282,13 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
       const publicationId = created.id;
 
-      // Verify wallet balance was decreased by 3
-      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      // Verify global wallet balance was decreased by 3
+      const walletAfter = await walletService.getWallet(testLeadId, GLOBAL_COMMUNITY_ID);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 3);
 
-      // Verify wallet transaction was created
-      const wallet = await walletService.getWallet(testLeadId, testCommunityId);
+      // Verify wallet transaction was created on global wallet
+      const wallet = await walletService.getWallet(testLeadId, GLOBAL_COMMUNITY_ID);
       if (wallet) {
         const transactions = await connection.db
           .collection('transactions')
