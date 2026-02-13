@@ -11,6 +11,7 @@ import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { routes } from '@/lib/constants/routes';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useTranslations } from 'next-intl';
 
 export interface VerticalSidebarProps {
@@ -298,7 +299,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 </p>
               )}
               {specialCommunities.map((community) => {
-                const wallet = walletsMap.get(community.id);
+                // G-13: Priority communities use global wallet
+                const wallet = walletsMap.get(GLOBAL_COMMUNITY_ID) ?? walletsMap.get(community.id);
                 const quota = quotasMap.get(community.id);
 
                 return (

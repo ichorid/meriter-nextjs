@@ -119,6 +119,16 @@ export const CACHE = {
 } as const;
 
 // ============================================================================
+// Global Merit (Backend Sync)
+// ============================================================================
+
+/**
+ * Global community ID for platform-wide merit storage.
+ * Priority communities (MD, OB, Projects, Support) use this wallet.
+ */
+export const GLOBAL_COMMUNITY_ID = '__global__' as const;
+
+// ============================================================================
 // Type Exports
 // ============================================================================
 
