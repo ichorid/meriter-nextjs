@@ -8,6 +8,7 @@ import { User, UserDocument } from '../src/domain/models/user/user.schema';
 import { Publication, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserCommunityRole, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
@@ -224,13 +225,13 @@ describe('Publication Soft Delete E2E', () => {
       },
     ]);
 
-    // Set up wallet balances for all users to allow publication creation
+    // Post fee is paid from global wallet
     const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await walletService.addTransaction(authorId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(participantId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(leadId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(superadminId, communityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
-    await walletService.addTransaction(otherLeadId, otherCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(authorId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(participantId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(leadId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(superadminId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+    await walletService.addTransaction(otherLeadId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
   });
 
   afterAll(async () => {
@@ -454,9 +455,9 @@ describe('Publication Soft Delete E2E', () => {
         { id: uid(), userId: participantId, communityId: marathonCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
       ]);
 
-      // Add wallet balance for author in marathon community to allow publication creation
+      // Post fee is from global wallet
       const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-      await walletService.addTransaction(authorId, marathonCommunityId, 'credit', 10, 'personal', 'test_setup', 'test', currency);
+      await walletService.addTransaction(authorId, GLOBAL_COMMUNITY_ID, 'credit', 10, 'personal', 'test_setup', 'test', currency);
 
       // Create publication in marathon community
       (global as any).testUserId = authorId;

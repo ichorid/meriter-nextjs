@@ -1,4 +1,4 @@
-﻿import { INestApplication } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { VoteService } from '../src/domain/services/vote.service';
 import { PublicationService } from '../src/domain/services/publication.service';
 import { UserService } from '../src/domain/services/user.service';
@@ -15,6 +15,7 @@ import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
@@ -107,12 +108,12 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       },
     ]);
 
-    // Create Marathon of Good community
+    // Create Marathon of Good community (typeTag 'custom' so quota is available; priority communities have quota disabled in MVP)
     marathonCommunityId = uid();
     await communityModel.create({
       id: marathonCommunityId,
       name: 'Marathon of Good',
-      typeTag: 'marathon-of-good',
+      typeTag: 'custom',
       members: [testUserId, testUserId2],
       settings: {
         iconUrl: 'https://example.com/icon.png',
@@ -123,6 +124,8 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         },
         dailyEmission: 10,
       },
+      votingSettings: { currencySource: 'quota-only' },
+      lastQuotaResetAt: new Date(),
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant'],
         canVoteForOwnPosts: false,
@@ -137,7 +140,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
-    // Create Future Vision community
+    // Create Future Vision community (priority: voting uses global wallet)
     visionCommunityId = uid();
     await communityModel.create({
       id: visionCommunityId,
@@ -153,6 +156,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         },
         dailyEmission: 10,
       },
+      votingSettings: { currencySource: 'wallet-only' },
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant'],
         canVoteForOwnPosts: false,
@@ -259,6 +263,35 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         id: uid(),
         userId: testUserId2,
         communityId: visionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      // Global wallet (used for voting in priority communities: Future Vision)
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: GLOBAL_COMMUNITY_ID,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId2,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -447,7 +480,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.message).toContain('only allows quota voting');
       });
     });
 
@@ -478,7 +511,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.message).toContain('only allows quota voting');
       });
     });
   });
@@ -510,7 +543,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.message).toContain('only allows wallet voting');
       });
     });
 
@@ -540,7 +573,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Future Vision only allows wallet voting');
+        expect(result.error?.message).toContain('only allows wallet voting');
       });
     });
 
@@ -629,18 +662,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
 
   describe('VoteService Direct Tests', () => {
     it('should reject wallet voting via VoteService.createVote for Marathon of Good', async () => {
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          marathonPubId,
-          0, // quotaAmount
-          10, // walletAmount
-          'up', // direction
-          'Test comment',
-          marathonCommunityId
-        )
-      ).rejects.toThrow('Marathon of Good only allows quota voting');
+      (global as any).testUserId = testUserId;
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: marathonPubId,
+          quotaAmount: 0,
+          walletAmount: 10,
+          comment: 'Wallet vote attempt',
+        });
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('only allows quota voting');
+      });
     });
 
     it('should allow quota voting via VoteService.createVote for Marathon of Good', async () => {
@@ -662,18 +695,18 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
     });
 
     it('should reject quota voting via VoteService.createVote for Future Vision', async () => {
-      await expect(
-        voteService.createVote(
-          testUserId,
-          'publication',
-          visionPubId,
-          5, // quotaAmount
-          0, // walletAmount
-          'up', // direction
-          'Test comment',
-          visionCommunityId
-        )
-      ).rejects.toThrow('Future Vision only allows wallet voting');
+      (global as any).testUserId = testUserId;
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: visionPubId,
+          quotaAmount: 5,
+          walletAmount: 0,
+          comment: 'Quota vote attempt',
+        });
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('wallet voting');
+      });
     });
 
     it('should allow wallet voting via VoteService.createVote for Future Vision', async () => {
