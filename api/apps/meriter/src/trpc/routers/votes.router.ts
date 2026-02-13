@@ -507,46 +507,53 @@ async function createVoteLogic(
   const walletAmount = input.walletAmount ?? 0;
   const totalAmount = quotaAmount + walletAmount;
 
-  // commentMode validation: which comment/vote types are allowed in this community
-  const commentMode =
-    community.settings?.commentMode ??
-    (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all');
-  if (commentMode === 'neutralOnly' && totalAmount !== 0) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'This community only allows neutral comments',
-    });
-  }
-  if (commentMode === 'weightedOnly' && totalAmount === 0) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'This community requires comments to have merit weight',
-    });
+  // Author top-up: when post author adds merits to their own post (direct top-up to rating),
+  // this bypasses commentMode — it is not a vote/comment, just a transfer.
+  let isAuthorTopup = false;
+  if (input.targetType === 'publication' && totalAmount > 0) {
+    const pubDoc = await ctx.publicationService.getPublicationDocument(
+      input.targetId,
+    );
+    if (pubDoc?.authorId === ctx.user.id) {
+      isAuthorTopup = true;
+    }
+    if ((pubDoc?.status ?? 'active') === 'closed') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This post is closed and cannot be modified',
+      });
+    }
   }
 
-  // Allow totalAmount === 0 only for neutralOnly (neutral comment); otherwise require positive weight
   if (totalAmount < 0) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Vote amount cannot be negative',
     });
   }
-  if (totalAmount === 0 && commentMode !== 'neutralOnly') {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'At least one of quotaAmount or walletAmount must be greater than zero',
-    });
-  }
 
-  // D-4: Block weighted votes on closed publications (neutral comments allowed)
-  if (input.targetType === 'publication' && totalAmount > 0) {
-    const pubDoc = await ctx.publicationService.getPublicationDocument(
-      input.targetId,
-    );
-    if ((pubDoc?.status ?? 'active') === 'closed') {
+  // commentMode validation: which comment/vote types are allowed in this community
+  // Skip for author top-up — author adding merits to own post is direct transfer, not a vote
+  if (!isAuthorTopup) {
+    const commentMode =
+      community.settings?.commentMode ??
+      (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all');
+    if (commentMode === 'neutralOnly' && totalAmount !== 0) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: 'This post is closed and cannot be modified',
+        message: 'This community only allows neutral comments',
+      });
+    }
+    if (commentMode === 'weightedOnly' && totalAmount === 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This community requires comments to have merit weight',
+      });
+    }
+    if (totalAmount === 0 && commentMode !== 'neutralOnly') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'At least one of quotaAmount or walletAmount must be greater than zero',
       });
     }
   }
