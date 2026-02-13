@@ -510,10 +510,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Header */}
             <div className="flex flex-col gap-1">
                 <h2 className="text-xl font-bold text-base-content">
-                    {title || t("voteTitle")}
+                    {commentMode === 'neutralOnly' ? t("commentButton") : (title || t("voteTitle"))}
                 </h2>
-                {/* Explanation - keep the mechanics hint */}
-                {!hideQuota && (
+                {/* Explanation - only for weighted communities */}
+                {!hideQuota && commentMode !== 'neutralOnly' && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
                         {votingMechanicsText}
                     </p>
@@ -521,8 +521,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             </div>
 
 
-            {/* Voting Section */}
-            {!hideQuota && (
+            {/* Voting Section - hidden for neutralOnly (comment-only mode) */}
+            {!hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
                     {/* Progress Bars - Show vote distribution */}
                     <div className="flex gap-2">
@@ -650,8 +650,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 </div>
             )}
 
-            {/* Withdraw Progress Bar (when hideQuota is true) */}
-            {hideQuota && (
+            {/* Withdraw Progress Bar (when hideQuota is true, not in neutralOnly) */}
+            {hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
                     {/* Hint text */}
                     <p className="text-xs text-base-content/60 leading-relaxed">
@@ -738,9 +738,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     <label className="text-sm font-medium text-base-content">
                         {t("comment")}
                     </label>
-                    <p className="text-xs text-base-content/60 mb-2">
-                        {t("explanationPlaceholder")}
-                    </p>
+                    {commentMode !== 'neutralOnly' && (
+                        <p className="text-xs text-base-content/60 mb-2">
+                            {t("explanationPlaceholder")}
+                        </p>
+                    )}
                     <Textarea
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
@@ -753,7 +755,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     />
                     {!comment.trim() && (
                         <p className="text-xs text-error">
-                            {t("commentRequired")}
+                            {commentMode === 'neutralOnly' ? t("commentEmptyHint") : t("commentRequired")}
                         </p>
                     )}
                 </div>
