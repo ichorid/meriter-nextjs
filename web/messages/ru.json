@@ -1691,6 +1691,13 @@
         "voteDownComment": "{name} проголосовал против вашего комментария",
         "targetTypePost": "пост",
         "targetTypeComment": "комментарий",
+        "investmentReceived": "Получена инвестиция",
+        "investedInYourPost": "{name} инвестировал {amount} меритов в ваш пост",
+        "investmentDistributed": "Инвестиция распределена",
+        "authorWithdrewYourShare": "{name} вывел {amount} меритов с поста. Ваша доля: {share} меритов",
+        "postClosed": "Пост закрыт",
+        "postClosedInvestmentTotal": "Пост закрыт. Всего получено: {total} меритов",
+        "postClosedAuthorReceived": "Пост закрыт. Вы получили: {amount} меритов",
         "preferences": {
             "title": "Настройки уведомлений",
             "mentions": "Упоминания",

@@ -187,6 +187,11 @@ export default function NotificationsPage() {
         return '👥';
       case 'team_invitation':
         return '📨';
+      case 'investment_received':
+      case 'investment_distributed':
+      case 'post_closed_investment':
+      case 'post_closed':
+        return '💰';
       default:
         return '🔔';
     }
@@ -207,7 +212,34 @@ export default function NotificationsPage() {
       const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
       return base + amountStr;
     }
+    if (notification.type === 'investment_received' && notification.metadata?.amount != null) {
+      const amount = Number(notification.metadata.amount);
+      const actorName = notification.actor?.name || tCommon('someone');
+      return t('investedInYourPost', { name: actorName, amount });
+    }
+    if (notification.type === 'investment_distributed' && notification.metadata) {
+      const withdrawAmount = Number(notification.metadata.withdrawAmount ?? 0);
+      const share = Number(notification.metadata.amount ?? 0);
+      const actorName = notification.actor?.name || tCommon('someone');
+      return t('authorWithdrewYourShare', { name: actorName, amount: withdrawAmount, share });
+    }
+    if (notification.type === 'post_closed_investment' && notification.metadata?.totalEarnings != null) {
+      const total = Number(notification.metadata.totalEarnings);
+      return t('postClosedInvestmentTotal', { total });
+    }
+    if (notification.type === 'post_closed' && notification.metadata?.authorReceived != null) {
+      const amount = Number(notification.metadata.authorReceived);
+      return t('postClosedAuthorReceived', { amount });
+    }
     return notification.message || '';
+  };
+
+  const getNotificationTitle = (notification: typeof notifications[0]): string => {
+    if (notification.type === 'vote') return t('newVote');
+    if (notification.type === 'investment_received') return t('investmentReceived');
+    if (notification.type === 'investment_distributed') return t('investmentDistributed');
+    if (notification.type === 'post_closed_investment' || notification.type === 'post_closed') return t('postClosed');
+    return notification.title || '';
   };
 
   const formatDate = (dateString: string) => {
@@ -308,11 +340,11 @@ export default function NotificationsPage() {
                 className={`relative overflow-hidden rounded-xl ${!notification.read ? 'bg-blue-50/50' : ''}`}
               >
                 <InfoCard
-                  title={notification.type === 'vote' ? t('newVote') : notification.title}
+                  title={getNotificationTitle(notification)}
                   subtitle={
                     [
                       formatNotificationMessage(notification),
-                      notification.type === 'vote' ? null : notification.actor?.name,
+                      ['vote', 'investment_received', 'investment_distributed'].includes(notification.type) ? null : notification.actor?.name,
                       notification.community?.name,
                       formatDate(notification.createdAt),
                     ]

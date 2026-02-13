@@ -265,7 +265,11 @@ export type NotificationType =
     | "system"
     | "forward_proposal"
     | "team_join_request"
-    | "team_invitation";
+    | "team_invitation"
+    | "investment_received"
+    | "investment_distributed"
+    | "post_closed_investment"
+    | "post_closed";
 
 export interface Notification {
     id: string;
