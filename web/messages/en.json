@@ -638,6 +638,7 @@
         "commentRequired": "Comment is required for voting on a post",
         "commentEmptyHint": "Cannot leave a comment without text",
         "weightRequired": "This community requires a vote weight (at least 1 merit).",
+        "quotaOrWalletRequired": "At least one of quota or wallet amount must be non-zero. Please ensure you have quota or wallet balance.",
         "votingMechanics": "You can vote FOR a post or AGAINST it.\nFor voting FOR, merits from your daily quota are spent first, and after it is exceeded, merits from your wallet.\nFor voting AGAINST, only wallet merits can be used.",
         "ownPostVotingMechanics": "You are voting for your own post. Only wallet merits can be used for this.",
         "cannotVoteOwnPostNoWallet": "Voting on your own posts is only possible with wallet merits, but you have 0 in your account",

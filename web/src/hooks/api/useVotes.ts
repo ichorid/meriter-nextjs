@@ -265,9 +265,10 @@ export function useVoteOnPublicationWithComment() {
       const quotaAmount = data.quotaAmount ?? 0;
       const walletAmount = data.walletAmount ?? 0;
 
-      // Validate that at least one amount is non-zero
-      if (quotaAmount === 0 && walletAmount === 0) {
-        throw new Error('At least one of quotaAmount or walletAmount must be non-zero. Please ensure you have quota or wallet balance.');
+      // Allow 0,0 for neutral comments (comment-only, no weight)
+      const hasComment = typeof data.comment === 'string' && data.comment.trim().length > 0;
+      if (quotaAmount === 0 && walletAmount === 0 && !hasComment) {
+        throw new Error('QUOTA_OR_WALLET_REQUIRED');
       }
 
       const mutationInput = {

@@ -756,17 +756,17 @@ export const VoteWithCommentDtoSchema = z.object({
   comment: z.string().optional(),
   direction: z.enum(["up", "down"]).optional(),
   images: z.array(z.string().url()).optional(),
-})
-  .refine(
-    (data) => {
-      const quota = data.quotaAmount ?? 0;
-      const wallet = data.walletAmount ?? 0;
-      return quota > 0 || wallet > 0;
-    },
-    {
-      message: "At least one of quotaAmount or walletAmount must be non-zero",
-    }
-  );
+}).refine(
+  (data) => {
+    const quota = data.quotaAmount ?? 0;
+    const wallet = data.walletAmount ?? 0;
+    const hasWeight = quota > 0 || wallet > 0;
+    const hasComment = typeof data.comment === "string" && data.comment.trim().length > 0;
+    // Allow weighted vote OR neutral comment (0,0 with comment text)
+    return hasWeight || hasComment;
+  },
+  { message: "At least one of quotaAmount or walletAmount must be non-zero, or a comment is required" }
+);
 
 // API Response schemas
 export const ApiResponseSchema = z.object({

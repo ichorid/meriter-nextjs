@@ -391,6 +391,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       let message = err instanceof Error ? err.message : t('errorCommenting');
       if (message === 'This community only allows neutral comments') {
         message = tShared('voteDisabled.neutralOnlyError');
+      } else if (
+        message === 'QUOTA_OR_WALLET_REQUIRED' ||
+        (typeof message === 'string' && message.includes('quotaAmount or walletAmount'))
+      ) {
+        message = t('quotaOrWalletRequired');
       }
       addToast(message, 'error');
     }
