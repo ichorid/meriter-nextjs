@@ -35,6 +35,18 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   );
   const hasInvestments = (publication?.investments?.length ?? 0) > 0;
   const investorSharePercent = publication?.investorSharePercent ?? 0;
+  const investments = publication?.investments ?? [];
+
+  const { data: breakdown } = trpc.investments.getInvestmentBreakdown.useQuery(
+    { postId: activeWithdrawTarget ?? '' },
+    {
+      enabled:
+        isOpen &&
+        withdrawTargetType === 'publication' &&
+        !!activeWithdrawTarget &&
+        hasInvestments,
+    }
+  );
 
   const { targetCommunityId, walletBalance } = usePopupCommunityData(communityId);
 
@@ -45,13 +57,42 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     updateFormData: updateWithdrawFormData,
   });
 
+  // C-9: Match backend C-4 rounding (round to 0.01, remainder to author)
   const investmentSplit = useMemo(() => {
-    if (!hasInvestments || !formData.amount || formData.amount <= 0) return null;
+    if (!hasInvestments || !formData.amount || formData.amount <= 0 || investments.length === 0)
+      return null;
+    const roundToHundredths = (x: number) => Math.round(x * 100) / 100;
     const amount = formData.amount;
-    const investorTotal = Math.floor(amount * (investorSharePercent / 100));
-    const authorAmount = amount - investorTotal;
-    return { investorTotal, authorAmount };
-  }, [hasInvestments, formData.amount, investorSharePercent]);
+    const totalInvested = (investments as Array<{ investorId: string; amount: number }>).reduce(
+      (sum, inv) => sum + inv.amount,
+      0
+    );
+    if (totalInvested <= 0) return null;
+    const investorTotal = roundToHundredths(amount * (investorSharePercent / 100));
+    const perInvestor: Array<{ investorId: string; amount: number; username?: string }> = [];
+    let distributedTotal = 0;
+    for (const inv of investments as Array<{ investorId: string; amount: number }>) {
+      const share = investorTotal * (inv.amount / totalInvested);
+      const amt = roundToHundredths(share);
+      distributedTotal += amt;
+      if (amt > 0) {
+        const username = breakdown?.investors?.find((i) => i.userId === inv.investorId)?.username;
+        perInvestor.push({ investorId: inv.investorId, amount: amt, username });
+      }
+    }
+    const authorAmount = amount - distributedTotal;
+    return {
+      investorTotal: distributedTotal,
+      authorAmount,
+      perInvestor,
+    };
+  }, [
+    hasInvestments,
+    formData.amount,
+    investorSharePercent,
+    investments,
+    breakdown?.investors,
+  ]);
 
   const handleAmountChange = (amount: number) => {
     const positiveAmount = Math.abs(amount);

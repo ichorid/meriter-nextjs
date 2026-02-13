@@ -1,10 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { VotingPanel } from '../VotingPopup/VotingPanel';
 import { useVoteOnPublicationWithComment, useVoteOnVote, useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
 import { useToastStore } from '@/shared/stores/toast.store';
+
+export interface WithdrawInvestmentSplit {
+  investorTotal: number;
+  authorAmount: number;
+  perInvestor: Array<{ investorId: string; amount: number; username?: string }>;
+}
 
 interface WithdrawPopupContentProps {
   onClose: () => void;
@@ -17,7 +24,7 @@ interface WithdrawPopupContentProps {
   error: string;
   isWithdrawal: boolean;
   hasInvestments: boolean;
-  investmentSplit: { investorTotal: number; authorAmount: number } | null;
+  investmentSplit: WithdrawInvestmentSplit | null;
   investorSharePercent: number;
   activeWithdrawTarget: string;
   withdrawTargetType: string;
@@ -43,6 +50,7 @@ export function WithdrawPopupContent({
 }: WithdrawPopupContentProps) {
   const t = useTranslations('shared');
   const tInvesting = useTranslations('investing');
+  const [distributionDetailsOpen, setDistributionDetailsOpen] = useState(false);
   const popupTitle = isWithdrawal ? t('withdraw') : t('addMeritsToPost');
   const submitButtonLabel = isWithdrawal ? undefined : t('addMeritsButton');
   const addToast = useToastStore((state) => state.addToast);
@@ -134,26 +142,53 @@ export function WithdrawPopupContent({
           title={popupTitle}
           submitButtonLabel={submitButtonLabel}
         />
-        {isWithdrawal && hasInvestments && investmentSplit && (
-          <div className="rounded-lg border border-base-content/10 bg-base-200/50 p-4 space-y-2 text-sm">
+        {isWithdrawal && hasInvestments && investmentSplit && amount > 0 && (
+          <div className="rounded-lg border border-base-content/10 bg-base-200/50 p-4 space-y-3 text-sm">
             <p className="font-medium">
-              {tInvesting('contractTerms', {
-                defaultValue: 'Contract: {percent}% to investors',
+              {tInvesting('youAreWithdrawing', {
+                amount,
+                defaultValue: 'You are withdrawing: {amount} merits',
+              })}
+            </p>
+            <p className="text-base-content/80">
+              {tInvesting('toInvestors', {
                 percent: investorSharePercent,
-              })}
-            </p>
-            <p className="text-base-content/80">
-              {tInvesting('investorsReceive', {
-                defaultValue: 'Investors will receive: {amount} merits',
                 amount: investmentSplit.investorTotal,
+                defaultValue: 'To investors ({percent}%): {amount} merits',
               })}
             </p>
             <p className="text-base-content/80">
-              {tInvesting('youReceive', {
-                defaultValue: 'You will receive: {amount} merits',
+              {tInvesting('toYou', {
                 amount: investmentSplit.authorAmount,
+                defaultValue: 'To you: {amount} merits',
               })}
             </p>
+            {investmentSplit.perInvestor.length > 0 && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setDistributionDetailsOpen((o) => !o)}
+                  className="flex items-center gap-1 text-base-content/70 hover:text-base-content/90 font-medium"
+                >
+                  {distributionDetailsOpen ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                  {tInvesting('distributionDetails', { defaultValue: 'Distribution details' })}
+                </button>
+                {distributionDetailsOpen && (
+                  <ul className="mt-2 pl-5 space-y-1 text-base-content/70">
+                    {investmentSplit.perInvestor.map((item) => (
+                      <li key={item.investorId} className="flex justify-between gap-2">
+                        <span>{item.username ?? item.investorId}</span>
+                        <span className="tabular-nums">{item.amount} merits</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
