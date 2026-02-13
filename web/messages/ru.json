@@ -49,6 +49,7 @@
         "noPermission": "У вас нет разрешения на выполнение этого действия",
         "user": "Пользователь",
         "unknownUser": "Неизвестный пользователь",
+        "someone": "Кто-то",
         "anonymous": "Аноним",
         "createInvite": "Создать приглашение",
         "noMembersFound": "Участники не найдены",
@@ -97,6 +98,7 @@
         "andMoreMerits": "и ещё {count} меритов",
         "youHave": "У вас",
         "youHaveMerits": "У вас {count} меритов",
+        "meritsAmount": "{amount} меритов",
         "sort": {
             "recent": "По дате",
             "voted": "По рейтингу"
@@ -284,6 +286,7 @@
         "repeatInvestment": "Вы уже вложили {existing} меритов. После этого: всего {total} меритов, доля ~{percent}%",
         "noInvestorsYet": "Пока нет инвесторов",
         "meritsInPool": "{amount} меритов в пуле",
+        "meritsAmount": "{amount} меритов",
         "authorShare": "Автор ({percent}%)",
         "investor": "Инвестор",
         "investedBy": "{amount} меритов от {count} инвестор(ов)",
@@ -383,6 +386,9 @@
             "hours": "{count} ч назад",
             "days": "{count} дн назад"
         },
+        "postPermanentlyDeleted": "Пост окончательно удалён",
+        "postMovedToDeleted": "Пост перемещён в удалённые",
+        "failedToDelete": "Не удалось удалить",
         "deleteConfirmation": {
             "investmentTitle": "Удалить пост с инвестициями",
             "investmentMessage": "Неиспользованный пул ({pool} меритов) будет возвращён инвесторам. Оставшийся рейтинг ({rating} меритов) распределится: {percent}% инвесторам, остальное вам. Вы уверены, что хотите удалить?",
@@ -685,7 +691,9 @@
         "totalSum": "Итого",
         "totalReceived": "Всего получено",
         "authorWithdrawn": "Автор вывел",
-        "errorCommenting": "Ошибка при отправке"
+        "errorCommenting": "Ошибка при отправке",
+        "voteSubmittedSuccess": "Голос успешно отправлен",
+        "insufficientWalletForDownvotes": "Недостаточно меритов на кошельке для голосования против."
     },
     "pages": {
         "setupCommunity": {
@@ -1674,6 +1682,15 @@
             "team_join_request": "Запросы на вступление",
             "team_invitation": "Приглашения в команду"
         },
+        "accept": "Да",
+        "decline": "Нет",
+        "newVote": "Новый голос",
+        "voteUpPost": "{name} проголосовал за ваш пост",
+        "voteDownPost": "{name} проголосовал против вашего поста",
+        "voteUpComment": "{name} проголосовал за ваш комментарий",
+        "voteDownComment": "{name} проголосовал против вашего комментария",
+        "targetTypePost": "пост",
+        "targetTypeComment": "комментарий",
         "preferences": {
             "title": "Настройки уведомлений",
             "mentions": "Упоминания",

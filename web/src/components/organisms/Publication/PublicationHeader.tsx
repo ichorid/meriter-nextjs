@@ -237,12 +237,12 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         // If publication is already deleted, use permanent delete
         if (isAlreadyDeleted) {
           await permanentDeletePublication.mutateAsync({ id: publicationId! });
-          addToast('Post permanently deleted', 'success');
+          addToast(t('postPermanentlyDeleted'), 'success');
           // Stay on deleted posts page after permanent deletion
           // The publication will disappear from the list via cache invalidation
         } else {
           await deletePublication.mutateAsync({ id: publicationId!, communityId });
-          addToast('Post moved to deleted', 'success');
+          addToast(t('postMovedToDeleted'), 'success');
           // Navigate away after soft deletion
           if (communityId) {
             router.push(`/meriter/communities/${communityId}`);
@@ -257,7 +257,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       }
       setShowDeleteModal(false);
     } catch (error: any) {
-      addToast(error?.message || 'Failed to delete', 'error');
+      addToast(error?.message || t('failedToDelete'), 'error');
     }
   };
 

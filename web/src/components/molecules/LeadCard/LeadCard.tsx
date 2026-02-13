@@ -117,7 +117,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 {/* Merits info */}
                 {totalMerits !== undefined && (
                     <div className="text-xs leading-[120%] text-base-content/60 text-left">
-                        {meritsDisplay} merits
+                        {tCommon('meritsAmount', { amount: meritsDisplay })}
                     </div>
                 )}
                 

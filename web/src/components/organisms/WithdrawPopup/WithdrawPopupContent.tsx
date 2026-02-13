@@ -182,7 +182,7 @@ export function WithdrawPopupContent({
                     {investmentSplit.perInvestor.map((item) => (
                       <li key={item.investorId} className="flex justify-between gap-2">
                         <span>{item.username ?? item.investorId}</span>
-                        <span className="tabular-nums">{item.amount} merits</span>
+                        <span className="tabular-nums">{tInvesting('meritsAmount', { amount: item.amount })}</span>
                       </li>
                     ))}
                   </ul>

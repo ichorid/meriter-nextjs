@@ -103,7 +103,7 @@ export function InvestmentBreakdownInline({ postId, compact = false }: Investmen
                 </span>
               </div>
               <div className="flex items-center gap-3 text-sm tabular-nums">
-                <span className="text-base-content/80">{inv.amount} merits</span>
+                <span className="text-base-content/80">{t('meritsAmount', { amount: inv.amount })}</span>
                 <span className="text-base-content/60">{inv.sharePercent.toFixed(1)}%</span>
               </div>
             </li>

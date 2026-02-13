@@ -192,6 +192,24 @@ export default function NotificationsPage() {
     }
   };
 
+  const tCommon = useTranslations('common');
+
+  const formatNotificationMessage = (notification: typeof notifications[0]): string => {
+    if (notification.type === 'vote' && notification.metadata?.direction) {
+      const direction = notification.metadata.direction as 'up' | 'down';
+      const amount = typeof notification.metadata.amount === 'number' ? notification.metadata.amount : 0;
+      const targetType = notification.metadata.targetType === 'vote' ? 'comment' : 'post';
+      const actorName = notification.actor?.name || tCommon('someone');
+      const key = direction === 'up'
+        ? (targetType === 'post' ? 'voteUpPost' : 'voteUpComment')
+        : (targetType === 'post' ? 'voteDownPost' : 'voteDownComment');
+      const base = t(key, { name: actorName });
+      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
+      return base + amountStr;
+    }
+    return notification.message || '';
+  };
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -290,11 +308,11 @@ export default function NotificationsPage() {
                 className={`relative overflow-hidden rounded-xl ${!notification.read ? 'bg-blue-50/50' : ''}`}
               >
                 <InfoCard
-                  title={notification.title}
+                  title={notification.type === 'vote' ? t('newVote') : notification.title}
                   subtitle={
                     [
-                      notification.message,
-                      notification.actor?.name,
+                      formatNotificationMessage(notification),
+                      notification.type === 'vote' ? null : notification.actor?.name,
                       notification.community?.name,
                       formatDate(notification.createdAt),
                     ]
@@ -338,7 +356,7 @@ export default function NotificationsPage() {
                             {acceptInvitation.isPending ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              'Да'
+                              t('accept')
                             )}
                           </Button>
                           <Button
@@ -358,7 +376,7 @@ export default function NotificationsPage() {
                             {rejectInvitation.isPending ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              'Нет'
+                              t('decline')
                             )}
                           </Button>
                         </div>

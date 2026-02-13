@@ -50,6 +50,7 @@
         "needsSetup": "Needs setup",
         "user": "User",
         "unknownUser": "Unknown User",
+        "someone": "Someone",
         "anonymous": "Anonymous",
         "createInvite": "Create Invite",
         "noMembersFound": "No members found",
@@ -97,6 +98,7 @@
         "andMoreMerits": "and {count} more merits",
         "youHave": "You have",
         "youHaveMerits": "You have {count} merits",
+        "meritsAmount": "{amount} merits",
         "sort": {
             "recent": "By Date",
             "voted": "By Rating"
@@ -289,6 +291,7 @@
         "repeatInvestment": "You already invested {existing} merits. After this: total {total} merits, share ~{percent}%",
         "noInvestorsYet": "No investors yet",
         "meritsInPool": "{amount} merits in pool",
+        "meritsAmount": "{amount} merits",
         "authorShare": "Author ({percent}%)",
         "investor": "Investor",
         "investedBy": "{amount} merits from {count} investor(s)",
@@ -390,6 +393,9 @@
             "hours": "{count}h ago",
             "days": "{count}d ago"
         },
+        "postPermanentlyDeleted": "Post permanently deleted",
+        "postMovedToDeleted": "Post moved to deleted",
+        "failedToDelete": "Failed to delete",
         "deleteConfirmation": {
             "investmentTitle": "Delete post with investments",
             "investmentMessage": "Unspent investment pool ({pool} merits) will be returned to investors. Remaining rating ({rating} merits) will be distributed: {percent}% to investors, rest to you. Are you sure you want to delete?",
@@ -692,7 +698,9 @@
         "totalSum": "Total sum",
         "totalReceived": "Total received",
         "authorWithdrawn": "Author withdrawn",
-        "errorCommenting": "Failed to submit"
+        "errorCommenting": "Failed to submit",
+        "voteSubmittedSuccess": "Vote submitted successfully",
+        "insufficientWalletForDownvotes": "You have insufficient wallet balance for downvotes."
     },
     "pages": {
         "setupCommunity": {
@@ -1677,6 +1685,15 @@
             "team_join_request": "Join Requests",
             "team_invitation": "Team Invitations"
         },
+        "accept": "Yes",
+        "decline": "No",
+        "newVote": "New vote",
+        "voteUpPost": "{name} upvoted your post",
+        "voteDownPost": "{name} downvoted your post",
+        "voteUpComment": "{name} upvoted your comment",
+        "voteDownComment": "{name} downvoted your comment",
+        "targetTypePost": "post",
+        "targetTypeComment": "comment",
         "preferences": {
             "title": "Notification Preferences",
             "mentions": "Mentions",

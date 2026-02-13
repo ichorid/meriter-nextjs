@@ -297,7 +297,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           updateVotingFormData({ error: t('reasonRequired') });
           return;
         }
-        updateVotingFormData({ error: 'You have insufficient wallet balance for downvotes.' });
+        updateVotingFormData({ error: t('insufficientWalletForDownvotes') });
         return;
       }
     }
@@ -383,7 +383,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       console.log('[VotingPopup] Vote submitted successfully');
       
       // Show success toast
-      addToast('Vote submitted successfully', 'success');
+      addToast(t('voteSubmittedSuccess'), 'success');
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
       console.error('[VotingPopup] Error submitting vote:', err);
