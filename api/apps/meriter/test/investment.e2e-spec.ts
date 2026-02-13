@@ -32,6 +32,7 @@ import {
   PublicationSchemaClass,
   PublicationDocument,
 } from '../src/domain/models/publication/publication.schema';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Investment E2E', () => {
   jest.setTimeout(60000);
@@ -234,9 +235,10 @@ describe('Investment E2E', () => {
         amount: ratingBefore,
       });
 
-      const investorWallet = await walletModel.findOne({ userId: investorId, communityId }).lean().exec();
-      // Investor started with 100, invested 50 → 50. With 20% share of withdrawal, gets ≥1 when withdrawing ≥5
-      expect(investorWallet?.balance).toBeGreaterThan(50);
+      // Withdrawal credits go to global wallet (MeritResolver: withdrawal → GLOBAL_COMMUNITY_ID)
+      const investorGlobalWallet = await walletModel.findOne({ userId: investorId, communityId: GLOBAL_COMMUNITY_ID }).lean().exec();
+      // Investor's share of withdrawal is credited to global wallet; with 20% share, gets ≥1 when withdrawing ≥5
+      expect(investorGlobalWallet?.balance ?? 0).toBeGreaterThan(0);
     }
 
     (global as any).testUserId = null;
@@ -297,15 +299,16 @@ describe('Investment E2E', () => {
       updatedAt: now,
     });
 
-    const investorWalletBefore = await walletModel.findOne({ userId: investorId, communityId }).lean().exec();
-    const balanceBefore = investorWalletBefore?.balance ?? 0;
+    // Pool return and rating distribution on close go to global wallet (MeritResolver: withdrawal → GLOBAL_COMMUNITY_ID)
+    const investorGlobalBefore = await walletModel.findOne({ userId: investorId, communityId: GLOBAL_COMMUNITY_ID }).lean().exec();
+    const globalBalanceBefore = investorGlobalBefore?.balance ?? 0;
 
     (global as any).testUserId = authorId;
     await trpcMutation(app, 'publications.delete', { id: postId });
 
-    const investorWalletAfter = await walletModel.findOne({ userId: investorId, communityId }).lean().exec();
-    const balanceAfter = investorWalletAfter?.balance ?? 0;
-    expect(balanceAfter).toBeGreaterThan(balanceBefore);
+    const investorGlobalAfter = await walletModel.findOne({ userId: investorId, communityId: GLOBAL_COMMUNITY_ID }).lean().exec();
+    const globalBalanceAfter = investorGlobalAfter?.balance ?? 0;
+    expect(globalBalanceAfter).toBeGreaterThan(globalBalanceBefore);
   });
 
   it('non-investment post unaffected by investment changes', async () => {
