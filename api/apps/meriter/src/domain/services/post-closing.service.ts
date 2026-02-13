@@ -201,17 +201,19 @@ export class PostClosingService {
       );
     }
 
-    try {
-      await this.notificationService.createNotification({
-        userId: authorId,
-        type: 'post_closed',
-        source: 'system',
-        metadata: { postId, communityId, authorReceived },
-        title: 'Post closed',
-        message: `Post closed. You received: ${authorReceived} merits`,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to create post_closed notification to author: ${err}`);
+    if (authorReceived > 0) {
+      try {
+        await this.notificationService.createNotification({
+          userId: authorId,
+          type: 'post_closed',
+          source: 'system',
+          metadata: { postId, communityId, authorReceived },
+          title: 'Post closed',
+          message: `Post closed. You received: ${authorReceived} merits`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to create post_closed notification to author: ${err}`);
+      }
     }
   }
 }

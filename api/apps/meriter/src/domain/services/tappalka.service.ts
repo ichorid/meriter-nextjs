@@ -98,6 +98,8 @@ export class TappalkaService {
       authorId: { $ne: excludeUserId }, // Exclude user's own posts
       deleted: { $ne: true }, // Not deleted
       deletedAt: null,
+      // D-1: Exclude closed posts from tappalka (missing status = legacy active)
+      status: { $ne: 'closed' },
       $or: [
         { investmentPool: { $gte: showCost } },
         { 'metrics.score': { $gte: minScore } },

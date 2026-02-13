@@ -31,6 +31,7 @@ export class PostClosingCronService {
 
   /**
    * D-5: TTL auto-close — run every hour. Close posts whose TTL has expired.
+   * Idempotent: only selects status: 'active', so manually closed posts are skipped.
    */
   @Cron('0 * * * *')
   async closeExpiredTtlPosts(): Promise<void> {
@@ -149,6 +150,7 @@ export class PostClosingCronService {
       const community = await this.communityService.getCommunity(
         post.communityId,
       );
+      // Default 7 days when community setting is not set (schema default is also 7)
       const inactiveCloseDays =
         (community as { settings?: { inactiveCloseDays?: number } })
           ?.settings?.inactiveCloseDays ?? 7;
