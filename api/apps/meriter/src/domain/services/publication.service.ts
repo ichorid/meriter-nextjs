@@ -419,6 +419,18 @@ export class PublicationService {
       throw new BadRequestException('Cannot change project status when editing a publication');
     }
 
+    // Immutable: reject any change to investment contract
+    if (updateData.investingEnabled !== undefined) {
+      throw new BadRequestException(
+        'Cannot change investment status after post creation',
+      );
+    }
+    if (updateData.investorSharePercent !== undefined) {
+      throw new BadRequestException(
+        'Investment contract percentage is immutable',
+      );
+    }
+
     // Validate array lengths
     if (updateData.beneficiaries && updateData.beneficiaries.length > 2) {
       throw new BadRequestException('beneficiaries array cannot exceed 2 items');
@@ -442,6 +454,17 @@ export class PublicationService {
     // Get author ID before update for event publishing
     const authorId = publication.getAuthorId.getValue();
     const communityId = publication.getCommunityId.getValue();
+
+    // Only the post author may update advanced settings (stopLoss, noAuthorWalletSpend, ttlDays)
+    const hasAdvancedSettingsUpdate =
+      updateData.stopLoss !== undefined ||
+      updateData.noAuthorWalletSpend !== undefined ||
+      updateData.ttlDays !== undefined;
+    if (hasAdvancedSettingsUpdate && userId !== authorId) {
+      throw new BadRequestException(
+        'Only the post author can update advanced settings',
+      );
+    }
 
     // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
     // PermissionService already checks vote count and time window for authors
@@ -496,6 +519,53 @@ export class PublicationService {
     // Categories field
     if (updateData.categories !== undefined) {
       updatePayload.categories = updateData.categories || [];
+    }
+
+    // Mutable advanced settings
+    if (updateData.stopLoss !== undefined) {
+      if (updateData.stopLoss < 0) {
+        throw new BadRequestException('stopLoss must be >= 0');
+      }
+      updatePayload.stopLoss = updateData.stopLoss;
+    }
+    if (updateData.noAuthorWalletSpend !== undefined) {
+      updatePayload.noAuthorWalletSpend = updateData.noAuthorWalletSpend;
+    }
+
+    // Conditionally mutable: ttlDays can only be increased
+    if (updateData.ttlDays !== undefined) {
+      const currentTtlDays = (doc as IPublicationDocument).ttlDays ?? null;
+      const newTtlDays = updateData.ttlDays;
+      const allowedValues = [7, 14, 30, 60, 90] as const;
+      if (newTtlDays != null && !allowedValues.includes(newTtlDays)) {
+        throw new BadRequestException(
+          'ttlDays must be one of 7, 14, 30, 60, 90 or null',
+        );
+      }
+      if (currentTtlDays != null && newTtlDays === null) {
+        throw new BadRequestException(
+          'TTL can only be increased, not removed',
+        );
+      }
+      if (newTtlDays != null) {
+        if (currentTtlDays != null && newTtlDays <= currentTtlDays) {
+          throw new BadRequestException(
+            'TTL can only be increased, not decreased',
+          );
+        }
+        const createdAt =
+          doc.createdAt instanceof Date
+            ? doc.createdAt
+            : new Date(doc.createdAt);
+        updatePayload.ttlExpiresAt = new Date(
+          createdAt.getTime() +
+            newTtlDays * 24 * 60 * 60 * 1000,
+        );
+        updatePayload.ttlDays = newTtlDays;
+      } else {
+        updatePayload.ttlDays = null;
+        updatePayload.ttlExpiresAt = null;
+      }
     }
 
     // Single atomic update with all changes

@@ -651,6 +651,14 @@ export const UpdatePublicationDtoSchema = z.object({
   methods: z.array(z.enum([...METHODS] as [string, ...string[]])).max(3).optional(),
   stage: z.enum([...STAGES] as [string, ...string[]]).optional(),
   helpNeeded: z.array(z.enum([...HELP_NEEDED] as [string, ...string[]])).max(3).optional(),
+  // Mutable advanced settings (author only)
+  stopLoss: z.number().int().min(0).optional(),
+  noAuthorWalletSpend: z.boolean().optional(),
+  // Conditionally mutable: ttlDays can only be increased
+  ttlDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
+  // Present only to reject with clear error (immutable)
+  investingEnabled: z.boolean().optional(),
+  investorSharePercent: z.number().int().min(1).max(99).optional(),
 }).strict(); // Strict mode prevents postType and isProject from being included
 
 export const CreateCommunityDtoSchema = z
