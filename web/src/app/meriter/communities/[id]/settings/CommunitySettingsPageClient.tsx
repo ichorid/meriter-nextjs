@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
+import { CommentSettingsSection } from '@/features/communities/components/CommentSettingsSection';
 import { TappalkaSettingsForm } from '@/features/communities/components/TappalkaSettingsForm';
 import { InvestingSettingsForm } from '@/features/communities/components/InvestingSettingsForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -81,12 +82,20 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         });
     };
 
+    const handleCommentSettingsSave = async (data: {
+        settings?: { commentMode?: 'all' | 'neutralOnly' | 'weightedOnly' };
+    }) => {
+        await updateCommunity.mutateAsync({
+            id: communityId,
+            data,
+        });
+    };
+
     const handleInvestingSave = async (data: {
         settings?: {
             investingEnabled?: boolean;
             investorShareMin?: number;
             investorShareMax?: number;
-            tappalkaOnlyMode?: boolean;
         };
     }) => {
         await updateCommunity.mutateAsync({
@@ -182,7 +191,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         >
             <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 bg-base-200 rounded-xl p-1">
+                    <TabsList className="grid w-full grid-cols-5 bg-base-200 rounded-xl p-1">
                         <TabsTrigger 
                             value="general"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
@@ -194,6 +203,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
                             {t('tabs.rules') || tRules('title') || 'Rules'}
+                        </TabsTrigger>
+                        <TabsTrigger 
+                            value="comments"
+                            className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                        >
+                            {t('tabs.comments') || 'Comments'}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="investing"
@@ -215,6 +230,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                         <CommunityRulesEditor
                             community={community}
                             onSave={handleRulesSave}
+                        />
+                    </TabsContent>
+                    <TabsContent value="comments" className="mt-6">
+                        <CommentSettingsSection
+                            community={community}
+                            onSave={handleCommentSettingsSave}
                         />
                     </TabsContent>
                     <TabsContent value="investing" className="mt-6">

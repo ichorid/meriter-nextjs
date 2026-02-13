@@ -18,7 +18,6 @@ interface InvestingSettingsFormProps {
       investingEnabled?: boolean;
       investorShareMin?: number;
       investorShareMax?: number;
-      tappalkaOnlyMode?: boolean;
     };
   }) => Promise<void>;
 }
@@ -40,9 +39,6 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
   const [investorShareMax, setInvestorShareMax] = useState<string>(
     String(currentSettings.investorShareMax ?? 99)
   );
-  const [tappalkaOnlyMode, setTappalkaOnlyMode] = useState<boolean>(
-    currentSettings.tappalkaOnlyMode ?? false
-  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -52,7 +48,6 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     setInvestingEnabled(s.investingEnabled ?? false);
     setInvestorShareMin(String(s.investorShareMin ?? 1));
     setInvestorShareMax(String(s.investorShareMax ?? 99));
-    setTappalkaOnlyMode(s.tappalkaOnlyMode ?? false);
   }, [community.settings]);
 
   const validate = (): boolean => {
@@ -85,7 +80,6 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           investingEnabled,
           investorShareMin: parseInt(investorShareMin, 10),
           investorShareMax: parseInt(investorShareMax, 10),
-          tappalkaOnlyMode,
         },
       });
       addToast(t('saveSuccess') || 'Investing settings saved', 'success');
@@ -152,20 +146,6 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
                     onChange={(e) => setInvestorShareMax(e.target.value)}
                     className="w-24"
                   />
-                </div>
-              </BrandFormControl>
-
-              <BrandFormControl
-                label={t('fields.tappalkaOnlyMode') || 'Tappalka only mode'}
-                helperText={
-                  t('fields.tappalkaOnlyModeHelp') ||
-                  'Separate feature — disables weighted comments. Flag only.'}
-              >
-                <div className="flex items-center gap-3">
-                  <Switch checked={tappalkaOnlyMode} onCheckedChange={setTappalkaOnlyMode} />
-                  <Label className="text-sm font-medium">
-                    {tappalkaOnlyMode ? 'On' : 'Off'}
-                  </Label>
                 </div>
               </BrandFormControl>
             </>
