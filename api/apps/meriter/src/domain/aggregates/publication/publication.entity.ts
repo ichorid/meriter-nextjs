@@ -87,7 +87,13 @@ export class Publication implements EditableEntity {
     private readonly ttlExpiresAt?: Date | null,
     private readonly stopLoss?: number,
     private readonly noAuthorWalletSpend?: boolean,
-  ) { }
+    private readonly status?: 'active' | 'closed',
+    private readonly closedAt?: Date | null,
+    private readonly closeReason?: 'manual' | 'ttl' | 'inactive' | 'negative_rating' | null,
+    private readonly closingSummary?: PublicationSnapshot['closingSummary'],
+    private readonly lastEarnedAt?: Date | null,
+    private readonly ttlWarningNotified?: boolean,
+  ) {}
 
   static create(
     authorId: UserId,
@@ -155,6 +161,12 @@ export class Publication implements EditableEntity {
       options.ttlExpiresAt ?? null,
       options.stopLoss ?? 0,
       options.noAuthorWalletSpend ?? false,
+      'active', // status
+      null, // closedAt
+      null, // closeReason
+      undefined, // closingSummary
+      undefined, // lastEarnedAt
+      false, // ttlWarningNotified
     );
   }
 
@@ -197,6 +209,12 @@ export class Publication implements EditableEntity {
       snapshot.ttlExpiresAt != null ? (snapshot.ttlExpiresAt instanceof Date ? snapshot.ttlExpiresAt : new Date(snapshot.ttlExpiresAt)) : null,
       snapshot.stopLoss ?? 0,
       snapshot.noAuthorWalletSpend ?? false,
+      snapshot.status ?? 'active',
+      snapshot.closedAt != null ? (snapshot.closedAt instanceof Date ? snapshot.closedAt : new Date(snapshot.closedAt)) : null,
+      snapshot.closeReason ?? null,
+      snapshot.closingSummary ?? undefined,
+      snapshot.lastEarnedAt != null ? (snapshot.lastEarnedAt instanceof Date ? snapshot.lastEarnedAt : new Date(snapshot.lastEarnedAt)) : null,
+      snapshot.ttlWarningNotified ?? false,
     );
   }
 
@@ -372,6 +390,12 @@ export class Publication implements EditableEntity {
       ttlExpiresAt: this.ttlExpiresAt ?? undefined,
       stopLoss: this.stopLoss ?? 0,
       noAuthorWalletSpend: this.noAuthorWalletSpend ?? false,
+      status: this.status ?? 'active',
+      closedAt: this.closedAt ?? undefined,
+      closeReason: this.closeReason ?? undefined,
+      closingSummary: this.closingSummary ?? undefined,
+      lastEarnedAt: this.lastEarnedAt ?? undefined,
+      ttlWarningNotified: this.ttlWarningNotified ?? false,
     };
   }
 }

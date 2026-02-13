@@ -335,6 +335,31 @@ export const PublicationSchema = IdentifiableSchema.merge(
   stopLoss: z.number().int().min(0).optional().default(0),
   /** If true, do not spend from author wallet on tappalka shows. Default false. */
   noAuthorWalletSpend: z.boolean().optional().default(false),
+  // Post lifecycle (D-1: status and closing)
+  /** Post status: active (default) or closed. */
+  status: z.enum(["active", "closed"]).optional().default("active"),
+  /** When the post was closed (null while active). */
+  closedAt: z.date().nullable().optional(),
+  /** Reason for closing: manual, ttl, inactive, negative_rating. */
+  closeReason: z
+    .enum(["manual", "ttl", "inactive", "negative_rating"])
+    .nullable()
+    .optional(),
+  /** Summary at close: totals and distribution (null while active). */
+  closingSummary: z
+    .object({
+      totalEarned: z.number(),
+      distributedToInvestors: z.number(),
+      authorReceived: z.number(),
+      spentOnShows: z.number(),
+      poolReturned: z.number(),
+    })
+    .nullable()
+    .optional(),
+  /** Last time post earned (positive comment or tappalka win); for inactivity close. */
+  lastEarnedAt: z.date().nullable().optional(),
+  /** True after 24h-before-TTL warning sent (idempotent notifications). */
+  ttlWarningNotified: z.boolean().optional().default(false),
 });
 
 export const CommentAuthorMetaSchema = z.object({

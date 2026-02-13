@@ -27,6 +27,15 @@ export interface PublicationInvestment {
   updatedAt: Date;
 }
 
+/** D-1: Summary stored when post is closed. */
+export interface PublicationClosingSummary {
+  totalEarned: number;
+  distributedToInvestors: number;
+  authorReceived: number;
+  spentOnShows: number;
+  poolReturned: number;
+}
+
 export interface Publication {
   id: string;
   communityId: string;
@@ -77,6 +86,13 @@ export interface Publication {
   ttlExpiresAt?: Date | null;
   stopLoss?: number;
   noAuthorWalletSpend?: boolean;
+  // Post lifecycle (D-1: status and closing)
+  status?: 'active' | 'closed';
+  closedAt?: Date | null;
+  closeReason?: 'manual' | 'ttl' | 'inactive' | 'negative_rating' | null;
+  closingSummary?: PublicationClosingSummary | null;
+  lastEarnedAt?: Date | null;
+  ttlWarningNotified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -237,6 +253,38 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ default: false })
   noAuthorWalletSpend?: boolean;
 
+  // Post lifecycle (D-1: status and closing)
+  @Prop({ enum: ['active', 'closed'], default: 'active' })
+  status?: 'active' | 'closed';
+
+  @Prop({ type: Date, default: null })
+  closedAt?: Date | null;
+
+  @Prop({
+    type: String,
+    enum: ['manual', 'ttl', 'inactive', 'negative_rating'],
+    default: null,
+  })
+  closeReason?: 'manual' | 'ttl' | 'inactive' | 'negative_rating' | null;
+
+  @Prop({
+    type: {
+      totalEarned: Number,
+      distributedToInvestors: Number,
+      authorReceived: Number,
+      spentOnShows: Number,
+      poolReturned: Number,
+    },
+    default: null,
+  })
+  closingSummary?: PublicationClosingSummary | null;
+
+  @Prop({ type: Date, default: null })
+  lastEarnedAt?: Date | null;
+
+  @Prop({ default: false })
+  ttlWarningNotified?: boolean;
+
   @Prop({ required: true })
   createdAt!: Date;
 
@@ -258,3 +306,5 @@ PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community
 PublicationSchema.index({ 'investments.investorId': 1 }); // C-1: efficient investment lookups by investor
+PublicationSchema.index({ status: 1 }); // D-1: cron and guards for closed posts
+PublicationSchema.index({ ttlExpiresAt: 1 }); // D-1: TTL cron queries

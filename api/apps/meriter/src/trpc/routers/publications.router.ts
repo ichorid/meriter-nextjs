@@ -576,6 +576,14 @@ export const publicationsRouter = router({
       mappedPublication.investmentPoolTotal = (doc as any)?.investmentPoolTotal ?? 0;
       mappedPublication.investments = (doc as any)?.investments ?? [];
 
+      // D-1: Post lifecycle (status, closing)
+      mappedPublication.status = (doc as any)?.status ?? 'active';
+      mappedPublication.closedAt = (doc as any)?.closedAt ?? undefined;
+      mappedPublication.closeReason = (doc as any)?.closeReason ?? undefined;
+      mappedPublication.closingSummary = (doc as any)?.closingSummary ?? undefined;
+      mappedPublication.lastEarnedAt = (doc as any)?.lastEarnedAt ?? undefined;
+      mappedPublication.ttlWarningNotified = (doc as any)?.ttlWarningNotified ?? false;
+
       // Enrich edit history with user data
       if (editHistory && editHistory.length > 0) {
         mappedPublication.editHistory = editHistory.map((entry: any) => {
@@ -718,7 +726,21 @@ export const publicationsRouter = router({
           .collection('publications')
           .find(
             { id: { $in: ids } },
-            { projection: { id: 1, forwardStatus: 1, forwardTargetCommunityId: 1, forwardProposedBy: 1, forwardProposedAt: 1 } },
+            {
+              projection: {
+                id: 1,
+                forwardStatus: 1,
+                forwardTargetCommunityId: 1,
+                forwardProposedBy: 1,
+                forwardProposedAt: 1,
+                status: 1,
+                closedAt: 1,
+                closeReason: 1,
+                closingSummary: 1,
+                lastEarnedAt: 1,
+                ttlWarningNotified: 1,
+              },
+            },
           )
           .toArray();
         const forwardMap = new Map<string, any>(docs.map((d: any) => [d.id, d]));
@@ -728,6 +750,12 @@ export const publicationsRouter = router({
           pub.forwardTargetCommunityId = d?.forwardTargetCommunityId || undefined;
           pub.forwardProposedBy = d?.forwardProposedBy || undefined;
           pub.forwardProposedAt = d?.forwardProposedAt || undefined;
+          pub.status = d?.status ?? 'active';
+          pub.closedAt = d?.closedAt ?? undefined;
+          pub.closeReason = d?.closeReason ?? undefined;
+          pub.closingSummary = d?.closingSummary ?? undefined;
+          pub.lastEarnedAt = d?.lastEarnedAt ?? undefined;
+          pub.ttlWarningNotified = d?.ttlWarningNotified ?? false;
         });
       }
 

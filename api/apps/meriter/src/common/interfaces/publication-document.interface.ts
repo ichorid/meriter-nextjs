@@ -57,6 +57,19 @@ export interface PublicationDocument {
   ttlExpiresAt?: Date | null;
   stopLoss?: number;
   noAuthorWalletSpend?: boolean;
+  // Post lifecycle (D-1: status and closing)
+  status?: 'active' | 'closed';
+  closedAt?: Date | null;
+  closeReason?: 'manual' | 'ttl' | 'inactive' | 'negative_rating' | null;
+  closingSummary?: {
+    totalEarned: number;
+    distributedToInvestors: number;
+    authorReceived: number;
+    spentOnShows: number;
+    poolReturned: number;
+  } | null;
+  lastEarnedAt?: Date | null;
+  ttlWarningNotified?: boolean;
 }
 
 /**
