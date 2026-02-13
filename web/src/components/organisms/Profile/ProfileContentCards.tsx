@@ -3,9 +3,10 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, Hand, BarChart3, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
+import { useMyInvestmentsCount } from '@/hooks/api/useMyInvestments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface ProfileContentCardsProps {
@@ -29,6 +30,7 @@ function ProfileContentCardsComponent({
   const router = useRouter();
   const { data: unreadFavorites } = useUnreadFavoritesCount();
   const unreadFavoritesCount = unreadFavorites?.count ?? 0;
+  const { count: investmentsCount, isLoading: investmentsCountLoading } = useMyInvestmentsCount();
   const [activityExpanded, setActivityExpanded] = useLocalStorage<boolean>('profile.activityExpanded', true);
 
   type StatCard = {
@@ -40,6 +42,8 @@ function ProfileContentCardsComponent({
     route: string;
     isHighlighted?: boolean;
     iconClassName?: string;
+    /** When true, show "..." instead of value (e.g. async count). */
+    valueLoading?: boolean;
   };
 
   const statCards: StatCard[] = useMemo(() => [
@@ -77,7 +81,16 @@ function ProfileContentCardsComponent({
       route: `${routes.profile}/favorites`,
       isHighlighted: unreadFavoritesCount > 0,
     },
-  ], [t, tCommon, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount]);
+    {
+      label: tProfile('investments.title'),
+      value: investmentsCount,
+      icon: TrendingUp,
+      color: 'text-base-content',
+      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+      route: `${routes.profile}/investments`,
+      valueLoading: investmentsCountLoading,
+    },
+  ], [t, tCommon, tProfile, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount, investmentsCount, investmentsCountLoading]);
 
   const handleCardClick = (route: string) => {
     router.push(route);
@@ -115,7 +128,7 @@ function ProfileContentCardsComponent({
                   <div className="flex items-center justify-between mb-2">
                     <Icon className={stat.iconClassName || "text-base-content/40 w-5 h-5"} />
                     <span className="text-2xl font-semibold text-base-content">
-                      {isLoading ? '...' : stat.value}
+                      {stat.valueLoading || isLoading ? '...' : stat.value}
                     </span>
                   </div>
                   <p className="text-xs text-base-content/60 font-medium">

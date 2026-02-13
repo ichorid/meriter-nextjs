@@ -73,6 +73,7 @@ export interface MyPortfolioItem {
   postId: string;
   postTitle: string;
   postAuthor: { name: string; avatarUrl?: string };
+  communityId: string;
   communityName: string;
   investedAmount: number;
   sharePercent: number;
@@ -582,6 +583,7 @@ export class InvestmentService {
           name: author?.displayName ?? 'Unknown',
           avatarUrl: author?.avatarUrl,
         },
+        communityId: d.communityId,
         communityName: community?.name ?? 'Community',
         investedAmount: myInv.amount,
         sharePercent,
