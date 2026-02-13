@@ -816,6 +816,33 @@ export const publicationsRouter = router({
         }
       }
 
+      // Require TTL when community requires it for invest posts
+      const requireTTLForInvestPosts =
+        community.settings?.requireTTLForInvestPosts ?? false;
+      if (requireTTLForInvestPosts && input.investingEnabled) {
+        const ttlDays = input.ttlDays;
+        if (ttlDays == null || ttlDays === undefined) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message:
+              'Posts with investing enabled must have a TTL (time to live) set in this community',
+          });
+        }
+      }
+
+      // Validate TTL against community max
+      if (input.ttlDays != null) {
+        const maxTTL = community.settings?.maxTTL;
+        if (maxTTL != null && input.ttlDays > maxTTL) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `TTL cannot exceed ${maxTTL} days in this community`,
+          });
+        }
+      }
+
+      // stopLoss >= 0 is enforced by CreatePublicationDtoSchema; no extra check needed
+
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
       const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
