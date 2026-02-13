@@ -155,7 +155,9 @@ export const PostMetrics: React.FC<PostMetricsProps> = ({
             title={viewBreakdownTitle}
           >
             <span>💰</span>
-            <span className="font-medium tabular-nums">{tInvesting('meritsAmount', { amount: investmentPool })}</span>
+            <span className="font-medium tabular-nums">
+              {tInvesting('meritsAmount', { amount: formatMerits(investmentPool) })}
+            </span>
             <span className="text-base-content/50">·</span>
             <span>
               {investorCount} {investorsLabel}

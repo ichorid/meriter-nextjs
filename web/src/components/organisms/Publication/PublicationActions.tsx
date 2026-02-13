@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { getWalletBalance } from '@/lib/utils/wallet';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
@@ -168,14 +169,19 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Only show when there are actual withdrawals and totalVotes > currentScore
   const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
 
-  // Get current wallet balance for topup
+  // Get community info to check typeTag (before balance lookup)
   const communityId = publication.communityId;
-  const currentBalance = getWalletBalance(wallets, communityId);
-  const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
-
-  // Get community info to check typeTag
   const { data: community } = useCommunity(communityId || '');
   const isSpecialGroup = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
+  // G-11: Priority communities use global wallet for balance (voting, investing, fees)
+  const isPriorityCommunity =
+    community?.typeTag === 'marathon-of-good' ||
+    community?.typeTag === 'future-vision' ||
+    community?.typeTag === 'team-projects' ||
+    community?.typeTag === 'support';
+  const balanceCommunityId = isPriorityCommunity ? GLOBAL_COMMUNITY_ID : communityId;
+  const currentBalance = getWalletBalance(wallets, balanceCommunityId);
+  const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
 
   // Investment data (only when post has investing enabled)
   const investingEnabled = (publication as any).investingEnabled ?? false;
