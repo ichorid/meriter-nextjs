@@ -3,8 +3,8 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { PublicationHeader } from './PublicationHeader';
-import { PublicationContent } from './PublicationContent';
+import { PublicationHeader as PostHeader } from './PublicationHeader';
+import { PublicationContent as PostContent } from './PublicationContent';
 import { PublicationActions } from './PublicationActions';
 import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
@@ -93,7 +93,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
 
     return (
       <article className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300">
-        <PublicationHeader
+        <PostHeader
           publication={{
             id: pollItem.id,
             slug: undefined,
@@ -191,7 +191,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         isPoll={false}
       />
 
-      <PublicationContent
+        <PostContent
         publication={{
           id: pubItem.id,
           createdAt: pubItem.createdAt,
