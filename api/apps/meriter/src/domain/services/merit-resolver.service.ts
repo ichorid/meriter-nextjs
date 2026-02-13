@@ -24,13 +24,14 @@ export class MeritResolverService {
   /**
    * Get the communityId of the wallet to use for a merit operation.
    * - fee: always global
-   * - voting, withdrawal, tappalka_reward, investment: global for priority communities, otherwise community's own
+   * - withdrawal: always global (withdrawn merits go to the same wallet as fee payment)
+   * - voting, tappalka_reward, investment: global for priority communities, otherwise community's own
    */
   getWalletCommunityId(
     community: CommunityForMeritResolver | null | undefined,
     operationType: MeritOperationType,
   ): string {
-    if (operationType === 'fee') {
+    if (operationType === 'fee' || operationType === 'withdrawal') {
       return GLOBAL_COMMUNITY_ID;
     }
 
