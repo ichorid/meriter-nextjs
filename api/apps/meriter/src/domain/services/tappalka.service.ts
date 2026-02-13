@@ -323,10 +323,11 @@ export class TappalkaService {
     await this.deductShowCost(winner as PublicationDocument, showCost);
     await this.deductShowCost(loser as PublicationDocument, showCost);
 
-    // 2. Award winReward to winner (EMISSION, not transfer - add to rating)
+    // 2. Award winReward to winner (EMISSION, not transfer - add to rating). D-8: track lastEarnedAt.
+    const now = new Date();
     await this.publicationModel.updateOne(
       { id: winnerPostId },
-      { $inc: { 'metrics.score': winReward } },
+      { $inc: { 'metrics.score': winReward }, $set: { lastEarnedAt: now } },
     );
 
     this.logger.debug(

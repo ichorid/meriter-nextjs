@@ -286,10 +286,14 @@ export class PublicationService {
     const voteAmount = direction === 'up' ? amount : -amount;
     publication.vote(voteAmount);
 
-    // Save
+    // Save. D-8: track lastEarnedAt when post earns (positive vote).
+    const snapshot = publication.toSnapshot();
+    if (direction === 'up' && amount > 0) {
+      snapshot.lastEarnedAt = new Date();
+    }
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
-      { $set: publication.toSnapshot() },
+      { $set: snapshot },
     );
 
     return publication;
