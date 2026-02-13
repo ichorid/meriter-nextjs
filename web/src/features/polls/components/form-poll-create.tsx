@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { cn } from '@/lib/utils';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { Plus, Trash2 } from 'lucide-react';
 
 interface IPollOption {
@@ -56,16 +57,17 @@ export const FormPollCreate = ({
     const isEditMode = !!pollId && !!initialData;
     const currentCommunityId = communityId || initialData?.communityId || '';
     const { data: community } = useCommunity(currentCommunityId);
-    const { data: wallet } = useWallet(currentCommunityId || undefined);
+    // FR-4: Fee is always paid from global wallet (all communities)
+    const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
 
     // Get poll cost from community settings (default to 1 if not set)
     const pollCost = community?.settings?.pollCost ?? 1;
 
     // Check if payment is required (not future-vision and cost > 0)
     const requiresPayment = community?.typeTag !== 'future-vision' && pollCost > 0;
-    const walletBalance = wallet?.balance ?? 0;
+    const walletBalance = feeWallet?.balance ?? 0;
 
-    // Poll creation requires wallet merits only (no quota)
+    // Poll fee paid from global wallet (FR-4)
     const hasInsufficientPayment = requiresPayment && walletBalance < pollCost;
 
     // Calculate timeValue and timeUnit from expiresAt if editing

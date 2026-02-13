@@ -42,6 +42,7 @@ import {
 } from '@/lib/constants/taxonomy';
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CategorySelector } from '@/shared/components/category-selector';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
@@ -100,7 +101,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
-  const { data: wallet } = useWallet(communityId);
+  // FR-4: Fee is always paid from global wallet (all communities)
+  const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
 
   const normalizeEntityId = (id: string | undefined): string | null => {
     const trimmed = (id ?? '').trim();
@@ -130,9 +132,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
   // Check if payment is required (cost > 0)
   const requiresPayment = postCost > 0;
-  const walletBalance = wallet?.balance ?? 0;
+  const walletBalance = feeWallet?.balance ?? 0;
 
-  // Posts now require wallet merits only
+  // Fee always paid from global wallet (FR-4)
   const hasInsufficientPayment = requiresPayment && walletBalance < postCost;
 
   // If project type is requested but projects are disabled, fallback to basic
