@@ -566,6 +566,7 @@
         "available": "Available",
         "of": "of",
         "giveVote": "Give vote",
+        "commentButton": "Comment",
         "explanationLabel": "Explanation",
         "explanationPlaceholder": "Please explain your decision to the post author.",
         "warningDailyLimitExceedsWallet": "Daily limit exceeds personal account",
@@ -593,6 +594,7 @@
         "requiresVoteAmount": "Requires vote of at least +1/-1",
         "requiresComment": "Requires comment",
         "commentRequired": "Comment is required for voting on a post",
+        "weightRequired": "This community requires a vote weight (at least 1 merit).",
         "votingMechanics": "You can vote FOR a post or AGAINST it.\nFor voting FOR, merits from your daily quota are spent first, and after it is exceeded, merits from your wallet.\nFor voting AGAINST, only wallet merits can be used.",
         "ownPostVotingMechanics": "You are voting for your own post. Only wallet merits can be used for this.",
         "cannotVoteOwnPostNoWallet": "Voting on your own posts is only possible with wallet merits, but you have 0 in your account",
@@ -771,8 +773,23 @@
             "tabs": {
                 "general": "General",
                 "rules": "Rules",
-                "tappalka": "Tappalka",
-                "investing": "Investing"
+                "comments": "Comments",
+                "investing": "Investing",
+                "tappalka": "Tappalka"
+            },
+            "commentsSection": {
+                "title": "Comment mode",
+                "description": "Choose how members can comment on posts: with or without vote weight.",
+                "modeAll": "All (weighted and neutral)",
+                "modeAllHelp": "Members can leave a comment with any weight (+N, −N, or 0).",
+                "modeNeutralOnly": "Neutral only",
+                "modeNeutralOnlyHelp": "Only text comments; no vote weight. Recommended for investment communities.",
+                "modeWeightedOnly": "Weighted only",
+                "modeWeightedOnlyHelp": "Every comment must have a vote weight (at least 1 merit).",
+                "saveSuccess": "Comment settings saved",
+                "saveError": "Failed to save comment settings",
+                "save": "Save",
+                "saving": "Saving..."
             },
             "communityProfile": "Community Profile",
             "name": "Name",

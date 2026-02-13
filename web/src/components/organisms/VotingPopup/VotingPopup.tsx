@@ -68,6 +68,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Force wallet-only mode for own posts
   const effectiveVotingMode = isOwnPost ? 'wallet-only' : votingMode;
 
+  // Comment mode from community (neutralOnly = only text; weightedOnly = weight required; all = both allowed)
+  const commentMode = useMemo(
+    () =>
+      (community?.settings as { commentMode?: 'all' | 'neutralOnly' | 'weightedOnly'; tappalkaOnlyMode?: boolean })?.commentMode ??
+      ((community?.settings as { tappalkaOnlyMode?: boolean })?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
+    [community?.settings],
+  );
+
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   const voteOnVoteMutation = useVoteOnVote();
@@ -191,21 +199,33 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const delta = formData.delta;
     console.log('[VotingPopup] Initial values', {
       delta,
+      commentMode,
       quotaRemaining,
       walletBalance,
       effectiveVotingMode,
-      'quotaRemaining type': typeof quotaRemaining,
-      'walletBalance type': typeof walletBalance,
     });
     if (delta === 0) {
-      updateVotingFormData({ error: t('pleaseAdjustSlider') });
-      return;
+      if (commentMode === 'weightedOnly') {
+        updateVotingFormData({ error: t('weightRequired') });
+        return;
+      }
+      if (commentMode === 'all' || commentMode === 'neutralOnly') {
+        // Neutral comment: allow with 0 weight (require comment text)
+        if (!formData.comment?.trim()) {
+          updateVotingFormData({ error: t('reasonRequired') });
+          return;
+        }
+        // Fall through to submit with quotaAmount=0, walletAmount=0
+      } else {
+        updateVotingFormData({ error: t('pleaseAdjustSlider') });
+        return;
+      }
     }
 
     const isUpvote = directionPlus;
 
-    // Check if comment is required and provided (only for positive votes)
-    if (isUpvote && !formData.comment?.trim()) {
+    // Check if comment is required and provided (only for positive votes; neutral already validated above)
+    if (isUpvote && delta !== 0 && !formData.comment?.trim()) {
       updateVotingFormData({ error: t('reasonRequired') });
       return;
     }
@@ -213,16 +233,18 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     console.log('[VotingPopup] After initial checks', {
       absoluteAmount,
       isUpvote,
-      'absoluteAmount type': typeof absoluteAmount,
-      'absoluteAmount value': absoluteAmount,
+      commentMode,
     });
 
     // Calculate vote breakdown for submission (quota first, then wallet overflow).
-    // IMPORTANT: Use `freePlusAmount` (quotaRemaining fallback) as the quota budget we allow in UI.
+    // Neutral comment (delta === 0) when commentMode is all or neutralOnly: submit 0,0
     let quotaAmount = 0;
     let walletAmount = 0;
 
-    if (isUpvote) {
+    if (absoluteAmount === 0) {
+      quotaAmount = 0;
+      walletAmount = 0;
+    } else if (isUpvote) {
       console.log('[VotingPopup] Calculating upvote amounts, effectiveVotingMode:', effectiveVotingMode);
 
       if (effectiveVotingMode === 'wallet-only') {
@@ -257,29 +279,23 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       walletAmount = absoluteAmount;
     }
 
-    // Validate that at least one amount is non-zero before submission
-    // This handles edge cases where calculation resulted in both being 0
-    // (e.g., downvotes with no wallet balance, though walletAmount should be > 0 if absoluteAmount > 0)
-    console.log('[VotingPopup] After calculation, before validation:', {
-      quotaAmount,
-      walletAmount,
-      absoluteAmount,
-      'quotaAmount === 0': quotaAmount === 0,
-      'walletAmount === 0': walletAmount === 0,
-      'both zero?': quotaAmount === 0 && walletAmount === 0,
-    });
-    if (quotaAmount === 0 && walletAmount === 0) {
-      console.warn('[VotingPopup] Both amounts are 0! This should not happen. Fixing...', { isUpvote, absoluteAmount });
-      if (!isUpvote) {
-        // For downvotes, we need wallet - can't proceed without it
+    // Validate that at least one amount is non-zero before submission (except for neutral comment)
+    const isNeutralSubmit = quotaAmount === 0 && walletAmount === 0;
+    if (isNeutralSubmit) {
+      const allowedNeutral =
+        commentMode === 'neutralOnly' || (commentMode === 'all' && formData.comment?.trim());
+      if (!allowedNeutral) {
+        if (absoluteAmount === 0 && commentMode === 'weightedOnly') {
+          updateVotingFormData({ error: t('weightRequired') });
+          return;
+        }
+        if (!formData.comment?.trim()) {
+          updateVotingFormData({ error: t('reasonRequired') });
+          return;
+        }
         updateVotingFormData({ error: 'You have insufficient wallet balance for downvotes.' });
         return;
       }
-      // For upvotes, this shouldn't happen due to calculation above, but if it does,
-      // try quota anyway (might be stale data) - server will validate
-      quotaAmount = absoluteAmount;
-      walletAmount = 0;
-      console.log('[VotingPopup] Fixed amounts for upvote:', { quotaAmount, walletAmount });
     }
 
     console.log('[VotingPopup] Final amounts before API call:', {
@@ -405,6 +421,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           isOwnPost={isOwnPost}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
+          commentMode={commentMode}
+          hideQuota={commentMode === 'neutralOnly'}
+          submitButtonLabel={commentMode === 'neutralOnly' ? (t('commentButton') || 'Comment') : undefined}
         />
         </div>
       </div>

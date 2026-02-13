@@ -40,6 +40,8 @@ interface VotingPanelProps {
     /** When set and hideQuota, used as submit button label instead of withdrawButton */
     submitButtonLabel?: string;
     onSubmitSimple?: () => void;
+    /** Community comment mode: all (0 or weighted), neutralOnly (text only), weightedOnly (weight required) */
+    commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -68,6 +70,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     title,
     submitButtonLabel,
     onSubmitSimple,
+    commentMode,
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
@@ -474,8 +477,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     };
 
     // Calculate if button should be disabled
-    // Comment is required for all votes (both positive and negative)
-    const isButtonDisabled = absAmount === 0 || (!hideComment && !comment.trim());
+    // commentMode: neutralOnly = comment only; weightedOnly = weight required (min 1); all = comment required, weight can be 0
+    const isButtonDisabled = useMemo(() => {
+      if (hideComment) return false;
+      if (commentMode === 'neutralOnly') return !comment.trim();
+      if (commentMode === 'weightedOnly') return absAmount === 0 || !comment.trim();
+      // all: comment required, amount may be 0 (neutral)
+      return !comment.trim();
+    }, [hideComment, commentMode, absAmount, comment]);
 
     return (
         <div
