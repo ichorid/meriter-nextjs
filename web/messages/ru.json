@@ -297,6 +297,20 @@
         "lastInvest": "Последняя",
         "totalInvested": "Всего вложено"
     },
+    "postClosing": {
+        "closePostTitle": "Закрыть пост",
+        "closePostWarning": "Действие необратимо. Пост останется видимым, но замороженным.",
+        "closePostButton": "Закрыть пост",
+        "distributionPreview": "Предпросмотр распределения",
+        "poolReturned": "Возврат в пул",
+        "toInvestorsFromRating": "Инвесторам (из рейтинга)",
+        "toYou": "Вам",
+        "allMeritsToWallet": "Все {count} поступят на ваш кошелёк.",
+        "totalEarned": "Всего заработано",
+        "investorsReceived": "Получено инвесторами",
+        "authorReceived": "Получено автором",
+        "spentOnShows": "Потрачено на показы"
+    },
     "shared": {
         "balance": "Баланс:",
         "withdraw": "Забрать мериты",

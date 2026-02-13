@@ -302,6 +302,20 @@
         "lastInvest": "Last",
         "totalInvested": "Total invested"
     },
+    "postClosing": {
+        "closePostTitle": "Close post",
+        "closePostWarning": "This action is permanent. The post will remain visible but frozen.",
+        "closePostButton": "Close post",
+        "distributionPreview": "Distribution preview",
+        "poolReturned": "Pool returned",
+        "toInvestorsFromRating": "To investors (from rating)",
+        "toYou": "To you",
+        "allMeritsToWallet": "All {count} merits will be withdrawn to your wallet.",
+        "totalEarned": "Total earned",
+        "investorsReceived": "Investors received",
+        "authorReceived": "Author received",
+        "spentOnShows": "Spent on shows"
+    },
     "shared": {
         "balance": "Balance:",
         "withdraw": "Withdraw merits",
