@@ -39,6 +39,7 @@ export function InvestDialog({
 }: InvestDialogProps) {
   const t = useTranslations('investing');
   const tCommon = useTranslations('common');
+  const tShared = useTranslations('shared');
   const addToast = useToastStore((state) => state.addToast);
   const { user } = useAuth();
   const myId = user?.id ?? null;
@@ -176,6 +177,22 @@ export function InvestDialog({
               {/* Amount input */}
               <div className="space-y-2">
                 <Label htmlFor="invest-amount">{t('amountLabel', { defaultValue: 'Amount (merits)' })}</Label>
+                {/* Progress bar above input: blue fill by amount / walletBalance (same as VotingPanel) */}
+                <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
+                  {walletBalance > 0 && amount > 0 && (
+                    <div
+                      className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
+                      style={{
+                        width: `${Math.min(100, (amount / walletBalance) * 100)}%`,
+                      }}
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
+                      {tShared('available', { defaultValue: 'Available' })} {walletBalance}
+                    </span>
+                  </div>
+                </div>
                 <AmountStepper
                   id="invest-amount"
                   value={amount}
@@ -185,9 +202,6 @@ export function InvestDialog({
                   placeholder="0"
                   disabled={isSubmitting}
                 />
-                <p className="text-xs text-base-content/60">
-                  {t('balance', { balance: walletBalance, defaultValue: 'Balance: {balance} merits' })}
-                </p>
               </div>
 
               {/* Dynamic share: Y% of each withdrawal (to investors) */}
