@@ -120,8 +120,7 @@ export function InvestmentBreakdownInline({ postId, compact = false }: Investmen
         <p className="flex justify-between">
           <span>{t('totalInvested', { defaultValue: 'Total invested' })}</span>
           <span className="tabular-nums">
-            {breakdown.poolTotal} merits · {breakdown.investorCount}{' '}
-            {t('investorCount', { count: breakdown.investorCount, defaultValue: 'investor(s)' })}
+            {breakdown.poolTotal} merits · {t('investorCount', { count: breakdown.investorCount, defaultValue: 'investor(s)' })}
           </span>
         </p>
       </div>

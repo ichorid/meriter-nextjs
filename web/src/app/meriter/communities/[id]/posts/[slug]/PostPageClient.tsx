@@ -20,7 +20,7 @@ import { PublicationHeader } from '@/components/organisms/Publication/Publicatio
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { InvestmentBreakdownInline } from '@/components/organisms/InvestmentBreakdownPopup';
-import { PostSettingsReadOnly } from '@/components/organisms/Publication/PostSettingsReadOnly';
+import { PostInvestingSettingsReadOnly } from '@/components/organisms/Publication/PostInvestingSettingsReadOnly';
 import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
@@ -354,18 +354,11 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             open={postSettingsOpen}
                             setOpen={setPostSettingsOpen}
                         >
-                            <PostSettingsReadOnly
-                                title={(publication as Record<string, unknown>).title as string | undefined}
-                                description={(publication as Record<string, unknown>).description as string | undefined}
-                                postType={(publication as Record<string, unknown>).postType as string | undefined}
-                                hashtags={((publication as Record<string, unknown>).hashtags as string[]) ?? []}
-                                categories={((publication as Record<string, unknown>).categories as string[]) ?? []}
-                                impactArea={(publication as Record<string, unknown>).impactArea as string | undefined}
-                                beneficiaries={((publication as Record<string, unknown>).beneficiaries as string[]) ?? []}
-                                methods={((publication as Record<string, unknown>).methods as string[]) ?? []}
-                                stage={(publication as Record<string, unknown>).stage as string | undefined}
-                                helpNeeded={((publication as Record<string, unknown>).helpNeeded as string[]) ?? []}
-                                compact
+                            <PostInvestingSettingsReadOnly
+                                investorSharePercent={(publication as Record<string, unknown>).investorSharePercent as number | undefined}
+                                ttlExpiresAt={(publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
+                                stopLoss={(publication as Record<string, unknown>).stopLoss as number | undefined}
+                                noAuthorWalletSpend={(publication as Record<string, unknown>).noAuthorWalletSpend as boolean | undefined}
                             />
                         </CollapsibleSection>
                     </div>

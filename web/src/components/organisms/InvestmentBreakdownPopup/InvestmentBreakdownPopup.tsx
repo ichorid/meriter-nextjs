@@ -129,7 +129,7 @@ export function InvestmentBreakdownPopup({
               </p>
               <p className="flex justify-between">
                 <span>{t('totalInvested', { defaultValue: 'Total invested' })}</span>
-                <span className="tabular-nums">{breakdown.poolTotal} merits · {breakdown.investorCount} {t('investorCount', { count: breakdown.investorCount, defaultValue: 'investor(s)' })}</span>
+                <span className="tabular-nums">{breakdown.poolTotal} merits · {t('investorCount', { count: breakdown.investorCount, defaultValue: 'investor(s)' })}</span>
               </p>
             </div>
           </div>
