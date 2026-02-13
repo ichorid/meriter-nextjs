@@ -63,11 +63,14 @@ export interface Publication {
     editedBy: string;
     editedAt: Date;
   }>;
-  // Investment fields
+  // Investment fields (C-1: investment pool and investor records)
   investingEnabled?: boolean;
   investorSharePercent?: number;
+  /** Current balance funded by investors; spent on tappalka shows first. */
   investmentPool?: number;
+  /** Total ever invested (analytics). */
   investmentPoolTotal?: number;
+  /** One record per investor per post; repeat investments accumulate in amount. */
   investments?: PublicationInvestment[];
   // Post advanced settings (TTL, tappalka)
   ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
@@ -197,7 +200,7 @@ export class PublicationSchemaClass implements Publication {
     editedAt: Date;
   }>;
 
-  // Investment fields
+  // Investment fields (C-1: investment pool and investor records)
   @Prop({ default: false })
   investingEnabled?: boolean;
 
@@ -254,4 +257,4 @@ PublicationSchema.index({ hashtags: 1 });
 PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community
-PublicationSchema.index({ 'investments.investorId': 1 }); // For investment lookups
+PublicationSchema.index({ 'investments.investorId': 1 }); // C-1: efficient investment lookups by investor
