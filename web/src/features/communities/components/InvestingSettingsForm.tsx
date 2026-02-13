@@ -18,6 +18,9 @@ interface InvestingSettingsFormProps {
       investingEnabled?: boolean;
       investorShareMin?: number;
       investorShareMax?: number;
+      requireTTLForInvestPosts?: boolean;
+      maxTTL?: number | null;
+      inactiveCloseDays?: number;
     };
   }) => Promise<void>;
 }
@@ -39,6 +42,16 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
   const [investorShareMax, setInvestorShareMax] = useState<string>(
     String(currentSettings.investorShareMax ?? 99)
   );
+  const [requireTTLForInvestPosts, setRequireTTLForInvestPosts] = useState<boolean>(
+    (currentSettings as { requireTTLForInvestPosts?: boolean }).requireTTLForInvestPosts ?? false
+  );
+  const [maxTTL, setMaxTTL] = useState<string>(() => {
+    const v = (currentSettings as { maxTTL?: number | null }).maxTTL;
+    return v == null || v === undefined ? '' : String(v);
+  });
+  const [inactiveCloseDays, setInactiveCloseDays] = useState<string>(
+    String((currentSettings as { inactiveCloseDays?: number }).inactiveCloseDays ?? 7)
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -48,6 +61,10 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     setInvestingEnabled(s.investingEnabled ?? false);
     setInvestorShareMin(String(s.investorShareMin ?? 1));
     setInvestorShareMax(String(s.investorShareMax ?? 99));
+    setRequireTTLForInvestPosts((s as { requireTTLForInvestPosts?: boolean }).requireTTLForInvestPosts ?? false);
+    const mt = (s as { maxTTL?: number | null }).maxTTL;
+    setMaxTTL(mt == null || mt === undefined ? '' : String(mt));
+    setInactiveCloseDays(String((s as { inactiveCloseDays?: number }).inactiveCloseDays ?? 7));
   }, [community.settings]);
 
   const validate = (): boolean => {
@@ -62,6 +79,14 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     }
     if (!errors.investorShareMin && !errors.investorShareMax && minNum > maxNum) {
       errors.investorShareMax = t('validation.minLessMax') || 'Min must be less than or equal to Max';
+    }
+    const maxTTLNum = maxTTL.trim() === '' ? null : parseInt(maxTTL, 10);
+    if (maxTTLNum !== null && (isNaN(maxTTLNum) || maxTTLNum < 1)) {
+      errors.maxTTL = t('validation.maxTTLPositive') || 'Must be 1 or more days';
+    }
+    const inactiveNum = parseInt(inactiveCloseDays, 10);
+    if (isNaN(inactiveNum) || inactiveNum < 0) {
+      errors.inactiveCloseDays = t('validation.inactiveCloseNonNegative') || 'Must be 0 or more';
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -80,6 +105,9 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           investingEnabled,
           investorShareMin: parseInt(investorShareMin, 10),
           investorShareMax: parseInt(investorShareMax, 10),
+          requireTTLForInvestPosts,
+          maxTTL: maxTTL.trim() === '' ? null : parseInt(maxTTL, 10),
+          inactiveCloseDays: parseInt(inactiveCloseDays, 10),
         },
       });
       addToast(t('saveSuccess') || 'Investing settings saved', 'success');
@@ -150,6 +178,56 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
               </BrandFormControl>
             </>
           )}
+
+          <BrandFormControl
+            label={t('fields.requireTTLForInvestPosts') || 'Require TTL for investment posts'}
+            helperText={
+              t('fields.requireTTLForInvestPostsHelp') ||
+              'When enabled, posts with investing must set a time-to-live (no indefinite)'
+            }
+          >
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={requireTTLForInvestPosts}
+                onCheckedChange={setRequireTTLForInvestPosts}
+              />
+              <Label className="text-sm font-medium">
+                {requireTTLForInvestPosts ? (t('fields.enabled') || 'Enabled') : (t('fields.disabled') || 'Disabled')}
+              </Label>
+            </div>
+          </BrandFormControl>
+
+          <BrandFormControl
+            label={t('fields.maxTTL') || 'Maximum post lifetime (days)'}
+            helperText={t('fields.maxTTLHelp') || 'Leave empty for no limit. Authors cannot set TTL above this.'}
+            error={validationErrors.maxTTL}
+          >
+            <Input
+              type="number"
+              min={1}
+              placeholder={t('fields.maxTTLPlaceholder') || 'No limit'}
+              value={maxTTL}
+              onChange={(e) => setMaxTTL(e.target.value)}
+              className="w-32"
+            />
+          </BrandFormControl>
+
+          <BrandFormControl
+            label={t('fields.inactiveCloseDays') || 'Days of inactivity before auto-close'}
+            helperText={
+              t('fields.inactiveCloseDaysHelp') ||
+              'Post can be auto-closed after this many days without earning'
+            }
+            error={validationErrors.inactiveCloseDays}
+          >
+            <Input
+              type="number"
+              min={0}
+              value={inactiveCloseDays}
+              onChange={(e) => setInactiveCloseDays(e.target.value)}
+              className="w-32"
+            />
+          </BrandFormControl>
 
           <div className="flex justify-end pt-4">
             <Button onClick={handleSave} disabled={isSaving} className="min-w-[120px]">

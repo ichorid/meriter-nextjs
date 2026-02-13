@@ -96,6 +96,9 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
             investingEnabled?: boolean;
             investorShareMin?: number;
             investorShareMax?: number;
+            requireTTLForInvestPosts?: boolean;
+            maxTTL?: number | null;
+            inactiveCloseDays?: number;
         };
     }) => {
         await updateCommunity.mutateAsync({

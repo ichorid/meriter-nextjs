@@ -154,7 +154,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
   const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
   const [noAuthorWalletSpend, setNoAuthorWalletSpend] = useState<boolean>((initialData as any)?.noAuthorWalletSpend ?? false);
-  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
+  const hasAdvancedSettings =
+    (initialData as any)?.investingEnabled ||
+    (initialData as any)?.ttlDays != null ||
+    (initialData as any)?.stopLoss !== 0 ||
+    (initialData as any)?.noAuthorWalletSpend;
+  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(!!(initialData && hasAdvancedSettings));
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
     ? [initialData.imageUrl]
@@ -404,6 +409,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             methods,
             stage: stage || undefined,
             helpNeeded,
+            // Mutable advanced settings (author-only enforced by backend)
+            stopLoss,
+            noAuthorWalletSpend,
+            ttlDays: ttlDays ?? undefined,
           },
         });
       } else {
@@ -695,23 +704,23 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             </>
           )}
 
-          {/* Advanced Settings - collapsible, only when community has investing or tappalka */}
-          {(communityInvestingEnabled || tappalkaEnabled) && !isEditMode && (
+          {/* Advanced Settings - collapsible when community has investing or tappalka (create + edit) */}
+          {(communityInvestingEnabled || tappalkaEnabled) && (
             <CollapsibleSection
               title={t('advanced.title', { defaultValue: 'Advanced settings' })}
               open={openAdvancedSettings}
               setOpen={setOpenAdvancedSettings}
             >
               <div className="space-y-6 pt-1">
-                {/* Investing: only when community allows */}
+                {/* Investing: only when community allows. In edit mode: read-only with explanation */}
                 {communityInvestingEnabled && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Checkbox
                         id="investingEnabled"
                         checked={investingEnabled}
-                        onCheckedChange={(checked) => setInvestingEnabled(checked === true)}
-                        disabled={isSubmitting}
+                        onCheckedChange={(checked) => !isEditMode && setInvestingEnabled(checked === true)}
+                        disabled={isSubmitting || isEditMode}
                       />
                       <Label htmlFor="investingEnabled" className="text-sm font-medium cursor-pointer">
                         {t('investing.enable', { defaultValue: 'Open for investments' })}
@@ -724,8 +733,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     {investingEnabled && (
                       <div className="pl-6 space-y-2">
                         <BrandFormControl
-                          label={t('investing.shareLabel', { defaultValue: 'Investor share (%)' }) + ` (${investorShareMin}–${investorShareMax})`}
-                          helperText={t('advanced.investorShareHelp', { defaultValue: 'Percentage of withdrawn merits distributed to investors. Cannot be changed after publishing.' })}
+                          label={t('investing.shareLabel', { defaultValue: 'Investor share (%)' }) + (isEditMode ? '' : ` (${investorShareMin}–${investorShareMax})`)}
+                          helperText={isEditMode ? t('advanced.investorShareReadOnly', { defaultValue: 'Investment contract percentage is immutable.' }) : t('advanced.investorShareHelp', { defaultValue: 'Percentage of withdrawn merits distributed to investors. Cannot be changed after publishing.' })}
                         >
                           <div className="flex items-center gap-4">
                             <input
@@ -733,9 +742,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                               min={investorShareMin}
                               max={investorShareMax}
                               value={investorSharePercent}
-                              onChange={(e) => setInvestorSharePercent(parseInt(e.target.value, 10))}
+                              onChange={(e) => !isEditMode && setInvestorSharePercent(parseInt(e.target.value, 10))}
                               className="flex-1 h-2 rounded-lg appearance-none cursor-pointer bg-base-content/20"
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || isEditMode}
                             />
                             <Input
                               type="number"
@@ -743,11 +752,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                               max={investorShareMax}
                               value={investorSharePercent}
                               onChange={(e) => {
+                                if (isEditMode) return;
                                 const v = parseInt(e.target.value, 10);
                                 if (!Number.isNaN(v)) setInvestorSharePercent(Math.min(investorShareMax, Math.max(investorShareMin, v)));
                               }}
                               className="w-20 h-9"
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || isEditMode}
                             />
                           </div>
                         </BrandFormControl>
@@ -756,7 +766,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   </div>
                 )}
 
-                {/* TTL, stop-loss, wallet: only when tappalka enabled */}
+                {/* TTL, stop-loss, wallet: only when tappalka enabled. Edit mode: TTL increase-only */}
                 {tappalkaEnabled && (
                   <>
                     <BrandFormControl
@@ -774,14 +784,29 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                             <SelectValue placeholder={t('advanced.ttlPlaceholder', { defaultValue: 'Select TTL' })} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="7">{t('advanced.ttlDays', { n: 7, defaultValue: '7 days' })}</SelectItem>
-                            <SelectItem value="14">{t('advanced.ttlDays', { n: 14, defaultValue: '14 days' })}</SelectItem>
-                            <SelectItem value="30">{t('advanced.ttlDays', { n: 30, defaultValue: '30 days' })}</SelectItem>
-                            <SelectItem value="60">{t('advanced.ttlDays', { n: 60, defaultValue: '60 days' })}</SelectItem>
-                            <SelectItem value="90">{t('advanced.ttlDays', { n: 90, defaultValue: '90 days' })}</SelectItem>
-                            <SelectItem value="indefinite" disabled={requireTTLForInvestPosts && investingEnabled}>
-                              {t('advanced.ttlIndefinite', { defaultValue: 'Indefinite' })}
-                            </SelectItem>
+                            {(() => {
+                              const all: (7 | 14 | 30 | 60 | 90)[] = [7, 14, 30, 60, 90];
+                              const current = ttlDays ?? 0;
+                              const allowed = isEditMode ? all.filter((d) => d >= current) : all;
+                              return (
+                                <>
+                                  {allowed.map((d) => (
+                                    <SelectItem key={d} value={String(d)}>
+                                      {t('advanced.ttlDays', { n: d, defaultValue: `${d} days` })}
+                                    </SelectItem>
+                                  ))}
+                                  <SelectItem
+                                    value="indefinite"
+                                    disabled={
+                                      (requireTTLForInvestPosts && investingEnabled) ||
+                                      (isEditMode && ttlDays != null)
+                                    }
+                                  >
+                                    {t('advanced.ttlIndefinite', { defaultValue: 'Indefinite' })}
+                                  </SelectItem>
+                                </>
+                              );
+                            })()}
                           </SelectContent>
                         </Select>
                         {(requireTTLForInvestPosts && investingEnabled) && (
