@@ -93,6 +93,7 @@ export class Publication implements EditableEntity {
     private readonly closingSummary?: PublicationSnapshot['closingSummary'],
     private readonly lastEarnedAt?: Date | null,
     private readonly ttlWarningNotified?: boolean,
+    private readonly inactivityWarningNotified?: boolean,
   ) {}
 
   static create(
@@ -167,6 +168,7 @@ export class Publication implements EditableEntity {
       undefined, // closingSummary
       undefined, // lastEarnedAt
       false, // ttlWarningNotified
+      false, // inactivityWarningNotified
     );
   }
 
@@ -215,6 +217,7 @@ export class Publication implements EditableEntity {
       snapshot.closingSummary ?? undefined,
       snapshot.lastEarnedAt != null ? (snapshot.lastEarnedAt instanceof Date ? snapshot.lastEarnedAt : new Date(snapshot.lastEarnedAt)) : null,
       snapshot.ttlWarningNotified ?? false,
+      snapshot.inactivityWarningNotified ?? false,
     );
   }
 
@@ -396,6 +399,7 @@ export class Publication implements EditableEntity {
       closingSummary: this.closingSummary ?? undefined,
       lastEarnedAt: this.lastEarnedAt ?? undefined,
       ttlWarningNotified: this.ttlWarningNotified ?? false,
+      inactivityWarningNotified: this.inactivityWarningNotified ?? false,
     };
   }
 }

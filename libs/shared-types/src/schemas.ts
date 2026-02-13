@@ -360,6 +360,8 @@ export const PublicationSchema = IdentifiableSchema.merge(
   lastEarnedAt: z.date().nullable().optional(),
   /** True after 24h-before-TTL warning sent (idempotent notifications). */
   ttlWarningNotified: z.boolean().optional().default(false),
+  /** True after 24h-before-inactivity-close warning sent. */
+  inactivityWarningNotified: z.boolean().optional().default(false),
 });
 
 export const CommentAuthorMetaSchema = z.object({

@@ -70,6 +70,7 @@ export interface PublicationDocument {
   } | null;
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
+  inactivityWarningNotified?: boolean;
 }
 
 /**

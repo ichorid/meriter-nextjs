@@ -93,6 +93,7 @@ export interface Publication {
   closingSummary?: PublicationClosingSummary | null;
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
+  inactivityWarningNotified?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -284,6 +285,9 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop({ default: false })
   ttlWarningNotified?: boolean;
+
+  @Prop({ default: false })
+  inactivityWarningNotified?: boolean;
 
   @Prop({ required: true })
   createdAt!: Date;
