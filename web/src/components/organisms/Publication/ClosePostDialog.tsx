@@ -46,7 +46,7 @@ function getClosePreview(
   authorReceived: number;
   totalEarned: number;
 } {
-  const totalEarned = currentScore + investmentPool;
+  const totalEarned = currentScore;
   const poolReturned = investmentPool;
 
   if (investments.length === 0 || currentScore <= 0) {

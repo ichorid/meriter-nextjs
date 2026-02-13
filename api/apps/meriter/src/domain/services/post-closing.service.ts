@@ -123,7 +123,7 @@ export class PostClosingService {
       );
 
       closingSummary = {
-        totalEarned: result.totalRatingDistributed + currentPool,
+        totalEarned: result.totalRatingDistributed,
         distributedToInvestors,
         authorReceived: result.ratingDistributed.authorAmount,
         spentOnShows: Math.max(0, investmentPoolTotal - currentPool),
