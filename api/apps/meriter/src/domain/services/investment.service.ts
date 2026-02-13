@@ -68,6 +68,74 @@ export interface InvestmentBreakdownResult {
   noAuthorWalletSpend: boolean;
 }
 
+/** F-2: Portfolio list item (one post where user is investor). */
+export interface MyPortfolioItem {
+  postId: string;
+  postTitle: string;
+  postAuthor: { name: string; avatarUrl?: string };
+  communityName: string;
+  investedAmount: number;
+  sharePercent: number;
+  totalEarnings: number;
+  postStatus: 'active' | 'closed';
+  postRating: number;
+  investmentPool: number;
+  ttlExpiresAt: Date | null;
+  lastWithdrawalDate: Date | null;
+}
+
+/** F-2: Aggregated stats for portfolio. */
+export interface MyPortfolioStats {
+  totalInvested: number;
+  totalEarned: number;
+  sroi: number;
+  activeCount: number;
+  closedCount: number;
+}
+
+/** F-2: Options for getMyPortfolio. */
+export interface GetMyPortfolioOptions {
+  sort: 'date' | 'amount' | 'earnings';
+  filter: 'all' | 'active' | 'closed';
+  page: number;
+  limit: number;
+}
+
+/** F-2: Full portfolio response. */
+export interface GetMyPortfolioResult {
+  stats: MyPortfolioStats;
+  items: MyPortfolioItem[];
+  totalCount: number;
+}
+
+/** F-3: Investment details (single post) for current investor. */
+export interface InvestmentDetailsResult {
+  postId: string;
+  title: string;
+  authorId: string;
+  communityId: string;
+  status: 'active' | 'closed';
+  earningsHistory: Array<{
+    amount: number;
+    date: string;
+    reason: 'withdrawal' | 'pool_return' | 'close';
+  }>;
+  contractPercent: number;
+  ttlDays: number | null;
+  ttlExpiresAt: Date | null;
+  stopLoss: number;
+  noAuthorWalletSpend: boolean;
+  rating: number;
+  investmentPool: number;
+  closingSummary: {
+    totalEarned: number;
+    distributedToInvestors: number;
+    authorReceived: number;
+    spentOnShows: number;
+    poolReturned: number;
+  } | null;
+}
+
 @Injectable()
 export class InvestmentService {
   private readonly logger = new Logger(InvestmentService.name);
@@ -354,6 +422,236 @@ export class InvestmentService {
         investmentPoolTotal: post.investmentPoolTotal ?? 0,
       };
     });
+  }
+
+  /**
+   * F-2: Get current user's investment portfolio with stats and paginated list.
+   * Uses aggregation for efficiency; enriches with author and community names.
+   */
+  async getMyPortfolio(
+    userId: string,
+    options: GetMyPortfolioOptions,
+  ): Promise<GetMyPortfolioResult> {
+    const filterMatch =
+      options.filter === 'all' ? {} : { status: options.filter };
+    const skip = (options.page - 1) * options.limit;
+    const sortKey =
+      options.sort === 'date'
+        ? 'myInv.createdAt'
+        : options.sort === 'amount'
+          ? 'myInv.amount'
+          : 'myInv.totalEarnings';
+
+    const pipeline: Record<string, unknown>[] = [
+      {
+        $match: {
+          'investments.investorId': userId,
+          deleted: { $ne: true },
+          ...filterMatch,
+        },
+      },
+      {
+        $addFields: {
+          myInv: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: '$investments',
+                  as: 'i',
+                  cond: { $eq: ['$$i.investorId', userId] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      { $match: { myInv: { $ne: null } } },
+      {
+        $facet: {
+          stats: [
+            {
+              $group: {
+                _id: null,
+                totalInvested: { $sum: '$myInv.amount' },
+                totalEarned: { $sum: { $ifNull: ['$myInv.totalEarnings', 0] } },
+                activeCount: {
+                  $sum: {
+                    $cond: [{ $eq: ['$status', 'active'] }, 1, 0],
+                  },
+                },
+                closedCount: {
+                  $sum: {
+                    $cond: [{ $eq: ['$status', 'closed'] }, 1, 0],
+                  },
+                },
+              },
+            },
+          ],
+          totalCount: [{ $count: 'total' }],
+          items: [
+            { $sort: { [sortKey]: -1 } },
+            { $skip: skip },
+            { $limit: options.limit },
+            {
+              $project: {
+                id: 1,
+                title: 1,
+                authorId: 1,
+                communityId: 1,
+                status: 1,
+                'metrics.score': 1,
+                investmentPool: 1,
+                investmentPoolTotal: 1,
+                ttlExpiresAt: 1,
+                closingSummary: 1,
+                myInv: 1,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const result = await this.publicationModel
+      .aggregate<{
+        stats: Array<{
+          totalInvested: number;
+          totalEarned: number;
+          activeCount: number;
+          closedCount: number;
+        }>;
+        totalCount: Array<{ total: number }>;
+        items: Array<{
+          id: string;
+          title?: string;
+          authorId: string;
+          communityId: string;
+          status?: 'active' | 'closed';
+          metrics?: { score?: number };
+          investmentPool?: number;
+          investmentPoolTotal?: number;
+          ttlExpiresAt?: Date | null;
+          closingSummary?: unknown;
+          myInv: PublicationInvestment;
+        }>;
+      }>(pipeline)
+      .exec();
+
+    const facet = result[0];
+    const statsRow = facet?.stats?.[0];
+    const totalInvested = statsRow?.totalInvested ?? 0;
+    const totalEarned = statsRow?.totalEarned ?? 0;
+    const activeCount = statsRow?.activeCount ?? 0;
+    const closedCount = statsRow?.closedCount ?? 0;
+    const sroi =
+      totalInvested > 0
+        ? ((totalEarned - totalInvested) / totalInvested) * 100
+        : 0;
+    const totalCount = facet?.totalCount?.[0]?.total ?? 0;
+    const rawItems = facet?.items ?? [];
+
+    const authorIds = [...new Set(rawItems.map((d) => d.authorId))];
+    const communityIds = [...new Set(rawItems.map((d) => d.communityId))];
+    const [authors, communities] = await Promise.all([
+      Promise.all(authorIds.map((id) => this.userService.getUserById(id))),
+      Promise.all(
+        communityIds.map((id) => this.communityService.getCommunity(id)),
+      ),
+    ]);
+    const authorMap = new Map(
+      authorIds.map((id, i) => [id, authors[i] ?? null]),
+    );
+    const communityMap = new Map(
+      communityIds.map((id, i) => [id, communities[i] ?? null]),
+    );
+
+    const items: MyPortfolioItem[] = rawItems.map((d) => {
+      const myInv = d.myInv;
+      const poolTotal = d.investmentPoolTotal ?? 0;
+      const sharePercent =
+        poolTotal > 0 ? (myInv.amount / poolTotal) * 100 : 0;
+      const lastWithdrawal =
+        myInv.earningsHistory?.filter((e) => e.reason === 'withdrawal').pop();
+      const author = authorMap.get(d.authorId);
+      const community = communityMap.get(d.communityId);
+      return {
+        postId: d.id,
+        postTitle: d.title ?? '',
+        postAuthor: {
+          name: author?.displayName ?? 'Unknown',
+          avatarUrl: author?.avatarUrl,
+        },
+        communityName: community?.name ?? 'Community',
+        investedAmount: myInv.amount,
+        sharePercent,
+        totalEarnings: myInv.totalEarnings ?? 0,
+        postStatus: d.status ?? 'active',
+        postRating: d.metrics?.score ?? 0,
+        investmentPool: d.investmentPool ?? 0,
+        ttlExpiresAt: d.ttlExpiresAt ?? null,
+        lastWithdrawalDate: lastWithdrawal?.date ?? null,
+      };
+    });
+
+    return {
+      stats: {
+        totalInvested,
+        totalEarned,
+        sroi,
+        activeCount,
+        closedCount,
+      },
+      items,
+      totalCount,
+    };
+  }
+
+  /**
+   * F-3: Get full investment details for one post (current user must be investor).
+   */
+  async getInvestmentDetails(
+    userId: string,
+    postId: string,
+  ): Promise<InvestmentDetailsResult> {
+    const post = await this.publicationModel
+      .findOne({ id: postId })
+      .lean()
+      .exec();
+    if (!post) {
+      throw new NotFoundException('Publication not found');
+    }
+    const myInv = post.investments?.find(
+      (i: PublicationInvestment) => i.investorId === userId,
+    );
+    if (!myInv) {
+      throw new NotFoundException(
+        'You are not an investor in this post, or post not found',
+      );
+    }
+
+    const earningsHistory = (myInv.earningsHistory ?? []).map((e) => ({
+      amount: e.amount,
+      date: typeof e.date === 'string' ? e.date : e.date.toISOString(),
+      reason: e.reason,
+    }));
+
+    return {
+      postId: post.id,
+      title: post.title ?? '',
+      authorId: post.authorId,
+      communityId: post.communityId,
+      status: (post.status as 'active' | 'closed') ?? 'active',
+      earningsHistory,
+      contractPercent: post.investorSharePercent ?? 0,
+      ttlDays: post.ttlDays ?? null,
+      ttlExpiresAt: post.ttlExpiresAt ?? null,
+      stopLoss: post.stopLoss ?? 0,
+      noAuthorWalletSpend: post.noAuthorWalletSpend ?? false,
+      rating: post.metrics?.score ?? 0,
+      investmentPool: post.investmentPool ?? 0,
+      closingSummary: post.closingSummary ?? null,
+    };
   }
 
   /**

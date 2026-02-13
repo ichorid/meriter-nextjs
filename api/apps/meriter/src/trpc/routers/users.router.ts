@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { NotFoundException } from '@nestjs/common';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
@@ -614,4 +615,47 @@ export const usersRouter = router({
   getMyLeadCommunities: protectedProcedure.query(async ({ ctx }) => {
     return ctx.userService.getLeadCommunities(ctx.user.id);
   }),
+
+  /**
+   * F-2: Get current user's investment portfolio (list + stats, paginated).
+   */
+  myInvestments: protectedProcedure
+    .input(
+      z.object({
+        sort: z.enum(['date', 'amount', 'earnings']).default('date'),
+        filter: z.enum(['all', 'active', 'closed']).default('all'),
+        page: z.number().int().min(1).default(1),
+        limit: z.number().int().min(1).max(100).default(20),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.investmentService.getMyPortfolio(ctx.user.id, {
+        sort: input.sort,
+        filter: input.filter,
+        page: input.page,
+        limit: input.limit,
+      });
+    }),
+
+  /**
+   * F-3: Get full investment details for one post (current user must be investor).
+   */
+  investmentDetails: protectedProcedure
+    .input(z.object({ postId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await ctx.investmentService.getInvestmentDetails(
+          ctx.user.id,
+          input.postId,
+        );
+      } catch (err) {
+        if (err instanceof NotFoundException) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: err.message,
+          });
+        }
+        throw err;
+      }
+    }),
 });
