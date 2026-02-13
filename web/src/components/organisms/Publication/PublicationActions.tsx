@@ -23,6 +23,7 @@ import { isTestAuthMode } from '@/config';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
 import { formatMerits } from '@/lib/utils/currency';
+import { ClosingSummaryBlock } from './ClosingSummaryBlock';
 
 // Local Publication type definition
 interface Publication {
@@ -58,6 +59,15 @@ interface Publication {
   permissions?: ResourcePermissions;
   withdrawals?: {
     totalWithdrawn?: number;
+  };
+  /** D-10: Post status for closed display */
+  status?: 'active' | 'closed';
+  closeReason?: string;
+  closingSummary?: {
+    totalEarned: number;
+    distributedToInvestors: number;
+    authorReceived: number;
+    spentOnShows: number;
   };
   [key: string]: unknown;
 }
@@ -204,6 +214,12 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
   const voteDisabledReason = publication.permissions?.voteDisabledReason;
+
+  // D-10: Closed post — show summary, hide financial actions, keep favorite/share/comment
+  const publicationStatus = (publication as { status?: string }).status ?? effectivePublication?.status ?? 'active';
+  const isClosed = publicationStatus === 'closed';
+  const closingSummary = (publication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } }).closingSummary
+    ?? (effectivePublication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } } | undefined)?.closingSummary;
   
   // Debug logging
   if (process.env.NODE_ENV !== 'production') {
@@ -425,10 +441,16 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     ? 'project'
     : 'publication';
 
+  // D-10: When closed, open voting popup for neutral comment only (popup forces neutralOnly)
+  const handleCommentOnlyClick = () => {
+    if (!publicationId) return;
+    useUIStore.getState().openVotingPopup(publicationId, 'publication', 'standard');
+  };
+
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
-      {/* Investment block: compact, clickable → breakdown popup (C-7) */}
-      {investingEnabled && (
+      {/* Investment block: compact, clickable → breakdown popup (C-7) — hidden when closed */}
+      {investingEnabled && !isClosed && (
         <div className="mb-3">
           <button
             type="button"
@@ -496,8 +518,24 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
           )}
         </div>
 
-        {/* Center: Score (clickable, opens comments) - hidden if hideVoteAndScore */}
-        {!hideVoteAndScore && (
+        {/* Center: when closed show ClosingSummaryBlock + Comment; else score/invest/withdraw */}
+        {isClosed ? (
+          <div className="flex flex-col items-center gap-2">
+            {closingSummary ? (
+              <ClosingSummaryBlock summary={closingSummary} />
+            ) : (
+              <span className="text-sm text-base-content/50">Closed</span>
+            )}
+            <button
+              onClick={handleCommentOnlyClick}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
+              title={t('comments')}
+            >
+              <Hand className="w-4 h-4 text-base-content/50" />
+              <span className="text-sm font-medium text-base-content/70">{t('comments')}</span>
+            </button>
+          </div>
+        ) : !hideVoteAndScore ? (
           <div className="flex flex-col items-center gap-2">
             <button
               onClick={handleCommentClick}
@@ -564,10 +602,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
               </button>
             )}
           </div>
-        )}
+        ) : null}
 
-        {/* Right side: Vote button - hidden if hideVoteAndScore */}
-        {!hideVoteAndScore && (
+        {/* Right side: Vote button - hidden if hideVoteAndScore or closed */}
+        {!hideVoteAndScore && !isClosed && (
           <div className="flex items-center">
             <button
               onClick={handleVoteClick}

@@ -76,6 +76,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     [community?.settings],
   );
 
+  // D-10: Closed posts — force neutral-only (no weighted vote) regardless of community setting
+  const effectiveCommentMode =
+    (publication as { status?: string })?.status === 'closed' ? 'neutralOnly' : commentMode;
+
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   const voteOnVoteMutation = useVoteOnVote();
@@ -199,17 +203,17 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const delta = formData.delta;
     console.log('[VotingPopup] Initial values', {
       delta,
-      commentMode,
+      commentMode: effectiveCommentMode,
       quotaRemaining,
       walletBalance,
       effectiveVotingMode,
     });
     if (delta === 0) {
-      if (commentMode === 'weightedOnly') {
+      if (effectiveCommentMode === 'weightedOnly') {
         updateVotingFormData({ error: t('weightRequired') });
         return;
       }
-      if (commentMode === 'all' || commentMode === 'neutralOnly') {
+      if (effectiveCommentMode === 'all' || effectiveCommentMode === 'neutralOnly') {
         // Neutral comment: allow with 0 weight (require comment text)
         if (!formData.comment?.trim()) {
           updateVotingFormData({ error: t('reasonRequired') });
@@ -237,7 +241,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     });
 
     // Calculate vote breakdown for submission (quota first, then wallet overflow).
-    // Neutral comment (delta === 0) when commentMode is all or neutralOnly: submit 0,0
+    // Neutral comment (delta === 0) when effectiveCommentMode is all or neutralOnly: submit 0,0
     let quotaAmount = 0;
     let walletAmount = 0;
 
@@ -283,9 +287,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const isNeutralSubmit = quotaAmount === 0 && walletAmount === 0;
     if (isNeutralSubmit) {
       const allowedNeutral =
-        commentMode === 'neutralOnly' || (commentMode === 'all' && formData.comment?.trim());
+        effectiveCommentMode === 'neutralOnly' || (effectiveCommentMode === 'all' && formData.comment?.trim());
       if (!allowedNeutral) {
-        if (absoluteAmount === 0 && commentMode === 'weightedOnly') {
+        if (absoluteAmount === 0 && effectiveCommentMode === 'weightedOnly') {
           updateVotingFormData({ error: t('weightRequired') });
           return;
         }
@@ -421,9 +425,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           isOwnPost={isOwnPost}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
-          commentMode={commentMode}
-          hideQuota={commentMode === 'neutralOnly'}
-          submitButtonLabel={commentMode === 'neutralOnly' ? (t('commentButton') || 'Comment') : undefined}
+          commentMode={effectiveCommentMode}
+          hideQuota={effectiveCommentMode === 'neutralOnly'}
+          submitButtonLabel={effectiveCommentMode === 'neutralOnly' ? (t('commentButton') || 'Comment') : undefined}
         />
         </div>
       </div>

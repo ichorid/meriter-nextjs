@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, Trash2, ArrowRight, Eye, Send } from 'lucide-react';
+import { Edit, Trash2, ArrowRight, Eye, Send, Lock } from 'lucide-react';
 import { Badge } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
@@ -22,6 +22,7 @@ import { ForwardPopup } from './ForwardPopup';
 import { ReviewForwardPopup } from './ReviewForwardPopup';
 import { PublicationDetailsPopup } from '@/shared/components/publication-details-popup';
 import { trpc } from '@/lib/trpc/client';
+import { ClosePostDialog } from './ClosePostDialog';
 
 // Local Publication type definition
 interface Publication {
@@ -99,6 +100,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const [showForwardPopup, setShowForwardPopup] = useState(false);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [showDetailsPopup, setShowDetailsPopup] = useState(false);
+  const [showClosePostDialog, setShowClosePostDialog] = useState(false);
   const t = useTranslations('shared');
   
   const deletePublication = useDeletePublication();
@@ -125,6 +127,13 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     { id: effectivePublicationId },
     {
       enabled: showDeleteModal && !!effectivePublicationId,
+      staleTime: 0,
+    },
+  );
+  const { data: publicationForClose } = trpc.publications.getById.useQuery(
+    { id: effectivePublicationId },
+    {
+      enabled: showClosePostDialog && !!effectivePublicationId,
       staleTime: 0,
     },
   );
@@ -190,6 +199,26 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   // Show delete button if user can delete, disable if canDelete but not canDeleteEnabled
   const showDeleteButton = canDelete && publicationId && communityId;
   const deleteButtonDisabled = !!(canDelete && !canDeleteEnabled);
+
+  // D-9: Close post — author only, active posts only, not polls
+  const publicationStatus = (publication as { status?: string }).status ?? 'active';
+  const showClosePostButton =
+    isAuthor &&
+    publicationId &&
+    !isPoll &&
+    publicationStatus === 'active';
+
+  const closeReasonLabel = useMemo(() => {
+    const reason = (publication as { closeReason?: string }).closeReason;
+    if (!reason) return '';
+    const labels: Record<string, string> = {
+      manual: 'By author',
+      ttl: 'TTL expired',
+      inactive: 'Inactive',
+      negative_rating: 'Negative rating',
+    };
+    return labels[reason] ?? reason;
+  }, [(publication as { closeReason?: string }).closeReason]);
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -311,6 +340,20 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <Trash2 size={16} />
           </Button>
         )}
+        {showClosePostButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowClosePostDialog(true);
+            }}
+            className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
+            title="Close post"
+          >
+            <Lock size={16} />
+          </Button>
+        )}
         {canForward && (
           <Button
             variant="ghost"
@@ -343,6 +386,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </Button>
+        {publicationStatus === 'closed' && closeReasonLabel ? (
+          <Badge variant="secondary" size="sm">
+            Closed · {closeReasonLabel}
+          </Badge>
+        ) : null}
         {(publication as any).postType === 'project' || (publication as any).isProject ? (
           <Badge variant="warning" size="sm">
             PROJECT
@@ -413,6 +461,23 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             : undefined
         }
       />
+
+      {/* D-9: Close post dialog */}
+      {showClosePostDialog && publicationId && publicationForClose && (
+        <ClosePostDialog
+          open={showClosePostDialog}
+          onOpenChange={setShowClosePostDialog}
+          publicationId={publicationId}
+          currentScore={publicationForClose.metrics?.score ?? 0}
+          hasInvestments={(publicationForClose.investments?.length ?? 0) > 0}
+          investmentPool={publicationForClose.investmentPool ?? 0}
+          investorSharePercent={publicationForClose.investorSharePercent ?? 0}
+          investments={(publicationForClose.investments ?? []).map((inv: { investorId: string; amount: number }) => ({
+            investorId: inv.investorId,
+            amount: inv.amount,
+          }))}
+        />
+      )}
 
       {/* Publication Details Popup */}
       <PublicationDetailsPopup
