@@ -319,6 +319,9 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 investorSharePercent: (publication as Record<string, unknown>).investorSharePercent ?? 50,
                                 investmentPool: (publication as Record<string, unknown>).investmentPool ?? 0,
                                 investmentPoolTotal: (publication as Record<string, unknown>).investmentPoolTotal ?? 0,
+                                status: (publication as Record<string, unknown>).status as string | undefined,
+                                closingSummary: (publication as Record<string, unknown>).closingSummary as { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } | undefined,
+                                ttlExpiresAt: (publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined,
                             }}
                             onVote={() => {}}
                             onComment={() => {}}

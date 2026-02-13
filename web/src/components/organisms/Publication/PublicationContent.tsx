@@ -72,16 +72,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   const description = (publication as any).description;
   const isProject = (publication as any).isProject;
   const coverImageUrl = publication.imageUrl || (publication as any).imageUrl;
-  const galleryImages = (publication as any).images || [];
-
-  // FRONTEND DEBUG
-  console.log('[PublicationContent DEBUG]', {
-    id: publication.id,
-    hasImages: !!(publication as any).images,
-    imagesLength: ((publication as any).images || []).length,
-    galleryImages,
-    coverImageUrl
-  });
+  const galleryImages = (publication as Record<string, unknown>).images || [];
 
   const content = typeof publication.meta?.comment === 'string'
     ? publication.meta.comment

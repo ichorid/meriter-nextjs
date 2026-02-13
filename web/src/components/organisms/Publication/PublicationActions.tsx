@@ -167,16 +167,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Calculate total votes (current score + withdrawn votes) for display
   // Only show when there are actual withdrawals and totalVotes > currentScore
   const totalVotes = totalWithdrawn > 0 ? currentScore + totalWithdrawn : undefined;
-  
-  // Debug logging (only in development)
-  if (process.env.NODE_ENV !== 'production' && totalWithdrawn > 0) {
-    console.debug('[PublicationActions] Vote display:', {
-      currentScore,
-      totalWithdrawn,
-      totalVotes,
-      willShowTotalVotes: totalVotes !== undefined && totalVotes > currentScore,
-    });
-  }
 
   // Get current wallet balance for topup
   const communityId = publication.communityId;
@@ -216,23 +206,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const isClosed = publicationStatus === 'closed';
   const closingSummary = (publication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } }).closingSummary
     ?? (effectivePublication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } } | undefined)?.closingSummary;
-  
-  // Debug logging
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('[PublicationActions] DEBUG', JSON.stringify({
-      publicationId: publication.id,
-      authorId,
-      myId,
-      isAuthor,
-      communityId,
-      hasPermissions: !!publication.permissions,
-      permissions: publication.permissions,
-      canVote,
-      voteDisabledReason,
-      communityTypeTag: community?.typeTag,
-      fullPublication: Object.keys(publication)
-    }, null, 2));
-  }
 
   const handleVoteClick = () => {
     // Check if user is voting for own post (author or beneficiary)

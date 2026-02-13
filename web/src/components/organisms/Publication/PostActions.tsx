@@ -376,7 +376,7 @@ export const PostActions: React.FC<PostActionsProps> = ({
   };
 
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
       {leftButtons}
       {renderCenter()}
     </div>
