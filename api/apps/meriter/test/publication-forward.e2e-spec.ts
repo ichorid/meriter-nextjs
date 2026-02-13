@@ -6,6 +6,7 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Publication Forward E2E', () => {
   jest.setTimeout(120000);
@@ -244,11 +245,10 @@ describe('Publication Forward E2E', () => {
 
   describe('Non-lead propose forward flow', () => {
     it('should allow participant to propose forward, lead to confirm, and create copy in target', async () => {
-      // Add wallet balances BEFORE creating publications
-      // Author needs wallet balance to create publication
+      // Post fee and forward cost are paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -261,10 +261,9 @@ describe('Publication Forward E2E', () => {
         },
         'Test credit',
       );
-      // Participant needs wallet balance to propose forward
       await walletService.addTransaction(
         participantId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -310,8 +309,8 @@ describe('Publication Forward E2E', () => {
       expect(pendingPub.forwardTargetCommunityId).toBe(marathonCommunityId);
       expect(pendingPub.forwardProposedBy).toBe(participantId);
 
-      // Verify wallet transaction was created (forwarding now uses wallet)
-      const wallet = await walletService.getWallet(participantId, teamCommunityId);
+      // Verify wallet transaction was created (forward cost is from global wallet)
+      const wallet = await walletService.getWallet(participantId, GLOBAL_COMMUNITY_ID);
       if (wallet) {
         const transactions = await connection.db
           .collection('transactions')
@@ -386,10 +385,10 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should allow lead to reject forward proposal and clear status', async () => {
-      // Add wallet balances BEFORE creating publications
+      // Post fee and forward cost are paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -404,7 +403,7 @@ describe('Publication Forward E2E', () => {
       );
       await walletService.addTransaction(
         participantId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -465,10 +464,10 @@ describe('Publication Forward E2E', () => {
 
   describe('Lead direct forward flow', () => {
     it('should allow lead to forward directly without proposal', async () => {
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -527,10 +526,10 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should forward project posts with all taxonomy fields', async () => {
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -604,10 +603,10 @@ describe('Publication Forward E2E', () => {
         { id: uid(), userId: participantId, communityId: regularCommunityId, role: 'participant', createdAt: new Date(), updatedAt: new Date() },
       ]);
 
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        regularCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -648,10 +647,10 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should reject forward proposal for poll posts', async () => {
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -692,10 +691,10 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should reject forward proposal when lead tries to use proposeForward', async () => {
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -736,10 +735,10 @@ describe('Publication Forward E2E', () => {
     });
 
     it('should reject forward when insufficient wallet merits', async () => {
-      // Add wallet balance for author to create publication (participant intentionally has no balance)
+      // Post fee is from global wallet; credit only author (participant has no global balance for forward)
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -765,13 +764,12 @@ describe('Publication Forward E2E', () => {
       });
       const publicationId = created.id as string;
 
-      // Ensure wallet has insufficient balance (should be 0 or less than forwardCost which is 1)
-      // Clear any existing wallet balance for participant by deleting the wallet
+      // Ensure participant has insufficient global wallet (forward cost is from global)
       await connection.db.collection('wallets').deleteMany({
         userId: participantId,
-        communityId: teamCommunityId,
+        communityId: GLOBAL_COMMUNITY_ID,
       });
-      const walletBefore = await walletService.getWallet(participantId, teamCommunityId);
+      const walletBefore = await walletService.getWallet(participantId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBeLessThan(1);
 
@@ -805,10 +803,10 @@ describe('Publication Forward E2E', () => {
         },
       });
 
-      // Add wallet balance for author BEFORE creating publication
+      // Post fee is paid from global wallet
       await walletService.addTransaction(
         authorId,
-        teamCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
