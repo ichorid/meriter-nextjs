@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
-import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
+import { AmountStepper } from '@/components/ui/shadcn/amount-stepper';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
@@ -29,16 +29,15 @@ export function AddMeritsDialog({
 }: AddMeritsDialogProps) {
   const t = useTranslations('pages.communities.members');
   const addToast = useToastStore((state) => state.addToast);
-  const [amount, setAmount] = useState<string>('100');
+  const [amount, setAmount] = useState<number>(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addMeritsMutation = trpc.wallets.addMeritsToUser.useMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const amountNum = parseInt(amount, 10);
-    if (isNaN(amountNum) || amountNum <= 0) {
+
+    if (amount <= 0) {
       addToast(t('addMeritsDialog.invalidAmount'), 'error');
       return;
     }
@@ -48,15 +47,16 @@ export function AddMeritsDialog({
       await addMeritsMutation.mutateAsync({
         userId,
         communityId,
-        amount: amountNum,
+        amount,
       });
-      
-      addToast(t('addMeritsDialog.success', { amount: amountNum, name: userName }), 'success');
-      setAmount('100');
+
+      addToast(t('addMeritsDialog.success', { amount, name: userName }), 'success');
+      setAmount(100);
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
-      addToast(error?.message || t('addMeritsDialog.error'), 'error');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : t('addMeritsDialog.error');
+      addToast(message, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -72,15 +72,13 @@ export function AddMeritsDialog({
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="amount">{t('addMeritsDialog.amountLabel')}</Label>
-              <Input
+              <AmountStepper
                 id="amount"
-                type="number"
-                min="1"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={setAmount}
+                min={1}
                 placeholder="100"
                 disabled={isSubmitting}
-                autoFocus
               />
               <p className="text-xs text-base-content/60">
                 {t('addMeritsDialog.amountHelp')}

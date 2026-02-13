@@ -4,8 +4,8 @@ import React, { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
-import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
+import { AmountStepper } from '@/components/ui/shadcn/amount-stepper';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useInvest } from '@/hooks/api/useInvestments';
@@ -37,15 +37,10 @@ export function InvestDialog({
   const t = useTranslations('investing');
   const tCommon = useTranslations('common');
   const addToast = useToastStore((state) => state.addToast);
-  const [amountInput, setAmountInput] = useState('');
+  const [amount, setAmount] = useState(0);
   const investMutation = useInvest();
   const { data: wallet } = useWallet(communityId);
   const walletBalance = wallet?.balance ?? 0;
-
-  const amount = useMemo(() => {
-    const n = parseInt(amountInput, 10);
-    return Number.isNaN(n) ? 0 : Math.max(0, n);
-  }, [amountInput]);
 
   const newPoolTotal = investmentPoolTotal + amount;
   const myShareOfInvestorPortion = useMemo(() => {
@@ -66,7 +61,7 @@ export function InvestDialog({
         t('investSuccess', { defaultValue: 'Successfully invested {amount} merits', amount }),
         'success'
       );
-      setAmountInput('');
+      setAmount(0);
       onOpenChange(false);
       onSuccess?.();
     } catch (error: unknown) {
@@ -76,7 +71,7 @@ export function InvestDialog({
   };
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) setAmountInput('');
+    if (!next) setAmount(0);
     onOpenChange(next);
   };
 
@@ -106,16 +101,14 @@ export function InvestDialog({
 
             <div className="space-y-2">
               <Label htmlFor="invest-amount">{t('amountLabel', { defaultValue: 'Amount (merits)' })}</Label>
-              <Input
+              <AmountStepper
                 id="invest-amount"
-                type="number"
-                min="1"
+                value={amount}
+                onChange={setAmount}
+                min={1}
                 max={walletBalance}
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
                 placeholder="0"
                 disabled={isSubmitting}
-                autoFocus
               />
               <p className="text-xs text-base-content/60">
                 {t('balance', { defaultValue: 'Balance: {balance} merits', balance: walletBalance })}
