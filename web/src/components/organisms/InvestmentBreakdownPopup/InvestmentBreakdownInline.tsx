@@ -110,7 +110,7 @@ export function InvestmentBreakdownInline({ postId }: InvestmentBreakdownInlineP
       {/* Total stats */}
       <div className="pt-3 border-t border-base-300 space-y-1 text-sm text-base-content/70">
         <p className="flex justify-between">
-          <span>{t('pool', { defaultValue: 'Pool' })}</span>
+          <span>{t('poolLabel', { defaultValue: 'Pool' })}</span>
           <span className="tabular-nums">{breakdown.poolBalance} merits</span>
         </p>
         <p className="flex justify-between">

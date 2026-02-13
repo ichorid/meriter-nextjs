@@ -54,10 +54,10 @@ export function PostSettingsReadOnly({
 
   const postTypeLabel =
     postType === 'project'
-      ? t('postTypeProject', { defaultValue: 'Project' })
+      ? t('postTypes.project', { defaultValue: 'Project' })
       : postType === 'poll'
-        ? t('postTypePoll', { defaultValue: 'Poll' })
-        : t('postTypeBasic', { defaultValue: 'Publication' });
+        ? t('postTypes.poll', { defaultValue: 'Poll' })
+        : t('postTypes.basic', { defaultValue: 'Publication' });
 
   const hasTaxonomy =
     ENABLE_PROJECT_POSTS &&
@@ -97,7 +97,7 @@ export function PostSettingsReadOnly({
 
         <div>
           <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-            {t('postType', { defaultValue: 'Type' })}
+            {t('fields.postType', { defaultValue: 'Type' })}
           </dt>
           <dd className="text-base-content/80">{postTypeLabel}</dd>
         </div>

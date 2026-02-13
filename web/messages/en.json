@@ -293,6 +293,7 @@
         "investor": "Investor",
         "investedBy": "{amount} merits from {count} investor(s)",
         "pool": "Pool: {amount}",
+        "poolLabel": "Pool",
         "noMeritsMessage": "You have no merits to invest. Earn some first.",
         "earnMeritsButton": "Earn merits",
         "viewBreakdown": "View investment breakdown",
