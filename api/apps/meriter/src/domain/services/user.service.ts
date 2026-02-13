@@ -274,6 +274,19 @@ export class UserService implements OnModuleInit {
     const needsToJoinTP = teamProjects && !memberships.includes(teamProjects.id);
     const needsToJoinSupport = support && !memberships.includes(support.id);
 
+    // G-10: Credit 100 welcome merits to global wallet on first registration
+    const isNewToBaseCommunities =
+      needsToJoinFV || needsToJoinMG || needsToJoinTP || needsToJoinSupport;
+    if (isNewToBaseCommunities) {
+      try {
+        await this.walletService.creditWelcomeMeritsIfNeeded(userId);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to credit welcome merits to user ${userId}: ${err instanceof Error ? err.message : 'Unknown'}`,
+        );
+      }
+    }
+
     // Add user to Future Vision if needed
     if (needsToJoinFV && futureVision) {
       this.logger.log(`Adding user ${userId} to Future Vision`);

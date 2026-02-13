@@ -15,19 +15,23 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
     const addTransaction = jest.fn().mockResolvedValue({});
     const reduceScore = jest.fn().mockResolvedValue({});
 
+    const community = {
+      id: communityId,
+      typeTag: 'custom',
+      settings: {
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      },
+    };
     const ctx = {
       communityService: {
-        getCommunity: jest.fn().mockResolvedValue({
-          id: communityId,
-          typeTag: 'custom',
-          settings: {
-            currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-          },
-        }),
+        getCommunity: jest.fn().mockResolvedValue(community),
         getCommunityByTypeTag: jest.fn().mockResolvedValue(null),
         getEffectiveVotingSettings: jest.fn().mockReturnValue({
           awardsMerits: true,
         }),
+      },
+      meritResolverService: {
+        getWalletCommunityId: jest.fn().mockReturnValue(communityId),
       },
       walletService: {
         addTransaction,
@@ -71,6 +75,9 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
         getEffectiveVotingSettings: jest.fn().mockReturnValue({
           awardsMerits: true,
         }),
+      },
+      meritResolverService: {
+        getWalletCommunityId: jest.fn().mockReturnValue('community-1'),
       },
       walletService: {
         addTransaction: jest.fn(),

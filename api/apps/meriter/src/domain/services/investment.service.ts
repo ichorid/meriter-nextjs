@@ -12,6 +12,7 @@ import {
   type PublicationInvestment,
 } from '../models/publication/publication.schema';
 import { WalletService } from './wallet.service';
+import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
@@ -148,6 +149,7 @@ export class InvestmentService {
     @InjectModel(PublicationSchemaClass.name)
     private publicationModel: Model<PublicationDocument>,
     private walletService: WalletService,
+    private meritResolverService: MeritResolverService,
     private communityService: CommunityService,
     private notificationService: NotificationService,
     private userService: UserService,
@@ -200,7 +202,11 @@ export class InvestmentService {
       genitive: 'merits',
     };
 
-    const wallet = await this.walletService.getWallet(investorId, post.communityId);
+    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
+      community,
+      'investment',
+    );
+    const wallet = await this.walletService.getWallet(investorId, walletCommunityId);
     const balance = wallet ? wallet.getBalance() : 0;
     if (balance < amount) {
       throw new BadRequestException(
@@ -251,7 +257,7 @@ export class InvestmentService {
     try {
       await this.walletService.addTransaction(
         investorId,
-        post.communityId,
+        walletCommunityId,
         'debit',
         amount,
         'personal',
@@ -732,10 +738,14 @@ export class InvestmentService {
     // Remainder from rounding goes to author (C-4)
     const authorAmount = withdrawAmount - distributedTotal;
 
+    const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+      community,
+      'withdrawal',
+    );
     for (const dist of investorDistributions) {
       await this.walletService.addTransaction(
         dist.investorId,
-        post.communityId,
+        targetCommunityId,
         'credit',
         dist.amount,
         'personal',
@@ -846,6 +856,10 @@ export class InvestmentService {
           plural: 'merits',
           genitive: 'merits',
         };
+        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+          community,
+          'withdrawal',
+        );
 
         let returnedTotal = 0;
         for (let i = 0; i < investments.length; i++) {
@@ -857,7 +871,7 @@ export class InvestmentService {
             poolReturned.push({ investorId: inv.investorId, amount });
             await this.walletService.addTransaction(
               inv.investorId,
-              post.communityId,
+              targetCommunityId,
               'credit',
               amount,
               'personal',
@@ -874,7 +888,7 @@ export class InvestmentService {
           poolReturned[0].amount += remainder;
           await this.walletService.addTransaction(
             poolReturned[0].investorId,
-            post.communityId,
+            targetCommunityId,
             'credit',
             remainder,
             'personal',

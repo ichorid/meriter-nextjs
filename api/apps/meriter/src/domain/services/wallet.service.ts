@@ -8,7 +8,14 @@ import { UserId, CommunityId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
+import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
+
+const DEFAULT_CURRENCY = {
+  singular: 'merit',
+  plural: 'merits',
+  genitive: 'merits',
+} as const;
 
 @Injectable()
 export class WalletService {
@@ -234,6 +241,39 @@ export class WalletService {
 
   async deleteTransaction(_id: string): Promise<void> {
     // This is a simplified implementation
+  }
+
+  /**
+   * Credit 100 welcome merits to global wallet on first registration.
+   * Idempotent: does nothing if user already received welcome merits.
+   */
+  async creditWelcomeMeritsIfNeeded(userId: string): Promise<boolean> {
+    const wallet = await this.createOrGetWallet(
+      userId,
+      GLOBAL_COMMUNITY_ID,
+      DEFAULT_CURRENCY,
+    );
+    const walletId = wallet.getId.getValue();
+    const existing = await this.transactionModel
+      .findOne({ walletId, referenceType: 'welcome_merits' })
+      .lean()
+      .exec();
+    if (existing) {
+      return false;
+    }
+    await this.addTransaction(
+      userId,
+      GLOBAL_COMMUNITY_ID,
+      'credit',
+      100,
+      'personal',
+      'welcome_merits',
+      userId,
+      DEFAULT_CURRENCY,
+      'Welcome merits at registration',
+    );
+    this.logger.log(`Credited 100 welcome merits to user ${userId}`);
+    return true;
   }
 
   /**

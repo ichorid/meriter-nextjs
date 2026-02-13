@@ -14,6 +14,7 @@ import {
 import { InvestmentService, HandlePostCloseResult } from './investment.service';
 import { PublicationService } from './publication.service';
 import { WalletService } from './wallet.service';
+import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 
@@ -42,6 +43,7 @@ export class PostClosingService {
     private readonly investmentService: InvestmentService,
     private readonly publicationService: PublicationService,
     private readonly walletService: WalletService,
+    private readonly meritResolverService: MeritResolverService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
   ) {}
@@ -91,9 +93,13 @@ export class PostClosingService {
       result = await this.investmentService.handlePostClose(postId, session);
 
       if (result.ratingDistributed.authorAmount > 0) {
+        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+          community,
+          'withdrawal',
+        );
         await this.walletService.addTransaction(
           beneficiaryId,
-          communityId,
+          targetCommunityId,
           'credit',
           result.ratingDistributed.authorAmount,
           'personal',

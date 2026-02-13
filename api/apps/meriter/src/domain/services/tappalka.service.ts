@@ -17,6 +17,7 @@ import {
   TappalkaProgressDocument,
 } from '../models/tappalka/tappalka-progress.schema';
 import { MeritService } from './merit.service';
+import { MeritResolverService } from './merit-resolver.service';
 import { WalletService } from './wallet.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
@@ -49,6 +50,7 @@ export class TappalkaService {
     @InjectModel(TappalkaProgressSchemaClass.name)
     private tappalkaProgressModel: Model<TappalkaProgressDocument>,
     private meritService: MeritService,
+    private meritResolverService: MeritResolverService,
     private walletService: WalletService,
     private userService: UserService,
     private notificationService: NotificationService,
@@ -485,10 +487,15 @@ export class TappalkaService {
     const currency = (community as unknown as Community).settings
       .currencyNames;
 
+    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
+      community as unknown as Community,
+      'tappalka_reward',
+    );
+
     if (remainingCost > 0) {
       await this.walletService.addTransaction(
         post.authorId,
-        post.communityId,
+        walletCommunityId,
         'debit',
         remainingCost,
         'personal',
@@ -559,9 +566,13 @@ export class TappalkaService {
 
         // Award userReward to user's wallet
         const currency = community.settings.currencyNames;
+        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+          community,
+          'tappalka_reward',
+        );
         await this.walletService.addTransaction(
           userId,
-          communityId,
+          targetCommunityId,
           'credit',
           userReward,
           'personal',
@@ -612,9 +623,13 @@ export class TappalkaService {
       );
 
       const currency = community.settings.currencyNames;
+      const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+        community,
+        'tappalka_reward',
+      );
       await this.walletService.addTransaction(
         userId,
-        communityId,
+        targetCommunityId,
         'credit',
         userReward,
         'personal',
@@ -681,8 +696,12 @@ export class TappalkaService {
       progress = newProgress.toObject();
     }
 
-    // Get user's wallet balance in this community
-    const wallet = await this.walletService.getWallet(userId, communityId);
+    // Get user's wallet balance (global for priority communities)
+    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
+      community as unknown as Community,
+      'tappalka_reward',
+    );
+    const wallet = await this.walletService.getWallet(userId, walletCommunityId);
     const meritBalance = wallet?.balance || 0;
 
     return {
