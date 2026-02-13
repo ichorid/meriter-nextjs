@@ -148,7 +148,7 @@ export function WithdrawPopupContent({
           hintMode={isWithdrawal ? 'withdraw' : 'add'}
         />
         {isWithdrawal && hasInvestments && investmentSplit && amount > 0 && (
-          <div className="rounded-lg border border-base-content/10 bg-base-200/50 p-4 space-y-3 text-sm">
+          <div className="w-full max-w-[400px] rounded-xl border border-base-300/50 bg-base-100 shadow-xl p-4 space-y-3 text-sm">
             <p className="font-medium">
               {tInvesting('youAreWithdrawing', {
                 amount,
