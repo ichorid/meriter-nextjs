@@ -4,7 +4,10 @@ import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 
 /**
  * Hook to calculate user's total merits balance (permanent and daily quota)
- * 
+ *
+ * G-13: Backend returns one global wallet for priority communities (MD, OB, Projects, Support).
+ * Summing wallets no longer duplicates MD+OB — single global balance.
+ *
  * @returns Object containing:
  *   - totalWalletBalance: total permanent merits across all wallets
  *   - totalDailyQuota: total daily merits quota across all communities
