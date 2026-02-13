@@ -468,8 +468,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return;
         }
         
-        // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
-        // For downvotes, use maxPlus (walletBalance)
+        // For upvotes, use maxAvailableMerits; for downvotes, use maxPlus (walletBalance)
         const maxLimit = isPositive ? maxAvailableMerits : (maxMinus > 0 ? maxMinus : walletBalance);
         const clampedAmount = Math.min(maxLimit, newAmount);
         setAmount(clampedAmount);
@@ -685,6 +684,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                     )}
                                     min={0}
                                     max={maxPlus}
+                                    step={0.1}
                                     placeholder="0"
                                 />
                             </div>

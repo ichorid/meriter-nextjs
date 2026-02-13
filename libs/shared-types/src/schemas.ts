@@ -745,7 +745,7 @@ export const UpdatesFrequencySchema = z.object({
 });
 
 export const WithdrawAmountDtoSchema = z.object({
-  amount: z.number().int().min(1).optional(),
+  amount: z.number().min(0.1).optional(),
 });
 
 export const VoteWithCommentDtoSchema = z.object({

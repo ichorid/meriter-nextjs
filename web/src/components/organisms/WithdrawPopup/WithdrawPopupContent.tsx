@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { VotingPanel } from '../VotingPopup/VotingPanel';
 import { useVoteOnPublicationWithComment, useVoteOnVote, useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 
 export interface WithdrawInvestmentSplit {
   investorTotal: number;
@@ -109,7 +110,7 @@ export function WithdrawPopupContent({
 
       onClose();
     } catch (err: unknown) {
-      let message = err instanceof Error ? err.message : t('errorSubmitting') || 'Failed to submit';
+      let message = extractErrorMessage(err, t('errorSubmitting') || 'Failed to submit');
       if (message === 'This community only allows neutral comments') {
         message = t('voteDisabled.neutralOnlyError');
       }

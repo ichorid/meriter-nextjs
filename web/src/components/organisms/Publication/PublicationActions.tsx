@@ -157,11 +157,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const effectivePublication = freshPublication || publication;
   const currentScore = effectivePublication.metrics?.score || 0;
 
-  // Calculate withdraw amounts (use effectivePublication for fresh data)
-  const totalWithdrawn = effectivePublication.withdrawals?.totalWithdrawn || 0;
-  const availableForWithdrawal = Math.max(0, currentScore - totalWithdrawn);
+  // Max withdraw = full post rating (metrics.score) — includes votes, tappalka, etc.
+  // Backend uses publication.getMetrics.score directly; totalWithdrawn is for display only.
   const maxWithdrawAmount = ((isAuthor && !hasBeneficiary) || isBeneficiary)
-    ? Math.floor(10 * availableForWithdrawal) / 10
+    ? Math.floor(10 * Math.max(0, currentScore)) / 10
     : 0;
 
   // Calculate total votes (current score + withdrawn votes) for display

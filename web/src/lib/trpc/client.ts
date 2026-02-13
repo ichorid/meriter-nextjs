@@ -13,9 +13,40 @@ import { config } from '@/config';
  */
 export const trpc = createTRPCReact<AppRouter>();
 
+/** Get batch size from tRPC batch request body */
+function getBatchSize(init?: RequestInit): number {
+  try {
+    const body = init?.body;
+    if (typeof body !== 'string') return 1;
+    const parsed = JSON.parse(body) as unknown;
+    return Array.isArray(parsed) ? parsed.length : 1;
+  } catch {
+    return 1;
+  }
+}
+
+/** Create tRPC batch error response for non-JSON error bodies */
+function createTrpcBatchErrorResponse(message: string, status: number, batchSize: number): Response {
+  const errorItem = {
+    error: {
+      json: {
+        message,
+        code: -32603,
+        data: { httpStatus: status, code: 'INTERNAL_SERVER_ERROR' },
+      },
+    },
+  };
+  const batch = Array.from({ length: batchSize }, () => errorItem);
+  return new Response(JSON.stringify(batch), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
 /**
  * Enhanced fetch function that provides better error handling for tRPC requests
  * Note: 207 Multi-Status is a valid success status for tRPC batch requests
+ * Converts non-JSON error responses (e.g. "Internal Server Error") to valid tRPC format.
  */
 async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   // Convert input to string for logging (before try block so it's available in catch)
@@ -33,26 +64,46 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
     const is401 = response.status === 401;
     
     if (isErrorStatus) {
-      // Clone the response before reading to avoid consuming the body stream
-      // The original response will be returned and can still be read by tRPC
       const clonedResponse = response.clone();
       const contentType = response.headers.get('content-type');
       let errorBody: unknown = null;
-      
+      let textBody: string | null = null;
+
       try {
+        textBody = await clonedResponse.text();
         if (contentType?.includes('application/json')) {
-          errorBody = await clonedResponse.json();
+          try {
+            errorBody = JSON.parse(textBody);
+          } catch {
+            errorBody = textBody;
+          }
         } else {
-          const text = await clonedResponse.text();
-          errorBody = text || null;
+          errorBody = textBody;
         }
       } catch (_e) {
-        // If we can't parse the error body, that's okay
         console.warn('Failed to parse error response body:', _e);
       }
 
-      // 401 errors are expected when not authenticated - use debug level
-      // Other errors should be logged at error level for debugging
+      // When server returns plain text (e.g. "Internal Server Error"), tRPC client
+      // fails on response.json(). Return a synthetic Response with valid tRPC format.
+      const isJson =
+        contentType?.includes('application/json') &&
+        typeof textBody === 'string' &&
+        (() => {
+          try {
+            JSON.parse(textBody);
+            return true;
+          } catch {
+            return false;
+          }
+        })();
+      if (!isJson && textBody !== null) {
+        const batchSize = getBatchSize(init);
+        const message =
+          typeof textBody === 'string' && textBody.length > 0 ? textBody : `Request failed (${response.status})`;
+        return createTrpcBatchErrorResponse(message, response.status, batchSize);
+      }
+
       if (is401) {
         // Use console.debug for expected 401s (won't show in Next.js error overlay)
         if (process.env.NODE_ENV === 'development') {
