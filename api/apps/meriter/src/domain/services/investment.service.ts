@@ -348,6 +348,8 @@ export class InvestmentService {
 
   /**
    * Distribute merits on withdrawal: X% to investors, rest to author.
+   * C-4: Round investor shares to 0.01; any remainder goes to author.
+   * Follows business-investing.mdc strictly.
    */
   async distributeOnWithdrawal(
     postId: string,
@@ -367,11 +369,6 @@ export class InvestmentService {
     }
 
     const investorSharePercent = post.investorSharePercent ?? 0;
-    const investorTotal = Math.floor(
-      withdrawAmount * (investorSharePercent / 100),
-    );
-    const authorAmount = withdrawAmount - investorTotal;
-
     const totalInvested = investments.reduce(
       (sum: number, inv: PublicationInvestment) => sum + inv.amount,
       0,
@@ -383,6 +380,11 @@ export class InvestmentService {
       };
     }
 
+    // investorTotal = amount * contractPercent / 100, rounded to 0.01
+    const investorTotal = this.roundToHundredths(
+      withdrawAmount * (investorSharePercent / 100),
+    );
+
     const community = await this.communityService.getCommunity(post.communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
@@ -393,13 +395,13 @@ export class InvestmentService {
       genitive: 'merits',
     };
 
+    // Per investor: share = investorTotal * (investor.amount / totalInvested), round to 0.01
     const investorDistributions: Array<{ investorId: string; amount: number }> = [];
     let distributedTotal = 0;
 
-    for (let i = 0; i < investments.length; i++) {
-      const inv = investments[i];
-      const share = (inv.amount / totalInvested) * investorTotal;
-      const amount = Math.floor(share);
+    for (const inv of investments) {
+      const share = investorTotal * (inv.amount / totalInvested);
+      const amount = this.roundToHundredths(share);
       distributedTotal += amount;
       if (amount > 0) {
         investorDistributions.push({
@@ -409,10 +411,8 @@ export class InvestmentService {
       }
     }
 
-    const remainder = investorTotal - distributedTotal;
-    if (remainder > 0 && investorDistributions.length > 0) {
-      investorDistributions[0].amount += remainder;
-    }
+    // Remainder from rounding goes to author (C-4)
+    const authorAmount = withdrawAmount - distributedTotal;
 
     for (const dist of investorDistributions) {
       await this.walletService.addTransaction(
@@ -446,7 +446,7 @@ export class InvestmentService {
               amount: dist.amount,
             },
             title: 'Investment distributed',
-            message: `${authorName} withdrew ${withdrawAmount} merits. Your share: ${dist.amount} merits`,
+            message: `${authorName} withdrew ${withdrawAmount} merits from post. Your share: ${dist.amount} merits`,
           }),
         ),
       );
@@ -458,6 +458,11 @@ export class InvestmentService {
       authorAmount,
       investorDistributions,
     };
+  }
+
+  /** Round to 2 decimal places (0.01). Used for merit distribution. */
+  private roundToHundredths(x: number): number {
+    return Math.round(x * 100) / 100;
   }
 
   /**
