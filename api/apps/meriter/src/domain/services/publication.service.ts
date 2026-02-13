@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { Connection, Model, ClientSession } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import {
   PublicationSchemaClass,
@@ -295,26 +295,29 @@ export class PublicationService {
     return publication;
   }
 
-  async reduceScore(publicationId: string, amount: number): Promise<Publication> {
+  async reduceScore(
+    publicationId: string,
+    amount: number,
+    session?: ClientSession,
+  ): Promise<Publication> {
     const id = PublicationId.fromString(publicationId);
 
-    // Load aggregate
-    const doc = await this.publicationModel
-      .findOne({ id: id.getValue() })
-      .lean();
+    const query = this.publicationModel.findOne({ id: id.getValue() });
+    if (session) query.session(session);
+    const doc = await query.lean().exec();
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
 
-    // Reduce score
     publication.reduceScore(amount);
 
-    // Save
+    const opts = session ? { session } : {};
     await this.publicationModel.updateOne(
       { id: publication.getId.getValue() },
       { $set: publication.toSnapshot() },
+      opts,
     );
 
     return publication;

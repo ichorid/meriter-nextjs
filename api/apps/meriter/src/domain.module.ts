@@ -98,6 +98,7 @@ import { PermissionRuleEngine } from './domain/services/permission-rule-engine.s
 import { PermissionContextService } from './domain/services/permission-context.service';
 import { TappalkaService } from './domain/services/tappalka.service';
 import { InvestmentService } from './domain/services/investment.service';
+import { PostClosingService } from './domain/services/post-closing.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
 
@@ -168,6 +169,7 @@ import { EventBus } from './domain/events/event-bus';
     AboutService,
     TappalkaService,
     InvestmentService,
+    PostClosingService,
     TeamJoinRequestService,
     TeamInvitationService,
 
@@ -211,6 +213,7 @@ import { EventBus } from './domain/events/event-bus';
     AboutService,
     TappalkaService,
     InvestmentService,
+    PostClosingService,
     TeamJoinRequestService,
     TeamInvitationService,
 

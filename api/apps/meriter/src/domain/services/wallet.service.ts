@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { Connection, Model, ClientSession } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import { Transaction, TransactionSchemaClass, TransactionDocument } from '../models/transaction/transaction.schema';
@@ -64,17 +64,19 @@ export class WalletService {
     referenceType: string,
     referenceId: string,
     currency: { singular: string; plural: string; genitive: string },
-    description?: string
+    description?: string,
+    session?: ClientSession,
   ): Promise<Wallet> {
+    const opts = session ? { session } : {};
     // Get or create wallet
     let wallet = await this.getWallet(userId, communityId);
     const isNewWallet = !wallet;
-    
+
     if (!wallet) {
       wallet = Wallet.create(
         UserId.fromString(userId),
         CommunityId.fromString(communityId),
-        currency
+        currency,
       );
     }
 
@@ -88,11 +90,12 @@ export class WalletService {
     // Save wallet - use create for new wallets, updateOne for existing ones
     const walletSnapshot = wallet.toSnapshot();
     if (isNewWallet) {
-      await this.walletModel.create(walletSnapshot);
+      await this.walletModel.create([walletSnapshot], opts);
     } else {
       await this.walletModel.updateOne(
         { id: walletSnapshot.id },
-        { $set: walletSnapshot }
+        { $set: walletSnapshot },
+        opts,
       );
     }
 
@@ -114,17 +117,24 @@ export class WalletService {
     }
     
     // Create transaction record
-    await this.transactionModel.create([{
-      id: uid(),
-      walletId: wallet.getId.getValue(),
-      type: transactionType,
-      amount: Math.abs(amount), // Always positive for transaction record
-      description: description || `${transactionType} ${referenceType ? `(${referenceType})` : ''}`,
-      referenceType,
-      referenceId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }]);
+    await this.transactionModel.create(
+      [
+        {
+          id: uid(),
+          walletId: wallet.getId.getValue(),
+          type: transactionType,
+          amount: Math.abs(amount), // Always positive for transaction record
+          description:
+            description ||
+            `${transactionType} ${referenceType ? `(${referenceType})` : ''}`,
+          referenceType,
+          referenceId,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      opts,
+    );
 
     // Publish event
     await this.eventBus.publish(

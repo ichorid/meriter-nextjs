@@ -32,6 +32,7 @@ import { AboutService } from '../domain/services/about.service';
 import { VoteFactorService } from '../domain/services/vote-factor.service';
 import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
+import { PostClosingService } from '../domain/services/post-closing.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { createContext } from './context';
@@ -70,6 +71,7 @@ export class TrpcService {
     private voteFactorService: VoteFactorService,
     private tappalkaService: TappalkaService,
     private investmentService: InvestmentService,
+    private postClosingService: PostClosingService,
     private teamJoinRequestService: TeamJoinRequestService,
     private teamInvitationService: TeamInvitationService,
     @InjectConnection() private connection: Connection,
@@ -114,6 +116,7 @@ export class TrpcService {
       voteFactorService: this.voteFactorService,
       tappalkaService: this.tappalkaService,
       investmentService: this.investmentService,
+      postClosingService: this.postClosingService,
       teamJoinRequestService: this.teamJoinRequestService,
       teamInvitationService: this.teamInvitationService,
       connection: this.connection,

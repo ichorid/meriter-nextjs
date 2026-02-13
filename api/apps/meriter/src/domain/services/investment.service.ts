@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ClientSession } from 'mongoose';
 import {
   PublicationSchemaClass,
   PublicationDocument,
@@ -350,10 +350,12 @@ export class InvestmentService {
    * Distribute merits on withdrawal: X% to investors, rest to author.
    * C-4: Round investor shares to 0.01; any remainder goes to author.
    * Follows business-investing.mdc strictly.
+   * When session is provided (transaction), notifications are skipped (caller notifies after commit).
    */
   async distributeOnWithdrawal(
     postId: string,
     withdrawAmount: number,
+    session?: ClientSession,
   ): Promise<DistributeOnWithdrawalResult> {
     const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
     if (!post) {
@@ -425,33 +427,38 @@ export class InvestmentService {
         postId,
         currency,
         `Investment distribution from post ${postId}`,
+        session,
       );
     }
 
-    // C-10: Notify each investor (withdrawal distribution; only those with amount > 0)
-    try {
-      const author = await this.userService.getUser(post.authorId);
-      const authorName = author?.displayName || 'Author';
-      await Promise.all(
-        investorDistributions.map((dist) =>
-          this.notificationService.createNotification({
-            userId: dist.investorId,
-            type: 'investment_distributed',
-            source: 'user',
-            sourceId: post.authorId,
-            metadata: {
-              postId,
-              communityId: post.communityId,
-              withdrawAmount,
-              amount: dist.amount,
-            },
-            title: 'Investment distributed',
-            message: `${authorName} withdrew ${withdrawAmount} merits from post. Your share: ${dist.amount} merits`,
-          }),
-        ),
-      );
-    } catch (err) {
-      this.logger.warn(`Failed to create investment_distributed notifications: ${err}`);
+    // C-10: Notify each investor (skip when inside transaction; caller notifies after commit)
+    if (!session) {
+      try {
+        const author = await this.userService.getUser(post.authorId);
+        const authorName = author?.displayName || 'Author';
+        await Promise.all(
+          investorDistributions.map((dist) =>
+            this.notificationService.createNotification({
+              userId: dist.investorId,
+              type: 'investment_distributed',
+              source: 'user',
+              sourceId: post.authorId,
+              metadata: {
+                postId,
+                communityId: post.communityId,
+                withdrawAmount,
+                amount: dist.amount,
+              },
+              title: 'Investment distributed',
+              message: `${authorName} withdrew ${withdrawAmount} merits from post. Your share: ${dist.amount} merits`,
+            }),
+          ),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to create investment_distributed notifications: ${err}`,
+        );
+      }
     }
 
     return {
@@ -467,9 +474,15 @@ export class InvestmentService {
 
   /**
    * Handle post close: return unspent pool to investors, then auto-withdraw rating.
+   * When session is provided (transaction), all writes use it and investor notifications are skipped.
    */
-  async handlePostClose(postId: string): Promise<HandlePostCloseResult> {
-    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+  async handlePostClose(
+    postId: string,
+    session?: ClientSession,
+  ): Promise<HandlePostCloseResult> {
+    const query = this.publicationModel.findOne({ id: postId });
+    if (session) query.session(session);
+    const post = await query.lean().exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -515,6 +528,7 @@ export class InvestmentService {
               postId,
               currency,
               `Investment pool return from closed post ${postId}`,
+              session,
             );
           }
         }
@@ -531,19 +545,25 @@ export class InvestmentService {
             postId,
             currency,
             `Investment pool return (remainder) from closed post ${postId}`,
+            session,
           );
         }
 
         await this.publicationModel.updateOne(
           { id: postId },
           { $set: { investmentPool: 0 } },
+          session ? { session } : {},
         );
       }
     }
 
     const currentScore = post.metrics?.score ?? 0;
     if (currentScore > 0 && investments.length > 0) {
-      ratingDistributed = await this.distributeOnWithdrawal(postId, currentScore);
+      ratingDistributed = await this.distributeOnWithdrawal(
+        postId,
+        currentScore,
+        session,
+      );
       totalRatingDistributed = currentScore;
     } else if (currentScore > 0 && investments.length === 0) {
       ratingDistributed = {
@@ -553,15 +573,21 @@ export class InvestmentService {
       totalRatingDistributed = currentScore;
     }
 
-    // Notify each investor: POST_CLOSED_INVESTMENT (total earnings = pool return + rating distribution)
-    if (investments.length > 0) {
+    // Notify each investor when not in transaction (caller sends after commit when session provided)
+    if (investments.length > 0 && !session) {
       try {
         const totalByInvestor = new Map<string, number>();
         for (const p of poolReturned) {
-          totalByInvestor.set(p.investorId, (totalByInvestor.get(p.investorId) ?? 0) + p.amount);
+          totalByInvestor.set(
+            p.investorId,
+            (totalByInvestor.get(p.investorId) ?? 0) + p.amount,
+          );
         }
         for (const d of ratingDistributed.investorDistributions) {
-          totalByInvestor.set(d.investorId, (totalByInvestor.get(d.investorId) ?? 0) + d.amount);
+          totalByInvestor.set(
+            d.investorId,
+            (totalByInvestor.get(d.investorId) ?? 0) + d.amount,
+          );
         }
         await Promise.all(
           Array.from(totalByInvestor.entries()).map(([invId, total]) =>
@@ -569,14 +595,20 @@ export class InvestmentService {
               userId: invId,
               type: 'post_closed_investment',
               source: 'system',
-              metadata: { postId, communityId: post.communityId, totalEarnings: total },
+              metadata: {
+                postId,
+                communityId: post.communityId,
+                totalEarnings: total,
+              },
               title: 'Post closed',
               message: `Post closed. Your total earnings: ${total} merits`,
             }),
           ),
         );
       } catch (err) {
-        this.logger.warn(`Failed to create post_closed_investment notifications: ${err}`);
+        this.logger.warn(
+          `Failed to create post_closed_investment notifications: ${err}`,
+        );
       }
     }
 
