@@ -3,108 +3,19 @@ import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
+import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
+import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 
-/**
- * Synchronize credit transactions between Marathon of Good and Future Vision wallets
- * If crediting to MD or FV, also credit the other wallet with the same amount
- */
-async function syncCreditForMarathonAndFutureVision(
-  userId: string,
-  communityId: string,
-  amount: number,
-  transactionType: string,
-  referenceId: string,
-  description: string,
-  ctx: any,
-): Promise<void> {
-  // Skip if amount is 0
-  if (amount <= 0) {
-    return;
-  }
-
-  const community = await ctx.communityService.getCommunity(communityId);
-  if (!community) {
-    return; // Community not found, skip sync
-  }
-
-  const isMarathon = community.typeTag === 'marathon-of-good';
-  const isFutureVision = community.typeTag === 'future-vision';
-
-  // For regular communities (not Marathon or Future Vision), skip sync
-  if (!isMarathon && !isFutureVision) {
-    return;
-  }
-
-  // Get both communities
-  const marathonCommunity = isMarathon 
-    ? community 
-    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
-  const futureVisionCommunity = isFutureVision
-    ? community
-    : await ctx.communityService.getCommunityByTypeTag('future-vision');
-
-  // If both communities exist, credit the other wallet to keep them synchronized
-  if (marathonCommunity && futureVisionCommunity) {
-    // Get current balances after the credit was added
-    const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
-    const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
-
-    const mdBalance = mdWallet?.getBalance() ?? 0;
-    const fvBalance = fvWallet?.getBalance() ?? 0;
-
-    if (isMarathon) {
-      // Credit was added to Marathon, also credit Future Vision to match
-      const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-
-      // Credit Future Vision to match Marathon balance
-      if (fvBalance < mdBalance) {
-        const balanceDiff = mdBalance - fvBalance;
-        await ctx.walletService.addTransaction(
-          userId,
-          futureVisionCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}_${referenceId}`,
-          fvCurrency,
-          `Balance sync: ${description} (Future Vision)`,
-        );
-      }
-    } else if (isFutureVision) {
-      // Credit was added to Future Vision, also credit Marathon to match
-      const mdCurrency = marathonCommunity.settings?.currencyNames || {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-
-      // Credit Marathon to match Future Vision balance
-      if (mdBalance < fvBalance) {
-        const balanceDiff = fvBalance - mdBalance;
-        await ctx.walletService.addTransaction(
-          userId,
-          marathonCommunity.id,
-          'credit',
-          balanceDiff,
-          'personal',
-          'balance_sync',
-          `sync_${Date.now()}_${referenceId}`,
-          mdCurrency,
-          `Balance sync: ${description} (Marathon of Good)`,
-        );
-      }
-    }
-  }
-}
+const DEFAULT_CURRENCY = {
+  singular: 'merit',
+  plural: 'merits',
+  genitive: 'merits',
+} as const;
 
 export const walletsRouter = router({
   /**
    * Get user wallets for all communities
+   * For priority communities, returns global wallet (G-11).
    */
   getByCommunity: protectedProcedure
     .input(z.object({ userId: z.string(), communityId: z.string() }))
@@ -126,10 +37,16 @@ export const walletsRouter = router({
         });
       }
 
+      // G-11: For priority communities, return global wallet
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      const walletCommunityId = community && isPriorityCommunity(community)
+        ? GLOBAL_COMMUNITY_ID
+        : input.communityId;
+
       // Get wallet
       const wallet = await ctx.walletService.getUserWallet(
         actualUserId,
-        input.communityId,
+        walletCommunityId,
       );
       
       if (!wallet) {
@@ -413,34 +330,54 @@ export const walletsRouter = router({
         );
       }
 
-      // Create wallets for communities where user doesn't have one yet
-      const walletPromises = userCommunities.map(async (community) => {
+      // G-11: For priority communities, show one global wallet instead of MD/OB/Projects/Support
+      const nonPriorityCommunities = userCommunities.filter(
+        (community) => !isPriorityCommunity(community)
+      );
+      const hasPriorityCommunity = userCommunities.some((c) => isPriorityCommunity(c));
+
+      // Create wallets for non-priority communities
+      const walletPromises = nonPriorityCommunities.map(async (community) => {
         let wallet = await ctx.walletService.getWallet(actualUserId, community.id);
 
         if (!wallet) {
-          // Create wallet with community currency settings
           wallet = await ctx.walletService.createOrGetWallet(
             actualUserId,
             community.id,
-            community.settings?.currencyNames || {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            },
+            community.settings?.currencyNames || DEFAULT_CURRENCY,
           );
         }
 
         return wallet;
       });
 
-      const wallets = await Promise.all(walletPromises);
+      const nonPriorityWallets = await Promise.all(walletPromises);
+
+      // Add global wallet if user has any priority community membership
+      let wallets = nonPriorityWallets;
+      if (hasPriorityCommunity) {
+        const globalWallet = await ctx.walletService.createOrGetWallet(
+          actualUserId,
+          GLOBAL_COMMUNITY_ID,
+          DEFAULT_CURRENCY,
+        );
+        wallets = [globalWallet, ...nonPriorityWallets];
+      }
 
       // Filter wallets if requester is a lead (only show wallets for communities where they are leads)
       let filteredWallets = wallets;
       if (!isViewingOwn && !isSuperadminRequester && leadCommunityIds.length > 0) {
-        filteredWallets = wallets.filter((wallet) =>
-          leadCommunityIds.includes(wallet.getCommunityId.getValue()),
-        );
+        filteredWallets = wallets.filter((wallet) => {
+          const walletCommunityId = wallet.getCommunityId.getValue();
+          // Global wallet visible when requester is lead in any priority community
+          if (walletCommunityId === GLOBAL_COMMUNITY_ID) {
+            return leadCommunityIds.some((id) => {
+              const comm = userCommunities.find((c) => c.id === id);
+              return comm && isPriorityCommunity(comm);
+            });
+          }
+          return leadCommunityIds.includes(walletCommunityId);
+        });
       }
 
       return filteredWallets.map((wallet) => {
@@ -456,11 +393,17 @@ export const walletsRouter = router({
 
   /**
    * Get wallet balance for a community
+   * G-11: For priority communities, returns global wallet balance.
    */
   getBalance: protectedProcedure
     .input(z.object({ communityId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      const walletCommunityId = community && isPriorityCommunity(community)
+        ? GLOBAL_COMMUNITY_ID
+        : input.communityId;
+
+      const wallet = await ctx.walletService.getWallet(ctx.user.id, walletCommunityId);
       if (!wallet) {
         return 0;
       }
@@ -740,10 +683,14 @@ export const walletsRouter = router({
         genitive: 'merits',
       };
 
-      // Add transaction to credit the wallet (creates wallet if it doesn't exist)
+      // G-11: For priority communities, credit global wallet
+      const targetCommunityId = isPriorityCommunity(community)
+        ? GLOBAL_COMMUNITY_ID
+        : input.communityId;
+
       await ctx.walletService.addTransaction(
         input.userId,
-        input.communityId,
+        targetCommunityId,
         'credit',
         input.amount,
         'personal',
@@ -753,18 +700,7 @@ export const walletsRouter = router({
         `Merits added by ${ctx.user.username || ctx.user.id}`,
       );
 
-      // Synchronize credit with the other wallet (Marathon/Future Vision)
-      await syncCreditForMarathonAndFutureVision(
-        input.userId,
-        input.communityId,
-        input.amount,
-        'admin_add_merits',
-        `admin_add_${Date.now()}_${ctx.user.id}`,
-        `Merits added by ${ctx.user.username || ctx.user.id}`,
-        ctx,
-      );
-
-      const updatedWallet = await ctx.walletService.getWallet(input.userId, input.communityId);
+      const updatedWallet = await ctx.walletService.getWallet(input.userId, targetCommunityId);
       return {
         success: true,
         balance: updatedWallet?.getBalance() || 0,
