@@ -16,6 +16,7 @@ export function useMyInvestments(
       postId: string;
       postTitle: string;
       postAuthor: { name: string; avatarUrl?: string };
+      authorId: string;
       communityId: string;
       communityName: string;
       investedAmount: number;
@@ -39,7 +40,7 @@ export function useMyInvestments(
   );
 
   const hasNextPage =
-    data != null && accumulatedItems.length + (page === 1 ? 0 : data.items.length) < data.totalCount;
+    data != null && accumulatedItems.length < data.totalCount;
   const totalCount = data?.totalCount ?? 0;
   const stats = data?.stats;
 

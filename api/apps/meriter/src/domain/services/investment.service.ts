@@ -72,7 +72,10 @@ export interface InvestmentBreakdownResult {
 export interface MyPortfolioItem {
   postId: string;
   postTitle: string;
+  /** Post author (for display) */
   postAuthor: { name: string; avatarUrl?: string };
+  /** Post author ID (for profile link) */
+  authorId: string;
   communityId: string;
   communityName: string;
   investedAmount: number;
@@ -583,6 +586,7 @@ export class InvestmentService {
           name: author?.displayName ?? 'Unknown',
           avatarUrl: author?.avatarUrl,
         },
+        authorId: d.authorId,
         communityId: d.communityId,
         communityName: community?.name ?? 'Community',
         investedAmount: myInv.amount,

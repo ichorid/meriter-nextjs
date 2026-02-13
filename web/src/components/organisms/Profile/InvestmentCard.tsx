@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { routes } from '@/lib/constants/routes';
 
 export interface InvestmentCardItem {
   postId: string;
   postTitle: string;
   postAuthor: { name: string; avatarUrl?: string };
+  authorId: string;
   communityId: string;
   communityName: string;
   investedAmount: number;
@@ -54,7 +56,15 @@ export function InvestmentCard({ item, onClick }: InvestmentCardProps) {
             {item.postTitle || t('untitledPost')}
           </Link>
           <p className="text-sm text-base-content/60 mt-0.5">
-            {item.postAuthor.name} · {item.communityName}
+            <Link
+              href={routes.userProfile(item.authorId)}
+              onClick={(e) => e.stopPropagation()}
+              className="hover:underline"
+            >
+              {item.postAuthor.name}
+            </Link>
+            {' · '}
+            {item.communityName}
           </p>
         </div>
         <span
