@@ -984,9 +984,26 @@
                 "project": "Project"
             },
             "investing": {
-                "enable": "Enable investing",
+                "enable": "Open for investments",
                 "shareLabel": "Investor share (%)",
                 "sharePreview": "Investors will receive {percent}% of all earnings"
+            },
+            "advanced": {
+                "title": "Advanced settings",
+                "immutableHint": "Cannot be changed after publishing",
+                "ttlRequiredForInvest": "TTL is required for posts with investing in this community",
+                "stopLossMin": "Stop-loss must be 0 or greater",
+                "investorShareReadOnly": "Investment contract percentage is immutable.",
+                "investorShareHelp": "Percentage of withdrawn merits distributed to investors. Cannot be changed after publishing.",
+                "ttlLabel": "Time to live (TTL)",
+                "ttlHelp": "Post will automatically close after this period. Cannot be reduced after publishing.",
+                "ttlPlaceholder": "Select TTL",
+                "ttlDays": "{n} days",
+                "ttlIndefinite": "Indefinite",
+                "stopLossLabel": "Minimum rating for tappalka (0 = disabled)",
+                "stopLossHelp": "Post exits tappalka if rating drops below this value. Can be changed later.",
+                "noAuthorWalletSpendLabel": "Don't spend from my wallet on tappalka shows",
+                "noAuthorWalletSpendHelp": "If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later."
             },
             "pollCreatePrompt": "Polls have their own creation form with options and voting settings.",
             "goToPollCreate": "Create Poll",
@@ -1155,13 +1172,22 @@
                 "disabled": "Disabled",
                 "investorShareRange": "Investor share range (%)",
                 "investorShareRangeHelp": "Min and max allowed for post authors when setting investor share",
+                "requireTTLForInvestPosts": "Require TTL for investment posts",
+                "requireTTLForInvestPostsHelp": "When enabled, posts with investing must set a time-to-live (no indefinite)",
+                "maxTTL": "Maximum post lifetime (days)",
+                "maxTTLHelp": "Leave empty for no limit. Authors cannot set TTL above this.",
+                "maxTTLPlaceholder": "No limit",
+                "inactiveCloseDays": "Days of inactivity before auto-close",
+                "inactiveCloseDaysHelp": "Post can be auto-closed after this many days without earning",
                 "tappalkaOnlyMode": "Tappalka only mode",
                 "tappalkaOnlyModeHelp": "Separate feature — disables weighted comments. Flag only."
             },
             "validation": {
                 "errors": "Please fix validation errors",
                 "shareRange": "Must be between 1 and 99",
-                "minLessMax": "Min must be less than or equal to Max"
+                "minLessMax": "Min must be less than or equal to Max",
+                "maxTTLPositive": "Must be 1 or more days",
+                "inactiveCloseNonNegative": "Must be 0 or more"
             }
         },
         "tappalka": "Tappalka",
