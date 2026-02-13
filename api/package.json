@@ -8,6 +8,8 @@
   "scripts": {
     "prebuild": "pnpm --dir ../libs/shared-types build && rimraf dist",
     "build": "nest build",
+    "migrate:comment-mode": "ts-node scripts/migrate-comment-mode.ts",
+    "migrate:comment-mode:dry": "ts-node scripts/migrate-comment-mode.ts --dry-run",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/meriter/main",
     "start:prod": "node dist/apps/meriter/main",

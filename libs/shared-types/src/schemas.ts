@@ -105,7 +105,12 @@ export const CommunitySettingsSchema = z.object({
   investingEnabled: z.boolean().default(false),
   investorShareMin: z.number().int().min(1).max(99).default(1),
   investorShareMax: z.number().int().min(1).max(99).default(99),
+  /** @deprecated Use commentMode instead. When true, equivalent to commentMode === 'neutralOnly'. Kept for backward compat. */
   tappalkaOnlyMode: z.boolean().default(false),
+  /** Comment/vote mode: all (default), neutralOnly (no weighted votes), weightedOnly (no neutral comments). */
+  commentMode: z
+    .enum(['all', 'neutralOnly', 'weightedOnly'])
+    .default('all'),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -602,6 +607,7 @@ export const UpdateCommunityDtoSchema = z.object({
     investorShareMin: z.number().int().min(1).max(99).optional(),
     investorShareMax: z.number().int().min(1).max(99).optional(),
     tappalkaOnlyMode: z.boolean().optional(),
+    commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),

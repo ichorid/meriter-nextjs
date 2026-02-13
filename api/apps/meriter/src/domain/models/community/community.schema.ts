@@ -59,8 +59,13 @@ export interface CommunitySettings {
   investorShareMin?: number;
   /** Maximum investor share percentage (1-99) */
   investorShareMax?: number;
-  /** Neutral comments only, no weighted votes (separate feature) */
+  /**
+   * Neutral comments only, no weighted votes.
+   * @deprecated Use commentMode instead. When true, equivalent to commentMode === 'neutralOnly'. Kept for backward compat.
+   */
   tappalkaOnlyMode?: boolean;
+  /** Comment/vote mode: all (default), neutralOnly (no weighted votes), weightedOnly (no neutral comments). */
+  commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
 }
 
 export interface CommunityMeritConversion {
@@ -344,7 +349,12 @@ export class CommunitySchemaClass implements Community {
       investingEnabled: { type: Boolean, default: false },
       investorShareMin: { type: Number, default: 1 },
       investorShareMax: { type: Number, default: 99 },
-      tappalkaOnlyMode: { type: Boolean, default: false },
+      tappalkaOnlyMode: { type: Boolean, default: false }, // deprecated: use commentMode
+      commentMode: {
+        type: String,
+        enum: ['all', 'neutralOnly', 'weightedOnly'],
+        default: 'all',
+      },
     },
     default: {},
   })
