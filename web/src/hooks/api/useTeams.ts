@@ -15,6 +15,7 @@ export function useCreateTeam() {
       // Invalidate relevant queries
       utils.communities.getAll.invalidate();
       utils.users.getMe.invalidate();
+      utils.users.getUserCommunities.invalidate();
       utils.users.getMyLeadCommunities.invalidate();
       
       addToast('Команда успешно создана', 'success');
@@ -107,9 +108,10 @@ export function useAcceptTeamInvitation() {
       // Invalidate relevant queries
       utils.notifications.getAll.invalidate();
       utils.users.getMe.invalidate();
+      utils.users.getUserCommunities.invalidate();
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
-      
+
       addToast('Приглашение принято', 'success');
     },
     onError: (error) => {

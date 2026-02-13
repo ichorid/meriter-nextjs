@@ -2,14 +2,17 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
+import { trpc } from '@/lib/trpc/client';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import type { Community } from '@/types/api-v1';
 
 /**
  * Hook to get user's communities with wallets and quotas
- * 
- * For regular users: Gets communities from wallets (where user has a role)
+ *
+ * For regular users: Gets communities from membership (users.getUserCommunities), not from wallets.
+ * __global__ is wallet-only and must never be shown as a community.
  * For superadmin: Gets all communities
- * 
+ *
  * @returns Object containing:
  *   - communities: array of Community objects
  *   - communityIds: array of community IDs
@@ -22,14 +25,24 @@ export function useUserCommunities() {
   const { user } = useAuth();
   const isSuperadmin = user?.globalRole === 'superadmin';
 
-  // Get wallets and community IDs from wallets (for regular users)
-  const { communityIds: walletCommunityIds, quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
+  // Wallets and quotas (used for balance display; may include global wallet)
+  const { quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
+
+  // Membership-based community IDs for regular users (backend excludes __global__)
+  const { data: membershipData, isLoading: membershipLoading } = trpc.users.getUserCommunities.useQuery(
+    { userId: 'me' },
+    { enabled: !!user && !isSuperadmin }
+  );
+  const membershipCommunityIds = useMemo(() => {
+    const ids = membershipData?.map((c) => c.id) ?? [];
+    return ids.filter((id) => id !== GLOBAL_COMMUNITY_ID);
+  }, [membershipData]);
 
   // For superadmin: fetch all communities
   const { data: allCommunitiesData, isLoading: allCommunitiesLoading } = useCommunities();
 
-  // For regular users: batch fetch communities from wallet IDs
-  const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(walletCommunityIds);
+  // For regular users: batch fetch communities from membership IDs (not wallet IDs)
+  const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(membershipCommunityIds);
 
   // Determine which communities to use
   const communities = useMemo(() => {
@@ -67,7 +80,9 @@ export function useUserCommunities() {
   }, [wallets]);
 
   // Combined loading state
-  const isLoading = walletsLoading || (isSuperadmin ? allCommunitiesLoading : memberCommunitiesLoading);
+  const isLoading =
+    walletsLoading ||
+    (isSuperadmin ? allCommunitiesLoading : membershipLoading || memberCommunitiesLoading);
 
   return {
     communities,

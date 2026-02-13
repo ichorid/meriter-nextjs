@@ -516,9 +516,14 @@ export class UserService implements OnModuleInit {
     );
   }
 
+  /**
+   * Returns user's community memberships (real communities only).
+   * __global__ is a wallet-only id and must never be returned as a community.
+   */
   async getUserCommunities(userId: string): Promise<string[]> {
     const user = await this.userModel.findOne({ id: userId }).lean();
-    return user?.communityMemberships || [];
+    const memberships = user?.communityMemberships || [];
+    return memberships.filter((id) => id !== GLOBAL_COMMUNITY_ID);
   }
 
   /**

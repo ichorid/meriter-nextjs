@@ -63,10 +63,11 @@ export const useApproveTeamRequest = () => {
 
   return trpc.teams.approveTeamRequest.useMutation({
     onSuccess: (_, variables) => {
-      // Invalidate relevant queries
+      // Invalidate relevant queries (getUserCommunities so sidebar updates for users who joined)
       utils.teams.getTeamRequestsForLead.invalidate();
       utils.teams.getMyTeamRequests.invalidate();
       utils.communities.getMembers.invalidate();
+      utils.users.getUserCommunities.invalidate();
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
     },
