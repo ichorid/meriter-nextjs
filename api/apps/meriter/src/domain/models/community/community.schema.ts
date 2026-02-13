@@ -181,7 +181,7 @@ export interface Community {
   avatarUrl?: string;
   coverImageUrl?: string;
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global';
   linkedCurrencies?: string[];
   permissionRules?: PermissionRule[]; // Granular permission rules - replaces postingRules, votingRules, visibilityRules
   meritSettings?: CommunityMeritSettings; // Merit configuration (dailyQuota, quotaRecipients, etc.)
@@ -230,9 +230,10 @@ export class CommunitySchemaClass implements Community {
       'volunteer',
       'corporate',
       'custom',
+      'global',
     ],
   })
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global';
 
   // НОВОЕ: Связанные валюты (настраивается)
   @Prop({ type: [String], default: [] })

@@ -28,6 +28,7 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
+import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
 export interface CreateCommunityDto {
   id?: string;
@@ -44,7 +45,8 @@ export interface CreateCommunityDto {
     | 'housing'
     | 'volunteer'
     | 'corporate'
-    | 'custom';
+    | 'custom'
+    | 'global';
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -271,6 +273,37 @@ export class CommunityService {
     return doc ? (doc as unknown as Community) : null;
   }
 
+  /**
+   * Ensure Global community exists for global merit storage.
+   * This community is synthetic — not shown in user-facing lists.
+   */
+  private async ensureGlobalCommunity(): Promise<void> {
+    const existing = await this.getCommunity(GLOBAL_COMMUNITY_ID);
+    if (existing) {
+      return;
+    }
+
+    this.logger.log('Creating "Global" community for global merits...');
+    try {
+      await this.createCommunity({
+        id: GLOBAL_COMMUNITY_ID,
+        name: 'Global',
+        description: 'Platform-wide merit storage for fees and priority communities.',
+        typeTag: 'global',
+        settings: {
+          currencyNames: {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          },
+          dailyEmission: 0,
+        },
+      });
+    } catch (e) {
+      this.logger.error('Failed to create Global community', e);
+    }
+  }
+
   async onModuleInit() {
     await this.ensureBaseCommunities();
     await this.ensureAllUsersInBaseCommunities();
@@ -278,6 +311,8 @@ export class CommunityService {
 
   private async ensureBaseCommunities() {
     this.logger.log('Checking base communities...');
+
+    await this.ensureGlobalCommunity();
 
     // 1. Future Vision
     const futureVision = await this.getCommunityByTypeTag('future-vision');
@@ -447,6 +482,13 @@ export class CommunityService {
   }
 
   async createCommunity(dto: CreateCommunityDto): Promise<Community> {
+    // Global community is created only via ensureGlobalCommunity
+    if (dto.typeTag === 'global' && dto.id !== GLOBAL_COMMUNITY_ID) {
+      throw new BadRequestException(
+        'Global community can only be created with the reserved ID. Use ensureGlobalCommunity.',
+      );
+    }
+
     // Check for single-instance communities (Future Vision, Marathon of Good, Team Projects, and Support)
     if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'team-projects' || dto.typeTag === 'support') {
       const existing = await this.communityModel
@@ -829,7 +871,7 @@ export class CommunityService {
     skip: number = 0,
   ): Promise<Community[]> {
     return this.communityModel
-      .find({})
+      .find({ typeTag: { $ne: 'global' } }) // Exclude Global community — internal, not user-facing
       .limit(limit)
       .skip(skip)
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
@@ -838,7 +880,7 @@ export class CommunityService {
 
   async getUserCommunities(userId: string): Promise<Community[]> {
     return this.communityModel
-      .find({ members: userId })
+      .find({ members: userId, typeTag: { $ne: 'global' } }) // Exclude Global community
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
       .lean() as unknown as Community[];
   }
