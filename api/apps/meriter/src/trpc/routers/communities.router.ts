@@ -54,6 +54,9 @@ export const communitiesRouter = router({
           investorShareMin: community.settings?.investorShareMin ?? 1,
           investorShareMax: community.settings?.investorShareMax ?? 99,
           tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
+          commentMode:
+            community.settings?.commentMode ??
+            (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -359,6 +362,9 @@ export const communitiesRouter = router({
             investorShareMin: community.settings?.investorShareMin ?? 1,
             investorShareMax: community.settings?.investorShareMax ?? 99,
             tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
+            commentMode:
+              community.settings?.commentMode ??
+              (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)

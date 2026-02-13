@@ -84,7 +84,9 @@ export interface UpdateCommunityDto {
     investingEnabled?: boolean;
     investorShareMin?: number;
     investorShareMax?: number;
+    /** @deprecated Use commentMode instead. When true, mapped to commentMode: 'neutralOnly'. */
     tappalkaOnlyMode?: boolean;
+    commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-same-team';
@@ -574,10 +576,16 @@ export class CommunityService {
       if (dto.settings.investorShareMax !== undefined) {
         settingsUpdate['settings.investorShareMax'] = dto.settings.investorShareMax;
       }
+      if (dto.settings.commentMode !== undefined) {
+        settingsUpdate['settings.commentMode'] = dto.settings.commentMode;
+      }
+      // Deprecated: still accept tappalkaOnlyMode; map to commentMode when true
       if ('tappalkaOnlyMode' in dto.settings) {
-        settingsUpdate['settings.tappalkaOnlyMode'] = Boolean(
-          dto.settings.tappalkaOnlyMode,
-        );
+        const tappalkaOnly = Boolean(dto.settings.tappalkaOnlyMode);
+        settingsUpdate['settings.tappalkaOnlyMode'] = tappalkaOnly;
+        if (tappalkaOnly && dto.settings.commentMode === undefined) {
+          settingsUpdate['settings.commentMode'] = 'neutralOnly';
+        }
       }
 
       // Merge settings into updateData
