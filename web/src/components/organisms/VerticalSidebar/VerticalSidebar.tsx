@@ -79,7 +79,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   return (
     <aside
-      className={`flex fixed lg:sticky left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
+      className={`flex fixed left-0 top-0 h-screen bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
       style={widthStyle}
     >
       {/* All Communities Button */}
