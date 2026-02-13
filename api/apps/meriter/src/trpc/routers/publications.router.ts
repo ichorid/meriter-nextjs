@@ -1008,6 +1008,16 @@ export const publicationsRouter = router({
       // Check permissions
       await checkPermissionInHandler(ctx, 'edit', 'publication', input);
 
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      if ((pubDoc?.status ?? 'active') === 'closed') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This post is closed and cannot be modified',
+        });
+      }
+
       // Clean up null values from update data
       const updateData: any = { ...input.data };
       if (updateData.imageUrl === null) {
@@ -1293,6 +1303,36 @@ export const publicationsRouter = router({
     }),
 
   /**
+   * D-3: Close publication (manual). Only author or effective beneficiary can close.
+   * Returns closingSummary. Idempotent: throws if post is not active.
+   */
+  close: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+      const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
+      if (beneficiaryId !== ctx.user.id) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the post author can close this post',
+        });
+      }
+      const doc = await ctx.publicationService.getPublicationDocument(input.id);
+      const status = doc?.status ?? 'active';
+      if (status !== 'active') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This post is closed and cannot be modified',
+        });
+      }
+      const result = await ctx.postClosingService.closePost(input.id, 'manual');
+      return { closingSummary: result.closingSummary };
+    }),
+
+  /**
    * Withdraw from publication
    */
   withdraw: protectedProcedure
@@ -1311,6 +1351,16 @@ export const publicationsRouter = router({
       const publication = await ctx.publicationService.getPublication(input.publicationId);
       if (!publication) {
         throw new NotFoundError('Publication', input.publicationId);
+      }
+
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.publicationId,
+      );
+      if ((pubDoc?.status ?? 'active') === 'closed') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This post is closed and cannot be modified',
+        });
       }
 
       // Future Vision: users can't withdraw merits from their posts.
@@ -1361,9 +1411,6 @@ export const publicationsRouter = router({
       const communityId = publication.getCommunityId.getValue();
 
       // If post has investments, split between author and investors
-      const pubDoc = await ctx.publicationService.getPublicationDocument(
-        input.publicationId,
-      );
       const hasInvestments =
         pubDoc?.investments && pubDoc.investments.length > 0;
 

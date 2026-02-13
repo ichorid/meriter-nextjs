@@ -538,6 +538,19 @@ async function createVoteLogic(
     });
   }
 
+  // D-4: Block weighted votes on closed publications (neutral comments allowed)
+  if (input.targetType === 'publication' && totalAmount > 0) {
+    const pubDoc = await ctx.publicationService.getPublicationDocument(
+      input.targetId,
+    );
+    if ((pubDoc?.status ?? 'active') === 'closed') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This post is closed and cannot be modified',
+      });
+    }
+  }
+
   // Determine direction
   // Default to "up" when not specified. Downvotes must be explicit.
   const direction: 'up' | 'down' = input.direction ?? 'up';

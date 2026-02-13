@@ -104,6 +104,12 @@ export class InvestmentService {
       throw new BadRequestException('This post does not accept investments');
     }
 
+    if ((post.status ?? 'active') === 'closed') {
+      throw new BadRequestException(
+        'This post is closed and cannot be modified',
+      );
+    }
+
     if (post.deleted) {
       throw new BadRequestException('Cannot invest in a deleted post');
     }
