@@ -119,7 +119,7 @@ export function WithdrawPopupContent({
   };
 
   return (
-    <div className="fixed inset-0 z-50 pointer-events-auto flex items-center justify-center">
+    <div className="fixed inset-0 z-50 pointer-events-auto flex flex-col items-center justify-start pt-[12vh] overflow-y-auto pb-8">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity -z-10"
         onClick={onClose}
@@ -145,6 +145,7 @@ export function WithdrawPopupContent({
           hideImages={true}
           title={popupTitle}
           submitButtonLabel={submitButtonLabel}
+          hintMode={isWithdrawal ? 'withdraw' : 'add'}
         />
         {isWithdrawal && hasInvestments && investmentSplit && amount > 0 && (
           <div className="rounded-lg border border-base-content/10 bg-base-200/50 p-4 space-y-3 text-sm">

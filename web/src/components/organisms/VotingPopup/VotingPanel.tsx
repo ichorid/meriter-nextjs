@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Input } from "@/components/ui/shadcn/input";
 import type { Community } from "@meriter/shared-types";
+import { formatMerits } from "@/lib/utils/currency";
 import { canUseWalletForVoting } from "./voting-utils";
 
 interface VotingPanelProps {
@@ -42,6 +43,8 @@ interface VotingPanelProps {
     onSubmitSimple?: () => void;
     /** Community comment mode: all (0 or weighted), neutralOnly (text only), weightedOnly (weight required) */
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
+    /** When hideQuota: which hint to show — 'add' (add merits to post) or 'withdraw' (withdraw merits). Default 'withdraw'. */
+    hintMode?: 'add' | 'withdraw';
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -71,6 +74,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     submitButtonLabel,
     onSubmitSimple,
     commentMode,
+    hintMode = 'withdraw',
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
@@ -652,10 +656,39 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Withdraw Progress Bar (when hideQuota is true, not in neutralOnly) */}
             {hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
-                    {/* Hint text */}
+                    {/* Hint text: different for "add merits" vs "withdraw" */}
                     <p className="text-xs text-base-content/60 leading-relaxed">
-                        {tShared("withdrawHint")}
+                        {hintMode === 'add' ? tShared('addMeritsHint') : tShared('withdrawHint')}
                     </p>
+
+                    {/* Available Progress Bar - above amount input */}
+                    <div className="flex flex-col gap-2">
+                        <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
+                            {/* Progress fill - shows how much is available */}
+                            {(() => {
+                                const available = Math.max(0, maxPlus - amount);
+                                const fillPercent = maxPlus > 0 ? Math.min(100, (available / maxPlus) * 100) : 0;
+                                // Always show fill if there's any available amount
+                                if (available > 0 && fillPercent > 0) {
+                                    return (
+                                        <div
+                                            className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
+                                            style={{
+                                                width: `${fillPercent}%`,
+                                            }}
+                                        />
+                                    );
+                                }
+                                return null;
+                            })()}
+                            {/* Available text overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
+                                    {tShared("available")} {formatMerits(Math.max(0, maxPlus - amount))}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Amount input with buttons */}
                     <div className="flex flex-col gap-2">
@@ -698,35 +731,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             >
                                 <Plus className="h-5 w-5" />
                             </Button>
-                        </div>
-                    </div>
-
-                    {/* Available Progress Bar */}
-                    <div className="flex flex-col gap-2">
-                        <div className="relative h-12 bg-base-300 dark:bg-base-200 rounded-lg border-2 border-base-300 dark:border-base-400 overflow-hidden">
-                            {/* Progress fill - shows how much is available */}
-                            {(() => {
-                                const available = Math.max(0, maxPlus - amount);
-                                const fillPercent = maxPlus > 0 ? Math.min(100, (available / maxPlus) * 100) : 0;
-                                // Always show fill if there's any available amount
-                                if (available > 0 && fillPercent > 0) {
-                                    return (
-                                        <div
-                                            className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
-                                            style={{
-                                                width: `${fillPercent}%`,
-                                            }}
-                                        />
-                                    );
-                                }
-                                return null;
-                            })()}
-                            {/* Available text overlay */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
-                                    {tShared("available")} {Math.max(0, maxPlus - amount)}
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>

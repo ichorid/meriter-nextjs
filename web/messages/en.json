@@ -330,6 +330,7 @@
         "addMeritsToPost": "Add merits to post",
         "addMeritsButton": "Add merits",
         "withdrawHint": "Withdrawing merits from a post reduces its rating. The merits will be added to your wallet and can be used for voting.",
+        "addMeritsHint": "Adding merits to a post increases its rating and lets the post pay for participation in the carousel to earn merits. NOTE: all merits added to the post participate in the investment contract – if you have investors, when you withdraw these merits they will receive their share.",
         "available": "Available",
         "availableMore": "Available more",
         "addMerits": "Add {amount} merits",
