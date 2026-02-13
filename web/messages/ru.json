@@ -117,7 +117,7 @@
             "subtitle": "Обзор вашей активности",
             "stats": {
                 "publications": "Публикации",
-                "comments": "Голоса",
+                "comments": "Комментарии",
                 "polls": "Опросы",
                 "updates": "Обновления",
                 "projects": "Проекты"
@@ -1425,7 +1425,7 @@
         "hero": {
             "stats": {
                 "publications": "Публикации",
-                "comments": "Голоса",
+                "comments": "Комментарии",
                 "polls": "Опросы",
                 "projects": "Проекты"
             }
@@ -1436,7 +1436,7 @@
         "noRoles": "Роли не назначены",
         "noProjects": "Пока нет проектов",
         "investments": {
-            "title": "Мои инвестиции",
+            "title": "Инвестиции",
             "statsSummary": "Итоги портфеля",
             "totalInvested": "Всего вложено",
             "totalEarned": "Всего получено",

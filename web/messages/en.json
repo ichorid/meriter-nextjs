@@ -117,7 +117,7 @@
             "subtitle": "Here's your activity overview",
             "stats": {
                 "publications": "Publications",
-                "comments": "Votes",
+                "comments": "Comments",
                 "polls": "Polls",
                 "updates": "Updates",
                 "projects": "Projects"
@@ -1430,7 +1430,7 @@
         "hero": {
             "stats": {
                 "publications": "Publications",
-                "comments": "Votes",
+                "comments": "Comments",
                 "polls": "Polls",
                 "projects": "Projects"
             }
@@ -1441,7 +1441,7 @@
         "noRoles": "No roles assigned",
         "noProjects": "No projects yet",
         "investments": {
-            "title": "My Investments",
+            "title": "Investments",
             "statsSummary": "Portfolio summary",
             "totalInvested": "Total invested",
             "totalEarned": "Total earned",
