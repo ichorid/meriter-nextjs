@@ -8,18 +8,21 @@ import { Label } from '@/components/ui/shadcn/label';
 import { AmountStepper } from '@/components/ui/shadcn/amount-stepper';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { useAuth } from '@/contexts/AuthContext';
 import { useInvest } from '@/hooks/api/useInvestments';
 import { useWallet } from '@/hooks/api/useWallet';
+import { trpc } from '@/lib/trpc/client';
 
 interface InvestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   postId: string;
   communityId: string;
-  investorSharePercent: number;
-  investmentPool: number;
-  investmentPoolTotal: number;
-  investorCount: number;
+  /** Fallback when breakdown not yet loaded */
+  investorSharePercent?: number;
+  investmentPool?: number;
+  investmentPoolTotal?: number;
+  investorCount?: number;
   onSuccess?: () => void;
 }
 
@@ -28,25 +31,58 @@ export function InvestDialog({
   onOpenChange,
   postId,
   communityId,
-  investorSharePercent,
-  investmentPool,
-  investmentPoolTotal,
-  investorCount,
+  investorSharePercent = 0,
+  investmentPool = 0,
+  investmentPoolTotal = 0,
+  investorCount = 0,
   onSuccess,
 }: InvestDialogProps) {
   const t = useTranslations('investing');
   const tCommon = useTranslations('common');
   const addToast = useToastStore((state) => state.addToast);
+  const { user } = useAuth();
+  const myId = user?.id ?? null;
+
   const [amount, setAmount] = useState(0);
   const investMutation = useInvest();
   const { data: wallet } = useWallet(communityId);
   const walletBalance = wallet?.balance ?? 0;
 
-  const newPoolTotal = investmentPoolTotal + amount;
-  const myShareOfInvestorPortion = useMemo(() => {
-    if (amount <= 0 || newPoolTotal <= 0) return 0;
-    return (amount / newPoolTotal) * investorSharePercent;
-  }, [amount, newPoolTotal, investorSharePercent]);
+  const { data: breakdown, isLoading: breakdownLoading } = trpc.investments.getInvestmentBreakdown.useQuery(
+    { postId },
+    { enabled: open && !!postId }
+  );
+
+  const contractPercent = breakdown?.contractPercent ?? investorSharePercent;
+  const poolBalance = breakdown?.poolBalance ?? investmentPool;
+  const poolTotal = breakdown?.poolTotal ?? investmentPoolTotal;
+  const investorCountDisplay = breakdown?.investorCount ?? investorCount;
+  const ttlDays = breakdown?.ttlDays ?? null;
+  const ttlExpiresAt = breakdown?.ttlExpiresAt ?? null;
+  const stopLoss = breakdown?.stopLoss ?? 0;
+  const noAuthorWalletSpend = breakdown?.noAuthorWalletSpend ?? false;
+
+  const myExistingAmount = useMemo(() => {
+    if (!myId || !breakdown?.investors) return 0;
+    const me = breakdown.investors.find((inv) => inv.userId === myId);
+    return me?.amount ?? 0;
+  }, [myId, breakdown?.investors]);
+
+  const newPoolTotal = poolTotal + amount;
+  const myNewTotal = myExistingAmount + amount;
+  const mySharePercentAmongInvestors = useMemo(() => {
+    if (newPoolTotal <= 0) return 0;
+    return (myNewTotal / newPoolTotal) * 100;
+  }, [myNewTotal, newPoolTotal]);
+
+  const ttlClosesInDays = useMemo(() => {
+    if (!ttlExpiresAt) return null;
+    const exp = typeof ttlExpiresAt === 'string' ? new Date(ttlExpiresAt) : ttlExpiresAt;
+    const now = new Date();
+    const diffMs = exp.getTime() - now.getTime();
+    const days = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+    return days > 0 ? days : 0;
+  }, [ttlExpiresAt]);
 
   const isValid = amount > 0 && amount <= walletBalance;
   const isSubmitting = investMutation.isPending;
@@ -58,7 +94,7 @@ export function InvestDialog({
     try {
       await investMutation.mutateAsync({ postId, amount });
       addToast(
-        t('investSuccess', { defaultValue: 'Successfully invested {amount} merits', amount }),
+        t('investSuccess', { amount, defaultValue: 'Successfully invested {amount} merits' }),
         'success'
       );
       setAmount(0);
@@ -81,85 +117,143 @@ export function InvestDialog({
         <DialogHeader>
           <DialogTitle>{t('dialogTitle', { defaultValue: 'Invest in this post' })}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <p className="text-sm text-base-content/80">
-              {t('contractTerms', {
-                defaultValue: 'Author gives {percent}% to investors',
-                percent: investorSharePercent,
-              })}
-            </p>
-
-            <div className="flex justify-between text-sm">
-              <span className="text-base-content/60">
-                {t('poolTotal', { defaultValue: 'Pool total' })}: {investmentPool} merits
-              </span>
-              <span className="text-base-content/60">
-                {t('investorCount', { defaultValue: '{count} investor(s)', count: investorCount })}
-              </span>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="invest-amount">{t('amountLabel', { defaultValue: 'Amount (merits)' })}</Label>
-              <AmountStepper
-                id="invest-amount"
-                value={amount}
-                onChange={setAmount}
-                min={1}
-                max={walletBalance}
-                placeholder="0"
-                disabled={isSubmitting}
-              />
-              <p className="text-xs text-base-content/60">
-                {t('balance', { defaultValue: 'Balance: {balance} merits', balance: walletBalance })}
+        {breakdownLoading && !breakdown ? (
+          <div className="py-8 flex items-center justify-center text-base-content/60">
+            <Loader2 className="w-8 h-8 animate-spin" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4 py-4">
+              {/* Contract */}
+              <p className="text-sm font-medium text-base-content/90">
+                {t('contractTerms', {
+                  percent: contractPercent,
+                  defaultValue: 'Contract: {percent}% to investors',
+                })}
               </p>
-            </div>
 
-            {amount > 0 && (
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-primary">
-                  {t('yourShare', {
-                    defaultValue: 'You will receive ~{percent}%* of each withdrawal (to investors)',
-                    percent: myShareOfInvestorPortion.toFixed(1),
+              {/* Pool: N merits from M investor(s) */}
+              <p className="text-sm text-base-content/70">
+                {t('poolFromInvestors', {
+                  amount: poolBalance,
+                  count: investorCountDisplay,
+                  defaultValue: 'Pool: {amount} merits from {count} investor(s)',
+                })}
+              </p>
+
+              {/* Post settings: TTL, stop-loss, author wallet flag */}
+              <div className="text-sm text-base-content/60 space-y-1">
+                {ttlClosesInDays !== null && (
+                  <p>
+                    {t('ttlClosesIn', {
+                      days: ttlClosesInDays,
+                      defaultValue: 'Closes in {days} days',
+                    })}
+                  </p>
+                )}
+                {ttlDays != null && ttlExpiresAt == null && (
+                  <p>{t('ttlDays', { days: ttlDays, defaultValue: 'TTL: {days} days' })}</p>
+                )}
+                {stopLoss > 0 && (
+                  <p>
+                    {t('stopLossLabel', {
+                      value: stopLoss,
+                      defaultValue: 'Stop-loss: {value}',
+                    })}
+                  </p>
+                )}
+                <p>
+                  {noAuthorWalletSpend
+                    ? t('noAuthorWalletSpendYes', {
+                        defaultValue: "Author won't spend from wallet on shows",
+                      })
+                    : t('noAuthorWalletSpendNo', {
+                        defaultValue: 'Author can spend from wallet on shows',
+                      })}
+                </p>
+              </div>
+
+              {/* Amount input */}
+              <div className="space-y-2">
+                <Label htmlFor="invest-amount">{t('amountLabel', { defaultValue: 'Amount (merits)' })}</Label>
+                <AmountStepper
+                  id="invest-amount"
+                  value={amount}
+                  onChange={setAmount}
+                  min={1}
+                  max={walletBalance}
+                  placeholder="0"
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-base-content/60">
+                  {t('balance', { balance: walletBalance, defaultValue: 'Balance: {balance} merits' })}
+                </p>
+              </div>
+
+              {/* Dynamic share: Y% of each withdrawal (to investors) */}
+              {amount > 0 && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-primary">
+                    {t('yourShare', {
+                      percent: mySharePercentAmongInvestors.toFixed(1),
+                      defaultValue: 'Your share will be ~{percent}% of each withdrawal (to investors)',
+                    })}
+                  </p>
+                  <p className="text-xs text-base-content/60 italic">
+                    {t('yourShareFootnote', {
+                      defaultValue:
+                        'The percentage may change when other investors put funds into the post – income is always shared proportionally to total investments. You can always invest again to increase your share.',
+                    })}
+                  </p>
+                </div>
+              )}
+
+              {/* Repeat investment line */}
+              {myExistingAmount > 0 && (
+                <p className="text-sm text-base-content/80">
+                  {t('repeatInvestment', {
+                    existing: myExistingAmount,
+                    total: myNewTotal,
+                    percent: mySharePercentAmongInvestors.toFixed(1),
+                    defaultValue:
+                      'You already invested {existing} merits. After this: total {total} merits, share ~{percent}%',
                   })}
                 </p>
-                <p className="text-xs text-base-content/60 italic">
-                  {t('yourShareFootnote', {
+              )}
+
+              {/* Warning box */}
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-base-content/80">
+                  {t('irrevocableWarningFull', {
                     defaultValue:
-                      'The percentage may change when other investors put funds into the post – income is always shared proportionally to total investments. You can always invest again to increase your share.',
+                      'Investment is irrevocable. Merits are spent on tappalka shows. Returns only happen when the author withdraws merits or when the post closes.',
                   })}
                 </p>
               </div>
-            )}
-
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-              <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-base-content/80">
-                {t('irrevocableWarning', { defaultValue: 'Investment is irrevocable. Merits cannot be withdrawn until the author withdraws from the post.' })}
-              </p>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              {tCommon('cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button type="submit" disabled={!isValid || isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('investing', { defaultValue: 'Investing...' })}
-                </>
-              ) : (
-                t('invest', { defaultValue: 'Invest' })
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isSubmitting}
+              >
+                {tCommon('cancel', { defaultValue: 'Cancel' })}
+              </Button>
+              <Button type="submit" disabled={!isValid || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {t('investing', { defaultValue: 'Investing...' })}
+                  </>
+                ) : (
+                  t('invest', { defaultValue: 'Invest' })
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

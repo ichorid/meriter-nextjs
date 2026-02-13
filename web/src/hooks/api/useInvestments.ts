@@ -11,6 +11,7 @@ export function useInvest() {
   return trpc.investments.invest.useMutation({
     onSuccess: (_, variables) => {
       utils.investments.getByPost.invalidate({ postId: variables.postId });
+      utils.investments.getInvestmentBreakdown.invalidate({ postId: variables.postId });
       utils.publications.getById.invalidate({ id: variables.postId });
       utils.communities.getFeed.invalidate();
       utils.wallets.getAll.invalidate();
