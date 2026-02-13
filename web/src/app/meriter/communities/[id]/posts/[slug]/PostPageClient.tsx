@@ -14,9 +14,13 @@ import { useUIStore } from '@/stores/ui.store';
 import { usePublication, useCommunity, useWallets } from '@/hooks/api';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
+import { trpc } from '@/lib/trpc/client';
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { PublicationHeader } from '@/components/organisms/Publication/PublicationHeader';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
+import { InvestmentBreakdownInline } from '@/components/organisms/InvestmentBreakdownPopup';
+import { PostSettingsReadOnly } from '@/components/organisms/Publication/PostSettingsReadOnly';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Comment as CommentComponent } from "@features/comments/components/comment";
@@ -30,7 +34,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations('common');
-    const _tComments = useTranslations('comments');
+    const tShared = useTranslations('shared');
 
     // Get highlight parameter from URL for comment highlighting
     const highlightCommentId = searchParams?.get('highlight');
@@ -40,8 +44,11 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
     // Use v1 API hooks
     const { user } = useAuth();
+    const utils = trpc.useUtils();
     const { data: publication, isLoading: publicationLoading, error: publicationError, isFetched: publicationFetched } = usePublication(slug);
     const { data: community } = useCommunity(chatId);
+    const publicationId = (publication as { id?: string })?.id;
+    const investingEnabled = (publication as { investingEnabled?: boolean })?.investingEnabled ?? false;
     
     const { data: balance = 0 } = useWalletBalance(chatId);
     const { data: wallets = [] } = useWallets();
@@ -287,20 +294,24 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
                         <PublicationActions
                             publication={{
-                                id: (publication as any).id,
-                                createdAt: (publication as any).createdAt,
-                                authorId: (publication as any).authorId,
-                                beneficiaryId: (publication as any).beneficiaryId,
+                                id: (publication as Record<string, unknown>).id,
+                                createdAt: (publication as Record<string, unknown>).createdAt,
+                                authorId: (publication as Record<string, unknown>).authorId,
+                                beneficiaryId: (publication as Record<string, unknown>).beneficiaryId,
                                 communityId: chatId,
-                                slug: (publication as any).slug || (publication as any).id,
-                                content: (publication as any).content,
-                                permissions: (publication as any).permissions,
-                                type: (publication as any).type || 'text',
-                                metrics: (publication as any).metrics,
+                                slug: (publication as Record<string, unknown>).slug || (publication as Record<string, unknown>).id,
+                                content: (publication as Record<string, unknown>).content,
+                                permissions: (publication as Record<string, unknown>).permissions,
+                                type: ((publication as Record<string, unknown>).type as string) || 'text',
+                                metrics: (publication as Record<string, unknown>).metrics,
                                 meta: transformedMeta,
-                                postType: (publication as any).postType,
-                                isProject: (publication as any).isProject,
-                                withdrawals: (publication as any).withdrawals || { totalWithdrawn: 0 },
+                                postType: (publication as Record<string, unknown>).postType,
+                                isProject: (publication as Record<string, unknown>).isProject,
+                                withdrawals: ((publication as Record<string, unknown>).withdrawals as Record<string, unknown>) || { totalWithdrawn: 0 },
+                                investingEnabled: (publication as Record<string, unknown>).investingEnabled ?? false,
+                                investorSharePercent: (publication as Record<string, unknown>).investorSharePercent ?? 50,
+                                investmentPool: (publication as Record<string, unknown>).investmentPool ?? 0,
+                                investmentPoolTotal: (publication as Record<string, unknown>).investmentPoolTotal ?? 0,
                             }}
                             onVote={() => {}}
                             onComment={() => {}}
@@ -310,17 +321,44 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             maxPlus={currentBalance}
                             wallets={wallets}
                             hideVoteAndScore={false}
+                            updateAll={() => {
+                                void utils.publications.getById.invalidate({ id: getPublicationIdentifier(publication) ?? '' });
+                            }}
                         />
                     </article>
                     );
                 })()}
 
-                {/* Comments Section */}
+                {/* Expanded sections (E-4): Vote history, Investment breakdown, Post settings */}
+                {publication && (
+                    <div className="mt-6 space-y-6">
+                        {/* Investment breakdown (inline, not popup) */}
+                        {investingEnabled && publicationId && (
+                            <InvestmentBreakdownInline postId={publicationId} />
+                        )}
+
+                        {/* Post settings (read-only for non-author) */}
+                        <PostSettingsReadOnly
+                            title={(publication as Record<string, unknown>).title as string | undefined}
+                            description={(publication as Record<string, unknown>).description as string | undefined}
+                            postType={(publication as Record<string, unknown>).postType as string | undefined}
+                            hashtags={((publication as Record<string, unknown>).hashtags as string[]) ?? []}
+                            categories={((publication as Record<string, unknown>).categories as string[]) ?? []}
+                            impactArea={(publication as Record<string, unknown>).impactArea as string | undefined}
+                            beneficiaries={((publication as Record<string, unknown>).beneficiaries as string[]) ?? []}
+                            methods={((publication as Record<string, unknown>).methods as string[]) ?? []}
+                            stage={(publication as Record<string, unknown>).stage as string | undefined}
+                            helpNeeded={((publication as Record<string, unknown>).helpNeeded as string[]) ?? []}
+                        />
+                    </div>
+                )}
+
+                {/* Vote history (comments = votes, inline) */}
                 {publication && showComments && (
                     <div className="mt-8">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-base-content">
-                                Голоса
+                                {tShared('comments')}
                                 <span className="ml-2 text-sm font-normal text-base-content/50">
                                     {comments?.length || 0}
                                 </span>

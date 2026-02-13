@@ -104,7 +104,7 @@ export const PostMetrics: React.FC<PostMetricsProps> = ({
   if (!hasAny) return null;
 
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div className="mb-3 flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-y-2 sm:gap-x-4 sm:gap-y-2">
       {/* Rating: icon + value, click → vote history (navigate to post) */}
       {showRating && (
         <button

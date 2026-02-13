@@ -6,7 +6,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Hand, Share2, MoreHorizontal, Lock, Settings, Plus, Minus } from 'lucide-react';
+import { Hand, Share2, MoreHorizontal, Lock, Settings, Plus, Minus, ArrowDownToLine } from 'lucide-react';
 import { FavoriteStar } from '@/components/atoms';
 import { InvestButton } from '@/components/organisms/InvestButton';
 
@@ -157,11 +157,11 @@ export const PostActions: React.FC<PostActionsProps> = ({
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={onCommentOnlyClick}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
+            className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
             title={commentsTitle}
           >
-            <Hand className="w-4 h-4 text-base-content/50" />
-            <span className="text-sm font-medium text-base-content/70">{commentsTitle}</span>
+            <Hand className="w-4 h-4 shrink-0 text-base-content/50" />
+            <span className="hidden sm:inline text-sm font-medium text-base-content/70">{commentsTitle}</span>
           </button>
         </div>
       );
@@ -169,38 +169,10 @@ export const PostActions: React.FC<PostActionsProps> = ({
 
     if (hideVoteAndScore) return null;
 
-    // Author + Active: Add merits, Withdraw, More
+    // Author + Active: More (left), Add merits, Withdraw
     if (isAuthor) {
       return (
         <div className="flex flex-wrap items-center justify-center gap-2">
-          {showAddMerits && (
-            <InvestButton
-              postId={investButtonProps.postId}
-              communityId={investButtonProps.communityId}
-              isAuthor={investButtonProps.isAuthor}
-              investingEnabled={investButtonProps.investingEnabled}
-              investorSharePercent={investButtonProps.investorSharePercent}
-              investmentPool={investButtonProps.investmentPool}
-              investmentPoolTotal={investButtonProps.investmentPoolTotal}
-              investorCount={investButtonProps.investorCount}
-              walletBalance={investButtonProps.walletBalance}
-              onSuccess={investButtonProps.onSuccess}
-            />
-          )}
-          {showWithdrawButton && (
-            <button
-              onClick={onWithdrawClick}
-              disabled={!allowWithdraw || maxWithdrawAmount <= 0}
-              className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
-                !allowWithdraw || maxWithdrawAmount <= 0
-                  ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
-                  : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
-              }`}
-              title={withdrawDisabledTitle}
-            >
-              {withdrawLabel}
-            </button>
-          )}
           {showMoreMenu && (
             <div className="relative" ref={moreMenuRef}>
               <button
@@ -214,7 +186,7 @@ export const PostActions: React.FC<PostActionsProps> = ({
                 <MoreHorizontal className="w-4 h-4" />
               </button>
               {moreMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-1 z-50">
+                <div className="absolute left-0 top-full mt-1 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-1 z-50">
                   {showCloseInMore && (
                     <button
                       onClick={(e) => {
@@ -274,13 +246,86 @@ export const PostActions: React.FC<PostActionsProps> = ({
               )}
             </div>
           )}
+          {showAddMerits && (
+            <InvestButton
+              postId={investButtonProps.postId}
+              communityId={investButtonProps.communityId}
+              isAuthor={investButtonProps.isAuthor}
+              investingEnabled={investButtonProps.investingEnabled}
+              investorSharePercent={investButtonProps.investorSharePercent}
+              investmentPool={investButtonProps.investmentPool}
+              investmentPoolTotal={investButtonProps.investmentPoolTotal}
+              investorCount={investButtonProps.investorCount}
+              walletBalance={investButtonProps.walletBalance}
+              onSuccess={investButtonProps.onSuccess}
+              iconOnlyOnMobile
+            />
+          )}
+          {showWithdrawButton && (
+            <button
+              onClick={onWithdrawClick}
+              disabled={!allowWithdraw || maxWithdrawAmount <= 0}
+              className={`h-8 px-2 sm:px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+                !allowWithdraw || maxWithdrawAmount <= 0
+                  ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
+                  : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+              }`}
+              title={withdrawDisabledTitle ?? withdrawLabel}
+            >
+              <ArrowDownToLine className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{withdrawLabel}</span>
+            </button>
+          )}
         </div>
       );
     }
 
     // User + Active: Invest, Vote; Beneficiary also gets Withdraw
+    // E-5: Admin +/- only in overflow - add More menu for non-authors when showAdminButtons
     return (
       <div className="flex flex-wrap items-center justify-center gap-2">
+        {showAdminButtons && (
+          <div className="relative" ref={moreMenuRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMoreMenuOpen(!moreMenuOpen);
+              }}
+              className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80"
+              title="Admin"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {moreMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-1 z-50">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDevAddPositiveVote();
+                    setMoreMenuOpen(false);
+                  }}
+                  disabled={isAddingVote || isAddingNegativeVote}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-base-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Plus className="w-4 h-4" />
+                  +10 (admin)
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDevAddNegativeVote();
+                    setMoreMenuOpen(false);
+                  }}
+                  disabled={isAddingVote || isAddingNegativeVote}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-base-200 flex items-center gap-2 disabled:opacity-50"
+                >
+                  <Minus className="w-4 h-4" />
+                  -10 (admin)
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {showInvestButton && (
           <InvestButton
             postId={investButtonProps.postId}
@@ -293,35 +338,37 @@ export const PostActions: React.FC<PostActionsProps> = ({
             investorCount={investButtonProps.investorCount}
             walletBalance={investButtonProps.walletBalance}
             onSuccess={investButtonProps.onSuccess}
+            iconOnlyOnMobile
           />
         )}
         {showVoteButton && (
           <button
             onClick={onVoteClick}
             disabled={!canVote}
-            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+            className={`h-8 px-2 sm:px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
               canVote
                 ? 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
                 : 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
             }`}
-            title={voteTooltipText}
+            title={voteTooltipText ?? voteLabel}
           >
-            <Hand className={`w-4 h-4 ${canVote ? 'text-base-100' : 'text-base-content/60'}`} />
-            {voteLabel}
+            <Hand className={`w-4 h-4 shrink-0 ${canVote ? 'text-base-100' : 'text-base-content/60'}`} />
+            <span className="hidden sm:inline">{voteLabel}</span>
           </button>
         )}
         {showWithdrawButton && isBeneficiary && (
           <button
             onClick={onWithdrawClick}
             disabled={!allowWithdraw || maxWithdrawAmount <= 0}
-            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+            className={`h-8 px-2 sm:px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
               !allowWithdraw || maxWithdrawAmount <= 0
                 ? 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
                 : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
             }`}
-            title={withdrawDisabledTitle}
+            title={withdrawDisabledTitle ?? withdrawLabel}
           >
-            {withdrawLabel}
+            <ArrowDownToLine className="w-4 h-4 shrink-0" />
+            <span className="hidden sm:inline">{withdrawLabel}</span>
           </button>
         )}
       </div>

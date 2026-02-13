@@ -261,6 +261,7 @@
         "toYou": "Вам: {amount} меритов",
         "distributionDetails": "Подробнее о распределении",
         "addMerits": "Добавить мериты",
+        "topUp": "Пополнить",
         "invest": "Инвестировать",
         "investing": "Инвестирую...",
         "investSuccess": "Успешно инвестировано {amount} меритов",

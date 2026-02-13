@@ -172,7 +172,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       onClick={handleCardClick}
       className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
     >
-      <PublicationHeader
+      <PostHeader
         publication={{
           id: pubItem.id,
           slug: pubItem.slug,

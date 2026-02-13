@@ -22,6 +22,8 @@ interface InvestButtonProps {
   investorCount: number;
   walletBalance: number;
   onSuccess?: () => void;
+  /** E-6: When true, hide label on small screens (icon-only) */
+  iconOnlyOnMobile?: boolean;
 }
 
 export function InvestButton({
@@ -35,6 +37,7 @@ export function InvestButton({
   investorCount,
   walletBalance,
   onSuccess,
+  iconOnlyOnMobile = false,
 }: InvestButtonProps) {
   const t = useTranslations('investing');
   const tCommon = useTranslations('common');
@@ -52,14 +55,18 @@ export function InvestButton({
       <Button
         variant="outline"
         size="sm"
-        className="rounded-xl gap-2"
+        className="rounded-xl gap-2 px-2 sm:px-3"
         onClick={(e) => {
           e.stopPropagation();
           openWithdrawPopup(postId, 'publication-topup', 0, walletBalance);
         }}
       >
-        <Plus className="w-4 h-4" />
-        {t('addMerits', { defaultValue: 'Add merits' })}
+        <Plus className="w-4 h-4 shrink-0" />
+        {iconOnlyOnMobile ? (
+          <span className="hidden sm:inline">{t('topUp', { defaultValue: 'Top up' })}</span>
+        ) : (
+          t('topUp', { defaultValue: 'Top up' })
+        )}
       </Button>
     );
   }
@@ -83,11 +90,15 @@ export function InvestButton({
       <Button
         variant="outline"
         size="sm"
-        className="rounded-xl gap-2"
+        className="rounded-xl gap-2 px-2 sm:px-3"
         onClick={handleInvestClick}
       >
-        <PiggyBank className="w-4 h-4" />
-        {t('invest', { defaultValue: 'Invest' })}
+        <PiggyBank className="w-4 h-4 shrink-0" />
+        {iconOnlyOnMobile ? (
+          <span className="hidden sm:inline">{t('invest', { defaultValue: 'Invest' })}</span>
+        ) : (
+          t('invest', { defaultValue: 'Invest' })
+        )}
       </Button>
       <InvestDialog
         open={dialogOpen}

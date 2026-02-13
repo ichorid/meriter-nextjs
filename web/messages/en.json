@@ -266,6 +266,7 @@
         "toYou": "To you: {amount} merits",
         "distributionDetails": "Distribution details",
         "addMerits": "Add merits",
+        "topUp": "Top up",
         "invest": "Invest",
         "investing": "Investing...",
         "investSuccess": "Successfully invested {amount} merits",

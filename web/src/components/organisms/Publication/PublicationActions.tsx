@@ -111,6 +111,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const t = useTranslations('shared');
+  const tCommon = useTranslations('common');
   const tComments = useTranslations('comments');
   const tInvesting = useTranslations('investing');
   const tPostClosing = useTranslations('postClosing');
@@ -541,10 +542,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onDevAddNegativeVote={handleDevAddNegativeVote}
         shareTitle={t('share')}
         commentsTitle={t('comments')}
-        voteLabel={t('vote')}
+        voteLabel={tComments('commentButton')}
         withdrawLabel={t('withdraw')}
         closePostTitle={tPostClosing('closePostTitle', { defaultValue: 'Close post' })}
-        settingsTitle={t('edit', { defaultValue: 'Settings' })}
+        settingsTitle={tCommon('edit')}
       />
       {showClosePostDialog &&
         publicationId &&
