@@ -10,6 +10,8 @@ import { routes } from '@/lib/constants/routes';
 
 interface InvestmentBreakdownInlineProps {
   postId: string;
+  /** When true, omit header and outer styling (for use inside CollapsibleSection) */
+  compact?: boolean;
 }
 
 function formatDate(d: Date | string): string {
@@ -19,7 +21,7 @@ function formatDate(d: Date | string): string {
   }).format(date);
 }
 
-export function InvestmentBreakdownInline({ postId }: InvestmentBreakdownInlineProps) {
+export function InvestmentBreakdownInline({ postId, compact = false }: InvestmentBreakdownInlineProps) {
   const t = useTranslations('investing');
 
   const { data: breakdown, isLoading } = trpc.investments.getInvestmentBreakdown.useQuery(
@@ -53,17 +55,19 @@ export function InvestmentBreakdownInline({ postId }: InvestmentBreakdownInlineP
 
   if (!breakdown) return null;
 
-  return (
-    <div className="space-y-4 rounded-lg border border-base-300 bg-base-200/50 p-4">
-      <h3 className="text-sm font-medium text-base-content/80">
-        {t('breakdownTitle', { defaultValue: 'Investments' })}
-        <span className="ml-2 font-normal text-base-content/60">
-          {t('contractTerms', {
-            percent: breakdown.contractPercent,
-            defaultValue: 'Contract: {percent}% to investors',
-          })}
-        </span>
-      </h3>
+  const content = (
+    <>
+      {!compact && (
+        <h3 className="text-sm font-medium text-base-content/80">
+          {t('breakdownTitle', { defaultValue: 'Investments' })}
+          <span className="ml-2 font-normal text-base-content/60">
+            {t('contractTerms', {
+              percent: breakdown.contractPercent,
+              defaultValue: 'Contract: {percent}% to investors',
+            })}
+          </span>
+        </h3>
+      )}
 
       {/* Segmented bar */}
       <InvestorBar
@@ -121,6 +125,15 @@ export function InvestmentBreakdownInline({ postId }: InvestmentBreakdownInlineP
           </span>
         </p>
       </div>
+    </>
+  );
+
+  if (compact) {
+    return <div className="space-y-4">{content}</div>;
+  }
+  return (
+    <div className="space-y-4 rounded-lg border border-base-300 bg-base-200/50 p-4">
+      {content}
     </div>
   );
 }

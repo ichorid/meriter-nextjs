@@ -21,6 +21,7 @@ import { PublicationContent } from '@/components/organisms/Publication/Publicati
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { InvestmentBreakdownInline } from '@/components/organisms/InvestmentBreakdownPopup';
 import { PostSettingsReadOnly } from '@/components/organisms/Publication/PostSettingsReadOnly';
+import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Comment as CommentComponent } from "@features/comments/components/comment";
@@ -35,6 +36,12 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const searchParams = useSearchParams();
     const t = useTranslations('common');
     const tShared = useTranslations('shared');
+    const tInvesting = useTranslations('investing');
+    const tPublicationsCreate = useTranslations('publications.create');
+
+    // Collapsible sections: collapsed by default
+    const [investmentBreakdownOpen, setInvestmentBreakdownOpen] = useState(false);
+    const [postSettingsOpen, setPostSettingsOpen] = useState(false);
 
     // Get highlight parameter from URL for comment highlighting
     const highlightCommentId = searchParams?.get('highlight');
@@ -329,27 +336,38 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                     );
                 })()}
 
-                {/* Expanded sections (E-4): Vote history, Investment breakdown, Post settings */}
+                {/* Expanded sections (E-4): collapsible Investment breakdown, Post settings - collapsed by default */}
                 {publication && (
-                    <div className="mt-6 space-y-6">
-                        {/* Investment breakdown (inline, not popup) */}
+                    <div className="mt-6 space-y-4">
                         {investingEnabled && publicationId && (
-                            <InvestmentBreakdownInline postId={publicationId} />
+                            <CollapsibleSection
+                                title={tInvesting('breakdownTitle', { defaultValue: 'Investments' })}
+                                open={investmentBreakdownOpen}
+                                setOpen={setInvestmentBreakdownOpen}
+                            >
+                                <InvestmentBreakdownInline postId={publicationId} compact />
+                            </CollapsibleSection>
                         )}
 
-                        {/* Post settings (read-only for non-author) */}
-                        <PostSettingsReadOnly
-                            title={(publication as Record<string, unknown>).title as string | undefined}
-                            description={(publication as Record<string, unknown>).description as string | undefined}
-                            postType={(publication as Record<string, unknown>).postType as string | undefined}
-                            hashtags={((publication as Record<string, unknown>).hashtags as string[]) ?? []}
-                            categories={((publication as Record<string, unknown>).categories as string[]) ?? []}
-                            impactArea={(publication as Record<string, unknown>).impactArea as string | undefined}
-                            beneficiaries={((publication as Record<string, unknown>).beneficiaries as string[]) ?? []}
-                            methods={((publication as Record<string, unknown>).methods as string[]) ?? []}
-                            stage={(publication as Record<string, unknown>).stage as string | undefined}
-                            helpNeeded={((publication as Record<string, unknown>).helpNeeded as string[]) ?? []}
-                        />
+                        <CollapsibleSection
+                            title={tPublicationsCreate('postSettings', { defaultValue: 'Post settings' })}
+                            open={postSettingsOpen}
+                            setOpen={setPostSettingsOpen}
+                        >
+                            <PostSettingsReadOnly
+                                title={(publication as Record<string, unknown>).title as string | undefined}
+                                description={(publication as Record<string, unknown>).description as string | undefined}
+                                postType={(publication as Record<string, unknown>).postType as string | undefined}
+                                hashtags={((publication as Record<string, unknown>).hashtags as string[]) ?? []}
+                                categories={((publication as Record<string, unknown>).categories as string[]) ?? []}
+                                impactArea={(publication as Record<string, unknown>).impactArea as string | undefined}
+                                beneficiaries={((publication as Record<string, unknown>).beneficiaries as string[]) ?? []}
+                                methods={((publication as Record<string, unknown>).methods as string[]) ?? []}
+                                stage={(publication as Record<string, unknown>).stage as string | undefined}
+                                helpNeeded={((publication as Record<string, unknown>).helpNeeded as string[]) ?? []}
+                                compact
+                            />
+                        </CollapsibleSection>
                     </div>
                 )}
 

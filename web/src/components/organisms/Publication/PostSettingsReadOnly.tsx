@@ -24,6 +24,8 @@ interface PostSettingsReadOnlyProps {
   methods?: string[];
   stage?: string;
   helpNeeded?: string[];
+  /** When true, omit header and outer styling (for use inside CollapsibleSection) */
+  compact?: boolean;
 }
 
 export function PostSettingsReadOnly({
@@ -37,6 +39,7 @@ export function PostSettingsReadOnly({
   methods = [],
   stage,
   helpNeeded = [],
+  compact = false,
 }: PostSettingsReadOnlyProps) {
   const t = useTranslations('publications.create');
   const tTaxonomy = useTranslations('publications.create.taxonomy');
@@ -68,13 +71,8 @@ export function PostSettingsReadOnly({
     ? translateImpactArea(impactArea as never)
     : impactArea;
 
-  return (
-    <div className="space-y-4 rounded-lg border border-base-300 bg-base-200/50 p-4">
-      <h3 className="text-sm font-medium text-base-content/80">
-        {t('postSettings', { defaultValue: 'Post settings' })}
-      </h3>
-
-      <dl className="space-y-3 text-sm">
+  const content = (
+    <dl className="space-y-3 text-sm">
         {(title || description) && (
           <>
             {title && (
@@ -212,7 +210,18 @@ export function PostSettingsReadOnly({
             )}
           </>
         )}
-      </dl>
+    </dl>
+  );
+
+  if (compact) {
+    return <div className="space-y-3">{content}</div>;
+  }
+  return (
+    <div className="space-y-4 rounded-lg border border-base-300 bg-base-200/50 p-4">
+      <h3 className="text-sm font-medium text-base-content/80">
+        {t('postSettings', { defaultValue: 'Post settings' })}
+      </h3>
+      {content}
     </div>
   );
 }
