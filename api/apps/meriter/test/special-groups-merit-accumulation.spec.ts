@@ -16,6 +16,7 @@ import { TransactionSchemaClass, TransactionDocument } from '../src/domain/model
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
 import { trpcMutation } from './helpers/trpc-test-helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { TrpcService } from '../src/trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
@@ -264,22 +265,30 @@ describe('Special Groups Merit Accumulation', () => {
   });
 
   describe('Withdrawal Functionality', () => {
-    it('should allow withdrawal from publication in marathon-of-good and credit Marathon wallet with sync to Future Vision', async () => {
-      // Add a vote using HTTP endpoint to update publication metrics
+    it('should allow withdrawal from publication in marathon-of-good and credit global wallet', async () => {
+      // Priority communities: quota disabled, use wallet. Credit voter's global wallet.
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
+
       (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test comment',
       });
 
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Withdraw as author - should succeed
+      // Withdraw as author - credits global wallet (priority communities use global merit)
       (global as any).testUserId = authorId;
       const result = await trpcMutation(app, 'votes.withdraw', {
         id: marathonPubId,
@@ -288,18 +297,9 @@ describe('Special Groups Merit Accumulation', () => {
 
       expect(result.amount).toBe(5);
 
-      // Check that Marathon wallet was credited (same community)
-      const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
-      expect(marathonWallet).toBeTruthy();
-      expect(marathonWallet?.getBalance()).toBe(5);
-
-      // Check that Future Vision wallet was also credited (synchronized)
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5);
-      
-      // Verify both wallets are synchronized
-      expect(marathonWallet?.getBalance()).toBe(fvWallet?.getBalance());
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      expect(globalWallet).toBeTruthy();
+      expect(globalWallet?.getBalance()).toBe(5);
     });
 
     // TODO: Review this test - currently disabled as it's irrelevant now but should be reviewed later
@@ -360,58 +360,61 @@ describe('Special Groups Merit Accumulation', () => {
   });
 
   describe('Merit Awarding for Marathon of Good', () => {
-    it('should NOT automatically credit Future Vision wallet when voting on marathon-of-good publication (automatic crediting disabled)', async () => {
-      (global as any).testUserId = voterId;
+    it('should NOT automatically credit author wallet when voting on marathon-of-good (credits only on withdrawal)', async () => {
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test vote',
       });
 
-      // Wait a bit for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Verify Future Vision community exists
-      expect(fvCommunityUsed).toBeTruthy();
-      expect(fvCommunityUsed?.typeTag).toBe('future-vision');
-
-      // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      // Wallet should not exist or have 0 balance (no automatic crediting)
-      if (fvWallet) {
-        expect(fvWallet.getBalance()).toBe(0);
+      // Author's global wallet should have 0 before withdrawal (credits only on withdraw)
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      if (globalWallet) {
+        expect(globalWallet.getBalance()).toBe(0);
       }
     });
 
-    it('should credit Marathon of Good wallet when withdrawing from marathon-of-good publication and sync with Future Vision', async () => {
-      (global as any).testUserId = voterId;
+    it('should credit global wallet when withdrawing from marathon-of-good publication', async () => {
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test vote',
       });
 
-      // Wait a bit for vote to process
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Withdraw as author - should credit Marathon wallet (same community)
       (global as any).testUserId = authorId;
       const result = await trpcMutation(app, 'votes.withdraw', {
         id: marathonPubId,
@@ -420,105 +423,86 @@ describe('Special Groups Merit Accumulation', () => {
 
       expect(result.amount).toBe(5);
 
-      // Check that Marathon of Good wallet was credited (same community)
-      const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
-      expect(marathonWallet).toBeTruthy();
-      expect(marathonWallet?.getBalance()).toBe(5);
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      expect(globalWallet).toBeTruthy();
+      expect(globalWallet?.getBalance()).toBe(5);
 
-      // Check that Future Vision wallet was also credited (synchronized)
-      let fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      if (!fvWallet) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-      }
-
-      expect(fvWallet).toBeTruthy();
-      expect(fvWallet?.getBalance()).toBe(5); // Should match Marathon balance
-
-      // Verify both wallets have the same balance (synchronized)
-      expect(marathonWallet?.getBalance()).toBe(fvWallet?.getBalance());
-
-      // Check transaction - withdrawal creates transaction with referenceType 'publication_withdrawal' in Marathon wallet
-      const marathonTransaction = await transactionModel.findOne({
-        walletId: marathonWallet.getId.getValue(),
+      const withdrawalTx = await transactionModel.findOne({
+        walletId: globalWallet!.getId.getValue(),
         referenceType: 'publication_withdrawal',
         referenceId: marathonPubId,
       });
-
-      expect(marathonTransaction).toBeTruthy();
-      expect(marathonTransaction?.amount).toBe(5);
-
-      // Check sync transaction in Future Vision wallet
-      const fvSyncTransaction = await transactionModel.findOne({
-        walletId: fvWallet.getId.getValue(),
-        referenceType: 'balance_sync',
-      });
-
-      expect(fvSyncTransaction).toBeTruthy();
-      expect(fvSyncTransaction?.amount).toBe(5);
+      expect(withdrawalTx).toBeTruthy();
+      expect(withdrawalTx?.amount).toBe(5);
     });
 
-    it('should NOT credit marathon-of-good wallet when voting on marathon publication', async () => {
-      (global as any).testUserId = voterId;
+    it('should NOT credit marathon community wallet when voting on marathon publication', async () => {
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test vote',
       });
 
-      // Check that Marathon of Good wallet was NOT credited
       const gdmWallet = await walletModel.findOne({
         userId: authorId,
         communityId: marathonCommunityId,
       });
-
-      // Wallet might exist but should have 0 balance
       if (gdmWallet) {
         expect(gdmWallet.balance).toBe(0);
       }
     });
 
-    it('should NOT automatically credit Future Vision wallet for beneficiary when voting on marathon publication with beneficiary (automatic crediting disabled)', async () => {
-      // Update publication to have beneficiary
+    it('should NOT automatically credit beneficiary global wallet when voting on marathon with beneficiary', async () => {
       await publicationModel.updateOne(
         { id: marathonPubId },
         { $set: { beneficiaryId } }
       );
 
-      (global as any).testUserId = voterId;
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test vote',
       });
 
-      // Wait a bit for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Check that Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      const fvWallet = await walletService.getWallet(beneficiaryId, fvCommunityId);
-
-      // Wallet should not exist or have 0 balance (no automatic crediting)
-      if (fvWallet) {
-        expect(fvWallet.getBalance()).toBe(0);
+      const beneficiaryGlobalWallet = await walletService.getWallet(beneficiaryId, GLOBAL_COMMUNITY_ID);
+      if (beneficiaryGlobalWallet) {
+        expect(beneficiaryGlobalWallet.getBalance()).toBe(0);
       }
     });
 
-    it('should NOT credit marathon-of-good wallet when voting on marathon publication (comprehensive check)', async () => {
-      // Create a new publication for this test to avoid conflicts
+    it('should NOT credit marathon community wallet when voting on marathon publication (comprehensive check)', async () => {
       const newMarathonPub = await publicationService.createPublication(authorId, {
         communityId: marathonCommunityId,
         content: 'Test publication for comprehensive check',
@@ -527,55 +511,51 @@ describe('Special Groups Merit Accumulation', () => {
       });
       const newMarathonPubId = newMarathonPub.getId.getValue();
 
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        20,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
+
       (global as any).testUserId = voterId;
-
-      // Clear any existing wallets/transactions for this test
-      await walletModel.deleteMany({ userId: authorId, communityId: marathonCommunityId });
-      await transactionModel.deleteMany({ userId: authorId, referenceId: newMarathonPubId });
-
-      // Vote on marathon publication
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: newMarathonPubId,
-        quotaAmount: 10,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 10,
         comment: 'Test vote',
       });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Check that Marathon of Good wallet was NOT credited (should be 0 or not exist)
       const gdmWallet = await walletModel.findOne({
         userId: authorId,
         communityId: marathonCommunityId,
       });
-
       if (gdmWallet) {
         expect(gdmWallet.balance).toBe(0);
       }
 
-      // Verify no transactions were created for marathon-of-good community
       const gdmTransactions = await transactionModel.find({
         userId: authorId,
         communityId: marathonCommunityId,
         type: 'credit',
       });
-
       expect(gdmTransactions.length).toBe(0);
 
-      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      // Wallet should not exist or have 0 balance (no automatic crediting)
-      if (fvWallet) {
-        expect(fvWallet.getBalance()).toBe(0);
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      if (globalWallet) {
+        expect(globalWallet.getBalance()).toBe(0);
       }
     });
 
     it('should NOT credit any other groups when voting on marathon publication', async () => {
-      // Create another test community to verify no credits go there
       const otherCommunityId = uid();
       await communityModel.create({
         id: otherCommunityId,
@@ -597,67 +577,62 @@ describe('Special Groups Merit Accumulation', () => {
         updatedAt: new Date(),
       });
 
-      // Clear any existing wallets/transactions for this community
       await walletModel.deleteMany({ userId: authorId, communityId: otherCommunityId });
       await transactionModel.deleteMany({ userId: authorId, communityId: otherCommunityId });
 
-      (global as any).testUserId = voterId;
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        20,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 10,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 10,
         comment: 'Test vote',
       });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Get the Future Vision community that was actually used
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      // Wallet should not exist or have 0 balance (no automatic crediting)
-      if (fvWallet) {
-        expect(fvWallet.getBalance()).toBe(0);
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      if (globalWallet) {
+        expect(globalWallet.getBalance()).toBe(0);
       }
 
-      // Verify NO credits went to the other community
       const otherWallet = await walletModel.findOne({
         userId: authorId,
         communityId: otherCommunityId,
       });
-
       if (otherWallet) {
         expect(otherWallet.balance).toBe(0);
       }
 
-      // Verify no transactions were created for the other community
       const otherTransactions = await transactionModel.find({
         userId: authorId,
         communityId: otherCommunityId,
         type: 'credit',
       });
-
       expect(otherTransactions.length).toBe(0);
 
-      // Verify marathon-of-good also has no credits
       const gdmWallet = await walletModel.findOne({
         userId: authorId,
         communityId: marathonCommunityId,
       });
-
       if (gdmWallet) {
         expect(gdmWallet.balance).toBe(0);
       }
     });
 
-    it('should synchronize both wallets when withdrawing from marathon publication with multiple votes', async () => {
-      // Create a new publication for this test
+    it('should credit global wallet when withdrawing from marathon publication with multiple votes', async () => {
       const newMarathonPub = await publicationService.createPublication(authorId, {
         communityId: marathonCommunityId,
         content: 'Test publication for multiple voters',
@@ -666,7 +641,6 @@ describe('Special Groups Merit Accumulation', () => {
       });
       const newMarathonPubId = newMarathonPub.getId.getValue();
 
-      // Create a second voter
       const voter2Id = uid();
       await userModel.create({
         id: voter2Id,
@@ -676,7 +650,6 @@ describe('Special Groups Merit Accumulation', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-
       await userCommunityRoleModel.create({
         id: uid(),
         userId: voter2Id,
@@ -686,193 +659,111 @@ describe('Special Groups Merit Accumulation', () => {
         updatedAt: new Date(),
       });
 
-      // Clear existing wallets for this test
-      await walletModel.deleteMany({ userId: authorId });
-      await transactionModel.deleteMany({ userId: authorId, referenceId: newMarathonPubId });
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
+      await walletService.addTransaction(
+        voter2Id,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        15,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Get the Future Vision community that will be used
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // First voter votes
       (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: newMarathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Vote from voter 1',
       });
-
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      // Second voter votes
       (global as any).testUserId = voter2Id;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: newMarathonPubId,
-        quotaAmount: 7,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 7,
         comment: 'Vote from voter 2',
       });
-
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Verify Future Vision wallet was NOT automatically credited (automatic crediting is disabled)
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      // Wallet should not exist or have 0 balance (no automatic crediting)
-      if (fvWallet) {
-        expect(fvWallet.getBalance()).toBe(0);
-      }
-
-      // Verify marathon-of-good wallet has NO credits
-      const gdmWallet = await walletModel.findOne({
-        userId: authorId,
-        communityId: marathonCommunityId,
-      });
-
-      if (gdmWallet) {
-        expect(gdmWallet.balance).toBe(0);
-      }
-
-      // With automatic crediting disabled, no transactions should be created on vote
-      // Transactions are only created when withdrawing
-      const fvTransactions = await transactionModel.find({
-        userId: authorId,
-        communityId: fvCommunityId,
-        referenceType: 'merit_transfer_gdm_to_fv',
-        referenceId: newMarathonPubId,
-      });
-
-      expect(fvTransactions.length).toBe(0);
-
-      // Verify no transactions for marathon-of-good
-      const gdmTransactions = await transactionModel.find({
-        userId: authorId,
-        communityId: marathonCommunityId,
-        type: 'credit',
-        referenceId: newMarathonPubId,
-      });
-
-      expect(gdmTransactions.length).toBe(0);
-
-      // Now withdraw - should credit Marathon wallet (same community) and sync to Future Vision
       (global as any).testUserId = authorId;
       const withdrawalResult = await trpcMutation(app, 'votes.withdraw', {
         id: newMarathonPubId,
-        amount: 12, // Total from both votes (5 + 7)
+        amount: 12,
       });
-
       expect(withdrawalResult.amount).toBe(12);
 
-      // Verify both wallets are credited and synchronized
-      const marathonWalletAfter = await walletService.getWallet(authorId, marathonCommunityId);
-      const fvWalletAfter = await walletService.getWallet(authorId, fvCommunityId);
-
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      // Marathon wallet gets credited first (same community)
-      expect(marathonWalletAfter?.getBalance()).toBe(12);
-      // Future Vision wallet gets synced to match
-      expect(fvWalletAfter?.getBalance()).toBe(12);
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      expect(globalWallet).toBeTruthy();
+      expect(globalWallet?.getBalance()).toBe(12);
     });
 
-    it('should synchronize both wallets immediately when withdrawing from marathon-of-good publication', async () => {
-      (global as any).testUserId = voterId;
+    it('should credit global wallet immediately when withdrawing from marathon-of-good publication', async () => {
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        15,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 10,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 10,
         comment: 'Test vote for sync',
       });
-
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-
-      // Clear any existing balances for clean test
-      await walletModel.deleteMany({ userId: authorId });
-
-      // Withdraw as author - should credit Marathon wallet (same community) and sync to Future Vision
       (global as any).testUserId = authorId;
       const result = await trpcMutation(app, 'votes.withdraw', {
         id: marathonPubId,
         amount: 10,
       });
-
       expect(result.amount).toBe(10);
 
-      // Immediately check both wallets - they should be synchronized
-      const marathonWallet = await walletService.getWallet(authorId, marathonCommunityId);
-      const fvWallet = await walletService.getWallet(authorId, fvCommunityId);
-
-      expect(marathonWallet).toBeTruthy();
-      expect(fvWallet).toBeTruthy();
-      
-      // Marathon wallet gets credited first (same community)
-      expect(marathonWallet?.getBalance()).toBe(10);
-      // Future Vision wallet gets synced to match
-      expect(fvWallet?.getBalance()).toBe(10);
-      expect(marathonWallet?.getBalance()).toBe(fvWallet?.getBalance());
-
-      // Verify sync transaction exists in Future Vision wallet
-      const fvSyncTransaction = await transactionModel.findOne({
-        walletId: fvWallet.getId.getValue(),
-        referenceType: 'balance_sync',
-      });
-
-      expect(fvSyncTransaction).toBeTruthy();
-      expect(fvSyncTransaction?.amount).toBe(10);
+      const globalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      expect(globalWallet).toBeTruthy();
+      expect(globalWallet?.getBalance()).toBe(10);
     });
   });
 
-  describe('Debit Synchronization for Marathon and Future Vision', () => {
-    it('should debit from both wallets when voting with wallet merits on Future Vision publication', async () => {
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up voter with balance in both wallets
+  describe('Global Merit: Voting and Debit', () => {
+    it('should debit from global wallet when voting with wallet merits on Future Vision publication', async () => {
       await walletService.addTransaction(
         voterId,
-        marathonCommunityIdUsed,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
         'test_setup',
         'test',
         { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
+        'Test setup',
       );
 
-      await walletService.addTransaction(
-        voterId,
-        fvCommunityId,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Verify initial balances
-      const marathonWalletBefore = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(voterId, fvCommunityId);
-      expect(marathonWalletBefore?.getBalance()).toBe(10);
-      expect(fvWalletBefore?.getBalance()).toBe(10);
-
-      // Vote on Future Vision publication with wallet merits
       (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
@@ -882,413 +773,19 @@ describe('Special Groups Merit Accumulation', () => {
         comment: 'Test vote with wallet',
       });
 
-      // Wait for async operations
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Verify both wallets were debited
-      const marathonWalletAfter = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(voterId, fvCommunityId);
+      const globalWalletAfter = await walletService.getWallet(voterId, GLOBAL_COMMUNITY_ID);
+      expect(globalWalletAfter).toBeTruthy();
+      expect(globalWalletAfter?.getBalance()).toBe(5); // 10 - 5
 
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      expect(marathonWalletAfter?.getBalance()).toBe(5); // 10 - 5
-      expect(fvWalletAfter?.getBalance()).toBe(5); // 10 - 5
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
-
-      // Verify debit transactions were created in both wallets
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
+      const debitTx = await transactionModel.findOne({
+        walletId: globalWalletAfter!.getId.getValue(),
         referenceType: 'publication_vote',
         referenceId: visionPubId,
-        type: 'vote',
       });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      expect(marathonDebitTransaction).toBeTruthy();
-      expect(marathonDebitTransaction?.amount).toBe(5);
-      expect(fvDebitTransaction).toBeTruthy();
-      expect(fvDebitTransaction?.amount).toBe(5);
-    });
-
-    it('should debit from both wallets when creating publication in Marathon with wallet payment', async () => {
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up user with balance in both wallets
-      await walletService.addTransaction(
-        authorId,
-        marathonCommunityIdUsed,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
-      );
-
-      await walletService.addTransaction(
-        authorId,
-        fvCommunityId,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Update Marathon community to require wallet payment
-      await communityModel.updateOne(
-        { id: marathonCommunityIdUsed },
-        { 
-          $set: { 
-            'settings.postCost': 3,
-            'settings.canPayPostFromQuota': false,
-          } 
-        },
-      );
-
-      // Verify initial balances
-      const marathonWalletBefore = await walletService.getWallet(authorId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(authorId, fvCommunityId);
-      expect(marathonWalletBefore?.getBalance()).toBe(10);
-      expect(fvWalletBefore?.getBalance()).toBe(10);
-
-      // Create publication in Marathon community (requires wallet payment)
-      (global as any).testUserId = authorId;
-      const publication = await trpcMutation(app, 'publications.create', {
-        communityId: marathonCommunityIdUsed,
-        content: 'Test publication requiring wallet payment',
-        type: 'text',
-        hashtags: ['test'],
-      });
-
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify both wallets were debited
-      const marathonWalletAfter = await walletService.getWallet(authorId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(authorId, fvCommunityId);
-
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      expect(marathonWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(fvWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
-
-      // Verify debit transactions were created in both wallets
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'publication_creation',
-        referenceId: publication.id,
-        type: 'withdrawal',
-      });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_creation',
-        referenceId: publication.id,
-        type: 'withdrawal',
-      });
-
-      expect(marathonDebitTransaction).toBeTruthy();
-      expect(marathonDebitTransaction?.amount).toBe(3);
-      expect(fvDebitTransaction).toBeTruthy();
-      expect(fvDebitTransaction?.amount).toBe(3);
-    });
-
-    it('should sync balances before debiting when Marathon wallet has more balance', async () => {
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up different balances: Marathon = 10, Future Vision = 5
-      await walletService.addTransaction(
-        voterId,
-        marathonCommunityIdUsed,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
-      );
-
-      await walletService.addTransaction(
-        voterId,
-        fvCommunityId,
-        'credit',
-        5,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Verify initial balances
-      const marathonWalletBefore = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(voterId, fvCommunityId);
-      expect(marathonWalletBefore?.getBalance()).toBe(10);
-      expect(fvWalletBefore?.getBalance()).toBe(5);
-
-      // Vote on Future Vision publication with wallet merits
-      (global as any).testUserId = voterId;
-      await trpcMutation(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: visionPubId,
-        quotaAmount: 0,
-        walletAmount: 3,
-        comment: 'Test vote with wallet',
-      });
-
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify both wallets were debited and synchronized
-      const marathonWalletAfter = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(voterId, fvCommunityId);
-
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      expect(marathonWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(fvWalletAfter?.getBalance()).toBe(7); // 5 + 5 (sync) - 3
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
-
-      // Verify balance sync transaction was created first
-      const fvSyncTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-        type: 'deposit',
-      });
-
-      expect(fvSyncTransaction).toBeTruthy();
-      expect(fvSyncTransaction?.amount).toBe(5); // Sync amount to match Marathon
-
-      // Verify debit transactions were created in both wallets
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      expect(marathonDebitTransaction).toBeTruthy();
-      expect(marathonDebitTransaction?.amount).toBe(3);
-      expect(fvDebitTransaction).toBeTruthy();
-      expect(fvDebitTransaction?.amount).toBe(3);
-    });
-
-    it('should sync balances before debiting when Future Vision wallet has more balance', async () => {
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up different balances: Marathon = 5, Future Vision = 10
-      await walletService.addTransaction(
-        voterId,
-        marathonCommunityIdUsed,
-        'credit',
-        5,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
-      );
-
-      await walletService.addTransaction(
-        voterId,
-        fvCommunityId,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Verify initial balances
-      const marathonWalletBefore = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(voterId, fvCommunityId);
-      expect(marathonWalletBefore?.getBalance()).toBe(5);
-      expect(fvWalletBefore?.getBalance()).toBe(10);
-
-      // Vote on Future Vision publication with wallet merits
-      (global as any).testUserId = voterId;
-      await trpcMutation(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: visionPubId,
-        quotaAmount: 0,
-        walletAmount: 3,
-        comment: 'Test vote with wallet',
-      });
-
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify both wallets were debited and synchronized
-      const marathonWalletAfter = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(voterId, fvCommunityId);
-
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      expect(marathonWalletAfter?.getBalance()).toBe(7); // 5 + 5 (sync) - 3
-      expect(fvWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
-
-      // Verify balance sync transaction was created first
-      const marathonSyncTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-        type: 'deposit',
-      });
-
-      expect(marathonSyncTransaction).toBeTruthy();
-      expect(marathonSyncTransaction?.amount).toBe(5); // Sync amount to match Future Vision
-
-      // Verify debit transactions were created in both wallets
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      expect(marathonDebitTransaction).toBeTruthy();
-      expect(marathonDebitTransaction?.amount).toBe(3);
-      expect(fvDebitTransaction).toBeTruthy();
-      expect(fvDebitTransaction?.amount).toBe(3);
-    });
-
-    it('should debit from both wallets when balances are already synchronized', async () => {
-      // Get the Future Vision community
-      const fvCommunityUsed = await communityService.getCommunityByTypeTag('future-vision');
-      const fvCommunityId = fvCommunityUsed?.id || visionCommunityId;
-      const marathonCommunityUsed = await communityService.getCommunityByTypeTag('marathon-of-good');
-      const marathonCommunityIdUsed = marathonCommunityUsed?.id || marathonCommunityId;
-
-      // Set up synchronized balances: Both = 10
-      await walletService.addTransaction(
-        voterId,
-        marathonCommunityIdUsed,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Marathon',
-      );
-
-      await walletService.addTransaction(
-        voterId,
-        fvCommunityId,
-        'credit',
-        10,
-        'personal',
-        'test_setup',
-        'test',
-        { singular: 'merit', plural: 'merits', genitive: 'merits' },
-        'Test setup - Future Vision',
-      );
-
-      // Verify initial balances are synchronized
-      const marathonWalletBefore = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletBefore = await walletService.getWallet(voterId, fvCommunityId);
-      expect(marathonWalletBefore?.getBalance()).toBe(10);
-      expect(fvWalletBefore?.getBalance()).toBe(10);
-      expect(marathonWalletBefore?.getBalance()).toBe(fvWalletBefore?.getBalance());
-
-      // Vote on Future Vision publication with wallet merits
-      (global as any).testUserId = voterId;
-      await trpcMutation(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: visionPubId,
-        quotaAmount: 0,
-        walletAmount: 3,
-        comment: 'Test vote with wallet',
-      });
-
-      // Wait for async operations
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Verify both wallets were debited
-      const marathonWalletAfter = await walletService.getWallet(voterId, marathonCommunityIdUsed);
-      const fvWalletAfter = await walletService.getWallet(voterId, fvCommunityId);
-
-      expect(marathonWalletAfter).toBeTruthy();
-      expect(fvWalletAfter).toBeTruthy();
-      expect(marathonWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(fvWalletAfter?.getBalance()).toBe(7); // 10 - 3
-      expect(marathonWalletAfter?.getBalance()).toBe(fvWalletAfter?.getBalance());
-
-      // Verify NO balance sync transaction was created (balances already matched)
-      const marathonSyncTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-        type: 'deposit',
-      });
-
-      const fvSyncTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'balance_sync',
-        type: 'deposit',
-      });
-
-      expect(marathonSyncTransaction).toBeFalsy();
-      expect(fvSyncTransaction).toBeFalsy();
-
-      // Verify debit transactions were created in both wallets
-      const marathonDebitTransaction = await transactionModel.findOne({
-        walletId: marathonWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      const fvDebitTransaction = await transactionModel.findOne({
-        walletId: fvWalletAfter.getId.getValue(),
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-        type: 'vote',
-      });
-
-      expect(marathonDebitTransaction).toBeTruthy();
-      expect(marathonDebitTransaction?.amount).toBe(3);
-      expect(fvDebitTransaction).toBeTruthy();
-      expect(fvDebitTransaction?.amount).toBe(3);
+      expect(debitTx).toBeTruthy();
+      expect(debitTx?.amount).toBe(5);
     });
 
     it('should NOT sync when debiting from regular community wallet', async () => {
@@ -1409,13 +906,10 @@ describe('Special Groups Merit Accumulation', () => {
   });
 
   describe('Merit Awarding for Future Vision', () => {
-    it('should NOT credit any wallet when voting on future-vision publication', async () => {
-      (global as any).testUserId = voterId;
-
-      // Create wallet with balance for voter (Future Vision requires wallet voting)
+    it('should NOT credit author wallet when voting on future-vision publication (credits only on withdrawal)', async () => {
       await walletService.addTransaction(
         voterId,
-        visionCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -1425,7 +919,7 @@ describe('Special Groups Merit Accumulation', () => {
         'Test setup',
       );
 
-      // Vote on future vision publication (wallet only for Future Vision)
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: visionPubId,
@@ -1434,25 +928,12 @@ describe('Special Groups Merit Accumulation', () => {
         comment: 'Test vote',
       });
 
-      // Check that no wallet was credited
-      const fvWallet = await walletModel.findOne({
-        userId: authorId,
-        communityId: visionCommunityId,
-      });
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Wallet might exist but should have 0 balance
-      if (fvWallet) {
-        expect(fvWallet.balance).toBe(0);
+      const authorGlobalWallet = await walletService.getWallet(authorId, GLOBAL_COMMUNITY_ID);
+      if (authorGlobalWallet) {
+        expect(authorGlobalWallet.getBalance()).toBe(0);
       }
-
-      // Check that no transaction was created
-      const transaction = await transactionModel.findOne({
-        userId: authorId,
-        referenceType: 'publication_vote',
-        referenceId: visionPubId,
-      });
-
-      expect(transaction).toBeFalsy();
     });
   });
 
@@ -1516,26 +997,33 @@ describe('Special Groups Merit Accumulation', () => {
     });
 
     it('should handle Future Vision community not found gracefully', async () => {
-      // Delete Future Vision community
       await communityModel.deleteOne({ id: visionCommunityId });
 
-      (global as any).testUserId = voterId;
+      await walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        10,
+        'personal',
+        'test_setup',
+        'test',
+        { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        'Test setup',
+      );
 
-      // Vote on marathon publication
+      (global as any).testUserId = voterId;
       await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: marathonPubId,
-        quotaAmount: 5,
-        walletAmount: 0,
+        quotaAmount: 0,
+        walletAmount: 5,
         comment: 'Test vote',
       });
 
-      // Should not crash, just skip merit awarding
       const fvWallet = await walletModel.findOne({
         userId: authorId,
         communityId: visionCommunityId,
       });
-
       expect(fvWallet).toBeFalsy();
     });
   });

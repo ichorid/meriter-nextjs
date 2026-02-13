@@ -26,11 +26,15 @@ describe('ContextCurrencyModeFactor', () => {
   });
 
   describe('Marathon of Good', () => {
-    it('should return quota-only for post/comment in Marathon of Good', async () => {
+    it('should return both-allowed for post/comment in Marathon of Good (global merit, quota disabled in MVP)', async () => {
       const community = {
         id: 'community1',
         typeTag: 'marathon-of-good',
       };
+
+      communityService.getEffectiveMeritSettings.mockReturnValue({
+        quotaRecipients: ['participant', 'lead'],
+      } as any);
 
       const result = await factor.evaluate({
         userId: 'user1',
@@ -41,8 +45,7 @@ describe('ContextCurrencyModeFactor', () => {
       });
 
       expect(result.allowedQuota).toBe(true);
-      expect(result.allowedWallet).toBe(false);
-      expect(result.requiredCurrency).toBe('quota');
+      expect(result.allowedWallet).toBe(true);
     });
   });
 
