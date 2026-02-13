@@ -416,6 +416,7 @@ export class TappalkaService {
           }
         }
       }
+      // C-10: Notify author when pool is depleted (shows now from rating/wallet)
       if (remainingCost > 0) {
         try {
           await this.notificationService.createNotification({
@@ -449,6 +450,7 @@ export class TappalkaService {
     }
 
     // 3. Remaining cost: author wallet or post exits tappalka
+    // C-10: Notify author when post exits tappalka (noAuthorWalletSpend, no funds)
     if (noAuthorWalletSpend) {
       try {
         await this.notificationService.createNotification({

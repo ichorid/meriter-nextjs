@@ -201,7 +201,7 @@ export class InvestmentService {
       sharePercent: totalInvested > 0 ? (inv.amount / totalInvested) * 100 : 0,
     }));
 
-    // Notify post author: INVESTMENT_RECEIVED
+    // C-10: Notify post author (new investment received)
     try {
       const investor = await this.userService.getUser(investorId);
       const investorName = investor?.displayName || 'Someone';
@@ -428,7 +428,7 @@ export class InvestmentService {
       );
     }
 
-    // Notify each investor: INVESTMENT_DISTRIBUTED
+    // C-10: Notify each investor (withdrawal distribution; only those with amount > 0)
     try {
       const author = await this.userService.getUser(post.authorId);
       const authorName = author?.displayName || 'Author';
