@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
@@ -110,13 +111,12 @@ describe('Comments and Votes Integration (e2e)', () => {
       { id: uid(), userId: voterId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // publications.create charges community.settings.postCost from the author's wallet.
-    // This suite focuses on vote-comments listing, so seed wallets to keep setup unblocked.
+    // Post fee and vote deduction use global wallet (GLOBAL_COMMUNITY_ID). Seed global wallets.
     await walletModel.create([
       {
         id: uid(),
         userId: voterId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,
@@ -126,7 +126,7 @@ describe('Comments and Votes Integration (e2e)', () => {
       {
         id: uid(),
         userId: authorId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,

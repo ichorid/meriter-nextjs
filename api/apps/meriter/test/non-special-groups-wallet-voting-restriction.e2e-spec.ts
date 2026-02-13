@@ -16,6 +16,7 @@ import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Default Voting Rules (e2e)', () => {
   jest.setTimeout(60000);
@@ -140,7 +141,7 @@ describe('Default Voting Rules (e2e)', () => {
       updatedAt: new Date(),
     });
 
-    // Create Marathon of Good community
+    // Create Marathon of Good community (quota-only via votingSettings for this test)
     marathonCommunityId = uid();
     await communityModel.create({
       id: marathonCommunityId,
@@ -163,6 +164,7 @@ describe('Default Voting Rules (e2e)', () => {
         spendsMerits: true,
         awardsMerits: true,
       },
+      votingSettings: { currencySource: 'quota-only' },
       hashtags: ['marathon'],
       hashtagDescriptions: {},
       isActive: true,
@@ -234,6 +236,20 @@ describe('Default Voting Rules (e2e)', () => {
         id: uid(),
         userId: testUserId,
         communityId: visionCommunityId,
+        balance: 100,
+        currency: {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        },
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: uid(),
+        userId: testUserId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: {
           singular: 'merit',
@@ -489,7 +505,7 @@ describe('Default Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.message).toContain('only allows quota voting');
       });
     });
 
@@ -520,7 +536,7 @@ describe('Default Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Marathon of Good only allows quota voting');
+        expect(result.error?.message).toContain('only allows quota voting');
       });
     });
   });
@@ -555,7 +571,7 @@ describe('Default Voting Rules (e2e)', () => {
           'Test comment',
           marathonCommunityId
         )
-      ).rejects.toThrow('Marathon of Good only allows quota voting');
+      ).rejects.toThrow(/quota|Wallet voting is not allowed/);
     });
 
     it('should allow wallet voting via VoteService.createVote for Future Vision', async () => {

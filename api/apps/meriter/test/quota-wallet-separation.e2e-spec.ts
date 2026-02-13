@@ -14,6 +14,7 @@ import { uid } from 'uid';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Quota Wallet Separation (e2e)', () => {
   jest.setTimeout(60000);
@@ -266,10 +267,10 @@ describe('Quota Wallet Separation (e2e)', () => {
     it('should only affect wallet balance when voting with wallet only', async () => {
       (global as any).testUserId = testUserId;
 
-      // Give user some wallet balance directly (wallet voting is restricted in non-special groups)
+      // Future Vision uses global wallet for voting (MeritResolver: voting → GLOBAL_COMMUNITY_ID)
       await walletService.addTransaction(
         testUserId,
-        futureVisionCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         50,
         'personal',
@@ -279,10 +280,9 @@ describe('Quota Wallet Separation (e2e)', () => {
         'Seed wallet balance',
       );
 
-      // Get wallet balance after receiving vote
-      const walletBefore = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      const walletBefore = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
-      expect(balanceBefore).toBeGreaterThan(0); // Should have received merits
+      expect(balanceBefore).toBeGreaterThan(0);
 
       // Vote using wallet only
       await trpcMutation(app, 'votes.createWithComment', {
@@ -294,8 +294,8 @@ describe('Quota Wallet Separation (e2e)', () => {
         comment: 'Test comment',
       });
 
-      // Verify wallet balance decreased by exactly walletAmount
-      const walletAfter = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      // Verify global wallet balance decreased by exactly walletAmount
+      const walletAfter = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 10);
 
@@ -332,8 +332,8 @@ describe('Quota Wallet Separation (e2e)', () => {
     it('should validate wallet balance for walletAmount in Future Vision', async () => {
       (global as any).testUserId = testUserId;
 
-      // Ensure wallet is empty (no seed transaction)
-      const walletBefore = await walletService.getWallet(testUserId, futureVisionCommunityId);
+      // Future Vision voting uses global wallet; ensure it is empty
+      const walletBefore = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBe(0);
 

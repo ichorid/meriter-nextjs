@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
@@ -108,11 +109,12 @@ describe('Comments E2E (create, list, vote)', () => {
       { id: uid(), userId: replierId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
+    // Post fee and vote deduction use global wallet
     await walletModel.create([
       {
         id: uid(),
         userId: authorId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,
@@ -122,7 +124,7 @@ describe('Comments E2E (create, list, vote)', () => {
       {
         id: uid(),
         userId: replierId,
-        communityId,
+        communityId: GLOBAL_COMMUNITY_ID,
         balance: 100,
         currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         lastUpdated: now,

@@ -1,6 +1,7 @@
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { createTestPublication } from './helpers/fixtures';
 import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { uid } from 'uid';
@@ -82,10 +83,11 @@ describe('Publications E2E (happy path)', () => {
       updatedAt: now,
     });
 
+    // Post fee is charged from global wallet
     await walletModel.create({
       id: uid(),
       userId,
-      communityId,
+      communityId: GLOBAL_COMMUNITY_ID,
       balance: 100,
       currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
       lastUpdated: now,

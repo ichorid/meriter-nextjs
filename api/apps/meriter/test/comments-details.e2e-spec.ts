@@ -5,6 +5,7 @@ import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { trpcMutation, trpcQuery, trpcQueryWithError } from './helpers/trpc-test-helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { PublicationSchemaClass, PublicationDocument } from '../src/domain/models/publication/publication.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
@@ -276,10 +277,11 @@ describe('comments.getDetails (e2e)', () => {
       updatedAt: now,
     });
 
+    // Future Vision voting uses global wallet
     await walletModel.create({
       id: uid(),
       userId: voterId,
-      communityId: fvCommunityId,
+      communityId: GLOBAL_COMMUNITY_ID,
       balance: 100,
       currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
       lastUpdated: now,
