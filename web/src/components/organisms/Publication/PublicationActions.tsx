@@ -441,11 +441,21 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const withdrawDisabledTitle =
     !allowWithdraw ? t('cannotWithdrawInCommunity') : maxWithdrawAmount <= 0 ? t('noVotesToWithdraw') : undefined;
 
+  const ttlExpiresAt =
+    (effectivePublication as { ttlExpiresAt?: Date | string | null })?.ttlExpiresAt ??
+    (publication as { ttlExpiresAt?: Date | string | null })?.ttlExpiresAt ??
+    null;
+
   return (
     <div className={`pt-3 border-t border-base-300 ${className}`}>
       <PostMetrics
-        investingEnabled={investingEnabled}
         isClosed={isClosed}
+        hideVoteAndScore={hideVoteAndScore}
+        currentScore={currentScore}
+        totalVotes={totalVotes}
+        totalVotesTooltip={t('totalVotesTooltip')}
+        onRatingClick={handleCommentClick}
+        investingEnabled={investingEnabled}
         investmentPool={investmentPool}
         investorCount={investments.length}
         publicationId={publicationId}
@@ -457,6 +467,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onBreakdownOpenChange={() => setBreakdownPostId(null)}
         investorsLabel={tInvesting('investorsCompact', { count: investments.length, defaultValue: 'investors' })}
         viewBreakdownTitle={tInvesting('viewBreakdown', { defaultValue: 'View investment breakdown' })}
+        ttlExpiresAt={ttlExpiresAt}
+        closingSummary={closingSummary}
       />
       <PostActions
         publicationIdForFavorite={publicationIdForFavorite}
@@ -470,13 +482,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onDevAddPositiveVote={handleDevAddPositiveVote}
         onDevAddNegativeVote={handleDevAddNegativeVote}
         isClosed={isClosed}
-        closingSummary={closingSummary}
         onCommentOnlyClick={handleCommentOnlyClick}
         hideVoteAndScore={hideVoteAndScore}
         onCommentClick={handleCommentClick}
-        currentScore={currentScore}
-        totalVotes={totalVotes}
-        totalVotesTooltip={t('totalVotesTooltip')}
         showInvestButton={!!(investingEnabled && myId)}
         investButtonProps={{
           postId: publicationId,

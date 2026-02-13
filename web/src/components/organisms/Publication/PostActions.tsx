@@ -5,15 +5,6 @@ import React from 'react';
 import { Hand, Share2, Plus, Minus } from 'lucide-react';
 import { FavoriteStar } from '@/components/atoms';
 import { InvestButton } from '@/components/organisms/InvestButton';
-import { ClosingSummaryBlock } from './ClosingSummaryBlock';
-import { formatMerits } from '@/lib/utils/currency';
-
-export interface ClosingSummary {
-  totalEarned: number;
-  distributedToInvestors: number;
-  authorReceived: number;
-  spentOnShows: number;
-}
 
 interface PostActionsProps {
   // Favorite
@@ -32,17 +23,13 @@ interface PostActionsProps {
   onDevAddPositiveVote: () => void;
   onDevAddNegativeVote: () => void;
 
-  // Closed state
+  // Closed state (ClosingSummaryBlock shown in PostMetrics)
   isClosed: boolean;
-  closingSummary: ClosingSummary | undefined;
   onCommentOnlyClick: () => void;
 
   // Active state
   hideVoteAndScore: boolean;
   onCommentClick: (e: React.MouseEvent) => void;
-  currentScore: number;
-  totalVotes: number | undefined;
-  totalVotesTooltip: string;
 
   // Invest
   showInvestButton: boolean;
@@ -93,13 +80,9 @@ export const PostActions: React.FC<PostActionsProps> = ({
   onDevAddPositiveVote,
   onDevAddNegativeVote,
   isClosed,
-  closingSummary,
   onCommentOnlyClick,
   hideVoteAndScore,
   onCommentClick,
-  currentScore,
-  totalVotes,
-  totalVotesTooltip,
   showInvestButton,
   investButtonProps,
   showWithdrawButton,
@@ -158,14 +141,9 @@ export const PostActions: React.FC<PostActionsProps> = ({
         )}
       </div>
 
-      {/* Center: when closed show ClosingSummaryBlock + Comment; else score/invest/withdraw */}
+      {/* Center: when closed show Comment only (ClosingSummaryBlock in PostMetrics); else Comment/invest/withdraw */}
       {isClosed ? (
         <div className="flex flex-col items-center gap-2">
-          {closingSummary ? (
-            <ClosingSummaryBlock summary={closingSummary} />
-          ) : (
-            <span className="text-sm text-base-content/50">Closed</span>
-          )}
           <button
             onClick={onCommentOnlyClick}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
@@ -179,38 +157,11 @@ export const PostActions: React.FC<PostActionsProps> = ({
         <div className="flex flex-col items-center gap-2">
           <button
             onClick={onCommentClick}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95 group"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
             title={commentsTitle}
           >
-            <Hand className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 transition-colors" />
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-lg font-semibold tabular-nums transition-colors ${
-                  currentScore > 0
-                    ? 'text-success group-hover:text-success/80'
-                    : currentScore < 0
-                      ? 'text-error group-hover:text-error/80'
-                      : 'text-base-content/40 group-hover:text-base-content/60'
-                }`}
-              >
-                {currentScore > 0 ? '+' : ''}
-                {formatMerits(currentScore)}
-              </span>
-              {totalVotes !== undefined &&
-                typeof totalVotes === 'number' &&
-                !Number.isNaN(totalVotes) &&
-                typeof currentScore === 'number' &&
-                !Number.isNaN(currentScore) &&
-                totalVotes > currentScore && (
-                  <span
-                    className="text-base-content/40 text-sm font-medium tabular-nums group-hover:text-base-content/50 transition-colors"
-                    title={totalVotesTooltip}
-                  >
-                    ({totalVotes > 0 ? '+' : ''}
-                    {formatMerits(totalVotes)})
-                  </span>
-                )}
-            </div>
+            <Hand className="w-4 h-4 text-base-content/50" />
+            <span className="text-sm font-medium text-base-content/70">{commentsTitle}</span>
           </button>
 
           {showInvestButton && (
