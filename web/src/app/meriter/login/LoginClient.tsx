@@ -4,6 +4,7 @@ import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
+import { useCaptiveBrowser } from '@/lib/captive-browser';
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -44,6 +45,8 @@ export default function PageMeriterLogin() {
         oauthMailru,
     ]);
 
+    const { isCaptive: captiveBrowser } = useCaptiveBrowser();
+
     // Show loading state while fetching config (optional - config query is fast)
     // But we can still render the form with build-time defaults
     if (isLoading && !runtimeConfig) {
@@ -71,6 +74,7 @@ export default function PageMeriterLogin() {
                     smsEnabled={smsEnabled}
                     phoneEnabled={phoneEnabled}
                     emailEnabled={emailEnabled}
+                    captiveBrowser={captiveBrowser}
                 />
 
                 <div className="mt-8 flex justify-center">

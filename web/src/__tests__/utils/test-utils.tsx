@@ -29,6 +29,16 @@ const mockMessages = {
     title: 'Login',
     welcome: 'Welcome',
     subtitle: 'Sign in to continue',
+    captiveBanner: {
+      message: 'You\'re viewing this in an in-app browser. Open in Safari or Chrome.',
+      copyLink: 'Copy link',
+      openInBrowser: 'Open in browser',
+      toastCopied: 'Link copied. Open it in Safari or Chrome.',
+    },
+    signInWithSms: 'Sign in with SMS',
+    signInWithEmail: 'Sign in with Email',
+    signInWithCall: 'Sign in with Call',
+    noAuthenticationProviders: 'No authentication providers configured.',
     telegramWidget: {
       instructions: 'Click the button below to sign in with Telegram',
     },

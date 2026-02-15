@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthProviderService } from './auth.service';
+import { AuthMagicLinkService } from './auth-magic-link.service';
 import { SmsProviderService } from './sms-provider.service';
 import { EmailProviderService } from './email-provider.service';
 import { UserGuard } from '../../user.guard';
@@ -31,9 +32,43 @@ import { AppConfig } from '../../config/configuration';
  * - POST /api/v1/auth/logout -> Use trpc.auth.logout (authenticated only)
  * - GET /api/v1/auth/me -> @deprecated Use trpc.users.getMe instead
  */
+/** In-memory rate limit for magic-link redeem: max 30 requests per minute per IP. */
+const MAGIC_LINK_RATE_LIMIT_PER_MIN = 30;
+
 @Controller('api/v1/auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
+
+  /** IP -> { count, resetAt } for GET /link/:token rate limiting. */
+  private readonly magicLinkRateLimit = new Map<string, { count: number; resetAt: number }>();
+
+  private getClientIp(req: unknown): string {
+    const r = req as { ip?: string; headers?: Record<string, unknown>; connection?: { remoteAddress?: string } } | null;
+    const forwarded = r?.headers?.['x-forwarded-for'];
+    if (forwarded) {
+      const raw = Array.isArray(forwarded) ? forwarded[0] : String(forwarded);
+      return String(raw).split(',')[0]?.trim() || 'unknown';
+    }
+    if (r?.ip) return r.ip;
+    return r?.connection?.remoteAddress ?? 'unknown';
+  }
+
+  private isMagicLinkRedeemRateLimited(req: unknown): boolean {
+    const ip = this.getClientIp(req);
+    const now = Date.now();
+    const windowMs = 60 * 1000;
+    let entry = this.magicLinkRateLimit.get(ip);
+    if (!entry || entry.resetAt < now) {
+      entry = { count: 1, resetAt: now + windowMs };
+      this.magicLinkRateLimit.set(ip, entry);
+      return false;
+    }
+    entry.count += 1;
+    if (entry.count > MAGIC_LINK_RATE_LIMIT_PER_MIN) {
+      return true;
+    }
+    return false;
+  }
 
   private isHttpsRequest(req: unknown): boolean {
     const r = req as { secure?: unknown; headers?: Record<string, unknown> } | null;
@@ -75,11 +110,12 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthProviderService,
+    private readonly authMagicLinkService: AuthMagicLinkService,
     private readonly smsProviderService: SmsProviderService,
     private readonly emailProviderService: EmailProviderService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
-  ) { }
+  ) {}
 
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
@@ -908,6 +944,53 @@ export class AuthController {
       const errorMessage = error instanceof Error ? error.message : 'Failed to verify SMS';
       this.logger.error(`SMS verify error: ${errorMessage}`, error);
       throw new InternalServerError(errorMessage);
+    }
+  }
+
+  /**
+   * Redeem magic link (one-time auth link from SMS/email).
+   * GET /api/v1/auth/link/:token
+   * Redirects to app with JWT cookie on success, or to login with error on invalid/expired/used token.
+   */
+  @Get('link/:token')
+  async redeemMagicLink(
+    @Param('token') token: string,
+    @Req() req: any,
+    @Res() res: any,
+  ) {
+    const appUrl = this.configService.get('app')?.url ?? this.configService.get('APP_URL') ?? 'http://localhost';
+    const loginUrl = `${appUrl}/meriter/login?error=link_expired`;
+    const profileUrl = `${appUrl}/meriter/profile`;
+
+    if (this.isMagicLinkRedeemRateLimited(req)) {
+      this.logger.warn('Magic link redeem rate limit exceeded');
+      return res.redirect(302, loginUrl);
+    }
+
+    const result = await this.authMagicLinkService.redeem(token);
+    if (!result) {
+      return res.redirect(302, loginUrl);
+    }
+
+    try {
+      const authResult =
+        result.channel === 'sms'
+          ? await this.authService.authenticateSms(result.target)
+          : await this.authService.authenticateEmail(result.target);
+
+      const cookieDomain = this.cookieManager.getCookieDomain();
+      const isSecure = this.isHttpsRequest(req);
+      const nodeEnv = this.configService.get('NODE_ENV', 'development');
+      const isProduction = nodeEnv === 'production' || isSecure;
+
+      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+      this.cookieManager.setJwtCookie(res, authResult.jwt, cookieDomain, isProduction, req);
+
+      this.logger.log(`Magic link auth successful for ${result.channel}`);
+      return res.redirect(302, profileUrl);
+    } catch (error) {
+      this.logger.error(`Magic link redeem auth failed: ${error}`);
+      return res.redirect(302, loginUrl);
     }
   }
 

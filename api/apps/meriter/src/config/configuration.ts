@@ -88,6 +88,18 @@ export interface PhoneConfig {
 }
 
 /**
+ * Magic link (one-time auth link in SMS/Email) configuration
+ */
+export interface MagicLinkConfig {
+  /** Base URL for magic links (from MAGIC_LINK_BASE_URL or APP_URL) */
+  baseUrl: string;
+  /** Token TTL in minutes (default: 15) */
+  ttlMinutes: number;
+  /** Path for magic link URL (default: /auth/link for app route; use /api/v1/auth/link to point directly to API) */
+  path: string;
+}
+
+/**
  * Email Authentication Configuration
  */
 export interface EmailConfig {
@@ -243,6 +255,9 @@ export interface AppConfig {
 
   /** Email authentication settings */
   email: EmailConfig;
+
+  /** Magic link (SMS/Email one-time link) settings */
+  magicLink: MagicLinkConfig;
 
   /** Storage service configurations */
   storage: StorageConfig;
@@ -408,6 +423,11 @@ export default (): AppConfig => {
         language: env.EMAIL_LANGUAGE || 'ru',
         skipUnsubscribe: parseInt(env.EMAIL_SKIP_UNSUBSCRIBE || '0', 10),
       },
+    },
+    magicLink: {
+      baseUrl: env.MAGIC_LINK_BASE_URL || env.APP_URL || deriveAppUrl(),
+      ttlMinutes: parseInt(env.MAGIC_LINK_TTL_MINUTES || '15', 10) || 15,
+      path: env.MAGIC_LINK_PATH || '/auth/link',
     },
     storage: {
       s3: {

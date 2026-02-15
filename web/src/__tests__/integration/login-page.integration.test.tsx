@@ -48,6 +48,16 @@ const mockMessages = {
     fakeLogin: 'Fake Login',
     superadminLogin: 'Superadmin Login',
     authenticating: 'Authenticating...',
+    signInWithSms: 'Sign in with SMS',
+    signInWithEmail: 'Sign in with Email',
+    signInWithCall: 'Sign in with Call',
+    captiveBanner: {
+      message: "You're viewing this in an in-app browser. Open in Safari or Chrome.",
+      copyLink: 'Copy link',
+      openInBrowser: 'Open in browser',
+      toastCopied: 'Link copied. Open it in Safari or Chrome.',
+    },
+    noAuthenticationProviders: 'No authentication providers configured.',
   },
   registration: {
     inviteCodeLabel: 'Invite Code',
@@ -79,6 +89,15 @@ jest.mock('@telegram-apps/sdk-react', () => ({
   useSignal: jest.fn(() => ({ value: null })),
   initDataRaw: { value: null },
   isTMA: jest.fn(() => Promise.resolve(false)),
+}));
+
+jest.mock('@/lib/captive-browser', () => ({
+  isCaptiveBrowser: jest.fn(() => false),
+  useCaptiveBrowser: jest.fn(() => ({
+    isCaptive: false,
+    copyLink: jest.fn().mockResolvedValue(undefined),
+    openInBrowser: jest.fn(),
+  })),
 }));
 
 // Mock AuthContext
@@ -457,6 +476,51 @@ describe('Login Page Integration', () => {
         // Invite code feature has been removed
         expect(callArgs[1]).not.toContain('invite');
       }
+    });
+  });
+
+  describe('Captive browser', () => {
+    it('when captiveBrowser is true shows only SMS and Email and captive banner', () => {
+      render(
+        <TestWrapper>
+          <LoginForm
+            captiveBrowser={true}
+            smsEnabled={true}
+            emailEnabled={true}
+            phoneEnabled={true}
+            enabledProviders={['google', 'telegram']}
+            authnEnabled={true}
+          />
+        </TestWrapper>
+      );
+
+      // Banner and actions (use keys; next-intl may render keys in test)
+      expect(screen.getByText('login.captiveBanner.message')).toBeInTheDocument();
+      expect(screen.getByText('login.captiveBanner.copyLink')).toBeInTheDocument();
+      expect(screen.getByText('login.captiveBanner.openInBrowser')).toBeInTheDocument();
+      expect(screen.getByText('login.signInWithSms')).toBeInTheDocument();
+      expect(screen.getByText('login.signInWithEmail')).toBeInTheDocument();
+      expect(screen.queryByText('login.signInWithCall')).not.toBeInTheDocument();
+    });
+
+    it('when captiveBrowser is false shows OAuth, SMS, Call, Email per props', () => {
+      render(
+        <TestWrapper>
+          <LoginForm
+            captiveBrowser={false}
+            smsEnabled={true}
+            emailEnabled={true}
+            phoneEnabled={true}
+            enabledProviders={['google']}
+            authnEnabled={false}
+          />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('login.signInWithSms')).toBeInTheDocument();
+      expect(screen.getByText('login.signInWithEmail')).toBeInTheDocument();
+      expect(screen.getByText('login.signInWithCall')).toBeInTheDocument();
+      expect(screen.queryByText('login.captiveBanner.message')).not.toBeInTheDocument();
     });
   });
 });

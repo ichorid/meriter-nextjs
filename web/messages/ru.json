@@ -419,6 +419,12 @@
             "detected": "Обнаружено Telegram Web App, выполняется авторизация..."
         },
         "noAuthenticationProviders": "Нет настроенных провайдеров авторизации. Пожалуйста, свяжитесь с администратором.",
+        "captiveBanner": {
+            "message": "Вы открыли страницу во встроенном браузере. Для других способов входа (Яндекс, Google и др.) откройте эту страницу в Safari или Chrome.",
+            "copyLink": "Скопировать ссылку",
+            "openInBrowser": "Открыть в браузере",
+            "toastCopied": "Ссылка скопирована. Откройте её в Safari или Chrome."
+        },
         "telegramWidget": {
             "instructions": "Нажмите кнопку ниже для входа через Telegram"
         },

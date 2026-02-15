@@ -29,6 +29,17 @@ jest.mock('@telegram-apps/sdk-react', () => ({
   isTMA: jest.fn(() => Promise.resolve(false)),
 }));
 
+const mockCopyLink = jest.fn().mockResolvedValue(undefined);
+const mockOpenInBrowser = jest.fn();
+jest.mock('@/lib/captive-browser', () => ({
+  isCaptiveBrowser: jest.fn(() => false),
+  useCaptiveBrowser: jest.fn(() => ({
+    isCaptive: false,
+    copyLink: mockCopyLink,
+    openInBrowser: mockOpenInBrowser,
+  })),
+}));
+
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseBotConfig = useBotConfig as jest.MockedFunction<typeof useBotConfig>;
 
@@ -281,6 +292,48 @@ describe('LoginForm', () => {
       backButton.click();
 
       expect(mockPush).toHaveBeenCalledWith('/');
+    });
+  });
+
+  describe('Captive browser', () => {
+    it('when captiveBrowser is true shows only SMS and Email and captive banner', () => {
+      const { getByText, queryByText } = renderWithProviders(
+        <LoginForm
+          captiveBrowser={true}
+          smsEnabled={true}
+          emailEnabled={true}
+          phoneEnabled={true}
+          enabledProviders={['yandex', 'google']}
+          authnEnabled={true}
+        />,
+      );
+
+      expect(getByText("You're viewing this in an in-app browser. Open in Safari or Chrome.")).toBeInTheDocument();
+      expect(getByText('Copy link')).toBeInTheDocument();
+      expect(getByText('Open in browser')).toBeInTheDocument();
+      expect(getByText('Sign in with SMS')).toBeInTheDocument();
+      expect(getByText('Sign in with Email')).toBeInTheDocument();
+
+      expect(queryByText('Sign in with Call')).not.toBeInTheDocument();
+      expect(queryByText('Or continue with')).not.toBeInTheDocument();
+    });
+
+    it('when captiveBrowser is false shows OAuth, SMS, Call, Email per props', () => {
+      const { getByText, queryByText } = renderWithProviders(
+        <LoginForm
+          captiveBrowser={false}
+          smsEnabled={true}
+          emailEnabled={true}
+          phoneEnabled={true}
+          enabledProviders={['yandex']}
+          authnEnabled={false}
+        />,
+      );
+
+      expect(getByText('Sign in with SMS')).toBeInTheDocument();
+      expect(getByText('Sign in with Email')).toBeInTheDocument();
+      expect(getByText('Sign in with Call')).toBeInTheDocument();
+      expect(queryByText("You're viewing this in an in-app browser. Open in Safari or Chrome.")).not.toBeInTheDocument();
     });
   });
 });

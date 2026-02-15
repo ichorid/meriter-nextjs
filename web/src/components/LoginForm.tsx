@@ -35,8 +35,9 @@ import {
 import { Separator } from "@/components/ui/shadcn/separator";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
-import { Phone, Mail } from "lucide-react";
+import { Phone, Mail, Copy, ExternalLink } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
+import { useCaptiveBrowser } from "@/lib/captive-browser";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
 import { SmsAuthDialog } from "./SmsAuthDialog";
@@ -50,6 +51,8 @@ interface LoginFormProps {
     smsEnabled?: boolean;
     phoneEnabled?: boolean;
     emailEnabled?: boolean;
+    /** When true (in-app/captive browser), show only SMS and Email and a banner to open in system browser */
+    captiveBrowser?: boolean;
 }
 
 export function LoginForm({
@@ -59,6 +62,7 @@ export function LoginForm({
     smsEnabled = false,
     phoneEnabled = false,
     emailEnabled = false,
+    captiveBrowser = false,
 }: LoginFormProps) {
     const searchParams = useSearchParams();
     const t = useTranslations("login");
@@ -69,6 +73,7 @@ export function LoginForm({
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
+    const { copyLink, openInBrowser } = useCaptiveBrowser();
 
     // Local loading state for OAuth authentication
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
@@ -250,6 +255,67 @@ export function LoginForm({
                                             }}
                                         />
                                     </div>
+                                ) : captiveBrowser ? (
+                                    <>
+                                        {/* Captive (in-app) browser: banner + only SMS and Email */}
+                                        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-4 space-y-3">
+                                            <p className="text-sm text-foreground">
+                                                {t("captiveBanner.message")}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        await copyLink();
+                                                        addToast(t("captiveBanner.toastCopied"), "default");
+                                                    }}
+                                                >
+                                                    <Copy className="mr-2 h-4 w-4" />
+                                                    {t("captiveBanner.copyLink")}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={openInBrowser}
+                                                >
+                                                    <ExternalLink className="mr-2 h-4 w-4" />
+                                                    {t("captiveBanner.openInBrowser")}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {smsEnabled && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-center"
+                                                    onClick={() => setSmsDialogOpen(true)}
+                                                    disabled={isLoading || isOAuthLoading}
+                                                >
+                                                    <Phone className="mr-2 h-4 w-4" />
+                                                    {t("signInWithSms")}
+                                                </Button>
+                                            )}
+                                            {emailEnabled && (
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full justify-center"
+                                                    onClick={() => setEmailDialogOpen(true)}
+                                                    disabled={isLoading || isOAuthLoading}
+                                                >
+                                                    <Mail className="mr-2 h-4 w-4" />
+                                                    {t("signInWithEmail")}
+                                                </Button>
+                                            )}
+                                            {(!smsEnabled && !emailEnabled) && (
+                                                <p className="text-sm text-muted-foreground text-center">
+                                                    {t("noAuthenticationProviders")}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </>
                                 ) : (
                                     <>
                                     {/* OAuth Providers */}

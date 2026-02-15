@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SmsOtp, SmsOtpDocument } from '../../domain/models/auth/sms-otp.schema';
 import { AppConfig } from '../../config/configuration';
+import { AuthMagicLinkService } from './auth-magic-link.service';
 import axios from 'axios';
 
 /**
@@ -187,6 +188,7 @@ export class SmsProviderService {
         private readonly configService: ConfigService<AppConfig>,
         @InjectModel(SmsOtp.name)
         private readonly smsOtpModel: Model<SmsOtpDocument>,
+        private readonly authMagicLinkService: AuthMagicLinkService,
     ) {
         const smsConfig = this.configService.get('sms');
         const providerName = smsConfig?.provider || 'smsru';
@@ -282,8 +284,9 @@ export class SmsProviderService {
             attempts: 0,
         });
 
-        // Send SMS
-        const message = `Your Meriter verification code: ${otpCode}. Valid for ${this.otpExpiryMinutes} minutes.`;
+        // Create magic link and append to message
+        const { linkUrl } = await this.authMagicLinkService.createToken('sms', phoneNumber);
+        const message = `Your Meriter verification code: ${otpCode}. Valid for ${this.otpExpiryMinutes} minutes. Or sign in instantly: ${linkUrl}`;
         await this.provider.sendSms(phoneNumber, message, options);
 
         this.logger.log(`OTP sent to ${phoneNumber}, expires at ${expiresAt.toISOString()}`);

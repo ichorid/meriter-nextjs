@@ -4,6 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AppConfig } from '../../config/configuration';
 import { EmailOtp, EmailOtpDocument } from '../../domain/models/auth/email-otp.schema';
+import { AuthMagicLinkService } from './auth-magic-link.service';
 
 @Injectable()
 export class EmailProviderService {
@@ -15,7 +16,8 @@ export class EmailProviderService {
     constructor(
         private readonly configService: ConfigService<AppConfig>,
         @InjectModel(EmailOtp.name) private emailOtpModel: Model<EmailOtpDocument>,
-    ) { }
+        private readonly authMagicLinkService: AuthMagicLinkService,
+    ) {}
 
     private initTransporter() {
         // This method is no longer used for SMTP but kept for structure if we need init logic
@@ -42,6 +44,8 @@ export class EmailProviderService {
             attempts: 0,
         });
 
+        const { linkUrl } = await this.authMagicLinkService.createToken('email', email);
+
         // Debug config
         const emailConfig = this.configService.get('email');
         this.logger.debug(`Full Email Config: ${JSON.stringify(emailConfig)}`);
@@ -51,7 +55,7 @@ export class EmailProviderService {
         // Send Email
         if (emailConfig?.enabled && emailConfig.api?.key) {
             try {
-                await this.sendViaWebApi(email, otpCode, emailConfig);
+                await this.sendViaWebApi(email, otpCode, linkUrl, emailConfig);
                 this.logger.log(`Email sent successfully to ${email} via Unisender Web API`);
             } catch (error) {
                 this.logger.error(`Failed to send email to ${email}: ${error}`);
@@ -71,7 +75,7 @@ export class EmailProviderService {
      * Send email via Unisender Web API
      * @see https://godocs.unisender.ru/web-api-ref#email-send
      */
-    private async sendViaWebApi(email: string, otpCode: string, emailConfig: any): Promise<void> {
+    private async sendViaWebApi(email: string, otpCode: string, magicLinkUrl: string, emailConfig: any): Promise<void> {
         const apiUrl = `${emailConfig.api.url}/email/send.json`;
         const apiKey = emailConfig.api.key;
 
@@ -83,8 +87,8 @@ export class EmailProviderService {
                     },
                 ],
                 body: {
-                    html: `<p>Your login code is: <strong>${otpCode}</strong></p><p>It expires in ${this.otpTtlMinutes} minutes.</p>`,
-                    plaintext: `Your login code is: ${otpCode}. It expires in ${this.otpTtlMinutes} minutes.`,
+                    html: `<p>Your login code is: <strong>${otpCode}</strong></p><p>It expires in ${this.otpTtlMinutes} minutes.</p><p>Or <a href="${magicLinkUrl}">sign in instantly</a>.</p>`,
+                    plaintext: `Your login code is: ${otpCode}. It expires in ${this.otpTtlMinutes} minutes. Or sign in instantly: ${magicLinkUrl}`,
                 },
                 subject: 'Your Meriter Login Code',
                 from_email: emailConfig.from.address,

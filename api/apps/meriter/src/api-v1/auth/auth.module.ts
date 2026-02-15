@@ -11,6 +11,8 @@ import { PasskeyChallenge, PasskeyChallengeSchema } from '../../domain/models/au
 import { SmsOtp, SmsOtpSchema } from '../../domain/models/auth/sms-otp.schema';
 import { EmailProviderService } from './email-provider.service';
 import { EmailOtp, EmailOtpSchema } from '../../domain/models/auth/email-otp.schema';
+import { AuthMagicLink, AuthMagicLinkSchema } from '../../domain/models/auth/auth-magic-link.schema';
+import { AuthMagicLinkService } from './auth-magic-link.service';
 
 // Conditionally import GoogleStrategy only if Google OAuth is configured
 // Google is one of many possible auth providers - it's optional
@@ -66,11 +68,13 @@ const GoogleStrategy = getGoogleStrategy();
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },
       { name: SmsOtp.name, schema: SmsOtpSchema },
       { name: EmailOtp.name, schema: EmailOtpSchema },
+      { name: AuthMagicLink.name, schema: AuthMagicLinkSchema },
     ]),
   ],
   controllers: [AuthController],
   providers: [
     AuthProviderService,
+    AuthMagicLinkService,
     SmsProviderService,
     EmailProviderService,
     // Conditionally register GoogleStrategy only if Google OAuth is configured
