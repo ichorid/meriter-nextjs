@@ -45,7 +45,7 @@ export interface AuthnConfig {
   enabled: boolean;
   /** Relying Party ID (from RP_ID env var, default: 'localhost') */
   rpId?: string;
-  /** Relying Party Origin (from RP_ORIGIN or APP_URL env var) */
+  /** Relying Party Origin (from RP_ORIGIN or derived from DOMAIN) */
   rpOrigin?: string;
   /** Relying Party Name (from RP_NAME env var, default: 'Meriter') */
   rpName?: string;
@@ -91,7 +91,7 @@ export interface PhoneConfig {
  * Magic link (one-time auth link in SMS/Email) configuration
  */
 export interface MagicLinkConfig {
-  /** Base URL for magic links (from MAGIC_LINK_BASE_URL or APP_URL) */
+  /** Base URL for magic links (same as site URL, derived from DOMAIN) */
   baseUrl: string;
   /** Token TTL in minutes (default: 15) */
   ttlMinutes: number;
@@ -205,8 +205,7 @@ export interface DevConfig {
  * 
  * Flat environment variables (for backward compatibility):
  * - NODE_ENV: 'development' | 'production' | 'test'
- * - DOMAIN: Application domain (required)
- * - APP_URL: Application URL (optional, derived from DOMAIN if not set)
+ * - DOMAIN: Application domain (required; site URL is derived from it)
  */
 export interface AppConfig {
   /** Application core settings */
@@ -276,8 +275,6 @@ export interface AppConfig {
   NODE_ENV?: 'development' | 'production' | 'test';
   /** Application domain (from DOMAIN env var, required) */
   DOMAIN?: string;
-  /** Application URL (from APP_URL env var, optional) */
-  APP_URL?: string;
   /** Google OAuth redirect URI (legacy env var, optional) */
   GOOGLE_REDIRECT_URI?: string;
   /** Disable axios calls (for testing, from NO_AXIOS env var) */
@@ -287,35 +284,23 @@ export interface AppConfig {
 }
 
 /**
- * Derive application URL from DOMAIN
- * Protocol: http:// for localhost, https:// for production
- * Falls back to APP_URL for backward compatibility if DOMAIN is not set
- * REQUIRES: DOMAIN environment variable must be set (validated by validation schema)
- * Exception: In test environment, defaults to localhost for testing
+ * Derive application/site URL from DOMAIN.
+ * Protocol: http:// for localhost, https:// otherwise.
+ * REQUIRES: DOMAIN (validated by schema). In test/development, defaults to http://localhost when DOMAIN is unset.
  */
 function deriveAppUrl(): string {
   const domain = process.env.DOMAIN;
   const nodeEnv = process.env.NODE_ENV || 'development';
 
   if (!domain) {
-    // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
-    // However, this should not happen as validation schema requires DOMAIN
-    if (process.env.APP_URL) {
-      return process.env.APP_URL;
-    }
-
-    // Allow default for test and development environments
     if (nodeEnv === 'test' || nodeEnv === 'development') {
       return 'http://localhost';
     }
-
     throw new Error(
-      'DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).\n' +
-      'For local development, you can set DOMAIN=localhost or leave it unset (defaults to http://localhost).'
+      'DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, meriter.pro). For local development set DOMAIN=localhost.'
     );
   }
 
-  // Use http:// for localhost, https:// for production
   const protocol = domain === 'localhost' ? 'http://' : 'https://';
   return `${protocol}${domain}`;
 }
@@ -388,7 +373,7 @@ export default (): AppConfig => {
     authn: {
       enabled: env.AUTHN_ENABLED === 'true',
       rpId: env.RP_ID,
-      rpOrigin: env.RP_ORIGIN || env.APP_URL,
+      rpOrigin: env.RP_ORIGIN || deriveAppUrl(),
       rpName: env.RP_NAME,
     },
     sms: {
@@ -425,7 +410,7 @@ export default (): AppConfig => {
       },
     },
     magicLink: {
-      baseUrl: env.MAGIC_LINK_BASE_URL || env.APP_URL || deriveAppUrl(),
+      baseUrl: deriveAppUrl(),
       ttlMinutes: parseInt(env.MAGIC_LINK_TTL_MINUTES || '15', 10) || 15,
       path: env.MAGIC_LINK_PATH || '/auth/link',
     },
@@ -469,7 +454,6 @@ export default (): AppConfig => {
     // Flat env vars for backward compatibility
     NODE_ENV: nodeEnv,
     DOMAIN: env.DOMAIN,
-    APP_URL: env.APP_URL,
     GOOGLE_REDIRECT_URI: env.GOOGLE_REDIRECT_URI,
     noAxios: env.NO_AXIOS === 'true',
     admin: env.ADMIN,

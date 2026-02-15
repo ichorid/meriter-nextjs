@@ -15,42 +15,25 @@ import { z } from 'zod';
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-export';
 
 /**
- * Derive application URL from DOMAIN
- * Protocol: http:// for localhost, https:// for production
- * Uses runtime detection on client-side (allows one build for all environments)
- * Falls back to APP_URL for backward compatibility if DOMAIN is not set
- * REQUIRES: DOMAIN environment variable on server-side (not needed on client)
+ * Derive application URL from DOMAIN.
+ * Protocol: http:// for localhost, https:// otherwise.
+ * Client-side: can use window.location or DOMAIN env. Server-side: requires DOMAIN (or default in dev/build).
  */
 function deriveAppUrl(): string {
-  // On client-side, use runtime detection from window.location
-  // This allows one build to work across multiple environments (dev, stage, prod)
   if (typeof window !== 'undefined') {
-    // Try env var first (if set at build time for specific use cases)
     const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
     if (domain) {
       const protocol = domain === 'localhost' ? 'http://' : 'https://';
       return `${protocol}${domain}`;
     }
-    // Runtime fallback: use current location (allows one build for all environments)
     return `${window.location.protocol}//${window.location.host}`;
   }
 
-  // Server-side: require env var (for SSR and API routes)
   const domain = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN;
-
   if (!domain) {
-    // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
-    if (process.env.APP_URL) {
-      return process.env.APP_URL;
-    }
-    // Build time or development: no DOMAIN required
-    if (isBuildTime || process.env.NODE_ENV === 'development') {
-      return 'http://localhost';
-    }
-    throw new Error('DOMAIN environment variable is required on server-side. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    if (isBuildTime || process.env.NODE_ENV === 'development') return 'http://localhost';
+    throw new Error('DOMAIN is required on server-side. Set DOMAIN=your.domain or DOMAIN=localhost.');
   }
-
-  // Use http:// for localhost, https:// for production
   const protocol = domain === 'localhost' ? 'http://' : 'https://';
   return `${protocol}${domain}`;
 }

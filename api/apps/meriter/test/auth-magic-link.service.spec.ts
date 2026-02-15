@@ -7,7 +7,7 @@ describe('AuthMagicLinkService', () => {
   let authMagicLinkService: AuthMagicLinkService;
 
   beforeAll(async () => {
-    process.env.APP_URL = process.env.APP_URL || 'http://localhost:3000';
+    process.env.DOMAIN = process.env.DOMAIN || 'localhost';
     const context = await TestSetupHelper.createTestApp();
     app = context.app;
     testDb = context.testDb;

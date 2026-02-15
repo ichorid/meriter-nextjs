@@ -958,7 +958,7 @@ export class AuthController {
     @Req() req: any,
     @Res() res: any,
   ) {
-    const appUrl = this.configService.get('app')?.url ?? this.configService.get('APP_URL') ?? 'http://localhost';
+    const appUrl = this.configService.get('app')?.url ?? 'http://localhost';
     const loginUrl = `${appUrl}/meriter/login?error=link_expired`;
     const profileUrl = `${appUrl}/meriter/profile`;
 

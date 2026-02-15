@@ -124,8 +124,6 @@ services:
       - TELEGRAM_API_URL=${TELEGRAM_API_URL:-}
       - BANNED_CHAT_ID=${BANNED_CHAT_ID:-}
       - MONGO_URL_SECONDARY=${MONGO_URL_SECONDARY:-}
-      # Backward compatibility: APP_URL (used for domain derivation if DOMAIN is not set)
-      - APP_URL=${APP_URL:-}
       # WebAuthn / Passkeys
       - AUTHN_ENABLED=${AUTHN_ENABLED:-false}
       - RP_ID=${RP_ID:-localhost}

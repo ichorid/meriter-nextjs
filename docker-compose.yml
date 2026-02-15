@@ -79,7 +79,7 @@ services:
     env_file:
       - .env
     environment:
-      - APP_URL=https://${DOMAIN}
+      - DOMAIN=${DOMAIN}
       - BOT_USERNAME=${BOT_USERNAME}
       - BOT_TOKEN=${BOT_TOKEN}
     depends_on:

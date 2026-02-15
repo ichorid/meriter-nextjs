@@ -229,9 +229,9 @@ export class AppConfigService {
     rpName: string;
   } {
     const rpId = ((this.configService.get as any)('authn.rpId') ?? 'localhost') as string;
-    const rpOrigin = 
+    const rpOrigin =
       ((this.configService.get as any)('authn.rpOrigin') as string | undefined) ||
-      (this.configService.get('APP_URL') as string | undefined) ||
+      (this.configService.get('app')?.url as string | undefined) ||
       'http://localhost:3000';
     const rpName = ((this.configService.get as any)('authn.rpName') ?? 'Meriter') as string;
 

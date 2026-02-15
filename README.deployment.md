@@ -60,7 +60,7 @@ If GitHub Actions workflows are configured in your fork, you may build and push 
    ```env
    BOT_TOKEN=your_bot_token_from_botfather
    BOT_USERNAME=your_bot_username
-   APP_URL=https://yourdomain.com
+   DOMAIN=yourdomain.com
    ```
 
    **S3 Storage (optional):**

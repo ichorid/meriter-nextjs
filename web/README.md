@@ -90,7 +90,7 @@ The application will be available at `http://localhost:8001`.
 |----------|-------------|----------|
 | `NEXT_PUBLIC_API_URL` | Backend API base URL (e.g., http://localhost:8080 or https://meriter.pro) | Yes |
 | `BOT_USERNAME` | Telegram bot username (required, read at runtime) | Yes |
-| `APP_URL` | Application URL (used server-side) | Optional |
+| `DOMAIN` / `NEXT_PUBLIC_DOMAIN` | Application domain (site URL derived server-side) | Optional (defaults in dev) |
 | `NEXT_PUBLIC_ENABLE_DEBUG` | Enable client debug logs | Optional |
 
 ## 🧪 Testing

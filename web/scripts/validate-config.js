@@ -14,12 +14,14 @@ const path = require('path');
 // Load environment variables
 require('dotenv').config();
 
+const domain = process.env.DOMAIN || process.env.NEXT_PUBLIC_DOMAIN || 'meriter.pro';
+const appUrl = domain === 'localhost' ? 'http://localhost' : `https://${domain}`;
 const config = {
   app: {
     env: process.env.NODE_ENV || 'development',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',
-    url: process.env.APP_URL || 'https://meriter.pro',
+    url: appUrl,
   },
   api: {
     baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8002',

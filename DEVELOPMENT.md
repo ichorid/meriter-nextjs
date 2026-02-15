@@ -384,7 +384,7 @@ Access via: `http://localhost` (Caddy on port 80)
 - `MONGO_URL` - MongoDB connection string
 - `BOT_TOKEN` - Telegram bot token (from @BotFather)
 - `BOT_USERNAME` - Telegram bot username
-- `APP_URL` - Application URL for bot messages
+- `DOMAIN` - Application domain (site URL is derived as https://DOMAIN; used for bot, cookies, magic links)
 - `S3_*` - S3 credentials (optional, for image uploads and avatar caching)
   - When using Docker Compose, MinIO is automatically configured
   - See [MinIO Setup](#minio-setup) section below for details
@@ -394,7 +394,7 @@ Access via: `http://localhost` (Caddy on port 80)
 - `BOT_TOKEN` - Telegram bot token (server-side only)
 - `BOT_USERNAME` - Bot username (required, read at runtime from API)
 - `JWT_SECRET` - Secret for JWT tokens
-- `APP_URL` - Application URL
+- `DOMAIN` - Application domain (or `NEXT_PUBLIC_DOMAIN`; site URL derived from it)
 
 ## Architecture Changes
 

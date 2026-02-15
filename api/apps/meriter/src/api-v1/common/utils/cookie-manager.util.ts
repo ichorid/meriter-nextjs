@@ -62,31 +62,13 @@ export class CookieManager {
   }
 
   /**
-   * Get cookie domain from DOMAIN environment variable
-   * Returns undefined for localhost (no domain restriction needed)
-   * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
+   * Get cookie domain from DOMAIN environment variable.
+   * Returns undefined for localhost (no domain restriction needed).
    */
   getCookieDomain(): string | undefined {
     const domainRaw = this.configService.get('DOMAIN');
-    
-    if (domainRaw) {
-      // Allow DOMAIN to be either a bare hostname or a full URL; normalize defensively.
-      return this.normalizeHostname(domainRaw);
-    }
-    
-    // Backward compatibility: if APP_URL exists but DOMAIN doesn't, extract domain from APP_URL
-    const appUrl = this.configService.get('APP_URL');
-    if (appUrl) {
-      try {
-        const url = new URL(appUrl);
-        return this.normalizeHostname(url.hostname);
-      } catch (_error) {
-        // If APP_URL is not a valid URL, return undefined
-        return undefined;
-      }
-    }
-    
-    return undefined;
+    if (!domainRaw) return undefined;
+    return this.normalizeHostname(domainRaw);
   }
 
   /**

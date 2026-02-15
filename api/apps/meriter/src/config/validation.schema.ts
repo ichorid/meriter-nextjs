@@ -11,22 +11,13 @@ const validateSync = (config: Record<string, unknown>) => {
   const nodeEnv = (config.NODE_ENV as string) || 'development';
   const fakeDataMode = config.FAKE_DATA_MODE === 'true';
   
-  // Validate DOMAIN is set - required for proper cookie domain scoping
-  // Derive from APP_URL for backward compatibility if DOMAIN is not explicitly set
-  // Exception: In test environment, defaults to localhost for testing
+  // DOMAIN is required for cookie domain and site URL. In test/development, default to localhost.
   let domain = config.DOMAIN as string;
   if (!domain) {
-    if (config.APP_URL) {
-      try {
-        domain = new URL(config.APP_URL as string).hostname;
-      } catch (_error) {
-        throw new Error('DOMAIN is required. Either set DOMAIN environment variable or provide a valid APP_URL to derive it from.');
-      }
-    } else if (nodeEnv === 'test') {
-      // Allow default for test environment only
+    if (nodeEnv === 'test' || nodeEnv === 'development') {
       domain = 'localhost';
     } else {
-      throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+      throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, meriter.pro). For local development set DOMAIN=localhost.');
     }
   }
   
@@ -120,9 +111,6 @@ const validateSync = (config: Record<string, unknown>) => {
     NEXT_PUBLIC_ENABLE_COMMENT_VOTING: (config.NEXT_PUBLIC_ENABLE_COMMENT_VOTING as string) || 'false',
     ENABLE_LOGIN_INVITE_FORM: (config.ENABLE_LOGIN_INVITE_FORM as string) || 'false',
     NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: (config.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM as string) || 'false',
-    
-    // App URL (optional, for backward compatibility)
-    APP_URL: (config.APP_URL as string) || undefined,
   };
 
   // Helper function to validate URL format
@@ -226,9 +214,6 @@ const validateSync = (config: Record<string, unknown>) => {
     NEXT_PUBLIC_ENABLE_COMMENT_VOTING: z.enum(['true', 'false']).optional().default('false'),
     ENABLE_LOGIN_INVITE_FORM: z.enum(['true', 'false']).optional().default('false'),
     NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM: z.enum(['true', 'false']).optional().default('false'),
-    
-    // App URL (optional, for backward compatibility)
-    APP_URL: urlValidator.optional(),
   });
 
   // Parse the config and throw if invalid

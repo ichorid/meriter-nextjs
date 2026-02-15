@@ -16,9 +16,8 @@ import config from '@/config';
  * Exported so it can be called before authentication to ensure clean state
  */
 /**
- * Get cookie domain from DOMAIN environment variable
- * Returns undefined for localhost (no domain restriction needed)
- * Falls back to APP_URL extraction for backward compatibility if DOMAIN is not set
+ * Get cookie domain from DOMAIN (via config).
+ * Returns empty string for localhost (no domain restriction needed).
  */
 export function getCookieDomain(): string {
   // Use config.app.domain for cookie domain

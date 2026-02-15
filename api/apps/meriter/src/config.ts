@@ -1,30 +1,15 @@
 /**
- * Derive application URL from DOMAIN
- * Protocol: http:// for localhost, https:// for production
- * Falls back to APP_URL for backward compatibility if DOMAIN is not set
- * REQUIRES: DOMAIN environment variable must be set (validated by validation schema)
- * Exception: In test and development environments, defaults to localhost for testing
+ * Derive application URL from DOMAIN.
+ * Protocol: http:// for localhost, https:// otherwise.
+ * In test/development, defaults to http://localhost when DOMAIN is unset.
  */
 function deriveAppUrl(): string {
   const domain = process.env.DOMAIN;
   const nodeEnv = process.env.NODE_ENV || 'development';
-  
   if (!domain) {
-    // Backward compatibility: if APP_URL exists but DOMAIN doesn't, use APP_URL
-    // However, this should not happen as validation schema requires DOMAIN
-    if (process.env.APP_URL) {
-      return process.env.APP_URL;
-    }
-    
-    // Allow default for test and development environments
-    if (nodeEnv === 'test' || nodeEnv === 'development') {
-      return 'http://localhost';
-    }
-    
-    throw new Error('DOMAIN environment variable is required. Set DOMAIN to your domain (e.g., dev.meriter.pro, stage.meriter.pro, or meriter.pro).');
+    if (nodeEnv === 'test' || nodeEnv === 'development') return 'http://localhost';
+    throw new Error('DOMAIN is required. Set DOMAIN=your.domain or DOMAIN=localhost.');
   }
-  
-  // Use http:// for localhost, https:// for production
   const protocol = domain === 'localhost' ? 'http://' : 'https://';
   return `${protocol}${domain}`;
 }

@@ -11,7 +11,7 @@ describe('Auth Magic Link (e2e)', () => {
   let authMagicLinkService: AuthMagicLinkService;
 
   beforeAll(async () => {
-    process.env.APP_URL = process.env.APP_URL || 'http://localhost:3000';
+    process.env.DOMAIN = process.env.DOMAIN || 'localhost';
     process.env.SMS_ENABLED = 'true';
     const context = await TestSetupHelper.createTestApp();
     app = context.app;

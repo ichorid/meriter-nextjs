@@ -19,10 +19,10 @@
  * Environment Variables Required:
  *   BOT_TOKEN     - Your Telegram bot token from @BotFather
  *   BOT_USERNAME  - Your bot username (without @)
- *   APP_URL       - Your application URL (e.g., https://meriter.pro)
+ *   DOMAIN        - Your application domain (e.g., meriter.pro); site URL is https://<DOMAIN>
  * 
  * You can load these from your .env file:
- *   export $(grep -E 'BOT_TOKEN|BOT_USERNAME|APP_URL' .env | xargs)
+ *   export $(grep -E 'BOT_TOKEN|BOT_USERNAME|DOMAIN' .env | xargs)
  *   node scripts/setup-webhook.js set
  */
 
@@ -162,42 +162,45 @@ async function main() {
     
     const botToken = process.env.BOT_TOKEN;
     const botUsername = process.env.BOT_USERNAME;
-    const appUrl = process.env.APP_URL;
-    
+    const domain = process.env.DOMAIN;
+    const appUrl = domain
+        ? (domain === 'localhost' ? 'http://localhost' : `https://${domain}`)
+        : undefined;
+
     if (!botToken) {
         console.error('❌ ERROR: BOT_TOKEN environment variable must be set');
         console.error('');
         console.error('Load it from your .env file:');
-        console.error('  export $(grep -E "BOT_TOKEN|BOT_USERNAME|APP_URL" .env | xargs)');
+        console.error('  export $(grep -E "BOT_TOKEN|BOT_USERNAME|DOMAIN" .env | xargs)');
         console.error('');
         console.error('Or set it manually:');
         console.error('  export BOT_TOKEN=your_bot_token');
         process.exit(1);
     }
-    
+
     console.log('🤖 Telegram Bot Webhook Configuration');
     console.log('═'.repeat(50));
     console.log('');
-    
+
     if (command === 'check') {
         await checkWebhook(botToken);
     } else if (command === 'set') {
-        if (!botUsername || !appUrl) {
-            console.error('❌ ERROR: BOT_USERNAME and APP_URL must be set for webhook configuration');
+        if (!botUsername || !domain || !appUrl) {
+            console.error('❌ ERROR: BOT_USERNAME and DOMAIN must be set for webhook configuration');
             console.error('');
             console.error('Example:');
             console.error('  export BOT_USERNAME=meriterbot');
-            console.error('  export APP_URL=https://meriter.pro');
+            console.error('  export DOMAIN=meriter.pro');
             process.exit(1);
         }
-        
+
         if (!appUrl.startsWith('https://')) {
-            console.error('❌ ERROR: APP_URL must use HTTPS (Telegram requirement)');
+            console.error('❌ ERROR: DOMAIN must not be localhost for Telegram (HTTPS required)');
             console.error(`   Current: ${appUrl}`);
-            console.error('   Expected: https://your-domain.com');
+            console.error('   Use DOMAIN=your-domain.com (e.g. meriter.pro)');
             process.exit(1);
         }
-        
+
         await setWebhook(botToken, botUsername, appUrl);
     } else if (command === 'delete') {
         await deleteWebhook(botToken);

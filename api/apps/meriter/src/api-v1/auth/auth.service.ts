@@ -214,10 +214,7 @@ export class AuthProviderService {
     let callbackUrl = oauth?.google?.redirectUri || this.configService.get('GOOGLE_REDIRECT_URI');
 
     if (!callbackUrl) {
-      const domain =
-        this.configService.get('DOMAIN') ||
-        this.configService.get('APP_URL')?.replace(/^https?:\/\//, '') ||
-        'localhost';
+      const domain = this.configService.get('DOMAIN') || 'localhost';
       const nodeEnv = this.configService.get('NODE_ENV', 'development');
       const isDocker = nodeEnv === 'production';
       const protocol =
@@ -793,13 +790,13 @@ export class AuthProviderService {
       return requestOrigin;
     }
     const authn = this.configService.get('authn');
-    let origin = authn?.rpOrigin || this.configService.get('APP_URL') || 'http://localhost:3000';
+    let origin = authn?.rpOrigin || this.configService.get('app')?.url || 'http://localhost:3000';
     // Ensure protocol is present
     if (!origin.startsWith('http')) {
       origin = `https://${origin}`;
     }
     const cleaned = origin.replace(/\/$/, ''); // Remove trailing slash
-    this.logger.debug(`Origin computed: ${cleaned} (from env: ${authn?.rpOrigin || this.configService.get('APP_URL') || 'default'})`);
+    this.logger.debug(`Origin computed: ${cleaned} (from env: ${authn?.rpOrigin || this.configService.get('app')?.url || 'default'})`);
     return cleaned;
   }
 
