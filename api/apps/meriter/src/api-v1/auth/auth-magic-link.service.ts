@@ -35,7 +35,7 @@ export class AuthMagicLinkService {
     const magicConfig = this.configService.getOrThrow('magicLink');
     const ttlMs = magicConfig.ttlMinutes * 60 * 1000;
     const expiresAt = new Date(Date.now() + ttlMs);
-    const token = randomBytes(32).toString('hex');
+    const token = randomBytes(16).toString('hex');
 
     await this.magicLinkModel.create({
       token,
@@ -45,7 +45,7 @@ export class AuthMagicLinkService {
     });
 
     const baseUrl = magicConfig.baseUrl.replace(/\/$/, '');
-    const path = (magicConfig.path || '/auth/link').replace(/\/$/, '');
+    const path = (magicConfig.path || '/a').replace(/\/$/, '');
     const linkUrl = `${baseUrl}${path}/${token}`;
 
     this.logger.log(`Magic link created for ${channel} target (expires ${expiresAt.toISOString()})`);

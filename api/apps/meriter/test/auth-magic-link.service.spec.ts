@@ -22,16 +22,16 @@ describe('AuthMagicLinkService', () => {
     it('returns token and linkUrl for sms channel', async () => {
       const result = await authMagicLinkService.createToken('sms', '+79991234567');
       expect(result.token).toBeDefined();
-      expect(result.token).toHaveLength(64);
+      expect(result.token).toHaveLength(32);
       expect(result.token).toMatch(/^[a-f0-9]+$/);
       expect(result.linkUrl).toContain(result.token);
-      expect(result.linkUrl).toContain('/auth/link/');
+      expect(result.linkUrl).toContain('/a/');
     });
 
     it('returns token and linkUrl for email channel', async () => {
       const result = await authMagicLinkService.createToken('email', 'user@example.com');
       expect(result.token).toBeDefined();
-      expect(result.token).toHaveLength(64);
+      expect(result.token).toHaveLength(32);
       expect(result.linkUrl).toContain(result.token);
     });
   });
@@ -53,7 +53,7 @@ describe('AuthMagicLinkService', () => {
     });
 
     it('returns null for unknown token', async () => {
-      const result = await authMagicLinkService.redeem('a'.repeat(64));
+      const result = await authMagicLinkService.redeem('a'.repeat(32));
       expect(result).toBeNull();
     });
   });

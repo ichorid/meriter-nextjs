@@ -95,7 +95,7 @@ export interface MagicLinkConfig {
   baseUrl: string;
   /** Token TTL in minutes (default: 15) */
   ttlMinutes: number;
-  /** Path for magic link URL (default: /auth/link for app route; use /api/v1/auth/link to point directly to API) */
+  /** Path for magic link URL (default: /a for short SMS links; /auth/link still supported for legacy links) */
   path: string;
 }
 
@@ -412,7 +412,7 @@ export default (): AppConfig => {
     magicLink: {
       baseUrl: deriveAppUrl(),
       ttlMinutes: parseInt(env.MAGIC_LINK_TTL_MINUTES || '15', 10) || 15,
-      path: env.MAGIC_LINK_PATH || '/auth/link',
+      path: env.MAGIC_LINK_PATH || '/a',
     },
     storage: {
       s3: {

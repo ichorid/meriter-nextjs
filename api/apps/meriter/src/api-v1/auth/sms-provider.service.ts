@@ -286,7 +286,7 @@ export class SmsProviderService {
 
         // Create magic link and append to message
         const { linkUrl } = await this.authMagicLinkService.createToken('sms', phoneNumber);
-        const message = `Your Meriter verification code: ${otpCode}. Valid for ${this.otpExpiryMinutes} minutes. Or sign in instantly: ${linkUrl}`;
+        const message = `Meriter: ${otpCode} (${this.otpExpiryMinutes}min). Or: ${linkUrl}`;
         await this.provider.sendSms(phoneNumber, message, options);
 
         this.logger.log(`OTP sent to ${phoneNumber}, expires at ${expiresAt.toISOString()}`);

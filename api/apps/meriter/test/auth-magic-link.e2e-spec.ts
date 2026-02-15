@@ -50,7 +50,7 @@ describe('Auth Magic Link (e2e)', () => {
 
     it('invalid/unknown token redirects to login with error', async () => {
       const response = await request(app.getHttpServer())
-        .get('/api/v1/auth/link/' + 'a'.repeat(64))
+        .get('/api/v1/auth/link/' + 'a'.repeat(32))
         .expect(302);
 
       expect(response.headers.location).toContain('/meriter/login');
