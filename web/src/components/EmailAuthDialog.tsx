@@ -111,7 +111,7 @@ export function EmailAuthDialog({
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data.message || "Failed to send code");
+                throw new Error(data?.error?.message ?? data?.message ?? "Failed to send code");
             }
 
             if (data.canResendAt) {
@@ -169,7 +169,7 @@ export function EmailAuthDialog({
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data.message || "Failed to verify code");
+                throw new Error(data?.error?.message ?? data?.message ?? "Failed to verify code");
             }
 
             onSuccess({
