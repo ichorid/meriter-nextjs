@@ -53,8 +53,8 @@ export function isCaptiveBrowser(): boolean {
 
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
 
-  // Telegram UA fallback (Desktop client, web client)
-  if (/(Telegram-Android|Telegram\/|TDesktop|TWeb)/i.test(ua)) {
+  // Telegram UA fallback (Android in-app, Desktop client, web client)
+  if (/(TelegramAndroid|Telegram-Android|Telegram\/|TDesktop|TWeb)/i.test(ua)) {
     return true;
   }
 

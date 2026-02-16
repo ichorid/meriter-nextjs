@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCaptiveBrowser } from "@/lib/captive-browser";
 import { LoginForm } from "@/components/LoginForm";
 import { LoadingState } from "@/components/atoms/LoadingState";
 
@@ -33,7 +34,8 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEna
     // ALL HOOKS MUST BE CALLED FIRST - before any conditional returns
     const router = useRouter();
     const pathname = usePathname();
-    const { user, isLoading, isAuthenticated } = useAuth();
+    const { user: _user, isLoading, isAuthenticated } = useAuth();
+    const { isCaptive: captiveBrowser } = useCaptiveBrowser();
     const redirectAttemptedRef = useRef<{ pathname: string; isAuthenticated: boolean } | null>(null);
 
     // If authenticated and on login page, redirect to home
@@ -98,6 +100,7 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEna
                     smsEnabled={smsEnabled}
                     phoneEnabled={phoneEnabled}
                     emailEnabled={emailEnabled}
+                    captiveBrowser={captiveBrowser}
                 />
             </div>
         );
