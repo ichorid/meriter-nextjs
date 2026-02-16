@@ -15,8 +15,19 @@ describe('isCaptiveBrowser', () => {
         writable: true,
       });
     }
-    if (typeof window !== 'undefined' && 'Telegram' in window) {
-      delete (window as unknown as { Telegram?: unknown }).Telegram;
+    if (typeof window !== 'undefined') {
+      if ('Telegram' in window) {
+        delete (window as unknown as { Telegram?: unknown }).Telegram;
+      }
+      if ('TelegramWebview' in window) {
+        delete (window as unknown as { TelegramWebview?: unknown }).TelegramWebview;
+      }
+      if ('TelegramWebviewProxy' in window) {
+        delete (window as unknown as { TelegramWebviewProxy?: unknown }).TelegramWebviewProxy;
+      }
+      if ('TelegramWebviewProxyProto' in window) {
+        delete (window as unknown as { TelegramWebviewProxyProto?: unknown }).TelegramWebviewProxyProto;
+      }
     }
   });
 
@@ -61,5 +72,33 @@ describe('isCaptiveBrowser', () => {
       writable: true,
     });
     expect(isCaptiveBrowser()).toBe(false);
+  });
+
+  it('returns true when window.TelegramWebview is present (Android)', () => {
+    (window as unknown as { TelegramWebview?: { postEvent?: unknown } }).TelegramWebview = { postEvent: () => {} };
+    expect(isCaptiveBrowser()).toBe(true);
+  });
+
+  it('returns true when window.TelegramWebviewProxy is present (iOS/Desktop)', () => {
+    (window as unknown as { TelegramWebviewProxy?: { postEvent?: unknown } }).TelegramWebviewProxy = { postEvent: () => {} };
+    expect(isCaptiveBrowser()).toBe(true);
+  });
+
+  it('returns true when user agent contains Telegram-Android', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Linux; Android 13; Pixel 7) Chrome/120.0 Telegram-Android/10.0',
+      configurable: true,
+      writable: true,
+    });
+    expect(isCaptiveBrowser()).toBe(true);
+  });
+
+  it('returns true when user agent contains TDesktop', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) TDesktop/4.0',
+      configurable: true,
+      writable: true,
+    });
+    expect(isCaptiveBrowser()).toBe(true);
   });
 });

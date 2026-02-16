@@ -45,11 +45,6 @@ export function createCommunityDeepLink(botUsername: string, communityId: string
   return createTelegramDeepLink(botUsername, `community&id=${communityId}`);
 }
 
-export function isTelegramWebApp(): boolean {
-  if (typeof window === 'undefined') return false;
-  return !!(window as any).Telegram?.WebApp;
-}
-
 // Avatar utilities
 export function telegramGetAvatarLink(chat_id: string | number) {
   if (!chat_id || chat_id === 'undefined' || !config.s3.enabled) return '';

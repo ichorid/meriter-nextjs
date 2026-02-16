@@ -5,7 +5,7 @@ import React from 'react';
  * When true, we show only SMS and Email auth and prompt the user to open in system browser.
  *
  * Detection:
- * - Telegram: window.Telegram?.WebApp
+ * - Telegram: window.Telegram?.WebApp (Mini App), window.TelegramWebview (Android), window.TelegramWebviewProxy (iOS/Desktop)
  * - Other in-app browsers: User-Agent substrings (FBAN, FBAV, Instagram, Line, etc.)
  */
 
@@ -27,6 +27,9 @@ declare global {
     Telegram?: {
       WebApp?: unknown;
     };
+    TelegramWebview?: { postEvent?: unknown };
+    TelegramWebviewProxy?: { postEvent?: unknown };
+    TelegramWebviewProxyProto?: unknown;
   }
 }
 
@@ -38,10 +41,24 @@ export function isCaptiveBrowser(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }
-  if (window.Telegram?.WebApp) {
+
+  // Telegram: Mini App SDK, Android WebView, iOS/Desktop WebView
+  if (
+    window.Telegram?.WebApp ||
+    window.TelegramWebview ||
+    window.TelegramWebviewProxy
+  ) {
     return true;
   }
+
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+
+  // Telegram UA fallback (Desktop client, web client)
+  if (/(Telegram-Android|Telegram\/|TDesktop|TWeb)/i.test(ua)) {
+    return true;
+  }
+
+  // Other known in-app browsers
   return CAPTIVE_UA_PATTERNS.some((pattern) => ua.includes(pattern));
 }
 
