@@ -14,6 +14,7 @@ import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
+import { TelegramHint } from '@/components/TelegramHint';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
 
@@ -132,6 +133,7 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
             // Locale detection happens client-side after mount to avoid hydration mismatches
             // This is safe because NextIntl handles locale changes gracefully
           >
+            <TelegramHint />
             <Suspense fallback={null}>
               <ClientRouter />
             </Suspense>

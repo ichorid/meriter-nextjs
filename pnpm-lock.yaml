@@ -432,6 +432,9 @@ importers:
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.19(yaml@2.8.2))
+      tg-hint:
+        specifier: ^0.0.2
+        version: 0.0.2
       uid:
         specifier: ^2.0.2
         version: 2.0.2
@@ -8200,6 +8203,9 @@ packages:
 
   text-table@0.2.0:
     resolution: {integrity: sha512-N+8UisAXDGk8PFXP4HAzVR9nbfmVJ3zYLAWiTIoqC5v5isinhr+r5uaO8+7r3BMfuNIufIsA7RdpVgacC2cSpw==}
+
+  tg-hint@0.0.2:
+    resolution: {integrity: sha512-HMzi7/f/t2gTAUtxMFqOXrixXPRC4XMesyq5WbG3oopq0rPR9T5jLplk+1hDCtq9nMlyIFM/c91eArcNncIZSw==}
 
   thenify-all@1.6.0:
     resolution: {integrity: sha512-RNxQH/qI8/t3thXJDwcstUO4zeqo64+Uy/+sNVRBx4Xn2OX+OZ9oP+iJnNFqplFra2ZUVeKCSa2oVWi3T4uVmA==}
@@ -18909,6 +18915,8 @@ snapshots:
       - react-native-b4a
 
   text-table@0.2.0: {}
+
+  tg-hint@0.0.2: {}
 
   thenify-all@1.6.0:
     dependencies:
