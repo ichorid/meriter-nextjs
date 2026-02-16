@@ -480,7 +480,7 @@ describe('Login Page Integration', () => {
   });
 
   describe('Captive browser', () => {
-    it('when captiveBrowser is true shows only SMS and Email and captive banner', () => {
+    it('when captiveBrowser is true shows only SMS and Email (tg-hint overlay handles instructions)', () => {
       render(
         <TestWrapper>
           <LoginForm
@@ -494,10 +494,7 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      // Banner and actions (use keys; next-intl may render keys in test)
-      expect(screen.getByText('login.captiveBanner.message')).toBeInTheDocument();
-      expect(screen.getByText('login.captiveBanner.copyLink')).toBeInTheDocument();
-      expect(screen.getByText('login.captiveBanner.openInBrowser')).toBeInTheDocument();
+      // No captive banner in LoginForm; tg-hint overlay is shown separately when in Telegram
       expect(screen.getByText('login.signInWithSms')).toBeInTheDocument();
       expect(screen.getByText('login.signInWithEmail')).toBeInTheDocument();
       expect(screen.queryByText('login.signInWithCall')).not.toBeInTheDocument();
