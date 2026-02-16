@@ -15,6 +15,7 @@ import { ClientRouter } from '@/components/ClientRouter';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
 import { TelegramHint } from '@/components/TelegramHint';
+import { CaptiveBrowserProvider } from '@/lib/captive-browser';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
 
@@ -133,22 +134,25 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
             // Locale detection happens client-side after mount to avoid hydration mismatches
             // This is safe because NextIntl handles locale changes gracefully
           >
-            <TelegramHint />
-            <Suspense fallback={null}>
-              <ClientRouter />
-            </Suspense>
-            <AuthProvider>
-              {isTestAuthMode() && <DevToolsBar />}
-              <RuntimeConfigProvider
-                fallbackEnabledProviders={fallbackEnabledProviders}
-                fallbackAuthnEnabled={fallbackAuthnEnabled}
-              >
-                <div className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}>
-                  <Root>{children}</Root>
-                </div>
-              </RuntimeConfigProvider>
-              <ToastContainer />
-            </AuthProvider>
+            {/* CaptiveBrowserProvider must wrap both TelegramHint and routed content so login and tg-hint share the same captive state. */}
+            <CaptiveBrowserProvider>
+              <TelegramHint />
+              <Suspense fallback={null}>
+                <ClientRouter />
+              </Suspense>
+              <AuthProvider>
+                {isTestAuthMode() && <DevToolsBar />}
+                <RuntimeConfigProvider
+                  fallbackEnabledProviders={fallbackEnabledProviders}
+                  fallbackAuthnEnabled={fallbackAuthnEnabled}
+                >
+                  <div className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}>
+                    <Root>{children}</Root>
+                  </div>
+                </RuntimeConfigProvider>
+                <ToastContainer />
+              </AuthProvider>
+            </CaptiveBrowserProvider>
           </NextIntlClientProvider>
         </QueryProvider>
       </AppModeProvider>

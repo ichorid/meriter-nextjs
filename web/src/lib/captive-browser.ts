@@ -62,20 +62,74 @@ export function isCaptiveBrowser(): boolean {
   return CAPTIVE_UA_PATTERNS.some((pattern) => ua.includes(pattern));
 }
 
+/** Default so consumers outside the provider (e.g. tests) get a safe value. */
+const CaptiveBrowserContext = React.createContext<{ isCaptive: boolean }>({
+  isCaptive: false,
+});
+
 /**
- * Hook that returns captive state after mount (client-side only).
- * Before hydration / on server, returns false to avoid flash of wrong UI.
+ * Delayed re-check schedule (ms). Telegram injects TelegramWebview asynchronously;
+ * the login page can run detection before it exists. Re-checking at these intervals
+ * catches late-injected TelegramWebview so the sign-in screen and tg-hint stay in sync.
+ */
+const RECHECK_DELAYS_MS = [200, 500, 1000, 2000];
+
+/**
+ * Provider that runs captive detection with delayed re-checks so both
+ * TelegramHint and the login form see the same value. Must wrap both
+ * TelegramHint and the routed content (e.g. login page) so they stay in sync.
+ *
+ * - Initial isCaptive is false to avoid flicker in non-captive browsers.
+ * - We only ever transition to true (never true -> false), so React bails out
+ *   on identical state in non-captive browsers and no unnecessary re-renders.
+ */
+export function CaptiveBrowserProvider({ children }: { children: React.ReactNode }) {
+  const [isCaptive, setIsCaptive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const runCheck = (): boolean => {
+      const detected = isCaptiveBrowser();
+      if (detected) {
+        setIsCaptive(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (runCheck()) return;
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+    for (const delay of RECHECK_DELAYS_MS) {
+      timeouts.push(
+        setTimeout(() => {
+          if (runCheck()) {
+            timeouts.forEach(clearTimeout);
+          }
+        }, delay)
+      );
+    }
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+    };
+  }, []);
+
+  return React.createElement(CaptiveBrowserContext.Provider, { value: { isCaptive } }, children);
+}
+
+/**
+ * Hook that returns captive state from context (when inside CaptiveBrowserProvider).
+ * Before hydration / on server, or when outside the provider, returns false.
+ * Only transitioning to true (never true -> false) avoids re-renders in non-captive browsers.
  */
 export function useCaptiveBrowser(): {
   isCaptive: boolean;
   copyLink: () => Promise<void>;
   openInBrowser: () => void;
 } {
-  const [isCaptive, setIsCaptive] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsCaptive(isCaptiveBrowser());
-  }, []);
+  const { isCaptive } = React.useContext(CaptiveBrowserContext);
 
   const copyLink = React.useCallback(async () => {
     if (typeof window === 'undefined') return;
