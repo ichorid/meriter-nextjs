@@ -16,6 +16,7 @@ import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
+import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -300,7 +301,7 @@ export class InvestmentService {
         sourceId: investorId,
         metadata: { postId, communityId: post.communityId, investorId, amount },
         title: 'Investment received',
-        message: `${investorName} invested ${amount} merits in your post`,
+        message: `${investorName} invested ${formatMeritsForDisplay(amount)} merits in your post`,
       });
     } catch (err) {
       this.logger.warn(`Failed to create investment_received notification: ${err}`);
@@ -797,7 +798,7 @@ export class InvestmentService {
                 amount: dist.amount,
               },
               title: 'Investment distributed',
-              message: `${authorName} withdrew ${withdrawAmount} merits from post. Your share: ${dist.amount} merits`,
+              message: `${authorName} withdrew ${formatMeritsForDisplay(withdrawAmount)} merits from post. Your share: ${formatMeritsForDisplay(dist.amount)} merits`,
             }),
           ),
         );

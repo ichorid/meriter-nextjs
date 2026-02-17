@@ -11,6 +11,7 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface CommunityCardProps {
   communityId: string;
@@ -102,8 +103,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Fetch quota data for this community
   const { data: quotaData } = useUserQuota(communityId);
 
-  // Format balance and quota display
-  const balance = wallet?.balance || 0;
+  // Format balance and quota display (merits rounded to tenths)
+  const balanceRaw = wallet?.balance || 0;
+  const balance = formatMerits(balanceRaw);
   const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
   const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
 

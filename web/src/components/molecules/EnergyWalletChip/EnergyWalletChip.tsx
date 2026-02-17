@@ -6,6 +6,7 @@ import { useWallet } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api';
 import { POLLING } from '@/lib/constants';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface EnergyWalletChipProps {
     communityId: string;
@@ -85,7 +86,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                                 />
                             )}
                             <span className="text-[9px] font-semibold text-base-content leading-none">
-                                {balance}
+                                {formatMerits(balance)}
                             </span>
                         </div>
                     </div>
@@ -114,7 +115,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                                 />
                             )}
                             <span className="text-[10px] font-semibold text-base-content/70 leading-none">
-                                {balance}
+                                {formatMerits(balance)}
                             </span>
                         </div>
                     </div>
@@ -144,7 +145,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                                 />
                             )}
                             <span className="text-xs font-semibold text-base-content">
-                                {balance}
+                                {formatMerits(balance)}
                             </span>
                         </div>
                     </div>

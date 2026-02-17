@@ -12,6 +12,7 @@ import type {
   NotificationMetadata,
 } from '../models/notification/notification.schema';
 import { PaginationHelper, PaginationResult } from '../../common/helpers/pagination.helper';
+import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 import { uid } from 'uid';
 
 export interface CreateNotificationDto {
@@ -215,9 +216,9 @@ export class NotificationService {
       const netAmount = totalUpvotes - totalDownvotes;
       const voterCount = numberFromMetadataOrDefault(existingMetadata, 'voterCount', 1) + 1;
 
-      // Build aggregated message
-      const upStr = totalUpvotes > 0 ? `+${totalUpvotes}` : '';
-      const downStr = totalDownvotes > 0 ? `-${totalDownvotes}` : '';
+      // Build aggregated message (merits rounded to tenths)
+      const upStr = totalUpvotes > 0 ? `+${formatMeritsForDisplay(totalUpvotes)}` : '';
+      const downStr = totalDownvotes > 0 ? `-${formatMeritsForDisplay(totalDownvotes)}` : '';
       const amountStr = (upStr || downStr) ? ` (${upStr}${downStr ? '/' + downStr : ''})` : '';
       const message = `${voterInfo.voterName} and ${voterCount - 1} others voted on a favorite post${amountStr}`;
 
@@ -253,10 +254,11 @@ export class NotificationService {
     const netAmount = initialUpvotes - initialDownvotes;
     let amountStr = '';
     if (voterInfo.amount > 0) {
+      const fmt = formatMeritsForDisplay(voterInfo.amount);
       if (voterInfo.direction === 'up') {
-        amountStr = ` (+${voterInfo.amount})`;
+        amountStr = ` (+${fmt})`;
       } else {
-        amountStr = ` (-${voterInfo.amount})`;
+        amountStr = ` (-${fmt})`;
       }
     }
     const message = `${voterInfo.voterName} voted on a favorite post${amountStr}`;

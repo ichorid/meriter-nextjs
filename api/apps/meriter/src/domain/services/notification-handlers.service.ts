@@ -17,6 +17,7 @@ import { UserService } from './user.service';
 import { PollService } from './poll.service';
 import { FavoriteService } from './favorite.service';
 import type { Vote } from '../models/vote/vote.schema';
+import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 
 @Injectable()
 export class NotificationHandlersService implements OnModuleInit {
@@ -283,9 +284,9 @@ export class NotificationHandlersService implements OnModuleInit {
       const voter = await this.userService.getUser(voterId);
       const voterName = voter?.displayName || 'Someone';
 
-      // Build notification message
+      // Build notification message (merits rounded to tenths)
       const action = direction === 'up' ? 'upvoted' : 'downvoted';
-      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
+      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${formatMeritsForDisplay(Math.abs(amount))})` : '';
       const message = `${voterName} ${action} your post${amountStr}`;
 
       // Get the vote to find targetId (for metadata)
@@ -570,9 +571,9 @@ export class NotificationHandlersService implements OnModuleInit {
       const voter = await this.userService.getUser(voterId);
       const voterName = voter?.displayName || 'Someone';
 
-      // Build notification message
+      // Build notification message (merits rounded to tenths)
       const action = direction === 'up' ? 'upvoted' : 'downvoted';
-      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
+      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${formatMeritsForDisplay(Math.abs(amount))})` : '';
       const message = `${voterName} ${action} your comment${amountStr}`;
 
       const notificationDto: CreateNotificationDto = {

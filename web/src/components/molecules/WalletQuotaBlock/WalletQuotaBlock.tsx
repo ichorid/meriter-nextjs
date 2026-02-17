@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Zap } from 'lucide-react';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface WalletQuotaBlockProps {
   balance: number;
@@ -34,7 +35,7 @@ export const WalletQuotaBlock: React.FC<WalletQuotaBlockProps> = ({
           />
         )}
         <span>:</span>
-        <span className="font-medium">{balance}</span>
+        <span className="font-medium">{formatMerits(balance)}</span>
       </div>
 
       {/* Quota row */}

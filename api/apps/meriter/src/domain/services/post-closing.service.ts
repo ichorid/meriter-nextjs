@@ -17,6 +17,7 @@ import { WalletService } from './wallet.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
+import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 
 export type PostCloseReason =
   | 'manual'
@@ -218,16 +219,18 @@ export class PostClosingService {
 
     try {
       await Promise.all(
-        Array.from(totalByInvestor.entries()).map(([invId, total]) =>
-          this.notificationService.createNotification({
+        Array.from(totalByInvestor.entries()).map(([invId, total]) => {
+          const poolAmt = result.poolReturned.find((p) => p.investorId === invId)?.amount ?? 0;
+          const ratingAmt = result.ratingDistributed.investorDistributions.find((d) => d.investorId === invId)?.amount ?? 0;
+          return this.notificationService.createNotification({
             userId: invId,
             type: 'post_closed_investment',
             source: 'system',
             metadata: { postId, communityId, totalEarnings: total },
             title: 'Post closed',
-            message: `Post closed. Pool returned: ${result.poolReturned.find((p) => p.investorId === invId)?.amount ?? 0} merits. Your share of rating: ${result.ratingDistributed.investorDistributions.find((d) => d.investorId === invId)?.amount ?? 0} merits. Total received: ${total} merits`,
-          }),
-        ),
+            message: `Post closed. Pool returned: ${formatMeritsForDisplay(poolAmt)} merits. Your share of rating: ${formatMeritsForDisplay(ratingAmt)} merits. Total received: ${formatMeritsForDisplay(total)} merits`,
+          });
+        }),
       );
     } catch (err) {
       this.logger.warn(
@@ -243,7 +246,7 @@ export class PostClosingService {
           source: 'system',
           metadata: { postId, communityId, authorReceived },
           title: 'Post closed',
-          message: `Post closed. You received: ${authorReceived} merits`,
+          message: `Post closed. You received: ${formatMeritsForDisplay(authorReceived)} merits`,
         });
       } catch (err) {
         this.logger.warn(`Failed to create post_closed notification to author: ${err}`);

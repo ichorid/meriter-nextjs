@@ -1,6 +1,7 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface EarningsHistoryEntry {
   amount: number;
@@ -58,7 +59,7 @@ export function InvestmentHistoryList({ entries }: InvestmentHistoryListProps) {
         >
           <div>
             <p className="text-sm font-medium text-base-content">
-              +{entry.amount.toFixed(2)}
+              +{formatMerits(entry.amount)}
             </p>
             <p className="text-xs text-base-content/50">
               {reasonLabel(entry.reason)} · {formatDate(entry.date)}

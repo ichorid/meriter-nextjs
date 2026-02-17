@@ -3,6 +3,7 @@
 import React from 'react';
 import { Zap } from 'lucide-react';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface WalletChipProps {
   balance: number;
@@ -57,7 +58,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
               />
             )}
             <span className="text-xs font-semibold text-base-content">
-              {balance}
+              {formatMerits(balance)}
             </span>
           </div>
 
