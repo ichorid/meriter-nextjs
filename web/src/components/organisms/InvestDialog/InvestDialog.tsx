@@ -254,7 +254,7 @@ export function InvestDialog({
                 <p className="text-sm text-base-content/80">
                   {t('irrevocableWarningFull', {
                     defaultValue:
-                      'Investment is irrevocable. Merits are spent on tappalka shows. Returns only happen when the author withdraws merits or when the post closes.',
+                      'Investment is irrevocable. Merits are spent on post carousel shows. Returns only happen when the author withdraws merits or when the post closes.',
                   })}
                 </p>
               </div>

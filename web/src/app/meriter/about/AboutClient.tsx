@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
-import { Settings, FileText, Loader2 } from 'lucide-react';
+import { Settings, FileText, Loader2, RotateCcw } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -18,6 +18,7 @@ import {
 import { CategoryManagement } from '@/components/settings/CategoryManagement';
 import { AboutContent } from '@/components/organisms/About/AboutContent';
 import { AboutAdminPanel } from '@/components/organisms/About/AboutAdminPanel';
+import { useResetAboutToDemoData } from '@/hooks/api/useAbout';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -80,6 +81,55 @@ function WelcomeMeritsPlatformRow() {
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+
+function ResetAboutToDemoRow() {
+  const addToast = useToastStore((s) => s.addToast);
+  const resetToDemo = useResetAboutToDemoData();
+
+  const handleReset = () => {
+    if (
+      !confirm(
+        'Сбросить раздел «О проекте» к демо-данным? Текущий контент (введение и все категории со статьями) будет полностью заменён.',
+      )
+    ) {
+      return;
+    }
+    resetToDemo.mutate(undefined, {
+      onSuccess: () => {
+        addToast('Раздел «О проекте» сброшен к демо-данным', 'success');
+      },
+      onError: (e) => {
+        addToast(e.message || 'Ошибка сброса', 'error');
+      },
+    });
+  };
+
+  return (
+    <div className="space-y-2 border-t border-base-300 pt-6">
+      <div className="flex items-center gap-2 text-base-content">
+        <FileText className="w-4 h-4" />
+        <span className="font-medium">О проекте</span>
+      </div>
+      <p className="text-xs text-base-content/60">
+        Заменить весь контент раздела «О проекте» на актуальные демо-данные (введение и категории со статьями).
+      </p>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={handleReset}
+        disabled={resetToDemo.isPending}
+      >
+        {resetToDemo.isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        ) : (
+          <RotateCcw className="w-4 h-4 mr-2" />
+        )}
+        Сбросить «О проекте» к демо-данным
+      </Button>
     </div>
   );
 }
@@ -162,6 +212,7 @@ const AboutPage = () => {
                         <div className="pt-4 space-y-6">
                             <WelcomeMeritsPlatformRow />
                             <CategoryManagement />
+                            <ResetAboutToDemoRow />
                         </div>
                     </DialogContent>
                 </Dialog>

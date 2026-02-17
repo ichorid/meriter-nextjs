@@ -223,7 +223,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             value="tappalka"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.tappalka') || 'Tappalka'}
+                            {t('tabs.tappalka') || 'Карусель постов'}
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className="mt-6">

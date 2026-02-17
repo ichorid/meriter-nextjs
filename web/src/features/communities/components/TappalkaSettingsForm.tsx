@@ -133,11 +133,11 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
       };
 
       await onSave({ tappalkaSettings: settingsToSave });
-      addToast(t('saveSuccess') || 'Tappalka settings saved successfully', 'success');
+      addToast(t('saveSuccess') || 'Настройки карусели постов сохранены', 'success');
     } catch (error) {
       console.error('Failed to save tappalka settings:', error);
       addToast(
-        t('saveError') || 'Failed to save tappalka settings',
+        t('saveError') || 'Не удалось сохранить настройки карусели постов',
         'error'
       );
     } finally {
@@ -149,17 +149,17 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
     <div className="space-y-6">
       <div className="bg-base-200 rounded-lg p-6 shadow-none">
         <h3 className="text-lg font-semibold text-brand-text-primary mb-4">
-          {t('title') || 'Tappalka Settings'}
+          {t('title') || 'Карусель постов'}
         </h3>
         <p className="text-sm text-brand-text-secondary mb-6">
           {t('description') ||
-            'Configure the post comparison mechanic (Tappalka) for this community.'}
+            'Настройка механики сравнения постов (карусель постов) для этого сообщества.'}
         </p>
 
         <div className="space-y-6">
           {/* Enabled Switch */}
           <BrandFormControl
-            label={t('fields.enabled') || 'Enable Tappalka'}
+            label={t('fields.enabled') || 'Включить карусель постов'}
             helperText={
               t('fields.enabledHelp') ||
               'Enable the post comparison mechanic for this community'

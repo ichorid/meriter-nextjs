@@ -182,7 +182,7 @@ export const aboutRouter = router({
     }),
 
   /**
-   * Initialize demo data (superadmin only, for fake mode)
+   * Initialize demo data (superadmin only, when no content exists)
    */
   initializeDemoData: protectedProcedure.mutation(async ({ ctx }) => {
     if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
@@ -193,6 +193,21 @@ export const aboutRouter = router({
     }
 
     await ctx.aboutService.initializeDemoData();
+    return { success: true };
+  }),
+
+  /**
+   * Reset "О проекте" to demo data: replace all content with default (superadmin only).
+   */
+  resetToDemoData: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Only superadmin can reset about to demo data',
+      });
+    }
+
+    await ctx.aboutService.resetToDemoData();
     return { success: true };
   }),
 });

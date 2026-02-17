@@ -40,23 +40,21 @@ export function PostInvestingSettingsReadOnly({
   });
 
   const stopLossLabelKey = tAdvanced('stopLossLabel', {
-    defaultValue: 'Minimum rating for tappalka (0 = disabled)',
+    defaultValue: 'Minimum rating for post carousel (0 = disabled)',
   });
 
-  const noAuthorWalletSpendLabel = noAuthorWalletSpend
-    ? tInvesting('noAuthorWalletSpendYes', { defaultValue: "Author won't spend from wallet on shows" })
-    : tInvesting('noAuthorWalletSpendNo', { defaultValue: 'Author can spend from wallet on shows' });
+  const authorPaysFromWalletLabel = tAdvanced('authorPaysShowsFromWalletQuestion', {
+    defaultValue: 'Author pays for shows from wallet?',
+  });
+  const authorPaysFromWalletValue = noAuthorWalletSpend
+    ? tAdvanced('answerNo', { defaultValue: 'No' })
+    : tAdvanced('answerYes', { defaultValue: 'Yes' });
 
   const rows = [
     { label: investorShareLabelKey, value: `${investorSharePercent}%` },
     { label: tAdvanced('ttlLabel', { defaultValue: 'Time to live (TTL)' }), value: ttlLabel },
     { label: stopLossLabelKey, value: String(stopLoss) },
-    {
-      label: tAdvanced('noAuthorWalletSpendLabel', {
-        defaultValue: "Don't spend from my wallet on tappalka shows",
-      }),
-      value: noAuthorWalletSpendLabel,
-    },
+    { label: authorPaysFromWalletLabel, value: authorPaysFromWalletValue },
   ];
 
   return (

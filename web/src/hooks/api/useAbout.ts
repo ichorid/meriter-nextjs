@@ -140,3 +140,16 @@ export function useSetAboutIntroduction() {
   });
 }
 
+/**
+ * Hook to reset "О проекте" to demo data (superadmin only).
+ */
+export function useResetAboutToDemoData() {
+  const utils = trpc.useUtils();
+  return trpc.about.resetToDemoData.useMutation({
+    onSuccess: () => {
+      utils.about.getAll.invalidate();
+      utils.about.getIntroduction.invalidate();
+    },
+  });
+}
+
