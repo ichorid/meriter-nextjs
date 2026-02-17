@@ -25,19 +25,21 @@ export interface ImageGalleryDisplayProps {
     onImageClick?: (index: number) => void;
 }
 
+const ASPECT_16_9 = 16 / 9;
+
 /**
- * ImageGalleryDisplay - Displays images with lightbox.
- * - Feed: single preview image + gallery badge (like Twitter/Facebook), click opens lightbox.
- * - Page: 2×2 thumbnails with "+N" overflow; full gallery in lightbox.
- * - Carousel: single image strip.
+ * ImageGalleryDisplay - Single preview + lightbox.
+ * - Image never scaled up; only scaled down to fit (max width = container, max height = width * 9/16).
+ * - Block height = image display height → small image (e.g. 200x200) → block 200px, gray bars left/right.
  */
 const VARIANT_STYLES = {
-    feed: { rounded: "rounded-lg", previewMaxH: "max-h-[220px] sm:max-h-[280px]" },
-    page: { gap: "gap-1.5", rounded: "rounded-xl", maxH: "max-h-[180px] sm:max-h-[220px]", minH: "min-h-[100px] sm:min-h-[120px]" },
-    carousel: { gap: "gap-1", rounded: "rounded-lg", maxH: "max-h-[192px]", minH: "min-h-[120px]" },
+    feed: { rounded: "rounded-lg" },
+    page: { rounded: "rounded-xl" },
+    carousel: { rounded: "rounded-lg" },
 } as const;
 
-const PAGE_GRID_MAX = 4;
+/** Bar color for letterboxing/pillarboxing (light and dark theme) */
+const PREVIEW_BAR_BG = "bg-neutral-200 dark:bg-neutral-800";
 
 export function ImageGalleryDisplay({
     images,
@@ -55,8 +57,27 @@ export function ImageGalleryDisplay({
     const [imageLoadStates, setImageLoadStates] = useState<
         Record<number, boolean>
     >({});
+    /** First image natural size: block height = display height (never scale up) */
+    const [previewNatural, setPreviewNatural] = useState<{ w: number; h: number } | null>(null);
+    const [containerWidth, setContainerWidth] = useState<number>(0);
+    const blockRef = useRef<HTMLDivElement>(null);
     const touchStartX = useRef<number | null>(null);
     const touchEndX = useRef<number | null>(null);
+
+    useEffect(() => {
+        setPreviewNatural(null);
+    }, [images[0]]);
+
+    useEffect(() => {
+        const el = blockRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver((entries) => {
+            const { width } = entries[0]?.contentRect ?? { width: 0 };
+            setContainerWidth(width);
+        });
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, []);
 
     // Sync with initialIndex prop changes - if initialIndex is set, open lightbox
     useEffect(() => {
@@ -151,16 +172,15 @@ export function ImageGalleryDisplay({
         setImageLoadStates((prev) => ({ ...prev, [index]: true }));
     };
 
-    const styles = VARIANT_STYLES[variant];
-
-    // Grid: page = 2×2 (or 1 col if single image), carousel = 1 col
-    const getGridClass = () => {
-        if (variant === "carousel" || displayImages.length === 1) return "grid-cols-1";
-        return "grid-cols-2";
+    const handlePreviewImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+        const img = e.currentTarget;
+        handleImageLoad(0);
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+            setPreviewNatural({ w: img.naturalWidth, h: img.naturalHeight });
+        }
     };
 
-    const displayImages = variant === "page" ? images.slice(0, PAGE_GRID_MAX) : images;
-    const overflowCount = variant === "page" && images.length > PAGE_GRID_MAX ? images.length - PAGE_GRID_MAX : 0;
+    const styles = VARIANT_STYLES[variant];
 
     // If viewingIndex is set (either from initialIndex or user click), show lightbox
     // If initialIndex was provided, don't show preview grid
@@ -187,7 +207,7 @@ export function ImageGalleryDisplay({
     };
 
     const lightboxOverlayClass =
-        "fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]";
+        "fixed inset-0 z-[99999] bg-black/95 flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] [pointer-events:auto]";
 
     const renderLightbox = () => (
         <div
@@ -195,12 +215,17 @@ export function ImageGalleryDisplay({
             aria-modal="true"
             aria-label="Image gallery"
             className={lightboxOverlayClass}
-            onClick={handleClose}
+            style={{ pointerEvents: "auto" }}
+            onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+            }}
             onMouseDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
             {...lightboxSwipeHandlers}
         >
             <button
+                type="button"
                 onClick={(e) => {
                     e.stopPropagation();
                     handleClose();
@@ -273,90 +298,51 @@ export function ImageGalleryDisplay({
             ? createPortal(renderLightbox(), document.body)
             : null;
 
-    // Feed: single preview image + gallery badge (no full grid)
-    if (variant === "feed") {
-        const feedStyles = VARIANT_STYLES.feed;
-        return (
-            <>
-                <div
-                    className={`relative w-full overflow-hidden cursor-pointer group bg-base-200 ${feedStyles.rounded} ${feedStyles.previewMaxH} ${className}`}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleImageClick(0);
-                    }}
-                >
-                    {!imageLoadStates[0] && (
-                        <div className={`absolute inset-0 bg-base-200 animate-pulse ${feedStyles.rounded}`} />
-                    )}
-                    <img
-                        src={images[0]}
-                        alt={images.length > 1 ? `${altPrefix} 1 of ${images.length}` : `${altPrefix} 1`}
-                        className={`w-full h-full object-cover transition-transform duration-200 ease-out group-hover:scale-[1.02] ${imageLoadStates[0] ? "opacity-100" : "opacity-0"}`}
-                        onLoad={() => handleImageLoad(0)}
-                        loading="lazy"
-                    />
-                    {images.length > 1 && (
-                        <div className="absolute bottom-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/65 backdrop-blur-sm text-white text-xs font-medium rounded-lg shadow-sm">
-                            <Images className="w-4 h-4 flex-shrink-0" aria-hidden />
-                            <span>1 / {images.length}</span>
-                        </div>
-                    )}
-                </div>
-                {lightboxPortal}
-            </>
-        );
-    }
+    // Never scale up; scale down only to fit width and max height (width * 9/16)
+    const displaySize =
+        previewNatural && containerWidth > 0
+            ? (() => {
+                  const { w: nw, h: nh } = previewNatural;
+                  const maxH = (containerWidth * 9) / 16;
+                  const scale = Math.min(1, containerWidth / nw, maxH / nh);
+                  return { w: Math.round(nw * scale), h: Math.round(nh * scale) };
+              })()
+            : null;
 
-    // Page / carousel: grid of thumbnails (page = 2×2 max with "+N", carousel = single)
     return (
         <>
             <div
-                className={`grid ${getGridClass()} ${styles.gap} ${styles.rounded} ${className}`}
+                ref={blockRef}
+                data-gallery-preview
+                className={`relative w-full overflow-hidden cursor-pointer group flex items-center justify-center ${PREVIEW_BAR_BG} ${styles.rounded} ${className}`}
+                style={
+                    displaySize
+                        ? { height: displaySize.h }
+                        : { aspectRatio: ASPECT_16_9 }
+                }
+                onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleImageClick(0);
+                }}
             >
-                {displayImages.map((imageUrl, index) => (
-                    <div
-                        key={index}
-                        className={`
-              relative overflow-hidden cursor-pointer group
-              bg-base-200 aspect-square
-              ${styles.rounded} ${variant === "page" || variant === "carousel" ? `${styles.maxH} ${styles.minH}` : ""}
-              shadow-sm hover:shadow-md border border-base-300/50 hover:border-base-content/20
-              transition-all duration-200 ease-out
-            `}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            handleImageClick(index);
-                        }}
-                    >
-                        {!imageLoadStates[index] && (
-                            <div className={`absolute inset-0 bg-base-200 animate-pulse ${styles.rounded}`} />
-                        )}
-
-                        <img
-                            src={imageUrl}
-                            alt={`${altPrefix} ${index + 1}`}
-                            className={`
-                                absolute inset-0 m-0 w-full h-full object-cover transition-transform duration-200 ease-out
-                                group-hover:scale-[1.03]
-                                ${imageLoadStates[index] ? "opacity-100" : "opacity-0"}
-                            `}
-                            onLoad={() => handleImageLoad(index)}
-                            loading="lazy"
-                        />
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
-
-                        {variant === "page" && index === PAGE_GRID_MAX - 1 && overflowCount > 0 ? (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
-                                <span className="text-white text-lg sm:text-xl font-semibold">+{overflowCount}</span>
-                            </div>
-                        ) : images.length > 1 && !(variant === "page" && index === PAGE_GRID_MAX - 1 && overflowCount > 0) ? (
-                            <div className="absolute bottom-1.5 right-1.5 px-2 py-0.5 bg-black/60 backdrop-blur-sm text-white text-[10px] sm:text-xs font-medium rounded-md">
-                                {index + 1}/{images.length}
-                            </div>
-                        ) : null}
+                {!imageLoadStates[0] && (
+                    <div className={`absolute inset-0 ${PREVIEW_BAR_BG} animate-pulse ${styles.rounded}`} />
+                )}
+                <img
+                    src={images[0]}
+                    alt={images.length > 1 ? `${altPrefix} 1 of ${images.length}` : `${altPrefix} 1`}
+                    className={`max-w-full max-h-full object-contain transition-transform duration-200 ease-out group-hover:scale-[1.02] ${imageLoadStates[0] ? "opacity-100" : "opacity-0"}`}
+                    style={displaySize ? { width: displaySize.w, height: displaySize.h } : undefined}
+                    onLoad={handlePreviewImageLoad}
+                    loading="lazy"
+                />
+                {images.length > 1 && (
+                    <div className="absolute bottom-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 bg-black/65 backdrop-blur-sm text-white text-xs font-medium rounded-lg shadow-sm">
+                        <Images className="w-4 h-4 flex-shrink-0" aria-hidden />
+                        <span>1 / {images.length}</span>
                     </div>
-                ))}
+                )}
             </div>
             {lightboxPortal}
         </>
