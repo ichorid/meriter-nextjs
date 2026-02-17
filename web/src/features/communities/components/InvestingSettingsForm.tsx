@@ -21,6 +21,7 @@ interface InvestingSettingsFormProps {
       requireTTLForInvestPosts?: boolean;
       maxTTL?: number | null;
       inactiveCloseDays?: number;
+      distributeAllByContractOnClose?: boolean;
     };
   }) => Promise<void>;
 }
@@ -52,6 +53,9 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
   const [inactiveCloseDays, setInactiveCloseDays] = useState<string>(
     String((currentSettings as { inactiveCloseDays?: number }).inactiveCloseDays ?? 7)
   );
+  const [distributeAllByContractOnClose, setDistributeAllByContractOnClose] = useState<boolean>(
+    (currentSettings as { distributeAllByContractOnClose?: boolean }).distributeAllByContractOnClose ?? true
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -65,6 +69,7 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     const mt = (s as { maxTTL?: number | null }).maxTTL;
     setMaxTTL(mt == null || mt === undefined ? '' : String(mt));
     setInactiveCloseDays(String((s as { inactiveCloseDays?: number }).inactiveCloseDays ?? 7));
+    setDistributeAllByContractOnClose((s as { distributeAllByContractOnClose?: boolean }).distributeAllByContractOnClose ?? true);
   }, [community.settings]);
 
   const validate = (): boolean => {
@@ -108,6 +113,7 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           requireTTLForInvestPosts,
           maxTTL: maxTTL.trim() === '' ? null : parseInt(maxTTL, 10),
           inactiveCloseDays: parseInt(inactiveCloseDays, 10),
+          distributeAllByContractOnClose,
         },
       });
       addToast(t('saveSuccess') || 'Investing settings saved', 'success');
@@ -178,6 +184,24 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
               </BrandFormControl>
             </>
           )}
+
+          <BrandFormControl
+            label={t('fields.distributeAllByContractOnClose') || 'Distribute all merits by contract on close'}
+            helperText={
+              t('fields.distributeAllByContractOnCloseHelp') ||
+              'When on: on post close, all merits (invest pool + rating) are split between author and investors by contract. When off: pool is returned to investors proportionally, then rating is split by contract.'
+            }
+          >
+            <div className="flex items-center gap-3">
+              <Switch
+                checked={distributeAllByContractOnClose}
+                onCheckedChange={setDistributeAllByContractOnClose}
+              />
+              <Label className="text-sm font-medium">
+                {distributeAllByContractOnClose ? (t('fields.enabled') || 'Enabled') : (t('fields.disabled') || 'Disabled')}
+              </Label>
+            </div>
+          </BrandFormControl>
 
           <BrandFormControl
             label={t('fields.requireTTLForInvestPosts') || 'Require TTL for investment posts'}

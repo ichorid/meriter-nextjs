@@ -820,7 +820,9 @@ export class InvestmentService {
   }
 
   /**
-   * Handle post close: return unspent pool to investors, then auto-withdraw rating.
+   * Handle post close.
+   * Mode A (distributeAllByContractOnClose=true, default): ALL merits (pool + rating) distributed between author and investors by contract.
+   * Mode B (distributeAllByContractOnClose=false): pool returned to investors proportionally, then rating distributed by contract.
    * When session is provided (transaction), all writes use it and investor notifications are skipped.
    */
   async handlePostClose(
@@ -843,12 +845,42 @@ export class InvestmentService {
 
     const investments = post.investments || [];
     const currentPool = post.investmentPool ?? 0;
+    const currentScore = post.metrics?.score ?? 0;
     const totalInvested = investments.reduce(
       (sum: number, inv: PublicationInvestment) => sum + inv.amount,
       0,
     );
 
-    if (investments.length > 0 && currentPool > 0 && totalInvested > 0) {
+    const distributeAllByContract =
+      investments.length > 0
+        ? (await this.communityService.getCommunity(post.communityId))?.settings
+            ?.distributeAllByContractOnClose ?? true
+        : false;
+
+    if (investments.length > 0 && distributeAllByContract) {
+      // Mode A: all merits (pool + rating) distributed by contract
+      const totalToDistribute = currentScore + currentPool;
+      await this.publicationModel.updateOne(
+        { id: postId },
+        { $set: { investmentPool: 0 } },
+        session ? { session } : {},
+      );
+      if (totalToDistribute > 0) {
+        ratingDistributed = await this.distributeOnWithdrawal(
+          postId,
+          totalToDistribute,
+          session,
+          'close',
+        );
+      }
+      totalRatingDistributed = currentScore;
+    } else if (
+      investments.length > 0 &&
+      !distributeAllByContract &&
+      currentPool > 0 &&
+      totalInvested > 0
+    ) {
+      // Mode B: return pool to investors proportionally
       const community = await this.communityService.getCommunity(post.communityId);
       if (community) {
         const currency = community.settings?.currencyNames || {
@@ -906,7 +938,6 @@ export class InvestmentService {
           session ? { session } : {},
         );
 
-        // F-1: Record pool_return in each investor's totalEarnings and earningsHistory
         const updateOpts = session ? { session } : {};
         await Promise.all(
           poolReturned.map((p) =>
@@ -927,10 +958,23 @@ export class InvestmentService {
           ),
         );
       }
+    } else if (
+      investments.length > 0 &&
+      !distributeAllByContract &&
+      (currentPool === 0 || totalInvested === 0)
+    ) {
+      await this.publicationModel.updateOne(
+        { id: postId },
+        { $set: { investmentPool: 0 } },
+        session ? { session } : {},
+      );
     }
 
-    const currentScore = post.metrics?.score ?? 0;
-    if (currentScore > 0 && investments.length > 0) {
+    if (
+      currentScore > 0 &&
+      investments.length > 0 &&
+      !distributeAllByContract
+    ) {
       ratingDistributed = await this.distributeOnWithdrawal(
         postId,
         currentScore,

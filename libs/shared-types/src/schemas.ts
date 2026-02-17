@@ -143,6 +143,11 @@ export const CommunitySettingsSchema = z.object({
   maxTTL: z.number().int().min(1).nullable().optional(),
   /** Days without earning after which post can be auto-closed. Default 7. */
   inactiveCloseDays: z.number().int().min(0).default(7),
+  /**
+   * When true (default): on post close, ALL merits (invest pool + rating) are distributed between author and investors by contract.
+   * When false: pool is returned to investors proportionally; then rating is distributed by contract.
+   */
+  distributeAllByContractOnClose: z.boolean().default(true),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -680,6 +685,7 @@ export const UpdateCommunityDtoSchema = z.object({
     requireTTLForInvestPosts: z.boolean().optional(),
     maxTTL: z.number().int().min(1).nullable().optional(),
     inactiveCloseDays: z.number().int().min(0).optional(),
+    distributeAllByContractOnClose: z.boolean().optional(),
     tappalkaOnlyMode: z.boolean().optional(),
     commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
   }).passthrough().optional(),

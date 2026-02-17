@@ -86,6 +86,11 @@ export interface UpdateCommunityDto {
     investingEnabled?: boolean;
     investorShareMin?: number;
     investorShareMax?: number;
+    requireTTLForInvestPosts?: boolean;
+    maxTTL?: number | null;
+    inactiveCloseDays?: number;
+    /** When true (default): on close, all merits distributed by contract. When false: pool return then rating by contract. */
+    distributeAllByContractOnClose?: boolean;
     /** @deprecated Use commentMode instead. When true, mapped to commentMode: 'neutralOnly'. */
     tappalkaOnlyMode?: boolean;
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
@@ -617,6 +622,22 @@ export class CommunityService {
       }
       if (dto.settings.investorShareMax !== undefined) {
         settingsUpdate['settings.investorShareMax'] = dto.settings.investorShareMax;
+      }
+      if ('requireTTLForInvestPosts' in dto.settings) {
+        settingsUpdate['settings.requireTTLForInvestPosts'] = Boolean(
+          dto.settings.requireTTLForInvestPosts,
+        );
+      }
+      if (dto.settings.maxTTL !== undefined) {
+        settingsUpdate['settings.maxTTL'] = dto.settings.maxTTL;
+      }
+      if (dto.settings.inactiveCloseDays !== undefined) {
+        settingsUpdate['settings.inactiveCloseDays'] = dto.settings.inactiveCloseDays;
+      }
+      if ('distributeAllByContractOnClose' in dto.settings) {
+        settingsUpdate['settings.distributeAllByContractOnClose'] = Boolean(
+          dto.settings.distributeAllByContractOnClose,
+        );
       }
       if (dto.settings.commentMode !== undefined) {
         settingsUpdate['settings.commentMode'] = dto.settings.commentMode;

@@ -66,6 +66,11 @@ export interface CommunitySettings {
   /** Days without earning after which post can be auto-closed. Default 7. */
   inactiveCloseDays?: number;
   /**
+   * When true (default): on post close, all merits (pool + rating) distributed by contract.
+   * When false: pool returned to investors proportionally, then rating by contract.
+   */
+  distributeAllByContractOnClose?: boolean;
+  /**
    * Neutral comments only, no weighted votes.
    * @deprecated Use commentMode instead. When true, equivalent to commentMode === 'neutralOnly'. Kept for backward compat.
    */
@@ -359,6 +364,7 @@ export class CommunitySchemaClass implements Community {
       requireTTLForInvestPosts: { type: Boolean, default: false },
       maxTTL: { type: Number, default: null },
       inactiveCloseDays: { type: Number, default: 7 },
+      distributeAllByContractOnClose: { type: Boolean, default: true },
       tappalkaOnlyMode: { type: Boolean, default: false }, // deprecated: use commentMode
       commentMode: {
         type: String,

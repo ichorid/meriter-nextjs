@@ -1234,6 +1234,8 @@
                 "maxTTLPlaceholder": "No limit",
                 "inactiveCloseDays": "Days of inactivity before auto-close",
                 "inactiveCloseDaysHelp": "Post can be auto-closed after this many days without earning",
+                "distributeAllByContractOnClose": "Distribute all merits by contract on close",
+                "distributeAllByContractOnCloseHelp": "When on: on post close, all merits (invest pool + rating) are split between author and investors by contract. When off: pool is returned to investors proportionally, then rating is split by contract.",
                 "tappalkaOnlyMode": "Tappalka only mode",
                 "tappalkaOnlyModeHelp": "Separate feature — disables weighted comments. Flag only."
             },

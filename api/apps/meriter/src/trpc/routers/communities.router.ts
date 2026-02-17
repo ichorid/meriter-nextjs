@@ -53,6 +53,10 @@ export const communitiesRouter = router({
           investingEnabled: community.settings?.investingEnabled ?? false,
           investorShareMin: community.settings?.investorShareMin ?? 1,
           investorShareMax: community.settings?.investorShareMax ?? 99,
+          requireTTLForInvestPosts: community.settings?.requireTTLForInvestPosts ?? false,
+          maxTTL: community.settings?.maxTTL ?? null,
+          inactiveCloseDays: community.settings?.inactiveCloseDays ?? 7,
+          distributeAllByContractOnClose: community.settings?.distributeAllByContractOnClose ?? true,
           tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
           commentMode:
             community.settings?.commentMode ??
@@ -358,13 +362,17 @@ export const communitiesRouter = router({
             editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
             allowEditByOthers: community.settings?.allowEditByOthers ?? false,
             canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
-            investingEnabled: community.settings?.investingEnabled ?? false,
-            investorShareMin: community.settings?.investorShareMin ?? 1,
-            investorShareMax: community.settings?.investorShareMax ?? 99,
-            tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
-            commentMode:
-              community.settings?.commentMode ??
-              (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
+          investingEnabled: community.settings?.investingEnabled ?? false,
+          investorShareMin: community.settings?.investorShareMin ?? 1,
+          investorShareMax: community.settings?.investorShareMax ?? 99,
+          requireTTLForInvestPosts: community.settings?.requireTTLForInvestPosts ?? false,
+          maxTTL: community.settings?.maxTTL ?? null,
+          inactiveCloseDays: community.settings?.inactiveCloseDays ?? 7,
+          distributeAllByContractOnClose: community.settings?.distributeAllByContractOnClose ?? true,
+          tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
+          commentMode:
+            community.settings?.commentMode ??
+            (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
