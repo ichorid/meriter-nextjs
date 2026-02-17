@@ -77,8 +77,10 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (onOpenPostPage) return; // In carousel preview mode, only the button navigates
-    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
     const target = e.target as HTMLElement;
+    // Don't navigate when clicking the image gallery — open lightbox only, stay in feed
+    if (target.closest('[data-gallery-preview]')) return;
+    // Don't navigate if clicking on interactive elements (buttons, links, etc.)
     if (target.closest('button') || target.closest('a') || target.closest('[role="button"]')) {
       return;
     }
