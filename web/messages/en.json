@@ -1065,7 +1065,10 @@
                 "selectedCategories": "Selected: {count}",
                 "characters": "characters",
                 "images": "Images",
-                "imagesHelp": "Upload up to 10 images for your post"
+                "imagesHelp": "Upload up to 10 images for your post",
+                "devPlaceholdersTitle": "Add placeholders (dev only)",
+                "devPlaceholdersAdd": "Add placeholders",
+                "devPlaceholdersMax": "Max {max} images per post"
             },
             "postTypes": {
                 "basic": "Basic",

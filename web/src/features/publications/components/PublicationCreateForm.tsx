@@ -44,6 +44,7 @@ import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CategorySelector } from '@/shared/components/category-selector';
+import config from '@/config';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project';
 
@@ -75,6 +76,21 @@ interface PublicationCreateFormProps {
 }
 
 const getDraftKey = (communityId: string) => `publication_draft_${communityId}`;
+
+/** Generate placeholder image URLs (dev only). Uses picsum.photos with seed for unique images. */
+function getPlaceholderUrls(width: number, height: number, count: number): string[] {
+  return Array.from(
+    { length: count },
+    (_, i) => `https://picsum.photos/seed/dev-${width}-${height}-${i}/${width}/${height}`,
+  );
+}
+
+const DEV_PLACEHOLDER_SIZES = [
+  { w: 200, h: 200, label: '200×200' },
+  { w: 800, h: 800, label: '800×800' },
+  { w: 1200, h: 400, label: '1200×400' },
+  { w: 400, h: 1200, label: '400×1200' },
+] as const;
 
 // Helper function to toggle items in array
 function toggleInArray<T>(arr: T[], value: T): T[] {
@@ -162,6 +178,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     ? [initialData.imageUrl]
     : ((initialData as any)?.images || []);
   const [images, setImages] = useState<string[]>(initialImages);
+  const [devPlaceholderCounts, setDevPlaceholderCounts] = useState<Record<string, number>>({
+    '200x200': 0,
+    '800x800': 0,
+    '1200x400': 0,
+    '400x1200': 0,
+  });
   // Derive isProject from postType instead of separate checkbox
   // Feature flag: projects are currently disabled
   const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
@@ -864,6 +886,59 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               disabled={isSubmitting}
             />
           </BrandFormControl>
+
+          {config.app.isDevelopment && (
+            <div className="rounded-xl border border-dashed border-base-300 bg-base-200/30 p-4 space-y-3">
+              <p className="text-sm font-medium text-base-content/80">
+                {t('fields.devPlaceholdersTitle', { defaultValue: 'Add placeholders (dev only)' })}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {DEV_PLACEHOLDER_SIZES.map(({ w, h, label }) => {
+                  const key = `${w}x${h}`;
+                  const value = devPlaceholderCounts[key] ?? 0;
+                  return (
+                    <div key={key} className="flex flex-col gap-1">
+                      <Label className="text-xs text-base-content/70">{label}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={value}
+                        onChange={(e) => {
+                          const n = Math.max(0, Math.min(10, parseInt(e.target.value, 10) || 0));
+                          setDevPlaceholderCounts((prev) => ({ ...prev, [key]: n }));
+                        }}
+                        className="h-9"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-xl"
+                onClick={() => {
+                  const urls: string[] = [];
+                  DEV_PLACEHOLDER_SIZES.forEach(({ w, h }) => {
+                    const key = `${w}x${h}`;
+                    const count = devPlaceholderCounts[key] ?? 0;
+                    urls.push(...getPlaceholderUrls(w, h, count));
+                  });
+                  if (urls.length === 0) return;
+                  const total = images.length + urls.length;
+                  if (total > 10) {
+                    addToast(t('fields.devPlaceholdersMax', { max: 10 }) ?? 'Max 10 images per post', 'error');
+                    return;
+                  }
+                  setImages((prev) => [...prev, ...urls]);
+                }}
+              >
+                {t('fields.devPlaceholdersAdd', { defaultValue: 'Add placeholders' })}
+              </Button>
+            </div>
+          )}
 
           {ENABLE_HASHTAGS ? (
             <HashtagInput

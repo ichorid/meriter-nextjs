@@ -353,36 +353,36 @@ export function ImageGalleryDisplay({
                             </svg>
                         </button>
 
-                        {/* Previous button */}
-                        {images.length > 1 && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    handlePrev();
-                                }}
-                                onMouseDown={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                }}
-                                onTouchStart={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                }}
-                                className="absolute left-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
-                                aria-label="Previous image"
-                            >
-                                <ChevronLeft size={28} />
-                            </button>
-                        )}
-
-                        {/* Image container */}
-                        <div
-                            className="flex items-center justify-center max-w-full max-h-full p-4"
-                            onClick={(e) => e.stopPropagation()}
+                    {/* Previous button */}
+                    {images.length > 1 && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                handlePrev();
+                            }}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            onTouchStart={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                            }}
+                            className="absolute left-4 z-[100] p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm pointer-events-auto"
+                            aria-label="Previous image"
                         >
-                            <img
-                                src={images[viewingIndex]}
+                            <ChevronLeft size={28} />
+                        </button>
+                    )}
+
+                    {/* Image container */}
+                    <div
+                        className="flex items-center justify-center max-w-full max-h-full p-4"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <img
+                            src={images[viewingIndex]}
                                 alt={`${altPrefix} ${viewingIndex + 1} of ${images.length
                                     }`}
                                 className="max-w-full max-h-[90vh] object-contain"

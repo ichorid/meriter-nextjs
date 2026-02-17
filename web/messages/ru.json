@@ -1058,7 +1058,10 @@
                 "selectedCategories": "Выбрано: {count}",
                 "characters": "символов",
                 "images": "Изображения",
-                "imagesHelp": "Загрузите до 10 изображений для вашего поста"
+                "imagesHelp": "Загрузите до 10 изображений для вашего поста",
+                "devPlaceholdersTitle": "Добавить плейсхолдеры (только в dev)",
+                "devPlaceholdersAdd": "Добавить плейсхолдеры",
+                "devPlaceholdersMax": "Не более {max} изображений в посте"
             },
             "postTypes": {
                 "basic": "Обычный",
