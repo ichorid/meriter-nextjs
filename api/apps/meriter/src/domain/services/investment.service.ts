@@ -990,44 +990,8 @@ export class InvestmentService {
       totalRatingDistributed = currentScore;
     }
 
-    // Notify each investor when not in transaction (caller sends after commit when session provided)
-    if (investments.length > 0 && !session) {
-      try {
-        const totalByInvestor = new Map<string, number>();
-        for (const p of poolReturned) {
-          totalByInvestor.set(
-            p.investorId,
-            (totalByInvestor.get(p.investorId) ?? 0) + p.amount,
-          );
-        }
-        for (const d of ratingDistributed.investorDistributions) {
-          totalByInvestor.set(
-            d.investorId,
-            (totalByInvestor.get(d.investorId) ?? 0) + d.amount,
-          );
-        }
-        await Promise.all(
-          Array.from(totalByInvestor.entries()).map(([invId, total]) =>
-            this.notificationService.createNotification({
-              userId: invId,
-              type: 'post_closed_investment',
-              source: 'system',
-              metadata: {
-                postId,
-                communityId: post.communityId,
-                totalEarnings: total,
-              },
-              title: 'Post closed',
-              message: `Post closed. Your total earnings: ${total} merits`,
-            }),
-          ),
-        );
-      } catch (err) {
-        this.logger.warn(
-          `Failed to create post_closed_investment notifications: ${err}`,
-        );
-      }
-    }
+    // Notifications are sent by the caller (PostClosingService.sendNotifications).
+    // Delete/permanentDelete flows do not use PostClosingService; they may add their own notifications if needed.
 
     return {
       poolReturned,
