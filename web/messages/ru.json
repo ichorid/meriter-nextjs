@@ -45,6 +45,7 @@
         "search": "Поиск",
         "searchPlaceholder": "Поиск...",
         "open": "Открыть",
+        "openPostPage": "Открыть страницу поста",
         "comingSoon": "Скоро",
         "noPermission": "У вас нет разрешения на выполнение этого действия",
         "user": "Пользователь",
@@ -317,7 +318,9 @@
         "onboardingStep3": "За каждые 10 сравнений вы получите награду",
         "onboardingCta": "Чем больше вы сравниваете, тем больше меритов зарабатываете!",
         "onboardingButton": "За работу!",
-        "closeAria": "Закрыть"
+        "closeAria": "Закрыть",
+        "openPost": "Открыть пост",
+        "backToCarousel": "Назад к карусели"
     },
     "postClosing": {
         "closePostTitle": "Закрыть пост",

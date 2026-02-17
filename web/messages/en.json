@@ -45,6 +45,7 @@
         "search": "Search",
         "searchPlaceholder": "Search...",
         "open": "Open",
+        "openPostPage": "Open post page",
         "comingSoon": "Coming soon",
         "noPermission": "You don't have permission to perform this action",
         "needsSetup": "Needs setup",
@@ -322,7 +323,9 @@
         "onboardingStep3": "For every 10 comparisons you get a reward",
         "onboardingCta": "The more you compare, the more merits you earn!",
         "onboardingButton": "Get started",
-        "closeAria": "Close"
+        "closeAria": "Close",
+        "openPost": "Open post",
+        "backToCarousel": "Back to carousel"
     },
     "postClosing": {
         "closePostTitle": "Close post",

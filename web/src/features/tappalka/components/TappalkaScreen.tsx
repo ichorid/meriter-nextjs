@@ -17,8 +17,10 @@ import {
 } from './';
 import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { PublicationCardComponent } from '@/components/organisms/Publication';
+import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { trpc } from '@/lib/trpc/client';
 import { useWallets } from '@/hooks/api';
 
@@ -31,6 +33,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   communityId,
   onClose,
 }) => {
+  const router = useRouter();
   const addToast = useToastStore((state) => state.addToast);
   
   // State for drag-and-drop
@@ -513,6 +516,15 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
               publication={viewingPublication as any}
               wallets={wallets}
               showCommunityAvatar={false}
+              onOpenPostPage={() => {
+                const slug = getPublicationIdentifier(viewingPublication);
+                const cid = viewingPublication.communityId;
+                if (!slug || !cid) return;
+                setViewingPostId(null);
+                onClose();
+                router.push(`/meriter/communities/${cid}/posts/${slug}`);
+              }}
+              onBackToCarousel={() => setViewingPostId(null)}
             />
           ) : null}
         </DialogContent>
