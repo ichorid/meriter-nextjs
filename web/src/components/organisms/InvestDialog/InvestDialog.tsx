@@ -6,12 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/shadcn/button';
 import { Label } from '@/components/ui/shadcn/label';
 import { AmountStepper } from '@/components/ui/shadcn/amount-stepper';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvest } from '@/hooks/api/useInvestments';
 import { useWallet } from '@/hooks/api/useWallet';
 import { trpc } from '@/lib/trpc/client';
+import { formatMerits } from '@/lib/utils/currency';
 
 interface InvestDialogProps {
   open: boolean;
@@ -61,7 +62,6 @@ export function InvestDialog({
   const ttlDays = breakdown?.ttlDays ?? null;
   const ttlExpiresAt = breakdown?.ttlExpiresAt ?? null;
   const stopLoss = breakdown?.stopLoss ?? 0;
-  const noAuthorWalletSpend = breakdown?.noAuthorWalletSpend ?? false;
 
   const myExistingAmount = useMemo(() => {
     if (!myId || !breakdown?.investors) return 0;
@@ -138,14 +138,24 @@ export function InvestDialog({
                 })}
               </p>
 
-              {/* Pool: N merits from M investor(s) */}
-              <p className="text-sm text-base-content/70">
-                {t('poolFromInvestors', {
-                  amount: poolBalance,
+              {/* Pool with tooltip (same as investment breakdown on post) */}
+              <div className="text-sm text-base-content/70">
+                <span
+                  className="inline-flex items-center gap-1.5 text-base-content/60"
+                  title={t('poolTooltip')}
+                >
+                  {t('poolLabel', { defaultValue: 'Pool' })}
+                  <span className="inline-flex" title={t('poolTooltip')} aria-label={t('poolTooltip')}>
+                    <Info className="w-4 h-4 text-base-content/50" />
+                  </span>
+                </span>
+                {' '}
+                {t('poolValueFromInvestors', {
+                  amount: formatMerits(poolBalance),
                   count: investorCountDisplay,
-                  defaultValue: 'Pool: {amount} merits from {count} investor(s)',
+                  defaultValue: '{amount} merits from {count} investor(s)',
                 })}
-              </p>
+              </div>
 
               {/* Post settings: TTL, stop-loss, author wallet flag */}
               <div className="text-sm text-base-content/60 space-y-1">
@@ -168,15 +178,6 @@ export function InvestDialog({
                     })}
                   </p>
                 )}
-                <p>
-                  {noAuthorWalletSpend
-                    ? t('noAuthorWalletSpendYes', {
-                        defaultValue: "Author won't spend from wallet on shows",
-                      })
-                    : t('noAuthorWalletSpendNo', {
-                        defaultValue: 'Author can spend from wallet on shows',
-                      })}
-                </p>
               </div>
 
               {/* Amount input */}
