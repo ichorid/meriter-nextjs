@@ -1013,6 +1013,7 @@
         "noEditsYet": "No edits yet",
         "create": {
             "postSettings": "Post settings",
+            "postParamsReadOnly": "Post parameters",
             "title": "Create Publication",
             "editTitle": "Edit Publication",
             "update": "Update",

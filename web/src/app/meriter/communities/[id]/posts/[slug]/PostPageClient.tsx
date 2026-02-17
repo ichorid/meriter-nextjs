@@ -354,7 +354,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         )}
 
                         <CollapsibleSection
-                            title={tPublicationsCreate('postSettings', { defaultValue: 'Post settings' })}
+                            title={tPublicationsCreate('postParamsReadOnly', { defaultValue: 'Post parameters' })}
                             open={postSettingsOpen}
                             setOpen={setPostSettingsOpen}
                         >

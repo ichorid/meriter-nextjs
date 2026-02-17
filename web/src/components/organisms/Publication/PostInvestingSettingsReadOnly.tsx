@@ -47,34 +47,33 @@ export function PostInvestingSettingsReadOnly({
     ? tInvesting('noAuthorWalletSpendYes', { defaultValue: "Author won't spend from wallet on shows" })
     : tInvesting('noAuthorWalletSpendNo', { defaultValue: 'Author can spend from wallet on shows' });
 
+  const rows = [
+    { label: investorShareLabelKey, value: `${investorSharePercent}%` },
+    { label: tAdvanced('ttlLabel', { defaultValue: 'Time to live (TTL)' }), value: ttlLabel },
+    { label: stopLossLabelKey, value: String(stopLoss) },
+    {
+      label: tAdvanced('noAuthorWalletSpendLabel', {
+        defaultValue: "Don't spend from my wallet on tappalka shows",
+      }),
+      value: noAuthorWalletSpendLabel,
+    },
+  ];
+
   return (
-    <dl className="space-y-3 text-sm">
-      <div>
-        <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-          {investorShareLabelKey}
-        </dt>
-        <dd className="text-base-content/80">{investorSharePercent}%</dd>
+    <div className="rounded-lg bg-base-200/80 dark:bg-base-300/50 border border-base-300 dark:border-base-700 overflow-hidden">
+      <div className="divide-y divide-base-300 dark:divide-base-700">
+        {rows.map(({ label, value }) => (
+          <div
+            key={label}
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4 px-4 py-3 text-sm"
+          >
+            <span className="text-base-content/60 shrink-0">{label}</span>
+            <span className="font-medium text-base-content tabular-nums sm:text-right break-words">
+              {value}
+            </span>
+          </div>
+        ))}
       </div>
-      <div>
-        <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-          {tAdvanced('ttlLabel', { defaultValue: 'Time to live (TTL)' })}
-        </dt>
-        <dd className="text-base-content/80">{ttlLabel}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-          {stopLossLabelKey}
-        </dt>
-        <dd className="text-base-content/80">{stopLoss}</dd>
-      </div>
-      <div>
-        <dt className="text-xs text-base-content/50 uppercase tracking-wide mb-0.5">
-          {tAdvanced('noAuthorWalletSpendLabel', {
-            defaultValue: "Don't spend from my wallet on tappalka shows",
-          })}
-        </dt>
-        <dd className="text-base-content/80">{noAuthorWalletSpendLabel}</dd>
-      </div>
-    </dl>
+    </div>
   );
 }
