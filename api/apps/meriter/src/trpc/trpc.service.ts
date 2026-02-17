@@ -36,6 +36,7 @@ import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
+import { PlatformSettingsService } from '../domain/services/platform-settings.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -76,6 +77,7 @@ export class TrpcService {
     private meritResolverService: MeritResolverService,
     private teamJoinRequestService: TeamJoinRequestService,
     private teamInvitationService: TeamInvitationService,
+    private platformSettingsService: PlatformSettingsService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -122,6 +124,7 @@ export class TrpcService {
       meritResolverService: this.meritResolverService,
       teamJoinRequestService: this.teamJoinRequestService,
       teamInvitationService: this.teamInvitationService,
+      platformSettingsService: this.platformSettingsService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

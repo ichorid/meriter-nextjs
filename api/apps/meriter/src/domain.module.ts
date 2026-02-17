@@ -68,6 +68,10 @@ import {
   TeamInvitationSchemaClass,
   TeamInvitationSchema,
 } from './domain/models/team-invitation/team-invitation.schema';
+import {
+  PlatformSettingsSchemaClass,
+  PlatformSettingsSchema,
+} from './domain/models/platform-settings/platform-settings.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -102,6 +106,7 @@ import { PostClosingService } from './domain/services/post-closing.service';
 import { MeritResolverService } from './domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
+import { PlatformSettingsService } from './domain/services/platform-settings.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -138,6 +143,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
       { name: TeamInvitationSchemaClass.name, schema: TeamInvitationSchema },
+      { name: PlatformSettingsSchemaClass.name, schema: PlatformSettingsSchema },
     ]),
   ],
   providers: [
@@ -174,6 +180,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritResolverService,
     TeamJoinRequestService,
     TeamInvitationService,
+    PlatformSettingsService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -219,6 +226,7 @@ import { EventBus } from './domain/events/event-bus';
     MeritResolverService,
     TeamJoinRequestService,
     TeamInvitationService,
+    PlatformSettingsService,
 
     // Export vote factor services
     RoleHierarchyFactor,

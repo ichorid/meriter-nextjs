@@ -244,10 +244,12 @@ export class WalletService {
   }
 
   /**
-   * Credit 100 welcome merits to global wallet on first registration.
+   * Credit welcome merits to global wallet on first registration.
    * Idempotent: does nothing if user already received welcome merits.
+   * @param amount Amount to credit (from platform settings; 0 = no-op).
    */
-  async creditWelcomeMeritsIfNeeded(userId: string): Promise<boolean> {
+  async creditWelcomeMeritsIfNeeded(userId: string, amount: number): Promise<boolean> {
+    if (amount <= 0) return false;
     const wallet = await this.createOrGetWallet(
       userId,
       GLOBAL_COMMUNITY_ID,
@@ -265,14 +267,14 @@ export class WalletService {
       userId,
       GLOBAL_COMMUNITY_ID,
       'credit',
-      100,
+      amount,
       'personal',
       'welcome_merits',
       userId,
       DEFAULT_CURRENCY,
       'Welcome merits at registration',
     );
-    this.logger.log(`Credited 100 welcome merits to user ${userId}`);
+    this.logger.log(`Credited ${amount} welcome merits to user ${userId}`);
     return true;
   }
 

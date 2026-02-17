@@ -22,6 +22,7 @@ import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { PlatformSettingsService } from './platform-settings.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -55,6 +56,7 @@ export class UserService implements OnModuleInit {
     private walletService: WalletService,
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
+    private platformSettingsService: PlatformSettingsService,
   ) { }
 
   async onModuleInit() {
@@ -279,12 +281,15 @@ export class UserService implements OnModuleInit {
     const defaultCurrency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
     await this.walletService.createOrGetWallet(userId, GLOBAL_COMMUNITY_ID, defaultCurrency);
 
-    // G-10: Credit 100 welcome merits to global wallet on first registration
+    // G-10: Credit platform-configured welcome merits to global wallet on first registration
     const isNewToBaseCommunities =
       needsToJoinFV || needsToJoinMG || needsToJoinTP || needsToJoinSupport;
     if (isNewToBaseCommunities) {
       try {
-        await this.walletService.creditWelcomeMeritsIfNeeded(userId);
+        const welcomeMerits = await this.platformSettingsService.getWelcomeMeritsGlobal();
+        if (welcomeMerits > 0) {
+          await this.walletService.creditWelcomeMeritsIfNeeded(userId, welcomeMerits);
+        }
       } catch (err) {
         this.logger.warn(
           `Failed to credit welcome merits to user ${userId}: ${err instanceof Error ? err.message : 'Unknown'}`,

@@ -15,6 +15,7 @@ import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { UserService } from '../src/domain/services/user.service';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { PlatformSettingsService } from '../src/domain/services/platform-settings.service';
 
 describe('Global Merit E2E', () => {
   jest.setTimeout(60000);
@@ -27,6 +28,7 @@ describe('Global Merit E2E', () => {
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
   let userService: UserService;
   let walletService: WalletService;
+  let platformSettingsService: PlatformSettingsService;
 
   beforeAll(async () => {
     const context = await TestSetupHelper.createTestApp();
@@ -39,6 +41,7 @@ describe('Global Merit E2E', () => {
     userCommunityRoleModel = app.get(getModelToken(UserCommunityRoleSchemaClass.name));
     userService = app.get(UserService);
     walletService = app.get(WalletService);
+    platformSettingsService = app.get(PlatformSettingsService);
   });
 
   afterAll(async () => {
@@ -435,7 +438,9 @@ describe('Global Merit E2E', () => {
   });
 
   describe('Welcome merits', () => {
-    it('ensureUserInBaseCommunities credits 100 merits to global wallet for new user', async () => {
+    it('ensureUserInBaseCommunities credits platform-configured welcome merits to global wallet for new user', async () => {
+      await platformSettingsService.update({ welcomeMeritsGlobal: 100 });
+
       const now = new Date();
       const newUserId = uid();
       const marathonId = uid();

@@ -37,6 +37,7 @@ import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
+import { PlatformSettingsService } from '../domain/services/platform-settings.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -73,6 +74,7 @@ export interface CreateContextOptions {
   meritResolverService: MeritResolverService;
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
+  platformSettingsService: PlatformSettingsService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -121,6 +123,7 @@ export async function createContext(opts: CreateContextOptions) {
     meritResolverService,
     teamJoinRequestService,
     teamInvitationService,
+    platformSettingsService,
     connection,
     configService,
     cookieManager,
@@ -218,6 +221,7 @@ export async function createContext(opts: CreateContextOptions) {
     meritResolverService,
     teamJoinRequestService,
     teamInvitationService,
+    platformSettingsService,
     connection,
     configService,
     cookieManager,

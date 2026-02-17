@@ -198,6 +198,8 @@
     "settings": {
         "title": "Settings",
         "platformTitle": "Platform Settings",
+        "welcomeMeritsGlobal": "Welcome merits for global communities",
+        "welcomeMeritsGlobalHelp": "Merits credited to new users on first registration. 0 = none.",
         "breadcrumb": "Settings",
         "subtitle": "Manage your profile settings",
         "language": "Language",

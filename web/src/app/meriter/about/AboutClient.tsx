@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { VersionDisplay } from '@/components/organisms/VersionDisplay';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/button';
-import { Settings, FileText } from 'lucide-react';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import { Settings, FileText, Loader2 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -16,6 +18,71 @@ import {
 import { CategoryManagement } from '@/components/settings/CategoryManagement';
 import { AboutContent } from '@/components/organisms/About/AboutContent';
 import { AboutAdminPanel } from '@/components/organisms/About/AboutAdminPanel';
+import { trpc } from '@/lib/trpc/client';
+import { useToastStore } from '@/shared/stores/toast.store';
+
+function WelcomeMeritsPlatformRow() {
+  const t = useTranslations('settings');
+  const addToast = useToastStore((s) => s.addToast);
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.platformSettings.get.useQuery(undefined, { retry: false });
+  const updateMutation = trpc.platformSettings.update.useMutation({
+    onSuccess: () => {
+      void utils.platformSettings.get.invalidate();
+      addToast('Saved', 'success');
+    },
+    onError: (e) => addToast(e.message || 'Failed to save', 'error'),
+  });
+  const [value, setValue] = useState<string>('0');
+  useEffect(() => {
+    if (data?.welcomeMeritsGlobal !== undefined) {
+      setValue(String(data.welcomeMeritsGlobal));
+    }
+  }, [data?.welcomeMeritsGlobal]);
+  const handleSave = () => {
+    const n = parseInt(value, 10);
+    if (Number.isNaN(n) || n < 0) {
+      addToast('Enter a number >= 0', 'error');
+      return;
+    }
+    updateMutation.mutate({ welcomeMeritsGlobal: n });
+  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-base-content/60">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading...</span>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="welcome-merits-global">{t('welcomeMeritsGlobal')}</Label>
+      <p className="text-xs text-base-content/60">{t('welcomeMeritsGlobalHelp')}</p>
+      <div className="flex gap-2 items-center">
+        <Input
+          id="welcome-merits-global"
+          type="number"
+          min={0}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          className="w-24"
+        />
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={updateMutation.isPending || Number.isNaN(parseInt(value, 10)) || parseInt(value, 10) < 0}
+        >
+          {updateMutation.isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            'Save'
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 const AboutPage = () => {
     const t = useTranslations('common');
@@ -93,6 +160,7 @@ const AboutPage = () => {
                             <DialogTitle>{tSettings('platformTitle')}</DialogTitle>
                         </DialogHeader>
                         <div className="pt-4 space-y-6">
+                            <WelcomeMeritsPlatformRow />
                             <CategoryManagement />
                         </div>
                     </DialogContent>

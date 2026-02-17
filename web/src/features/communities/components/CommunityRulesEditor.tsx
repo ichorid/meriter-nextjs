@@ -446,6 +446,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       // Filter out deprecated 'viewer' role from permissionRules
       const validPermissionRules = permissionRules.filter(rule => rule.role !== 'viewer');
       
+      const isGlobalCommunity = ['future-vision', 'marathon-of-good', 'support', 'team-projects'].includes(community.typeTag ?? '');
       const dataToSave = {
         permissionRules: validPermissionRules,
         meritSettings: {
@@ -453,7 +454,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           quotaRecipients: validQuotaRecipients,
           canEarn: true, // These are controlled by permissionRules now
           canSpend: true,
-          startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100,
+          ...(isGlobalCommunity ? {} : { startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100 }),
           quotaEnabled: quotaEnabled,
         },
         linkedCurrencies,
@@ -1094,14 +1095,16 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
           </>
         )}
 
-        <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
-          <Input
-            value={startingMerits}
-            onChange={(e) => setStartingMerits(e.target.value)}
-            type="number"
-            className="h-11 rounded-xl w-full"
-          />
-        </BrandFormControl>
+        {!['future-vision', 'marathon-of-good', 'support', 'team-projects'].includes(community.typeTag ?? '') && (
+          <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
+            <Input
+              value={startingMerits}
+              onChange={(e) => setStartingMerits(e.target.value)}
+              type="number"
+              className="h-11 rounded-xl w-full"
+            />
+          </BrandFormControl>
+        )}
         </div>
         )}
       </div>
