@@ -152,6 +152,7 @@ function ProfilePageComponent() {
                 id: role.id || '',
                 communityId: role.communityId || '',
                 communityName: role.communityName,
+                communityTypeTag: role.communityTypeTag,
                 role: role.role,
               }))}
               expanded={meritsExpanded}
