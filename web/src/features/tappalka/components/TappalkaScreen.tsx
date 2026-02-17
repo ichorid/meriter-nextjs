@@ -257,7 +257,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   // Loading state
   if (progressLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-base-200">
+      <div className="flex flex-col items-center justify-center py-16 px-4 bg-base-200">
         <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
         <p className="mt-4 text-base-content/70">Загрузка...</p>
       </div>
@@ -266,7 +266,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
 
   if (!progress) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-base-200">
+      <div className="flex flex-col items-center justify-center py-16 px-4 bg-base-200">
         <p className="text-base-content/70">Не удалось загрузить данные</p>
         <button
           onClick={onClose}
@@ -299,14 +299,14 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   // Empty state (no posts available)
   if (!pairLoading && !pair) {
     return (
-      <div className="flex flex-col min-h-screen bg-base-200">
+      <div className="flex flex-col min-h-0 bg-base-200">
         <TappalkaHeader
           currentComparisons={progress.currentComparisons}
           comparisonsRequired={progress.comparisonsRequired}
           meritBalance={progress.meritBalance}
           onBack={onClose}
         />
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <div className="flex flex-col items-center justify-center p-6">
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-semibold text-base-content mb-2">
@@ -329,7 +329,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
 
   // Main screen with pair
   return (
-    <div className="flex flex-col min-h-screen bg-base-200">
+    <div className="flex flex-col min-h-0 bg-base-200 overflow-hidden">
       <TappalkaHeader
         currentComparisons={progress.currentComparisons}
         comparisonsRequired={progress.comparisonsRequired}
@@ -337,16 +337,16 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         onBack={onClose}
       />
 
-      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 gap-6">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center justify-center md:justify-start p-4 md:p-6 gap-4">
         {pairLoading ? (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
             <p className="text-base-content/70">Загрузка постов...</p>
           </div>
         ) : pair ? (
           <>
-            {/* Posts comparison */}
-            <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-8 w-full max-w-6xl">
+            {/* Posts comparison - max-w-full so we fit inside dialog (max-w-4xl) */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-6 w-full max-w-full">
               {/* Post A */}
               <div className="flex-1 w-full md:max-w-md">
                 <TappalkaPostCard
