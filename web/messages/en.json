@@ -1029,6 +1029,7 @@
             "willPayWithQuota": "Creating a post costs {cost} wallet merits. Payment will be deducted from your wallet.",
             "willPayWithWallet": "Creating a post costs {cost} wallet merit(s). You have {balance} wallet merit(s). Payment will be deducted from your wallet.",
             "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a post.",
+            "insufficientMeritsPopup": "You don't have enough merits to pay for publication – you need at least {cost} merits.",
             "postIsFree": "Posts are free to create in this community.",
             "fields": {
                 "title": "Title",
