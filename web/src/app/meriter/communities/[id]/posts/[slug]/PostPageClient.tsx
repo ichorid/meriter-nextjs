@@ -36,6 +36,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const searchParams = useSearchParams();
     const t = useTranslations('common');
     const tShared = useTranslations('shared');
+    const tComments = useTranslations('comments');
     const tInvesting = useTranslations('investing');
     const tPublicationsCreate = useTranslations('publications.create');
 
@@ -403,7 +404,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         }}
                                         className="w-full"
                                     >
-                                        {t('vote')}
+                                        {tComments('commentButton')}
                                     </Button>
                                 </div>
                             );

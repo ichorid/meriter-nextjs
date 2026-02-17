@@ -154,14 +154,14 @@ export const PostActions: React.FC<PostActionsProps> = ({
   const renderCenter = () => {
     if (isClosed) {
       return (
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             onClick={onCommentOnlyClick}
-            className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-base-200 transition-all active:scale-95"
-            title={commentsTitle}
+            className="h-8 px-2 sm:px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
+            title={voteLabel}
           >
-            <Hand className="w-4 h-4 shrink-0 text-base-content/50" />
-            <span className="hidden sm:inline text-sm font-medium text-base-content/70">{commentsTitle}</span>
+            <Hand className="w-4 h-4 shrink-0 text-base-100" />
+            <span className="hidden sm:inline">{voteLabel}</span>
           </button>
         </div>
       );
