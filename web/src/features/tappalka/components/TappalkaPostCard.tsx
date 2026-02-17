@@ -193,6 +193,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       {post.imageUrl && (
         <div className="w-full h-48 overflow-hidden bg-base-200">
           <ImageGalleryDisplay
+            variant="carousel"
             images={[post.imageUrl]}
             altPrefix={post.title ? `${post.title} - Image` : 'Post image'}
           />

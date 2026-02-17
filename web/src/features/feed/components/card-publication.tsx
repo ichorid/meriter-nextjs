@@ -87,6 +87,7 @@ export const CardPublication = ({
     >
         {coverImageUrl && galleryImages.length === 0 && (
             <ImageGalleryDisplay
+                variant="feed"
                 images={[coverImageUrl]}
                 altPrefix={title ? `${title} - Cover` : 'Publication cover'}
                 initialIndex={viewingImageIndex}
@@ -166,6 +167,7 @@ export const CardPublication = ({
             </div>
             {galleryImages.length > 0 && (
                 <ImageGalleryDisplay
+                    variant="feed"
                     images={galleryImages}
                     altPrefix={title ? `${title} - Image` : 'Publication image'}
                     initialIndex={viewingImageIndex}

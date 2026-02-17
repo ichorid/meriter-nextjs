@@ -98,6 +98,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
     <div className={`prose prose-sm dark:prose-invert max-w-none text-base-content ${className}`}>
       {coverImageUrl && galleryImages.length === 0 && (
         <ImageGalleryDisplay
+          variant="page"
           images={[coverImageUrl]}
           altPrefix={title ? `${title} - Cover` : 'Publication cover'}
         />
@@ -105,6 +106,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
 
       {galleryImages.length > 0 && (
         <ImageGalleryDisplay
+          variant="page"
           images={galleryImages}
           altPrefix={title ? `${title} - Image` : 'Publication image'}
         />

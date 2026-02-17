@@ -177,6 +177,7 @@ export const CardCommentVote = ({
                                 {Array.isArray(images) && images.length > 0 && (
                                     <div className="mt-3 -mx-1" onClick={(e) => e.stopPropagation()}>
                                         <ImageGalleryDisplay
+                                            variant="page"
                                             images={images}
                                             altPrefix="Comment image"
                                             maxColumns={3}
