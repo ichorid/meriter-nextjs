@@ -266,6 +266,8 @@
     },
     "investing": {
         "contractTerms": "Contract: {percent}% to investors",
+        "contractSplit": "Author {author}%, investors {investors}%",
+        "poolTooltip": "Merits currently on the post. When the author withdraws or the post closes, this amount is split between author and investors according to the contract.",
         "investorsReceive": "Investors will receive: {amount} merits",
         "youReceive": "You will receive: {amount} merits",
         "youAreWithdrawing": "You are withdrawing: {amount} merits",
@@ -288,6 +290,7 @@
         "irrevocableWarning": "Investment is irrevocable. Merits cannot be withdrawn until the author withdraws from the post.",
         "irrevocableWarningFull": "Investment is irrevocable. Merits are spent on post carousel shows. Returns only happen when the author withdraws merits or when the post closes.",
         "poolFromInvestors": "Pool: {amount} merits from {count} investor(s)",
+        "poolValueFromInvestors": "{amount} merits from {count} investor(s)",
         "ttlClosesIn": "Closes in {days} days",
         "ttlDays": "TTL: {days} days",
         "stopLossLabel": "Stop-loss: {value}",
@@ -312,7 +315,8 @@
         "investorList": "Investors",
         "firstInvest": "First",
         "lastInvest": "Last",
-        "totalInvested": "Total invested"
+        "totalInvested": "Total invested",
+        "totalInvestmentsLabel": "Total investments"
     },
     "postCarousel": {
         "onboardingTitle": "How does the post carousel work?",
@@ -1077,7 +1081,10 @@
                 "stopLossLabel": "Minimum rating for post carousel (0 = disabled)",
                 "stopLossHelp": "Post exits the carousel if rating drops below this value. Can be changed later.",
                 "noAuthorWalletSpendLabel": "Don't spend from my wallet on post carousel shows",
-                "noAuthorWalletSpendHelp": "If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later."
+                "noAuthorWalletSpendHelp": "If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later.",
+                "authorPaysShowsFromWalletQuestion": "Author pays for shows from wallet?",
+                "answerYes": "Yes",
+                "answerNo": "No"
             },
             "pollCreatePrompt": "Polls have their own creation form with options and voting settings.",
             "goToPollCreate": "Create Poll",

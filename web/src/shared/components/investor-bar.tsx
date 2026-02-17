@@ -16,6 +16,8 @@ interface InvestorBarProps {
   investorSharePercent: number;
   /** Optional map of investorId -> display name for tooltips */
   investorNames?: Record<string, string>;
+  /** When false, only the bar is shown (caption with total and pool is hidden). Default true. */
+  showCaption?: boolean;
 }
 
 const SEGMENT_COLORS = [
@@ -32,6 +34,7 @@ export const InvestorBar: React.FC<InvestorBarProps> = ({
   investmentPoolTotal,
   investorSharePercent,
   investorNames = {},
+  showCaption = true,
 }) => {
   const t = useTranslations('investing');
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -98,20 +101,22 @@ export const InvestorBar: React.FC<InvestorBarProps> = ({
           </div>
         ))}
       </div>
-      <div className="flex justify-between items-center text-xs text-base-content/60">
-        <span>
-          {t('investedBy', {
-            defaultValue: '{amount} merits from {count} investor(s)',
-            amount: investmentPoolTotal,
-            count: investments.length,
-          })}
-        </span>
-        {investmentPool > 0 && (
+      {showCaption && (
+        <div className="flex justify-between items-center text-xs text-base-content/60">
           <span>
-            {t('pool', { defaultValue: 'Pool: {amount}', amount: investmentPool })}
+            {t('investedBy', {
+              defaultValue: '{amount} merits from {count} investor(s)',
+              amount: investmentPoolTotal,
+              count: investments.length,
+            })}
           </span>
-        )}
-      </div>
+          {investmentPool > 0 && (
+            <span>
+              {t('pool', { defaultValue: 'Pool: {amount}', amount: investmentPool })}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
