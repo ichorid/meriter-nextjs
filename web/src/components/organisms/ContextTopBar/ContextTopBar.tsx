@@ -364,6 +364,7 @@ export const CommunityTopBar: React.FC<{
                 showDaily={quotaData.showDaily}
                 compact={true}
                 className="mr-2 -ml-[15px] mt-[5px]"
+                onEarnMeritsClick={tappalkaEnabled && onTappalkaClick ? onTappalkaClick : undefined}
               />
             )}
             {/* Tappalka Button - mobile only (desktop version is in filters row) */}
