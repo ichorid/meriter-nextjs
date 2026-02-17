@@ -285,7 +285,7 @@
         "yourShare": "You will receive ~{percent}%* of each withdrawal (to investors)",
         "yourShareFootnote": "The percentage may change when other investors put funds into the post – income is always shared proportionally to total investments. You can always invest again to increase your share.",
         "irrevocableWarning": "Investment is irrevocable. Merits cannot be withdrawn until the author withdraws from the post.",
-        "irrevocableWarningFull": "Investment is irrevocable. Merits are spent on tappalka shows. Returns only happen when the author withdraws merits or when the post closes.",
+        "irrevocableWarningFull": "Investment is irrevocable. Merits are spent on post carousel shows. Returns only happen when the author withdraws merits or when the post closes.",
         "poolFromInvestors": "Pool: {amount} merits from {count} investor(s)",
         "ttlClosesIn": "Closes in {days} days",
         "ttlDays": "TTL: {days} days",
@@ -312,6 +312,17 @@
         "firstInvest": "First",
         "lastInvest": "Last",
         "totalInvested": "Total invested"
+    },
+    "postCarousel": {
+        "onboardingTitle": "How does the post carousel work?",
+        "onboardingIntro": "The post carousel lets you compare posts and earn merits!",
+        "onboardingHowItWorks": "How it works:",
+        "onboardingStep1": "Drag the merit icon onto the post you prefer",
+        "onboardingStep2": "The winning post receives merits",
+        "onboardingStep3": "For every 10 comparisons you get a reward",
+        "onboardingCta": "The more you compare, the more merits you earn!",
+        "onboardingButton": "Get started",
+        "closeAria": "Close"
     },
     "postClosing": {
         "closePostTitle": "Close post",
@@ -834,7 +845,7 @@
                 "rules": "Rules",
                 "comments": "Comments",
                 "investing": "Investing",
-                "tappalka": "Tappalka"
+                "tappalka": "Post carousel"
             },
             "commentsSection": {
                 "title": "Comment mode",
@@ -1059,9 +1070,9 @@
                 "ttlPlaceholder": "Select TTL",
                 "ttlDays": "{n} days",
                 "ttlIndefinite": "Indefinite",
-                "stopLossLabel": "Minimum rating for tappalka (0 = disabled)",
-                "stopLossHelp": "Post exits tappalka if rating drops below this value. Can be changed later.",
-                "noAuthorWalletSpendLabel": "Don't spend from my wallet on tappalka shows",
+                "stopLossLabel": "Minimum rating for post carousel (0 = disabled)",
+                "stopLossHelp": "Post exits the carousel if rating drops below this value. Can be changed later.",
+                "noAuthorWalletSpendLabel": "Don't spend from my wallet on post carousel shows",
                 "noAuthorWalletSpendHelp": "If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later."
             },
             "pollCreatePrompt": "Polls have their own creation form with options and voting settings.",
@@ -1240,7 +1251,7 @@
                 "inactiveCloseDaysHelp": "Post can be auto-closed after this many days without earning",
                 "distributeAllByContractOnClose": "Distribute all merits by contract on close",
                 "distributeAllByContractOnCloseHelp": "When on: on post close, all merits (invest pool + rating) are split between author and investors by contract. When off: pool is returned to investors proportionally, then rating is split by contract.",
-                "tappalkaOnlyMode": "Tappalka only mode",
+                "tappalkaOnlyMode": "Post carousel only mode",
                 "tappalkaOnlyModeHelp": "Separate feature — disables weighted comments. Flag only."
             },
             "validation": {
@@ -1251,7 +1262,7 @@
                 "inactiveCloseNonNegative": "Must be 0 or more"
             }
         },
-        "tappalka": "Tappalka",
+        "tappalka": "Post carousel",
         "rules": {
             "title": "Community Rules",
             "communityNotFound": "Community not found",
@@ -1341,15 +1352,15 @@
         "visionCommunityNotFound": "Future community not found",
         "currency": "Currency",
         "tappalka": {
-            "title": "Tappalka Settings",
-            "description": "Configure the post comparison mechanic (Tappalka) for this community.",
+            "title": "Post carousel settings",
+            "description": "Configure the post comparison mechanic (post carousel) for this community.",
             "fields": {
-                "enabled": "Enable Tappalka",
+                "enabled": "Enable post carousel",
                 "enabledHelp": "Enable the post comparison mechanic for this community",
                 "enabledOn": "Enabled",
                 "enabledOff": "Disabled",
                 "categories": "Categories",
-                "categoriesHelp": "Select categories to include in Tappalka. Leave empty to include all categories.",
+                "categoriesHelp": "Select categories to include in the post carousel. Leave empty to include all categories.",
                 "winReward": "Win Reward",
                 "winRewardHelp": "Merits awarded to the winning post (emission). Default: 1",
                 "userReward": "User Reward",
@@ -1359,9 +1370,9 @@
                 "showCost": "Show Cost",
                 "showCostHelp": "Cost per post show (deducted from both posts). Default: 0.1",
                 "minRating": "Minimum Rating",
-                "minRatingHelp": "Minimum post rating to participate in Tappalka. Default: 1",
+                "minRatingHelp": "Minimum post rating to participate in the post carousel. Default: 1",
                 "onboardingText": "Onboarding Text",
-                "onboardingTextHelp": "Custom text shown to users when they first open Tappalka. Leave empty to use default text.",
+                "onboardingTextHelp": "Custom text shown to users when they first open the post carousel. Leave empty to use default text.",
                 "onboardingTextPlaceholder": "Enter custom onboarding text..."
             },
             "validation": {
@@ -1374,8 +1385,8 @@
             },
             "save": "Save Settings",
             "saving": "Saving...",
-            "saveSuccess": "Tappalka settings saved successfully",
-            "saveError": "Failed to save tappalka settings"
+            "saveSuccess": "Post carousel settings saved successfully",
+            "saveError": "Failed to save post carousel settings"
         }
     },
     "registration": {

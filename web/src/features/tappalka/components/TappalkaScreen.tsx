@@ -278,22 +278,21 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     );
   }
 
-  // Show onboarding if not seen
+  // Show onboarding if not seen (single surface inside dialog, no nested card)
   if (showOnboarding) {
     return (
-      <div className="flex flex-col min-h-screen bg-base-200">
+      <>
         <TappalkaOnboarding
           text={progress.onboardingText || ''}
           onDismiss={handleOnboardingDismiss}
           inline={true}
         />
-        {/* Show loading while marking onboarding as seen */}
         {markOnboardingSeen.isPending && (
-          <div className="fixed inset-0 z-40 bg-black/20 flex items-center justify-center">
+          <div className="absolute inset-0 z-40 bg-base-100/80 flex items-center justify-center rounded-[inherit]">
             <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
           </div>
         )}
-      </div>
+      </>
     );
   }
 
