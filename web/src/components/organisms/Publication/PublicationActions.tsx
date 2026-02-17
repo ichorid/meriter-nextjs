@@ -541,6 +541,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
               investorId: inv.investorId,
               amount: inv.amount,
             }))}
+            distributeAllByContractOnClose={community?.settings?.distributeAllByContractOnClose ?? true}
             onSuccess={updateAll}
           />
         )}

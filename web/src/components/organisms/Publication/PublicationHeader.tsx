@@ -476,6 +476,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             investorId: inv.investorId,
             amount: inv.amount,
           }))}
+          distributeAllByContractOnClose={community?.settings?.distributeAllByContractOnClose ?? true}
         />
       )}
 

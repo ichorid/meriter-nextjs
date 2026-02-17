@@ -27,6 +27,8 @@ interface ClosePostDialogProps {
   investorSharePercent: number;
   /** Total invested per investor for share calculation */
   investments: Array<{ investorId: string; amount: number }>;
+  /** If true (default): pool + rating distributed by contract. If false: pool returned to investors, only rating split by contract. */
+  distributeAllByContractOnClose?: boolean;
   onSuccess?: () => void;
 }
 
@@ -34,40 +36,58 @@ function roundToHundredths(x: number): number {
   return Math.round(x * 100) / 100;
 }
 
-/** D-9: Preview of distribution (same logic as PostClosingService). */
+export type ClosePreviewMode = 'returnPool' | 'distributeAllByContract';
+
+/** D-9: Preview of distribution (aligned with investment.service handlePostClose). */
 function getClosePreview(
   currentScore: number,
   investmentPool: number,
   investorSharePercent: number,
   investments: Array<{ investorId: string; amount: number }>,
+  distributeAllByContractOnClose: boolean,
 ): {
+  mode: ClosePreviewMode;
   poolReturned: number;
   distributedToInvestors: number;
   authorReceived: number;
-  totalEarned: number;
+  totalDistributed: number;
 } {
-  const totalEarned = currentScore;
-  const poolReturned = investmentPool;
+  const hasInvestors = investments.length > 0;
 
-  if (investments.length === 0 || currentScore <= 0) {
+  if (!hasInvestors || (currentScore <= 0 && investmentPool <= 0)) {
     return {
-      poolReturned,
+      mode: 'returnPool',
+      poolReturned: investmentPool,
       distributedToInvestors: 0,
       authorReceived: currentScore,
-      totalEarned,
+      totalDistributed: currentScore,
     };
   }
 
-  const investorTotal = roundToHundredths(
+  if (distributeAllByContractOnClose) {
+    const total = roundToHundredths(investmentPool + currentScore);
+    const toInvestors = roundToHundredths(total * (investorSharePercent / 100));
+    const toAuthor = total - toInvestors;
+    return {
+      mode: 'distributeAllByContract',
+      poolReturned: 0,
+      distributedToInvestors: toInvestors,
+      authorReceived: toAuthor,
+      totalDistributed: total,
+    };
+  }
+
+  const poolReturned = investmentPool;
+  const investorFromRating = roundToHundredths(
     currentScore * (investorSharePercent / 100),
   );
-  const authorReceived = currentScore - investorTotal;
-
+  const authorReceived = currentScore - investorFromRating;
   return {
+    mode: 'returnPool',
     poolReturned,
-    distributedToInvestors: investorTotal,
+    distributedToInvestors: investorFromRating,
     authorReceived,
-    totalEarned,
+    totalDistributed: currentScore,
   };
 }
 
@@ -80,6 +100,7 @@ export const ClosePostDialog: React.FC<ClosePostDialogProps> = ({
   investmentPool,
   investorSharePercent,
   investments,
+  distributeAllByContractOnClose = true,
   onSuccess,
 }) => {
   const t = useTranslations('shared');
@@ -102,6 +123,7 @@ export const ClosePostDialog: React.FC<ClosePostDialogProps> = ({
       investmentPool,
       investorSharePercent,
       investments,
+      distributeAllByContractOnClose,
     );
 
   const handleConfirm = () => {
@@ -131,26 +153,92 @@ export const ClosePostDialog: React.FC<ClosePostDialogProps> = ({
                 })}
               </p>
               {hasInvestments && preview ? (
-                <div className="rounded-lg bg-base-200/50 p-3 text-sm space-y-1">
-                  <p className="font-medium text-base-content">
+                <div className="rounded-xl bg-base-200/60 dark:bg-base-300/40 p-4 text-sm space-y-3 border border-base-content/5">
+                  <p className="text-xs text-base-content/60">
+                    {preview.mode === 'distributeAllByContract'
+                      ? tClose('modeCaptionDistributeAll', {
+                          defaultValue:
+                            'According to community settings, all merits are distributed by contract.',
+                        })
+                      : tClose('modeCaptionReturnPool', {
+                          defaultValue:
+                            'According to community settings, pool is returned to investors; only rating is split by contract.',
+                        })}
+                  </p>
+                  <p className="font-semibold text-base-content">
                     {tClose('distributionPreview', {
                       defaultValue: 'Distribution preview',
                     })}
                   </p>
-                  <p>
-                    {tClose('poolReturned', { defaultValue: 'Pool returned' })}:{' '}
-                    {formatMerits(preview.poolReturned)}
-                  </p>
-                  <p>
-                    {tClose('toInvestorsFromRating', {
-                      defaultValue: 'To investors (from rating)',
-                    })}{' '}
-                    — {formatMerits(preview.distributedToInvestors)}
-                  </p>
-                  <p>
-                    {tClose('toYou', { defaultValue: 'To you' })} —{' '}
-                    {formatMerits(preview.authorReceived)}
-                  </p>
+                  {preview.mode === 'distributeAllByContract' ? (
+                    <>
+                      <p className="text-base-content/70">
+                        {tClose('totalDistributedByContract', {
+                          defaultValue:
+                            'All merits (pool + rating) distributed by contract.',
+                        })}
+                      </p>
+                      <ul className="space-y-1.5 list-none">
+                        <li className="flex justify-between gap-4">
+                          <span className="text-base-content/80">
+                            {tClose('toYou', { defaultValue: 'To you' })}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatMerits(preview.authorReceived)}
+                          </span>
+                        </li>
+                        <li className="flex justify-between gap-4">
+                          <span className="text-base-content/80">
+                            {tClose('toInvestors', {
+                              defaultValue: 'To investors',
+                            })}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatMerits(preview.distributedToInvestors)}
+                          </span>
+                        </li>
+                      </ul>
+                      <p className="text-base-content/60 text-xs pt-0.5">
+                        {tClose('totalDistributed', {
+                          defaultValue: 'Total',
+                        })}{' '}
+                        {formatMerits(preview.totalDistributed)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <ul className="space-y-1.5 list-none">
+                        <li className="flex justify-between gap-4">
+                          <span className="text-base-content/80">
+                            {tClose('poolReturned', {
+                              defaultValue: 'Pool returned',
+                            })}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatMerits(preview.poolReturned)}
+                          </span>
+                        </li>
+                        <li className="flex justify-between gap-4">
+                          <span className="text-base-content/80">
+                            {tClose('toInvestorsFromRating', {
+                              defaultValue: 'To investors (from rating)',
+                            })}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatMerits(preview.distributedToInvestors)}
+                          </span>
+                        </li>
+                        <li className="flex justify-between gap-4">
+                          <span className="text-base-content/80">
+                            {tClose('toYou', { defaultValue: 'To you' })}
+                          </span>
+                          <span className="font-medium tabular-nums">
+                            {formatMerits(preview.authorReceived)}
+                          </span>
+                        </li>
+                      </ul>
+                    </>
+                  )}
                 </div>
               ) : (
                 <p>
