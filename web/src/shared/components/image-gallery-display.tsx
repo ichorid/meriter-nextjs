@@ -23,6 +23,8 @@ export interface ImageGalleryDisplayProps {
     onClose?: () => void;
     /** Callback when image is clicked (if provided, overrides internal lightbox) */
     onImageClick?: (index: number) => void;
+    /** When set (e.g. carousel on mobile), cap preview height in px; aspect ratio preserved */
+    maxPreviewHeight?: number;
 }
 
 const ASPECT_16_9 = 16 / 9;
@@ -50,6 +52,7 @@ export function ImageGalleryDisplay({
     initialIndex = null,
     onClose,
     onImageClick,
+    maxPreviewHeight,
 }: ImageGalleryDisplayProps) {
     const [viewingIndex, setViewingIndex] = useState<number | null>(
         initialIndex ?? null
@@ -298,12 +301,16 @@ export function ImageGalleryDisplay({
             ? createPortal(renderLightbox(), document.body)
             : null;
 
-    // Never scale up; scale down only to fit width and max height (width * 9/16)
+    // Never scale up; scale down only to fit width and max height (width * 9/16, or maxPreviewHeight when set)
     const displaySize =
         previewNatural && containerWidth > 0
             ? (() => {
                   const { w: nw, h: nh } = previewNatural;
-                  const maxH = (containerWidth * 9) / 16;
+                  const defaultMaxH = (containerWidth * 9) / 16;
+                  const maxH =
+                      maxPreviewHeight != null
+                          ? Math.min(defaultMaxH, maxPreviewHeight)
+                          : defaultMaxH;
                   const scale = Math.min(1, containerWidth / nw, maxH / nh);
                   return { w: Math.round(nw * scale), h: Math.round(nh * scale) };
               })()

@@ -3,6 +3,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { TappalkaPost } from '../types';
 import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
@@ -104,6 +105,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     });
   }, []);
 
+  const isMobileCarousel = useMediaQuery('(max-width: 767px)');
   const titleIsHtml = useMemo(() => isHtmlContent(post.title || ''), [post.title, isHtmlContent]);
   const descriptionIsHtml = useMemo(() => isHtmlContent(post.description || ''), [post.description, isHtmlContent]);
 
@@ -130,6 +132,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
         target.closest('a') ||
         target.closest('[role="button"]') ||
         target.closest('img') ||
+        target.closest('[data-gallery-preview]') ||
         target.closest('[class*="image-gallery"]') ||
         target.closest('[class*="gallery"]')
       ) {
@@ -164,6 +167,8 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       className={cn(
         'relative flex flex-col bg-base-100 rounded-xl shadow-lg overflow-hidden transition-all duration-300',
         'border-2',
+        // Mobile (post carousel only): cap card height at 1/3 viewport so two cards fit on screen
+        'max-md:max-h-[33.33vh] max-md:min-h-0',
         isSelected
           ? 'border-green-500 shadow-green-500/20'
           : isDropTarget
@@ -189,28 +194,34 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       onDragLeave={handleDragLeave}
       onClick={handleCardClick}
     >
-      {/* Image */}
+      {/* Image: scaled-down preview on mobile (aspect ratio preserved, lightbox on tap); full strip on desktop */}
       {post.imageUrl && (
-        <div className="w-full h-48 overflow-hidden bg-base-200">
+        <div
+          className={cn(
+            'w-full overflow-hidden bg-base-200 shrink-0 flex items-center justify-center',
+            isMobileCarousel ? 'min-h-[4rem]' : 'h-48',
+          )}
+        >
           <ImageGalleryDisplay
             variant="carousel"
             images={[post.imageUrl]}
             altPrefix={post.title ? `${post.title} - Image` : 'Post image'}
+            maxPreviewHeight={isMobileCarousel ? 64 : undefined}
           />
         </div>
       )}
 
       {/* Content */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
+      <div className="flex flex-col flex-1 min-h-0 p-4 gap-2 md:gap-3 overflow-hidden">
         {/* Title */}
         {post.title && (
           titleIsHtml ? (
             <div
-              className="text-lg font-semibold text-base-content line-clamp-2 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0"
+              className="text-base md:text-lg font-semibold text-base-content line-clamp-1 md:line-clamp-2 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0 min-w-0"
               dangerouslySetInnerHTML={{ __html: sanitizedTitle }}
             />
           ) : (
-            <h3 className="text-lg font-semibold text-base-content line-clamp-2">
+            <h3 className="text-base md:text-lg font-semibold text-base-content line-clamp-1 md:line-clamp-2 min-w-0">
               {post.title}
             </h3>
           )
@@ -220,18 +231,18 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
         {post.description && (
           descriptionIsHtml ? (
             <div
-              className="text-sm text-base-content/70 line-clamp-3 flex-1 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0"
+              className="text-xs md:text-sm text-base-content/70 line-clamp-2 md:line-clamp-3 flex-1 min-h-0 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0 min-w-0"
               dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
             />
           ) : (
-            <p className="text-sm text-base-content/70 line-clamp-3 flex-1">
+            <p className="text-xs md:text-sm text-base-content/70 line-clamp-2 md:line-clamp-3 flex-1 min-w-0">
               {post.description}
             </p>
           )
         )}
 
         {/* Author */}
-        <div className="flex items-center gap-2 pt-2 border-t border-base-300 dark:border-base-700">
+        <div className="flex items-center gap-2 pt-1 md:pt-2 border-t border-base-300 dark:border-base-700 shrink-0">
           <Avatar className="h-8 w-8">
             {post.authorAvatarUrl ? (
               <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
