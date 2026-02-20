@@ -259,6 +259,7 @@ describe('Global Merit E2E', () => {
         typeTag: 'team',
         members: [authorId, voterId],
         settings: { currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' }, postCost: 1 },
+        meritSettings: { dailyQuota: 0, quotaEnabled: false },
         votingRules: { allowedRoles: ['participant'], canVoteForOwnPosts: false, participantsCannotVoteForLead: false, spendsMerits: true, awardsMerits: true },
         hashtags: ['test'],
         hashtagDescriptions: {},

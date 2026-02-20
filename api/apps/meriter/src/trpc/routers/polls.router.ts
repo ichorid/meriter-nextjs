@@ -6,158 +6,7 @@ import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-
-/**
- * Synchronize debit transactions between Marathon of Good and Future Vision wallets
- * If debiting from MD or OB, debit from both wallets simultaneously
- */
-async function syncDebitForMarathonAndFutureVision(
-  userId: string,
-  communityId: string,
-  amount: number,
-  transactionType: string,
-  referenceId: string,
-  description: string,
-  ctx: any,
-): Promise<void> {
-  const community = await ctx.communityService.getCommunity(communityId);
-  if (!community) {
-    return; // Community not found, skip sync
-  }
-
-  const isMarathon = community.typeTag === 'marathon-of-good';
-  const isFutureVision = community.typeTag === 'future-vision';
-
-  // For regular communities (not Marathon or Future Vision), just debit from current community
-  if (!isMarathon && !isFutureVision) {
-    const currentCurrency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    await ctx.walletService.addTransaction(
-      userId,
-      communityId,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      currentCurrency,
-      description,
-    );
-    return;
-  }
-
-  // Get both communities
-  const marathonCommunity = isMarathon 
-    ? community 
-    : await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
-  const futureVisionCommunity = isFutureVision
-    ? community
-    : await ctx.communityService.getCommunityByTypeTag('future-vision');
-
-  // If both communities exist, sync balances and debit from both
-  if (marathonCommunity && futureVisionCommunity) {
-
-  const mdCurrency = marathonCommunity.settings?.currencyNames || {
-    singular: 'merit',
-    plural: 'merits',
-    genitive: 'merits',
-  };
-
-  const fvCurrency = futureVisionCommunity.settings?.currencyNames || {
-    singular: 'merit',
-    plural: 'merits',
-    genitive: 'merits',
-  };
-
-  // Get current balances to ensure synchronization
-  const mdWallet = await ctx.walletService.getWallet(userId, marathonCommunity.id);
-  const fvWallet = await ctx.walletService.getWallet(userId, futureVisionCommunity.id);
-
-  const mdBalance = mdWallet?.getBalance() ?? 0;
-  const fvBalance = fvWallet?.getBalance() ?? 0;
-
-  // Synchronize balances if they differ (credit the wallet with lower balance)
-  if (mdBalance !== fvBalance) {
-    const balanceDiff = Math.abs(mdBalance - fvBalance);
-    if (mdBalance < fvBalance) {
-      // MD has less, credit it to match FV
-      await ctx.walletService.addTransaction(
-        userId,
-        marathonCommunity.id,
-        'credit',
-        balanceDiff,
-        'personal',
-        'balance_sync',
-        `sync_${Date.now()}`,
-        mdCurrency,
-        `Balance sync: Future Vision → Marathon of Good`,
-      );
-    } else {
-      // FV has less, credit it to match MD
-      await ctx.walletService.addTransaction(
-        userId,
-        futureVisionCommunity.id,
-        'credit',
-        balanceDiff,
-        'personal',
-        'balance_sync',
-        `sync_${Date.now()}`,
-        fvCurrency,
-        `Balance sync: Marathon of Good → Future Vision`,
-      );
-    }
-  }
-
-    // Debit from both wallets simultaneously
-    await Promise.all([
-      ctx.walletService.addTransaction(
-        userId,
-        marathonCommunity.id,
-        'debit',
-        amount,
-        'personal',
-        transactionType,
-        referenceId,
-        mdCurrency,
-        `${description} (Marathon of Good)`,
-      ),
-      ctx.walletService.addTransaction(
-        userId,
-        futureVisionCommunity.id,
-        'debit',
-        amount,
-        'personal',
-        transactionType,
-        referenceId,
-        fvCurrency,
-        `${description} (Future Vision)`,
-      ),
-    ]);
-  } else {
-    // Only one community exists, debit only from the current community
-    const currentCurrency = community.settings?.currencyNames || {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-
-    await ctx.walletService.addTransaction(
-      userId,
-      communityId,
-      'debit',
-      amount,
-      'personal',
-      transactionType,
-      referenceId,
-      currentCurrency,
-      description,
-    );
-  }
-}
+import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 
 /**
  * Helper to calculate remaining quota for a user in a community (including poll casts)
@@ -166,10 +15,10 @@ async function getRemainingQuota(
   userId: string,
   communityId: string,
   community: any,
+  communityService: any,
   connection: any,
 ): Promise<number> {
-  // Future Vision has no quota - wallet voting only
-  if (community?.typeTag === 'future-vision') {
+  if (isPriorityCommunity(community)) {
     return 0;
   }
 
@@ -178,14 +27,15 @@ async function getRemainingQuota(
     return 0;
   }
 
-  if (
-    !community.settings?.dailyEmission ||
-    typeof community.settings.dailyEmission !== 'number'
-  ) {
+  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
+  const dailyQuota =
+    typeof effectiveMeritSettings?.dailyQuota === 'number'
+      ? effectiveMeritSettings.dailyQuota
+      : 0;
+
+  if (dailyQuota <= 0) {
     return 0;
   }
-
-  const dailyQuota = community.settings.dailyEmission;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const quotaStartTime = community.lastQuotaResetAt
@@ -650,9 +500,9 @@ export const pollsRouter = router({
         });
       }
       
-      const quotaAmount = input.data.quotaAmount ?? 0;
-      const walletAmount = input.data.walletAmount ?? 0;
-      const totalAmount = quotaAmount + walletAmount;
+      const requestedQuotaAmount = input.data.quotaAmount ?? 0;
+      const requestedWalletAmount = input.data.walletAmount ?? 0;
+      const totalAmount = requestedQuotaAmount + requestedWalletAmount;
       
       // Validate amounts
       if (totalAmount <= 0) {
@@ -661,47 +511,40 @@ export const pollsRouter = router({
           message: 'Cast amount must be positive',
         });
       }
-      // At least one of quotaAmount or walletAmount must be positive
-      if (quotaAmount <= 0 && walletAmount <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Cast amount must be positive (quota or wallet)',
-        });
-      }
-      
-      // Check user role - only participants/leads/superadmin can use quota
-      if (quotaAmount > 0) {
-        const userRole = await ctx.permissionService.getUserRoleInCommunity(
-          ctx.user.id,
-          communityId,
-        );
-        
-        if (!userRole || !['participant', 'lead', 'superadmin'].includes(userRole)) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Only participants, leads, and superadmins can use quota for poll casts',
-          });
-        }
-        
-        // Calculate remaining quota
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        communityId,
+      );
+      const effectiveMeritSettings = ctx.communityService.getEffectiveMeritSettings(community);
+      const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
+      const canUseQuotaByRole = userRole ? quotaRecipients.includes(userRole) : true;
+      const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
+      const canUseQuota = quotaEnabled && canUseQuotaByRole;
+
+      let quotaAmount = 0;
+      if (canUseQuota) {
         const remainingQuota = await getRemainingQuota(
           ctx.user.id,
           communityId,
           community,
+          ctx.communityService,
           ctx.connection,
         );
-        
-        if (quotaAmount > remainingQuota) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: `Insufficient quota. Available: ${remainingQuota}, requested: ${quotaAmount}`,
-          });
-        }
+        quotaAmount = Math.min(totalAmount, remainingQuota);
       }
-      
+      const walletAmount = totalAmount - quotaAmount;
+
+      const walletCommunityId = ctx.meritResolverService.getWalletCommunityId(
+        community,
+        'voting',
+      );
+
       // Validate and deduct balance BEFORE creating cast
       if (walletAmount > 0) {
-        const wallet = await ctx.walletService.getWallet(ctx.user.id, communityId);
+        const wallet = await ctx.walletService.getWallet(
+          ctx.user.id,
+          walletCommunityId,
+        );
         if (!wallet) {
           throw new TRPCError({
             code: 'NOT_FOUND',
@@ -716,16 +559,27 @@ export const pollsRouter = router({
             message: 'Insufficient balance to cast this amount',
           });
         }
-        
-        // Deduct from wallet FIRST (with sync for MD/OB)
-        await syncDebitForMarathonAndFutureVision(
+
+        const targetCommunity =
+          walletCommunityId === GLOBAL_COMMUNITY_ID
+            ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
+            : community;
+        const currency = targetCommunity?.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+
+        await ctx.walletService.addTransaction(
           ctx.user.id,
-          communityId,
+          walletCommunityId,
+          'debit',
           walletAmount,
+          'personal',
           'poll_cast',
           input.pollId,
+          currency,
           `Cast on poll ${input.pollId}`,
-          ctx,
         );
       }
       
@@ -748,7 +602,7 @@ export const pollsRouter = router({
       
       // Get final wallet balance to return
       const updatedWallet = walletAmount > 0 
-        ? await ctx.walletService.getWallet(ctx.user.id, communityId)
+        ? await ctx.walletService.getWallet(ctx.user.id, walletCommunityId)
         : null;
       
       return {

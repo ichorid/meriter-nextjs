@@ -87,6 +87,7 @@ async function getRemainingQuota(
   userId: string,
   communityId: string,
   community: any,
+  communityService: any,
   connection: any,
 ): Promise<number> {
   // Priority communities use global merit, quota disabled in MVP
@@ -99,14 +100,15 @@ async function getRemainingQuota(
     return 0;
   }
 
-  if (
-    !community.settings?.dailyEmission ||
-    typeof community.settings.dailyEmission !== 'number'
-  ) {
+  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
+  const dailyQuota =
+    typeof effectiveMeritSettings?.dailyQuota === 'number'
+      ? effectiveMeritSettings.dailyQuota
+      : 0;
+
+  if (dailyQuota <= 0) {
     return 0;
   }
-
-  const dailyQuota = community.settings.dailyEmission;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const quotaStartTime = community.lastQuotaResetAt
@@ -258,14 +260,14 @@ async function createVoteLogic(
   }
 
   // Validate amounts
-  const quotaAmount = input.quotaAmount ?? 0;
-  const walletAmount = input.walletAmount ?? 0;
-  const totalAmount = quotaAmount + walletAmount;
+  const requestedQuotaAmount = input.quotaAmount ?? 0;
+  const requestedWalletAmount = input.walletAmount ?? 0;
+  const requestedTotalAmount = requestedQuotaAmount + requestedWalletAmount;
 
   // Author top-up: when post author adds merits to their own post (direct top-up to rating),
   // this bypasses commentMode — it is not a vote/comment, just a transfer.
   let isAuthorTopup = false;
-  if (input.targetType === 'publication' && totalAmount > 0) {
+  if (input.targetType === 'publication' && requestedTotalAmount > 0) {
     const pubDoc = await ctx.publicationService.getPublicationDocument(
       input.targetId,
     );
@@ -280,7 +282,7 @@ async function createVoteLogic(
     }
   }
 
-  if (totalAmount < 0) {
+  if (requestedTotalAmount < 0) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Vote amount cannot be negative',
@@ -293,19 +295,19 @@ async function createVoteLogic(
     const commentMode =
       community.settings?.commentMode ??
       (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all');
-    if (commentMode === 'neutralOnly' && totalAmount !== 0) {
+    if (commentMode === 'neutralOnly' && requestedTotalAmount !== 0) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'This community only allows neutral comments',
       });
     }
-    if (commentMode === 'weightedOnly' && totalAmount === 0) {
+    if (commentMode === 'weightedOnly' && requestedTotalAmount === 0) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'This community requires comments to have merit weight',
       });
     }
-    if (totalAmount === 0 && commentMode !== 'neutralOnly') {
+    if (requestedTotalAmount === 0 && commentMode !== 'neutralOnly') {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'At least one of quotaAmount or walletAmount must be greater than zero',
@@ -323,24 +325,9 @@ async function createVoteLogic(
     ctx.user.id,
     communityId,
   );
-  void _userRole;
 
   // Check currencySource from votingSettings first (highest priority)
   const currencySource = community?.votingSettings?.currencySource;
-  if (currencySource && (input.targetType === 'publication' || input.targetType === 'vote')) {
-    if (currencySource === 'quota-only' && walletAmount > 0) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'This community only allows quota voting. Please use daily quota to vote.',
-      });
-    }
-    if (currencySource === 'wallet-only' && quotaAmount > 0) {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'This community only allows wallet voting. Please use wallet merits to vote.',
-      });
-    }
-  }
 
   // Note: viewer role removed - all users are now participants
   // With global merit, Marathon uses global wallet (quota disabled in MVP). No quota-only restriction.
@@ -350,7 +337,7 @@ async function createVoteLogic(
     (input.targetType === 'publication' || input.targetType === 'vote') &&
     community?.typeTag === 'future-vision' &&
     !currencySource &&
-    quotaAmount > 0
+    requestedQuotaAmount > 0
   ) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
@@ -362,19 +349,51 @@ async function createVoteLogic(
   // Default rule: both quota and wallet voting are allowed in all other communities.
 
   // Validate quota cannot be used for downvotes
-  if (direction === 'down' && quotaAmount > 0) {
+  if (direction === 'down' && requestedQuotaAmount > 0) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Quota cannot be used for downvotes',
     });
   }
 
-  // Check if quota is enabled before allowing quota usage
-  if (quotaAmount > 0 && community?.meritSettings?.quotaEnabled === false) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Quota is disabled for this community',
-    });
+  // Auto-split for upvotes: quota first, then wallet.
+  // Keeps runtime behavior consistent regardless of client-provided split.
+  let quotaAmount = requestedQuotaAmount;
+  let walletAmount = requestedWalletAmount;
+  if (
+    direction === 'up' &&
+    !isAuthorTopup &&
+    requestedTotalAmount > 0
+  ) {
+    const effectiveMeritSettings = ctx.communityService.getEffectiveMeritSettings(
+      community,
+    );
+    const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
+    const canUseQuotaByRole = _userRole ? quotaRecipients.includes(_userRole) : true;
+    const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
+    const quotaAllowedByCurrency = currencySource !== 'wallet-only';
+    const canUseQuota = quotaEnabled && canUseQuotaByRole && quotaAllowedByCurrency;
+
+    let remainingQuota = 0;
+    if (canUseQuota) {
+      remainingQuota = await getRemainingQuota(
+        ctx.user.id,
+        communityId,
+        community,
+        ctx.communityService,
+        ctx.connection,
+      );
+    }
+
+    quotaAmount = Math.min(requestedTotalAmount, remainingQuota);
+    walletAmount = requestedTotalAmount - quotaAmount;
+
+    if (currencySource === 'quota-only' && walletAmount > 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Insufficient quota. Available: ${remainingQuota}, Requested: ${requestedTotalAmount}`,
+      });
+    }
   }
 
   // Check quota availability
@@ -383,6 +402,7 @@ async function createVoteLogic(
       ctx.user.id,
       communityId,
       community,
+      ctx.communityService,
       ctx.connection,
     );
 

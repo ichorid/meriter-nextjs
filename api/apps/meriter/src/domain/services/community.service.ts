@@ -1027,7 +1027,10 @@ export class CommunityService {
       ? new Date(community.lastQuotaResetAt)
       : today;
     
-    const dailyQuota = community.settings?.dailyEmission ?? 0;
+    const effectiveMeritSettings = this.getEffectiveMeritSettings(
+      community as unknown as Community,
+    );
+    const dailyQuota = effectiveMeritSettings?.dailyQuota ?? 0;
     const isFutureVision = community.typeTag === 'future-vision';
     const isMarathonOfGood = community.typeTag === 'marathon-of-good';
 

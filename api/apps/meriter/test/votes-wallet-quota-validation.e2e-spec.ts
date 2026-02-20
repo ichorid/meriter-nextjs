@@ -133,6 +133,11 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
         },
         dailyEmission: 10, // 10 quota per day
       },
+      meritSettings: {
+        dailyQuota: 10,
+        quotaRecipients: ['participant', 'lead', 'superadmin'],
+        quotaEnabled: true,
+      },
       hashtags: ['test'],
       hashtagDescriptions: {},
       isActive: true,
@@ -154,6 +159,10 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
           genitive: 'merits',
         },
         dailyEmission: 10,
+      },
+      meritSettings: {
+        dailyQuota: 0,
+        quotaEnabled: false,
       },
       hashtags: ['vision'],
       hashtagDescriptions: {},
@@ -321,22 +330,21 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
     });
 
-    it('should reject votes exceeding available quota', async () => {
+    it('should auto-fallback to wallet when requested amount exceeds available quota', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      // User has 10 quota, try to use 15 quota
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.create', {
-          targetType: 'publication',
-          targetId: testPublicationId,
-          quotaAmount: 15,
-          walletAmount: 0,
-        });
-
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient quota');
+      // User has 10 quota, requests total 15 -> server should apply 10 quota + 5 wallet.
+      const vote = await trpcMutation(app, 'votes.create', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 15,
+        walletAmount: 0,
       });
+
+      expect(vote).toBeDefined();
+      expect(vote.amountQuota).toBe(10);
+      expect(vote.amountWallet).toBe(5);
     });
 
     it('should reject votes exceeding available wallet balance', async () => {
@@ -357,7 +365,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
     });
 
-    it('should accept wallet voting in non-special communities (default: wallet voting enabled)', async () => {
+    it('should prioritize quota first even when wallet amount is requested', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
@@ -369,8 +377,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
 
       expect(vote).toBeDefined();
-      expect(vote.amountWallet).toBe(1);
-      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(1);
     });
 
     it('should reject quota for downvotes (negative votes)', async () => {
@@ -499,7 +507,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
     });
 
-    it('should accept combined quota + wallet vote on comment in non-special communities (default: both enabled)', async () => {
+    it('should auto-apply quota first for combined vote on comment', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
@@ -511,8 +519,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
 
       expect(vote).toBeDefined();
-      expect(vote.amountQuota).toBe(3);
-      expect(vote.amountWallet).toBe(2);
+      expect(vote.amountQuota).toBe(5);
+      expect(vote.amountWallet).toBe(0);
     });
   });
 
@@ -535,7 +543,7 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
     });
 
-    it('should accept combined quota + wallet vote with comment in non-special communities (default: both enabled)', async () => {
+    it('should auto-apply quota first for combined vote with comment', async () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
@@ -548,8 +556,8 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       });
 
       expect(vote).toBeDefined();
-      expect(vote.amountQuota).toBe(4);
-      expect(vote.amountWallet).toBe(2);
+      expect(vote.amountQuota).toBe(6);
+      expect(vote.amountWallet).toBe(0);
     });
   });
 });

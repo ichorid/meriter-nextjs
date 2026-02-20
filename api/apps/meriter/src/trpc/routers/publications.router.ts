@@ -156,6 +156,7 @@ async function _getRemainingQuota(
   userId: string,
   communityId: string,
   community: any,
+  communityService: any,
   connection: any,
 ): Promise<number> {
   if (isPriorityCommunity(community)) {
@@ -166,14 +167,15 @@ async function _getRemainingQuota(
     return 0;
   }
 
-  if (
-    !community.settings?.dailyEmission ||
-    typeof community.settings.dailyEmission !== 'number'
-  ) {
+  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
+  const dailyQuota =
+    typeof effectiveMeritSettings?.dailyQuota === 'number'
+      ? effectiveMeritSettings.dailyQuota
+      : 0;
+
+  if (dailyQuota <= 0) {
     return 0;
   }
-
-  const dailyQuota = community.settings.dailyEmission;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const quotaStartTime = community.lastQuotaResetAt
@@ -640,6 +642,7 @@ export const publicationsRouter = router({
             ctx.user.id,
             input.communityId,
             community,
+            ctx.communityService,
             ctx.connection,
           );
           quotaAmount = Math.min(postCost, remainingQuota);
@@ -668,6 +671,7 @@ export const publicationsRouter = router({
             ctx.user.id,
             input.communityId,
             community,
+            ctx.communityService,
             ctx.connection,
           );
           if (remainingQuota < quotaAmount) {
