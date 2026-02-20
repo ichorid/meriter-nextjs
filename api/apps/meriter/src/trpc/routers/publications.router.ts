@@ -89,7 +89,7 @@ type PublicationForAutoWithdraw = {
 
 type AutoWithdrawContext = {
   communityService: {
-    getCommunity(communityId: string): Promise<{ id: string; typeTag?: string; settings?: { currencyNames?: CurrencyNames } } | null>;
+    getCommunity(communityId: string): Promise<{ id: string; typeTag?: string; settings?: { currencyNames?: CurrencyNames; allowWithdraw?: boolean } } | null>;
     getCommunityByTypeTag(typeTag: string): Promise<{ id: string; settings?: { currencyNames?: CurrencyNames } } | null>;
   };
   meritResolverService: { getWalletCommunityId(community: any, op: string): string };
@@ -129,9 +129,9 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
   const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
   const communityId = publication.getCommunityId.getValue();
 
-  // Future Vision: withdrawals from posts are not allowed; skip auto-withdraw during deletion.
+  // Respect community withdrawal setting during auto-withdraw.
   const community = await ctx.communityService.getCommunity(communityId);
-  if (community?.typeTag === 'future-vision') {
+  if (community?.settings?.allowWithdraw === false) {
     return 0;
   }
 
@@ -1118,14 +1118,14 @@ export const publicationsRouter = router({
         });
       }
 
-      // Future Vision: users can't withdraw merits from their posts.
+      // Respect community withdrawal setting (single source of truth).
       {
         const communityId = publication.getCommunityId.getValue();
         const community = await ctx.communityService.getCommunity(communityId);
-        if (community?.typeTag === 'future-vision') {
+        if (community?.settings?.allowWithdraw === false) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'Withdrawals are not allowed in Future Vision',
+            message: 'Withdrawals are disabled in this community',
           });
         }
       }

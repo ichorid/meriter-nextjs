@@ -5,6 +5,7 @@ import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema, IdIn
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
+import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 
 /**
  * Synchronize debit transactions between Marathon of Good and Future Vision wallets
@@ -404,16 +405,18 @@ export const pollsRouter = router({
       // Get poll cost from community settings (default to 1 if not set)
       const pollCost = community.settings?.pollCost ?? 1;
       
-      // Validate wallet payment (skip if cost is 0)
-      // Poll creation requires wallet merits only (no quota)
+      // Validate fee payment from global wallet (skip if cost is 0)
       if (pollCost > 0) {
-        const wallet = await ctx.walletService.getWallet(ctx.user.id, input.communityId);
+        const wallet = await ctx.walletService.getWallet(
+          ctx.user.id,
+          GLOBAL_COMMUNITY_ID,
+        );
         const walletBalance = wallet ? wallet.getBalance() : 0;
 
         if (walletBalance < pollCost) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `Insufficient wallet balance. You need at least ${pollCost} wallet merit${pollCost === 1 ? '' : 's'} to create a poll. Available: ${walletBalance}`,
+            message: `Insufficient global wallet balance. You need at least ${pollCost} merit${pollCost === 1 ? '' : 's'} to create a poll. Available: ${walletBalance}`,
           });
         }
       }
@@ -423,17 +426,27 @@ export const pollsRouter = router({
       const snapshot = poll.toSnapshot();
       const pollId = snapshot.id;
       
-      // Process wallet payment after successful creation (with sync for MD/OB)
+      // Process fee payment after successful creation (always from global wallet)
       if (pollCost > 0) {
         try {
-          await syncDebitForMarathonAndFutureVision(
+          const globalCommunity = await ctx.communityService.getCommunity(
+            GLOBAL_COMMUNITY_ID,
+          );
+          const currency = globalCommunity?.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+          await ctx.walletService.addTransaction(
             ctx.user.id,
-            snapshot.communityId,
+            GLOBAL_COMMUNITY_ID,
+            'debit',
             pollCost,
+            'personal',
             'poll_creation',
             pollId,
+            currency,
             'Payment for creating poll',
-            ctx,
           );
         } catch (_error) {
           // Don't fail the request if wallet deduction fails - poll is already created
