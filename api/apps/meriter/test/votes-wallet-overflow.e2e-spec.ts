@@ -92,6 +92,11 @@ describe('Votes - wallet overflow (e2e)', () => {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
           dailyEmission: 5,
         },
+        meritSettings: {
+          dailyQuota: 5,
+          quotaEnabled: true,
+          quotaRecipients: ['superadmin', 'lead', 'participant'],
+        },
         hashtags: ['test'],
         hashtagDescriptions: {},
         isActive: true,
@@ -106,6 +111,11 @@ describe('Votes - wallet overflow (e2e)', () => {
         settings: {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
           dailyEmission: 5,
+        },
+        meritSettings: {
+          dailyQuota: 5,
+          quotaEnabled: true,
+          quotaRecipients: ['superadmin', 'lead', 'participant'],
         },
         hashtags: ['team'],
         hashtagDescriptions: {},

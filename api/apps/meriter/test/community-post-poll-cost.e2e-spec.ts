@@ -398,10 +398,10 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
 
-      // Add wallet balance for the test
+      // Add global wallet balance for poll fee payment
       await walletService.addTransaction(
         testLeadId,
-        testCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -425,12 +425,12 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         },
       });
 
-      // Get initial wallet balance
-      const walletBefore = await walletService.getWallet(testLeadId, testCommunityId);
+      // Get initial global wallet balance
+      const walletBefore = await walletService.getWallet(testLeadId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBeGreaterThanOrEqual(4);
 
-      // Create poll (should deduct 4 from wallet)
+      // Create poll (should deduct 4 from global wallet)
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);
 
@@ -447,8 +447,8 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
 
       const pollId = created.id;
 
-      // Verify wallet was debited (4 instead of 1)
-      const walletAfter = await walletService.getWallet(testLeadId, testCommunityId);
+      // Verify global wallet was debited (4 instead of 1)
+      const walletAfter = await walletService.getWallet(testLeadId, GLOBAL_COMMUNITY_ID);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 4);
 
@@ -566,7 +566,7 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient wallet balance');
+        expect(result.error?.message).toContain('Insufficient global wallet balance');
       });
     });
   });

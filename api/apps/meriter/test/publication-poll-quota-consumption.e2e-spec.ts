@@ -109,6 +109,11 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         },
         dailyEmission: 10, // 10 quota per day
       },
+      meritSettings: {
+        dailyQuota: 10,
+        quotaEnabled: true,
+        quotaRecipients: ['superadmin', 'lead', 'participant'],
+      },
       hashtags: ['test'],
       hashtagDescriptions: {},
       isActive: true,
@@ -130,6 +135,10 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
           genitive: 'merits',
         },
         dailyEmission: 10,
+      },
+      meritSettings: {
+        dailyQuota: 0,
+        quotaEnabled: false,
       },
       typeTag: 'future-vision',
       hashtags: ['test'],
@@ -392,10 +401,10 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     it('should deduct wallet merits when creating a poll', async () => {
       (global as any).testUserId = testUserId;
 
-      // Add wallet balance for the test
+      // Add global wallet balance for poll creation fee
       await walletService.addTransaction(
         testUserId,
-        testCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -409,8 +418,8 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         'Test credit',
       );
 
-      // Get initial wallet balance
-      const walletBefore = await walletService.getWallet(testUserId, testCommunityId);
+      // Get initial global wallet balance
+      const walletBefore = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
       expect(balanceBefore).toBeGreaterThanOrEqual(1);
 
@@ -431,13 +440,13 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const pollId = created.id;
 
-      // Verify wallet was debited
-      const walletAfter = await walletService.getWallet(testUserId, testCommunityId);
+      // Verify global wallet was debited
+      const walletAfter = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceAfter = walletAfter ? walletAfter.getBalance() : 0;
       expect(balanceAfter).toBe(balanceBefore - 1);
 
       // Verify wallet transaction was created
-      const wallet = await walletService.getWallet(testUserId, testCommunityId);
+      const wallet = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       expect(wallet).toBeTruthy();
       const walletId = wallet!.getId.getValue();
       const transactions = await connection.db
@@ -465,14 +474,14 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     it('should reject poll creation when wallet balance is insufficient', async () => {
       (global as any).testUserId = testUserId;
 
-      // Ensure wallet has no balance
-      const wallet = await walletService.getWallet(testUserId, testCommunityId);
+      // Ensure global wallet has no balance
+      const wallet = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       if (wallet && wallet.getBalance() > 0) {
         // Clear wallet by debiting all balance (if any exists)
         const currentBalance = wallet.getBalance();
         await walletService.addTransaction(
           testUserId,
-          testCommunityId,
+          GLOBAL_COMMUNITY_ID,
           'debit',
           currentBalance,
           'personal',
@@ -504,7 +513,7 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('Insufficient wallet balance');
+        expect(result.error?.message).toContain('Insufficient global wallet balance');
       });
     });
 
@@ -535,10 +544,10 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     it('should not consume quota when creating poll (wallet only), but track quota for poll casts', async () => {
       (global as any).testUserId = testUserId;
 
-      // Add wallet balance for poll creation
+      // Add global wallet balance for poll creation fee
       await walletService.addTransaction(
         testUserId,
-        testCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -658,10 +667,10 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
       const authorPublicationId = createdAuthorPub.id;
 
-      // Poll creation uses community wallet; ensure testUserId has balance
+      // Poll creation uses global wallet; ensure testUserId has balance
       await walletService.addTransaction(
         testUserId,
-        testCommunityId,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -672,10 +681,10 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
           plural: 'merits',
           genitive: 'merits',
         },
-        'Test credit for poll',
+        'Test credit for poll (global wallet)',
       );
 
-      // Create poll by testUserId (uses community wallet, not quota)
+      // Create poll by testUserId (uses global wallet, not quota)
       (global as any).testUserId = testUserId;
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 1);

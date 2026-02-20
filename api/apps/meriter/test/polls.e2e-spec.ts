@@ -8,6 +8,7 @@ import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/co
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Polls E2E (create and cast)', () => {
   let app: any;
@@ -78,16 +79,28 @@ describe('Polls E2E (create and cast)', () => {
       updatedAt: now,
     });
 
-    await walletModel.create({
-      id: uid(),
-      userId,
-      communityId,
-      balance: 100,
-      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
-      lastUpdated: now,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await walletModel.create([
+      {
+        id: uid(),
+        userId,
+        communityId,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: uid(),
+        userId,
+        communityId: GLOBAL_COMMUNITY_ID,
+        balance: 100,
+        currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
 
     (global as any).testUserId = userId;
 

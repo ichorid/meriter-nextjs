@@ -12,9 +12,8 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('Special Groups Updated Voting Rules (e2e)', () => {
@@ -467,24 +466,22 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(vote.amountWallet).toBe(0);
     });
 
-    it('should reject wallet voting on publications', async () => {
+    it('should auto-reallocate wallet input to quota on publications', async () => {
       (global as any).testUserId = testUserId;
-      
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'publication',
-          targetId: marathonPubId,
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote attempt',
-        });
 
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows quota voting');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote input',
       });
+
+      expect(vote.amountQuota).toBe(10);
+      expect(vote.amountWallet).toBe(0);
     });
 
-    it('should reject wallet voting on comments (votes)', async () => {
+    it('should auto-reallocate wallet input to quota on comments (votes)', async () => {
       // Create initial vote with testUserId
       (global as any).testUserId = testUserId;
       
@@ -498,21 +495,19 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
 
       const voteId = voteResponse.id;
 
-      // Try to vote on the vote (comment) with wallet using testUserId2
+      // Vote on the vote (comment) with wallet input using testUserId2
       // (testUserId2 can vote because effective beneficiary is testUserId, not testUserId2)
       (global as any).testUserId = testUserId2;
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'vote',
-          targetId: voteId,
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote attempt',
-        });
-
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows quota voting');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote input',
       });
+
+      expect(vote.amountQuota).toBe(10);
+      expect(vote.amountWallet).toBe(0);
     });
   });
 
@@ -530,24 +525,22 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(quota.used).toBe(0);
     });
 
-    it('should reject quota voting on publications', async () => {
+    it('should auto-reallocate quota input to wallet on publications', async () => {
       (global as any).testUserId = testUserId;
-      
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'publication',
-          targetId: visionPubId,
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Quota vote attempt',
-        });
 
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows wallet voting');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Quota vote input',
       });
+
+      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(5);
     });
 
-    it('should reject quota voting on comments (votes)', async () => {
+    it('should auto-reallocate quota input to wallet on comments (votes)', async () => {
       // Create initial vote with wallet
       (global as any).testUserId = testUserId;
       
@@ -562,19 +555,17 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       const voteId = voteResponse.id;
       const _visionVoteId = voteId;
 
-      // Try to vote on the vote (comment) with quota
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'vote',
-          targetId: voteId,
-          quotaAmount: 3,
-          walletAmount: 0,
-          comment: 'Quota vote attempt',
-        });
-
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows wallet voting');
+      // Vote on the vote (comment) with quota input
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'vote',
+        targetId: voteId,
+        quotaAmount: 3,
+        walletAmount: 0,
+        comment: 'Quota vote input',
       });
+
+      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(3);
     });
 
     it('should allow wallet voting on publications', async () => {
@@ -644,7 +635,7 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
   });
 
   describe('Team Groups - Wallet Voting Allowed', () => {
-    it('should allow wallet voting on publications in team communities', async () => {
+    it('should apply quota-first on publications in team communities', async () => {
       (global as any).testUserId = testUserId;
 
       const vote = await trpcMutation(app, 'votes.createWithComment', {
@@ -655,25 +646,23 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         comment: 'Wallet vote in team',
       });
 
-      expect(vote.amountWallet).toBe(10);
-      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(10);
     });
   });
 
   describe('VoteService Direct Tests', () => {
-    it('should reject wallet voting via VoteService.createVote for Marathon of Good', async () => {
+    it('should auto-reallocate wallet input via router for Marathon of Good', async () => {
       (global as any).testUserId = testUserId;
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'publication',
-          targetId: marathonPubId,
-          quotaAmount: 0,
-          walletAmount: 10,
-          comment: 'Wallet vote attempt',
-        });
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows quota voting');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: marathonPubId,
+        quotaAmount: 0,
+        walletAmount: 10,
+        comment: 'Wallet vote input',
       });
+      expect(vote.amountQuota).toBe(10);
+      expect(vote.amountWallet).toBe(0);
     });
 
     it('should allow quota voting via VoteService.createVote for Marathon of Good', async () => {
@@ -694,19 +683,17 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(vote.direction).toBe('up');
     });
 
-    it('should reject quota voting via VoteService.createVote for Future Vision', async () => {
+    it('should auto-reallocate quota input via router for Future Vision', async () => {
       (global as any).testUserId = testUserId;
-      await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
-          targetType: 'publication',
-          targetId: visionPubId,
-          quotaAmount: 5,
-          walletAmount: 0,
-          comment: 'Quota vote attempt',
-        });
-        expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('wallet voting');
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: visionPubId,
+        quotaAmount: 5,
+        walletAmount: 0,
+        comment: 'Quota vote input',
       });
+      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(5);
     });
 
     it('should allow wallet voting via VoteService.createVote for Future Vision', async () => {

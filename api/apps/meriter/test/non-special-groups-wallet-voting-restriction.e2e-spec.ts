@@ -127,6 +127,11 @@ describe('Default Voting Rules (e2e)', () => {
         },
         dailyEmission: 10,
       },
+      meritSettings: {
+        dailyQuota: 10,
+        quotaEnabled: true,
+        quotaRecipients: ['superadmin', 'lead', 'participant'],
+      },
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
         canVoteForOwnPosts: false,
@@ -156,6 +161,11 @@ describe('Default Voting Rules (e2e)', () => {
           genitive: 'merits',
         },
         dailyEmission: 10,
+      },
+      meritSettings: {
+        dailyQuota: 10,
+        quotaEnabled: true,
+        quotaRecipients: ['superadmin', 'lead', 'participant'],
       },
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
@@ -187,6 +197,10 @@ describe('Default Voting Rules (e2e)', () => {
           genitive: 'merits',
         },
         dailyEmission: 10,
+      },
+      meritSettings: {
+        dailyQuota: 0,
+        quotaEnabled: false,
       },
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
@@ -404,7 +418,7 @@ describe('Default Voting Rules (e2e)', () => {
   });
 
   describe('Default Groups - Wallet Voting Enabled', () => {
-    it('should allow wallet voting on publications in regular (non-special) groups', async () => {
+    it('should apply quota-first when wallet is requested in regular groups', async () => {
       (global as any).testUserId = testUserId;
       
       const vote = await trpcMutation(app, 'votes.createWithComment', {
@@ -415,11 +429,11 @@ describe('Default Voting Rules (e2e)', () => {
         comment: 'Wallet vote in regular group',
       });
 
-      expect(vote.amountWallet).toBe(10);
-      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(10);
     });
 
-    it('should allow wallet voting on comments (votes) in regular (non-special) groups', async () => {
+    it('should apply quota-first for vote-on-vote in regular groups', async () => {
       // Create initial vote with testUserId (voter, not author)
       (global as any).testUserId = testUserId;
       
@@ -443,8 +457,8 @@ describe('Default Voting Rules (e2e)', () => {
         comment: 'Reply wallet vote',
       });
 
-      expect(vote.amountWallet).toBe(10);
-      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(0);
+      expect(vote.amountQuota).toBe(10);
     });
 
     it('should allow quota-only voting on publications in non-special groups', async () => {
@@ -492,9 +506,9 @@ describe('Default Voting Rules (e2e)', () => {
   });
 
   describe('Special Groups - Updated Voting Rules', () => {
-    it('should reject wallet voting on publications in Marathon of Good (quota only)', async () => {
+    it('should reject wallet input in Marathon of Good when quota is unavailable', async () => {
       (global as any).testUserId = testUserId;
-      
+
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
         const result = await trpcMutationWithError(app, 'votes.createWithComment', {
           targetType: 'publication',
@@ -505,7 +519,7 @@ describe('Default Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows quota voting');
+        expect(result.error?.message).toContain('Insufficient quota');
       });
     });
 
@@ -536,7 +550,7 @@ describe('Default Voting Rules (e2e)', () => {
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('only allows quota voting');
+        expect(result.error?.message).toContain('Insufficient quota');
       });
     });
   });

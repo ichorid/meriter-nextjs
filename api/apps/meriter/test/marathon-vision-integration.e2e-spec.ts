@@ -128,6 +128,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
         settings: {
           currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
           dailyEmission: 10, // base emission can be non-zero; effective quota must still be 0 for future-vision
+          allowWithdraw: false,
         },
         votingRules: {
           allowedRoles: ['superadmin', 'lead', 'participant'],
@@ -254,7 +255,7 @@ describe('Marathon/Future Vision integration (e2e)', () => {
         amount: 1,
       });
       expect(withdraw.error?.code).toBe('FORBIDDEN');
-      expect(withdraw.error?.message).toContain('Withdrawals are not allowed in Future Vision');
+      expect(withdraw.error?.message).toContain('Withdrawals are disabled in this community');
     });
   });
 });
