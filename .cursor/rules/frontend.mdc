@@ -257,10 +257,43 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 ## Custom Hooks Pattern
 ```typescript
 // hooks/api/useVotes.ts
+import { useQueryClient } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 
 export function useVoteOnPublicationWithComment() {
-  return trpc.votes.createWithComment.useMutation();
+  const queryClient = useQueryClient();
+  const mutation = trpc.votes.createWithComment.useMutation({
+    // includes optimistic updates + cache invalidation logic in current implementation
+  });
+
+  return {
+    ...mutation,
+    mutateAsync: ({
+      publicationId,
+      data,
+      communityId,
+    }: {
+      publicationId: string;
+      data: {
+        quotaAmount?: number;
+        walletAmount?: number;
+        comment?: string;
+        direction?: 'up' | 'down';
+        images?: string[];
+      };
+      communityId?: string;
+    }) =>
+      mutation.mutateAsync({
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: data.quotaAmount ?? 0,
+        walletAmount: data.walletAmount ?? 0,
+        direction: data.direction ?? 'up',
+        comment: data.comment ?? '',
+        images: data.images,
+        communityId: communityId || '',
+      }),
+  };
 }
 ```
 
@@ -272,9 +305,10 @@ export function useVoteOnPublicationWithComment() {
 
 ### Vote API Input Contracts
 - `votes.create` uses `CreateVoteDtoSchema`: `targetType`, `targetId`, `quotaAmount?`, `walletAmount?`, `attachedCommentId?`.
-- `targetType` for comments is `'vote'` (not `'comment'`), as defined by shared polymorphic reference schema.
-- `votes.createWithComment` accepts weighted vote or neutral comment (`comment`) and supports `direction`/`images`.
-- `communityId` is resolved server-side from target and is not part of `votes.create` input schema.
+- For voting on comments in domain flows, the target is a vote entity (`targetType: 'vote'`).
+- `votes.createWithComment` uses `VoteWithCommentDtoSchema` and accepts weighted vote or neutral comment (`comment`), with optional `direction` and `images`.
+- `VoteWithCommentDtoSchema` currently allows `targetType: 'publication' | 'comment' | 'vote'`, but `votes.createWithComment` enforces runtime validation and rejects `'comment'` (requires `'publication'` or `'vote'`).
+- `communityId` is resolved server-side from target and is not part of `votes.create` or `votes.createWithComment` input schemas.
 
 ## Common Mistakes
 
@@ -297,3 +331,8 @@ export function useVoteOnPublicationWithComment() {
 - Team management flows: join team, invite to team, assign lead, and team request handling.
 - Telegram/WebApp integration: telegram store/init handling, haptics helpers, and Telegram-specific UI behavior.
 - Dev/test auth flows and fake-vote tooling in test-auth mode (including fake superadmin-related actions).
+- Notifications flows: notifications page/client and API hooks (`useNotifications`).
+- Favorites flows: favorites API hooks and profile favorites route.
+- Search flows: dedicated search page/client and API hooks (`useSearch`).
+- Admin/settings panels for categories and superadmin management.
+- Taxonomy-enabled publication flows: taxonomy fields in create/read UI (`impactArea`, `beneficiaries`, `methods`, `stage`, `helpNeeded`) with translation helpers.
