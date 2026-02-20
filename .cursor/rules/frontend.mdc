@@ -10,10 +10,11 @@ alwaysApply: false
 ## Tech Stack
 - React 19 + Next.js 16 (App Router)
 - TypeScript (strict)
-- TanStack Query + tRPC client
+- TanStack Query + tRPC client (`@trpc/react-query` v11)
 - REST client via Axios (`lib/api/client.ts`, `lib/api/v1`)
 - Tailwind CSS
-- Zustand (state management)
+- Zustand (with `devtools` + `persist` in stores)
+- next-intl (i18n runtime and translations)
 
 ## Web Structure (web/src)
 - `app/` — App Router pages/layouts/routes
@@ -30,6 +31,7 @@ alwaysApply: false
 - `i18n/` — i18n config/request setup
 - `generated/` — generated artifacts (currently build info)
 - `__tests__/` — tests
+- Route handlers are also used in App Router (`app/**/route.ts`) for auth link flows.
 
 ## Component Guidelines
 
@@ -78,10 +80,10 @@ export function PublicationActions({ publicationId, communityId }: PublicationAc
 ```
 
 ### Component Rules
-- One component per file
-- Props interface defined above component
-- 'use client' only when necessary
-- Destructure props in function signature
+- Prefer one primary component per file, but multiple related exports in a single file are allowed.
+- Define explicit props types/interfaces.
+- Use `'use client'` only when interactivity/browser APIs are required.
+- Keep domain side effects in hooks; compose UI from smaller components.
 - Prefer named exports for new components (existing default exports may remain where already used)
 
 ## Data Fetching
@@ -90,36 +92,57 @@ export function PublicationActions({ publicationId, communityId }: PublicationAc
 ```typescript
 // hooks/api/usePublications.ts
 import { trpc } from '@/lib/trpc/client';
+import { STALE_TIME } from '@/lib/constants/query-config';
 
-export function usePublications(communityId?: string) {
-  return trpc.publications.getAll.useQuery(
-    { communityId, pageSize: 20 },
-    { enabled: !!communityId }
-  );
+interface ListQueryParams {
+  skip?: number;
+  limit?: number;
+  communityId?: string;
+  userId?: string;
+  tag?: string;
 }
 
-export function useCreatePublication() {
-  const utils = trpc.useUtils();
-
-  return trpc.publications.create.useMutation({
-    onSuccess: async () => {
-      await utils.publications.getAll.invalidate();
+export function usePublications(params: ListQueryParams = {}) {
+  return trpc.publications.getAll.useQuery(
+    {
+      communityId: params.communityId,
+      authorId: params.userId,
+      hashtag: params.tag,
+      page: params.skip !== undefined ? Math.floor((params.skip || 0) / (params.limit || 20)) + 1 : undefined,
+      pageSize: params.limit,
+      limit: params.limit,
+      skip: params.skip,
     },
-  });
+    { staleTime: STALE_TIME.VERY_SHORT }
+  );
 }
 ```
 
 ### REST (Unauthenticated / specific endpoints)
 ```typescript
-// hooks/api/useAuth.ts
-import { useMutation } from '@tanstack/react-query';
-import { authApiV1 } from '@/lib/api/v1';
+// lib/api/v1/index.ts
+export const authApiV1 = {
+  async clearCookies(): Promise<void> {
+    await apiClient.post('/api/v1/auth/clear-cookies');
+  },
 
-export function useFakeAuth() {
-  return useMutation({
-    mutationFn: () => authApiV1.authenticateFakeUser(),
-  });
-}
+  async authenticateFakeUser(): Promise<AuthResult> {
+    // ...
+  },
+
+  async authenticateFakeSuperadmin(): Promise<AuthResult> {
+    // ...
+  },
+};
+
+export const configApiV1 = {
+  async getConfig(): Promise<RuntimeConfig> {
+    const response = await apiClient.get<{ success: true; data: RuntimeConfig }>(
+      '/api/v1/config'
+    );
+    return response.data;
+  },
+};
 ```
 
 ## State Management
@@ -128,16 +151,46 @@ export function useFakeAuth() {
 ```typescript
 // stores/ui.store.ts
 import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
 
 interface UIState {
   activeModal: string | null;
-  setActiveModal: (modal: string | null) => void;
+  activeVotingTarget: string | null;
+  votingTargetType: 'publication' | 'comment' | null;
+  votingMode?: 'standard' | 'wallet-only' | 'quota-only';
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  activeModal: null,
-  setActiveModal: (modal) => set({ activeModal: modal }),
-}));
+interface UIActions {
+  openModal: (modal: string) => void;
+  closeModal: () => void;
+  openVotingPopup: (
+    targetId: string,
+    targetType: 'publication' | 'comment' | null,
+    mode?: 'standard' | 'wallet-only' | 'quota-only'
+  ) => void;
+  closeVotingPopup: () => void;
+}
+
+export const useUIStore = create<UIState & UIActions>()(
+  devtools(
+    persist(
+      (set) => ({
+        activeModal: null,
+        activeVotingTarget: null,
+        votingTargetType: null,
+        votingMode: 'standard',
+        openModal: (modal) => set({ activeModal: modal }),
+        closeModal: () => set({ activeModal: null }),
+        openVotingPopup: (targetId, targetType, mode = 'standard') =>
+          set({ activeVotingTarget: targetId, votingTargetType: targetType, votingMode: mode }),
+        closeVotingPopup: () =>
+          set({ activeVotingTarget: null, votingTargetType: null }),
+      }),
+      { name: 'meriter-ui' }
+    ),
+    { name: 'UIStore' }
+  )
+);
 ```
 
 ### When to Use What
@@ -198,6 +251,8 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 ```
 
 ### Route-level Loading & Error Files
+- Server `page.tsx` may use `params: Promise<{...}>` and pass resolved IDs to client components.
+- `generateMetadata` may fetch backend data directly on server for dynamic titles.
 - `loading.tsx` and `error.tsx` are optional App Router conventions.
 - Use them when route-level loading/error boundaries are needed.
 - Do not assume every route has these files.
@@ -206,17 +261,28 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 ```typescript
 // hooks/api/useVotes.ts
 import { trpc } from '@/lib/trpc/client';
+import { useVoteMutation } from './useVoteMutation';
 
 export function useVoteOnPublication() {
   const utils = trpc.useUtils();
 
-  return trpc.votes.create.useMutation({
-    onSuccess: async (_result, variables) => {
-      if (variables.targetType === 'publication') {
-        await utils.publications.getById.invalidate({ id: variables.targetId });
-      }
-      await utils.publications.getAll.invalidate();
-      await utils.communities.getAll.invalidate();
+  return useVoteMutation({
+    mutationFn: ({ publicationId, data, communityId }) =>
+      utils.votes.create.mutateAsync({
+        targetType: 'publication',
+        targetId: publicationId,
+        quotaAmount: data.quotaAmount ?? 0,
+        walletAmount: data.walletAmount ?? 0,
+        direction: data.direction ?? 'up',
+        comment: data.comment ?? '',
+        images: data.images,
+        communityId: communityId!,
+      }),
+    onSuccessInvalidations: {
+      publications: true,
+      communities: true,
+      comments: true,
+      specificPublicationId: (variables) => variables?.publicationId,
     },
   });
 }
@@ -224,14 +290,23 @@ export function useVoteOnPublication() {
 
 ## API Layer Conventions
 - Use `trpc` client from `@/lib/trpc/client` for authenticated domain operations.
-- Use REST wrappers from `@/lib/api/v1` for auth/config and other explicitly REST endpoints.
+- Use REST wrappers from `@/lib/api/v1` for auth/bootstrap-specific REST endpoints (`fake auth`, `clear cookies`, runtime config, etc.).
 - Central REST transport lives in `@/lib/api/client`.
+- App-level query+tRPC providers are configured in `@/providers/QueryProvider`.
 
 ## Common Mistakes
 
-❌ Using ad-hoc `fetch` in app code instead of project API clients
-❌ Importing non-existing paths (e.g. `@/lib/trpc` or `@/components/ui/Button`)
-❌ Mixing old router names (`publication`/`vote`) with current routers (`publications`/`votes`)
-❌ Business logic in components (extract to hooks)
-❌ Forgetting 'use client' for interactive components
+❌ Assuming strict "one component per file" (project allows multiple related exports per file)
+❌ Importing paths/modules that are not present in the project structure
+❌ Mixing old singular router naming with current tRPC routers (`publications`, `votes`, etc.)
+❌ Putting domain side effects directly into large UI components instead of hooks
 ❌ Mutating state directly in Zustand
+❌ Treating ad-hoc `fetch` as default for domain API calls (prefer project API clients; server metadata/auth edge cases can still use `fetch`)
+
+## Implemented Frontend Features (Current Codebase)
+
+- Investment UI flows: invest dialog/button, investment breakdown, read-only post investment settings.
+- Post closing flow: close dialog, closing summary blocks, related action controls.
+- Tappalka UI and hooks: onboarding, pair/choice/progress hooks, tappalka screen/cards.
+- Auth extras: fake auth hooks and passkey-related UI/hooks (`usePasskeys`, `PasskeySection`).
+- i18n runtime usage with `next-intl` (`useTranslations` across app/components/features).
