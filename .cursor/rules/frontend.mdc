@@ -1,5 +1,5 @@
 ---
-description: React and Next.js patterns for frontend development. Include when working with components, hooks, or pages.
+description: React and Next.js patterns for frontend development. Include when working with web components, hooks, routes, and client data flows.
 globs:
   - web/src/**/*
 alwaysApply: false
@@ -11,45 +11,67 @@ alwaysApply: false
 - React 19 + Next.js 16 (App Router)
 - TypeScript (strict)
 - TanStack Query + tRPC client
+- REST client via Axios (`lib/api/client.ts`, `lib/api/v1`)
 - Tailwind CSS
 - Zustand (state management)
 
 ## Web Structure (web/src)
-- `app/` — App Router pages/layouts
+- `app/` — App Router pages/layouts/routes
 - `components/` — UI building blocks
 - `features/` — feature-focused modules
-- `hooks/` — reusable hooks
+- `hooks/` — reusable hooks (`hooks/api/*` for API-facing hooks)
 - `stores/` — Zustand stores
+- `contexts/` — React Context providers (auth/app mode)
+- `providers/` — app-level providers (Query/tRPC)
 - `shared/` — shared UI/helpers/state used across features
+- `lib/` — client libraries and utilities
 - `config/` — frontend runtime/static configuration
-- `generated/` — generated artifacts (build info, generated clients)
+- `types/` — frontend types
+- `i18n/` — i18n config/request setup
+- `generated/` — generated artifacts (currently build info)
+- `__tests__/` — tests
 
 ## Component Guidelines
 
 ### Component Structure
 ```typescript
-// components/feature/FeatureName.tsx
+// components/organisms/Publication/PublicationActions.tsx
 
-'use client'; // Only if using hooks/interactivity
+'use client';
 
-import { useState } from 'react';
-import { useFeatureData } from '@/hooks/useFeatureData';
-import { Button } from '@/components/ui/Button';
+import { trpc } from '@/lib/trpc/client';
+import { Button } from '@/components/ui/shadcn/button';
 
-interface FeatureNameProps {
-  id: string;
-  onComplete?: () => void;
+interface PublicationActionsProps {
+  publicationId: string;
+  communityId: string;
 }
 
-export function FeatureName({ id, onComplete }: FeatureNameProps) {
-  const { data, isLoading } = useFeatureData(id);
-  const [localState, setLocalState] = useState(false);
-
-  if (isLoading) return <LoadingSkeleton />;
+export function PublicationActions({ publicationId, communityId }: PublicationActionsProps) {
+  const utils = trpc.useUtils();
+  const voteMutation = trpc.votes.create.useMutation({
+    onSuccess: async () => {
+      await utils.publications.getById.invalidate({ id: publicationId });
+      await utils.communities.getFeed.invalidate({ communityId });
+    },
+  });
 
   return (
-    <div className="...">
-      {/* Component content */}
+    <div className="flex gap-2">
+      <Button
+        onClick={() =>
+          voteMutation.mutate({
+            targetType: 'publication',
+            targetId: publicationId,
+            quotaAmount: 1,
+            walletAmount: 0,
+            direction: 'up',
+            communityId,
+          })
+        }
+      >
+        Vote
+      </Button>
     </div>
   );
 }
@@ -58,47 +80,44 @@ export function FeatureName({ id, onComplete }: FeatureNameProps) {
 ### Component Rules
 - One component per file
 - Props interface defined above component
-- Named exports (not default)
 - 'use client' only when necessary
 - Destructure props in function signature
+- Prefer named exports for new components (existing default exports may remain where already used)
 
 ## Data Fetching
 
 ### tRPC (Authenticated)
 ```typescript
-// hooks/usePublications.ts
-import { trpc } from '@/lib/trpc';
+// hooks/api/usePublications.ts
+import { trpc } from '@/lib/trpc/client';
 
-export function usePublications(communityId: string) {
-  return trpc.publication.getByCommunity.useQuery(
-    { communityId },
+export function usePublications(communityId?: string) {
+  return trpc.publications.getAll.useQuery(
+    { communityId, pageSize: 20 },
     { enabled: !!communityId }
   );
 }
 
 export function useCreatePublication() {
   const utils = trpc.useUtils();
-  
-  return trpc.publication.create.useMutation({
-    onSuccess: () => {
-      utils.publication.getByCommunity.invalidate();
+
+  return trpc.publications.create.useMutation({
+    onSuccess: async () => {
+      await utils.publications.getAll.invalidate();
     },
   });
 }
 ```
 
-### REST (Unauthenticated)
+### REST (Unauthenticated / specific endpoints)
 ```typescript
-// hooks/usePublicData.ts
-import { useQuery } from '@tanstack/react-query';
+// hooks/api/useAuth.ts
+import { useMutation } from '@tanstack/react-query';
+import { authApiV1 } from '@/lib/api/v1';
 
-export function usePublicData() {
-  return useQuery({
-    queryKey: ['publicData'],
-    queryFn: async () => {
-      const res = await fetch('/api/rest/public-endpoint');
-      return res.json();
-    },
+export function useFakeAuth() {
+  return useMutation({
+    mutationFn: () => authApiV1.authenticateFakeUser(),
   });
 }
 ```
@@ -107,34 +126,29 @@ export function usePublicData() {
 
 ### Zustand Store Pattern
 ```typescript
-// stores/feature.store.ts
+// stores/ui.store.ts
 import { create } from 'zustand';
 
-interface FeatureState {
-  items: Item[];
-  selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
-  addItem: (item: Item) => void;
+interface UIState {
+  activeModal: string | null;
+  setActiveModal: (modal: string | null) => void;
 }
 
-export const useFeatureStore = create<FeatureState>((set) => ({
-  items: [],
-  selectedId: null,
-  setSelectedId: (id) => set({ selectedId: id }),
-  addItem: (item) => set((state) => ({ 
-    items: [...state.items, item] 
-  })),
+export const useUIStore = create<UIState>((set) => ({
+  activeModal: null,
+  setActiveModal: (modal) => set({ activeModal: modal }),
 }));
 ```
 
 ### When to Use What
 | State Type | Solution |
 |------------|----------|
-| Server data | TanStack Query (tRPC) |
+| Server data | TanStack Query (tRPC first) |
 | Global UI state | Zustand |
-| Form state | React Hook Form or local state |
-| Component state | useState/useReducer |
-| URL state | Next.js searchParams |
+| Cross-tree app state | React Context (`contexts/*`) |
+| Form state | Local state or project form primitives |
+| Component state | `useState` / `useReducer` |
+| URL state | App Router params/search params |
 
 ## Styling (Tailwind)
 
@@ -171,67 +185,53 @@ export function cn(...inputs: ClassValue[]) {
 
 ### Page Structure
 ```typescript
-// app/community/[id]/page.tsx
+// app/meriter/communities/[id]/page.tsx
 
-interface PageProps {
+interface CommunityPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }
 
-export default async function CommunityPage({ params, searchParams }: PageProps) {
+export default async function CommunityPage({ params }: CommunityPageProps) {
   const { id } = await params;
-  const { tab } = await searchParams;
-  
-  return <CommunityView id={id} initialTab={tab} />;
+  return <CommunityPageClient communityId={id} />;
 }
 ```
 
-### Loading & Error
-```typescript
-// app/community/[id]/loading.tsx
-export default function Loading() {
-  return <CommunitySkeleton />;
-}
-
-// app/community/[id]/error.tsx
-'use client';
-export default function Error({ error, reset }: { error: Error; reset: () => void }) {
-  return <ErrorDisplay error={error} onRetry={reset} />;
-}
-```
+### Route-level Loading & Error Files
+- `loading.tsx` and `error.tsx` are optional App Router conventions.
+- Use them when route-level loading/error boundaries are needed.
+- Do not assume every route has these files.
 
 ## Custom Hooks Pattern
 ```typescript
-// hooks/useVoting.ts
-import { useState, useCallback } from 'react';
-import { trpc } from '@/lib/trpc';
+// hooks/api/useVotes.ts
+import { trpc } from '@/lib/trpc/client';
 
-export function useVoting(publicationId: string) {
-  const [isVoting, setIsVoting] = useState(false);
+export function useVoteOnPublication() {
   const utils = trpc.useUtils();
 
-  const voteMutation = trpc.vote.create.useMutation({
-    onMutate: () => setIsVoting(true),
-    onSettled: () => setIsVoting(false),
-    onSuccess: () => {
-      utils.publication.getById.invalidate({ id: publicationId });
+  return trpc.votes.create.useMutation({
+    onSuccess: async (_result, variables) => {
+      if (variables.targetType === 'publication') {
+        await utils.publications.getById.invalidate({ id: variables.targetId });
+      }
+      await utils.publications.getAll.invalidate();
+      await utils.communities.getAll.invalidate();
     },
   });
-
-  const vote = useCallback((amount: number) => {
-    voteMutation.mutate({ publicationId, amount });
-  }, [publicationId, voteMutation]);
-
-  return { vote, isVoting, error: voteMutation.error };
 }
 ```
 
+## API Layer Conventions
+- Use `trpc` client from `@/lib/trpc/client` for authenticated domain operations.
+- Use REST wrappers from `@/lib/api/v1` for auth/config and other explicitly REST endpoints.
+- Central REST transport lives in `@/lib/api/client`.
+
 ## Common Mistakes
 
-❌ Using `useEffect` for data fetching (use TanStack Query)
-❌ Prop drilling more than 2 levels (use Zustand or Context)
-❌ Inline styles instead of Tailwind
-❌ Default exports for components
+❌ Using ad-hoc `fetch` in app code instead of project API clients
+❌ Importing non-existing paths (e.g. `@/lib/trpc` or `@/components/ui/Button`)
+❌ Mixing old router names (`publication`/`vote`) with current routers (`publications`/`votes`)
 ❌ Business logic in components (extract to hooks)
 ❌ Forgetting 'use client' for interactive components
 ❌ Mutating state directly in Zustand
