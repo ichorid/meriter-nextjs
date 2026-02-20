@@ -33,22 +33,29 @@ api/apps/meriter/src/
 ├── trpc/                         # 🟢 tRPC layer (API)
 │   └── routers/
 │       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
-├── api-v1/                       # 🟡 REST layer (auth/uploads/config compatibility)
+├── api-v1/                       # 🟡 REST layer (auth/uploads/config) + api-v1/common helpers/services/mappers
 ├── common/                       # Shared backend utilities
 │   └── schemas/                  # Backend-only Zod schemas (currently minimal)
 ├── config/                       # Configuration
 ├── telegram/                     # Telegram integration
 ├── tg-bots/                      # Telegram bot module and services
 ├── updates-conductors/           # Update conductor subsystem
+├── migrations/                   # One-off migration scripts
+├── permission.guard.ts           # Permission guard
+├── user.guard.ts                 # Authenticated user guard
 └── main.ts                       # App entry point
 ```
+
+Notes:
+- `domain/models/` includes auth-related schemas (e.g. passkey challenge schema)
+- Domain contains dedicated background modules/services (e.g. quota reset and post-closing cron modules)
 
 ### Adding New Backend Feature
 1. Add/update schema in `domain/models/[entity]/` (and related interfaces if needed)
 2. Implement business logic in `domain/services/`
 3. Register providers/models in `domain.module.ts` (shared domain wiring)
 4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` and aggregate in `trpc/router.ts`
-5. If REST exposure is required, add controller/service under `api-v1/`
+5. If REST exposure is required, add controller/service under `api-v1/` and reuse `api-v1/common` helpers/services when applicable
 6. Add/update shared contracts in `libs/shared-types/src/` when shape is cross-package
 
 ## Frontend Structure (web/)
@@ -61,12 +68,18 @@ web/src/
 │   └── page.tsx                  # Home page
 ├── components/                   # 🟢 UI Components
 │   ├── ui/                       # Base UI (buttons, inputs)
-│   └── [feature]/                # Feature-specific components
+│   ├── molecules/                # Composite UI pieces
+│   ├── organisms/                # Complex feature blocks
+│   ├── templates/                # Page/layout templates
+│   ├── settings/                 # Settings-related components
+│   └── providers/                # React provider wrappers/components
 ├── features/                     # 🟡 Feature modules
 ├── hooks/                        # Custom React hooks
 ├── stores/                       # Zustand stores
 ├── contexts/                     # React contexts
 ├── lib/                          # Utilities & helpers (incl. tRPC client)
+├── i18n/                         # i18n request/config layer
+├── config/                       # Runtime frontend config
 ├── providers/                    # Provider components
 ├── shared/                       # Shared UI/lib/hooks/stores/types
 ├── types/                        # TypeScript types
@@ -93,7 +106,7 @@ libs/shared-types/src/
 ### When to Use Shared Types
 ✅ Type is used in BOTH frontend and backend
 ✅ Type is part of API contract
-❌ Type is backend-only validation → use `api/common/schemas/`
+❌ Type is backend-only validation → use `api/apps/meriter/src/common/schemas/`
 ❌ Type is frontend-only UI state → use `web/src/types/`
 
 ## Key Patterns
@@ -143,7 +156,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 
 | Type | Convention | Example |
 |------|------------|---------|
-| Components | PascalCase | `VoteButton.tsx` |
+| Components | Mixed (PascalCase and kebab-case) | `VoteButton.tsx`, `card-comment-vote.tsx` |
 | Hooks | camelCase with use | `useVoting.ts` |
 | Services | kebab-case + .service | `vote.service.ts` |
 | Schemas | kebab-case + .schema | `vote.schema.ts` |
