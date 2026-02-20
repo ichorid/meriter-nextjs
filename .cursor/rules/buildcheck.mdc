@@ -3,3 +3,6 @@ alwaysApply: true
 ---
 
 when you finish todos for a plan, run tests and then build to check for errors. If there are errors, iterate until you fix them
+
+If this change introduces a new module, changes project structure, 
+or changes an established pattern — update the relevant .cursor/rules/*.mdc file.
