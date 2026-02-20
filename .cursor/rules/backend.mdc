@@ -10,7 +10,7 @@ alwaysApply: false
 ## Tech Stack
 - NestJS 10 + TypeScript (strict)
 - tRPC v11 for main API surface
-- REST (`api-v1`) for auth/uploads/config compatibility endpoints
+- REST (`api-v1`) for auth/config endpoints and legacy upload compatibility
 - MongoDB + Mongoose
 - Zod shared contracts from `libs/shared-types`
 
@@ -20,7 +20,8 @@ alwaysApply: false
 api/apps/meriter/src/
 ├── domain/
 │   ├── models/                # Mongoose schemas/documents (community, publication, vote, ...)
-│   ├── services/              # Business logic services (publication, vote, wallet, permission, ...)
+│   ├── services/              # Business logic + operational services/modules (publication, vote, wallet, permission, quota-reset, post-closing-cron, ...)
+│   │   └── factors/           # Vote factor subsystem (role hierarchy, currency constraints, context mode, ...)
 │   ├── aggregates/            # Domain entities/aggregates
 │   ├── events/                # Domain events and event bus
 │   ├── value-objects/         # Strongly-typed domain identifiers and VOs
@@ -30,7 +31,7 @@ api/apps/meriter/src/
 │   ├── middleware/            # tRPC middleware (permission checks)
 │   ├── context.ts             # Request context construction
 │   └── trpc.ts                # Procedure helpers
-├── api-v1/                    # REST modules (auth, uploads, config) + api-v1/common/*
+├── api-v1/                    # REST modules (auth, config, legacy uploads) + api-v1/common/*
 ├── common/                    # Shared backend helpers/services/schemas/interceptors
 ├── updates-conductors/        # Update conductor subsystem
 ├── migrations/                # Migration scripts
@@ -39,9 +40,12 @@ api/apps/meriter/src/
 ├── tg-bots/                   # Telegram bot module/services
 ├── domain.module.ts           # Shared domain wiring module
 ├── meriter.module.ts          # Root Nest module composition
+├── main.ts                    # App bootstrap; mounts tRPC Express middleware at /trpc
 ├── permission.guard.ts        # REST permission guard
 └── user.guard.ts              # Authenticated user guard
 ```
+
+Note: additional migration/maintenance scripts also exist outside this tree under `api/scripts/*.ts`.
 
 ## Module Wiring Rule
 - Use a shared `domain.module.ts` for providers and model registration.
@@ -58,14 +62,20 @@ api/apps/meriter/src/
 - Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`.
 
 ### REST (`api-v1`)
-- Used for selected flows (auth/providers, uploads, config), with shared REST helpers/services under `api-v1/common`.
+- Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS/email OTP, call-check, magic-link), with shared REST helpers/services under `api-v1/common`.
+- Upload REST endpoints are kept for backward compatibility and marked deprecated; prefer tRPC uploads endpoints for new code.
 - Reuse domain services and shared helpers where possible; current REST/tRPC layers also use dedicated enrichment/mapping helpers from `api-v1/common`.
 - Keep auth and permissions consistent with tRPC behavior.
+
+## Bootstrap and Runtime Wiring
+- `main.ts` mounts tRPC via Express middleware (`/trpc`) before Nest routes to correctly handle batched requests.
+- Global exception/response handling is configured in bootstrap (`ApiExceptionFilter`, `ApiResponseInterceptor`).
+- Sentry is initialized during bootstrap and also used in tRPC procedure middleware.
 
 ## Permission Flow
 
 1. Route/middleware resolves actor and target context.
-2. `PermissionService` evaluates action-level permission.
+2. `PermissionService` evaluates action-level permission (REST via guards/decorators; tRPC via middleware or handler-level checks).
 3. Domain service enforces business constraints (wallet/quota/source rules).
 4. Use sessions/transactions where implemented; some existing flows are best-effort and not fully atomic.
 5. Events/notifications emitted after successful state change.
@@ -76,6 +86,7 @@ Never rely on UI assumptions for security-critical checks.
 - Shared API contracts: `libs/shared-types/src/`.
 - Backend-only schemas: `api/apps/meriter/src/common/schemas/` (currently minimal).
 - Most Mongoose models are in `domain/models/**`; additional schemas can also exist in dedicated feature modules (e.g. `updates-conductors/model`).
+- Auth persistence schemas are in `domain/models/auth/**` (e.g. passkey challenge and OTP-related schemas).
 - When changing contract shape, update both backend usage and frontend consumers.
 
 ## Service Pattern
@@ -112,4 +123,6 @@ export const exampleRouter = router({
 ❌ Duplicating validation instead of reusing shared schemas  
 ❌ Skipping permission checks for "internal" endpoints  
 ❌ Mixing REST/tRPC contracts without explicit mapping  
+❌ Applying tRPC permission middleware before `.input()` validation when resource IDs are extracted from input  
+❌ Treating deprecated REST upload endpoints as the primary API surface  
 ❌ Introducing backend-only DTOs into shared-types without cross-package need
