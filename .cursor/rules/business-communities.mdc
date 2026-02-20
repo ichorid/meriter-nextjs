@@ -17,34 +17,38 @@ alwaysApply: false
 
 ### Priority Communities (use Global Merit)
 
-Communities that share the user's **global wallet**. Includes:
+Communities that are treated as priority context. Includes:
 - МД (Marathon of Good), ОБ (Image of Future), Projects, Support (Feedback)
 
 **Definition:** `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` OR `isPriority === true`
 
 **Characteristics:**
-- All users are members by default (for main MVP communities)
-- One wallet for all — earning in МД = spending in ОБ, etc.
-- Fee, voting, withdrawal, tappalka — all from global wallet
-- User CANNOT leave (for MVP global communities)
+- Users are auto-added to base priority communities by backend sync logic.
+- Priority communities use global merit context for voting/investment/tappalka reward routing.
+- Fees (`postCost`, `pollCost`, `forwardCost`) are debited from GLOBAL wallet (same behavior for all communities).
+- Withdrawals are credited to GLOBAL wallet.
+- No dedicated user self-leave API is implemented for priority communities.
 
 ### Global Communities (Public Groups)
 
-Created by platform administration. May include both priority and non-priority communities.
+Includes platform base communities and other non-team communities.
 
-**Priority communities** (МД, ОБ, Projects, Support) use **global merit** — one wallet shared across them all. See above.
+**Important implementation facts:**
+- Priority base communities are ensured by backend bootstrap logic.
+- `isPriority` can only be set by superadmin.
+- Reserved internal `global` community (`GLOBAL_COMMUNITY_ID`) is system-managed and excluded from user-facing community lists.
+- Community creation is available to authenticated users; it is not admin-only.
 
 ### Local Communities (Private Groups)
 
-Created and managed by users.
+User-created team communities (`typeTag: 'team'`).
 
 **Characteristics:**
-- Have their OWN merit (separate from global)
-- Full set of settings available to lead
-- User can be member of ANY number of local communities
-- User can be lead of ANY number of communities
-- User can voluntarily leave any local community
-- Lead CANNOT delete community — only request deletion from administration
+- Team membership uses invite/request flows (team invitations + join requests).
+- Voting/investment/tappalka wallet routing uses local community context (non-priority behavior).
+- Fees and withdrawals still route via GLOBAL wallet.
+- No dedicated self-leave endpoint is implemented (membership removal is admin/lead-driven in current API).
+- "Lead requests deletion from administration" flow is not implemented as a dedicated API feature.
 
 ---
 
@@ -56,19 +60,26 @@ Created and managed by users.
 |-------|-------------|
 | Name | Display name of community |
 | Description | Text description of goals and rules |
-| Avatar | Community image |
-| Cover | Background image |
-| Currency Name | What merits are called in this community |
-| Type | Local or Global |
+| Avatar | Community image (`avatarUrl`) |
+| Cover | Background image (`coverImageUrl`) |
+| Currency Name | Community currency labels (`settings.currencyNames`) |
+| Type Tag | Community kind (`typeTag`, e.g. `team`, `future-vision`, `marathon-of-good`, `support`, `team-projects`) |
+| Hashtags | Community hashtag list (`hashtags`) |
+| Hashtag Descriptions | Optional hashtag descriptions (`hashtagDescriptions`) |
 
 ### System Fields
 
 | Field | Description |
 |-------|-------------|
-| createdAt | Creation timestamp |
-| members | Users who are members of community |
-| posts | Posts belonging to this community |
-| settings | Configuration (see below) |
+| createdAt / updatedAt | Timestamps |
+| members | Legacy member IDs list (current role source is `UserCommunityRole`) |
+| isActive | Community active flag |
+| isPriority | Priority flag used in sorting and global-merit logic |
+| lastQuotaResetAt | Last quota reset timestamp |
+| settings | Base settings block |
+| permissionRules | Role/action allow/deny rules (custom overrides) |
+| meritSettings / votingSettings / tappalkaSettings | Optional custom override blocks (effective values are merged with defaults at runtime) |
+| linkedCurrencies | Optional linked currency IDs |
 
 ---
 
@@ -84,6 +95,10 @@ Community
 ├── tappalkaSettings  # tappalka parameters
 └── permissionRules   # role->action allow/deny (replaces old canPublish/whoCanVote toggles)
 ```
+
+**Runtime behavior note:**
+- Effective `permissionRules`, `meritSettings`, and `votingSettings` are resolved by backend defaults service and merged with DB overrides.
+- API may still return/store legacy rule blocks (`postingRules`, `votingRules`, `visibilityRules`, `meritRules`) for backward compatibility.
 
 ### `settings` (CommunitySettingsSchema)
 
@@ -151,8 +166,9 @@ Community
 | `onboardingText` | Optional custom onboarding copy | optional |
 
 ### Permissions and old field names
-- Role/action permissions are now controlled by `permissionRules`.
+- Role/action permissions are controlled by `permissionRules` (effective rules are defaults + DB overrides).
 - Legacy-style names like `canPublish`, `whoCanVote`, `canVoteSelf`, `canVoteTeammates` are not top-level `settings` fields.
+- Legacy rule blocks (`postingRules`, `votingRules`, `visibilityRules`, `meritRules`) may still appear in API payloads for backward compatibility.
 - Prefer documenting/using current schema fields from `CommunitySettingsSchema`, `CommunityMeritSettingsSchema`, `CommunityVotingSettingsSchema`, and `TappalkaSettingsSchema`.
 
 ---
@@ -169,17 +185,22 @@ If needed in future, treat this as planned work and define explicit API/storage 
 
 ### Action Payment Rules
 - Post/poll/forward costs come from `settings.postCost`, `settings.pollCost`, `settings.forwardCost`.
-- Priority communities (МД, ОБ, Projects, Support, or `isPriority=true`) use global merit context.
-- Local communities use local merit context for wallet/quota logic.
-- Voting source restrictions are configured through `votingSettings.currencySource` and enforced by domain logic.
+- Fee debits are routed through GLOBAL wallet.
+- Withdrawal credits are routed through GLOBAL wallet.
+- Priority community detection: `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` or `isPriority=true`.
+- Voting source restrictions are configured through `votingSettings.currencySource` (with backward-compatible logic in domain services).
 
 ### Forwarding Between Communities
 
-| From | To | Mode |
-|------|-----|------|
-| Global | Global | Configured by admin |
-| Local | Any | ALWAYS copy without merits |
-| "Projects" | "MД" | Transfer WITH merits (special MVP rule) |
+| Case | Behavior |
+|------|----------|
+| Lead/superadmin forward | Direct `forward` operation |
+| Participant forward from team community | `proposeForward` flow (lead approval path) |
+| Forward mode | Defined by source `settings.forwardRule`: `standard` or `project` |
+| `standard` mode | Create copy in target, keep original |
+| `project` mode | Transfer votes to new post and soft-delete original |
+
+**Note:** Current code does not enforce a single hardcoded "Projects → МД only" transfer path.
 
 ---
 
@@ -188,34 +209,38 @@ If needed in future, treat this as planned work and define explicit API/storage 
 ### Community Creation
 ```
 1. Validate required fields
-2. Set type (global/local)
-3. Apply default settings
-4. If local: assign creator as lead
-5. If global: require superadmin permission
+2. Create community for authenticated user
+3. Apply base settings payload
+4. Assign creator as lead and member
+5. Create creator wallet in community context
+6. `isPriority` can be set only by superadmin
+7. Reserved internal `global` community is system-managed
 ```
 
 ### Member Join Logic
 ```
-Global community:
-- Auto-join all users at registration
-- No leave option
+Base priority communities:
+- Users are auto-added by backend ensure/sync logic
+- Wallets and roles are provisioned during sync
 
-Local community:
-- Join via invite or request
-- Leave anytime
+Team communities (`typeTag='team'`):
+- Join via invitation acceptance OR join request approval
+- No dedicated self-leave endpoint is implemented in current API
 ```
 
 ### Settings Validation
 ```
 - `investorShareMin` and `investorShareMax` must be within 1..99 and `min <= max`
 - `commentMode` must be one of `all | neutralOnly | weightedOnly`
-- `votingRestriction` accepts `any | not-same-team` (legacy values normalized)
+- `votingRestriction` is normalized to `any | not-same-team` in update/validation flow
 - Deprecated `tappalkaOnlyMode` maps to `commentMode='neutralOnly'` for backward compatibility
 ```
 
 ---
 
 ## Future Features (v2.0+)
+
+Status: planned only (not implemented in current codebase).
 
 ### Community Wallet
 Local community will be able to act as participant in global communities:
