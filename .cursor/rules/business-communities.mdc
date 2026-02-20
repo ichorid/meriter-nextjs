@@ -26,7 +26,7 @@ Communities that are treated as priority context. Includes:
 - Users are auto-added to base priority communities by backend sync logic.
 - Priority communities use global merit context for voting, investment, tappalka rewards, and withdrawals.
 - Fee routing is operation-specific (see "Action Payment Rules" below).
-- No dedicated user self-leave API is implemented for priority communities.
+- No dedicated self-leave API is implemented in current routers (applies generally, including priority communities).
 
 ### Global Communities (Public Groups)
 
@@ -37,6 +37,7 @@ Includes platform base communities and other non-team communities.
 - `isPriority` can only be set by superadmin.
 - Reserved internal `global` community (`GLOBAL_COMMUNITY_ID`) is system-managed, uses `typeTag: 'global'`, and is excluded from user-facing community lists.
 - `typeTag: 'global'` is reserved for internal global-merit storage community.
+- Backend enforces reserved creation path: `typeTag: 'global'` is only valid for the reserved `GLOBAL_COMMUNITY_ID`.
 - Community creation is available to authenticated users; it is not admin-only.
 
 ### Local Communities (Private Groups)
@@ -64,9 +65,11 @@ User-created team communities (`typeTag: 'team'`).
 | Avatar | Community image (`avatarUrl`) |
 | Cover | Background image (`coverImageUrl`) |
 | Currency Name | Community currency labels (`settings.currencyNames`) |
-| Type Tag | Community kind (`typeTag`, e.g. `team`, `future-vision`, `marathon-of-good`, `support`, `team-projects`, `political`, `housing`, `volunteer`, `corporate`, `custom`, `global`) |
+| Type Tag | Community kind (`typeTag`, e.g. `team`, `future-vision`, `marathon-of-good`, `support`, `team-projects`, `political`, `housing`, `volunteer`, `corporate`, `custom`) |
 | Hashtags | Community hashtag list (`hashtags`) |
 | Hashtag Descriptions | Optional hashtag descriptions (`hashtagDescriptions`) |
+
+**Implementation note:** Internal `typeTag: 'global'` exists in backend for `GLOBAL_COMMUNITY_ID`, but it is system-managed and not part of user-facing shared `CommunitySchema.typeTag` enum.
 
 ### System Fields
 
@@ -115,7 +118,7 @@ Community
 | `editWindowMinutes` | Participant edit window (`0` = unlimited) | `30` |
 | `allowEditByOthers` | Allow participants editing others' posts | `false` |
 | `canPayPostFromQuota` | Allow post payment from quota | `false` |
-| `allowWithdraw` | Allow withdrawing merits from own posts | `true` |
+| `allowWithdraw` | Stored community flag for withdrawal policy (`true` by default); current withdrawal enforcement in routers/services is partial and type-specific | `true` |
 | `forwardRule` | Forward behavior: `standard` or `project` | `standard` |
 
 #### Investing / comment mode
@@ -182,6 +185,13 @@ If needed in future, treat this as planned work and define explicit API/storage 
 
 ---
 
+## Wallet API Status (Current)
+
+- `wallets.withdraw` and `wallets.transfer` procedures exist but currently return `NOT_IMPLEMENTED`.
+- Do not document these two operations as available user flows yet.
+
+---
+
 ## Global and Local Community Interaction
 
 ### Action Payment Rules
@@ -192,9 +202,11 @@ If needed in future, treat this as planned work and define explicit API/storage 
 - `proposeForward`: `settings.forwardCost` is charged from `GLOBAL_COMMUNITY_ID` (participant flow).
 - `forward` (lead/superadmin direct forward): no forward fee is charged in current implementation.
 - Withdrawals are routed to `GLOBAL_COMMUNITY_ID` by merit resolver (`operationType='withdrawal'`).
+- Current `publications.withdraw` logic does not enforce `settings.allowWithdraw` as a generic gate; it enforces a hard restriction for `future-vision` and permission checks via vote service.
 - Voting/tappalka/investment wallet routing uses merit resolver: global wallet for priority communities, source community wallet for non-priority communities.
 - Priority community detection: `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` or `isPriority=true`.
 - Voting source restrictions are configured through `votingSettings.currencySource` (with backward-compatible logic in domain services).
+- In several router flows (`publications.create`, `polls.create`, `proposeForward`), debit is attempted after entity creation and deduction errors are swallowed; this is best-effort charging, not strict all-or-nothing transactionality.
 
 ### Forwarding Between Communities
 
@@ -204,6 +216,8 @@ If needed in future, treat this as planned work and define explicit API/storage 
 | Participant forward from team community | `proposeForward` flow (lead approval path) |
 | Proposal source constraint | `proposeForward` is allowed only when source community is `typeTag='team'` |
 | Proposal fee | `settings.forwardCost` is charged in `proposeForward` from `GLOBAL_COMMUNITY_ID` |
+| Forwardable post types | `basic` and `project`; `poll` forwarding is rejected |
+| Target compatibility | Target community is validated via post-type support check before forward/proposal |
 | Forward mode | Defined by source `settings.forwardRule`: `standard` or `project` |
 | `standard` mode | Create copy in target, keep original |
 | `project` mode | Transfer votes to new post and soft-delete original |
@@ -241,8 +255,11 @@ Team communities (`typeTag='team'`):
 
 ### Current Implemented Constraints
 - `future-vision`: poll creation and poll casting are blocked in current routers.
+- `future-vision`: `polls.getByCommunity` returns an empty list in current routers.
 - `team-projects`: default permission rules deny participant `POST_PUBLICATION` and `CREATE_POLL` (lead-only posting/poll creation by defaults service).
 - Internal `global` community is excluded from user-facing community queries/lists.
+- Base community `typeTag` single-instance constraints are enforced for `future-vision`, `marathon-of-good`, `team-projects`, and `support`.
+- Startup bootstrap includes duplicate cleanup for `team-projects` communities (keeps one, removes extras).
 
 ### Settings Validation
 ```
