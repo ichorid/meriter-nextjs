@@ -40,9 +40,6 @@ pnpm build
 
 # Run tests
 pnpm test
-
-# Type check
-pnpm typecheck
 ```
 
 ## Ports
@@ -59,4 +56,4 @@ pnpm typecheck
 → Add `DOMAIN=localhost` to both `api/.env` and `web/.env`
 
 ## Full Setup Guide
-See `docs/LOCAL_SETUP.md` for detailed instructions.
+See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

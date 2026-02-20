@@ -126,6 +126,21 @@ Creation of new merits by the system. Happens through tappalka, from administrat
 ### Stop-Loss
 Minimum rating/merit threshold below which post stops being shown in tappalka. Set by post owner.
 
+### Investment Pool
+Post-level balance funded by investors. Used first for tappalka show-cost deductions in investment mode.
+
+### Investment Contract
+Immutable agreement created at post publication with investing enabled. Defines `investorSharePercent` and distribution rules between author and investors.
+
+### Investor Share
+Portion of withdrawal/close distribution allocated to investors according to contract percent, then split proportionally by each investor's contribution.
+
+### TTL (Time To Live)
+Post lifetime limit in days. For investment posts, TTL may be required by community setting (`requireTTLForInvestPosts`) and capped by `maxTTL`.
+
+### Inactive Close
+Automatic post closing after configured days without earnings (`inactiveCloseDays`).
+
 ---
 
 ## MVP-Specific Terms

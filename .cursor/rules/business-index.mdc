@@ -35,8 +35,9 @@ alwaysApply: true
 - **Local:** User-created, own merit, can leave
 
 ### Content Rules
-- **Post fee:** 1 merit (global)
-- **Comment fee:** 0.1 merit (global)
+- **Post cost:** `settings.postCost` (default 1)
+- **Poll cost:** `settings.pollCost` (default 1)
+- **Forward cost:** `settings.forwardCost` (default 1)
 - **Self-voting:** Wallet only (if enabled), NEVER quota
 - **Negative rating:** Deducted from author wallet after 24h
 
@@ -44,6 +45,12 @@ alwaysApply: true
 - **10 comparisons = 1 merit** to user
 - **Show cost:** 0.1 merit per post (both posts pay)
 - **Win reward:** 1 merit (emission)
+
+### Investments
+- **Community toggle:** `settings.investingEnabled`
+- **Contract bounds:** `settings.investorShareMin` / `settings.investorShareMax` (1..99)
+- **Comment/vote mode:** `settings.commentMode` (`all` / `neutralOnly` / `weightedOnly`)
+- **Lifecycle controls:** `settings.requireTTLForInvestPosts`, `settings.maxTTL`, `settings.inactiveCloseDays`, `settings.distributeAllByContractOnClose`
 
 ---
 
@@ -56,20 +63,20 @@ alwaysApply: true
 | `business-communities.mdc` | Community types, all settings | Community features |
 | `business-content.mdc` | Posts, polls, comments, voting | Content features |
 | `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
+| `business-investing.mdc` | Investment contracts, pool, distribution | Investment features |
 | `business-users.mdc` | Users, roles, permissions | Auth, permissions |
 | `business-mvp.mdc` | MVP-specific settings | **ALWAYS** (auto-applied) |
-| `business-features-status.mdc` | What's implemented | Planning work |
 
 ---
 
 ## MVP Communities Quick Reference
 
-| Community | Withdraw? | Self-vote? | Tappalka? | Fee? |
-|-----------|-----------|------------|-----------|------|
-| **ОБ** (Image of Future) | No | Yes | No | Standard |
-| **МД** (Marathon of Good) | Yes | No | Yes | Standard |
-| **Projects** | No | Yes | Yes | Standard |
-| **Feedback** | Yes | No | No | Free |
+| Community | Withdraw? (`settings.allowWithdraw`) | Self-vote? (`permissionRules`) | Tappalka? (`tappalkaSettings.enabled`) | Costs (`settings.*Cost`) | Investing (`settings.investingEnabled`) |
+|-----------|--------------------------------------|-------------------------------|-------------------------------------|---------------------------|-----------------------------------|
+| **ОБ** (Image of Future) | No | Yes | No | Standard | No |
+| **МД** (Marathon of Good) | Yes | No | Yes | Standard | Yes (current v1) |
+| **Projects** | No | Yes | Yes | Standard | No |
+| **Feedback** | Yes | No | No | Free defaults possible | No |
 
 ---
 
@@ -114,12 +121,11 @@ Closed post → Archive (cannot re-publish)
 
 | Action | Check |
 |--------|-------|
-| Publish | community.canPublish + user has role |
-| Comment | community.commentFee available |
-| Vote | community.whoCanVote + source available |
-| Self-vote | community.canVoteSelf + wallet available |
-| Withdraw | community.canWithdrawMerits |
-| Tappalka | community.tappalkaEnabled + rating >= min |
+| Publish | `permissionRules` allow action + `settings.postCost` payable (wallet/quota by rules) |
+| Comment/Vote | `permissionRules` allow action + `votingSettings.currencySource` + `settings.commentMode` |
+| Self-vote | `permissionRules.conditions.canVoteForOwnPosts` + wallet-only constraint |
+| Withdraw | `settings.allowWithdraw` |
+| Tappalka | `tappalkaSettings.enabled` + rating >= `tappalkaSettings.minRating` |
 
 ---
 

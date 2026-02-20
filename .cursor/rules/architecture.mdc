@@ -23,32 +23,34 @@ meriter-nextjs/
 ```
 api/apps/meriter/src/
 ├── domain/                       # 🔵 Domain layer (business logic)
-│   ├── user/                     # User entity & services
-│   ├── community/                # Community entity & services
-│   ├── publication/              # Publication entity & services
-│   ├── vote/                     # Vote entity & services
-│   ├── permission/               # Permission services & rules
-│   └── [entity]/
-│       ├── [entity].schema.ts    # Mongoose schema
-│       ├── [entity].service.ts   # Business logic
-│       └── [entity].module.ts    # NestJS module
+│   ├── models/[entity]/          # Mongoose schemas and documents
+│   ├── services/                 # Business services (publication, vote, wallet, ...)
+│   ├── aggregates/               # Domain aggregates/entities
+│   ├── events/                   # Domain events + event bus
+│   ├── value-objects/            # Strongly-typed identifiers/value objects
+│   └── common/helpers/           # Domain helpers/constants
+├── domain.module.ts              # Shared NestJS module wiring domain providers/models
 ├── trpc/                         # 🟢 tRPC layer (API)
 │   └── routers/
 │       ├── [entity].router.ts    # tRPC procedures
 │       └── index.ts              # Router aggregation
-├── api-v1/                       # 🟡 REST layer (legacy/specific)
-├── common/                       # Shared utilities
+├── api-v1/                       # 🟡 REST layer (auth/uploads/config compatibility)
+├── common/                       # Shared backend utilities
 │   └── schemas/                  # Backend-only Zod schemas
 ├── config/                       # Configuration
 ├── telegram/                     # Telegram integration
+├── tg-bots/                      # Telegram bot module and services
+├── updates-conductors/           # Update conductor subsystem
 └── main.ts                       # App entry point
 ```
 
 ### Adding New Backend Feature
-1. Create domain entity in `domain/[entity]/`
-2. Create tRPC router in `trpc/routers/[entity].router.ts`
-3. Register router in `trpc/routers/index.ts`
-4. Add shared types to `libs/shared-types/` if needed
+1. Add/update schema in `domain/models/[entity]/` (and related interfaces if needed)
+2. Implement business logic in `domain/services/`
+3. Register providers/models in `domain.module.ts` (shared domain wiring)
+4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` (and aggregate in `trpc/router.ts` if needed)
+5. If REST exposure is required, add controller/service under `api-v1/`
+6. Add/update shared contracts in `libs/shared-types/src/` when shape is cross-package
 
 ## Frontend Structure (web/)
 ```
@@ -81,6 +83,8 @@ web/src/
 libs/shared-types/src/
 ├── base-schemas.ts               # Base Zod primitives
 ├── schemas.ts                    # Complex DTOs
+├── taxonomy.ts                   # Shared taxonomy enums/lists
+├── tappalka.ts                   # Shared tappalka-specific schemas
 └── index.ts                      # Public exports
 ```
 
@@ -94,7 +98,7 @@ libs/shared-types/src/
 
 ### Service Layer (Backend)
 ```typescript
-// domain/[entity]/[entity].service.ts
+// domain/services/[entity].service.ts
 @Injectable()
 export class EntityService {
   constructor(

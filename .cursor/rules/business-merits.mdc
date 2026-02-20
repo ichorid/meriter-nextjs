@@ -18,7 +18,7 @@ alwaysApply: false
 ## Global Merit
 
 **One wallet for priority communities.** Users have a single **global wallet** used for:
-- All fee payments (post, comment, poll) in **any** community
+- System costs configured in community settings (`postCost`, `pollCost`, `forwardCost`) in **any** community
 - Voting, withdrawal, tappalka rewards, investments in **priority communities** (МД, ОБ, Projects, Support)
 
 **MD↔OB sync removed.** Previously МД and ОБ had separate wallets with sync. Now: one global wallet — no sync logic.
@@ -78,8 +78,13 @@ At registration user receives **100 global merits** to wallet.
 | Action | Cost | Paid From |
 |--------|------|-----------|
 | Post publication | 1 merit (configurable) | Global merits |
-| Comment | 0.1 merit (configurable) | Global merits |
-| Poll participation | Community-configurable | Global merits |
+| Poll creation | Community-configurable (`pollCost`) | Global merits |
+| Post forward | Community-configurable (`forwardCost`) | Global merits |
+
+### Comment Charging (Current Behavior)
+- Current codebase has **no dedicated** `commentFee` / `commentCost` setting.
+- Comment/vote balance changes are driven by `quotaAmount` / `walletAmount` and vote direction rules.
+- Neutral comments use zero amount in `commentMode='neutralOnly'`; weighted comments spend the specified amount.
 
 **IMPORTANT:** Fee is ALWAYS paid from GLOBAL merits, even in local communities.
 
@@ -91,6 +96,7 @@ At registration user receives **100 global merits** to wallet.
 | Negative comment | Post rating decreases | Global wallet ONLY | Local wallet ONLY |
 | Self-vote (if allowed) | Rating increases | Global wallet ONLY | Local wallet ONLY |
 | Poll vote | Vote weight = merit amount | Global merits | Local merits |
+| Investment in post | Funds `investmentPool` | Global wallet ONLY | Local wallet ONLY |
 
 **Priority communities** = МД, ОБ, Projects, Support (typeTag or isPriority).
 
@@ -126,6 +132,12 @@ Teammates = members of same local communities as the voter.
 - ❌ Cannot vote with quota for own posts
 - ❌ Cannot pay fee for posts/comments with quota
 - ❌ Cannot use quota for downvotes
+- ❌ Cannot invest with quota (investment is wallet-only)
+
+### Investment Rules
+- Investment is allowed only when post/community investing is enabled.
+- Investment source is **wallet only** (global wallet in priority communities, local wallet in local communities).
+- Quota is never accepted for investments.
 
 ---
 

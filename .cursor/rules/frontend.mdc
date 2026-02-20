@@ -14,6 +14,16 @@ alwaysApply: false
 - Tailwind CSS
 - Zustand (state management)
 
+## Web Structure (web/src)
+- `app/` — App Router pages/layouts
+- `components/` — UI building blocks
+- `features/` — feature-focused modules
+- `hooks/` — reusable hooks
+- `stores/` — Zustand stores
+- `shared/` — shared UI/helpers/state used across features
+- `config/` — frontend runtime/static configuration
+- `generated/` — generated artifacts (build info, generated clients)
+
 ## Component Guidelines
 
 ### Component Structure

@@ -74,71 +74,104 @@ Created and managed by users.
 
 ## Community Settings (Complete List)
 
-### Content Publishing
+Current community configuration is split into multiple blocks:
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `canPublish` | Who can publish posts (by roles) | All members |
-| `postFee` | Post publication cost (in global merits) | 1 merit |
-| `commentFee` | Comment cost (in global merits) | 0.1 merit |
-| `canEditPosts` | Can members edit posts | Yes |
-| `editTimeLimit` | Edit time after publication | 30 minutes |
+```text
+Community
+├── settings          # base community behavior and costs
+├── meritSettings     # quota/earning/spending config
+├── votingSettings    # voting conversion/restrictions/currency source
+├── tappalkaSettings  # tappalka parameters
+└── permissionRules   # role->action allow/deny (replaces old canPublish/whoCanVote toggles)
+```
 
-### Merits and Voting
+### `settings` (CommunitySettingsSchema)
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `canWithdrawMerits` | Can merits be withdrawn from posts | Yes |
-| `canVoteSelf` | Can vote for own posts | No (quota never, wallet configurable) |
-| `canVoteTeammates` | Can vote for teammates' posts | Yes |
-| `whoCanVote` | Who can vote (by roles) | All members |
-| `quotaEnabled` | Is quota enabled in community | No |
-| `quotaAmount` | Daily quota size | — |
-| `welcomeMerits` | Starting merits upon joining | — |
-| `rateMultiplier` | Merit multiplier (rate) | 1 |
+#### Posting / core
+| Field | Description | Default |
+|------|-------------|---------|
+| `currencyNames` | Currency labels (`singular/plural/genitive`) | required |
+| `dailyEmission` | Daily emission baseline | `10` |
+| `language` | Community language | `en` |
+| `postCost` | Post creation cost | `1` |
+| `pollCost` | Poll creation cost | `1` |
+| `forwardCost` | Forward action cost | `1` |
+| `editWindowMinutes` | Participant edit window (`0` = unlimited) | `30` |
+| `allowEditByOthers` | Allow participants editing others' posts | `false` |
+| `canPayPostFromQuota` | Allow post payment from quota | `false` |
+| `allowWithdraw` | Allow withdrawing merits from own posts | `true` |
+| `forwardRule` | Forward behavior: `standard` or `project` | `standard` |
 
-### Tappalka
+#### Investing / comment mode
+| Field | Description | Default |
+|------|-------------|---------|
+| `investingEnabled` | Enable investments for posts in community | `false` |
+| `investorShareMin` | Minimum contract percent for investors | `1` |
+| `investorShareMax` | Maximum contract percent for investors | `99` |
+| `commentMode` | `all` \| `neutralOnly` \| `weightedOnly` | `all` |
+| `tappalkaOnlyMode` | Deprecated alias for `commentMode='neutralOnly'` | `false` |
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `tappalkaEnabled` | Is tappalka enabled | No |
-| `tappalkaShowCost` | Cost of showing post in tappalka | 0.1 merit |
-| `tappalkaWinReward` | Reward for being chosen in tappalka | 1 merit |
-| `tappalkaMinRating` | Minimum rating for tappalka participation | 1 merit |
+#### Investment lifecycle controls
+| Field | Description | Default |
+|------|-------------|---------|
+| `requireTTLForInvestPosts` | Require TTL when post has investment enabled | `false` |
+| `maxTTL` | Max post TTL in days (`null/undefined` = no limit) | optional |
+| `inactiveCloseDays` | Auto-close after N days without earnings | `7` |
+| `distributeAllByContractOnClose` | Close distribution strategy toggle | `true` |
 
-### Post Forwarding
+### `meritSettings` (CommunityMeritSettingsSchema)
+| Field | Description |
+|------|-------------|
+| `dailyQuota` | Daily quota amount |
+| `quotaRecipients` | Roles that receive quota |
+| `canEarn` | Whether earning merits is allowed |
+| `canSpend` | Whether spending merits is allowed |
+| `startingMerits` | Starting merits for member context |
+| `quotaEnabled` | Quota enabled flag |
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `forwardMode` | Forwarding mode: `copy` or `transfer` | copy |
-| `forwardKeepMerits` | Are merits preserved on forward | No (for copy) |
+### `votingSettings` (CommunityVotingSettingsSchema)
+| Field | Description |
+|------|-------------|
+| `spendsMerits` | Voting consumes merits |
+| `awardsMerits` | Voting awards merits |
+| `meritConversion` | Conversion to target community currency |
+| `votingRestriction` | `any` or `not-same-team` |
+| `currencySource` | `quota-and-wallet` \| `quota-only` \| `wallet-only` |
 
-**IMPORTANT:** For local communities, forward mode is ALWAYS `copy` without merits (NOT editable by lead).
+### `tappalkaSettings` (TappalkaSettingsSchema)
+| Field | Description | Default |
+|------|-------------|---------|
+| `enabled` | Tappalka enabled | `false` |
+| `categories` | Allowed category IDs (empty = all) | `[]` |
+| `winReward` | Reward for chosen post | `1` |
+| `userReward` | Reward for user progress cycle | `1` |
+| `comparisonsRequired` | Comparisons needed for user reward | `10` |
+| `showCost` | Cost per post show in comparison | `0.1` |
+| `minRating` | Minimum rating to participate | `1` |
+| `onboardingText` | Optional custom onboarding copy | optional |
 
-### Visibility
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `visibility` | Who sees the community | All |
+### Permissions and old field names
+- Role/action permissions are now controlled by `permissionRules`.
+- Legacy-style names like `canPublish`, `whoCanVote`, `canVoteSelf`, `canVoteTeammates` are not top-level `settings` fields.
+- Prefer documenting/using current schema fields from `CommunitySettingsSchema`, `CommunityMeritSettingsSchema`, `CommunityVotingSettingsSchema`, and `TappalkaSettingsSchema`.
 
 ---
 
 ## Settings Import/Export
 
-JSON import/export of community settings is provided for:
-- Quick community creation from template
-- Configuration backup
-- Settings migration between environments
+**Status:** Not implemented as a dedicated product feature in current codebase.
+
+If needed in future, treat this as planned work and define explicit API/storage format first.
 
 ---
 
 ## Global and Local Community Interaction
 
 ### Action Payment Rules
-- Fee for posts and comments in ANY community (including local) is paid in **GLOBAL** merits
-- Voting in **priority** community (МД, ОБ, Projects, Support) — with **GLOBAL** merits
-- Voting in **local** community — with **LOCAL** merits of that community
-- If no local merits — can vote with global merits (for polls)
+- Post/poll/forward costs come from `settings.postCost`, `settings.pollCost`, `settings.forwardCost`.
+- Priority communities (МД, ОБ, Projects, Support, or `isPriority=true`) use global merit context.
+- Local communities use local merit context for wallet/quota logic.
+- Voting source restrictions are configured through `votingSettings.currencySource` and enforced by domain logic.
 
 ### Forwarding Between Communities
 
@@ -174,9 +207,10 @@ Local community:
 
 ### Settings Validation
 ```
-- quotaAmount required if quotaEnabled=true
-- forwardMode cannot be changed for local communities
-- rateMultiplier only editable by superadmin for global communities
+- `investorShareMin` and `investorShareMax` must be within 1..99 and `min <= max`
+- `commentMode` must be one of `all | neutralOnly | weightedOnly`
+- `votingRestriction` accepts `any | not-same-team` (legacy values normalized)
+- Deprecated `tappalkaOnlyMode` maps to `commentMode='neutralOnly'` for backward compatibility
 ```
 
 ---

@@ -61,18 +61,22 @@ Tappalka — main method of merit emission and earning for users.
 
 ## Tappalka Parameters
 
-### Base Parameters (Admin-Configurable)
+### `tappalkaSettings` (Admin-Configurable)
 
-| Parameter | Default Value | Description |
-|-----------|---------------|-------------|
-| `tappalkaShowCost` | 0.1 merit | Cost of one post show |
-| `tappalkaWinReward` | 1 merit | Reward for post being chosen |
-| `tappalkaMinRating` | 1 merit | Minimum rating for participation |
-| `tappalkaUserReward` | 1 merit per 10 comparisons | User reward |
+| Field | Default | Description |
+|------|---------|-------------|
+| `tappalkaSettings.enabled` | `false` | Enables tappalka for community |
+| `tappalkaSettings.categories` | `[]` | Allowed category IDs (`[]` = all categories) |
+| `tappalkaSettings.winReward` | `1` | Reward for winning post |
+| `tappalkaSettings.userReward` | `1` | Reward to user per cycle |
+| `tappalkaSettings.comparisonsRequired` | `10` | Comparisons needed for user reward |
+| `tappalkaSettings.showCost` | `0.1` | Cost per post show |
+| `tappalkaSettings.minRating` | `1` | Minimum rating for participation |
+| `tappalkaSettings.onboardingText` | optional | Community-specific onboarding text |
 
 ### Show Cost
 - Each post show in tappalka costs **0.1 merit**
-- Paid from post rating OR author's wallet
+- Deduction priority: **investmentPool → post rating → author wallet**
 - Deducted from **BOTH** posts in pair (winner AND loser)
 
 ---
@@ -80,8 +84,8 @@ Tappalka — main method of merit emission and earning for users.
 ## Post Participation in Tappalka
 
 ### Participation Conditions
-1. Tappalka enabled for community
-2. Post rating ≥ minimum threshold (default 1 merit)
+1. `tappalkaSettings.enabled = true`
+2. Post rating ≥ `tappalkaSettings.minRating` (default 1)
 3. Post rating ≥ author's stop-loss setting
 4. Post not closed
 
@@ -89,7 +93,7 @@ Tappalka — main method of merit emission and earning for users.
 Post stops being shown if:
 - Rating drops below minimum threshold
 - Rating drops below author's stop-loss
-- No funds for show payment (neither on post nor from author)
+- No funds for show payment (`investmentPool`, rating, and author wallet exhausted)
 
 ### Stop-Loss
 - Set by post owner
@@ -107,9 +111,10 @@ Post stops being shown if:
 ## Filtering in Tappalka
 
 ### By Categories
-Tappalka can filter posts by categories:
-- User selects categories of interest
-- Only posts from selected categories are shown
+Tappalka category filtering is backed by `tappalkaSettings.categories`:
+- `[]` means no category restriction (all categories allowed)
+- non-empty array means only posts in those category IDs are eligible
+- user-side selection should be intersected with community-level `tappalkaSettings.categories`
 
 ### By Content Type (Planned)
 - Base posts compared with base posts
@@ -176,12 +181,13 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 ```
 1. Get all posts where:
    - community = current community
-   - tappalkaEnabled = true
-   - rating >= tappalkaMinRating
+   - tappalkaSettings.enabled = true
+   - rating >= tappalkaSettings.minRating
    - rating >= stopLoss (if set)
    - author != currentUser
    - closed = false
-   - canPayShowCost = true (rating > 0.1 OR author.wallet > 0.1)
+   - category is allowed by tappalkaSettings.categories
+   - canPayShowCost = true (investmentPool or rating or author.wallet can cover tappalkaSettings.showCost)
 2. Random select 2 posts
 3. Ensure posts are different
 4. Return pair to user
@@ -190,17 +196,18 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 ### Show Cost Deduction
 ```
 For each post in pair:
-1. Try deduct from post rating
-2. If insufficient, deduct from author wallet
-3. If both insufficient, exclude post from future selections
+1. Try deduct from `investmentPool`
+2. If insufficient, deduct from post rating (respecting stop-loss)
+3. If still insufficient and allowed, deduct from author wallet
+4. If all sources insufficient, exclude post from future selections
 ```
 
 ### Win Processing
 ```
-1. Increment chosen post rating by tappalkaWinReward (emission)
+1. Increment chosen post rating by tappalkaSettings.winReward (emission)
 2. Update user comparison count
-3. If user.comparisonCount >= 10:
-   - Credit 1 merit to user wallet (emission)
+3. If user.comparisonCount >= tappalkaSettings.comparisonsRequired:
+   - Credit tappalkaSettings.userReward to user wallet (emission)
    - Reset comparison count
 ```
 

@@ -212,11 +212,16 @@ Step 3: Post archived. All investors notified with final earnings.
 
 > This is a **separate community setting**, independent of investing. It will have its own full spec. Mentioned here only for context.
 
-`tappalkaOnlyMode: boolean` (default: false) — when enabled, comments are neutral only (no weight), no upvote/downvote, rating formed exclusively through tappalka. Recommended configuration for investment communities:
+`tappalkaOnlyMode: boolean` is **deprecated** and kept for backward compatibility.
+Current source of truth is:
+- `commentMode: 'all' | 'neutralOnly' | 'weightedOnly'`
+- `tappalkaOnlyMode=true` is mapped to `commentMode='neutralOnly'`
+
+For investment communities, recommended current configuration:
 
 ```
 tappalkaEnabled = true
-tappalkaOnlyMode = true
+commentMode = 'neutralOnly'   # instead of deprecated tappalkaOnlyMode
 investingEnabled = true
 ```
 
@@ -280,7 +285,19 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 | `investingEnabled` | Enable investment mechanic | false |
 | `investorShareMin` | Minimum investor share % | 1 |
 | `investorShareMax` | Maximum investor share % | 99 |
-| `tappalkaOnlyMode` | Disable weighted comments (separate feature) | false |
+| `commentMode` | Comment/vote mode: `all` / `neutralOnly` / `weightedOnly` | `all` |
+| `tappalkaOnlyMode` | Deprecated alias for `commentMode='neutralOnly'` | false |
+| `requireTTLForInvestPosts` | Require TTL when `investingEnabled=true` on post | false |
+| `maxTTL` | Max post TTL in days (`null/undefined` = no limit) | optional |
+| `inactiveCloseDays` | Auto-close threshold in days without earnings | 7 |
+| `distributeAllByContractOnClose` | Close-distribution strategy toggle | true |
+
+### Close Distribution Modes (`distributeAllByContractOnClose`)
+
+- **Mode A (`true`, default):** distribute **ALL** close amount (pool + rating) by contract percent.
+- **Mode B (`false`):** first return remaining `investmentPool` to investors proportionally, then distribute rating by contract.
+
+Both modes are implemented in investing/post-closing services.
 
 ---
 
@@ -291,7 +308,11 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 investingEnabled = true
 investorShareMin = 1
 investorShareMax = 99
-tappalkaOnlyMode = true (recommended)
+commentMode = 'neutralOnly' (recommended)
+requireTTLForInvestPosts = false (configurable)
+maxTTL = null (configurable)
+inactiveCloseDays = 7 (default)
+distributeAllByContractOnClose = true (default)
 ```
 
 ### All Other Communities — NO Changes
@@ -329,7 +350,12 @@ tappalkaOnlyMode = true (recommended)
 | `investingEnabled` | boolean | Enable investing in this community |
 | `investorShareMin` | number | Minimum investor share % (default: 1) |
 | `investorShareMax` | number | Maximum investor share % (default: 99) |
-| `tappalkaOnlyMode` | boolean | Neutral comments only (separate feature) |
+| `commentMode` | enum | `all` / `neutralOnly` / `weightedOnly` |
+| `tappalkaOnlyMode` | boolean | Deprecated alias for neutral-only mode |
+| `requireTTLForInvestPosts` | boolean | Enforce TTL for investment-enabled posts |
+| `maxTTL` | number \| null | Maximum allowed TTL in days |
+| `inactiveCloseDays` | number | Days without earnings before auto-close |
+| `distributeAllByContractOnClose` | boolean | Close distribution strategy (Mode A vs Mode B) |
 
 ---
 
@@ -345,7 +371,8 @@ Tappalka (implemented) ──► Investing
                               └──► Investor notifications
 
 Separately:
-tappalkaOnlyMode setting ──► "Tappalka only" mode (no votes)
+commentMode setting ──► neutral-only / weighted-only behavior
+tappalkaOnlyMode (deprecated) ──► compatibility alias for neutral-only
 ```
 
 ---

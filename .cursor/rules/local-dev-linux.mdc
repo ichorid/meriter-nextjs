@@ -39,9 +39,6 @@ pnpm build
 
 # Run tests
 pnpm test
-
-# Type check
-pnpm typecheck
 ```
 
 ## Ports
@@ -64,4 +61,4 @@ lsof -ti:8002 | xargs kill -9
 ```
 
 ## Full Setup Guide
-See `docs/LOCAL_SETUP.md` for detailed instructions.
+See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

@@ -8,7 +8,7 @@ alwaysApply: true
 # Meriter Project Context
 
 ## What is Meriter?
-Merit-based social platform operating through web. Users earn and spend "merits" (internal currency) to participate in community activities: create publications, vote for content creators, comment, and participate in polls.
+Merit-based social platform operating through web. Users earn and spend "merits" (internal currency) to participate in community activities: create publications, vote for content creators, comment, participate in polls, and invest merits into posts.
 
 ## Tech Stack
 - **Frontend**: React 19 + Next.js 16 + TypeScript + TanStack Query + tRPC + Tailwind + Zustand
@@ -24,6 +24,10 @@ meriter-nextjs/
 │       ├── domain/               # Domain entities and services
 │       ├── trpc/routers/         # tRPC routers
 │       ├── common/schemas/       # Shared backend schemas
+│       ├── config/               # Runtime config and validation
+│       ├── telegram/             # Telegram content integration
+│       ├── tg-bots/              # Telegram bot module/services
+│       ├── updates-conductors/   # Updates conductor subsystem
 │       └── api-v1/               # REST endpoints
 ├── web/                          # Frontend (Next.js)
 │   └── src/
@@ -34,7 +38,8 @@ meriter-nextjs/
 │       ├── stores/               # Zustand stores
 │       └── lib/                  # Utilities
 ├── libs/shared-types/            # Shared Zod schemas
-└── docs/                         # Documentation (.md files in root)
+├── docs/                         # Project documentation directory
+└── ARCHITECTURE.md               # Architecture overview (root-level file)
 ```
 
 ## Core Concepts
@@ -67,7 +72,7 @@ meriter-nextjs/
 4. Update both frontend AND backend when changing contracts
 
 ## Related Rules
-- @business-logic.mdc — Voting rules, permissions, merit flow
+- @business-index.mdc — Voting rules, permissions, merit flow
 - @architecture.mdc — Detailed code structure
 - @frontend.mdc — React/Next.js patterns
 - @backend.mdc — NestJS/tRPC patterns

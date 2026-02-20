@@ -64,7 +64,8 @@ Inherits from base post.
 | deadline | Optional voting close time |
 
 ### Poll Voting
-- Costs user merits (amount configured in community)
+- Poll creation uses `settings.pollCost` (community-level post creation cost)
+- Poll voting spends user merits by vote amount (wallet/quota rules apply)
 - Vote weight = amount of merits spent
 - After deadline, new votes are NOT accepted
 
@@ -93,7 +94,7 @@ Inherits from base post.
 
 ```
 ┌─────────────┐
-│   Create    │ ─── fee deducted from wallet
+│   Create    │ ─── `settings.postCost` charged (wallet/quota by rules)
 └──────┬──────┘
        │
        ▼
@@ -111,7 +112,7 @@ Inherits from base post.
 ```
 
 ### Editing
-- Available within time set in community settings
+- Available within `settings.editWindowMinutes` time window
 - Default: 30 minutes after publication
 - After time expires — only closing or forwarding
 
@@ -129,8 +130,8 @@ Inherits from base post.
 
 | Mode | Description | When Used |
 |------|-------------|-----------|
-| **Copy** | Without merits, original preserved | Default |
-| **Transfer** | With merits, original deleted | "Projects" → "MД" |
+| **standard** | Forward without merits, original preserved | `settings.forwardRule` default |
+| **project** | Forward with merits, original deleted | "Projects" → "MД" special case |
 
 ### Rules by Community Type
 
@@ -141,7 +142,7 @@ Inherits from base post.
 | "Projects" | "MД" | Transfer with merits |
 
 ### Restrictions
-- For local communities, forward mode is ALWAYS locked: copy without merits
+- For local communities, forwarding follows platform constraints (local → any = copy without merits)
 - Local community lead CANNOT change this default
 
 ---
@@ -153,7 +154,7 @@ Inherits from base post.
 | Type | Effect | Paid From |
 |------|--------|-----------|
 | **Positive (Upvote)** | Merits transfer to post, rating increases | Quota → Wallet |
-| **Neutral** | Text only, no merits | Free (fee still applies) |
+| **Neutral** | Text only, no merits | No weighted amount transfer |
 | **Negative (Downvote)** | Merits removed from post, rating decreases, merits BURN | Wallet ONLY |
 
 ### Comment Data Model
@@ -170,20 +171,15 @@ Inherits from base post.
 
 ## Comment Costs
 
-### Comment Fee
-- Default: **0.1 merit**
-- Paid in **GLOBAL** merits (not community merits)
-- Merits **BURN** (not transferred to anyone)
-- Configurable per community
+### Separate Comment Fee
+- Current codebase does **not** implement a dedicated `commentFee` / `commentCost` setting.
+- For comments/votes, balance changes come from vote amounts (`quotaAmount` / `walletAmount`) and direction rules.
+- Legacy docs mentioning fixed "0.1 merit comment fee" are outdated for current implementation.
 
 ### What Gets Paid
-- Fee pays for the RIGHT to leave a comment
-- Comment weight (merits on post) — separate expense
-
-**Example:**
-1. User wants to leave positive comment for 10 merits
-2. Deducted: 0.1 merit fee + 10 merits for post = 10.1 merits
-3. Fee (0.1) burns, 10 merits go to post rating
+- Positive/negative weighted comments transfer/remove weighted merits.
+- Neutral comments require text and zero amount in `neutralOnly` mode.
+- Community restrictions are enforced through `settings.commentMode` and `votingSettings.currencySource`.
 
 ---
 
@@ -196,7 +192,17 @@ Inherits from base post.
 | Upvote other's post | Quota → Wallet | Quota first |
 | Downvote any post | Wallet ONLY | — |
 | Vote for own post | Wallet ONLY | Quota forbidden |
-| Vote for teammate's post | Configurable | Default: same as other's |
+| Vote for teammate's post | Configurable via `votingSettings` + permissions | Default: same as other's |
+
+### Comment Mode (`settings.commentMode`)
+
+| Mode | Allowed behavior |
+|------|------------------|
+| `all` | Weighted comments only (non-zero amount required) |
+| `neutralOnly` | Only neutral comments (`totalAmount = 0`) |
+| `weightedOnly` | Only weighted comments (`totalAmount > 0`) |
+
+`tappalkaOnlyMode` is deprecated and mapped to `commentMode='neutralOnly'` for compatibility.
 
 ### Restrictions by Post Type
 
@@ -207,7 +213,7 @@ Inherits from base post.
 
 ### Self-Voting
 - Default: **PROHIBITED**
-- Can be enabled in community settings
+- Controlled via permissions (`permissionRules` / `canVoteForOwnPosts`)
 - If enabled — wallet ONLY, never quota
 
 ### Teammate Voting
@@ -240,7 +246,8 @@ Teammates = members of same local communities as voter.
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────┐
-│ Deduct fee (0.1 global merits)                          │
+│ Validate `commentMode`, `currencySource`, self-vote,    │
+│ and direction constraints                                │
 └───────────────────────────┬─────────────────────────────┘
                             │
         ┌───────────────────┼───────────────────┐
@@ -256,8 +263,8 @@ Teammates = members of same local communities as voter.
 ## Tappalka and Posts
 
 ### Participation Conditions
-1. Tappalka enabled for community
-2. Post rating ≥ minimum threshold (default 1 merit)
+1. `tappalkaSettings.enabled = true`
+2. Post rating ≥ `tappalkaSettings.minRating` (default 1)
 3. Post rating ≥ author's stop-loss setting
 4. Post not closed
 
@@ -279,12 +286,39 @@ Post stops being shown if:
   2. Close post and withdraw all merits
 
 ### What Post Gets in Tappalka
-- When chosen by user: +1 merit (emission, not from user's wallet)
-- When not chosen: nothing (but 0.1 for show still deducted)
+- When chosen by user: +`tappalkaSettings.winReward` (emission, not from user's wallet)
+- Each show charges `tappalkaSettings.showCost` per post (winner and loser)
 
 ---
 
-## Project Post Type (v2.0)
+## Investments and Posts (Current v1)
+
+### At Post Creation
+- Investment contract is optional and available only when `settings.investingEnabled = true`.
+- If enabled on post, `investorSharePercent` must be within community bounds:
+  `settings.investorShareMin..settings.investorShareMax`.
+- If `settings.requireTTLForInvestPosts = true`, investment-enabled posts must have TTL.
+
+### During Tappalka Shows
+- For investment-enabled posts, show-cost deduction priority is:
+  `investmentPool` → `post rating` (respecting stop-loss) → `author wallet`.
+- If all sources are exhausted, post stops participating in tappalka.
+
+### On Withdraw / Close
+- Withdrawal distributes by contract percent:
+  investor share from withdrawn amount, remainder to author.
+- On close, investment handling is processed by post-closing flow
+  (pool return/distribution behavior depends on community close strategy).
+
+---
+
+## Project Community vs Project Post Type
+
+### Projects Community (exists now)
+- `Projects` is an existing priority/global community (`typeTag='team-projects'`).
+- It supports publication flow, tappalka participation, and special transfer to МД.
+
+### Project Post Type (v2.0 planned)
 
 *Deferred to version 2.0 — requires verification mechanics development.*
 

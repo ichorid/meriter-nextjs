@@ -1,227 +1,107 @@
 ---
-description: React and Next.js patterns for frontend development. Include when working with components, hooks, or pages.
+description: NestJS + tRPC backend patterns for Meriter API. Include when working in api package.
 globs:
-  - web/src/**/*
+  - api/**/*
 alwaysApply: false
 ---
 
-# Frontend Patterns (React + Next.js)
+# Backend Patterns (NestJS + tRPC + REST)
 
 ## Tech Stack
-- React 19 + Next.js 16 (App Router)
-- TypeScript (strict)
-- TanStack Query + tRPC client
-- Tailwind CSS
-- Zustand (state management)
+- NestJS 10 + TypeScript (strict)
+- tRPC v11 for main API surface
+- REST (`api-v1`) for auth/uploads/config compatibility endpoints
+- MongoDB + Mongoose
+- Zod shared contracts from `libs/shared-types`
 
-## Component Guidelines
+## Backend Structure
 
-### Component Structure
+```text
+api/apps/meriter/src/
+├── domain/
+│   ├── models/                # Mongoose schemas/documents (community, publication, vote, ...)
+│   ├── services/              # Business logic services (publication, vote, wallet, permission, ...)
+│   ├── aggregates/            # Domain entities/aggregates
+│   ├── events/                # Domain events and event bus
+│   ├── value-objects/         # Strongly-typed domain identifiers and VOs
+│   └── common/helpers/        # Domain helpers (e.g. priority community logic)
+├── trpc/
+│   ├── routers/               # tRPC routers (publications, votes, wallets, ...)
+│   ├── middleware/            # tRPC middleware (permission checks, auth)
+│   ├── context.ts             # Request context construction
+│   └── trpc.ts                # Procedure helpers
+├── api-v1/                    # REST modules (auth, uploads, config, common)
+├── config/                    # Runtime configuration + validation schema
+├── telegram/                  # Telegram integrations (content pipeline helpers)
+├── tg-bots/                   # Telegram bot module/services
+└── domain.module.ts           # Shared domain wiring module
+```
+
+## Module Wiring Rule
+- Use a shared `domain.module.ts` for providers and model registration.
+- Do not assume "one module per entity" layout.
+- Keep business logic in `domain/services`, not in routers/controllers.
+
+## API Layer Responsibilities
+
+### tRPC (`trpc/routers`)
+- Validate input with shared Zod schemas when possible.
+- Perform transport-level checks and call domain services.
+- Keep routers thin: orchestration + mapping only.
+
+### REST (`api-v1`)
+- Used for selected flows (auth/providers/uploads/config and compatibility routes).
+- Reuse domain services and shared helpers instead of duplicating logic.
+- Keep auth and permissions consistent with tRPC behavior.
+
+## Permission Flow
+
+1. Route/middleware resolves actor and target context.
+2. `PermissionService` evaluates action-level permission.
+3. Domain service enforces business constraints (wallet/quota/source rules).
+4. Operation executes atomically (session/transaction where needed).
+5. Events/notifications emitted after successful state change.
+
+Never rely on UI assumptions for security-critical checks.
+
+## Data and Schema Rules
+- Shared API contracts: `libs/shared-types/src/`.
+- Backend-only schemas/utilities: `api/apps/meriter/src/common/schemas/`.
+- Mongoose documents remain in `domain/models/**`.
+- When changing contract shape, update both backend usage and frontend consumers.
+
+## Service Pattern
+
 ```typescript
-// components/feature/FeatureName.tsx
+@Injectable()
+export class ExampleService {
+  constructor(
+    @InjectModel(ExampleSchemaClass.name)
+    private readonly exampleModel: Model<ExampleDocument>,
+  ) {}
 
-'use client'; // Only if using hooks/interactivity
-
-import { useState } from 'react';
-import { useFeatureData } from '@/hooks/useFeatureData';
-import { Button } from '@/components/ui/Button';
-
-interface FeatureNameProps {
-  id: string;
-  onComplete?: () => void;
-}
-
-export function FeatureName({ id, onComplete }: FeatureNameProps) {
-  const { data, isLoading } = useFeatureData(id);
-  const [localState, setLocalState] = useState(false);
-
-  if (isLoading) return <LoadingSkeleton />;
-
-  return (
-    <div className="...">
-      {/* Component content */}
-    </div>
-  );
+  async execute(input: Input): Promise<Output> {
+    // business logic, validation, persistence
+  }
 }
 ```
 
-### Component Rules
-- One component per file
-- Props interface defined above component
-- Named exports (not default)
-- 'use client' only when necessary
-- Destructure props in function signature
+## Router Pattern
 
-## Data Fetching
-
-### tRPC (Authenticated)
 ```typescript
-// hooks/usePublications.ts
-import { trpc } from '@/lib/trpc';
-
-export function usePublications(communityId: string) {
-  return trpc.publication.getByCommunity.useQuery(
-    { communityId },
-    { enabled: !!communityId }
-  );
-}
-
-export function useCreatePublication() {
-  const utils = trpc.useUtils();
-  
-  return trpc.publication.create.useMutation({
-    onSuccess: () => {
-      utils.publication.getByCommunity.invalidate();
-    },
-  });
-}
-```
-
-### REST (Unauthenticated)
-```typescript
-// hooks/usePublicData.ts
-import { useQuery } from '@tanstack/react-query';
-
-export function usePublicData() {
-  return useQuery({
-    queryKey: ['publicData'],
-    queryFn: async () => {
-      const res = await fetch('/api/rest/public-endpoint');
-      return res.json();
-    },
-  });
-}
-```
-
-## State Management
-
-### Zustand Store Pattern
-```typescript
-// stores/feature.store.ts
-import { create } from 'zustand';
-
-interface FeatureState {
-  items: Item[];
-  selectedId: string | null;
-  setSelectedId: (id: string | null) => void;
-  addItem: (item: Item) => void;
-}
-
-export const useFeatureStore = create<FeatureState>((set) => ({
-  items: [],
-  selectedId: null,
-  setSelectedId: (id) => set({ selectedId: id }),
-  addItem: (item) => set((state) => ({ 
-    items: [...state.items, item] 
-  })),
-}));
-```
-
-### When to Use What
-| State Type | Solution |
-|------------|----------|
-| Server data | TanStack Query (tRPC) |
-| Global UI state | Zustand |
-| Form state | React Hook Form or local state |
-| Component state | useState/useReducer |
-| URL state | Next.js searchParams |
-
-## Styling (Tailwind)
-
-### Class Organization
-```tsx
-<div 
-  className={cn(
-    // Layout
-    "flex flex-col items-center",
-    // Spacing
-    "p-4 gap-2",
-    // Visual
-    "bg-white rounded-lg shadow",
-    // Interactive
-    "hover:bg-gray-50 transition-colors",
-    // Conditional
-    isActive && "ring-2 ring-blue-500"
-  )}
-/>
-```
-
-### Use `cn()` Utility
-```typescript
-// lib/utils.ts
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-```
-
-## App Router Patterns
-
-### Page Structure
-```typescript
-// app/community/[id]/page.tsx
-
-interface PageProps {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}
-
-export default async function CommunityPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const { tab } = await searchParams;
-  
-  return <CommunityView id={id} initialTab={tab} />;
-}
-```
-
-### Loading & Error
-```typescript
-// app/community/[id]/loading.tsx
-export default function Loading() {
-  return <CommunitySkeleton />;
-}
-
-// app/community/[id]/error.tsx
-'use client';
-export default function Error({ error, reset }: { error: Error; reset: () => void }) {
-  return <ErrorDisplay error={error} onRetry={reset} />;
-}
-```
-
-## Custom Hooks Pattern
-```typescript
-// hooks/useVoting.ts
-import { useState, useCallback } from 'react';
-import { trpc } from '@/lib/trpc';
-
-export function useVoting(publicationId: string) {
-  const [isVoting, setIsVoting] = useState(false);
-  const utils = trpc.useUtils();
-
-  const voteMutation = trpc.vote.create.useMutation({
-    onMutate: () => setIsVoting(true),
-    onSettled: () => setIsVoting(false),
-    onSuccess: () => {
-      utils.publication.getById.invalidate({ id: publicationId });
-    },
-  });
-
-  const vote = useCallback((amount: number) => {
-    voteMutation.mutate({ publicationId, amount });
-  }, [publicationId, voteMutation]);
-
-  return { vote, isVoting, error: voteMutation.error };
-}
+export const exampleRouter = router({
+  create: protectedProcedure
+    .input(CreateExampleSchema)
+    .mutation(async ({ ctx, input }) => {
+      return ctx.exampleService.execute(input);
+    }),
+});
 ```
 
 ## Common Mistakes
 
-❌ Using `useEffect` for data fetching (use TanStack Query)
-❌ Prop drilling more than 2 levels (use Zustand or Context)
-❌ Inline styles instead of Tailwind
-❌ Default exports for components
-❌ Business logic in components (extract to hooks)
-❌ Forgetting 'use client' for interactive components
-❌ Mutating state directly in Zustand
+❌ Putting business rules directly in tRPC routers/controllers  
+❌ Duplicating validation instead of reusing shared schemas  
+❌ Skipping permission checks for "internal" endpoints  
+❌ Mixing REST/tRPC contracts without explicit mapping  
+❌ Introducing backend-only DTOs into shared-types without cross-package need

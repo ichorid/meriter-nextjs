@@ -4,3 +4,7 @@ alwaysApply: true
 project uses pnpm
 
 USE pnpm lint && pnpm lint:fix BEFORE EVERY COMMIT!!!
+
+Note: root `pnpm lint:fix` currently runs:
+- `@meriter/api`: `lint` (without `--fix`)
+- `@meriter/web`: `lint:fix`

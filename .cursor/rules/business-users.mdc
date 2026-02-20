@@ -116,7 +116,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Select authorization method                          │
-│    (Yandex / SMS / Call / E-mail)                       │
+│    (Yandex / SMS / Call / E-mail / Telegram / Google)   │
 └───────────────────────────┬─────────────────────────────┘
                             │
                             ▼
@@ -154,9 +154,8 @@ Invite codes — main tool for granting roles to users.
 
 | Type | Effect |
 |------|--------|
-| Join community | Member role in specified community |
-| Create community | Generates new community, assigns user as lead |
-| Superadmin role | Grants superadministrator rights |
+| `superadmin-to-lead` | Grants lead role in target community (issued by superadmin) |
+| `lead-to-participant` | Invites/adds participant to community (issued by lead) |
 
 ### Current Implementation Issues
 - Create confusion when forwarding
@@ -177,10 +176,11 @@ Invite codes — main tool for granting roles to users.
 - SMS
 - Call
 - E-mail
+- Telegram (feature/config controlled)
+- Google OAuth (feature/config controlled)
 
 ### Planned Methods
-- Messengers (Telegram, etc.)
-- Google
+- Additional messengers/providers beyond current set
 
 ### Future (When Valuable Resources Appear)
 - Authorization via Gosuslugi (Government Services)
@@ -191,12 +191,16 @@ Invite codes — main tool for granting roles to users.
 
 ## Lead Change
 
-> **Status:** Not implemented. Planned for P1.
+> **Status:** Partially implemented.
 
-### Planned Mechanics
-- Current lead can transfer rights to another member
-- Or appoint additional lead
-- Superadmin can forcefully appoint new lead
+### Current Mechanics (Implemented)
+- Superadmin can assign a user as lead of a selected community (`users.assignLead`).
+- UI exists: `AssignLeadDialog` + `useAssignLead` flow in web client.
+
+### Planned / Not Yet Implemented
+- Lead self-transfer flow initiated by current lead
+- Appointing additional lead by lead without superadmin action
+- Full governance workflow for lead replacement
 
 ---
 
