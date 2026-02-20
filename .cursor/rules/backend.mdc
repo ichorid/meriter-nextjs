@@ -27,31 +27,39 @@ api/apps/meriter/src/
 │   └── common/helpers/        # Domain helpers (e.g. priority community logic)
 ├── trpc/
 │   ├── routers/               # tRPC routers (publications, votes, wallets, ...)
-│   ├── middleware/            # tRPC middleware (permission checks, auth)
+│   ├── middleware/            # tRPC middleware (permission checks)
 │   ├── context.ts             # Request context construction
 │   └── trpc.ts                # Procedure helpers
-├── api-v1/                    # REST modules (auth, uploads, config, common)
+├── api-v1/                    # REST modules (auth, uploads, config) + api-v1/common/*
+├── common/                    # Shared backend helpers/services/schemas/interceptors
+├── updates-conductors/        # Update conductor subsystem
+├── migrations/                # Migration scripts
 ├── config/                    # Runtime configuration + validation schema
 ├── telegram/                  # Telegram integrations (content pipeline helpers)
 ├── tg-bots/                   # Telegram bot module/services
-└── domain.module.ts           # Shared domain wiring module
+├── domain.module.ts           # Shared domain wiring module
+├── meriter.module.ts          # Root Nest module composition
+├── permission.guard.ts        # REST permission guard
+└── user.guard.ts              # Authenticated user guard
 ```
 
 ## Module Wiring Rule
 - Use a shared `domain.module.ts` for providers and model registration.
 - Do not assume "one module per entity" layout.
-- Keep business logic in `domain/services`, not in routers/controllers.
+- Keep new business logic in `domain/services`; when touching legacy routers/controllers, prefer extracting business logic from transport layer to services.
 
 ## API Layer Responsibilities
 
 ### tRPC (`trpc/routers`)
 - Validate input with shared Zod schemas when possible.
 - Perform transport-level checks and call domain services.
-- Keep routers thin: orchestration + mapping only.
+- Prefer thin routers (orchestration + mapping), but current codebase still contains substantial business logic and direct DB reads in some routers.
+- tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
+- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`.
 
 ### REST (`api-v1`)
-- Used for selected flows (auth/providers/uploads/config and compatibility routes).
-- Reuse domain services and shared helpers instead of duplicating logic.
+- Used for selected flows (auth/providers, uploads, config), with shared REST helpers/services under `api-v1/common`.
+- Reuse domain services and shared helpers where possible; current REST/tRPC layers also use dedicated enrichment/mapping helpers from `api-v1/common`.
 - Keep auth and permissions consistent with tRPC behavior.
 
 ## Permission Flow
@@ -59,15 +67,15 @@ api/apps/meriter/src/
 1. Route/middleware resolves actor and target context.
 2. `PermissionService` evaluates action-level permission.
 3. Domain service enforces business constraints (wallet/quota/source rules).
-4. Operation executes atomically (session/transaction where needed).
+4. Use sessions/transactions where implemented; some existing flows are best-effort and not fully atomic.
 5. Events/notifications emitted after successful state change.
 
 Never rely on UI assumptions for security-critical checks.
 
 ## Data and Schema Rules
 - Shared API contracts: `libs/shared-types/src/`.
-- Backend-only schemas/utilities: `api/apps/meriter/src/common/schemas/`.
-- Mongoose documents remain in `domain/models/**`.
+- Backend-only schemas: `api/apps/meriter/src/common/schemas/` (currently minimal).
+- Most Mongoose models are in `domain/models/**`; additional schemas can also exist in dedicated feature modules (e.g. `updates-conductors/model`).
 - When changing contract shape, update both backend usage and frontend consumers.
 
 ## Service Pattern
