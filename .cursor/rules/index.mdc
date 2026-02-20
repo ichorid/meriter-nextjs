@@ -63,9 +63,9 @@ meriter-nextjs/
 ## Key Patterns
 
 ### API Calls
-- **Primary API pattern**: TanStack Query + tRPC (authenticated and many public reads via `publicProcedure`)
-- **REST usage (`api-v1`)**: targeted endpoints for auth flows, config bootstrap, and compatibility paths
-- **File uploads**: TanStack Query + tRPC mutations (`uploads.*`), with REST upload module also present server-side
+- **Primary API pattern**: TanStack Query + tRPC for most authenticated and domain operations (many procedures are `protectedProcedure`; selected reads are `publicProcedure`)
+- **REST usage (`api-v1`)**: auth flows (including fake auth), OAuth redirects/callbacks, WebAuthn/Passkey endpoints, and runtime config bootstrap
+- **File uploads**: tRPC mutations (`uploads.*`) are the primary path; REST upload controller exists for backward compatibility (`api-v1/uploads`) and is marked deprecated server-side
 
 ### Schema Location
 - Shared schemas: `libs/shared-types/src/`
@@ -73,15 +73,18 @@ meriter-nextjs/
 
 ### Naming Conventions
 - Routes: core CRUD names (`getById`, `getAll`, `create`, `update`, `delete`) plus domain-specific operations (`getFeed`, `withdraw`, `transfer`, `close`, `restore`, `permanentDelete`, `search`, `markAllAsRead`, etc.)
-- Files: kebab-case for files, PascalCase for components
+- Files: mixed conventions by layer — kebab-case is common, while PascalCase/camelCase is used in many React app/context/provider/client files
 - Variables: camelCase
 
 ## Implemented Feature Surface
 - **Authentication**: JWT/cookie auth, fake auth endpoints, OAuth-compatible REST auth paths, and passkey/WebAuthn support
 - **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
-- **Communities and teams**: community management, team creation, team join request workflows, role operations
+- **Communities and teams**: community management, team creation, team join request workflows, team invitation/accept/reject flows, role operations
 - **Economy**: wallets, withdrawals, transfers, quota handling, voting/polls/comments, investments, tappalka mechanics
-- **Platform modules**: about content module, platform settings module, notifications, categories, search, uploads
+- **User engagement**: favorites module and notifications (including read-state operations)
+- **Platform modules**: about content module, platform settings module, runtime config/feature flags module, categories, search, uploads
+- **Background/domain automation**: post closing cron and quota reset services
+- **Integrations**: Telegram services, Telegram bot module, updates conductor subsystem
 
 ## Before Making Changes
 1. Check existing patterns in similar files
