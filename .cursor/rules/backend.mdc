@@ -30,7 +30,10 @@ api/apps/meriter/src/
 │   ├── routers/               # tRPC routers (publications, votes, wallets, ...)
 │   ├── middleware/            # tRPC middleware (permission checks)
 │   ├── context.ts             # Request context construction
-│   └── trpc.ts                # Procedure helpers
+│   ├── router.ts              # Main appRouter composition
+│   ├── trpc.service.ts        # DI-backed context/service wiring for tRPC
+│   ├── trpc.module.ts         # tRPC Nest module
+│   └── trpc.ts                # Procedure helpers + Sentry + HttpException mapping
 ├── api-v1/                    # REST modules (auth, config, legacy uploads) + api-v1/common/*
 ├── common/                    # Shared backend helpers/services/schemas/interceptors
 ├── updates-conductors/        # Update conductor subsystem
@@ -60,27 +63,34 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 - Prefer thin routers (orchestration + mapping), but current codebase still contains substantial business logic and direct DB reads in some routers.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
 - Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`.
+- Investments group is mounted as `investments` in appRouter, with implementation file `trpc/routers/investment.router.ts`.
 
 ### REST (`api-v1`)
-- Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS/email OTP, call-check, magic-link), with shared REST helpers/services under `api-v1/common`.
-- Upload REST endpoints are kept for backward compatibility and marked deprecated; prefer tRPC uploads endpoints for new code.
+- Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS/email OTP, phone call-check, magic-link), plus development/test auth endpoints (`fake`, `fake/superadmin`, `mock/:provider`), with shared REST helpers/services under `api-v1/common`.
+- Upload REST endpoints are kept for backward compatibility and marked deprecated; prefer tRPC uploads endpoints for new code. Note: permission parity is not complete - `api-v1/uploads/community/:communityId/avatar` currently has a TODO for lead-role enforcement, while tRPC checks lead/superadmin.
 - Reuse domain services and shared helpers where possible; current REST/tRPC layers also use dedicated enrichment/mapping helpers from `api-v1/common`.
-- Keep auth and permissions consistent with tRPC behavior.
 
 ## Bootstrap and Runtime Wiring
 - `main.ts` mounts tRPC via Express middleware (`/trpc`) before Nest routes to correctly handle batched requests.
+- Cookie parser is mounted on the raw Express app before tRPC middleware so authenticated and batched `/trpc` requests have parsed cookies in context.
 - Global exception/response handling is configured in bootstrap (`ApiExceptionFilter`, `ApiResponseInterceptor`).
 - Sentry is initialized during bootstrap and also used in tRPC procedure middleware.
 
 ## Permission Flow
 
 1. Route/middleware resolves actor and target context.
-2. `PermissionService` evaluates action-level permission (REST via guards/decorators; tRPC via middleware or handler-level checks).
+2. `PermissionService` evaluates action-level permission (REST via guards/decorators; tRPC via middleware or handler-level checks). Coverage is endpoint-dependent, and REST/tRPC parity is not guaranteed in all legacy/deprecated paths.
 3. Domain service enforces business constraints (wallet/quota/source rules).
 4. Use sessions/transactions where implemented; some existing flows are best-effort and not fully atomic.
 5. Events/notifications emitted after successful state change.
 
 Never rely on UI assumptions for security-critical checks.
+
+### Auth Implementation Notes (Current Code)
+- OAuth providers are handled via REST auth controller (including Google and Yandex callbacks).
+- Passkeys support both split flows (`register/login`) and unified flow (`passkey/authenticate/start|finish`).
+- Magic-link redeem endpoint includes in-memory IP rate limiting.
+- Legacy `GET /api/v1/auth/me` exists and is marked deprecated in favor of `trpc.users.getMe`.
 
 ## Data and Schema Rules
 - Shared API contracts: `libs/shared-types/src/`.
@@ -125,4 +135,5 @@ export const exampleRouter = router({
 ❌ Mixing REST/tRPC contracts without explicit mapping  
 ❌ Applying tRPC permission middleware before `.input()` validation when resource IDs are extracted from input  
 ❌ Treating deprecated REST upload endpoints as the primary API surface  
-❌ Introducing backend-only DTOs into shared-types without cross-package need
+❌ Introducing backend-only DTOs into shared-types without cross-package need  
+❌ Assuming deprecated REST endpoints enforce the same permission checks as their tRPC replacements
