@@ -3,8 +3,14 @@ alwaysApply: true
 ---
 
 
-When doing significant changes in the web package, bump its package version according to semantic versioning
+When doing significant changes in the web package, bump `version` in `web/package.json` according to semantic versioning.
 
-When doing significant changes in the api package, bump its package version according to semantic versioning
+When doing significant changes in the api package, bump `version` in `api/package.json` according to semantic versioning.
 
-Bump the root package accordingly
+Root `package.json` version is not used for release image tags in CI; release tags are derived from `web/package.json` and `api/package.json`.
+
+On `main` pushes, CI reads `web/package.json` and `api/package.json` versions and publishes `v<version>` tags.
+
+On `dev` pushes, CI publishes dev/SHA tags and does not use semantic version tags.
+
+`libs/shared-types/package.json` also has an independent `version` field (`@meriter/shared-types`).
