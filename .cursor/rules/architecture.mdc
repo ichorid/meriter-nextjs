@@ -32,11 +32,10 @@ api/apps/meriter/src/
 ├── domain.module.ts              # Shared NestJS module wiring domain providers/models
 ├── trpc/                         # 🟢 tRPC layer (API)
 │   └── routers/
-│       ├── [entity].router.ts    # tRPC procedures
-│       └── index.ts              # Router aggregation
+│       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
 ├── api-v1/                       # 🟡 REST layer (auth/uploads/config compatibility)
 ├── common/                       # Shared backend utilities
-│   └── schemas/                  # Backend-only Zod schemas
+│   └── schemas/                  # Backend-only Zod schemas (currently minimal)
 ├── config/                       # Configuration
 ├── telegram/                     # Telegram integration
 ├── tg-bots/                      # Telegram bot module and services
@@ -48,7 +47,7 @@ api/apps/meriter/src/
 1. Add/update schema in `domain/models/[entity]/` (and related interfaces if needed)
 2. Implement business logic in `domain/services/`
 3. Register providers/models in `domain.module.ts` (shared domain wiring)
-4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` (and aggregate in `trpc/router.ts` if needed)
+4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` and aggregate in `trpc/router.ts`
 5. If REST exposure is required, add controller/service under `api-v1/`
 6. Add/update shared contracts in `libs/shared-types/src/` when shape is cross-package
 
@@ -56,7 +55,8 @@ api/apps/meriter/src/
 ```
 web/src/
 ├── app/                          # 🔵 Next.js App Router
-│   ├── (routes)/                 # Route groups
+│   ├── meriter/                  # Main app routes
+│   ├── tests/                    # Test/demo routes
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Home page
 ├── components/                   # 🟢 UI Components
@@ -66,16 +66,18 @@ web/src/
 ├── hooks/                        # Custom React hooks
 ├── stores/                       # Zustand stores
 ├── contexts/                     # React contexts
-├── lib/                          # Utilities & helpers
+├── lib/                          # Utilities & helpers (incl. tRPC client)
 ├── providers/                    # Provider components
+├── shared/                       # Shared UI/lib/hooks/stores/types
 ├── types/                        # TypeScript types
-└── generated/                    # Auto-generated (tRPC client)
+├── generated/                    # Auto-generated build metadata
+└── __tests__/                    # Frontend tests
 ```
 
 ### Adding New Frontend Feature
-1. Create components in `components/[feature]/`
-2. Create hooks in `hooks/use[Feature].ts`
-3. Create store in `stores/[feature].store.ts` if needed
+1. Place UI in `components/`, `features/*/components`, or `shared/components` depending on scope
+2. Create hooks in `hooks/` for app-level logic or `shared/hooks/` for reusable cross-feature logic
+3. Create store in `stores/*.store.ts` or `shared/stores/*.store.ts` if needed
 4. Add page in `app/[route]/page.tsx`
 
 ## Shared Types (libs/shared-types/)
@@ -143,7 +145,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 |------|------------|---------|
 | Components | PascalCase | `VoteButton.tsx` |
 | Hooks | camelCase with use | `useVoting.ts` |
-| Services | PascalCase + .service | `vote.service.ts` |
+| Services | kebab-case + .service | `vote.service.ts` |
 | Schemas | kebab-case + .schema | `vote.schema.ts` |
 | Routers | kebab-case + .router | `vote.router.ts` |
 | Stores | kebab-case + .store | `vote.store.ts` |
@@ -158,7 +160,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
        ▼                       ▼
 ┌─────────────┐         ┌─────────────┐
 │   api/      │ ◄─────► │   web/      │
-│  (Backend)  │  tRPC   │ (Frontend)  │
+│  (Backend)  │tRPC+REST│ (Frontend)  │
 └─────────────┘         └─────────────┘
 ```
 
@@ -167,4 +169,4 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 ❌ Importing from `api/` in `web/` directly (use tRPC/REST)
 ❌ Duplicating types instead of using shared-types
 ❌ Putting business logic in routers (belongs in services)
-❌ Creating components in `app/` directory (use `components/`)
+❌ Putting reusable shared components only in `app/` (prefer `components/`, `features/*/components`, or `shared/components`)
