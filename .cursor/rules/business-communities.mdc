@@ -24,9 +24,8 @@ Communities that are treated as priority context. Includes:
 
 **Characteristics:**
 - Users are auto-added to base priority communities by backend sync logic.
-- Priority communities use global merit context for voting/investment/tappalka reward routing.
-- Fees (`postCost`, `pollCost`, `forwardCost`) are debited from GLOBAL wallet (same behavior for all communities).
-- Withdrawals are credited to GLOBAL wallet.
+- Priority communities use global merit context for voting, investment, tappalka rewards, and withdrawals.
+- Fee routing is operation-specific (see "Action Payment Rules" below).
 - No dedicated user self-leave API is implemented for priority communities.
 
 ### Global Communities (Public Groups)
@@ -36,7 +35,8 @@ Includes platform base communities and other non-team communities.
 **Important implementation facts:**
 - Priority base communities are ensured by backend bootstrap logic.
 - `isPriority` can only be set by superadmin.
-- Reserved internal `global` community (`GLOBAL_COMMUNITY_ID`) is system-managed and excluded from user-facing community lists.
+- Reserved internal `global` community (`GLOBAL_COMMUNITY_ID`) is system-managed, uses `typeTag: 'global'`, and is excluded from user-facing community lists.
+- `typeTag: 'global'` is reserved for internal global-merit storage community.
 - Community creation is available to authenticated users; it is not admin-only.
 
 ### Local Communities (Private Groups)
@@ -46,8 +46,9 @@ User-created team communities (`typeTag: 'team'`).
 **Characteristics:**
 - Team membership uses invite/request flows (team invitations + join requests).
 - Voting/investment/tappalka wallet routing uses local community context (non-priority behavior).
-- Fees and withdrawals still route via GLOBAL wallet.
-- No dedicated self-leave endpoint is implemented (membership removal is admin/lead-driven in current API).
+- Wallet routing is operation-specific (see "Action Payment Rules" below).
+- No dedicated self-leave endpoint is implemented.
+- Membership removal is implemented via admin/lead-only `removeMember` API.
 - "Lead requests deletion from administration" flow is not implemented as a dedicated API feature.
 
 ---
@@ -63,7 +64,7 @@ User-created team communities (`typeTag: 'team'`).
 | Avatar | Community image (`avatarUrl`) |
 | Cover | Background image (`coverImageUrl`) |
 | Currency Name | Community currency labels (`settings.currencyNames`) |
-| Type Tag | Community kind (`typeTag`, e.g. `team`, `future-vision`, `marathon-of-good`, `support`, `team-projects`) |
+| Type Tag | Community kind (`typeTag`, e.g. `team`, `future-vision`, `marathon-of-good`, `support`, `team-projects`, `political`, `housing`, `volunteer`, `corporate`, `custom`, `global`) |
 | Hashtags | Community hashtag list (`hashtags`) |
 | Hashtag Descriptions | Optional hashtag descriptions (`hashtagDescriptions`) |
 
@@ -184,9 +185,14 @@ If needed in future, treat this as planned work and define explicit API/storage 
 ## Global and Local Community Interaction
 
 ### Action Payment Rules
-- Post/poll/forward costs come from `settings.postCost`, `settings.pollCost`, `settings.forwardCost`.
-- Fee debits are routed through GLOBAL wallet.
-- Withdrawal credits are routed through GLOBAL wallet.
+- Costs are configured by `settings.postCost`, `settings.pollCost`, `settings.forwardCost`.
+- `publications.create`: wallet fee is debited from `GLOBAL_COMMUNITY_ID`; optional quota part is possible when `settings.canPayPostFromQuota=true`.
+- `polls.create`: wallet fee is debited from the poll community wallet; for `marathon-of-good`/`future-vision`, debit is synchronized between both community wallets by router helper logic.
+- `polls.cast`: wallet amount is debited from the poll community wallet; for `marathon-of-good`/`future-vision`, debit is synchronized between both community wallets by router helper logic.
+- `proposeForward`: `settings.forwardCost` is charged from `GLOBAL_COMMUNITY_ID` (participant flow).
+- `forward` (lead/superadmin direct forward): no forward fee is charged in current implementation.
+- Withdrawals are routed to `GLOBAL_COMMUNITY_ID` by merit resolver (`operationType='withdrawal'`).
+- Voting/tappalka/investment wallet routing uses merit resolver: global wallet for priority communities, source community wallet for non-priority communities.
 - Priority community detection: `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` or `isPriority=true`.
 - Voting source restrictions are configured through `votingSettings.currencySource` (with backward-compatible logic in domain services).
 
@@ -194,8 +200,10 @@ If needed in future, treat this as planned work and define explicit API/storage 
 
 | Case | Behavior |
 |------|----------|
-| Lead/superadmin forward | Direct `forward` operation |
+| Lead/superadmin forward | Direct `forward` operation (no forward fee in current implementation) |
 | Participant forward from team community | `proposeForward` flow (lead approval path) |
+| Proposal source constraint | `proposeForward` is allowed only when source community is `typeTag='team'` |
+| Proposal fee | `settings.forwardCost` is charged in `proposeForward` from `GLOBAL_COMMUNITY_ID` |
 | Forward mode | Defined by source `settings.forwardRule`: `standard` or `project` |
 | `standard` mode | Create copy in target, keep original |
 | `project` mode | Transfer votes to new post and soft-delete original |
@@ -225,8 +233,16 @@ Base priority communities:
 
 Team communities (`typeTag='team'`):
 - Join via invitation acceptance OR join request approval
+- Invitation flow is implemented (create/accept/reject)
+- Join-request flow is implemented (submit/approve/reject)
 - No dedicated self-leave endpoint is implemented in current API
+- Membership removal is available via admin/lead `removeMember`
 ```
+
+### Current Implemented Constraints
+- `future-vision`: poll creation and poll casting are blocked in current routers.
+- `team-projects`: default permission rules deny participant `POST_PUBLICATION` and `CREATE_POLL` (lead-only posting/poll creation by defaults service).
+- Internal `global` community is excluded from user-facing community queries/lists.
 
 ### Settings Validation
 ```
