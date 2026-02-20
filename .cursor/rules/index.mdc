@@ -21,23 +21,34 @@ Merit-based social platform operating through web. Users earn and spend "merits"
 meriter-nextjs/
 ├── api/                          # Backend (NestJS)
 │   └── apps/meriter/src/
-│       ├── domain/               # Domain entities and services
-│       ├── trpc/routers/         # tRPC routers
-│       ├── common/schemas/       # Shared backend schemas
+│       ├── api-v1/               # REST endpoints (auth/config/uploads)
+│       ├── common/               # Shared backend helpers, interfaces, schemas
 │       ├── config/               # Runtime config and validation
+│       ├── decorators/           # Nest decorators
+│       ├── domain/               # Domain models, services, business logic
+│       ├── i18n/                 # Localization resources
+│       ├── migrations/           # Migration scripts
 │       ├── telegram/             # Telegram content integration
 │       ├── tg-bots/              # Telegram bot module/services
-│       ├── updates-conductors/   # Updates conductor subsystem
-│       └── api-v1/               # REST endpoints
+│       ├── trpc/                 # tRPC app router, context, routers
+│       └── updates-conductors/   # Updates conductor subsystem
 ├── web/                          # Frontend (Next.js)
 │   └── src/
 │       ├── app/                  # Next.js app router
 │       ├── components/           # UI components
+│       ├── config/               # Frontend runtime configuration
+│       ├── contexts/             # React contexts
 │       ├── features/             # Feature modules
+│       ├── generated/            # Generated artifacts (e.g., build info)
 │       ├── hooks/                # Custom hooks
+│       ├── i18n/                 # Localization resources
+│       ├── lib/                  # API clients, tRPC client, utilities
+│       ├── providers/            # App providers
+│       ├── shared/               # Shared UI/hooks/utils
 │       ├── stores/               # Zustand stores
-│       └── lib/                  # Utilities
-├── libs/shared-types/            # Shared Zod schemas
+│       ├── types/                # Frontend types
+│       └── __tests__/            # Tests
+├── libs/shared-types/            # Shared Zod schemas and contracts
 ├── docs/                         # Project documentation directory
 └── ARCHITECTURE.md               # Architecture overview (root-level file)
 ```
@@ -52,18 +63,25 @@ meriter-nextjs/
 ## Key Patterns
 
 ### API Calls
-- **Authenticated requests**: TanStack Query + tRPC
-- **Unauthenticated requests**: TanStack Query + REST
-- **Image uploads**: TanStack Query + REST with auth
+- **Primary API pattern**: TanStack Query + tRPC (authenticated and many public reads via `publicProcedure`)
+- **REST usage (`api-v1`)**: targeted endpoints for auth flows, config bootstrap, and compatibility paths
+- **File uploads**: TanStack Query + tRPC mutations (`uploads.*`), with REST upload module also present server-side
 
 ### Schema Location
 - Shared schemas: `libs/shared-types/src/`
-- Backend-only schemas: `api/apps/meriter/src/common/schemas/`
+- Backend schemas and model definitions: primarily `api/apps/meriter/src/domain/models/**/*.schema.ts`, plus backend validation schemas in `api/apps/meriter/src/config/` and selective shared schemas in `api/apps/meriter/src/common/schemas/`
 
 ### Naming Conventions
-- Routes: `getById`, `getAll`, `create`, `update`, `delete`
+- Routes: core CRUD names (`getById`, `getAll`, `create`, `update`, `delete`) plus domain-specific operations (`getFeed`, `withdraw`, `transfer`, `close`, `restore`, `permanentDelete`, `search`, `markAllAsRead`, etc.)
 - Files: kebab-case for files, PascalCase for components
 - Variables: camelCase
+
+## Implemented Feature Surface
+- **Authentication**: JWT/cookie auth, fake auth endpoints, OAuth-compatible REST auth paths, and passkey/WebAuthn support
+- **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
+- **Communities and teams**: community management, team creation, team join request workflows, role operations
+- **Economy**: wallets, withdrawals, transfers, quota handling, voting/polls/comments, investments, tappalka mechanics
+- **Platform modules**: about content module, platform settings module, notifications, categories, search, uploads
 
 ## Before Making Changes
 1. Check existing patterns in similar files
