@@ -19,12 +19,15 @@ meriter-nextjs/
 └── pnpm-workspace.yaml           # pnpm workspace config
 ```
 
+Note: `web/pnpm-workspace.yaml` also exists in this repository.
+
 ## Backend Structure (api/)
 ```
 api/apps/meriter/src/
 ├── domain/                       # 🔵 Domain layer (business logic)
 │   ├── models/[entity]/          # Mongoose schemas and documents
-│   ├── services/                 # Business services (publication, vote, wallet, ...)
+│   ├── services/                 # Business services and domain modules (publication, vote, wallet, quota reset, post-closing cron, tappalka, ...)
+│   │   └── factors/              # Factor-based decision helpers (currency/role/social constraints)
 │   ├── aggregates/               # Domain aggregates/entities
 │   ├── events/                   # Domain events + event bus
 │   ├── value-objects/            # Strongly-typed identifiers/value objects
@@ -33,7 +36,7 @@ api/apps/meriter/src/
 ├── trpc/                         # 🟢 tRPC layer (API)
 │   └── routers/
 │       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
-├── api-v1/                       # 🟡 REST layer (auth/uploads/config) + api-v1/common helpers/services/mappers
+├── api-v1/                       # 🟡 REST layer (auth/uploads/config) + api-v1/common helpers/services/mappers/utils/interfaces
 ├── common/                       # Shared backend utilities
 │   └── schemas/                  # Backend-only Zod schemas (currently minimal)
 ├── config/                       # Configuration
@@ -41,6 +44,10 @@ api/apps/meriter/src/
 ├── tg-bots/                      # Telegram bot module and services
 ├── updates-conductors/           # Update conductor subsystem
 ├── migrations/                   # One-off migration scripts
+├── meriter.module.ts             # Root Nest module composition
+├── meriter.controller.ts         # Root controller
+├── meriter.service.ts            # Root app service
+├── config.ts                     # Runtime config bootstrap
 ├── permission.guard.ts           # Permission guard
 ├── user.guard.ts                 # Authenticated user guard
 └── main.ts                       # App entry point
@@ -51,7 +58,7 @@ Notes:
 - Domain contains dedicated background modules/services (e.g. quota reset and post-closing cron modules)
 
 ### Adding New Backend Feature
-1. Add/update schema in `domain/models/[entity]/` (and related interfaces if needed)
+1. Add/update schema in `domain/models/[entity]/`; for cross-cutting models, a top-level schema file under `domain/models/` is also used in this codebase
 2. Implement business logic in `domain/services/`
 3. Register providers/models in `domain.module.ts` (shared domain wiring)
 4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` and aggregate in `trpc/router.ts`
@@ -64,6 +71,7 @@ web/src/
 ├── app/                          # 🔵 Next.js App Router
 │   ├── meriter/                  # Main app routes
 │   ├── tests/                    # Test/demo routes
+│   ├── **/route.ts               # App Router route handlers (server endpoints)
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Home page
 ├── components/                   # 🟢 UI Components
@@ -157,7 +165,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | Mixed (PascalCase and kebab-case) | `VoteButton.tsx`, `card-comment-vote.tsx` |
-| Hooks | camelCase with use | `useVoting.ts` |
+| Hooks | use-prefixed files in hooks/, including helper companions | `useVoting.ts`, `useVotes.helpers.ts` |
 | Services | kebab-case + .service | `vote.service.ts` |
 | Schemas | kebab-case + .schema | `vote.schema.ts` |
 | Routers | kebab-case + .router | `vote.router.ts` |
@@ -179,7 +187,8 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 
 ## Common Mistakes
 
-❌ Importing from `api/` in `web/` directly (use tRPC/REST)
+❌ Importing backend runtime code from `api/` in `web/`
+✅ Type-only import bridge from `api/apps/meriter/src/trpc/types` is used in this codebase
 ❌ Duplicating types instead of using shared-types
-❌ Putting business logic in routers (belongs in services)
+⚠️ Prefer keeping new business logic in services; current codebase still contains substantial logic in some routers (legacy/transition areas)
 ❌ Putting reusable shared components only in `app/` (prefer `components/`, `features/*/components`, or `shared/components`)
