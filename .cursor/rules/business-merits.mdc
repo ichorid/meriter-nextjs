@@ -6,6 +6,11 @@ globs:
   - "**/quota*.ts"
   - "**/transaction*.ts"
   - "**/balance*.ts"
+  - "**/poll*.ts"
+  - "**/publication*.ts"
+  - "**/investment*.ts"
+  - "**/platform-settings*.ts"
+  - "**/post-closing*.ts"
 alwaysApply: false
 ---
 
@@ -61,12 +66,17 @@ When both merits and quota can be used for an action:
 | Daily quota | Auto-credit (if enabled) | System emission |
 
 ### Starting Merits
-At registration user receives **100 global merits** to wallet.
+Welcome merits are credited to the global wallet from platform settings (`welcomeMeritsGlobal`).
+Default value in code is `0` unless configured.
 
 ### Earning from Posts
 1. Other users leave positive comments under posts
 2. Merits transfer from their wallets to post rating
-3. Post author can **withdraw** earned merits to their wallet at any time
+3. Withdrawal is allowed only when:
+   - Community settings allow it (`settings.allowWithdraw !== false`)
+   - Publication is active
+   - Publication score is positive
+   - Caller is effective beneficiary (author/beneficiary)
 4. Upon withdrawal, post rating decreases
 
 ---
@@ -77,7 +87,7 @@ At registration user receives **100 global merits** to wallet.
 
 | Action | Cost | Paid From |
 |--------|------|-----------|
-| Post publication | 1 merit (configurable) | Global merits |
+| Post publication | Community-configurable (`postCost`) | Quota first (only if `settings.canPayPostFromQuota=true`), remaining wallet part from Global wallet |
 | Poll creation | Community-configurable (`pollCost`) | Global merits |
 | Post forward | Community-configurable (`forwardCost`) | Global merits |
 
@@ -86,7 +96,8 @@ At registration user receives **100 global merits** to wallet.
 - Comment/vote balance changes are driven by `quotaAmount` / `walletAmount` and vote direction rules.
 - Neutral comments use zero amount in `commentMode='neutralOnly'`; weighted comments spend the specified amount.
 
-**IMPORTANT:** Fee is ALWAYS paid from GLOBAL merits, even in local communities.
+**IMPORTANT:** Wallet-based fee payment is global.
+Publication fee is the exception where quota may be used first when `settings.canPayPostFromQuota=true`.
 
 ### Voting for Content
 
@@ -126,13 +137,13 @@ Teammates = members of same local communities as the voter.
 1. Credited daily in amount set in community settings
 2. Quota balance CANNOT exceed single credit amount — excess BURNS
 3. Used same as regular merits, BUT with restrictions
-4. NOT used for system fee payment
+4. Can be used for publication fee only when `settings.canPayPostFromQuota=true`
 
 ### Quota Restrictions
 - ❌ Cannot vote with quota for own posts
-- ❌ Cannot pay fee for posts/comments with quota
 - ❌ Cannot use quota for downvotes
 - ❌ Cannot invest with quota (investment is wallet-only)
+- ❌ No dedicated `commentFee` / `commentCost` setting exists in current code
 
 ### Investment Rules
 - Investment is allowed only when post/community investing is enabled.
@@ -143,22 +154,11 @@ Teammates = members of same local communities as the voter.
 
 ## Negative Post Rating
 
-### What Happens When Rating Goes Negative
+Automatic "24h negative rating deduction from author wallet" is not implemented in current code.
 
-**Scenario:**
-1. User publishes post
-2. Other users vote against (negative comments)
-3. Post rating goes negative
-
-**Consequences:**
-- After **24 hours** negative balance is **DEDUCTED from author's wallet**
-- Author must close post before this to avoid deduction
-- Upon closing, post goes to profile archive
-
-### Protection from Negative
-- Author can close post and withdraw all merits before 24 hours expire
-- Closed post stored in profile archive
-- Closed post **CANNOT be re-published**
+Current code includes:
+- `negative_rating` as a valid close reason enum value
+- Implemented scheduled post-closing flows for TTL and inactivity
 
 ---
 
@@ -185,33 +185,41 @@ Multipliers change ratio "merit from user" → "merit on post".
 
 ### Balance Checks (in order)
 ```
-1. Check fee availability — ALWAYS global wallet (any community)
-2. Determine voting wallet: priority community → global; local → local
-3. Check voting amount availability:
-   a. If upvote: check quota first (if enabled), then wallet
-   b. If downvote: check wallet only
-   c. If self-vote: check wallet only (quota forbidden)
-4. Deduct fee first
-5. Process voting amount
+Publication creation flow:
+1. Read `postCost` and quota payment flag (`canPayPostFromQuota`)
+2. Validate quota/wallet availability
+3. Create publication
+4. Attempt fee deductions
+
+Poll creation flow:
+1. Validate global wallet availability for `pollCost`
+2. Create poll
+3. Attempt global wallet fee deduction
+
+Voting flow:
+1. Resolve allowed currency by context and constraints
+2. Validate quota/wallet availability
+3. Create vote
+4. Apply wallet/quota deductions
 ```
 
 ### Transaction Integrity
-- All merit operations must be atomic
-- If fee deduction fails — entire operation fails
-- If voting deduction fails — refund fee and fail operation
+- Publication creation, poll creation, and forward proposal perform fee deduction after entity creation.
+- In these handlers, if fee deduction fails, the request may still succeed.
 
 ### Negative Balance Handling
-- Wallets CAN go negative (for 24-hour grace period on posts)
+- Wallets CANNOT go negative (`wallet.deduct` enforces balance check)
 - Quota CANNOT go negative
-- System must schedule negative balance collection after 24 hours
 
 ---
 
-## Future Features (v2.0+)
+## Implemented Features (Current)
 
 ### Post Investment
-Users will be able to invest merits in others' posts, receiving percentage of collected merits.
-*Requires serious business logic development.*
+- Investment in posts is implemented.
+- Investment is wallet-only.
+- Distribution logic is implemented for withdrawal and post close flows.
 
-### Team Merit Sharing
-Ability to split merits earned by a post among team members (when full projects feature appears).
+### Post Closing Automation
+- Scheduled post closing for TTL is implemented.
+- Scheduled post closing for inactivity is implemented.
