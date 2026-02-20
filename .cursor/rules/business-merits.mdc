@@ -5,7 +5,6 @@ globs:
   - "**/wallet*.ts"
   - "**/quota*.ts"
   - "**/transaction*.ts"
-  - "**/balance*.ts"
   - "**/poll*.ts"
   - "**/publication*.ts"
   - "**/investment*.ts"
@@ -79,6 +78,11 @@ Default value in code is `0` unless configured.
    - Caller is effective beneficiary (author/beneficiary)
 4. Upon withdrawal, post rating decreases
 
+### Withdrawal Endpoints (Current)
+- `publications.withdraw` is the primary withdrawal endpoint for post rating.
+- `votes.withdraw` exists for backward compatibility and is marked deprecated in router comments.
+- `votes.withdrawFromVote` is implemented for comment-thread vote entities (comment score withdrawal by effective beneficiary checks).
+
 ---
 
 ## Spending Merits
@@ -96,8 +100,17 @@ Default value in code is `0` unless configured.
 - Comment/vote balance changes are driven by `quotaAmount` / `walletAmount` and vote direction rules.
 - Neutral comments use zero amount in `commentMode='neutralOnly'`; weighted comments spend the specified amount.
 
+### Author Top-Up (Current Behavior)
+- When a post author adds a weighted vote to their own publication, current router logic treats it as a direct top-up to post rating.
+- This author top-up path bypasses `settings.commentMode` checks (it is treated as transfer, not regular comment-mode voting).
+- Other currency and permission constraints still apply via current vote validation flow.
+
 **IMPORTANT:** Wallet-based fee payment is global.
 Publication fee is the exception where quota may be used first when `settings.canPayPostFromQuota=true`.
+
+### Forward Fee by Endpoint (Current Behavior)
+- `proposeForward` charges `settings.forwardCost` from global wallet (`GLOBAL_COMMUNITY_ID`), with best-effort deduction after proposal creation.
+- `forward` (lead/superadmin direct forward) does not charge forward fee in current implementation.
 
 ### Voting for Content
 
@@ -110,6 +123,16 @@ Publication fee is the exception where quota may be used first when `settings.ca
 | Investment in post | Funds `investmentPool` | Global wallet ONLY | Local wallet ONLY |
 
 **Priority communities** = МД, ОБ, Projects, Support (typeTag or isPriority).
+
+### Future Vision Poll Constraint (Current)
+- Poll creation is blocked in `future-vision` communities.
+- Poll casting is blocked in `future-vision` communities.
+- Poll list endpoint returns empty data for `future-vision`.
+
+### Tappalka Show-Cost Spending (Current)
+- Tappalka show cost is deducted from both posts in comparison.
+- Deduction order is: `investmentPool` -> post `rating` (respecting `stopLoss`) -> author wallet.
+- If `noAuthorWalletSpend=true`, author wallet is not used for show cost.
 
 ---
 
@@ -164,20 +187,10 @@ Current code includes:
 
 ## Rates (Multipliers)
 
-### How Rates Work
-Multipliers change ratio "merit from user" → "merit on post".
+Status: planned only in current codebase.
 
-**Examples:**
-- ×2: 1 merit from user = 2 merits on post
-- ×0.1: 1 merit from user = 0.1 merits on post
-- ×10: 1 merit from user = 10 merits on post
-
-### Rate Application
-- Set by superadmin for global communities
-- Displayed in UI as "×2", "×10", "×0.1", etc.
-- Planned use for content differentiation:
-  - Good deeds (MД): increased multiplier (×2-×5)
-  - Entertainment content: decreased multiplier (×0.1)
+- There is no active `rateMultiplier` field or runtime multiplier application in current TypeScript implementation.
+- Keep multiplier examples and policy decisions in product/business planning docs, not as implemented behavior.
 
 ---
 
@@ -207,6 +220,11 @@ Voting flow:
 - Publication creation, poll creation, and forward proposal perform fee deduction after entity creation.
 - In these handlers, if fee deduction fails, the request may still succeed.
 
+### Wallet API Status (Current)
+- `wallets.withdraw` exists in router but returns `NOT_IMPLEMENTED`.
+- `wallets.transfer` exists in router but returns `NOT_IMPLEMENTED`.
+- Do not document these two flows as available user operations yet.
+
 ### Negative Balance Handling
 - Wallets CANNOT go negative (`wallet.deduct` enforces balance check)
 - Quota CANNOT go negative
@@ -223,3 +241,15 @@ Voting flow:
 ### Post Closing Automation
 - Scheduled post closing for TTL is implemented.
 - Scheduled post closing for inactivity is implemented.
+
+### Voting / Withdrawal Runtime Details
+- Author top-up to own post rating is implemented as a special weighted-vote path that bypasses `commentMode` checks.
+- Comment-score withdrawal flow is implemented via `votes.withdrawFromVote`.
+- Legacy `votes.withdraw` endpoint is still present (deprecated in router comments).
+
+### Poll Runtime Constraints
+- `future-vision` currently blocks poll creation and poll casting.
+- `polls.getByCommunity` returns empty list for `future-vision`.
+
+### Wallet Operations Status
+- `wallets.withdraw` and `wallets.transfer` are present but return `NOT_IMPLEMENTED`.
