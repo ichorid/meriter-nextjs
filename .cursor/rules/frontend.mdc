@@ -13,7 +13,7 @@ alwaysApply: false
 - TanStack Query + tRPC client (`@trpc/react-query` v11)
 - REST client via Axios (`lib/api/client.ts`, `lib/api/v1`)
 - Tailwind CSS
-- Zustand (with `devtools` + `persist` in stores)
+- Zustand (store middleware is mixed by store: some use `devtools + persist`, some only `devtools`, some plain `create`)
 - next-intl (i18n runtime and translations)
 
 ## Web Structure (web/src)
@@ -41,34 +41,27 @@ alwaysApply: false
 
 'use client';
 
-import { trpc } from '@/lib/trpc/client';
+import { useVoteOnPublicationWithComment } from '@/hooks/api/useVotes';
 import { Button } from '@/components/ui/shadcn/button';
 
 interface PublicationActionsProps {
   publicationId: string;
-  communityId: string;
 }
 
-export function PublicationActions({ publicationId, communityId }: PublicationActionsProps) {
-  const utils = trpc.useUtils();
-  const voteMutation = trpc.votes.create.useMutation({
-    onSuccess: async () => {
-      await utils.publications.getById.invalidate({ id: publicationId });
-      await utils.communities.getFeed.invalidate({ communityId });
-    },
-  });
+export function PublicationActions({ publicationId }: PublicationActionsProps) {
+  const voteMutation = useVoteOnPublicationWithComment();
 
   return (
     <div className="flex gap-2">
       <Button
         onClick={() =>
-          voteMutation.mutate({
-            targetType: 'publication',
-            targetId: publicationId,
-            quotaAmount: 1,
-            walletAmount: 0,
-            direction: 'up',
-            communityId,
+          voteMutation.mutateAsync({
+            publicationId,
+            data: {
+              walletAmount: 1,
+              direction: 'up',
+              comment: '',
+            },
           })
         }
       >
@@ -118,7 +111,11 @@ export function usePublications(params: ListQueryParams = {}) {
 }
 ```
 
-### REST (Unauthenticated / specific endpoints)
+### REST (Specialized endpoint families)
+- Use REST wrappers for endpoint families that remain REST by design (auth/bootstrap, OAuth callbacks, uploads, runtime config).
+- Use tRPC for authenticated domain operations.
+- REST requests may still be cookie-authenticated depending on endpoint behavior.
+
 ```typescript
 // lib/api/v1/index.ts
 export const authApiV1 = {
@@ -261,30 +258,9 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
 ```typescript
 // hooks/api/useVotes.ts
 import { trpc } from '@/lib/trpc/client';
-import { useVoteMutation } from './useVoteMutation';
 
-export function useVoteOnPublication() {
-  const utils = trpc.useUtils();
-
-  return useVoteMutation({
-    mutationFn: ({ publicationId, data, communityId }) =>
-      utils.votes.create.mutateAsync({
-        targetType: 'publication',
-        targetId: publicationId,
-        quotaAmount: data.quotaAmount ?? 0,
-        walletAmount: data.walletAmount ?? 0,
-        direction: data.direction ?? 'up',
-        comment: data.comment ?? '',
-        images: data.images,
-        communityId: communityId!,
-      }),
-    onSuccessInvalidations: {
-      publications: true,
-      communities: true,
-      comments: true,
-      specificPublicationId: (variables) => variables?.publicationId,
-    },
-  });
+export function useVoteOnPublicationWithComment() {
+  return trpc.votes.createWithComment.useMutation();
 }
 ```
 
@@ -293,6 +269,12 @@ export function useVoteOnPublication() {
 - Use REST wrappers from `@/lib/api/v1` for auth/bootstrap-specific REST endpoints (`fake auth`, `clear cookies`, runtime config, etc.).
 - Central REST transport lives in `@/lib/api/client`.
 - App-level query+tRPC providers are configured in `@/providers/QueryProvider`.
+
+### Vote API Input Contracts
+- `votes.create` uses `CreateVoteDtoSchema`: `targetType`, `targetId`, `quotaAmount?`, `walletAmount?`, `attachedCommentId?`.
+- `targetType` for comments is `'vote'` (not `'comment'`), as defined by shared polymorphic reference schema.
+- `votes.createWithComment` accepts weighted vote or neutral comment (`comment`) and supports `direction`/`images`.
+- `communityId` is resolved server-side from target and is not part of `votes.create` input schema.
 
 ## Common Mistakes
 
@@ -310,3 +292,8 @@ export function useVoteOnPublication() {
 - Tappalka UI and hooks: onboarding, pair/choice/progress hooks, tappalka screen/cards.
 - Auth extras: fake auth hooks and passkey-related UI/hooks (`usePasskeys`, `PasskeySection`).
 - i18n runtime usage with `next-intl` (`useTranslations` across app/components/features).
+- Post forwarding flows: propose forward, forward, reject forward, and related UI controls/popups.
+- Deleted post lifecycle UI/API hooks: deleted lists, restore, and permanent delete flows.
+- Team management flows: join team, invite to team, assign lead, and team request handling.
+- Telegram/WebApp integration: telegram store/init handling, haptics helpers, and Telegram-specific UI behavior.
+- Dev/test auth flows and fake-vote tooling in test-auth mode (including fake superadmin-related actions).
