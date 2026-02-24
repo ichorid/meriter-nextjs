@@ -22,7 +22,7 @@ alwaysApply: false
 | Field | Required | Description |
 |-------|----------|-------------|
 | displayName | Yes | Display name (User schema) |
-| profile.about | Yes | Short description; part of UserProfile |
+| profile.about | No | Short description; optional in UserProfileSchema (shared-types). Backend user create does not set it. |
 | avatarUrl | No | Profile image URL |
 | profile.contacts | No | Contact methods (email, messenger); part of UserProfile |
 | username | No | Optional login handle |
@@ -42,6 +42,7 @@ alwaysApply: false
 | communityTags | Array of tags (User schema) |
 | meritStats | Optional; per-community merit summary (User schema) |
 | authenticators | Optional; passkeys (User schema) |
+| teamId | Optional; in shared-types UserSchema only (not in backend Mongoose user schema) |
 
 Roles are stored in **UserCommunityRole** (collection `user_community_roles`), not on User. Balances are in **Wallet**; favorites in **Favorite**; quota in merit/quota logic; closed posts in **Publication** with `status: 'closed'` and `authorId`.
 
@@ -52,7 +53,7 @@ Roles are stored in **UserCommunityRole** (collection `user_community_roles`), n
 Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different communities.
 
 ### Participant (UI may show as "Member")
-**Base role.** In code the role value is `participant`. Assigned upon joining a community.
+**Base role.** In code the role value is `participant`. Assigned upon joining a community. (Role `viewer` has been removed; all users are `participant` by default — see user-community-role.schema.ts.)
 
 **Rights:**
 - Publish posts (if allowed by settings)
@@ -72,7 +73,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 - Credit merits to members
 
 **Restrictions:**
-- CANNOT delete community (only request from administration)
+- CANNOT delete community (only request from administration; request flow not implemented)
 - CANNOT change post forwarding mode (always copy without merits)
 
 ### Lead (Global Community)
@@ -113,7 +114,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 
 ### Community Deletion
 - Lead **CANNOT** delete community independently
-- Can only submit deletion request to administration
+- Can only submit deletion request to administration (this flow is not implemented — no dedicated API)
 
 ---
 
@@ -132,7 +133,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 ┌─────────────────────────────────────────────────────────┐
 │ 2. Fill profile                                         │
 │    - Display name / displayName (required)              │
-│    - About / profile.about (required)                   │
+│    - About / profile.about (optional)                   │
 │    - Avatar / avatarUrl (optional)                      │
 │    - Contacts / profile.contacts (optional)             │
 │    - Invite code (optional)                             │
@@ -187,10 +188,11 @@ Invite codes — main tool for granting roles to users.
 - Yandex
 - SMS
 - Call
-- E-mail
+- E-mail (including magic-link flow)
 - Telegram (feature/config controlled)
 - Google OAuth (feature/config controlled)
 - Passkey/WebAuthn (feature/config controlled, AUTHN_ENABLED)
+- Other OAuth providers (e.g. VK, Apple) are available in config and can be enabled (api config/configuration.ts)
 
 ### Planned Methods
 - Additional messengers/providers beyond current set
@@ -256,7 +258,7 @@ Global community administrator is implemented as **lead** for that community; th
 - Self-voting: permissionRules[].conditions.canVoteForOwnPosts (per role/action)
 - Teammate voting: votingSettings.votingRestriction ('any' | 'not-same-team')
 - Merit withdrawal: settings.allowWithdraw
-- Post publishing: permissionRules for action POST_PUBLICATION (no single canPublish flag)
+- Post publishing: permissionRules for action `post_publication` (ActionType.POST_PUBLICATION); no single canPublish flag. Full conditions: PermissionRuleConditionsSchema in libs/shared-types/src/schemas.ts
 ```
 
 ---
@@ -281,7 +283,7 @@ Global community administrator is implemented as **lead** for that community; th
 | Create global community | ✗ | ✗ | ✗ | ✓ |
 | Delete community | ✗ | ✗ | ✗ | ✓ |
 
-*In code: role is `participant`. Depends on community permissionRules/settings.
+*In code: role is `participant`. Allowed only if community permissionRules grant the action for that role (e.g. action `post_publication` for publishing); see action-types.constants.ts and permission.service.ts.
 
 ---
 
