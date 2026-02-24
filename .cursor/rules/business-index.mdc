@@ -1,8 +1,5 @@
 ---
 description: Master index of Meriter business rules. ALWAYS read this first to understand project context.
-globs:
-  - "**/*.ts"
-  - "**/*.tsx"
 alwaysApply: true
 ---
 
@@ -155,3 +152,4 @@ Automatic deduction from author wallet after 24h is not implemented.
 | 1.1 | February 2026 | Module split, decision integration |
 | 1.2 | February 2026 | Align index with code: welcomeMeritsGlobal, negative rating not auto-deducted, forwardRule, wallet API notes |
 | 1.3 | February 2026 | Align with code: quota volume (dailyEmission, quotaEnabled), tappalka configurable defaults, allowWithdraw wording, votes.withdrawFromVote and deprecated votes.withdraw, self-vote vs quota-only note |
+| 1.4 | February 2026 | Remove redundant globs (alwaysApply makes them irrelevant) |

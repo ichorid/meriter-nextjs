@@ -262,7 +262,7 @@ Member of all global communities
 - [x] Enable tappalka for МД and Projects
 - [x] Disable quota for priority communities (tappalka as emission source)
 - [x] Enable investing for МД (`settings.investingEnabled = true`)
-- [ ] Set `settings.allowWithdraw = false` for future-vision (ОБ) if not set by bootstrap
+- [ ] ⚠️ MANUAL SETUP: Set `settings.allowWithdraw = false` for future-vision (ОБ) if not set by bootstrap
 
 ### User Registration
 - [x] Standard registration flow
@@ -277,7 +277,7 @@ Member of all global communities
 - [x] Delete original from Projects
 - [x] Create new in МД with preserved rating/metrics
 - [x] Post becomes withdrawable by МД rules
-- [ ] Ensure team-projects community has `settings.forwardRule = 'project'` for transfer-with-merits (if not set at creation)
+- [ ] ⚠️ MANUAL SETUP: Ensure team-projects community has `settings.forwardRule = 'project'` for transfer-with-merits (if not set at creation)
 
 ---
 
@@ -294,6 +294,6 @@ Member of all global communities
 
 ### Economic
 - [x] Post and poll costs are deducted (`settings.postCost`, `settings.pollCost`)
-- [ ] Separate comment fee is deducted (not implemented as dedicated `commentFee`)
+- ⬜ NOT IMPLEMENTED: Separate comment fee (`commentFee` / `commentCost` setting does not exist in current code; vote amounts drive balance changes)
 - [x] Emission through tappalka works
 - [x] Merit withdrawal from posts works where allowed (`settings.allowWithdraw`)

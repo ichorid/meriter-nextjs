@@ -7,10 +7,10 @@ project uses pnpm
 
 USE pnpm lint && pnpm lint:fix BEFORE EVERY COMMIT!!!
 
-Run both from **repository root**. Order: run `pnpm lint` (check), then `pnpm lint:fix` (auto-fix).
+Run both from **repository root**.
 
-Note: root `pnpm lint:fix` runs:
-- `@meriter/api`: script `lint` (already includes `--fix` in api's eslint command)
-- `@meriter/web`: script `lint:fix`
+What happens under the hood:
+- `pnpm lint` — check both packages (`@meriter/api` lint already includes `--fix`; `@meriter/web` lint is check-only)
+- `pnpm lint:fix` — auto-fix both packages (`@meriter/api` re-runs lint with `--fix`; `@meriter/web` runs `lint:fix`)
 
 Full command list and dev setup: see @local-dev-win.mdc or `docs/LOCAL_DEVELOPMENT_SETUP.md`.

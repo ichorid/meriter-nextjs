@@ -2,6 +2,7 @@
 description: Posts, polls, comments, and voting business logic. Apply when working with content features.
 globs:
   - "**/post*.ts"
+  - "**/publication*.ts"
   - "**/poll*.ts"
   - "**/comment*.ts"
   - "**/vote*.ts"
@@ -28,6 +29,11 @@ Main content type on the platform. All other types inherit from base post.
 | content | Yes | Main body text (required in schema) |
 | images | No | Attached images (`images` array; legacy `imageUrl` for single image) |
 | categories | No | From list defined by community admin |
+| impactArea | No | Taxonomy: area of impact |
+| beneficiaries | No | Taxonomy: who benefits |
+| methods | No | Taxonomy: methods used |
+| stage | No | Taxonomy: project stage |
+| helpNeeded | No | Taxonomy: what help is needed |
 
 ### System Fields
 
@@ -124,6 +130,12 @@ Conceptually similar to base post (content with time limit, no own rating, neutr
 - **CANNOT be re-published.** Close reasons in code: `manual`, `ttl`, `inactive`, `negative_rating`. TTL and inactivity auto-close are implemented (`ttlDays`/`ttlExpiresAt`, `inactiveCloseDays`).
 - Remaining merits on post can be withdrawn before closing
 
+### Deleted Post Lifecycle (Soft Delete)
+- Posts can be soft-deleted (`deleted: true`, `deletedAt` set). Soft-deleted posts are excluded from feeds, tappalka, and search.
+- **Restore**: author or lead/superadmin can restore a soft-deleted post (resets `deleted`/`deletedAt`).
+- **Permanent delete**: removes the post permanently. Available to author or lead/superadmin.
+- API: `publications.delete` (soft), `publications.restore`, `publications.permanentDelete`; frontend has deleted lists, restore, and permanent delete UI flows.
+
 ---
 
 ## Post Forwarding
@@ -132,20 +144,16 @@ Conceptually similar to base post (content with time limit, no own rating, neutr
 
 | Mode | Description | When Used |
 |------|-------------|-----------|
-| **standard** | Forward without merits, original preserved | `settings.forwardRule` default |
-| **project** | Forward with merits, original deleted | "Projects" → "MД" special case |
+| **standard** | Forward without merits, original preserved | `settings.forwardRule = 'standard'` (default) |
+| **project** | Forward with merits, original deleted | `settings.forwardRule = 'project'` (e.g. Projects → MД) |
 
-### Rules by Community Type
-
-| From | To | Mode |
-|------|-----|------|
-| Global | Global | Configured by admin |
-| Local | Any | ALWAYS copy without merits |
-| "Projects" | "MД" | Transfer with merits |
+Forward mode is determined by the **source** community's `settings.forwardRule`. Code does not restrict transfer-with-merits to a single hardcoded route (canonical: @business-index.mdc, Critical Implementation Rules #3-4).
 
 ### Restrictions
-- For local communities, forwarding follows platform constraints (local → any = copy without merits)
-- Local community lead CANNOT change this default
+- Forwardable post types: `basic` and `project`; `poll` forwarding is rejected
+- Participant-initiated forward (`proposeForward`): only when source `typeTag === 'team'`
+- Lead/superadmin direct `forward`: no forward fee charged in current implementation
+- Target community is validated via post-type support check before forward/proposal
 
 ---
 

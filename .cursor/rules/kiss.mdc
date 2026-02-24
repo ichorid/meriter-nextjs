@@ -4,6 +4,6 @@ alwaysApply: true
 ---
 when refactoring, apply KISS, DRY, SOLID, CLEAN rules. Avoid overengineering like hell. Disregard backwards compatibility. Do the "proper thing"
 
-When proposing a change, RECHECK YOUR LOGIC: would these changes make sense? Would it break other, adjacent systems? Explore and investigate long-term consequencies of your solution
+When proposing a change, RECHECK YOUR LOGIC: would these changes make sense? Would it break other, adjacent systems? Explore and investigate long-term consequences of your solution
 
 NEVER SKIP TS ERRORS, NEVER USE "any" or any other solutions that bypass type checking

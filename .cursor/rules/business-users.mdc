@@ -6,6 +6,7 @@ globs:
   - "**/permission*.ts"
   - "**/auth*.ts"
   - "**/invite*.ts"
+  - "**/team*.ts"
 alwaysApply: false
 ---
 
