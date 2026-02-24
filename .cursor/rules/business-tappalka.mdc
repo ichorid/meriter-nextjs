@@ -2,7 +2,6 @@
 description: Tappalka (comparison mechanism) business logic. Apply when working with tappalka features.
 globs:
   - "**/tappalka*.ts"
-  - "**/tap*.ts"
   - "**/comparison*.ts"
 alwaysApply: false
 ---
@@ -70,7 +69,7 @@ Tappalka — main method of merit emission and earning for users.
 | `tappalkaSettings.userReward` | `1` | Reward to user per cycle |
 | `tappalkaSettings.comparisonsRequired` | `10` | Comparisons needed for user reward |
 | `tappalkaSettings.showCost` | `0.1` | Cost per post show |
-| `tappalkaSettings.minRating` | `1` | Minimum rating for participation |
+| `tappalkaSettings.minRating` | `1` | Minimum rating when paying showCost from rating; not a global filter (posts with rating below this can participate if they pay from investmentPool or pool + rating above stopLoss) |
 | `tappalkaSettings.onboardingText` | optional | Community-specific onboarding text |
 
 ### Show Cost
@@ -84,8 +83,8 @@ Tappalka — main method of merit emission and earning for users.
 
 ### Participation Conditions
 1. `tappalkaSettings.enabled = true`
-2. Post rating ≥ `tappalkaSettings.minRating` (default 1)
-3. Post rating ≥ author's stop-loss setting (post `stopLoss`)
+2. Post is eligible to pay showCost (see Post Selection Algorithm): at least one of (investmentPool ≥ showCost), (metrics.score ≥ max(minRating, showCost)), or (investmentPool + max(0, metrics.score − stopLoss) ≥ showCost). Thus a post with rating below minRating can participate if it can pay from pool (or pool + rating above stopLoss).
+3. Post rating ≥ author's stop-loss setting (post `stopLoss`) when paying from rating.
 4. Post not closed (`status !== 'closed'`) and not deleted (`deleted !== true`, `deletedAt` null)
 
 ### Exit from Tappalka
@@ -195,12 +194,12 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
    - authorId != currentUser
    - deleted !== true, deletedAt null
    - status !== 'closed'
-   - metrics.score >= tappalkaSettings.minRating
-   - category in tappalkaSettings.categories (if categories non-empty; else no category filter)
+   - at least one of post's categories is in tappalkaSettings.categories (if categories non-empty; else no category filter). Implementation: post has categories: string[]; query uses categories: { $in: categories }.
    - eligible to pay showCost: (investmentPool >= showCost) OR (metrics.score >= max(minRating, showCost)) OR (investmentPool + max(0, metrics.score - stopLoss) >= showCost)
 2. Random select 2 posts from result
 3. Return pair to user (sessionId generated per pair; not validated on submit)
 ```
+Note: There is no global filter on metrics.score >= minRating. A post with rating below minRating can be selected if it satisfies the showCost eligibility via pool alone or via pool + rating above stopLoss.
 
 ### Show Cost Deduction
 ```
