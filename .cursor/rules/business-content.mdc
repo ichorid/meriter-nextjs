@@ -88,7 +88,7 @@ Conceptually similar to base post (content with time limit, no own rating, neutr
 
 ### Negative Rating Consequences
 - If rating (metrics.score) goes negative, the post can be closed with `closeReason: 'negative_rating'`.
-- **Automatic deduction of the negative amount from the author's wallet after 24 hours is not implemented in the current code.** Author can close the post (manual close); no automatic 24h deduction runs.
+- Canonical rule (negative rating, close, no auto-deduction): @business-index.mdc. Current code: author can close (manual); no automatic 24h deduction.
 
 ---
 
@@ -203,6 +203,8 @@ Weighted comments (votes) on publications are represented by the **Vote** entity
 ---
 
 ## Voting Rules
+
+Canonical voting source priority (quota first, downvote/self-vote wallet only): @business-index.mdc.
 
 ### Payment Sources
 

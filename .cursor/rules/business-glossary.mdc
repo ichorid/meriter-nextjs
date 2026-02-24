@@ -37,7 +37,7 @@ Daily "burnable" merits. Auto-credited to a separate account, unused quota expir
 **Rules:**
 - NOT mixed with main wallet
 - Amount CANNOT exceed single credit amount — excess burns
-- System fees (post, poll, forward) are paid from global wallet; exception: post creation may be paid from quota first when community setting `canPayPostFromQuota` is true, then wallet
+- System fees (post, poll, forward) are paid from global wallet (canonical: @business-index.mdc); exception: post creation may be paid from quota first when `canPayPostFromQuota` is true, then wallet
 - When both quota and wallet can be used for an action — quota is spent FIRST
 
 ### Wallet
@@ -115,11 +115,7 @@ Administrator of a local community (creator or appointed). Has access to communi
 ### Post Forwarding
 Moving a post from one community to another.
 
-**Two modes (source community `settings.forwardRule`):**
-- **standard** — copy without merits, original preserved (DEFAULT)
-- **project** — transfer with merits, original deleted
-
-**In code:** `community.settings.forwardRule`: `'standard' | 'project'`.
+Canonical rule: @business-index.mdc (Forwarding, Transfer with merits). **Two modes (source `settings.forwardRule`):** `standard` — copy without merits, original preserved; `project` — transfer with merits, original deleted. **In code:** `community.settings.forwardRule`: `'standard' | 'project'`.
 
 ### Merit Withdrawal
 Transferring merits from post rating to the effective beneficiary's wallet. Post rating (`metrics.score`) decreases.

@@ -29,7 +29,7 @@ alwaysApply: false
 
 | Context | Wallet Used |
 |---------|-------------|
-| Fee (any community) | Global |
+| Fee (any community) | Global (canonical rule: @business-index.mdc, Critical Implementation Rules) |
 | Voting in priority community | Global |
 | Voting in local community | Local community wallet |
 | Withdrawal in priority community | Global |
@@ -105,8 +105,7 @@ Default value in code is `0` unless configured.
 - This author top-up path bypasses `settings.commentMode` checks (it is treated as transfer, not regular comment-mode voting).
 - Other currency and permission constraints still apply via current vote validation flow.
 
-**IMPORTANT:** Wallet-based fee payment is global.
-Publication fee is the exception where quota may be used first when `settings.canPayPostFromQuota=true`.
+Fee payment is always from global merits (canonical: @business-index.mdc). Publication fee may use quota first when `settings.canPayPostFromQuota=true`.
 
 ### Forward Fee by Endpoint (Current Behavior)
 - `proposeForward` charges `settings.forwardCost` from global wallet (`GLOBAL_COMMUNITY_ID`), with best-effort deduction after proposal creation.
@@ -138,13 +137,7 @@ Publication fee is the exception where quota may be used first when `settings.ca
 
 ## Voting Rules
 
-### For Others' Posts
-- Upvote: quota first, then wallet
-- Downvote: wallet ONLY
-
-### For Own Posts
-- Wallet ONLY (if allowed by community settings)
-- Quota voting for own posts is PROHIBITED
+Voting source priority (upvote: quota → wallet; downvote/self-vote: wallet only; quota forbidden for own posts): see Critical Implementation Rules in @business-index.mdc.
 
 ### For Teammates' Posts
 Teammates = members of same local communities as the voter.
@@ -178,7 +171,7 @@ Teammates = members of same local communities as the voter.
 
 ## Negative Post Rating
 
-Automatic "24h negative rating deduction from author wallet" is not implemented in current code.
+Canonical rule (negative rating, close, no auto-deduction): @business-index.mdc. Current code: 24h automatic deduction not implemented.
 
 Current code includes:
 - `negative_rating` as a valid close reason enum value

@@ -210,6 +210,8 @@ If needed in future, treat this as planned work and define explicit API/storage 
 
 ### Forwarding Between Communities
 
+Canonical forward rule (standard vs project, transfer with merits): @business-index.mdc.
+
 | Case | Behavior |
 |------|----------|
 | Lead/superadmin forward | Direct `forward` operation (no forward fee in current implementation) |

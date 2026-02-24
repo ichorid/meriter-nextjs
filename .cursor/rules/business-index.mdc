@@ -25,37 +25,25 @@ alwaysApply: true
 ## Quick Reference: Key Rules
 
 ### Merit System Fundamentals
-- **Two account types:** Wallet (permanent) + Quota (daily, burns)
-- **Usage priority:** Quota FIRST, then Wallet
-- **Fee payment:** ALWAYS from GLOBAL merits
-- **Starting merits:** From platform setting `welcomeMeritsGlobal` (default 0 in code; MVP often uses 100)
-- **Quota volume:** Daily quota amount from `settings.dailyEmission`; quota enabled by `meritSettings.quotaEnabled` (see business-merits for details).
+- Wallet + Quota; priority: Quota FIRST, then Wallet. Fee: ALWAYS global (burned). Start: `welcomeMeritsGlobal`; quota: `settings.dailyEmission` + `meritSettings.quotaEnabled`. Details: @business-merits.mdc.
 
 ### Community Types
-- **Global:** All users auto-joined, share ONE merit, cannot leave
-- **Local:** User-created, own merit, can leave
+- Global: auto-joined, one merit, cannot leave. Local: user-created, own merit, can leave. Details: @business-communities.mdc.
 
 ### Content Rules
-- **Post cost:** `settings.postCost` (default 1); from quota first when `settings.canPayPostFromQuota` is true, else wallet (global)
-- **Poll cost:** `settings.pollCost` (default 1)
-- **Forward cost:** `settings.forwardCost` (default 1)
-- **Self-voting:** Wallet only (if enabled), NEVER quota
-- **Negative rating:** Author can close post (manual); closed post archived (cannot re-publish). Automatic deduction from author wallet after 24h is **not implemented**.
+- Costs: `postCost`, `pollCost`, `forwardCost` (default 1). Post fee: quota first if `canPayPostFromQuota`, else wallet. Self-vote: wallet only, never quota. Negative rating: author can close (manual); no 24h auto-deduction. Details: @business-content.mdc.
 
 ### Tappalka
-- **User reward:** Default 10 comparisons = 1 merit; configurable via `tappalkaSettings.comparisonsRequired` (default 10) and `tappalkaSettings.userReward` (default 1).
-- **Show cost:** 0.1 merit per post (both posts pay); `tappalkaSettings.showCost` (default 0.1).
-- **Win reward:** 1 merit (emission); `tappalkaSettings.winReward` (default 1).
+- 10 comparisons = 1 merit (`comparisonsRequired`, `userReward`); show 0.1/post (`showCost`); win 1 merit (`winReward`). Details: @business-tappalka.mdc.
 
 ### Investments
-- **Community toggle:** `settings.investingEnabled`
-- **Contract bounds:** `settings.investorShareMin` / `settings.investorShareMax` (1..99)
-- **Comment/vote mode:** `settings.commentMode` (`all` / `neutralOnly` / `weightedOnly`)
-- **Lifecycle controls:** `settings.requireTTLForInvestPosts`, `settings.maxTTL`, `settings.inactiveCloseDays`, `settings.distributeAllByContractOnClose`
+- `investingEnabled`; contract `investorShareMin/Max` (1..99); `commentMode`; lifecycle: `requireTTLForInvestPosts`, `maxTTL`, `inactiveCloseDays`, `distributeAllByContractOnClose`. Details: @business-investing.mdc.
 
 ---
 
 ## Business Rules File Structure
+
+Use this file for routing only. Details and full rule text live in the listed business-*.mdc files; do not load all business rules at once — open only the one(s) relevant to the task.
 
 | File | Content | When to Use |
 |------|---------|-------------|
@@ -66,7 +54,7 @@ alwaysApply: true
 | `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
 | `business-investing.mdc` | Investment contracts, pool, distribution | Investment features |
 | `business-users.mdc` | Users, roles, permissions | Auth, permissions |
-| `business-mvp.mdc` | MVP-specific settings | **ALWAYS** (auto-applied) |
+| `business-mvp.mdc` | MVP-specific settings | Domain, tRPC, meriter routes, features (globs) |
 
 ---
 

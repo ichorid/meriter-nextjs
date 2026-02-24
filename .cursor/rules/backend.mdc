@@ -16,6 +16,8 @@ alwaysApply: false
 
 ## Backend Structure
 
+Full monorepo and layer overview: @architecture.mdc.
+
 ```text
 api/apps/meriter/src/
 ├── domain/

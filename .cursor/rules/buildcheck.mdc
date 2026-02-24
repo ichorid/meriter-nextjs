@@ -1,4 +1,5 @@
 ---
+description: After finishing a plan, run tests and build; on structural/pattern changes update .cursor/rules.
 alwaysApply: true
 ---
 

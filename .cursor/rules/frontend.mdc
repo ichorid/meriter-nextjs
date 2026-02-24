@@ -7,6 +7,8 @@ alwaysApply: false
 
 # Frontend Patterns (React + Next.js)
 
+Full monorepo and layer overview: @architecture.mdc.
+
 ## Tech Stack
 - React 19 + Next.js 16 (App Router)
 - TypeScript (strict)

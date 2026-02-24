@@ -1,9 +1,11 @@
 ---
-description: MVP "Marathon of Good" specific business logic and community configurations. ALWAYS apply when working on MVP features.
+description: MVP "Marathon of Good" specific business logic and community configurations. Include when working on domain, tRPC, meriter app routes, or features.
 globs:
-  - "**/*.ts"
-  - "**/*.tsx"
-alwaysApply: true
+  - api/apps/meriter/src/domain/**/*
+  - api/apps/meriter/src/trpc/**/*
+  - web/src/app/meriter/**/*
+  - web/src/features/**/*
+alwaysApply: false
 ---
 
 # MVP "Marathon of Good" Business Logic

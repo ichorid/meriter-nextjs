@@ -1,7 +1,7 @@
 ---
+description: Bump web/api package version on significant changes; CI uses web/api versions for tags.
 alwaysApply: true
 ---
-
 
 When doing significant changes in the web package, bump `version` in `web/package.json` according to semantic versioning.
 

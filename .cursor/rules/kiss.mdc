@@ -1,4 +1,5 @@
 ---
+description: Refactoring and change quality — KISS, DRY, SOLID; no TS/type bypass.
 alwaysApply: true
 ---
 when refactoring, apply KISS, DRY, SOLID, CLEAN rules. Avoid overengineering like hell. Disregard backwards compatibility. Do the "proper thing"

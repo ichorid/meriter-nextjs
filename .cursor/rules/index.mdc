@@ -17,41 +17,7 @@ Merit-based social platform operating through web. Users earn and spend "merits"
 - **Infrastructure**: pnpm monorepo, Docker Compose, Caddy reverse proxy, AWS S3/MinIO
 
 ## Repository Structure
-```
-meriter-nextjs/
-├── api/                          # Backend (NestJS)
-│   └── apps/meriter/src/
-│       ├── api-v1/               # REST endpoints (auth/config/uploads)
-│       ├── common/               # Shared backend helpers, interfaces, schemas
-│       ├── config/               # Runtime config and validation
-│       ├── decorators/           # Nest decorators
-│       ├── domain/               # Domain models, services, business logic
-│       ├── i18n/                 # Localization resources
-│       ├── migrations/           # Migration scripts
-│       ├── telegram/             # Telegram content integration
-│       ├── tg-bots/              # Telegram bot module/services
-│       ├── trpc/                 # tRPC app router, context, routers
-│       └── updates-conductors/   # Updates conductor subsystem
-├── web/                          # Frontend (Next.js)
-│   └── src/
-│       ├── app/                  # Next.js app router
-│       ├── components/           # UI components
-│       ├── config/               # Frontend runtime configuration
-│       ├── contexts/             # React contexts
-│       ├── features/             # Feature modules
-│       ├── generated/            # Generated artifacts (e.g., build info)
-│       ├── hooks/                # Custom hooks
-│       ├── i18n/                 # Localization resources
-│       ├── lib/                  # API clients, tRPC client, utilities
-│       ├── providers/            # App providers
-│       ├── shared/               # Shared UI/hooks/utils
-│       ├── stores/               # Zustand stores
-│       ├── types/                # Frontend types
-│       └── __tests__/            # Tests
-├── libs/shared-types/            # Shared Zod schemas and contracts
-├── docs/                         # Project documentation directory
-└── ARCHITECTURE.md               # Architecture overview (root-level file)
-```
+Structure and layer overview: see @architecture.mdc.
 
 ## Core Concepts
 - **Merit**: Unit of reputation/currency within a community or several communities
@@ -93,7 +59,10 @@ meriter-nextjs/
 4. Update both frontend AND backend when changing contracts
 
 ## Related Rules
-- @business-index.mdc — Voting rules, permissions, merit flow
-- @architecture.mdc — Detailed code structure
+
+Use this file as the first entry point. For domain/business logic: open @business-index.mdc for routing, then the relevant business-*.mdc from its "Business Rules File Structure" table. For code structure and layers use @architecture.mdc; for frontend patterns @frontend.mdc; for backend patterns @backend.mdc.
+
+- @business-index.mdc — Voting rules, permissions, merit flow (routing to business-*.mdc)
+- @architecture.mdc — Repository structure and code layers
 - @frontend.mdc — React/Next.js patterns
 - @backend.mdc — NestJS/tRPC patterns

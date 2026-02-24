@@ -205,7 +205,7 @@ On close, the post is updated with `closingSummary`: `totalEarned`, `distributed
 **Negative rating IS possible** with investments, if the community has downvoting enabled (`tappalkaOnlyMode` is OFF).
 
 - If community allows upvote/downvote comments, post rating can go negative
-- **Current code:** Automatic deduction of negative balance from the author's wallet after 24h is **not implemented**. Author can close the post (manual close); no scheduled 24h deduction runs.
+- Negative rating handling (canonical): @business-index.mdc. Current code: automatic 24h deduction not implemented; author can close (manual).
 - This is independent of investment mechanics — it's a community setting
 - **Recommended config** for investment communities: enable `tappalkaOnlyMode` (or `commentMode='neutralOnly'`) to avoid this scenario
 
@@ -244,6 +244,9 @@ investingEnabled = true
 ## Interaction with Other Mechanics
 
 ### Post Forwarding with Investments
+
+Canonical forward rule: @business-index.mdc.
+
 - **Copy (standard forward):** Investments are NOT transferred (same as merits).
 - **Transfer (forwardRule=project):** A new publication is created in the target community; only votes and publication content are transferred. Investment contract, pool, and investor records are **not** transferred — the new post has no investing data.
 
