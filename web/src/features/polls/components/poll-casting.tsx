@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { IPollData, IPollCast, IPollUserCastSummary } from "../types";
 import { useTranslations } from 'next-intl';
 import { useCastPoll } from '@/hooks/api/usePolls';
@@ -8,10 +8,7 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
 import { useToastStore } from '@/shared/stores/toast.store';
-import { Button } from '@/components/ui/shadcn/button';
-import { Input } from '@/components/ui/shadcn/input';
 import { Loader2 } from 'lucide-react';
-import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -152,21 +149,18 @@ export const PollCasting = ({
         if (totalVotes === 0) return 0;
         return (votes / totalVotes) * 100;
     };
+    const showDescription = pollData.description && pollData.description.trim() !== pollData.title?.trim();
+
     const content = (
         <>
-            <div className="mb-5 animate-in fade-in duration-300">
-                <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2 flex-1">
-                        <span className="text-lg"></span>
-                        <h3 className="text-lg font-bold">{pollData.title}</h3>
-                    </div>
-                </div>
-                {pollData.description && (
-                    <p className="text-sm opacity-70 mb-3">{pollData.description}</p>
+            <div className="mb-4 animate-in fade-in duration-300">
+                <h3 className="text-lg font-semibold text-base-content mb-1">{pollData.title}</h3>
+                {showDescription && (
+                    <p className="text-sm text-base-content/70 mb-3">{pollData.description}</p>
                 )}
                 <div className="flex flex-wrap gap-2 text-xs">
                     <span className={`badge ${isExpired ? "badge-error" : "badge-success"}`}>
-                        {isExpired ? `${t('finished')}` : `${t('active')}`}
+                        {isExpired ? t('finished') : t('active')}
                     </span>
                     <span className="badge badge-ghost">
                         {isExpired ? t('pollFinished') : `${t('timeRemaining')}: ${timeRemaining}`}
@@ -177,7 +171,7 @@ export const PollCasting = ({
                 </div>
             </div>
 
-            <div className="space-y-3 mb-5">
+            <div className="rounded-xl border border-base-300 bg-base-200/50 p-3 mb-4 space-y-3">
                 {pollData.options.map((option) => {
                     const percentage = getOptionPercentage(option.votes);
                     const isSelected = selectedOptionId === option.id;
@@ -186,19 +180,18 @@ export const PollCasting = ({
                     return (
                         <div
                             key={`poll-option-${option.id}`}
-                            className={`card bg-base-200 shadow-none p-4 rounded-xl ${isSelected ? "ring-2 ring-primary" : ""
-                                } ${userCastAmount > 0 ? "bg-primary/10" : ""} ${isExpired ? "opacity-70" : "hover:shadow-lg transition-shadow"
-                                }`}
+                            className={`rounded-lg p-2.5 transition-colors ${isSelected ? "ring-2 ring-primary ring-inset bg-primary/5" : "bg-base-100/80"}
+                                ${userCastAmount > 0 ? "bg-primary/10" : ""} ${isExpired ? "opacity-70" : "hover:bg-base-100"}`}
                         >
-                            <div className="flex justify-between items-start mb-2">
-                                <label className="flex items-center gap-2 cursor-pointer flex-1">
+                            <div className="flex justify-between items-center gap-2 mb-1.5">
+                                <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                                     <input
                                         type="radio"
                                         name="poll-option"
                                         value={option.id}
                                         checked={isSelected}
                                         disabled={isExpired}
-                                        className="radio radio-primary"
+                                        className="radio radio-primary radio-sm shrink-0"
                                         onChange={(e) => {
                                             if (!isExpired) {
                                                 setSelectedOptionId(e.target.value);
@@ -207,23 +200,23 @@ export const PollCasting = ({
                                             }
                                         }}
                                     />
-                                    <span className="font-medium">{option.text}</span>
+                                    <span className="font-medium text-sm truncate">{option.text}</span>
                                 </label>
                                 {userCastAmount > 0 && (
-                                    <span className="badge badge-primary badge-sm">
+                                    <span className="badge badge-primary badge-sm shrink-0">
                                         {t('you')}: {userCastAmount}
                                     </span>
                                 )}
                             </div>
-                            <div className="relative">
-                                <div className="w-full bg-base-300 rounded-full h-2 mb-1">
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 min-w-0 h-1.5 bg-base-300 rounded-full overflow-hidden">
                                     <div
-                                        className="bg-secondary h-2 rounded-full transition-all"
+                                        className="h-full bg-secondary rounded-full transition-all duration-300"
                                         style={{ width: `${percentage}%` }}
                                     />
                                 </div>
-                                <span className="text-xs opacity-60">
-                                    {option.votes} {t('points')} ({percentage.toFixed(1)}%) / {option.casterCount} {t('casters')}
+                                <span className="text-xs text-base-content/60 shrink-0">
+                                    {option.votes} {t('merits')} · {percentage.toFixed(0)}% · {t('castersWithCount', { count: option.casterCount ?? 0 })}
                                 </span>
                             </div>
                         </div>
@@ -232,10 +225,10 @@ export const PollCasting = ({
             </div>
 
             {!isExpired && (
-                <div className="card bg-base-200 shadow-none p-4 rounded-xl">
-                    <div className="form-control mb-3">
-                        <label className="label" htmlFor="cast-amount">
-                            <span className="label-text text-base font-medium">{t('amountLabel')}</span>
+                <div className="rounded-xl border border-base-300 bg-base-200/50 p-4 space-y-3">
+                    <div>
+                        <label htmlFor="cast-amount" className="block text-sm font-medium text-base-content mb-1.5">
+                            {t('amountLabel')}
                         </label>
                         <input
                             id="cast-amount"
@@ -244,36 +237,24 @@ export const PollCasting = ({
                             value={amountInputValue}
                             onChange={(e) => {
                                 const inputValue = e.target.value;
-                                // Always update input value for user to see what they type
                                 setAmountInputValue(inputValue);
-
-                                // Validate explicitly
                                 const validation = validateAmount(inputValue);
-
                                 if (validation.isValid && validation.numValue !== null) {
-                                    // Valid - update both input and numeric value
                                     setAmountValidationError(null);
                                     setCastAmount(validation.numValue);
                                 } else {
-                                    // Invalid - show error but don't update castAmount yet
                                     setAmountValidationError(validation.error);
                                 }
                             }}
                             onBlur={(e) => {
-                                // Re-validate on blur explicitly
                                 const inputValue = e.target.value;
                                 const validation = validateAmount(inputValue);
-
                                 if (validation.isValid && validation.numValue !== null) {
-                                    // Valid - clear error and ensure castAmount is set
                                     setAmountValidationError(null);
                                     setCastAmount(validation.numValue);
-                                    // Ensure input value matches the validated value
                                     setAmountInputValue(validation.numValue.toString());
                                 } else {
-                                    // Invalid - show error
                                     setAmountValidationError(validation.error);
-                                    // Don't update castAmount - keep previous valid value or 1
                                     if (castAmount < 1) {
                                         setCastAmount(1);
                                         setAmountInputValue("1");
@@ -281,39 +262,37 @@ export const PollCasting = ({
                                 }
                             }}
                             disabled={isCasting}
-                            className="flex border border-input bg-background px-3 py-2 text-base h-11 rounded-xl w-full transition-colors focus-visible:outline-none disabled:opacity-50"
+                            className="w-full h-10 px-3 rounded-lg border border-input bg-background text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                         />
-                        <label className="label">
-                            <span className="label-text-alt text-xs text-base-content/60">
-                                {t('available')}: <span className="font-semibold">{formatMerits(quotaRemaining + balance)}</span> {t('merits')}, {t('fromWhich')} <span className="font-semibold">{canUseQuota && quotaRemaining > 0 ? quotaRemaining : 0}</span> – {t('quota')}{canUseQuota && quotaRemaining > 0 && balance > 0 ? <> {t('and')} <span className="font-semibold">{formatMerits(balance)}</span> – {t('points')}</> : balance > 0 && (!canUseQuota || quotaRemaining === 0) ? <> {t('and')} <span className="font-semibold">{formatMerits(balance)}</span> – {t('points')}</> : null}
-                            </span>
-                        </label>
+                        <p className="mt-1.5 text-xs text-base-content/60">
+                            {t('available')}: <span className="font-semibold">{formatMerits(quotaRemaining + balance)}</span> {t('merits')}
+                            {canUseQuota && community?.meritSettings?.quotaEnabled !== false && (
+                                <>
+                                    , {t('fromWhich')} {quotaRemaining} – {t('quota')}
+                                    {balance > 0 && <> {t('and')} <span className="font-semibold">{formatMerits(balance)}</span> – {t('merits')}</>}
+                                </>
+                            )}
+                        </p>
                     </div>
                     {amountValidationError && (
-                        <div className="label">
-                            <span className="label-text-alt text-error">{amountValidationError}</span>
-                        </div>
+                        <p className="text-xs text-error">{amountValidationError}</p>
                     )}
                     {maxAmount === 0 && (
-                        <div className="label">
-                            <span className="label-text-alt text-error">{t('insufficientPoints')}</span>
-                        </div>
+                        <p className="text-xs text-error">{t('insufficientPoints')}</p>
                     )}
-                    <div className="mt-4">
-                        <button
-                            type="button"
-                            onClick={handleCastPoll}
-                            disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
-                            className={`h-8 px-4 text-xs font-medium rounded-lg transition-all w-full ${
-                                isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0
-                                    ? 'bg-base-content/5 text-base-content/30 cursor-not-allowed'
-                                    : 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
-                            }`}
-                        >
-                            {isCasting && <Loader2 className="h-4 w-4 animate-spin inline-block mr-2" />}
-                            {isCasting ? t('casting') : t('castPoll')}
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={handleCastPoll}
+                        disabled={isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0}
+                        className={`w-full h-10 px-4 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 ${
+                            isCasting || !selectedOptionId || amountValidationError !== null || maxAmount === 0
+                                ? 'bg-base-content/10 text-base-content/40 cursor-not-allowed'
+                                : 'bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.98]'
+                        }`}
+                    >
+                        {isCasting && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+                        {isCasting ? t('casting') : t('castPoll')}
+                    </button>
                 </div>
             )}
 
