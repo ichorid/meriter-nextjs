@@ -8,6 +8,8 @@ alwaysApply: false
 
 ## Start Servers
 
+Use two terminals for full local stack: API and Web.
+
 **Terminal 1 — API:**
 ```powershell
 cd api
@@ -27,11 +29,14 @@ pnpm dev
 ```
 
 ## Key Commands
+
+Run from **repository root** (where the root `package.json` is).
+
 ```powershell
 # Install dependencies
 pnpm install
 
-# Lint (REQUIRED before commit)
+# Lint: run BEFORE EVERY COMMIT (see @pnpm.mdc)
 pnpm lint
 pnpm lint:fix
 
@@ -50,7 +55,7 @@ pnpm test
 ## Common Issues
 
 **"Failed to fetch" tRPC errors:**
-→ Comment out `NEXT_PUBLIC_API_URL` in `web/.env`
+→ If `NEXT_PUBLIC_API_URL` is set in `web/.env`, ensure it points to a reachable API (e.g. `http://localhost:8002`). If unset, the frontend uses the same host as the page. Comment it out or remove it to fall back to same-origin.
 
 **"DOMAIN environment variable is required":**
 → Add `DOMAIN=localhost` to both `api/.env` and `web/.env`

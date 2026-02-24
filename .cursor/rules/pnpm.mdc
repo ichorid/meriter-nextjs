@@ -1,10 +1,16 @@
 ---
+description: Use pnpm for scripts; run lint before every commit. Commands from repo root.
 alwaysApply: true
 ---
+
 project uses pnpm
 
 USE pnpm lint && pnpm lint:fix BEFORE EVERY COMMIT!!!
 
-Note: root `pnpm lint:fix` currently runs:
-- `@meriter/api`: `lint` (without `--fix`)
-- `@meriter/web`: `lint:fix`
+Run both from **repository root**. Order: run `pnpm lint` (check), then `pnpm lint:fix` (auto-fix).
+
+Note: root `pnpm lint:fix` runs:
+- `@meriter/api`: script `lint` (already includes `--fix` in api's eslint command)
+- `@meriter/web`: script `lint:fix`
+
+Full command list and dev setup: see @local-dev-win.mdc or `docs/LOCAL_DEVELOPMENT_SETUP.md`.
