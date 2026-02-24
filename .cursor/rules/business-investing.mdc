@@ -2,9 +2,7 @@
 description: Investment mechanics business logic — investing merits in posts for share of earnings. Apply when working with investment features.
 globs:
   - "**/invest*.ts"
-  - "**/contract*.ts"
-  - "**/dividend*.ts"
-  - "**/pool*.ts"
+  - "**/post-closing*.ts"
 alwaysApply: false
 ---
 
@@ -60,10 +58,12 @@ With investing enabled, a post has additional accounting:
 
 ```
 Post:
-  ├── rating              ← earned merits (from tappalka wins, comments)
+  ├── metrics.score       ← current rating (earned merits from tappalka wins, comments)
   ├── investmentPool      ← funded by INVESTORS ONLY
-  └── maxRating           ← historical maximum
+  └── lifetimeCredits    ← total merits ever credited to post (never decreased; used for closing summary)
 ```
+
+In code, "rating" is stored as `metrics.score`. There is no `maxRating` field.
 
 ### Key Rule: Author Deposits Go to Rating
 - When author adds merits to their own post, they go to **post rating** (main account)
@@ -78,10 +78,10 @@ When tappalka deducts 0.1 merit per show, sources are tried in this order:
 | Priority | Source | When depleted |
 |----------|--------|---------------|
 | 1 | `investmentPool` | Move to next |
-| 2 | `rating` | Move to next |
+| 2 | `metrics.score` (rating, down to stopLoss) | Move to next |
 | 3 | `author.wallet` | Post exits tappalka |
 
-If all three sources are empty, the post stops participating in tappalka.
+If all three sources are empty, the post stops participating in tappalka. If the post has `noAuthorWalletSpend=true`, the author wallet is not used for show cost; when pool and rating are exhausted, the post exits tappalka without deducting from the author.
 
 ---
 
@@ -138,6 +138,7 @@ Investor's share = their total investment / sum of ALL investments
 3. `authorShare = withdrawAmount − investorShare` — goes to author's wallet
 4. Post rating decreases by withdrawal amount
 5. All investors receive notifications with their share
+6. Investor shares are rounded to 0.01; any remainder goes to the author.
 
 ### Distribution Example
 
@@ -179,6 +180,8 @@ Step 2: Auto-withdraw ALL remaining rating per contract
         ▼
 Step 3: Post archived. All investors notified with final earnings.
 ```
+
+On close, the post is updated with `closingSummary`: `totalEarned`, `distributedToInvestors`, `authorReceived`, `spentOnShows`, `poolReturned`.
 
 ### No Refund / No Cancellation
 
@@ -241,8 +244,8 @@ investingEnabled = true
 ## Interaction with Other Mechanics
 
 ### Post Forwarding with Investments
-- **Copy:** Investments are NOT transferred (same as merits)
-- **Transfer (Projects → МД):** Investment contract and pool transfer with the post
+- **Copy (standard forward):** Investments are NOT transferred (same as merits).
+- **Transfer (forwardRule=project):** A new publication is created in the target community; only votes and publication content are transferred. Investment contract, pool, and investor records are **not** transferred — the new post has no investing data.
 
 ### Contract on Transfer
 If a post is transferred from a community where `investingEnabled = false` to one where it's `true`, the post does NOT gain a contract. Contracts are created only at post creation time.
@@ -260,7 +263,7 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 | Event | Recipient | Message |
 |-------|-----------|---------|
 | New investment received | Post author | "User X invested N merits in your post" |
-| Author withdrew merits | All investors | "Author withdrew N merits. Your share: M merits" |
+| Author withdrew merits | All investors | "Author withdrew N merits from post. Your share: M merits" |
 | Post closed | All investors | "Post closed. Your total earnings: M merits" |
 | Investment pool depleted | Post author | "Investment pool depleted, shows now from rating/wallet" |
 
@@ -270,7 +273,7 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 
 > Detailed UI specs (dialogs, layouts, visual bar design) belong in the PRD. This section covers only business-relevant UI rules.
 
-- Post card shows: investment pool balance, current rating, max rating, investor count
+- Post card shows: investment pool balance, current rating (`metrics.score`), investor count
 - **Investor list with visual segmented bar** displayed on post — shows each investor's proportional share
 - "Invest" button visible only when `investingEnabled = true` on post; not shown to post author (author sees "Add merits")
 - Investment dialog must show contract terms, irrevocability warning, and projected share calculation
@@ -331,17 +334,22 @@ distributeAllByContractOnClose = true (default)
 | `investmentPool` | number | Current balance of investment pool |
 | `investmentPoolTotal` | number | Total ever invested (for analytics) |
 | `investments` | Investment[] | List of investor records |
+| `lifetimeCredits` | number | Total merits ever credited to this post (never decreased; used for closingSummary.totalEarned) |
+
+Rating is stored as `metrics.score` on the publication's `metrics` object. When the post is closed, `closingSummary` is set: `totalEarned`, `distributedToInvestors`, `authorReceived`, `spentOnShows`, `poolReturned`.
 
 ### Investment Record
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `investorId` | ObjectId | Reference to user |
+| `investorId` | string | User ID reference |
 | `amount` | number | Total invested amount (accumulated across multiple investments) |
 | `createdAt` | Date | First investment timestamp |
 | `updatedAt` | Date | Last investment timestamp |
+| `totalEarnings` | number | Accumulated total received by this investor from this post |
+| `earningsHistory` | array | Per-event entries: `{ amount, date, reason: 'withdrawal' \| 'pool_return' \| 'close' }` |
 
-**Note:** One record per investor per post. Repeat investments update existing record (`amount += newAmount`, `updatedAt = now`).
+**Note:** One record per investor per post. Repeat investments update existing record (`amount += newAmount`, `updatedAt = now`). `totalEarnings` and `earningsHistory` are updated on withdrawal and close.
 
 ### New Community Settings Fields
 
@@ -383,7 +391,7 @@ tappalkaOnlyMode (deprecated) ──► compatibility alias for neutral-only
 Authors will be able to include volunteers (people who helped with the project) in the merit distribution. **Strictly future** — not designed or implemented now.
 
 ### Investor Dashboard
-Portfolio of investments, SROI per post, total returns.
+Basic portfolio list and investment details are implemented (e.g. getMyPortfolio, getInvestmentDetails; profile investments page). Full dashboard with SROI per post and aggregated returns is future.
 
 ### Automatic Reinvestment
 Auto-invest earned profits back into posts.
