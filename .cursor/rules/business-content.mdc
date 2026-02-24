@@ -303,7 +303,8 @@ Post stops being shown if:
 - Author **CANNOT** choose "don't show in tappalka"
 - Only ways to remove post from tappalka:
   1. Set high stop-loss
-  2. Close post and withdraw all merits
+  2. Set `noAuthorWalletSpend = true` (post exits once pool and rating down to stop-loss are exhausted; author wallet is not charged for shows)
+  3. Close post and withdraw all merits
 
 ### What Post Gets in Tappalka
 - When chosen by user: +`tappalkaSettings.winReward` (emission, not from user's wallet)
