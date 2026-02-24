@@ -13,6 +13,8 @@ import { PollCasting } from '@features/polls/components/poll-casting';
 import { usePollCardData } from '@/hooks/usePollCardData';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
 
@@ -50,10 +52,17 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const pollId = isPoll ? (publication as PollFeedItem).id : undefined;
   const { pollData, userCast, userCastSummary } = usePollCardData(pollId);
 
-  // Get wallet balance for polls
+  // Get wallet balance for polls: priority communities (МД, ОБ, Projects, Feedback) use global wallet
   const communityId = publication.communityId;
-  // Use wallets array to get balance instead of separate query
-  const pollBalance = getWalletBalance(wallets, communityId);
+  const { data: community } = useCommunity(communityId || '');
+  const isPriorityCommunity =
+    community?.typeTag === 'marathon-of-good' ||
+    community?.typeTag === 'future-vision' ||
+    community?.typeTag === 'team-projects' ||
+    community?.typeTag === 'support';
+  const balanceCommunityId = isPriorityCommunity ? GLOBAL_COMMUNITY_ID : communityId;
+  const pollBalance = getWalletBalance(wallets, balanceCommunityId);
+  const currentBalance = getWalletBalance(wallets, balanceCommunityId);
 
   // For publications, use the publication hook
   // Note: usePublication expects a different Publication type, so we need to adapt
@@ -70,8 +79,6 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
     // TODO: Implement comment mutation
     console.warn('Comment not implemented in PublicationCard');
   };
-
-  const currentBalance = getWalletBalance(wallets, publication.communityId);
   const isVoting = false;
   const isCommenting = false;
 
