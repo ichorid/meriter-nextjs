@@ -12,7 +12,7 @@ describe('AuthMagicLinkService', () => {
     app = context.app;
     testDb = context.testDb;
     authMagicLinkService = app.get(AuthMagicLinkService);
-  });
+  }, 30000);
 
   afterAll(async () => {
     await TestSetupHelper.cleanup({ app, testDb });

@@ -791,6 +791,23 @@ describe('Special Groups Merit Accumulation', () => {
     it('should debit from local wallet only when voting on local community (not from global)', async () => {
       // With global merit: priority communities use global wallet; local uses local wallet.
       // Vote on regular (local) community → only regular community wallet debited.
+      // Disable quota for this community so the vote uses wallet (router uses quota first when available).
+      await communityModel.updateOne(
+        { id: regularCommunityId },
+        {
+          $set: {
+            meritSettings: {
+              quotaEnabled: false,
+              dailyQuota: 0,
+              quotaRecipients: [],
+              canEarn: true,
+              canSpend: true,
+              startingMerits: 0,
+            },
+          },
+        },
+      );
+
       await walletService.addTransaction(
         voterId,
         regularCommunityId,

@@ -893,10 +893,8 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
 
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
-      // Schema default is 10, but our code uses ?? 0, so when dailyEmission is undefined it becomes 0
-      // However, Mongoose applies the default, so we get 10
-      // Actually, let's check what the actual value is - the schema default is 10
-      expect(result.members[0].quota?.dailyQuota).toBe(10);
+      // meritSettings has schema default dailyQuota: 100; getEffectiveMeritSettings uses it when present
+      expect(result.members[0].quota?.dailyQuota).toBe(100);
     });
   });
 });

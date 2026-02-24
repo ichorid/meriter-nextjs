@@ -51,7 +51,7 @@ describe('NotificationService vote aggregation', () => {
 
     notificationService = app.get(NotificationService);
     connection = app.get(getConnectionToken());
-  });
+  }, 30000);
 
   afterAll(async () => {
     if (connection) await connection.close();

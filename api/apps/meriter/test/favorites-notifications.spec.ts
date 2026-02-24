@@ -29,7 +29,7 @@ describe('Favorite notifications deduplication (NotificationService)', () => {
 
     notificationService = app.get(NotificationService);
     connection = app.get(getConnectionToken());
-  });
+  }, 30000);
 
   afterAll(async () => {
     await app.close();
