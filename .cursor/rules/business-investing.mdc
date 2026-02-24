@@ -189,7 +189,7 @@ On close, the post is updated with `closingSummary`: `totalEarned`, `distributed
 
 - Invested merits are spent on tappalka shows — they cannot be returned
 - The only "return" events are: (a) unspent pool on close, (b) profit distribution on withdrawal/close
-- When post closes, investors receive notification: `"Post closed — your total earnings: X merits"`
+- When post closes, investors receive notification (type `post_closed_investment`) with message: "Post closed. Pool returned: X merits. Your share of rating: Y merits. Total received: Z merits" (X, Y, Z are the actual amounts).
 
 ### Pool Return Example
 - Total invested: 200 merits (Vasya 100, Petya 50, Sasha 50)
@@ -205,9 +205,9 @@ On close, the post is updated with `closingSummary`: `totalEarned`, `distributed
 **Negative rating IS possible** with investments, if the community has downvoting enabled (`tappalkaOnlyMode` is OFF).
 
 - If community allows upvote/downvote comments, post rating can go negative
-- Standard 24-hour rule applies: negative balance deducted from author's wallet after 24h
+- **Current code:** Automatic deduction of negative balance from the author's wallet after 24h is **not implemented**. Author can close the post (manual close); no scheduled 24h deduction runs.
 - This is independent of investment mechanics — it's a community setting
-- **Recommended config** for investment communities: enable `tappalkaOnlyMode` to avoid this scenario
+- **Recommended config** for investment communities: enable `tappalkaOnlyMode` (or `commentMode='neutralOnly'`) to avoid this scenario
 
 ---
 
@@ -264,8 +264,9 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 |-------|-----------|---------|
 | New investment received | Post author | "User X invested N merits in your post" |
 | Author withdrew merits | All investors | "Author withdrew N merits from post. Your share: M merits" |
-| Post closed | All investors | "Post closed. Your total earnings: M merits" |
-| Investment pool depleted | Post author | "Investment pool depleted, shows now from rating/wallet" |
+| Post closed | All investors | "Post closed. Pool returned: X merits. Your share of rating: Y merits. Total received: Z merits" (type `post_closed_investment`) |
+| Investment pool depleted | Post author | "Investment pool depleted. Shows now deducted from post rating." (type `investment_pool_depleted`) |
+| Post exited tappalka (no funds) | Post author | "Post exited tappalka — no funds available for shows." (type `investment_pool_depleted`, title "Post exited tappalka") |
 
 ---
 
@@ -385,13 +386,28 @@ tappalkaOnlyMode (deprecated) ──► compatibility alias for neutral-only
 
 ---
 
+## API Surface (Current)
+
+Investment-related tRPC procedures:
+
+| Router | Procedure | Description |
+|--------|-----------|-------------|
+| `investments` | `invest` | Process investment (wallet → post's investmentPool) |
+| `investments` | `getByPost` | List investments for a post with share percentages |
+| `investments` | `getByUser` | List current user's investments across posts |
+| `investments` | `getInvestmentBreakdown` | Public breakdown: contract, pool, investor list with user info |
+| `users` | `getMyPortfolio` | Current user's portfolio (stats + paginated items, SROI in stats) |
+| `users` | `getInvestmentDetails` | Details for one post where current user is investor (earningsHistory, etc.) |
+
+---
+
 ## Future Features (v2.0+)
 
 ### Volunteer Share in Distribution
 Authors will be able to include volunteers (people who helped with the project) in the merit distribution. **Strictly future** — not designed or implemented now.
 
 ### Investor Dashboard
-Basic portfolio list and investment details are implemented (e.g. getMyPortfolio, getInvestmentDetails; profile investments page). Full dashboard with SROI per post and aggregated returns is future.
+Basic portfolio list and investment details are implemented: `users.getMyPortfolio` (stats include totalInvested, totalEarned, sroi, activeCount, closedCount), `users.getInvestmentDetails`; profile investments page. Full dashboard with per-post SROI and richer aggregated views is future.
 
 ### Automatic Reinvestment
 Auto-invest earned profits back into posts.
