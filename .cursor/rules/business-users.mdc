@@ -21,21 +21,29 @@ alwaysApply: false
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| name | Yes | Display name |
-| about | Yes | Short description |
-| avatar | No | Profile image |
-| contacts | No | Contact methods |
+| displayName | Yes | Display name (User schema) |
+| profile.about | Yes | Short description; part of UserProfile |
+| avatarUrl | No | Profile image URL |
+| profile.contacts | No | Contact methods (email, messenger); part of UserProfile |
+| username | No | Optional login handle |
+| firstName, lastName | No | Optional name parts |
+| profile.bio | No | Optional bio (same semantic area as about) |
+| profile.location | No | Optional (region, city) |
+| profile.website | No | Optional URL |
+| profile.educationalInstitution | No | Optional |
+| profile.isVerified | No | Optional verification flag |
 
 ### System Fields
 
 | Field | Description |
 |-------|-------------|
-| roles | List of roles for each community |
-| activity | Summaries of posts and votes |
-| favorites | Posts marked as favorite |
-| merits | Merit amount in each community |
-| quota | Current quota balance in communities with quota |
-| archive | User's closed posts |
+| globalRole | Optional; only `superadmin` in code (User.globalRole) |
+| communityMemberships | Array of community IDs (User schema) |
+| communityTags | Array of tags (User schema) |
+| meritStats | Optional; per-community merit summary (User schema) |
+| authenticators | Optional; passkeys (User schema) |
+
+Roles are stored in **UserCommunityRole** (collection `user_community_roles`), not on User. Balances are in **Wallet**; favorites in **Favorite**; quota in merit/quota logic; closed posts in **Publication** with `status: 'closed'` and `authorId`.
 
 ---
 
@@ -43,8 +51,8 @@ alwaysApply: false
 
 Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different communities.
 
-### Community Member
-**Base role.** Assigned upon joining a community.
+### Participant (UI may show as "Member")
+**Base role.** In code the role value is `participant`. Assigned upon joining a community.
 
 **Rights:**
 - Publish posts (if allowed by settings)
@@ -67,8 +75,8 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 - CANNOT delete community (only request from administration)
 - CANNOT change post forwarding mode (always copy without merits)
 
-### Global Community Administrator
-**Appointed by superadmin.** Administers specific global community.
+### Lead (Global Community)
+**Appointed by superadmin.** Administers specific global community. In code this is the same **lead** role (`UserCommunityRole.role: 'lead'`) for that community; there is no separate role type.
 
 **Rights:**
 - All lead rights for their global community
@@ -116,30 +124,32 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ 1. Select authorization method                          │
-│    (Yandex / SMS / Call / E-mail / Telegram / Google)   │
+│    (Yandex / SMS / Call / E-mail / Telegram / Google /  │
+│     Passkey)                                            │
 └───────────────────────────┬─────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────┐
 │ 2. Fill profile                                         │
-│    - Name (required)                                    │
-│    - About (required)                                   │
-│    - Avatar (optional)                                  │
-│    - Contacts (optional)                                │
+│    - Display name / displayName (required)              │
+│    - About / profile.about (required)                   │
+│    - Avatar / avatarUrl (optional)                      │
+│    - Contacts / profile.contacts (optional)             │
 │    - Invite code (optional)                             │
 └───────────────────────────┬─────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────┐
 │ 3. Automatic actions                                    │
-│    - "Member" role in all global communities            │
-│    - +100 welcome merits                                │
+│    - participant role in all global communities         │
+│    - Welcome merits to global wallet (platform setting  │
+│      welcomeMeritsGlobal, e.g. 100)                     │
 │    - Additional role by invite code (if entered)        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Starting Merits
-At registration user receives **100 global merits** to wallet.
+At registration the user receives welcome merits to the **global wallet**. The amount is set by the platform setting **welcomeMeritsGlobal** (e.g. 100).
 
 ---
 
@@ -156,6 +166,8 @@ Invite codes — main tool for granting roles to users.
 |------|--------|
 | `superadmin-to-lead` | Grants lead role in target community (issued by superadmin) |
 | `lead-to-participant` | Invites/adds participant to community (issued by lead) |
+
+**Schema (code):** Invite has `code`, `type`, `createdBy`, `communityId`, and optionally `targetUserId`, `targetUserName`, `usedBy`, `usedAt`, `expiresAt`, `isUsed` (see InviteSchema in shared-types).
 
 ### Current Implementation Issues
 - Create confusion when forwarding
@@ -178,6 +190,7 @@ Invite codes — main tool for granting roles to users.
 - E-mail
 - Telegram (feature/config controlled)
 - Google OAuth (feature/config controlled)
+- Passkey/WebAuthn (feature/config controlled, AUTHN_ENABLED)
 
 ### Planned Methods
 - Additional messengers/providers beyond current set
@@ -195,7 +208,7 @@ Invite codes — main tool for granting roles to users.
 
 ### Current Mechanics (Implemented)
 - Superadmin can assign a user as lead of a selected community (`users.assignLead`).
-- UI exists: `AssignLeadDialog` + `useAssignLead` flow in web client.
+- UI exists: `AssignLeadDialog` (`web/src/components/organisms/Profile/AssignLeadDialog.tsx`) and `useAssignLead` (`web/src/hooks/api/useTeams.ts`) in web client.
 
 ### Planned / Not Yet Implemented
 - Lead self-transfer flow initiated by current lead
@@ -210,12 +223,12 @@ Invite codes — main tool for granting roles to users.
 ```
 1. On registration:
    - Create user record
-   - Assign "Member" role to all global communities
-   - Credit 100 welcome merits
+   - Assign participant role to all global communities
+   - Credit welcome merits to global wallet (amount from platform setting, e.g. 100)
    - Process invite code if provided
 
 2. On community join:
-   - Assign "Member" role
+   - Assign participant role
    - Credit welcome merits (if configured)
 
 3. On community creation:
@@ -234,15 +247,16 @@ For each action:
 
 ### Permission Hierarchy
 ```
-Superadmin > Global Admin > Lead > Member
+Superadmin (User.globalRole) > Lead (UserCommunityRole) > Participant (UserCommunityRole)
 ```
+Global community administrator is implemented as **lead** for that community; there is no separate role value.
 
 ### Special Permission Cases
 ```
-- Self-voting: check community.canVoteSelf setting
-- Teammate voting: check community.canVoteTeammates setting
-- Merit withdrawal: check community.canWithdrawMerits setting
-- Post publishing: check community.canPublish setting
+- Self-voting: permissionRules[].conditions.canVoteForOwnPosts (per role/action)
+- Teammate voting: votingSettings.votingRestriction ('any' | 'not-same-team')
+- Merit withdrawal: settings.allowWithdraw
+- Post publishing: permissionRules for action POST_PUBLICATION (no single canPublish flag)
 ```
 
 ---
@@ -251,7 +265,7 @@ Superadmin > Global Admin > Lead > Member
 
 ### Permission Matrix
 
-| Action | Member | Lead | Global Admin | Superadmin |
+| Action | Participant | Lead | Lead (global) | Superadmin |
 |--------|--------|------|--------------|------------|
 | Publish posts | ✓* | ✓ | ✓ | ✓ |
 | Comment | ✓* | ✓ | ✓ | ✓ |
@@ -267,20 +281,10 @@ Superadmin > Global Admin > Lead > Member
 | Create global community | ✗ | ✗ | ✗ | ✓ |
 | Delete community | ✗ | ✗ | ✗ | ✓ |
 
-*Depends on community settings
+*In code: role is `participant`. Depends on community permissionRules/settings.
 
 ---
 
 ## User Activity Tracking
 
-### Metrics to Track
-
-| Metric | Description |
-|--------|-------------|
-| posts_count | Total posts created |
-| comments_count | Total comments left |
-| votes_given | Total votes given to others |
-| votes_received | Total votes received |
-| merits_earned | Total merits earned |
-| merits_spent | Total merits spent |
-| tappalka_comparisons | Total tappalka comparisons |
+The User schema does **not** store activity metrics (posts_count, comments_count, votes_given, etc.). **meritStats** (optional) on User holds a per-community merit summary. Other activity (favorites, closed posts, quota) lives in separate collections/services.
