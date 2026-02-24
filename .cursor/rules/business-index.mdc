@@ -28,18 +28,18 @@ alwaysApply: true
 - **Two account types:** Wallet (permanent) + Quota (daily, burns)
 - **Usage priority:** Quota FIRST, then Wallet
 - **Fee payment:** ALWAYS from GLOBAL merits
-- **Starting merits:** 100 at registration
+- **Starting merits:** From platform setting `welcomeMeritsGlobal` (default 0 in code; MVP often uses 100)
 
 ### Community Types
 - **Global:** All users auto-joined, share ONE merit, cannot leave
 - **Local:** User-created, own merit, can leave
 
 ### Content Rules
-- **Post cost:** `settings.postCost` (default 1)
+- **Post cost:** `settings.postCost` (default 1); from quota first when `settings.canPayPostFromQuota` is true, else wallet (global)
 - **Poll cost:** `settings.pollCost` (default 1)
 - **Forward cost:** `settings.forwardCost` (default 1)
 - **Self-voting:** Wallet only (if enabled), NEVER quota
-- **Negative rating:** Deducted from author wallet after 24h
+- **Negative rating:** Author can close post (manual); closed post archived (cannot re-publish). Automatic deduction from author wallet after 24h is **not implemented**.
 
 ### Tappalka
 - **10 comparisons = 1 merit** to user
@@ -96,23 +96,25 @@ Downvote: Wallet ONLY
 Self-vote: Wallet ONLY (quota forbidden)
 ```
 
-### 3. Local Community Forwarding
+### 3. Forwarding (source community rule)
 ```
-Local → Any = ALWAYS copy WITHOUT merits
-(Lead cannot change this)
+Forward mode = source community `settings.forwardRule`:
+- `standard` (default): copy without merits, original preserved.
+- `project`: transfer with merits, original deleted.
+Participant-initiated forward (`proposeForward`) only when source `typeTag === 'team'`.
+Lead/superadmin direct `forward`: no forward fee charged in current code.
 ```
 
-### 4. Special Case: Projects → МД
+### 4. Transfer with merits
 ```
-Projects → МД = TRANSFER WITH merits
-(Only case of transfer with merits between communities)
+Transfer with merits happens when source community has `settings.forwardRule === 'project'` (e.g. Projects → МД). Code does not restrict this to a single route.
 ```
 
 ### 5. Negative Rating Handling
 ```
-Rating < 0 → Wait 24h → Deduct from author wallet
-Author can close post before 24h to avoid deduction
-Closed post → Archive (cannot re-publish)
+Rating can be negative. Author can close post (manual, closeReason: 'negative_rating').
+Closed post → Archive (cannot re-publish).
+Automatic deduction from author wallet after 24h is not implemented.
 ```
 
 ---
@@ -121,11 +123,13 @@ Closed post → Archive (cannot re-publish)
 
 | Action | Check |
 |--------|-------|
-| Publish | `permissionRules` allow action + `settings.postCost` payable (wallet/quota by rules) |
+| Publish | `permissionRules` allow action + `settings.postCost` payable (quota first if `settings.canPayPostFromQuota`, else wallet; global context) |
 | Comment/Vote | `permissionRules` allow action + `votingSettings.currencySource` + `settings.commentMode` |
 | Self-vote | `permissionRules.conditions.canVoteForOwnPosts` + wallet-only constraint |
 | Withdraw | `settings.allowWithdraw` |
 | Tappalka | `tappalkaSettings.enabled` + rating >= `tappalkaSettings.minRating` |
+
+**Implementation notes (current code):** Post withdrawal = `publications.withdraw` (gated by `settings.allowWithdraw` where enforced). `wallets.withdraw` and `wallets.transfer` exist but return NOT_IMPLEMENTED. No dedicated `commentFee`/`commentCost`; vote amounts and direction rules apply.
 
 ---
 
@@ -160,3 +164,4 @@ Closed post → Archive (cannot re-publish)
 |---------|------|---------|
 | 1.0 | January 2026 | Initial structured version |
 | 1.1 | February 2026 | Module split, decision integration |
+| 1.2 | February 2026 | Align index with code: welcomeMeritsGlobal, negative rating not auto-deducted, forwardRule, wallet API notes |
