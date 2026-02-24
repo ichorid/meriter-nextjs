@@ -23,9 +23,10 @@ Main content type on the platform. All other types inherit from base post.
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| title | Yes | Post title |
-| description | Yes | Main text |
-| images | No | Attached images |
+| title | No | Post title (optional in schema) |
+| description | No | Optional description |
+| content | Yes | Main body text (required in schema) |
+| images | No | Attached images (`images` array; legacy `imageUrl` for single image) |
 | categories | No | From list defined by community admin |
 
 ### System Fields
@@ -33,12 +34,13 @@ Main content type on the platform. All other types inherit from base post.
 | Field | Description |
 |-------|-------------|
 | createdAt | Creation timestamp |
-| author | Creator user |
-| community | Where post is published |
-| permalink | URL for sharing |
-| rating | Current merit amount on post |
-| maxRating | Historical maximum rating value |
-| comments | List of comments on post |
+| authorId | Creator user id |
+| communityId | Community where post is published |
+| metrics | Object including `score` (current merit total on post), `upvotes`, `downvotes`, `commentCount` |
+| lifetimeCredits | Total merits ever credited to this post (votes, author top-up, tappalka wins); never decreased; used for closing summary |
+| status, closedAt, closeReason | Lifecycle: active/closed, close time, reason (`manual`, `ttl`, `inactive`, `negative_rating`) |
+
+URL for sharing is derived from publication id; there is no stored `permalink` field. Comments and votes are stored in separate collections (votes, comments), not embedded in the publication document.
 
 ---
 
@@ -61,32 +63,31 @@ Inherits from base post.
 |-------|-------------|
 | question | Poll question text |
 | options | List of voting options |
-| deadline | Optional voting close time |
+| expiresAt | Voting close time (required in schema) |
 
 ### Poll Voting
-- Poll creation uses `settings.pollCost` (community-level post creation cost)
+- Poll creation uses `settings.pollCost` (community-level cost)
 - Poll voting spends user merits by vote amount (wallet/quota rules apply)
 - Vote weight = amount of merits spent
-- After deadline, new votes are NOT accepted
+- After expiresAt, new votes are NOT accepted
 
 ---
 
 ## Post Rating
 
 ### Rating Calculation
-- Rating = sum of merits "attached" to post through comments
-- Positive comments increase rating
-- Negative comments decrease rating
-- CAN be negative
+- Rating is stored as `metrics.score` (sum of merits attached to the post through votes).
+- Positive comments increase rating; negative comments decrease it.
+- Rating CAN be negative.
 
 ### Merit Withdrawal from Post
 - Author can withdraw merits from post rating to their wallet
-- Upon withdrawal, post rating decreases
-- Withdrawal availability determined by community settings
+- Upon withdrawal, post rating (metrics.score) decreases
+- Withdrawal availability determined by community settings (`settings.allowWithdraw`)
 
 ### Negative Rating Consequences
-- If rating goes negative → after 24 hours negative amount is DEDUCTED from author's wallet
-- Author can close post before 24 hours to avoid deduction
+- If rating (metrics.score) goes negative, the post can be closed with `closeReason: 'negative_rating'`.
+- **Automatic deduction of the negative amount from the author's wallet after 24 hours is not implemented in the current code.** Author can close the post (manual close); no automatic 24h deduction runs.
 
 ---
 
@@ -112,14 +113,13 @@ Inherits from base post.
 ```
 
 ### Editing
-- Available within `settings.editWindowMinutes` time window
-- Default: 30 minutes after publication
+- Available within `settings.editWindowMinutes` time window (default: 30 minutes after publication).
+- The edit window can also be overridden per permission rule via `permissionRules[].conditions.canEditAfterMinutes` (0 = no time limit).
 - After time expires — only closing or forwarding
 
 ### Post Closing
-- Post removed from feed
-- Saved in user's profile archive
-- **CANNOT be re-published**
+- Post removed from feed; saved in user's profile archive.
+- **CANNOT be re-published.** Close reasons in code: `manual`, `ttl`, `inactive`, `negative_rating`. TTL and inactivity auto-close are implemented (`ttlDays`/`ttlExpiresAt`, `inactiveCloseDays`).
 - Remaining merits on post can be withdrawn before closing
 
 ---
@@ -157,15 +157,17 @@ Inherits from base post.
 | **Neutral** | Text only, no merits | No weighted amount transfer |
 | **Negative (Downvote)** | Merits removed from post, rating decreases, merits BURN | Wallet ONLY |
 
-### Comment Data Model
+Weighted comments (votes) on publications are represented by the **Vote** entity (`targetType: 'publication'`, `targetId` = publication id). Vote has `amountQuota`, `amountWallet` (combined effect is the merit weight), and optional comment text. A separate **Comment** entity exists for threaded discussions (`content`, `metrics.score`, replies).
+
+### Comment Data Model (Vote as comment with weight)
 
 | Field | Description |
 |-------|-------------|
-| weight | Merits brought/removed (0 for neutral) |
-| body | Comment text |
-| author | Comment author |
+| amountQuota, amountWallet | Merits brought/removed (0 for neutral); effective weight = sum of these |
+| comment | Comment text (optional on Vote) |
+| userId | Vote author |
 | createdAt | Creation timestamp |
-| permalink | URL for sharing |
+| targetType, targetId | Target publication (or vote for nested) |
 
 ---
 
@@ -198,7 +200,7 @@ Inherits from base post.
 
 | Mode | Allowed behavior |
 |------|------------------|
-| `all` | Weighted comments only (non-zero amount required) |
+| `all` | In current code: non-zero amount required (weighted in practice). |
 | `neutralOnly` | Only neutral comments (`totalAmount = 0`) |
 | `weightedOnly` | Only weighted comments (`totalAmount > 0`) |
 
@@ -273,6 +275,7 @@ Post stops being shown if:
 - Rating drops below minimum threshold
 - Rating drops below author's stop-loss
 - No funds to pay for showing (neither on post nor from author)
+- If the post has `noAuthorWalletSpend: true`, the author wallet is not used for show cost; when all other sources are exhausted, the post stops being shown
 
 ### Stop-Loss
 - Set by post owner
@@ -351,10 +354,9 @@ Use "base post + poll" combination, provide place for resource list in post.
 ## Future Features
 
 ### Comments on Comments
-- Comments on comments will work same as comments on posts
-- Comments will have their own merit rating
-- Can withdraw merits from own comments
+- Comments on comments will work same as comments on posts (future).
+- Comments will have their own merit rating.
+- Withdrawal from own comment/vote: see Comment Merit Withdrawal below (implemented).
 
 ### Comment Merit Withdrawal
-- Can you withdraw from your upvoted comment — requires development
-- If comment downvoted to negative — same rules as posts apply (24-hour deduction)
+- Withdrawal of merits from one's own comment (vote) is implemented: `votes.withdrawFromVote` (and related checks in comment service). If a comment (vote) is downvoted to negative score, same withdrawal/beneficiary rules apply as for posts; automatic 24h deduction from author wallet is not implemented.
