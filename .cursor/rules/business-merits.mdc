@@ -157,10 +157,11 @@ Teammates = members of same local communities as the voter.
 ## Quota Rules
 
 ### Core Quota Rules
-1. Credited daily in amount set in community settings
-2. Quota balance CANNOT exceed single credit amount — excess BURNS
-3. Used same as regular merits, BUT with restrictions
-4. Can be used for publication fee only when `settings.canPayPostFromQuota=true`
+1. Credited daily in amount set in community settings: volume by `settings.dailyEmission`; quota is enabled by `meritSettings.quotaEnabled` (if `quotaEnabled === false`, quota is not used).
+2. For communities with `typeTag === 'future-vision'`, effective daily quota is always 0 in code (even if `settings.dailyEmission` > 0).
+3. Quota balance CANNOT exceed single credit amount — excess BURNS
+4. Used same as regular merits, BUT with restrictions
+5. Can be used for publication fee only when `settings.canPayPostFromQuota=true`
 
 ### Quota Restrictions
 - ❌ Cannot vote with quota for own posts
@@ -221,6 +222,17 @@ Voting flow:
 - In these handlers, if fee deduction fails, the request may still succeed.
 
 ### Wallet API Status (Current)
+Implemented procedures:
+- `wallets.getByCommunity` — user wallet for a community (for priority communities returns global wallet).
+- `wallets.getBalance` — balance for a community.
+- `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt).
+- `wallets.getFreeBalance` — remaining quota for voting.
+- `wallets.getAll` — all user wallets.
+- `wallets.getTransactions` — user transactions.
+- `wallets.addMerits` — available only when fake data mode is enabled.
+- `wallets.addMeritsToUser` — superadmin or community lead only.
+
+Not implemented:
 - `wallets.withdraw` exists in router but returns `NOT_IMPLEMENTED`.
 - `wallets.transfer` exists in router but returns `NOT_IMPLEMENTED`.
 - Do not document these two flows as available user operations yet.
