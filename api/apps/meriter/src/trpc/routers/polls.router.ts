@@ -583,9 +583,12 @@ export const pollsRouter = router({
         );
       }
       
-      // Check if this is a new caster
+      // Check if this is a new caster (first vote in this poll) and first vote for this option
       const existingCasts = await ctx.pollService.getUserCasts(input.pollId, ctx.user.id);
       const isNewCaster = existingCasts.length === 0;
+      const isNewCasterForOption = !existingCasts.some(
+        (c: { optionId: string }) => c.optionId === input.data.optionId,
+      );
       
       // Create the cast record
       const cast = await ctx.pollCastService.createCast(
@@ -597,8 +600,14 @@ export const pollsRouter = router({
         communityId,
       );
       
-      // Update poll aggregate to reflect the cast
-      await ctx.pollService.updatePollForCast(input.pollId, input.data.optionId, totalAmount, isNewCaster);
+      // Update poll aggregate (option casterCount only when user votes for this option first time)
+      await ctx.pollService.updatePollForCast(
+        input.pollId,
+        input.data.optionId,
+        totalAmount,
+        isNewCaster,
+        isNewCasterForOption,
+      );
       
       // Get final wallet balance to return
       const updatedWallet = walletAmount > 0 

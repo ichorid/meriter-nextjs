@@ -142,7 +142,13 @@ export class PollService {
     return poll;
   }
 
-  async updatePollForCast(pollId: string, optionId: string, amount: number, isNewCaster: boolean): Promise<Poll> {
+  async updatePollForCast(
+    pollId: string,
+    optionId: string,
+    amount: number,
+    isNewCaster: boolean,
+    isNewCasterForOption: boolean,
+  ): Promise<Poll> {
     const doc = await this.pollModel.findOne({ id: pollId }).lean();
     if (!doc) {
       throw new NotFoundException('Poll not found');
@@ -150,8 +156,8 @@ export class PollService {
 
     const poll = Poll.fromSnapshot(doc as any);
     
-    // Add cast to poll aggregate
-    poll.addCast(optionId, amount, isNewCaster);
+    // Add cast to poll aggregate (isNewCasterForOption = first time this user voted for this option)
+    poll.addCast(optionId, amount, isNewCaster, isNewCasterForOption);
     
     // Save updated poll
     await this.pollModel.updateOne(

@@ -178,7 +178,7 @@ export class Poll {
     this.updatedAt = new Date();
   }
 
-  addCast(optionId: string, amount: number, isNewCaster: boolean): void {
+  addCast(optionId: string, amount: number, isNewCaster: boolean, isNewCasterForOption: boolean): void {
     if (!this.isCurrentlyActive()) {
       throw new Error('Cannot cast on inactive or expired poll');
     }
@@ -195,13 +195,13 @@ export class Poll {
     const currentAmount = typeof option.getAmount === 'number' && !isNaN(option.getAmount) ? option.getAmount : 0;
     const currentCasterCount = typeof option.getCasterCount === 'number' && !isNaN(option.getCasterCount) ? option.getCasterCount : 0;
     
-    // Create new option with updated values
+    // Option casterCount = unique users who voted for this option (repeat vote by same user does not increase)
     const updatedOption = PollOption.create(
       option.getId,
       option.getText,
       currentVotes + amount,
       currentAmount + amount,
-      currentCasterCount + (isNewCaster ? 1 : 0)
+      currentCasterCount + (isNewCasterForOption ? 1 : 0)
     );
 
     // Replace option in array
