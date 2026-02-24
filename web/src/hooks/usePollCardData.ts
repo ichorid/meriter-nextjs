@@ -25,10 +25,11 @@ export function usePollCardData(pollId: string | undefined) {
     const pollData = {
       title: poll.question,
       description: poll.description,
-      options: poll.options.map((opt: any) => ({
+      options: poll.options.map((opt: { id: string; text: string; votes?: number; casterCount?: number }) => ({
         id: opt.id,
         text: opt.text,
-        votes: opt.votes || 0,
+        votes: opt.votes ?? 0,
+        casterCount: opt.casterCount ?? 0,
       })),
       expiresAt: poll.expiresAt,
       totalCasts: poll.metrics?.totalCasts || 0,

@@ -90,8 +90,9 @@ export function useCastPoll(communityId?: string) {
 
     return trpc.polls.cast.useMutation({
         onSuccess: async (_result, variables) => {
-            // Invalidate poll results to get updated cast counts
+            // Refetch this poll so option casterCount and votes update immediately
             await utils.polls.getById.invalidate({ id: variables.pollId });
+            await utils.polls.getById.refetch({ id: variables.pollId });
             // Invalidate polls list to ensure consistency
             await utils.polls.getAll.invalidate();
 
