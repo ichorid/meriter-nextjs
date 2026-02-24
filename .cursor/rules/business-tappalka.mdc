@@ -4,7 +4,6 @@ globs:
   - "**/tappalka*.ts"
   - "**/tap*.ts"
   - "**/comparison*.ts"
-  - "**/emission*.ts"
 alwaysApply: false
 ---
 
@@ -86,14 +85,14 @@ Tappalka — main method of merit emission and earning for users.
 ### Participation Conditions
 1. `tappalkaSettings.enabled = true`
 2. Post rating ≥ `tappalkaSettings.minRating` (default 1)
-3. Post rating ≥ author's stop-loss setting
-4. Post not closed
+3. Post rating ≥ author's stop-loss setting (post `stopLoss`)
+4. Post not closed (`status !== 'closed'`) and not deleted (`deleted !== true`, `deletedAt` null)
 
 ### Exit from Tappalka
 Post stops being shown if:
 - Rating drops below minimum threshold
 - Rating drops below author's stop-loss
-- No funds for show payment (`investmentPool`, rating, and author wallet exhausted)
+- No funds for show payment: `investmentPool` and post rating (down to `stopLoss`) exhausted, and either author wallet is not used for show cost (`noAuthorWalletSpend === true`) or author wallet is insufficient
 
 ### Stop-Loss
 - Set by post owner
@@ -102,9 +101,10 @@ Post stops being shown if:
 
 ### IMPORTANT: Cannot Disable Tappalka Show
 - Author **CANNOT** choose "don't show in tappalka"
-- Only ways to remove post from tappalka:
+- Ways to remove or effectively limit post in tappalka:
   1. Set high stop-loss
-  2. Close post and withdraw all merits
+  2. Set `noAuthorWalletSpend = true` (post exits once pool and rating down to stop-loss are exhausted; author wallet is not charged for shows)
+  3. Close post and withdraw all merits
 
 ---
 
@@ -117,9 +117,8 @@ Tappalka category filtering is backed by `tappalkaSettings.categories`:
 - user-side selection should be intersected with community-level `tappalkaSettings.categories`
 
 ### By Content Type (Planned)
-- Base posts compared with base posts
-- Projects with projects (when implemented)
-- Polls do NOT participate in tappalka
+- Current code does **not** filter by `postType`; any publication in the collection that meets other conditions can be selected (including polls if they have the required fields).
+- Planned: base posts with base posts, projects with projects; polls excluded from tappalka.
 
 ---
 
@@ -153,6 +152,17 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 
 ---
 
+## Implementation Details (Current)
+
+### Onboarding
+- Progress record has `onboardingSeen`; community `tappalkaSettings.onboardingText` is optional. API: `markOnboardingSeen(communityId)` sets onboardingSeen for (userId, communityId). Frontend uses onboarding flow and progress.onboardingSeen.
+
+### Notifications
+- When show-cost deduction depletes investment pool and cost remains, author receives `investment_pool_depleted` notification.
+- When post exits tappalka (noAuthorWalletSpend and insufficient pool/rating), author receives notification (post exited tappalka, no funds for shows).
+
+---
+
 ## Tappalka Economics
 
 ### Emission Balance
@@ -180,63 +190,66 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 ### Post Selection Algorithm
 ```
 1. Get all posts where:
-   - community = current community
-   - tappalkaSettings.enabled = true
-   - rating >= tappalkaSettings.minRating
-   - rating >= stopLoss (if set)
-   - author != currentUser
-   - closed = false
-   - category is allowed by tappalkaSettings.categories
-   - canPayShowCost = true (investmentPool or rating or author.wallet can cover tappalkaSettings.showCost)
-2. Random select 2 posts
-3. Ensure posts are different
-4. Return pair to user
+   - communityId = current community
+   - tappalkaSettings.enabled = true (effective for community)
+   - authorId != currentUser
+   - deleted !== true, deletedAt null
+   - status !== 'closed'
+   - metrics.score >= tappalkaSettings.minRating
+   - category in tappalkaSettings.categories (if categories non-empty; else no category filter)
+   - eligible to pay showCost: (investmentPool >= showCost) OR (metrics.score >= max(minRating, showCost)) OR (investmentPool + max(0, metrics.score - stopLoss) >= showCost)
+2. Random select 2 posts from result
+3. Return pair to user (sessionId generated per pair; not validated on submit)
 ```
 
 ### Show Cost Deduction
 ```
 For each post in pair:
-1. Try deduct from `investmentPool`
-2. If insufficient, deduct from post rating (respecting stop-loss)
-3. If still insufficient and allowed, deduct from author wallet
-4. If all sources insufficient, exclude post from future selections
+1. Deduct from `investmentPool` (up to remaining cost)
+2. If insufficient, deduct from post rating (metrics.score), not below post `stopLoss`
+3. If still insufficient and post `noAuthorWalletSpend !== true`, deduct from author wallet (community resolved via merit resolver, e.g. global for priority communities)
+4. If noAuthorWalletSpend or all sources insufficient, post is excluded from future selections; author may be notified when pool depleted or post exits tappalka
 ```
 
 ### Win Processing
 ```
-1. Increment chosen post rating by tappalkaSettings.winReward (emission)
-2. Update user comparison count
-3. If user.comparisonCount >= tappalkaSettings.comparisonsRequired:
-   - Credit tappalkaSettings.userReward to user wallet (emission)
-   - Reset comparison count
+1. Increment chosen post `metrics.score` by tappalkaSettings.winReward (emission); increment post `lifetimeCredits` by same amount; set post `lastEarnedAt` to now
+2. Get or create TappalkaProgress for (userId, communityId); increment comparisonCount
+3. If progress.comparisonCount >= tappalkaSettings.comparisonsRequired:
+   - Credit tappalkaSettings.userReward to user wallet (emission); wallet community resolved via merit resolver (e.g. global wallet for priority communities)
+   - Set progress.comparisonCount to 0; increment totalRewardsEarned
 ```
 
-### Transaction Atomicity
+### Transaction Ordering (Current)
 ```
-All tappalka operations must be atomic:
-- Both show costs deducted together
-- Win reward credited after deductions confirmed
-- User reward credited after comparison recorded
+Operations in submitChoice are sequential; no single database transaction is used:
+- Show cost deducted from winner, then from loser
+- Win reward and lastEarnedAt updated on winner
+- User progress updated; if cycle complete, user reward credited to wallet
+- Next pair fetched
 ```
+
+### SessionId
+- `sessionId` is generated per pair in getPair and returned to client; it is **not** validated on submitChoice. Replay or reuse of sessionId is not enforced.
 
 ---
 
-## Metrics to Track
+## Metrics to Track (Planned)
 
-### Per Community
+The following are not fully implemented in current code. Implemented: per-user progress has `comparisonCount`, `totalComparisons`, `totalRewardsEarned` (TappalkaProgress); on post close, `closingSummary.spentOnShows` is set from pool difference.
+
+### Per Community (planned)
 - Total comparisons per day
 - Total emission per day
 - Average post participation rate
 - Stop-loss trigger frequency
 
-### Per Post
-- Show count
-- Win count
-- Win rate
-- Merits earned from tappalka
-- Merits spent on shows
+### Per Post (planned)
+- Show count, win count, win rate
+- Merits earned from tappalka (lifetimeCredits includes them)
+- Merits spent on shows (only pool portion in closingSummary.spentOnShows at close)
 
-### Per User
-- Comparisons completed
-- Merits earned from tappalka participation
-- Tappalka session duration
+### Per User (partially implemented)
+- Comparisons completed: `TappalkaProgress.comparisonCount`, `totalComparisons`, `totalRewardsEarned`
+- Merits earned from tappalka participation: via totalRewardsEarned and wallet
+- Tappalka session duration: not implemented
