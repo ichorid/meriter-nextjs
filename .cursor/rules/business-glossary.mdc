@@ -37,8 +37,8 @@ Daily "burnable" merits. Auto-credited to a separate account, unused quota expir
 **Rules:**
 - NOT mixed with main wallet
 - Amount CANNOT exceed single credit amount — excess burns
-- NOT used for system fee payments (only global merits)
-- When both quota and merits can be used — quota is spent FIRST
+- System fees (post, poll, forward) are paid from global wallet; exception: post creation may be paid from quota first when community setting `canPayPostFromQuota` is true, then wallet
+- When both quota and wallet can be used for an action — quota is spent FIRST
 
 ### Wallet
 Accumulated merits of a user in a specific community. Unlike quota — does NOT expire, accumulates.
@@ -46,27 +46,39 @@ Accumulated merits of a user in a specific community. Unlike quota — does NOT 
 ### Fee (Commission)
 System commission for an action (publishing, commenting). Merits are BURNED — not transferred to anyone.
 
+### Effective Beneficiary
+User who receives merits from withdrawal (and is allowed to withdraw). For a publication: `publication.beneficiaryId` if set, otherwise the author. Used in permission and withdrawal logic.
+
+### Poll
+Separate entity from Publication (own collection `polls`). Has question, options, expiresAt; voting spends merits (weight = amount). No "rating" on poll; neutral votes only. Creation cost: `settings.pollCost`.
+
+### Post Type
+Publication has `postType`: `'basic' | 'poll' | 'project'`. Used for forwarding and display. (Standalone Poll entity is separate from publications.)
+
+### Permission Rules
+Community configuration: `permissionRules` — role → action → allow/deny, with optional conditions (e.g. `canVoteForOwnPosts`). Controls who can publish, vote, edit, etc. Replaces legacy toggles like canPublish, whoCanVote.
+
+### Edit Window
+Time after publication during which the author (or others if `allowEditByOthers`) can edit. **In code:** `settings.editWindowMinutes` (0 = no limit); overridable per rule via `permissionRules[].conditions.canEditAfterMinutes`.
+
 ---
 
 ## Rating Concepts
 
 ### Post Rating
-Sum of merits "attached" to a post through comments. Can be positive or negative.
+Sum of merits "attached" to a post through comments (votes). Can be positive or negative.
 
-### Maximum Rating
-Total merits collected by a post throughout history (historical metric).
+**In code:** Stored as `publication.metrics.score`.
+
+### Maximum Rating (lifetimeCredits)
+Total merits ever credited to a post throughout history (votes, author top-up, tappalka wins). Never decreased.
+
+**In code:** Stored as `publication.lifetimeCredits`.
 
 ### Rates (Multipliers)
-Merit multipliers for specific communities or content types.
+Merit multipliers for specific communities or content types (e.g. ×2, ×0.1, ×10).
 
-**Examples:**
-- ×2: 1 user merit = 2 merits on post
-- ×0.1: 1 user merit = 0.1 merits on post
-- ×10: 1 user merit = 10 merits on post
-
-**Configuration:**
-- Set by superadmin for global communities
-- Displayed as ×2, ×10, ×0.1, etc.
+**Status:** Planned only. No `rateMultiplier` field in community schema and no runtime multiplier application in current codebase.
 
 ---
 
@@ -91,7 +103,7 @@ Community created and managed by users.
 - User can be member of ANY number of local communities
 - User can be lead of ANY number of communities
 - User can voluntarily leave any local community
-- Lead CANNOT delete community — only request deletion from administration
+- Lead CANNOT delete community — only request deletion from administration (dedicated "request deletion" API is not implemented in current codebase)
 
 ### Lead
 Administrator of a local community (creator or appointed). Has access to community settings.
@@ -103,15 +115,21 @@ Administrator of a local community (creator or appointed). Has access to communi
 ### Post Forwarding
 Moving a post from one community to another.
 
-**Two modes:**
-- **Copy** — without merits, original preserved (DEFAULT)
-- **Transfer** — with merits, original deleted
+**Two modes (source community `settings.forwardRule`):**
+- **standard** — copy without merits, original preserved (DEFAULT)
+- **project** — transfer with merits, original deleted
+
+**In code:** `community.settings.forwardRule`: `'standard' | 'project'`.
 
 ### Merit Withdrawal
-Transferring merits from post rating to author's wallet. Post rating decreases.
+Transferring merits from post rating to the effective beneficiary's wallet. Post rating (`metrics.score`) decreases.
+
+**Effective beneficiary:** `publication.beneficiaryId` if set, otherwise the author. Only the effective beneficiary may withdraw; they receive the merits.
 
 ### Post Closing
-Deleting post to profile archive. Closed post CANNOT be re-published.
+Post is moved to archive (removed from feed). Closed post CANNOT be re-published.
+
+**In code:** `publication.status`: `'active' | 'closed'`; `closeReason`: `'manual' | 'ttl' | 'inactive' | 'negative_rating'`; optional `closingSummary` with distribution totals.
 
 ---
 
@@ -121,25 +139,39 @@ Deleting post to profile archive. Closed post CANNOT be re-published.
 Mechanism for comparing two posts for merit emission. User sees two posts, chooses better one — chosen post receives merit (emission).
 
 ### Emission
-Creation of new merits by the system. Happens through tappalka, from administration, or as welcome merits.
+Creation of new merits by the system. Happens through tappalka, from administration, or as welcome merits at registration.
+
+**Welcome merits:** Amount from platform setting `welcomeMeritsGlobal` (PlatformSettings); credited to global wallet at registration.
 
 ### Stop-Loss
 Minimum rating/merit threshold below which post stops being shown in tappalka. Set by post owner.
+
+**In code:** `publication.stopLoss`.
 
 ### Investment Pool
 Post-level balance funded by investors. Used first for tappalka show-cost deductions in investment mode.
 
 ### Investment Contract
-Immutable agreement created at post publication with investing enabled. Defines `investorSharePercent` and distribution rules between author and investors.
+Immutable agreement created at post publication when investing is enabled. Defines `investorSharePercent` (within community `settings.investorShareMin`..`settings.investorShareMax`) and distribution rules between author and investors.
+
+**In code:** `publication.investorSharePercent`; bounds in `community.settings.investorShareMin` / `investorShareMax`.
 
 ### Investor Share
 Portion of withdrawal/close distribution allocated to investors according to contract percent, then split proportionally by each investor's contribution.
 
 ### TTL (Time To Live)
-Post lifetime limit in days. For investment posts, TTL may be required by community setting (`requireTTLForInvestPosts`) and capped by `maxTTL`.
+Post lifetime limit in days. For investment posts, TTL may be required by community setting `requireTTLForInvestPosts` and capped by `maxTTL`.
+
+**In code:** `publication.ttlDays` (e.g. 7, 14, 30, 60, 90), `publication.ttlExpiresAt`; community: `settings.requireTTLForInvestPosts`, `settings.maxTTL`.
 
 ### Inactive Close
 Automatic post closing after configured days without earnings (`inactiveCloseDays`).
+
+### Comment (Vote) Withdrawal
+Withdrawal of merits from one's own comment (vote) to the voter's wallet. **In code:** `votes.withdrawFromVote`; same effective-beneficiary and balance rules as for post withdrawal.
+
+### noAuthorWalletSpend
+Publication-level flag. When true, tappalka show-cost is NOT taken from the author's wallet; only investment pool and post rating are used. Post exits tappalka when pool and rating (down to stop-loss) are exhausted.
 
 ---
 
