@@ -36,6 +36,7 @@ Main content type on the platform. All other types inherit from base post.
 | createdAt | Creation timestamp |
 | authorId | Creator user id |
 | communityId | Community where post is published |
+| beneficiaryId | Optional; effective beneficiary for withdrawal (defaults to author when unset) |
 | metrics | Object including `score` (current merit total on post), `upvotes`, `downvotes`, `commentCount` |
 | lifetimeCredits | Total merits ever credited to this post (votes, author top-up, tappalka wins); never decreased; used for closing summary |
 | status, closedAt, closeReason | Lifecycle: active/closed, close time, reason (`manual`, `ttl`, `inactive`, `negative_rating`) |
@@ -46,7 +47,7 @@ URL for sharing is derived from publication id; there is no stored `permalink` f
 
 ## Poll
 
-Inherits from base post.
+Conceptually similar to base post (content with time limit, no own rating, neutral votes only). In code, **Poll is a separate entity**: its own collection (`polls`) and schema with `question`, `options`, `expiresAt`, and metrics (`totalCasts`, `casterCount`, `totalAmount`). It is not a Publication subtype or a publication with `postType: 'poll'`.
 
 ### Differences from Base Post
 
@@ -116,6 +117,7 @@ Inherits from base post.
 - Available within `settings.editWindowMinutes` time window (default: 30 minutes after publication).
 - The edit window can also be overridden per permission rule via `permissionRules[].conditions.canEditAfterMinutes` (0 = no time limit).
 - After time expires — only closing or forwarding
+- Edit history is stored in the `editHistory` array (`editedBy`, `editedAt`) on the publication.
 
 ### Post Closing
 - Post removed from feed; saved in user's profile archive.
@@ -157,17 +159,32 @@ Inherits from base post.
 | **Neutral** | Text only, no merits | No weighted amount transfer |
 | **Negative (Downvote)** | Merits removed from post, rating decreases, merits BURN | Wallet ONLY |
 
-Weighted comments (votes) on publications are represented by the **Vote** entity (`targetType: 'publication'`, `targetId` = publication id). Vote has `amountQuota`, `amountWallet` (combined effect is the merit weight), and optional comment text. A separate **Comment** entity exists for threaded discussions (`content`, `metrics.score`, replies).
+Weighted comments (votes) on publications are represented by the **Vote** entity (`targetType: 'publication'`, `targetId` = publication id). Vote has `amountQuota`, `amountWallet` (combined effect is the merit weight), optional comment text, and `direction: 'up' | 'down'`. A separate **Comment** entity exists for threaded discussions: it has `content`, `metrics.score`, `metrics.replyCount`, and `parentCommentId`; replies are stored as separate Comment documents with the same target and their `parentCommentId` set to the parent comment id.
 
 ### Comment Data Model (Vote as comment with weight)
 
 | Field | Description |
 |-------|-------------|
 | amountQuota, amountWallet | Merits brought/removed (0 for neutral); effective weight = sum of these |
+| direction | `'up'` or `'down'` (explicit vote direction in schema) |
 | comment | Comment text (optional on Vote) |
 | userId | Vote author |
 | createdAt | Creation timestamp |
 | targetType, targetId | Target publication (or vote for nested) |
+| communityId | Community context (required in Vote schema) |
+| images | Optional array of image URLs on Vote |
+
+### Comment entity (threaded discussions)
+
+| Field | Description |
+|-------|-------------|
+| content | Comment text (required) |
+| metrics | Object with `score`, `upvotes`, `downvotes`, `replyCount` |
+| parentCommentId | Optional; when set, this comment is a reply to that comment |
+| authorId | Comment author |
+| targetType, targetId | Target publication or parent comment |
+| images | Optional array of image URLs |
+| createdAt, updatedAt | Timestamps |
 
 ---
 
@@ -175,7 +192,7 @@ Weighted comments (votes) on publications are represented by the **Vote** entity
 
 ### Separate Comment Fee
 - Current codebase does **not** implement a dedicated `commentFee` / `commentCost` setting.
-- For comments/votes, balance changes come from vote amounts (`quotaAmount` / `walletAmount`) and direction rules.
+- For comments/votes, balance changes come from vote amounts (`amountQuota` / `amountWallet`) and direction rules.
 - Legacy docs mentioning fixed "0.1 merit comment fee" are outdated for current implementation.
 
 ### What Gets Paid
@@ -359,4 +376,4 @@ Use "base post + poll" combination, provide place for resource list in post.
 - Withdrawal from own comment/vote: see Comment Merit Withdrawal below (implemented).
 
 ### Comment Merit Withdrawal
-- Withdrawal of merits from one's own comment (vote) is implemented: `votes.withdrawFromVote` (and related checks in comment service). If a comment (vote) is downvoted to negative score, same withdrawal/beneficiary rules apply as for posts; automatic 24h deduction from author wallet is not implemented.
+- Withdrawal of merits from one's own comment (vote) is implemented: `votes.withdrawFromVote` procedure in the votes router; authorization is enforced in the vote service (`canUserWithdraw` for targetType `'vote'`). If a comment (vote) is downvoted to negative score, same withdrawal/beneficiary rules apply as for posts; automatic 24h deduction from author wallet is not implemented.
