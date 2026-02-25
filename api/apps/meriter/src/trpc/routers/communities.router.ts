@@ -719,6 +719,9 @@ export const communitiesRouter = router({
       // Remove from user memberships
       await ctx.userService.removeCommunityMembership(input.userId, input.id);
 
+      // Remove user's role (lead/participant) so profile no longer shows this team
+      await ctx.userCommunityRoleService.removeRole(input.userId, input.id);
+
       return { success: true, message: 'Member removed successfully' };
     }),
 

@@ -46,8 +46,9 @@ export const useRemoveCommunityMember = (communityId: string) => {
     const utils = trpc.useUtils();
 
     return trpc.communities.removeMember.useMutation({
-        onSuccess: () => {
+        onSuccess: (_data, variables) => {
             utils.communities.getMembers.invalidate({ id: communityId });
+            utils.users.getUserRoles.invalidate({ userId: variables.userId });
         },
     });
 };
