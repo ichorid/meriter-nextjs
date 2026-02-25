@@ -1,3 +1,4 @@
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useRouter } from 'next/navigation';
@@ -6,6 +7,7 @@ import { useRouter } from 'next/navigation';
  * Hook to create a team (local community)
  */
 export function useCreateTeam() {
+  const t = useTranslations('teams');
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);
   const router = useRouter();
@@ -18,13 +20,13 @@ export function useCreateTeam() {
       utils.users.getUserCommunities.invalidate();
       utils.users.getMyLeadCommunities.invalidate();
       
-      addToast('Команда успешно создана', 'success');
+      addToast(t('teamCreated'), 'success');
       
       // Navigate to the new community
       router.push(`/meriter/communities/${community.id}`);
     },
     onError: (error) => {
-      const message = error.message || 'Не удалось создать команду';
+      const message = error.message || t('teamCreateError');
       addToast(message, 'error');
     },
   });
@@ -34,6 +36,7 @@ export function useCreateTeam() {
  * Hook to invite user to a team
  */
 export function useInviteToTeam() {
+  const t = useTranslations('teams');
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);
 
@@ -45,10 +48,10 @@ export function useInviteToTeam() {
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
       
-      addToast('Приглашение отправлено', 'success');
+      addToast(t('inviteSent'), 'success');
     },
     onError: (error) => {
-      const message = error.message || 'Не удалось пригласить пользователя';
+      const message = error.message || t('inviteError');
       addToast(message, 'error');
     },
   });
@@ -58,6 +61,7 @@ export function useInviteToTeam() {
  * Hook to assign user as lead of a community
  */
 export function useAssignLead() {
+  const t = useTranslations('teams');
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);
 
@@ -70,10 +74,10 @@ export function useAssignLead() {
       utils.communities.getById.invalidate();
       utils.communities.getAll.invalidate();
       
-      addToast('Пользователь успешно назначен лидом', 'success');
+      addToast(t('leadAssigned'), 'success');
     },
     onError: (error) => {
-      const message = error.message || 'Не удалось назначить лидом';
+      const message = error.message || t('assignLeadError');
       addToast(message, 'error');
     },
   });
@@ -100,6 +104,7 @@ export function useMyLeadCommunities() {
  * Hook to accept a team invitation
  */
 export function useAcceptTeamInvitation() {
+  const t = useTranslations('teams');
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);
 
@@ -112,10 +117,10 @@ export function useAcceptTeamInvitation() {
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
 
-      addToast('Приглашение принято', 'success');
+      addToast(t('invitationAccepted'), 'success');
     },
     onError: (error) => {
-      const message = error.message || 'Не удалось принять приглашение';
+      const message = error.message || t('acceptInvitationError');
       addToast(message, 'error');
     },
   });
@@ -125,6 +130,7 @@ export function useAcceptTeamInvitation() {
  * Hook to reject a team invitation
  */
 export function useRejectTeamInvitation() {
+  const t = useTranslations('teams');
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);
 
@@ -133,10 +139,10 @@ export function useRejectTeamInvitation() {
       // Invalidate relevant queries
       utils.notifications.getAll.invalidate();
       
-      addToast('Приглашение отклонено', 'success');
+      addToast(t('invitationRejected'), 'success');
     },
     onError: (error) => {
-      const message = error.message || 'Не удалось отклонить приглашение';
+      const message = error.message || t('rejectInvitationError');
       addToast(message, 'error');
     },
   });

@@ -14,6 +14,8 @@
         "lint": "eslint src --ext .ts,.tsx",
         "lint:fix": "eslint src --ext .ts,.tsx --fix",
         "check:render-loops": "node scripts/check-render-loops.js",
+        "scan:translations": "node scripts/scan-translations.js",
+        "validate:translations": "node scripts/validate-translations.js",
         "prebuild": "node scripts/generate-build-info.js && pnpm check:render-loops"
     },
     "dependencies": {

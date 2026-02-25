@@ -224,10 +224,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     const finalPostType = isProject ? 'project' : postType;
     if (finalPostType === 'project') {
       if (!impactArea) {
-        newErrors.impactArea = t('errors.impactAreaRequired') || 'Impact area is required for project posts';
+        newErrors.impactArea = t('errors.impactAreaRequired');
       }
       if (!stage) {
-        newErrors.stage = t('errors.stageRequired') || 'Stage is required for project posts';
+        newErrors.stage = t('errors.stageRequired');
       }
     }
 
@@ -573,12 +573,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           {postType === 'project' && (
             <>
               <div className="text-xs text-muted-foreground mb-2">
-                {t('taxonomy.requiredForProjects') || 'Required fields for project posts'}
+                {t('taxonomy.requiredForProjects')}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <BrandFormControl
-                  label={t('taxonomy.impactArea') || 'Impact Area'}
+                  label={t('taxonomy.impactArea')}
                   error={errors.impactArea}
                   required
                 >
@@ -588,7 +588,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     disabled={isSubmitting}
                   >
                     <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
-                      <SelectValue placeholder={t('taxonomy.selectImpactArea') || 'Choose one'} />
+                      <SelectValue placeholder={t('taxonomy.selectImpactArea')} />
                     </SelectTrigger>
                     <SelectContent>
                       {(Array.isArray(IMPACT_AREAS) ? [...IMPACT_AREAS] : []).map((area: ImpactArea) => (
@@ -601,7 +601,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 </BrandFormControl>
 
                 <BrandFormControl
-                  label={t('taxonomy.stage') || 'Stage'}
+                  label={t('taxonomy.stage')}
                   error={errors.stage}
                   required
                 >
@@ -611,7 +611,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     disabled={isSubmitting}
                   >
                     <SelectTrigger className={cn('h-11 rounded-xl w-full')}>
-                      <SelectValue placeholder={t('taxonomy.selectStage') || 'Choose one'} />
+                      <SelectValue placeholder={t('taxonomy.selectStage')} />
                     </SelectTrigger>
                     <SelectContent>
                       {(Array.isArray(STAGES) ? [...STAGES] : []).map((s: Stage) => (
@@ -625,14 +625,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               </div>
 
               <div className="text-xs text-muted-foreground mt-4 mb-2">
-                {t('taxonomy.optionalFacets') || 'Optional facets (folded by default). Add them only if they help discovery.'}
+                {t('taxonomy.optionalFacets')}
               </div>
 
               <CollapsibleSection
-                title={`${t('taxonomy.beneficiaries') || 'Beneficiaries'} (≤2)${beneficiaries.length ? ` • ${beneficiaries.length}` : ''}`}
+                title={`${t('taxonomy.beneficiaries')} (≤2)${beneficiaries.length ? ` • ${beneficiaries.length}` : ''}`}
                 open={openBeneficiaries}
                 setOpen={setOpenBeneficiaries}
-                summary={beneficiaries.length ? beneficiaries.map(translateBeneficiary).join(', ') : t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                summary={beneficiaries.length ? beneficiaries.map(translateBeneficiary).join(', ') : t('taxonomy.beneficiariesHint')}
                 right={
                   <Button
                     variant="ghost"
@@ -643,7 +643,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     }}
                     disabled={!beneficiaries.length || isSubmitting}
                   >
-                    {t('taxonomy.clear') || 'Clear'}
+                    {t('taxonomy.clear')}
                   </Button>
                 }
               >
@@ -652,7 +652,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     options={Array.isArray(BENEFICIARIES) ? [...BENEFICIARIES] : []}
                     selected={beneficiaries}
                     cap={2}
-                    hint={t('taxonomy.beneficiariesHint') || 'Who benefits directly?'}
+                    hint={t('taxonomy.beneficiariesHint')}
                     translateValue={translateBeneficiary}
                     onToggle={(v: Beneficiary) => setBeneficiaries((s) => toggleInArray(s, v))}
                   />
@@ -660,10 +660,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               </CollapsibleSection>
 
               <CollapsibleSection
-                title={`${t('taxonomy.methods') || 'What you do'} (≤3)${methods.length ? ` • ${methods.length}` : ''}`}
+                title={`${t('taxonomy.methods')} (≤3)${methods.length ? ` • ${methods.length}` : ''}`}
                 open={openMethods}
                 setOpen={setOpenMethods}
-                summary={methods.length ? methods.map(translateMethod).join(', ') : t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                summary={methods.length ? methods.map(translateMethod).join(', ') : t('taxonomy.methodsHint')}
                 right={
                   <Button
                     variant="ghost"
@@ -674,7 +674,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     }}
                     disabled={!methods.length || isSubmitting}
                   >
-                    {t('taxonomy.clear') || 'Clear'}
+                    {t('taxonomy.clear')}
                   </Button>
                 }
               >
@@ -683,7 +683,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     options={Array.isArray(METHODS) ? [...METHODS] : []}
                     selected={methods}
                     cap={3}
-                    hint={t('taxonomy.methodsHint') || 'How does the project create impact?'}
+                    hint={t('taxonomy.methodsHint')}
                     translateValue={translateMethod}
                     onToggle={(v) => setMethods((s) => toggleInArray(s, v))}
                   />
@@ -691,10 +691,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               </CollapsibleSection>
 
               <CollapsibleSection
-                title={`${t('taxonomy.helpNeeded') || 'Help needed'} (≤3)${helpNeeded.length ? ` • ${helpNeeded.length}` : ''}`}
+                title={`${t('taxonomy.helpNeeded')} (≤3)${helpNeeded.length ? ` • ${helpNeeded.length}` : ''}`}
                 open={openHelp}
                 setOpen={setOpenHelp}
-                summary={helpNeeded.length ? helpNeeded.map(translateHelpNeeded).join(', ') : t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                summary={helpNeeded.length ? helpNeeded.map(translateHelpNeeded).join(', ') : t('taxonomy.helpNeededHint')}
                 right={
                   <Button
                     variant="ghost"
@@ -705,7 +705,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     }}
                     disabled={!helpNeeded.length || isSubmitting}
                   >
-                    {t('taxonomy.clear') || 'Clear'}
+                    {t('taxonomy.clear')}
                   </Button>
                 }
               >
@@ -714,7 +714,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     options={Array.isArray(HELP_NEEDED) ? [...HELP_NEEDED] : []}
                     selected={helpNeeded}
                     cap={3}
-                    hint={t('taxonomy.helpNeededHint') || 'What are you collecting right now?'}
+                    hint={t('taxonomy.helpNeededHint')}
                     translateValue={translateHelpNeeded}
                     onToggle={(v: HelpNeeded) => setHelpNeeded((s) => toggleInArray(s, v))}
                   />
@@ -876,9 +876,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           )}
 
           <BrandFormControl
-            label={t('fields.images') || 'Images'}
+            label={t('fields.images')}
             error={errors.images}
-            helperText={t('fields.imagesHelp') || 'Upload up to 10 images for your post'}
+            helperText={t('fields.imagesHelp')}
           >
             <ImageGallery
               images={images}
@@ -1039,7 +1039,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 className="rounded-xl active:scale-[0.98]"
               >
                 {(isSubmitting || isSubmittingRef.current) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditMode ? (t('update') || 'Update') : t('create')}
+                {isEditMode ? t('update') : t('create')}
               </Button>
             </div>
           </div>

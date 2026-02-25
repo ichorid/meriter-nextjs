@@ -85,28 +85,27 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
     const winRewardNum = parseFloat(winReward);
     if (isNaN(winRewardNum) || winRewardNum <= 0) {
-      errors.winReward = t('validation.winRewardInvalid') || 'Win reward must be a positive number';
+      errors.winReward = t('validation.winRewardInvalid');
     }
 
     const userRewardNum = parseFloat(userReward);
     if (isNaN(userRewardNum) || userRewardNum <= 0) {
-      errors.userReward = t('validation.userRewardInvalid') || 'User reward must be a positive number';
+      errors.userReward = t('validation.userRewardInvalid');
     }
 
     const comparisonsRequiredNum = parseInt(comparisonsRequired, 10);
     if (isNaN(comparisonsRequiredNum) || comparisonsRequiredNum < 1) {
-      errors.comparisonsRequired =
-        t('validation.comparisonsRequiredInvalid') || 'Comparisons required must be at least 1';
+      errors.comparisonsRequired = t('validation.comparisonsRequiredInvalid');
     }
 
     const showCostNum = parseFloat(showCost);
     if (isNaN(showCostNum) || showCostNum < 0) {
-      errors.showCost = t('validation.showCostInvalid') || 'Show cost must be a non-negative number';
+      errors.showCost = t('validation.showCostInvalid');
     }
 
     const minRatingNum = parseFloat(minRating);
     if (isNaN(minRatingNum) || minRatingNum < 0) {
-      errors.minRating = t('validation.minRatingInvalid') || 'Minimum rating must be a non-negative number';
+      errors.minRating = t('validation.minRatingInvalid');
     }
 
     setValidationErrors(errors);
@@ -115,7 +114,7 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
   const handleSave = async () => {
     if (!validate()) {
-      addToast(t('validation.errors') || 'Please fix validation errors', 'error');
+      addToast(t('validation.errors'), 'error');
       return;
     }
 
@@ -133,13 +132,10 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
       };
 
       await onSave({ tappalkaSettings: settingsToSave });
-      addToast(t('saveSuccess') || 'Настройки карусели постов сохранены', 'success');
+      addToast(t('saveSuccess'), 'success');
     } catch (error) {
       console.error('Failed to save tappalka settings:', error);
-      addToast(
-        t('saveError') || 'Не удалось сохранить настройки карусели постов',
-        'error'
-      );
+      addToast(t('saveError'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -149,26 +145,22 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
     <div className="space-y-6">
       <div className="bg-base-200 rounded-lg p-6 shadow-none">
         <h3 className="text-lg font-semibold text-brand-text-primary mb-4">
-          {t('title') || 'Карусель постов'}
+          {t('title')}
         </h3>
         <p className="text-sm text-brand-text-secondary mb-6">
-          {t('description') ||
-            'Настройка механики сравнения постов (карусель постов) для этого сообщества.'}
+          {t('description')}
         </p>
 
         <div className="space-y-6">
           {/* Enabled Switch */}
           <BrandFormControl
-            label={t('fields.enabled') || 'Включить карусель постов'}
-            helperText={
-              t('fields.enabledHelp') ||
-              'Enable the post comparison mechanic for this community'
-            }
+            label={t('fields.enabled')}
+            helperText={t('fields.enabledHelp')}
           >
             <div className="flex items-center gap-3">
               <Switch checked={enabled} onCheckedChange={setEnabled} />
               <Label className="text-sm font-medium">
-                {enabled ? (t('fields.enabledOn') || 'Enabled') : (t('fields.enabledOff') || 'Disabled')}
+                {enabled ? t('fields.enabledOn') : t('fields.enabledOff')}
               </Label>
             </div>
           </BrandFormControl>
@@ -177,7 +169,7 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
           <CategorySelector
             value={categories}
             onChange={setCategories}
-            label={t('fields.categories') || 'Categories'}
+            label={t('fields.categories')}
             helperText={
               t('fields.categoriesHelp') ||
               'Select categories to include in Tappalka. Leave empty to include all categories.'
@@ -186,11 +178,8 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* Win Reward */}
           <BrandFormControl
-            label={t('fields.winReward') || 'Win Reward'}
-            helperText={
-              t('fields.winRewardHelp') ||
-              'Merits awarded to the winning post (emission). Default: 1'
-            }
+            label={t('fields.winReward')}
+            helperText={t('fields.winRewardHelp')}
             error={validationErrors.winReward}
           >
             <Input
@@ -205,11 +194,8 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* User Reward */}
           <BrandFormControl
-            label={t('fields.userReward') || 'User Reward'}
-            helperText={
-              t('fields.userRewardHelp') ||
-              'Merits awarded to user for completing comparisons. Default: 1'
-            }
+            label={t('fields.userReward')}
+            helperText={t('fields.userRewardHelp')}
             error={validationErrors.userReward}
           >
             <Input
@@ -224,11 +210,8 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* Comparisons Required */}
           <BrandFormControl
-            label={t('fields.comparisonsRequired') || 'Comparisons Required'}
-            helperText={
-              t('fields.comparisonsRequiredHelp') ||
-              'Number of comparisons required to earn user reward. Default: 10'
-            }
+            label={t('fields.comparisonsRequired')}
+            helperText={t('fields.comparisonsRequiredHelp')}
             error={validationErrors.comparisonsRequired}
           >
             <Input
@@ -243,11 +226,8 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* Show Cost */}
           <BrandFormControl
-            label={t('fields.showCost') || 'Show Cost'}
-            helperText={
-              t('fields.showCostHelp') ||
-              'Cost per post show (deducted from both posts). Default: 0.1'
-            }
+            label={t('fields.showCost')}
+            helperText={t('fields.showCostHelp')}
             error={validationErrors.showCost}
           >
             <Input
@@ -262,11 +242,8 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* Min Rating */}
           <BrandFormControl
-            label={t('fields.minRating') || 'Minimum Rating'}
-            helperText={
-              t('fields.minRatingHelp') ||
-              'Minimum post rating to participate in Tappalka. Default: 1'
-            }
+            label={t('fields.minRating')}
+            helperText={t('fields.minRatingHelp')}
             error={validationErrors.minRating}
           >
             <Input
@@ -281,16 +258,13 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 
           {/* Onboarding Text */}
           <BrandFormControl
-            label={t('fields.onboardingText') || 'Onboarding Text'}
-            helperText={
-              t('fields.onboardingTextHelp') ||
-              'Custom text shown to users when they first open Tappalka. Leave empty to use default text.'
-            }
+            label={t('fields.onboardingText')}
+            helperText={t('fields.onboardingTextHelp')}
           >
             <Textarea
               value={onboardingText}
               onChange={(e) => setOnboardingText(e.target.value)}
-              placeholder={t('fields.onboardingTextPlaceholder') || 'Enter custom onboarding text...'}
+              placeholder={t('fields.onboardingTextPlaceholder')}
               rows={4}
               className="resize-none"
             />
@@ -306,10 +280,10 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('saving') || 'Saving...'}
+                  {t('saving')}
                 </>
               ) : (
-                t('save') || 'Save Settings'
+                t('save')
               )}
             </Button>
           </div>

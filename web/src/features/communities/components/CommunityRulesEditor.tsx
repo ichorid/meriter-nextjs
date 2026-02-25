@@ -1045,13 +1045,13 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         <div className="p-5 space-y-5">
 
         <BrandFormControl 
-          label={t('quotaEnabled') || 'Квота включена'} 
-          helperText={t('quotaEnabledHelp') || 'Если квота выключена, она не будет доступна в сообществе'}
+label={t('quotaEnabled')}
+          helperText={t('quotaEnabledHelp')}
         >
           <div className="flex items-center gap-3">
             <Switch checked={quotaEnabled} onCheckedChange={setQuotaEnabled} />
             <Label className="text-sm font-medium">
-              {quotaEnabled ? (t('quotaEnabledOn') || 'Включена') : (t('quotaEnabledOff') || 'Выключена')}
+              {quotaEnabled ? t('quotaEnabledOn') : t('quotaEnabledOff')}
             </Label>
           </div>
         </BrandFormControl>
@@ -1096,7 +1096,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         )}
 
         {!['future-vision', 'marathon-of-good', 'support', 'team-projects'].includes(community.typeTag ?? '') && (
-          <BrandFormControl label={t('startingMerits') || 'Starting Merits'} helperText={t('startingMeritsHelp') || 'Amount of merits new members receive when invited to this group'}>
+          <BrandFormControl label={t('startingMerits')} helperText={t('startingMeritsHelp')}>
             <Input
               value={startingMerits}
               onChange={(e) => setStartingMerits(e.target.value)}

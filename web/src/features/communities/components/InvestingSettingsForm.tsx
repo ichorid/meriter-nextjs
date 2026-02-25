@@ -77,21 +77,21 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     const minNum = parseInt(investorShareMin, 10);
     const maxNum = parseInt(investorShareMax, 10);
     if (isNaN(minNum) || minNum < 1 || minNum > 99) {
-      errors.investorShareMin = t('validation.shareRange') || 'Must be between 1 and 99';
+      errors.investorShareMin = t('validation.shareRange');
     }
     if (isNaN(maxNum) || maxNum < 1 || maxNum > 99) {
-      errors.investorShareMax = t('validation.shareRange') || 'Must be between 1 and 99';
+      errors.investorShareMax = t('validation.shareRange');
     }
     if (!errors.investorShareMin && !errors.investorShareMax && minNum > maxNum) {
-      errors.investorShareMax = t('validation.minLessMax') || 'Min must be less than or equal to Max';
+      errors.investorShareMax = t('validation.minLessMax');
     }
     const maxTTLNum = maxTTL.trim() === '' ? null : parseInt(maxTTL, 10);
     if (maxTTLNum !== null && (isNaN(maxTTLNum) || maxTTLNum < 1)) {
-      errors.maxTTL = t('validation.maxTTLPositive') || 'Must be 1 or more days';
+      errors.maxTTL = t('validation.maxTTLPositive');
     }
     const inactiveNum = parseInt(inactiveCloseDays, 10);
     if (isNaN(inactiveNum) || inactiveNum < 0) {
-      errors.inactiveCloseDays = t('validation.inactiveCloseNonNegative') || 'Must be 0 or more';
+      errors.inactiveCloseDays = t('validation.inactiveCloseNonNegative');
     }
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
@@ -99,7 +99,7 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
 
   const handleSave = async () => {
     if (!validate()) {
-      addToast(t('validation.errors') || 'Please fix validation errors', 'error');
+      addToast(t('validation.errors'), 'error');
       return;
     }
 
@@ -116,10 +116,10 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           distributeAllByContractOnClose,
         },
       });
-      addToast(t('saveSuccess') || 'Investing settings saved', 'success');
+      addToast(t('saveSuccess'), 'success');
     } catch (error) {
       console.error('Failed to save investing settings:', error);
-      addToast(t('saveError') || 'Failed to save investing settings', 'error');
+      addToast(t('saveError'), 'error');
     } finally {
       setIsSaving(false);
     }
@@ -129,25 +129,21 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
     <div className="space-y-6">
       <div className="bg-base-200 rounded-lg p-6 shadow-none">
         <h3 className="text-lg font-semibold text-brand-text-primary mb-4">
-          {t('title') || 'Investing Settings'}
+          {t('title')}
         </h3>
         <p className="text-sm text-brand-text-secondary mb-6">
-          {t('description') ||
-            'Allow post authors to enable merit investment. Investors receive a share of withdrawals.'}
+          {t('description')}
         </p>
 
         <div className="space-y-6">
           <BrandFormControl
-            label={t('fields.investingEnabled') || 'Enable investing'}
-            helperText={
-              t('fields.investingEnabledHelp') ||
-              'Allow authors to enable investment on their posts'
-            }
+            label={t('fields.investingEnabled')}
+            helperText={t('fields.investingEnabledHelp')}
           >
             <div className="flex items-center gap-3">
               <Switch checked={investingEnabled} onCheckedChange={setInvestingEnabled} />
               <Label className="text-sm font-medium">
-                {investingEnabled ? (t('fields.enabled') || 'Enabled') : (t('fields.disabled') || 'Disabled')}
+                {investingEnabled ? t('fields.enabled') : t('fields.disabled')}
               </Label>
             </div>
           </BrandFormControl>
@@ -155,11 +151,8 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           {investingEnabled && (
             <>
               <BrandFormControl
-                label={t('fields.investorShareRange') || 'Investor share range (%)'}
-                helperText={
-                  t('fields.investorShareRangeHelp') ||
-                  'Min and max allowed for post authors when setting investor share'
-                }
+                label={t('fields.investorShareRange')}
+                helperText={t('fields.investorShareRangeHelp')}
                 error={validationErrors.investorShareMin || validationErrors.investorShareMax}
               >
                 <div className="flex items-center gap-4">
@@ -186,11 +179,8 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           )}
 
           <BrandFormControl
-            label={t('fields.distributeAllByContractOnClose') || 'Distribute all merits by contract on close'}
-            helperText={
-              t('fields.distributeAllByContractOnCloseHelp') ||
-              'When on: on post close, all merits (invest pool + rating) are split between author and investors by contract. When off: pool is returned to investors proportionally, then rating is split by contract.'
-            }
+            label={t('fields.distributeAllByContractOnClose')}
+            helperText={t('fields.distributeAllByContractOnCloseHelp')}
           >
             <div className="flex items-center gap-3">
               <Switch
@@ -198,17 +188,14 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
                 onCheckedChange={setDistributeAllByContractOnClose}
               />
               <Label className="text-sm font-medium">
-                {distributeAllByContractOnClose ? (t('fields.enabled') || 'Enabled') : (t('fields.disabled') || 'Disabled')}
+                {distributeAllByContractOnClose ? t('fields.enabled') : t('fields.disabled')}
               </Label>
             </div>
           </BrandFormControl>
 
           <BrandFormControl
-            label={t('fields.requireTTLForInvestPosts') || 'Require TTL for investment posts'}
-            helperText={
-              t('fields.requireTTLForInvestPostsHelp') ||
-              'When enabled, posts with investing must set a time-to-live (no indefinite)'
-            }
+            label={t('fields.requireTTLForInvestPosts')}
+            helperText={t('fields.requireTTLForInvestPostsHelp')}
           >
             <div className="flex items-center gap-3">
               <Switch
@@ -216,20 +203,20 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
                 onCheckedChange={setRequireTTLForInvestPosts}
               />
               <Label className="text-sm font-medium">
-                {requireTTLForInvestPosts ? (t('fields.enabled') || 'Enabled') : (t('fields.disabled') || 'Disabled')}
+                {requireTTLForInvestPosts ? t('fields.enabled') : t('fields.disabled')}
               </Label>
             </div>
           </BrandFormControl>
 
           <BrandFormControl
-            label={t('fields.maxTTL') || 'Maximum post lifetime (days)'}
-            helperText={t('fields.maxTTLHelp') || 'Leave empty for no limit. Authors cannot set TTL above this.'}
+            label={t('fields.maxTTL')}
+            helperText={t('fields.maxTTLHelp')}
             error={validationErrors.maxTTL}
           >
             <Input
               type="number"
               min={1}
-              placeholder={t('fields.maxTTLPlaceholder') || 'No limit'}
+              placeholder={t('fields.maxTTLPlaceholder')}
               value={maxTTL}
               onChange={(e) => setMaxTTL(e.target.value)}
               className="w-32"
@@ -237,11 +224,8 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
           </BrandFormControl>
 
           <BrandFormControl
-            label={t('fields.inactiveCloseDays') || 'Days of inactivity before auto-close'}
-            helperText={
-              t('fields.inactiveCloseDaysHelp') ||
-              'Post can be auto-closed after this many days without earning'
-            }
+            label={t('fields.inactiveCloseDays')}
+            helperText={t('fields.inactiveCloseDaysHelp')}
             error={validationErrors.inactiveCloseDays}
           >
             <Input
@@ -258,10 +242,10 @@ export const InvestingSettingsForm: React.FC<InvestingSettingsFormProps> = ({
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t('saving') || 'Saving...'}
+                  {t('saving')}
                 </>
               ) : (
-                t('save') || 'Save Settings'
+                t('save')
               )}
             </Button>
           </div>

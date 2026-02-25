@@ -211,10 +211,10 @@ export function UserForm({
                                 onUpload={(url) => setAvatarUrl(url)}
                                 size={120}
                                 labels={{
-                                    upload: t("changeAvatar") || "Change avatar",
-                                    cropTitle: t("cropAvatar") || "Crop avatar",
-                                    cancel: tCommon("cancel") || "Cancel",
-                                    save: t("save") || "Save",
+                                    upload: t("changeAvatar"),
+                                    cropTitle: t("cropAvatar"),
+                                    cancel: tCommon("cancel"),
+                                    save: t("save"),
                                 }}
                             />
                         </div>

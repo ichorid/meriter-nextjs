@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { SimpleStickyHeader } from "@/components/organisms/ContextTopBar/ContextTopBar";
 import { AdaptiveLayout } from "@/components/templates/AdaptiveLayout";
@@ -17,6 +18,7 @@ type LogEntry = {
 };
 
 export default function AuthnTestPage() {
+    const t = useTranslations("common");
     const router = useRouter();
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [username, setUsername] = useState("test_user_" + Math.floor(Math.random() * 1000));
@@ -86,7 +88,7 @@ export default function AuthnTestPage() {
                         <Input
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="username"
+                            placeholder={t("usernamePlaceholder")}
                             className="h-11 rounded-xl w-full"
                         />
                     </BrandFormControl>

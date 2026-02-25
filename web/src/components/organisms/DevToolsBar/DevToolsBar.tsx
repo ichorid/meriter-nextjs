@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/button';
 import { X, User, Shield, LogOut, Loader2, Languages } from 'lucide-react';
@@ -14,6 +15,8 @@ interface DevToolsBarProps {
 }
 
 export function DevToolsBar({ className }: DevToolsBarProps) {
+  const t = useTranslations('common.ariaLabels');
+  const tCommon = useTranslations('common');
   const { user, authenticateFakeUser, authenticateFakeSuperadmin } = useAuth();
   const logoutMutation = useLogout();
   const addToast = useToastStore((state) => state.addToast);
@@ -57,9 +60,9 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
     try {
       setIsAuthenticating(true);
       await authenticateFakeUser();
-      addToast('Вход выполнен как тестовый пользователь', 'success');
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка входа', 'error');
+      addToast(tCommon('loginAsTestUser'), 'success');
+    } catch (error: unknown) {
+      addToast(error instanceof Error ? error.message : tCommon('loginError'), 'error');
     } finally {
       setIsAuthenticating(false);
     }
@@ -69,9 +72,9 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
     try {
       setIsAuthenticating(true);
       await authenticateFakeSuperadmin();
-      addToast('Вход выполнен как суперадминистратор', 'success');
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка входа', 'error');
+      addToast(tCommon('loginAsSuperadmin'), 'success');
+    } catch (error: unknown) {
+      addToast(error instanceof Error ? error.message : tCommon('loginError'), 'error');
     } finally {
       setIsAuthenticating(false);
     }
@@ -80,9 +83,9 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
   const handleLogout = async () => {
     try {
       await logoutMutation.mutateAsync();
-      addToast('Выход выполнен', 'success');
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка выхода', 'error');
+      addToast(tCommon('logoutSuccess'), 'success');
+    } catch (error: unknown) {
+      addToast(error instanceof Error ? error.message : tCommon('logoutError'), 'error');
     }
   };
 
@@ -235,7 +238,7 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
             size="sm"
             onClick={() => setIsHidden(true)}
             className="h-6 w-6 p-0"
-            aria-label="Close dev tools"
+            aria-label={t('closeDevTools')}
           >
             <X className="w-3 h-3" />
           </Button>

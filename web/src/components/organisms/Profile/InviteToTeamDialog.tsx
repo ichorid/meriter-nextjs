@@ -105,7 +105,7 @@ export function InviteToTeamDialog({
             disabled={inviteToTeam.isPending}
             className="rounded-xl"
           >
-            {tCommon('cancel', { defaultValue: 'Отмена' })}
+            {tCommon('cancel')}
           </Button>
           <Button
             onClick={handleInvite}

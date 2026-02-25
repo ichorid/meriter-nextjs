@@ -281,17 +281,17 @@ export const config = {
     }
 
     return {
-      welcomeLeader: `Добро пожаловать в Меритер!
+      welcomeLeader: `Welcome to Meriter!
 
-Добавьте этого бота (@${botUsername}) в один из чатов, в котором являетесь администратором. Для этого кликните на заголовок <b>этого</b> чата, далее на кнопку "еще"/"more", а затем на "добавить в группу"/"add to group" и выберите сообщество, в которое будет добавлен бот.`,
+Add this bot (@${botUsername}) to one of the chats where you are an administrator. To do this, click on the chat header, then the "more" button, then "add to group" and select the community to add the bot to.`,
 
-      welcomeUser: `Добро пожаловать в Меритер! Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
+      welcomeUser: `Welcome to Meriter! Sign in via the app: https://t.me/${botUsername}?startapp=login`,
 
-      authUser: `Войдите через приложение: https://t.me/${botUsername}?startapp=login`,
+      authUser: `Sign in via the app: https://t.me/${botUsername}?startapp=login`,
 
-      addedPublicationReply: `Сообщение добавлено в приложение https://t.me/${botUsername}?startapp=publication&id={link}. Перейдите, чтобы оставить своё мнение и узнать, что думают другие`,
+      addedPublicationReply: `Message added to the app https://t.me/${botUsername}?startapp=publication&id={link}. Go there to share your opinion and see what others think.`,
 
-      approvedPendingWords: ['одобрить'],
+      approvedPendingWords: ['approve'],
     };
   },
 };

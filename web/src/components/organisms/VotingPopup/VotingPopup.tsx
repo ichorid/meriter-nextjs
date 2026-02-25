@@ -197,7 +197,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     // Check feature flag - comment voting is disabled by default
     if (votingTargetType === 'comment' && !enableCommentVoting) {
-      updateVotingFormData({ error: t('commentVotingDisabled') || 'Voting on comments is disabled. You can only vote on posts/publications.' });
+      updateVotingFormData({ error: t('commentVotingDisabled') });
       return;
     }
 
@@ -434,7 +434,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
           commentMode={effectiveCommentMode}
           hideQuota={effectiveCommentMode === 'neutralOnly'}
-          submitButtonLabel={effectiveCommentMode === 'neutralOnly' ? (t('commentButton') || 'Comment') : undefined}
+          submitButtonLabel={effectiveCommentMode === 'neutralOnly' ? t('commentButton') : undefined}
         />
         </div>
       </div>

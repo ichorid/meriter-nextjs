@@ -47,7 +47,7 @@ export const CategoryManagement: React.FC = () => {
 
   const handleSaveEdit = async (categoryId: string) => {
     if (!editName.trim()) {
-      addToast(t('errors.nameRequired') || 'Name is required', 'error');
+      addToast(t('errors.nameRequired'), 'error');
       return;
     }
 
@@ -58,16 +58,16 @@ export const CategoryManagement: React.FC = () => {
       });
       setEditingId(null);
       setEditName('');
-      addToast(t('updated') || 'Category updated', 'success');
+      addToast(t('updated'), 'success');
     } catch (error) {
       console.error('Update category error:', error);
-      addToast(t('errors.updateFailed') || 'Failed to update category', 'error');
+      addToast(t('errors.updateFailed'), 'error');
     }
   };
 
   const handleCreate = async () => {
     if (!newCategoryName.trim()) {
-      addToast(t('errors.nameRequired') || 'Name is required', 'error');
+      addToast(t('errors.nameRequired'), 'error');
       return;
     }
 
@@ -77,40 +77,40 @@ export const CategoryManagement: React.FC = () => {
         name: newCategoryName.trim(),
       });
       setNewCategoryName('');
-      addToast(t('created') || 'Category created', 'success');
+      addToast(t('created'), 'success');
     } catch (error: any) {
       console.error('Create category error:', error);
-      addToast(error?.message || t('errors.createFailed') || 'Failed to create category', 'error');
+      addToast(error?.message || t('errors.createFailed'), 'error');
     } finally {
       setIsCreating(false);
     }
   };
 
   const handleDelete = async (categoryId: string) => {
-    if (!confirm(t('confirmDelete') || 'Are you sure you want to delete this category? It will be removed from all publications.')) {
+    if (!confirm(t('confirmDelete'))) {
       return;
     }
 
     try {
       await deleteCategory.mutateAsync({ id: categoryId });
-      addToast(t('deleted') || 'Category deleted', 'success');
+      addToast(t('deleted'), 'success');
     } catch (error) {
       console.error('Delete category error:', error);
-      addToast(t('errors.deleteFailed') || 'Failed to delete category', 'error');
+      addToast(t('errors.deleteFailed'), 'error');
     }
   };
 
   const handleInitializeDefaults = async () => {
-    if (!confirm(t('confirmInitialize') || 'This will create 10 default categories. Continue?')) {
+    if (!confirm(t('confirmInitialize'))) {
       return;
     }
 
     try {
       await initializeDefaults.mutateAsync();
-      addToast(t('initialized') || 'Default categories initialized', 'success');
+      addToast(t('initialized'), 'success');
     } catch (error: any) {
       console.error('Initialize defaults error:', error);
-      addToast(error?.message || t('errors.initializeFailed') || 'Failed to initialize defaults', 'error');
+      addToast(error?.message || t('errors.initializeFailed'), 'error');
     }
   };
 

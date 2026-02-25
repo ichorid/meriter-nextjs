@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
@@ -23,6 +24,8 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
   showBackButton = false,
   className,
 }) => {
+  const tAria = useTranslations('common.ariaLabels');
+  const t = useTranslations('postCarousel');
   // Calculate progress percentage
   const progressPercent = comparisonsRequired > 0
     ? Math.min(100, (currentComparisons / comparisonsRequired) * 100)
@@ -43,13 +46,13 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
             size="sm"
             onClick={onBack}
             className="h-8 w-8 p-0 rounded-full hover:bg-base-200 dark:hover:bg-base-800"
-            aria-label="Назад"
+            aria-label={tAria('back')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
         <h1 className="text-lg font-semibold text-base-content flex-1">
-          Сравнение постов
+          {t('comparePostsTitle')}
         </h1>
         {/* Balance on the right - with padding to avoid overlap with close button */}
         <div className="flex items-center gap-1.5 text-sm pr-12">

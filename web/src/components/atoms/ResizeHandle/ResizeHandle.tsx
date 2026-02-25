@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useRef, useCallback, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 export interface ResizeHandleProps {
   /** Callback when resize starts */
@@ -35,6 +36,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
   direction = 'left',
   className = '',
 }) => {
+  const t = useTranslations('common.ariaLabels');
   const handleRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef(false);
   const startXRef = useRef(0);
@@ -118,7 +120,7 @@ export const ResizeHandle: React.FC<ResizeHandleProps> = ({
       }}
       role="separator"
       aria-orientation="vertical"
-      aria-label="Resize panel"
+      aria-label={t('resizePanel')}
     />
   );
 };

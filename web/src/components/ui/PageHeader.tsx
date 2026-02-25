@@ -95,7 +95,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                             size="sm"
                             className="rounded-xl active:scale-[0.98] px-2"
                             onClick={() => setShowSearchModal(true)}
-                            aria-label={t('search') || 'Search'}
+                            aria-label={t('search')}
                         >
                             <Search size={18} className="text-base-content/70" />
                         </Button>
@@ -114,14 +114,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <BottomActionSheet
                     isOpen={showSearchModal}
                     onClose={() => setShowSearchModal(false)}
-                    title={t('search') || 'Search'}
+                    title={t('search')}
                 >
                     <div className="space-y-4">
                         <div className="relative w-full">
                             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
                             <Input
                                 type="text"
-                                placeholder={t('searchPlaceholder') || 'Search...'}
+                                placeholder={t('searchPlaceholder')}
                                 value={searchQuery}
                                 onChange={(e) => handleSearch(e.target.value)}
                                 className={cn('h-11 rounded-xl pl-10 w-full', searchQuery && 'pr-10')}

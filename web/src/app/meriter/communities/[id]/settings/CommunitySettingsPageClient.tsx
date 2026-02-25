@@ -199,31 +199,31 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             value="general"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.general') || 'General'}
+                            {t('tabs.general')}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="rules"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.rules') || tRules('title') || 'Rules'}
+                            {t('tabs.rules') || tRules('title')}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="comments"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.comments') || 'Comments'}
+                            {t('tabs.comments')}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="investing"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.investing') || 'Investing'}
+                            {t('tabs.investing')}
                         </TabsTrigger>
                         <TabsTrigger 
                             value="tappalka"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
-                            {t('tabs.tappalka') || 'Карусель постов'}
+                            {t('tabs.tappalka')}
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className="mt-6">

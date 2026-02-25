@@ -141,7 +141,7 @@ export function useSetAboutIntroduction() {
 }
 
 /**
- * Hook to reset "О проекте" to demo data (superadmin only).
+ * Hook to reset "About" section to demo data (superadmin only).
  */
 export function useResetAboutToDemoData() {
   const utils = trpc.useUtils();

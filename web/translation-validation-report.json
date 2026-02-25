@@ -1,0 +1,864 @@
+{
+  "timestamp": "2026-02-25T23:43:27.041Z",
+  "validationIssues": {
+    "missingInRu": [],
+    "missingInEn": [],
+    "russianInEnglish": [],
+    "englishInRussian": [],
+    "emptyTranslations": []
+  },
+  "hardcodedStrings": [
+    {
+      "file": "app/meriter/communities/[id]/create/CreatePublicationPageClient.tsx",
+      "line": 95,
+      "text": "Earn merits",
+      "fullLine": "{tCommunities('tappalka') || 'Earn merits'}"
+    },
+    {
+      "file": "app/meriter/communities/[id]/create-poll/CreatePollPageClient.tsx",
+      "line": 83,
+      "text": "Earn merits",
+      "fullLine": "{tCommunities('tappalka') || 'Earn merits'}"
+    },
+    {
+      "file": "app/meriter/communities/[id]/posts/[slug]/PostPageClient.tsx",
+      "line": 348,
+      "text": "Investments",
+      "fullLine": "title={tInvesting('breakdownTitle', { defaultValue: 'Investments' })}"
+    },
+    {
+      "file": "app/meriter/communities/[id]/posts/[slug]/PostPageClient.tsx",
+      "line": 357,
+      "text": "Post parameters",
+      "fullLine": "title={tPublicationsCreate('postParamsReadOnly', { defaultValue: 'Post parameters' })}"
+    },
+    {
+      "file": "components/CallCheckAuthDialog.tsx",
+      "line": 160,
+      "text": "Failed to initiate call",
+      "fullLine": "const message = err.message || \"Failed to initiate call\";"
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 126,
+      "text": "Failed to send email",
+      "fullLine": "const message = err.message || \"Failed to send email\";"
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 181,
+      "text": "Verification failed",
+      "fullLine": "const message = err.message || \"Verification failed\";"
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 219,
+      "text": "Enter your email address to receive a login code",
+      "fullLine": "{step === \"email\" ? \"Enter your email address to receive a login code\" : \"Enter the code sent to your email\"}"
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 219,
+      "text": "Enter the code sent to your email",
+      "fullLine": "{step === \"email\" ? \"Enter your email address to receive a login code\" : \"Enter the code sent to your email\"}"
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 227,
+      "text": "Email",
+      "fullLine": "label=\"Email\""
+    },
+    {
+      "file": "components/EmailAuthDialog.tsx",
+      "line": 262,
+      "text": "Verification Code",
+      "fullLine": "label=\"Verification Code\""
+    },
+    {
+      "file": "components/ErrorBoundaryContent.tsx",
+      "line": 61,
+      "text": "Reload Page",
+      "fullLine": "{safeTranslate('reloadPage', 'Reload Page')}"
+    },
+    {
+      "file": "components/ErrorBoundaryContent.tsx",
+      "line": 69,
+      "text": "Go Home",
+      "fullLine": "{safeTranslate('goHome', 'Go Home')}"
+    },
+    {
+      "file": "components/ErrorBoundaryContent.tsx",
+      "line": 75,
+      "text": "Reload Page",
+      "fullLine": "{safeTranslate('reloadPage', 'Reload Page')}"
+    },
+    {
+      "file": "components/atoms/Badge/Badge.tsx",
+      "line": 112,
+      "text": "Badge",
+      "fullLine": "Badge.displayName = 'Badge';"
+    },
+    {
+      "file": "components/atoms/Divider/Divider.tsx",
+      "line": 53,
+      "text": "Divider",
+      "fullLine": "Divider.displayName = 'Divider';"
+    },
+    {
+      "file": "components/atoms/FavoriteStar/FavoriteStar.tsx",
+      "line": 56,
+      "text": "Unfavorite",
+      "fullLine": "aria-label={isFav ? 'Unfavorite' : 'Favorite'}"
+    },
+    {
+      "file": "components/atoms/FavoriteStar/FavoriteStar.tsx",
+      "line": 56,
+      "text": "Favorite",
+      "fullLine": "aria-label={isFav ? 'Unfavorite' : 'Favorite'}"
+    },
+    {
+      "file": "components/atoms/Icon/Icon.tsx",
+      "line": 73,
+      "text": "Icon",
+      "fullLine": "Icon.displayName = 'Icon';"
+    },
+    {
+      "file": "components/atoms/Spinner/Spinner.tsx",
+      "line": 38,
+      "text": "Spinner",
+      "fullLine": "Spinner.displayName = 'Spinner';"
+    },
+    {
+      "file": "components/atoms/Typography/Typography.tsx",
+      "line": 38,
+      "text": "Heading",
+      "fullLine": "Heading.displayName = 'Heading';"
+    },
+    {
+      "file": "components/atoms/Typography/Typography.tsx",
+      "line": 51,
+      "text": "Paragraph",
+      "fullLine": "Paragraph.displayName = 'Paragraph';"
+    },
+    {
+      "file": "components/atoms/Typography/Typography.tsx",
+      "line": 64,
+      "text": "Label",
+      "fullLine": "Label.displayName = 'Label';"
+    },
+    {
+      "file": "components/atoms/Typography/Typography.tsx",
+      "line": 77,
+      "text": "Small",
+      "fullLine": "Small.displayName = 'Small';"
+    },
+    {
+      "file": "components/molecules/Breadcrumbs/Breadcrumbs.tsx",
+      "line": 39,
+      "text": "Profile",
+      "fullLine": "alt=\"Profile\""
+    },
+    {
+      "file": "components/molecules/Breadcrumbs/Breadcrumbs.tsx",
+      "line": 47,
+      "text": "Currency",
+      "fullLine": "{chatIcon && <img className=\"w-4 h-4\" src={chatIcon} alt=\"Currency\" />}"
+    },
+    {
+      "file": "components/molecules/Breadcrumbs/Breadcrumbs.tsx",
+      "line": 55,
+      "text": "Currency",
+      "fullLine": "{chatIcon && <img className=\"w-4 h-4\" src={chatIcon} alt=\"Currency\" />}"
+    },
+    {
+      "file": "components/molecules/EnergyWalletChip/EnergyWalletChip.tsx",
+      "line": 84,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "components/molecules/EnergyWalletChip/EnergyWalletChip.tsx",
+      "line": 113,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "components/molecules/EnergyWalletChip/EnergyWalletChip.tsx",
+      "line": 143,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "components/molecules/FabMenu/HomeFabMenu.tsx",
+      "line": 147,
+      "text": "Close menu",
+      "fullLine": "aria-label={isOpen ? 'Close menu' : 'Open menu'}"
+    },
+    {
+      "file": "components/molecules/FabMenu/HomeFabMenu.tsx",
+      "line": 147,
+      "text": "Open menu",
+      "fullLine": "aria-label={isOpen ? 'Close menu' : 'Open menu'}"
+    },
+    {
+      "file": "components/molecules/LeadCard/LeadCard.tsx",
+      "line": 95,
+      "text": "User",
+      "fullLine": "<AvatarImage src={avatarUrl} alt={displayName || username || 'User'} />"
+    },
+    {
+      "file": "components/molecules/LeadCard/LeadCard.tsx",
+      "line": 107,
+      "text": "Unknown User",
+      "fullLine": "{displayName || username || 'Unknown User'}"
+    },
+    {
+      "file": "components/molecules/RichTextEditor/RichTextEditor.tsx",
+      "line": 54,
+      "text": "Bold",
+      "fullLine": "title=\"Bold\""
+    },
+    {
+      "file": "components/molecules/RichTextEditor/RichTextEditor.tsx",
+      "line": 65,
+      "text": "Italic",
+      "fullLine": "title=\"Italic\""
+    },
+    {
+      "file": "components/molecules/RichTextEditor/RichTextEditor.tsx",
+      "line": 76,
+      "text": "Heading",
+      "fullLine": "title=\"Heading\""
+    },
+    {
+      "file": "components/molecules/RichTextEditor/RichTextEditor.tsx",
+      "line": 107,
+      "text": "Link",
+      "fullLine": "title=\"Link\""
+    },
+    {
+      "file": "components/molecules/RichTextEditor/RichTextEditor.tsx",
+      "line": 117,
+      "text": "Quote",
+      "fullLine": "title=\"Quote\""
+    },
+    {
+      "file": "components/molecules/TeamRequestCard/TeamRequestCard.tsx",
+      "line": 29,
+      "text": "Unknown User",
+      "fullLine": "const displayName = user?.displayName || user?.username || 'Unknown User';"
+    },
+    {
+      "file": "components/molecules/WalletChip/WalletChip.tsx",
+      "line": 56,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "components/molecules/WalletQuotaBlock/WalletQuotaBlock.tsx",
+      "line": 33,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
+      "line": 37,
+      "text": "Publications",
+      "fullLine": "{ value: 'publications', label: 'Publications' },"
+    },
+    {
+      "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
+      "line": 38,
+      "text": "Comments",
+      "fullLine": "{ value: 'comments', label: 'Comments' },"
+    },
+    {
+      "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
+      "line": 39,
+      "text": "Polls",
+      "fullLine": "{ value: 'polls', label: 'Polls' },"
+    },
+    {
+      "file": "components/organisms/AdvancedSearch/AdvancedSearch.tsx",
+      "line": 40,
+      "text": "Communities",
+      "fullLine": "{ value: 'communities', label: 'Communities' },"
+    },
+    {
+      "file": "components/organisms/AvatarBalanceWidget/AvatarBalanceWidget.tsx",
+      "line": 53,
+      "text": "Currency",
+      "fullLine": "{balance1.icon && <img className=\"w-4 h-4 inline\" src={balance1.icon} alt=\"Currency\" />}"
+    },
+    {
+      "file": "components/organisms/AvatarBalanceWidget/AvatarBalanceWidget.tsx",
+      "line": 59,
+      "text": "Currency",
+      "fullLine": "<img className=\"w-4 h-4 inline\" src={balance2.icon} alt=\"Currency\" />"
+    },
+    {
+      "file": "components/organisms/AvatarBalanceWidget/AvatarBalanceWidget.tsx",
+      "line": 67,
+      "text": "User",
+      "fullLine": "{userName || 'User'}"
+    },
+    {
+      "file": "components/organisms/AvatarBalanceWidget/AvatarBalanceWidget.tsx",
+      "line": 74,
+      "text": "User",
+      "fullLine": "alt={userName || 'User'}"
+    },
+    {
+      "file": "components/organisms/Community/CommunityHeroCard.tsx",
+      "line": 160,
+      "text": "Members",
+      "fullLine": "title={tCommunities('members.title') || 'Members'}"
+    },
+    {
+      "file": "components/organisms/Community/CommunityHeroCard.tsx",
+      "line": 177,
+      "text": "Deleted",
+      "fullLine": "aria-label={tCommunities('deleted') || 'Deleted'}"
+    },
+    {
+      "file": "components/organisms/Community/CommunityHeroCard.tsx",
+      "line": 178,
+      "text": "Deleted",
+      "fullLine": "title={tCommunities('deleted') || 'Deleted'}"
+    },
+    {
+      "file": "components/organisms/InvestDialog/InvestDialog.tsx",
+      "line": 198,
+      "text": "Available",
+      "fullLine": "{tShared('available', { defaultValue: 'Available' })} {walletBalance}"
+    },
+    {
+      "file": "components/organisms/NavigationBar/NavigationBar.tsx",
+      "line": 17,
+      "text": "Profile",
+      "fullLine": "{ href: routes.profile, label: 'Profile', icon: 'home' },"
+    },
+    {
+      "file": "components/organisms/NavigationBar/NavigationBar.tsx",
+      "line": 18,
+      "text": "Communities",
+      "fullLine": "{ href: routes.communities, label: 'Communities', icon: 'group' },"
+    },
+    {
+      "file": "components/organisms/NavigationBar/NavigationBar.tsx",
+      "line": 19,
+      "text": "Polls",
+      "fullLine": "{ href: routes.polls, label: 'Polls', icon: 'poll' },"
+    },
+    {
+      "file": "components/organisms/NavigationBar/NavigationBar.tsx",
+      "line": 20,
+      "text": "Wallet",
+      "fullLine": "{ href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },"
+    },
+    {
+      "file": "components/organisms/Profile/ProfileContentCards.tsx",
+      "line": 107,
+      "text": "Activity",
+      "fullLine": "{tProfile('activity') || 'Activity'}"
+    },
+    {
+      "file": "components/organisms/Profile/ProfileFavoritesTab.tsx",
+      "line": 58,
+      "text": "No favorites yet",
+      "fullLine": "title=\"No favorites yet\""
+    },
+    {
+      "file": "components/organisms/Publication/ClosePostDialog.tsx",
+      "line": 140,
+      "text": "Close post",
+      "fullLine": "{tClose('closePostTitle', { defaultValue: 'Close post' })}"
+    },
+    {
+      "file": "components/organisms/Publication/ClosePostDialog.tsx",
+      "line": 184,
+      "text": "To you",
+      "fullLine": "{tClose('toYou', { defaultValue: 'To you' })}"
+    },
+    {
+      "file": "components/organisms/Publication/ClosePostDialog.tsx",
+      "line": 233,
+      "text": "To you",
+      "fullLine": "{tClose('toYou', { defaultValue: 'To you' })}"
+    },
+    {
+      "file": "components/organisms/Publication/ClosePostDialog.tsx",
+      "line": 270,
+      "text": "Close post",
+      "fullLine": "{tClose('closePostButton', { defaultValue: 'Close post' })}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 126,
+      "text": "Forward Post",
+      "fullLine": "{isLead ? 'Forward Post' : 'Propose Forward'}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 126,
+      "text": "Propose Forward",
+      "fullLine": "{isLead ? 'Forward Post' : 'Propose Forward'}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 220,
+      "text": "No communities found",
+      "fullLine": "{searchQuery ? 'No communities found' : 'No communities available'}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 220,
+      "text": "No communities available",
+      "fullLine": "{searchQuery ? 'No communities found' : 'No communities available'}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 233,
+      "text": "Forward",
+      "fullLine": "{isSubmitting ? 'Processing...' : isLead ? 'Forward' : 'Propose'}"
+    },
+    {
+      "file": "components/organisms/Publication/ForwardPopup.tsx",
+      "line": 233,
+      "text": "Propose",
+      "fullLine": "{isSubmitting ? 'Processing...' : isLead ? 'Forward' : 'Propose'}"
+    },
+    {
+      "file": "components/organisms/Publication/PostActions.tsx",
+      "line": 295,
+      "text": "Admin",
+      "fullLine": "title=\"Admin\""
+    },
+    {
+      "file": "components/organisms/Publication/PostInvestingSettingsReadOnly.tsx",
+      "line": 27,
+      "text": "Indefinite",
+      "fullLine": "if (!ttlExpiresAt) return tAdvanced('ttlIndefinite', { defaultValue: 'Indefinite' });"
+    },
+    {
+      "file": "components/organisms/Publication/PostInvestingSettingsReadOnly.tsx",
+      "line": 34,
+      "text": "Indefinite",
+      "fullLine": ": tAdvanced('ttlIndefinite', { defaultValue: 'Indefinite' });"
+    },
+    {
+      "file": "components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "line": 145,
+      "text": "Impact area",
+      "fullLine": "{tTaxonomy('impactArea', { defaultValue: 'Impact area' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "line": 153,
+      "text": "Stage",
+      "fullLine": "{tTaxonomy('stage', { defaultValue: 'Stage' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "line": 163,
+      "text": "Beneficiaries",
+      "fullLine": "{tTaxonomy('beneficiaries', { defaultValue: 'Beneficiaries' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "line": 180,
+      "text": "Methods",
+      "fullLine": "{tTaxonomy('methods', { defaultValue: 'Methods' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "line": 197,
+      "text": "Help needed",
+      "fullLine": "{tTaxonomy('helpNeeded', { defaultValue: 'Help needed' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationActions.tsx",
+      "line": 474,
+      "text": "View investment breakdown",
+      "fullLine": "viewBreakdownTitle={tInvesting('viewBreakdown', { defaultValue: 'View investment breakdown' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationActions.tsx",
+      "line": 526,
+      "text": "Close post",
+      "fullLine": "closePostTitle={tPostClosing('closePostTitle', { defaultValue: 'Close post' })}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationContent.tsx",
+      "line": 103,
+      "text": "Publication cover",
+      "fullLine": "altPrefix={title ? `${title} - Cover` : 'Publication cover'}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationContent.tsx",
+      "line": 111,
+      "text": "Publication image",
+      "fullLine": "altPrefix={title ? `${title} - Image` : 'Publication image'}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationHeader.tsx",
+      "line": 353,
+      "text": "Close post",
+      "fullLine": "title=\"Close post\""
+    },
+    {
+      "file": "components/organisms/Publication/PublicationHeader.tsx",
+      "line": 371,
+      "text": "Review forward proposal",
+      "fullLine": "title={isLead && isPendingForward ? 'Review forward proposal' : 'Forward post'}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationHeader.tsx",
+      "line": 371,
+      "text": "Forward post",
+      "fullLine": "title={isLead && isPendingForward ? 'Review forward proposal' : 'Forward post'}"
+    },
+    {
+      "file": "components/organisms/Publication/PublicationHeader.tsx",
+      "line": 384,
+      "text": "View details",
+      "fullLine": "title=\"View details\""
+    },
+    {
+      "file": "components/organisms/Publication/ReviewForwardPopup.tsx",
+      "line": 33,
+      "text": "Someone",
+      "fullLine": "const proposerName = proposer?.displayName || proposer?.username || 'Someone';"
+    },
+    {
+      "file": "components/organisms/Publication/ReviewForwardPopup.tsx",
+      "line": 104,
+      "text": "Reject",
+      "fullLine": "{isSubmitting ? 'Processing...' : 'Reject'}"
+    },
+    {
+      "file": "components/organisms/Publication/ReviewForwardPopup.tsx",
+      "line": 107,
+      "text": "Confirm",
+      "fullLine": "{isSubmitting ? 'Processing...' : 'Confirm'}"
+    },
+    {
+      "file": "components/organisms/VotingPopup/VotingPanel.tsx",
+      "line": 507,
+      "text": "Close",
+      "fullLine": "aria-label={tShared(\"close\") || \"Close\"}"
+    },
+    {
+      "file": "components/organisms/VotingPopup/VotingPopup.tsx",
+      "line": 392,
+      "text": "This community only allows neutral comments",
+      "fullLine": "if (message === 'This community only allows neutral comments') {"
+    },
+    {
+      "file": "components/organisms/WithdrawPopup/WithdrawPopupContent.tsx",
+      "line": 114,
+      "text": "This community only allows neutral comments",
+      "fullLine": "if (message === 'This community only allows neutral comments') {"
+    },
+    {
+      "file": "components/organisms/WithdrawPopup/WithdrawPopupContent.tsx",
+      "line": 183,
+      "text": "Distribution details",
+      "fullLine": "{tInvesting('distributionDetails', { defaultValue: 'Distribution details' })}"
+    },
+    {
+      "file": "components/templates/Header.tsx",
+      "line": 18,
+      "text": "Home",
+      "fullLine": "pageTitle = 'Home',"
+    },
+    {
+      "file": "components/templates/Header.tsx",
+      "line": 61,
+      "text": "Dark",
+      "fullLine": "title={`Theme: ${theme === 'auto' ? `Auto (${resolvedTheme})` : theme === 'dark' ? 'Dark' : 'Light'}`}"
+    },
+    {
+      "file": "components/templates/Header.tsx",
+      "line": 61,
+      "text": "Light",
+      "fullLine": "title={`Theme: ${theme === 'auto' ? `Auto (${resolvedTheme})` : theme === 'dark' ? 'Dark' : 'Light'}`}"
+    },
+    {
+      "file": "components/templates/LeftSidebar.tsx",
+      "line": 25,
+      "text": "Logo",
+      "fullLine": "logoAlt = 'Logo',"
+    },
+    {
+      "file": "components/templates/PageContent.tsx",
+      "line": 18,
+      "text": "Home",
+      "fullLine": "pageTitle = 'Home',"
+    },
+    {
+      "file": "components/ui/AvatarUploader/AvatarUploader.tsx",
+      "line": 272,
+      "text": "Avatar",
+      "fullLine": "alt=\"Avatar\""
+    },
+    {
+      "file": "components/ui/AvatarUploader/AvatarUploader.tsx",
+      "line": 323,
+      "text": "Preview",
+      "fullLine": "alt=\"Preview\""
+    },
+    {
+      "file": "components/ui/CardHeader.tsx",
+      "line": 33,
+      "text": "Anonymous",
+      "fullLine": "const displayName = author?.name || 'Anonymous';"
+    },
+    {
+      "file": "components/ui/ImageGallery/ImageGallery.tsx",
+      "line": 144,
+      "text": "Remove image",
+      "fullLine": "title=\"Remove image\""
+    },
+    {
+      "file": "components/ui/ImageUploader/ImageUploader.tsx",
+      "line": 240,
+      "text": "Preview",
+      "fullLine": "alt=\"Preview\""
+    },
+    {
+      "file": "components/ui/ImageUploader/ImageUploader.tsx",
+      "line": 309,
+      "text": "Preview",
+      "fullLine": "alt=\"Preview\""
+    },
+    {
+      "file": "components/ui/ImageViewer/ImageThumbnail.tsx",
+      "line": 27,
+      "text": "Image",
+      "fullLine": "alt = 'Image',"
+    },
+    {
+      "file": "components/ui/ImageViewer/ImageViewer.tsx",
+      "line": 20,
+      "text": "Image",
+      "fullLine": "alt = 'Image',"
+    },
+    {
+      "file": "components/ui/ImageViewer/ImageViewer.tsx",
+      "line": 197,
+      "text": "Download",
+      "fullLine": "title=\"Download\""
+    },
+    {
+      "file": "components/ui/shadcn/button.tsx",
+      "line": 54,
+      "text": "Button",
+      "fullLine": "Button.displayName = \"Button\""
+    },
+    {
+      "file": "components/ui/shadcn/card.tsx",
+      "line": 18,
+      "text": "Card",
+      "fullLine": "Card.displayName = \"Card\""
+    },
+    {
+      "file": "components/ui/shadcn/input.tsx",
+      "line": 20,
+      "text": "Input",
+      "fullLine": "Input.displayName = \"Input\""
+    },
+    {
+      "file": "components/ui/shadcn/textarea.tsx",
+      "line": 20,
+      "text": "Textarea",
+      "fullLine": "Textarea.displayName = \"Textarea\""
+    },
+    {
+      "file": "contexts/AuthContext.tsx",
+      "line": 104,
+      "text": "Authentication failed",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Authentication failed';"
+    },
+    {
+      "file": "contexts/AuthContext.tsx",
+      "line": 120,
+      "text": "Authentication failed",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Authentication failed';"
+    },
+    {
+      "file": "features/comments/components/comment.tsx",
+      "line": 101,
+      "text": "Unknown",
+      "fullLine": "const authorName = authorMeta?.name || 'Unknown';"
+    },
+    {
+      "file": "features/comments/components/form-comment-vote-base.tsx",
+      "line": 209,
+      "text": "Send",
+      "fullLine": "alt=\"Send\""
+    },
+    {
+      "file": "features/feed/components/card-publication.tsx",
+      "line": 92,
+      "text": "Publication cover",
+      "fullLine": "altPrefix={title ? `${title} - Cover` : 'Publication cover'}"
+    },
+    {
+      "file": "features/feed/components/card-publication.tsx",
+      "line": 172,
+      "text": "Publication image",
+      "fullLine": "altPrefix={title ? `${title} - Image` : 'Publication image'}"
+    },
+    {
+      "file": "features/feed/components/publication.tsx",
+      "line": 79,
+      "text": "Unknown",
+      "fullLine": "const displayAuthorName = meta?.author?.name || 'Unknown';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 190,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 257,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 277,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 303,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 312,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 322,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/polls/components/form-poll-create.tsx",
+      "line": 330,
+      "text": "Unknown error",
+      "fullLine": "const message = error instanceof Error ? error.message : 'Unknown error';"
+    },
+    {
+      "file": "features/publications/components/PublicationCreateForm.tsx",
+      "line": 388,
+      "text": "Publication ID is required for editing",
+      "fullLine": "const message = 'Publication ID is required for editing';"
+    },
+    {
+      "file": "features/publications/components/PublicationCreateForm.tsx",
+      "line": 407,
+      "text": "Publication ID is required for editing",
+      "fullLine": "const message = 'Publication ID is required for editing';"
+    },
+    {
+      "file": "features/tappalka/components/TappalkaPostCard.tsx",
+      "line": 208,
+      "text": "Post image",
+      "fullLine": "altPrefix={post.title ? `${post.title} - Image` : 'Post image'}"
+    },
+    {
+      "file": "providers/QueryProvider.tsx",
+      "line": 27,
+      "text": "An error occurred",
+      "fullLine": "const message = error?.message || extractErrorMessage(error, 'An error occurred');"
+    },
+    {
+      "file": "shared/components/bar-withdraw.tsx",
+      "line": 86,
+      "text": "Comments",
+      "fullLine": "<img className=\"w-6 h-6 opacity-30\" src={\"/meriter/comment.svg\"} alt=\"Comments\" />"
+    },
+    {
+      "file": "shared/components/card-comment-vote.tsx",
+      "line": 182,
+      "text": "Comment image",
+      "fullLine": "altPrefix=\"Comment image\""
+    },
+    {
+      "file": "shared/components/card-comment-vote.tsx",
+      "line": 221,
+      "text": "Comment image",
+      "fullLine": "altPrefix=\"Comment image\""
+    },
+    {
+      "file": "shared/components/card-with-avatar.tsx",
+      "line": 52,
+      "text": "Icon",
+      "fullLine": "{iconUrl && <img src={iconUrl} alt=\"Icon\" className=\"w-full h-full object-contain\" />}"
+    },
+    {
+      "file": "shared/components/card-with-avatar.tsx",
+      "line": 67,
+      "text": "User",
+      "fullLine": "alt={userName || 'User'}"
+    },
+    {
+      "file": "shared/components/comment-details-popup.tsx",
+      "line": 186,
+      "text": "Currency",
+      "fullLine": "alt=\"Currency\""
+    },
+    {
+      "file": "shared/components/form-withdraw-vertical.tsx",
+      "line": 68,
+      "text": "Currency",
+      "fullLine": "<img src={currencyIconUrl} alt=\"Currency\" className=\"w-6 h-6\" />"
+    },
+    {
+      "file": "shared/components/hashtag-input.tsx",
+      "line": 27,
+      "text": "Hashtags",
+      "fullLine": "label = 'Hashtags',"
+    },
+    {
+      "file": "shared/components/image-gallery-display.tsx",
+      "line": 49,
+      "text": "Image",
+      "fullLine": "altPrefix = \"Image\","
+    },
+    {
+      "file": "shared/components/image-lightbox.tsx",
+      "line": 27,
+      "text": "Image",
+      "fullLine": "altPrefix = 'Image',"
+    },
+    {
+      "file": "shared/components/publication-details-popup.tsx",
+      "line": 171,
+      "text": "Unknown",
+      "fullLine": "const editorName = entry.editor?.name || 'Unknown';"
+    },
+    {
+      "file": "shared/components/theme-toggle.tsx",
+      "line": 45,
+      "text": "Dark",
+      "fullLine": "return theme === 'dark' ? 'Dark' : 'Light';"
+    },
+    {
+      "file": "shared/components/theme-toggle.tsx",
+      "line": 45,
+      "text": "Light",
+      "fullLine": "return theme === 'dark' ? 'Dark' : 'Light';"
+    }
+  ]
+}

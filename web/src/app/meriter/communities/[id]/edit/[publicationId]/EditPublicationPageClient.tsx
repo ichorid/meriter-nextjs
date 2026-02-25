@@ -51,7 +51,7 @@ export function EditPublicationPageClient({ communityId, publicationId: routePub
 
   const pageHeader = (
     <SimpleStickyHeader
-      title={t('editTitle') || 'Edit Publication'}
+      title={t('editTitle')}
       showBack={true}
       onBack={() => router.push(`/meriter/communities/${communityId}`)}
       asStickyHeader={true}

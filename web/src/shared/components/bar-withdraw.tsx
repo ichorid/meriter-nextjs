@@ -102,7 +102,7 @@ export const BarWithdraw: React.FC<BarWithdrawProps> = ({
                             onWithdraw();
                         }
                     }}
-                    title={isDisabled ? (isLoading ? 'Withdrawing...' : (t('noVotesToWithdraw') || 'No votes to withdraw')) : undefined}
+                    title={isDisabled ? (isLoading ? t('withdrawing') : t('noVotesToWithdraw')) : undefined}
                 >
                     {isLoading ? (
                         <>

@@ -35,7 +35,7 @@ export function EditPollPageClient({ communityId, pollId }: EditPollPageClientPr
 
   const pageHeader = (
     <SimpleStickyHeader
-      title={t('editTitle') || 'Edit Poll'}
+      title={t('editTitle')}
       showBack={true}
       onBack={() => router.push(`/meriter/communities/${communityId}`)}
       asStickyHeader={true}

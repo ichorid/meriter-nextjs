@@ -258,7 +258,7 @@ export function CallCheckAuthDialog({
                                         setPhoneNumber(value);
                                         setError("");
                                     }}
-                                    placeholder="+1234567890"
+                                    placeholder={t("phonePlaceholder")}
                                     disabled={isLoading}
                                     className="h-11 rounded-xl focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus

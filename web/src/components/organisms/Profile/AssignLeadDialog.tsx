@@ -28,6 +28,7 @@ export function AssignLeadDialog({
   onClose,
   targetUserId,
 }: AssignLeadDialogProps) {
+  const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const assignLead = useAssignLead();
   const { data: allCommunitiesData, isLoading: communitiesLoading } =
@@ -123,7 +124,7 @@ export function AssignLeadDialog({
             disabled={assignLead.isPending}
             className="rounded-xl"
           >
-            {tCommon('cancel', { defaultValue: 'Отмена' })}
+            {tCommon('cancel')}
           </Button>
           <Button
             onClick={handleAssign}
@@ -133,7 +134,7 @@ export function AssignLeadDialog({
             {assignLead.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Назначить
+            {t('assignLeadButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

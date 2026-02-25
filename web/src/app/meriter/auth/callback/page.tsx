@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useMe } from '@/hooks/api/useAuth';
 import { Loader2 } from 'lucide-react';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
@@ -20,6 +21,7 @@ import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 export default function OAuthCallbackPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations('common');
   const { data: user, error: userError, isLoading, refetch } = useMe();
   
   const [retryCount, setRetryCount] = useState(0);
@@ -27,13 +29,13 @@ export default function OAuthCallbackPage() {
   const mountedRef = useRef(true);
   const hasRedirectedRef = useRef(false);
   
-  // Get returnTo from URL params, default to /meriter/profile
-  const returnTo = searchParams?.get('returnTo') || '/meriter/profile';
+  // Get returnTo from URL params, default from translations
+  const returnTo = searchParams?.get('returnTo') || t('defaultReturnPath');
   
   // Validate returnTo to prevent open redirects
-  const sanitizedReturnTo = returnTo.startsWith('/meriter/') || returnTo.startsWith('/') 
-    ? returnTo 
-    : '/meriter/profile';
+  const sanitizedReturnTo = returnTo.startsWith('/meriter/') || returnTo.startsWith('/')
+    ? returnTo
+    : t('defaultReturnPath');
 
   // Maximum retry attempts (10-15 as per plan)
   const MAX_RETRIES = 12;

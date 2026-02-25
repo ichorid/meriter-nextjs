@@ -157,6 +157,8 @@ function findHardcodedStrings() {
                 // Check if it's Cyrillic (Russian)
                 if (/[А-Яа-яЁё]/.test(text)) {
                     const relativePath = path.relative(WEB_SRC, filePath);
+                    // Skip emoji metadata in getIcon.ts (keywords/names not user-visible in UI)
+                    if (relativePath.includes('getIcon.ts')) continue;
                     issues.russianText.push({
                         file: relativePath,
                         line: lineNum,

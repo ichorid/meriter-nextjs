@@ -64,7 +64,7 @@ export function WithdrawPopupContent({
     if (!activeWithdrawTarget || !withdrawTargetType) return;
 
     if (amount <= 0) {
-      onUpdateError(t('pleaseChooseWithdrawAmount') || 'Please choose an amount to withdraw');
+      onUpdateError(t('pleaseChooseWithdrawAmount'));
       return;
     }
 
@@ -110,7 +110,7 @@ export function WithdrawPopupContent({
 
       onClose();
     } catch (err: unknown) {
-      let message = extractErrorMessage(err, t('errorSubmitting') || 'Failed to submit');
+      let message = extractErrorMessage(err, t('errorSubmitting'));
       if (message === 'This community only allows neutral comments') {
         message = t('voteDisabled.neutralOnlyError');
       }

@@ -334,7 +334,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             {isSuperadmin && !isEditMode && (
                 <div className="border-t border-gray-200 pt-6">
                     <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                        {t("prioritySettings") || "Priority Settings"}
+                        {t("prioritySettings")}
                     </h2>
                     <BrandFormControl
                         helperText={
@@ -350,7 +350,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                                 disabled={isPending}
                             />
                             <Label htmlFor="isPriority" className="text-sm cursor-pointer">
-                                {t("isPriority") || "Mark as priority community"}
+                                {t("isPriority")}
                             </Label>
                         </div>
                     </BrandFormControl>
@@ -362,7 +362,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     {isSuperadmin && (
                         <div className="border-t border-gray-200 pt-6">
                             <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                                {t("prioritySettings") || "Priority Settings"}
+                                {t("prioritySettings")}
                             </h2>
                             <BrandFormControl
                                 helperText={

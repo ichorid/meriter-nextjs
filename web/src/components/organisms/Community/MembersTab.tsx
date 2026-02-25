@@ -158,7 +158,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                         setAddMeritsDialogOpen(true);
                                     }}
                                     className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                    title={t('members.addMerits') || 'Add merits'}
+                                    title={t('members.addMerits')}
                                 >
                                     <Coins className="w-4 h-4" />
                                 </button>
@@ -171,7 +171,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                     }}
                                     disabled={isRemoving}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                    title={t('members.remove') || 'Remove member'}
+                                    title={t('members.remove')}
                                 >
                                     {isRemoving ? (
                                         <Loader2 className="w-4 h-4 animate-spin" />

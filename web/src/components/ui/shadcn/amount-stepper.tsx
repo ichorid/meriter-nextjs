@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/shadcn/button";
@@ -39,6 +40,7 @@ export const AmountStepper = React.forwardRef<HTMLInputElement, AmountStepperPro
     },
     ref
   ) => {
+    const t = useTranslations("common.ariaLabels");
     const [inputValue, setInputValue] = React.useState(value.toString());
 
     React.useEffect(() => {
@@ -93,7 +95,7 @@ export const AmountStepper = React.forwardRef<HTMLInputElement, AmountStepperPro
           variant="outline"
           size="icon"
           className="h-12 w-12 shrink-0"
-          aria-label="Decrease"
+          aria-label={t("decrease")}
         >
           <Minus className="h-5 w-5" />
         </Button>
@@ -120,7 +122,7 @@ export const AmountStepper = React.forwardRef<HTMLInputElement, AmountStepperPro
           variant="outline"
           size="icon"
           className="h-12 w-12 shrink-0"
-          aria-label="Increase"
+          aria-label={t("increase")}
         >
           <Plus className="h-5 w-5" />
         </Button>

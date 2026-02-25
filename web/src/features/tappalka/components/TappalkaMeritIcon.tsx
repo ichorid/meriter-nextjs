@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 
 interface TappalkaMeritIconProps {
@@ -26,6 +27,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   isTokenHovered = false,
   isDragging: externalDragging = false,
 }) => {
+  const t = useTranslations('postCarousel');
   const [isDragging, setIsDragging] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isActive, setIsActive] = useState(false);
@@ -268,7 +270,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
         touchAction: 'none', // Prevent default touch behaviors (scrolling, zooming)
       }}
       role="button"
-      aria-label={disabled ? 'Голосование уже сделано' : 'Зажмите и перетащите знак на выбранный пост'}
+      aria-label={disabled ? t('voteAlreadyDoneAria') : t('dragHintAria')}
       tabIndex={disabled ? -1 : 0}
     >
       {/* Visual container - rounded square 64x64px with 16px radius */}
@@ -354,7 +356,7 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
             'pointer-events-none z-50',
           )}
         >
-          Зажмите и перетащите
+          {t('dragHintShort')}
           <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-base-300 dark:border-t-base-700" />
         </div>
       )}

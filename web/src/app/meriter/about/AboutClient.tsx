@@ -86,23 +86,20 @@ function WelcomeMeritsPlatformRow() {
 }
 
 function ResetAboutToDemoRow() {
+  const t = useTranslations('about');
   const addToast = useToastStore((s) => s.addToast);
   const resetToDemo = useResetAboutToDemoData();
 
   const handleReset = () => {
-    if (
-      !confirm(
-        'Сбросить раздел «О проекте» к демо-данным? Текущий контент (введение и все категории со статьями) будет полностью заменён.',
-      )
-    ) {
+    if (!confirm(t('resetConfirm'))) {
       return;
     }
     resetToDemo.mutate(undefined, {
       onSuccess: () => {
-        addToast('Раздел «О проекте» сброшен к демо-данным', 'success');
+        addToast(t('resetSuccess'), 'success');
       },
       onError: (e) => {
-        addToast(e.message || 'Ошибка сброса', 'error');
+        addToast(e.message || t('resetError'), 'error');
       },
     });
   };
@@ -111,10 +108,10 @@ function ResetAboutToDemoRow() {
     <div className="space-y-2 border-t border-base-300 pt-6">
       <div className="flex items-center gap-2 text-base-content">
         <FileText className="w-4 h-4" />
-        <span className="font-medium">О проекте</span>
+        <span className="font-medium">{t('resetSectionTitle')}</span>
       </div>
       <p className="text-xs text-base-content/60">
-        Заменить весь контент раздела «О проекте» на актуальные демо-данные (введение и категории со статьями).
+        {t('resetDescription')}
       </p>
       <Button
         type="button"
@@ -128,7 +125,7 @@ function ResetAboutToDemoRow() {
         ) : (
           <RotateCcw className="w-4 h-4 mr-2" />
         )}
-        Сбросить «О проекте» к демо-данным
+        {t('resetButton')}
       </Button>
     </div>
   );
@@ -136,6 +133,7 @@ function ResetAboutToDemoRow() {
 
 const AboutPage = () => {
     const t = useTranslations('common');
+    const tAbout = useTranslations('about');
     const tSettings = useTranslations('settings');
     const { user } = useAuth();
     const [showSettings, setShowSettings] = useState(false);
@@ -149,7 +147,7 @@ const AboutPage = () => {
                 {/* Header with title and admin buttons */}
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold text-brand-text-primary dark:text-base-content">
-                        О проекте
+                        {tAbout('pageTitle')}
                     </h2>
                     {isSuperadmin && (
                         <div className="flex gap-2">
@@ -158,8 +156,8 @@ const AboutPage = () => {
                                 size="sm"
                                 onClick={() => setShowAboutAdmin(true)}
                                 className="p-2 rounded-full"
-                                aria-label="Manage About Content"
-                                title="Управление контентом"
+                                aria-label={tAbout('manageContentAria')}
+                                title={tAbout('manageContentTitle')}
                             >
                                 <FileText className="w-5 h-5 text-base-content/70" />
                             </Button>
@@ -168,8 +166,8 @@ const AboutPage = () => {
                                 size="sm"
                                 onClick={() => setShowSettings(true)}
                                 className="p-2 rounded-full"
-                                aria-label="Settings"
-                                title="Настройки"
+                                aria-label={tAbout('settingsAria')}
+                                title={tAbout('settingsTitle')}
                             >
                                 <Settings className="w-5 h-5 text-base-content/70" />
                             </Button>
@@ -182,7 +180,7 @@ const AboutPage = () => {
 
                 <div className="pt-6 border-t border-base-300">
                     <h3 className="text-lg font-semibold text-brand-text-primary dark:text-base-content mb-4">
-                        Version Information
+                        {tAbout('versionInfo')}
                     </h3>
                     <VersionDisplay className="justify-start" />
                 </div>
@@ -193,7 +191,7 @@ const AboutPage = () => {
                 <Dialog open={showAboutAdmin} onOpenChange={setShowAboutAdmin}>
                     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Управление контентом "О платформе"</DialogTitle>
+                            <DialogTitle>{tAbout('adminDialogTitle')}</DialogTitle>
                         </DialogHeader>
                         <div className="pt-4">
                             <AboutAdminPanel />

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -28,6 +29,7 @@ export function ImageLightbox({
   isOpen,
   onClose,
 }: ImageLightboxProps) {
+  const tAria = useTranslations('common.ariaLabels');
   const [viewingIndex, setViewingIndex] = useState<number>(initialIndex || 0);
 
   // Sync with initialIndex prop changes
@@ -101,7 +103,7 @@ export function ImageLightbox({
           onClose();
         }}
         className="absolute top-4 right-4 z-10 p-2 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-        aria-label="Close"
+        aria-label={tAria('close')}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -116,7 +118,7 @@ export function ImageLightbox({
             handlePrev();
           }}
           className="absolute left-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
-          aria-label="Previous image"
+          aria-label={tAria('previousImage')}
         >
           <ChevronLeft size={28} />
         </button>
@@ -145,7 +147,7 @@ export function ImageLightbox({
             handleNext();
           }}
           className="absolute right-4 z-10 p-3 rounded-full text-white/70 hover:text-white hover:bg-white/10 transition-colors backdrop-blur-sm"
-          aria-label="Next image"
+          aria-label={tAria('nextImage')}
         >
           <ChevronRight size={28} />
         </button>

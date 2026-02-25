@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useAboutContent, useAboutIntroduction, type AboutCategoryWithArticles } from '@/hooks/api/useAbout';
 import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 import { Loader2 } from 'lucide-react';
@@ -8,6 +9,7 @@ import DOMPurify from 'dompurify';
 import { AboutArticleItem } from './AboutArticleItem';
 
 export function AboutContent() {
+  const t = useTranslations('about');
   const { data: categories, isLoading } = useAboutContent();
   const { data: introduction } = useAboutIntroduction();
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({});
@@ -23,7 +25,7 @@ export function AboutContent() {
   if (!categories || categories.length === 0) {
     return (
       <div className="text-center py-12 text-base-content/60">
-        <p>Контент пока не добавлен</p>
+        <p>{t('noContentYet')}</p>
       </div>
     );
   }
@@ -73,6 +75,7 @@ interface AboutCategorySectionProps {
 }
 
 function AboutCategorySection({ category, isOpen, onToggle }: AboutCategorySectionProps) {
+  const t = useTranslations('about');
   const [openArticles, setOpenArticles] = useState<Record<string, boolean>>({});
 
   const toggleArticle = (articleId: string) => {
@@ -85,13 +88,13 @@ function AboutCategorySection({ category, isOpen, onToggle }: AboutCategorySecti
   return (
     <CollapsibleSection
       title={category.title}
-      summary={category.description || `${category.articles.length} ${category.articles.length === 1 ? 'статья' : 'статей'}`}
+      summary={category.description || `${category.articles.length} ${category.articles.length === 1 ? t('articleSingular') : t('articlePlural')}`}
       open={isOpen}
       setOpen={onToggle}
     >
       <div className="space-y-3 pt-2">
         {category.articles.length === 0 ? (
-          <p className="text-sm text-base-content/60 py-4">Статей в этой категории пока нет</p>
+          <p className="text-sm text-base-content/60 py-4">{t('noArticlesInCategory')}</p>
         ) : (
           category.articles.map((article) => (
             <AboutArticleItem

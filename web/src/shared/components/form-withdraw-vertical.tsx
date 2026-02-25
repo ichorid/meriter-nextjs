@@ -127,7 +127,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
                     onClick={() => setSelected(true)}
                     className="textarea textarea-bordered w-full bg-base-100 text-base resize-none"
                     style={selected ? { height: "100px" } : { height: "75px" }}
-                    placeholder={t('addCommentOptional') || "Add a comment (optional)"}
+                    placeholder={t('addCommentOptional')}
                     {...etv(comment, setComment)}
                 />
             </div>
@@ -139,7 +139,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
                     className="btn btn-ghost"
                     disabled={isLoading}
                 >
-                    {t('cancel') || 'Cancel'}
+                    {t('cancel')}
                 </button>
                 <button
                     onClick={onSubmit}
@@ -149,7 +149,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
                     {isLoading ? (
                         <>
                             <span className="loading loading-spinner loading-xs"></span>
-                            {t('submitting') || 'Submitting...'}
+                            {t('submitting')}
                         </>
                     ) : (
                         t('submit')

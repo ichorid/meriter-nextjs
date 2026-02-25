@@ -234,7 +234,7 @@ export function EmailAuthDialog({
                                         setEmail(e.target.value);
                                         setError("");
                                     }}
-                                    placeholder="your@email.com"
+                                    placeholder={t("emailPlaceholder")}
                                     disabled={isLoading}
                                     className="h-11 rounded-xl focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus
@@ -273,7 +273,7 @@ export function EmailAuthDialog({
                                         setOtpCode(value);
                                         setError("");
                                     }}
-                                    placeholder="000000"
+                                    placeholder={t("otpPlaceholder")}
                                     disabled={isLoading}
                                     className="h-11 rounded-xl text-center text-2xl tracking-widest focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus

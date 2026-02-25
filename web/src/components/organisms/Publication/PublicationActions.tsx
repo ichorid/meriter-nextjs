@@ -330,8 +330,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       if (updateAll) {
         updateAll();
       }
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка при добавлении рейтинга', 'error');
+    } catch (error: unknown) {
+      addToast(error instanceof Error ? error.message : t('addRatingError'), 'error');
     } finally {
       setIsAddingVote(false);
     }
@@ -352,7 +352,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         targetId: publicationId,
         quotaAmount: 0,
         walletAmount: 10,
-        comment: '[DEV] -10 рейтинг от фейкового пользователя',
+        comment: t('devAddNegativeRatingComment'),
         direction: 'down',
       });
       
@@ -360,14 +360,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       await utils.publications.getById.invalidate({ id: publicationId });
       await utils.publications.getAll.invalidate();
       
-      addToast('Добавлено -10 рейтинга от фейкового пользователя', 'success');
+      addToast(t('devAddNegativeRatingSuccess'), 'success');
       
       // Call updateAll if provided to refresh parent component
       if (updateAll) {
         updateAll();
       }
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка при добавлении отрицательного рейтинга', 'error');
+    } catch (error: unknown) {
+      addToast(error instanceof Error ? error.message : t('addNegativeRatingError'), 'error');
     } finally {
       setIsAddingNegativeVote(false);
     }

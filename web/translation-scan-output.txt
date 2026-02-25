@@ -1,0 +1,18 @@
+🔍 Scanning for translation issues...
+
+📊 Comparing translation files...
+✅ Translation keys are in sync!
+
+🔎 Scanning for hardcoded strings...
+
+📝 Found issues:
+   - Fallback strings: 0
+   - Russian text: 0
+   - Aria labels: 0
+   - Placeholders: 0
+
+📄 Detailed report saved to: translation-report.json
+
+📊 Total issues found: 0
+
+✅ No translation issues found!

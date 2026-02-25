@@ -147,7 +147,7 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
 
     const pageHeader = (
         <SimpleStickyHeader
-            title={tCommunities('deleted') || 'Deleted'}
+            title={tCommunities('deleted')}
             showBack={true}
             onBack={() => router.push(routes.community(communityId))}
             asStickyHeader={true}
@@ -180,7 +180,7 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                 stickyHeader={pageHeader}
             >
                 <div className="text-center py-12 text-base-content/60">
-                    <p>{tCommunities('accessDenied') || 'Access denied'}</p>
+                    <p>{tCommunities('accessDenied')}</p>
                 </div>
             </AdaptiveLayout>
         );
@@ -197,7 +197,7 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
             <div className="space-y-4">
                 {deletedErr ? (
                     <div className="text-center py-12 text-error">
-                        <p>{tCommunities('errorLoadingDeleted') || 'Error loading deleted publications'}</p>
+                        <p>{tCommunities('errorLoadingDeleted')}</p>
                     </div>
                 ) : deletedPublications.length > 0 ? (
                     <>
@@ -220,7 +220,7 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                                     <div className="relative">
                                         {/* Deleted indicator badge */}
                                         <div className="absolute -top-2 -right-2 z-10 bg-error text-error-content rounded-full px-2 py-1 text-xs font-semibold shadow-lg">
-                                            Deleted
+                                            {tCommunities('deleted')}
                                         </div>
                                         {/* Restore button */}
                                         <div className="absolute -top-2 left-2 z-10">
@@ -230,14 +230,14 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                                                 onClick={() => handleRestore(p.id)}
                                                 disabled={restoringIds.has(p.id) || restorePublication.isPending}
                                                 className="rounded-xl active:scale-[0.98] text-xs"
-                                                title="Restore publication"
+                                                title={tCommunities('restorePublication')}
                                             >
                                                 {restoringIds.has(p.id) || restorePublication.isPending ? (
                                                     <Loader2 className="w-3 h-3 animate-spin" />
                                                 ) : (
                                                     <>
                                                         <RotateCcw className="w-3 h-3 mr-1" />
-                                                        Restore
+                                                        {tCommunities('restore')}
                                                     </>
                                                 )}
                                             </Button>
@@ -264,7 +264,7 @@ export function CommunityDeletedPageClient({ communityId }: CommunityDeletedPage
                     </>
                 ) : (
                     <div className="text-center py-12 text-base-content/60">
-                        <p>{tCommunities('noDeletedPublications') || 'No deleted publications'}</p>
+                        <p>{tCommunities('noDeletedPublications')}</p>
                     </div>
                 )}
             </div>

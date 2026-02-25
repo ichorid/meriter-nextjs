@@ -374,10 +374,10 @@ export const CommunityTopBar: React.FC<{
                 variant="outline"
                 size="sm"
                 className="lg:hidden rounded-xl active:scale-[0.98] px-3 h-9 text-sm font-medium border border-input bg-base-200 hover:bg-base-300 text-base-content whitespace-nowrap inline-flex items-center justify-center gap-2"
-                aria-label={t('tappalka') || 'Earn Merits'}
+                aria-label={t('tappalka')}
               >
                 <Scale size={16} />
-                Заработать
+                {t('tappalka')}
               </Button>
             )}
           </div>

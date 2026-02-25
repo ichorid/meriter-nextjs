@@ -68,7 +68,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     return (
       <BrandFormControl label={label} helperText={helperText} className={className}>
         <p className="text-sm text-base-content/60">
-          {t('fields.noCategoriesAvailable') || 'No categories available'}
+          {t('fields.noCategoriesAvailable')}
         </p>
       </BrandFormControl>
     );

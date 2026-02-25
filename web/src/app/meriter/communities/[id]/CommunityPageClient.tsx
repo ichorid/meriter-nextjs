@@ -675,10 +675,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     variant="outline"
                                     size="sm"
                                     className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
-                                    aria-label={tCommunities('tappalka') || 'Earn Merits'}
+                                    aria-label={tCommunities('tappalka')}
                                 >
                                     <Scale size={16} />
-                                    {tCommunities('tappalka') || 'Заработать мериты'}
+                                    {tCommunities('tappalka')}
                                 </Button>
                             )}
                             {/* Search Button */}
@@ -687,8 +687,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 size="sm"
                                 onClick={() => setShowSearchModal(true)}
                                 className="rounded-xl active:scale-[0.98] px-2"
-                                aria-label="Search"
-                                title="Search"
+                                aria-label={tCommon('search')}
+                                title={tCommon('search')}
                             >
                                 <Search size={18} className="text-base-content/70" />
                             </Button>
@@ -1057,13 +1057,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <BottomActionSheet
                     isOpen={showSearchModal}
                     onClose={() => setShowSearchModal(false)}
-                    title={tCommunities('searchPlaceholder') || 'Search'}
+                    title={tCommon('search')}
                 >
                     <div className="relative w-full">
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
                         <Input
                             type="text"
-                            placeholder={tCommunities('searchPlaceholder') || 'Search'}
+                            placeholder={tCommunities('searchPlaceholder')}
                             value={localSearchQuery}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             className="h-11 rounded-xl pl-10 pr-10"
@@ -1092,7 +1092,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     }}
                 >
                     <DialogTitle className="sr-only">
-                        {tCommunities('tappalka') || 'Earn Merits'}
+                        {tCommunities('tappalka')}
                     </DialogTitle>
                     <TappalkaScreen
                         communityId={chatId}

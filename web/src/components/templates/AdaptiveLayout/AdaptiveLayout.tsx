@@ -16,6 +16,7 @@ import { createCommentsColumnProps } from './helpers';
 
 // Scroll to top button component
 const ScrollToTopButton: React.FC = () => {
+  const t = useTranslations('common.ariaLabels');
   const [showButton, setShowButton] = useState(false);
 
   const handleScrollToTop = (e: React.MouseEvent) => {
@@ -72,8 +73,8 @@ const ScrollToTopButton: React.FC = () => {
     <button
       onClick={handleScrollToTop}
       className="fixed bottom-20 right-10 lg:bottom-6 lg:right-3 z-50 p-2.5 rounded-full bg-base-200 shadow-lg hover:bg-base-300 transition-all active:scale-95"
-      aria-label="Scroll to top"
-      title="Scroll to top"
+      aria-label={t('scrollToTop')}
+      title={t('scrollToTop')}
     >
       <ArrowUp size={15} />
     </button>

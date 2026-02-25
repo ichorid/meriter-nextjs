@@ -281,7 +281,7 @@ export const FormPollCreate = ({
                 try {
                     // Set the mainButton parameters
                     mainButton.setParams({
-                        text: isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll'),
+                        text: isEditMode ? t('updatePoll') : t('createPoll'),
                         isVisible: true,
                         isEnabled: true
                     });
@@ -526,7 +526,7 @@ export const FormPollCreate = ({
                         className="rounded-xl active:scale-[0.98]"
                     >
                         {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
-                        {isEditMode ? (t('updatePoll') || 'Update Poll') : t('createPoll')}
+                        {isEditMode ? t('updatePoll') : t('createPoll')}
                     </Button>
                 </div>
             )}

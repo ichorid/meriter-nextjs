@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Clock, TrendingUp } from 'lucide-react';
 
 export type SortValue = 'recent' | 'voted';
@@ -22,6 +23,7 @@ export const SortTabs: React.FC<SortTabsProps> = ({
   className = '',
   size = 'md',
 }) => {
+  const t = useTranslations('common.ariaLabels');
   const iconSize = size === 'sm' ? 14 : 16;
   const padding = size === 'sm' ? 'p-1.5' : 'p-2';
 
@@ -34,8 +36,8 @@ export const SortTabs: React.FC<SortTabsProps> = ({
             ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
             : 'text-base-content/50 hover:text-base-content'
         }`}
-        title="Sort by recent"
-        aria-label="Sort by recent"
+        title={t('sortByRecent')}
+        aria-label={t('sortByRecent')}
       >
         <Clock size={iconSize} />
       </button>
@@ -46,8 +48,8 @@ export const SortTabs: React.FC<SortTabsProps> = ({
             ? 'bg-base-100 text-base-content shadow-sm [data-theme="dark"]:bg-base-200 [data-theme="dark"]:shadow-[0_1px_2px_0_rgba(255,255,255,0.1)]'
             : 'text-base-content/50 hover:text-base-content'
         }`}
-        title="Sort by rating"
-        aria-label="Sort by rating"
+        title={t('sortByRating')}
+        aria-label={t('sortByRating')}
       >
         <TrendingUp size={iconSize} />
       </button>

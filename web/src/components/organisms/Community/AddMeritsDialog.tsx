@@ -77,7 +77,7 @@ export function AddMeritsDialog({
                 value={amount}
                 onChange={setAmount}
                 min={1}
-                placeholder="100"
+                placeholder={t('addMeritsDialog.amountPlaceholder')}
                 disabled={isSubmitting}
               />
               <p className="text-xs text-base-content/60">

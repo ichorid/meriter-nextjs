@@ -92,7 +92,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                     <div className="p-6">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-lg font-semibold">{t('commentDetails') || 'Comment Details'}</h3>
+                            <h3 className="text-lg font-semibold">{t('commentDetails')}</h3>
                             <button
                                 onClick={onClose}
                                 className="btn btn-sm btn-circle btn-ghost"
@@ -144,7 +144,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {/* Beneficiary Information */}
                         {beneficiaryName && beneficiaryName !== authorName && (
                             <div className="mb-4">
-                                <div className="text-xs opacity-70 mb-2">{t('beneficiary') || 'Beneficiary'}</div>
+                                <div className="text-xs opacity-70 mb-2">{t('beneficiary')}</div>
                                 <div className="flex items-center gap-3">
                                     <Avatar className="w-8 h-8">
                                       <AvatarImage src={beneficiaryAvatar} alt={beneficiaryName} />
@@ -171,7 +171,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {/* Only show vote transfer for vote transaction comments */}
                         {isVoteTransaction && authorName && (
                             <div className="mb-6">
-                                <div className="text-sm opacity-70 mb-2">{t('voteTransfer') || 'Vote Transfer'}</div>
+                                <div className="text-sm opacity-70 mb-2">{t('voteTransfer')}</div>
                                 <div className="bg-base-200 rounded-lg p-4">
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className="text-sm font-medium">{authorName}</span>
@@ -195,17 +195,17 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {/* Breakdown */}
                         {(amountWallet > 0 || amountFree > 0) && (
                             <div className="mb-6">
-                                <div className="text-sm opacity-70 mb-2">{t('breakdown') || 'Breakdown'}</div>
+                                <div className="text-sm opacity-70 mb-2">{t('breakdown')}</div>
                                 <div className="bg-base-200 rounded-lg p-4 space-y-3">
                                     {amountWallet > 0 && (
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-sm font-medium">
-                                                    {t('fromWallet') || 'From Wallet'}: {isUpvote ? '+' : '-'}{amountWallet}
+                                                    {t('fromWallet')}: {isUpvote ? '+' : '-'}{amountWallet}
                                                 </span>
                                             </div>
                                             <div className="text-xs opacity-60 ml-6">
-                                                {t('walletExplanation') || 'Deducted from voter\'s balance'}
+                                                {t('walletExplanation')}
                                             </div>
                                         </div>
                                     )}
@@ -213,11 +213,11 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-sm font-medium">
-                                                    {t('fromQuota') || 'From Quota'}: {isUpvote ? '+' : '-'}{amountFree}
+                                                    {t('fromQuota')}: {isUpvote ? '+' : '-'}{amountFree}
                                                 </span>
                                             </div>
                                             <div className="text-xs opacity-60 ml-6">
-                                                {t('quotaExplanation') || 'Used from daily free quota'}
+                                                {t('quotaExplanation')}
                                             </div>
                                         </div>
                                     )}
@@ -228,23 +228,23 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {/* Totals on Comment */}
                         {(totalScore !== undefined || totalReceived !== undefined || totalWithdrawn !== undefined) && (
                             <div className="mb-6">
-                                <div className="text-sm opacity-70 mb-2">{t('totals') || 'Totals on this comment'}</div>
+                                <div className="text-sm opacity-70 mb-2">{t('totals')}</div>
                                 <div className="bg-base-200 rounded-lg p-4 space-y-2">
                                     {totalScore !== undefined && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm opacity-70">{t('totalSum') || 'Total sum'}</span>
+                                            <span className="text-sm opacity-70">{t('totalSum')}</span>
                                             <span className="text-sm font-medium">{totalScore}</span>
                                         </div>
                                     )}
                                     {totalReceived !== undefined && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm opacity-70">{t('totalReceived') || 'Total received'}</span>
+                                            <span className="text-sm opacity-70">{t('totalReceived')}</span>
                                             <span className="text-sm font-medium">{totalReceived}</span>
                                         </div>
                                     )}
                                     {totalWithdrawn !== undefined && (
                                         <div className="flex items-center justify-between">
-                                            <span className="text-sm opacity-70">{t('authorWithdrawn') || 'Author withdrawn'}</span>
+                                            <span className="text-sm opacity-70">{t('authorWithdrawn')}</span>
                                             <span className="text-sm font-medium">{totalWithdrawn}</span>
                                         </div>
                                     )}
@@ -256,7 +256,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                         {hasOtherVotes && (
                             <div className="mb-6">
                                 <div className="text-sm opacity-70 mb-2">
-                                    {t('otherUsersVotes') || 'Other users left votes on this vote:'}
+                                    {t('otherUsersVotes')}
                                 </div>
                                 <div className="bg-base-200 rounded-lg p-4">
                                     <div className="flex items-center gap-6">
@@ -264,14 +264,14 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                             <div className="flex items-center gap-2">
                                                 <span className="text-success text-lg">↑</span>
                                                 <span className="text-base font-medium">{upvotes}</span>
-                                                <span className="text-sm opacity-70">{t('upvotes') || 'upvotes'}</span>
+                                                <span className="text-sm opacity-70">{t('upvotes')}</span>
                                             </div>
                                         )}
                                         {downvotes !== undefined && downvotes > 0 && (
                                             <div className="flex items-center gap-2">
                                                 <span className="text-error text-lg">↓</span>
                                                 <span className="text-base font-medium">{downvotes}</span>
-                                                <span className="text-sm opacity-70">{t('downvotes') || 'downvotes'}</span>
+                                                <span className="text-sm opacity-70">{t('downvotes')}</span>
                                             </div>
                                         )}
                                     </div>
@@ -281,7 +281,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
 
                         {/* Vote Type */}
                         <div className="text-sm opacity-70">
-                            {t('voteType') || 'Vote Type'}: {isUpvote ? (t('upvote') || 'Upvote') : (t('downvote') || 'Downvote')}
+                            {t('voteType')}: {isUpvote ? t('upvote') : t('downvote')}
                         </div>
                     </div>
                 </div>

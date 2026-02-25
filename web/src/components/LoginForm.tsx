@@ -349,7 +349,7 @@ export function LoginForm({
                                             </div>
                                             <div className="relative flex justify-center text-xs uppercase">
                                                 <span className="bg-card px-2 text-muted-foreground">
-                                                    {t("orContinueWith") || "Or continue with"}
+                                                    {t("orContinueWith")}
                                                 </span>
                                             </div>
                                         </div>

@@ -67,13 +67,13 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <label htmlFor="team-name" className="text-sm font-medium">
-              Название команды <span className="text-error">*</span>
+              {t('teamNameLabel')} <span className="text-error">*</span>
             </label>
             <Input
               id="team-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Моя команда"
+              placeholder={t('teamNamePlaceholder')}
               maxLength={100}
               disabled={createTeam.isPending}
               className="rounded-xl"
@@ -82,13 +82,13 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
 
           <div className="space-y-2">
             <label htmlFor="team-description" className="text-sm font-medium">
-              Описание (опционально)
+              {t('teamDescriptionOptional')}
             </label>
             <Textarea
               id="team-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Расскажите о команде..."
+              placeholder={t('teamDescriptionPlaceholder')}
               maxLength={1000}
               disabled={createTeam.isPending}
               className="rounded-xl min-h-[80px]"
@@ -103,7 +103,7 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
             disabled={createTeam.isPending}
             className="rounded-xl"
           >
-            {tCommon('cancel', { defaultValue: 'Отмена' })}
+            {tCommon('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
@@ -113,7 +113,7 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
             {createTeam.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Создать
+            {t('createTeamButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

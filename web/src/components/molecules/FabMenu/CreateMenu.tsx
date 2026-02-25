@@ -180,7 +180,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                                         <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                                             <FolderKanban size={16} className="text-primary" />
                                         </div>
-                                        <span className="text-sm font-medium text-base-content">{t('createProject') || 'Create Project'}</span>
+                                        <span className="text-sm font-medium text-base-content">{t('createProject')}</span>
                                     </button>
                                 )}
                             </>
@@ -217,7 +217,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                                         <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
                                             <FolderKanban size={16} className="text-base-content/50" />
                                         </div>
-                                        <span className="text-sm font-medium text-base-content/50">{t('createProject') || 'Create Project'}</span>
+                                        <span className="text-sm font-medium text-base-content/50">{t('createProject')}</span>
                                     </button>
                                 )}
                                 {reason && (

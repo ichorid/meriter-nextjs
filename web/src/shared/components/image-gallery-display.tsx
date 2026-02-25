@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Images, X } from "lucide-react";
 
@@ -54,6 +55,7 @@ export function ImageGalleryDisplay({
     onImageClick,
     maxPreviewHeight,
 }: ImageGalleryDisplayProps) {
+    const tAria = useTranslations("common.ariaLabels");
     const [viewingIndex, setViewingIndex] = useState<number | null>(
         initialIndex ?? null
     );
@@ -216,7 +218,7 @@ export function ImageGalleryDisplay({
         <div
             role="dialog"
             aria-modal="true"
-            aria-label="Image gallery"
+            aria-label={tAria("imageGallery")}
             className={lightboxOverlayClass}
             style={{ pointerEvents: "auto" }}
             onClick={(e) => {
@@ -234,7 +236,7 @@ export function ImageGalleryDisplay({
                     handleClose();
                 }}
                 className="absolute top-4 right-4 z-10 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors"
-                aria-label="Close"
+                aria-label={tAria("close")}
             >
                 <X className="w-6 h-6" strokeWidth={2} />
             </button>
@@ -246,7 +248,7 @@ export function ImageGalleryDisplay({
                         handlePrev();
                     }}
                     className="absolute left-2 sm:left-4 z-[100] min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors backdrop-blur-sm"
-                    aria-label="Previous image"
+                    aria-label={tAria("previousImage")}
                 >
                     <ChevronLeft size={28} />
                 </button>
@@ -269,7 +271,7 @@ export function ImageGalleryDisplay({
                         handleNext();
                     }}
                     className="absolute right-2 sm:right-4 z-[100] min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-white/80 hover:text-white hover:bg-white/15 transition-colors backdrop-blur-sm"
-                    aria-label="Next image"
+                    aria-label={tAria("nextImage")}
                 >
                     <ChevronRight size={28} />
                 </button>

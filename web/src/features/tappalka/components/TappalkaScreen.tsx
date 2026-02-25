@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import {
@@ -33,6 +34,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   communityId,
   onClose,
 }) => {
+  const t = useTranslations('postCarousel');
   const router = useRouter();
   const addToast = useToastStore((state) => state.addToast);
   
@@ -188,7 +190,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
             setVotedSessionId(null);
           }, 300); // Short delay for visual feedback
         } else if (result.noMorePosts) {
-          addToast('Больше нет постов для сравнения', 'info');
+          addToast(t('noMorePosts'), 'info');
           setTimeout(() => {
             setSelectedPostId(null);
             setVotedSessionId(null);
@@ -203,7 +205,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         }
       } catch (error) {
         console.error('Failed to submit choice:', error);
-        const message = error instanceof Error ? error.message : 'Не удалось отправить выбор';
+        const message = error instanceof Error ? error.message : t('submitChoiceError');
         addToast(message, 'error');
         setSelectedPostId(null);
         setVotedSessionId(null);
@@ -420,7 +422,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
                       )}
                     </div>
                     <p className="text-xs text-base-content/50 text-center max-w-[180px]">
-                      Зажмите и перетащите мерит на выбранный пост
+                      {t('dragHint')}
                     </p>
                   </div>
                   
@@ -453,7 +455,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
             {/* Merit icon (draggable) - desktop only */}
             <div className="hidden md:flex flex-col items-center gap-2 mt-4 relative">
               <p className="text-sm text-base-content/60 mb-2">
-                Зажмите и перетащите мерит на выбранный пост
+                {t('dragHint')}
               </p>
               <div className="relative">
                 <TappalkaMeritIcon
