@@ -454,6 +454,28 @@ export const communitiesRouter = router({
         });
       }
 
+      // Calculate permissions for all polls in the feed
+      const pollIds = result.data
+        .filter((item) => item.type === 'poll')
+        .map((item) => item.id);
+
+      if (pollIds.length > 0) {
+        const pollPermissions = await Promise.all(
+          pollIds.map((id) =>
+            ctx.permissionsHelperService.calculatePollPermissions(
+              ctx.user.id,
+              id,
+            ),
+          ),
+        );
+        result.data.forEach((item) => {
+          if (item.type === 'poll') {
+            const index = pollIds.indexOf(item.id);
+            (item as any).permissions = pollPermissions[index];
+          }
+        });
+      }
+
       return {
         data: result.data,
         pagination: {

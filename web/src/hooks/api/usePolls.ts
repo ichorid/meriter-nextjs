@@ -135,16 +135,15 @@ export const useUpdatePoll = () => {
     });
 };
 
-// Delete poll - TODO: Add to polls router
+// Delete poll
 export const useDeletePoll = () => {
     const utils = trpc.useUtils();
 
-    // Placeholder - delete endpoint not yet in tRPC router
-    return {
-        mutate: () => { },
-        mutateAsync: async () => { },
-        isLoading: false,
-        isError: false,
-        error: null,
-    };
+    return trpc.polls.delete.useMutation({
+        onSuccess: async (_result, variables) => {
+            await utils.polls.getAll.invalidate();
+            utils.polls.getById.setData({ id: variables.id }, undefined);
+            await utils.communities.getFeed.invalidate();
+        },
+    });
 };

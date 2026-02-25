@@ -232,7 +232,8 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const handleDelete = async () => {
     try {
       if (isPoll) {
-        await deletePoll.mutateAsync(publicationId!);
+        await deletePoll.mutateAsync({ id: publicationId! });
+        addToast(t('pollDeleted', { defaultValue: 'Poll deleted' }), 'success');
       } else {
         // If publication is already deleted, use permanent delete
         if (isAlreadyDeleted) {

@@ -16,7 +16,13 @@ import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useCommunity } from '@/hooks/api/useCommunities';
 
-import type { FeedItem, PublicationFeedItem, PollFeedItem, Wallet } from '@/types/api-v1';
+import type {
+  FeedItem,
+  PublicationFeedItem,
+  PollFeedItem,
+  ResourcePermissions,
+  Wallet,
+} from '@/types/api-v1';
 
 interface PublicationCardProps {
   publication: FeedItem;
@@ -120,6 +126,9 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             slug: undefined,
             createdAt: pollItem.createdAt,
             meta: pollItem.meta,
+            permissions: (pollItem as PollFeedItem & { permissions?: ResourcePermissions })
+              .permissions,
+            deleted: (pollItem as PollFeedItem & { deleted?: boolean }).deleted,
           }}
           showCommunityAvatar={showCommunityAvatar}
           className="mb-4"
