@@ -24,6 +24,7 @@ export class PermissionService {
   constructor(
     private userService: UserService,
     private communityService: CommunityService,
+    @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,
     private commentService: CommentService,
     private userCommunityRoleService: UserCommunityRoleService,
@@ -67,6 +68,18 @@ export class PermissionService {
     }
 
     return null;
+  }
+
+  /**
+   * Check if user is lead or superadmin in the given community.
+   * Used to allow elevated users to perform actions restricted to authors (e.g. update advanced settings).
+   */
+  async isLeadOrSuperadmin(
+    userId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    const role = await this.getUserRoleInCommunity(userId, communityId);
+    return role === COMMUNITY_ROLE_SUPERADMIN || role === COMMUNITY_ROLE_LEAD;
   }
 
   /**

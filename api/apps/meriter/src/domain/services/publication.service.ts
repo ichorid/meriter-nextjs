@@ -3,6 +3,8 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, ClientSession } from 'mongoose';
@@ -19,6 +21,7 @@ import {
 import { PublicationCreatedEvent, PublicationUpdatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
+import { PermissionService } from './permission.service';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -58,6 +61,8 @@ export class PublicationService {
     private publicationModel: Model<PublicationDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
+    @Inject(forwardRef(() => PermissionService))
+    private permissionService: PermissionService,
   ) { }
 
   async createPublication(
@@ -467,15 +472,21 @@ export class PublicationService {
     const authorId = publication.getAuthorId.getValue();
     const communityId = publication.getCommunityId.getValue();
 
-    // Only the post author may update advanced settings (stopLoss, noAuthorWalletSpend, ttlDays)
+    // Advanced settings (stopLoss, noAuthorWalletSpend, ttlDays) may be updated by the post author or by lead/superadmin for the publication's community
     const hasAdvancedSettingsUpdate =
       updateData.stopLoss !== undefined ||
       updateData.noAuthorWalletSpend !== undefined ||
       updateData.ttlDays !== undefined;
     if (hasAdvancedSettingsUpdate && userId !== authorId) {
-      throw new BadRequestException(
-        'Only the post author can update advanced settings',
+      const isElevated = await this.permissionService.isLeadOrSuperadmin(
+        userId,
+        communityId,
       );
+      if (!isElevated) {
+        throw new BadRequestException(
+          'Only the post author can update advanced settings',
+        );
+      }
     }
 
     // Authorization is handled by PermissionGuard via PermissionService.canEditPublication()
