@@ -56,7 +56,7 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
         </h1>
         {/* Balance on the right - with padding to avoid overlap with close button */}
         <div className="flex items-center gap-1.5 text-sm pr-12">
-          <span className="text-base-content/60">Баланс:</span>
+          <span className="text-base-content/60">{t('balanceLabel')}</span>
           <span className="font-semibold text-base-content">
             {meritBalance > 0 ? `+${formatMerits(meritBalance)}` : formatMerits(meritBalance)}
           </span>
@@ -67,7 +67,7 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between text-sm">
           <span className="text-base-content/70">
-            Прогресс: {currentComparisons} / {comparisonsRequired}
+            {t('progressLabel')} {currentComparisons} / {comparisonsRequired}
           </span>
           <span className="text-base-content/60 font-medium">
             {Math.round(progressPercent)}%

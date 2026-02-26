@@ -58,9 +58,9 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Создать команду</DialogTitle>
+          <DialogTitle>{t('createTeamDialogTitle')}</DialogTitle>
           <DialogDescription>
-            Создайте новую команду. Вы автоматически станете её лидом.
+            {t('createTeamDialogDescription')}
           </DialogDescription>
         </DialogHeader>
 

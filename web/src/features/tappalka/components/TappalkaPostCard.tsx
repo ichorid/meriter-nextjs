@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -34,6 +35,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
   isTokenHovered = false,
   isDragging = false,
 }) => {
+  const t = useTranslations('postCarousel');
   const handleDragOver = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
       if (disabled || !onDrop) return;
@@ -257,7 +259,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
             </span>
             {post.rating !== undefined && (
               <span className="text-xs text-base-content/60">
-                {post.rating > 0 ? `+${formatMerits(post.rating)}` : formatMerits(post.rating)} меритов
+                {post.rating > 0 ? `+${formatMerits(post.rating)}` : formatMerits(post.rating)} {t('meritsSuffix')}
               </span>
             )}
           </div>
@@ -290,7 +292,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       {isDropTarget && (
         <div className="absolute inset-0 bg-blue-400/20 dark:bg-blue-500/20 border-2 border-dashed border-blue-400 dark:border-blue-500 rounded-xl flex items-center justify-center pointer-events-none">
           <div className="text-blue-600 dark:text-blue-400 font-semibold text-lg">
-            Отпустите здесь
+            {t('dropHere')}
           </div>
         </div>
       )}

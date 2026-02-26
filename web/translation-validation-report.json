@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-25T23:43:27.041Z",
+  "timestamp": "2026-02-26T12:40:55.333Z",
   "validationIssues": {
     "missingInRu": [],
     "missingInEn": [],
@@ -490,13 +490,13 @@
     },
     {
       "file": "components/organisms/Publication/PublicationContent.tsx",
-      "line": 103,
+      "line": 104,
       "text": "Publication cover",
       "fullLine": "altPrefix={title ? `${title} - Cover` : 'Publication cover'}"
     },
     {
       "file": "components/organisms/Publication/PublicationContent.tsx",
-      "line": 111,
+      "line": 112,
       "text": "Publication image",
       "fullLine": "altPrefix={title ? `${title} - Image` : 'Publication image'}"
     },
@@ -772,7 +772,7 @@
     },
     {
       "file": "features/tappalka/components/TappalkaPostCard.tsx",
-      "line": 208,
+      "line": 210,
       "text": "Post image",
       "fullLine": "altPrefix={post.title ? `${post.title} - Image` : 'Post image'}"
     },

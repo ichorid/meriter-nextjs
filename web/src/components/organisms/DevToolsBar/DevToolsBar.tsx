@@ -193,7 +193,7 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
                   ) : (
                     <User className="w-3 h-3 mr-1" />
                   )}
-                  Тестовый пользователь
+                  {tCommon('testUser')}
                 </Button>
                 <Button
                   variant="outline"
@@ -207,13 +207,13 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
                   ) : (
                     <Shield className="w-3 h-3 mr-1" />
                   )}
-                  Суперадмин
+                  {tCommon('superadminLabel')}
                 </Button>
               </>
             ) : (
               <>
                 <span className="text-xs text-base-content/60">
-                  {user.displayName || user.username} {user.globalRole === 'superadmin' && '(суперадмин)'}
+                  {user.displayName || user.username} {user.globalRole === 'superadmin' && tCommon('superadminInParens')}
                 </span>
                 <Button
                   variant="outline"
@@ -227,7 +227,7 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
                   ) : (
                     <LogOut className="w-3 h-3 mr-1" />
                   )}
-                  Выход
+                  {tCommon('logoutLabel')}
                 </Button>
               </>
             )}

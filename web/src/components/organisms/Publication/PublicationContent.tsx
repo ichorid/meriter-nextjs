@@ -59,6 +59,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   onCategoryClick,
 }) => {
   const t = useTranslations('publications.create.taxonomy');
+  const tPub = useTranslations('publications');
   const {
     translateImpactArea,
     translateStage,
@@ -114,7 +115,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
       {isProject && (
         <div className="mb-2">
           <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-blue-600 rounded">
-            ПРОЕКТ
+            {tPub('projectTag')}
           </span>
         </div>
       )}

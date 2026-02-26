@@ -29,6 +29,7 @@ export function InviteToTeamDialog({
   targetUserId,
   communities,
 }: InviteToTeamDialogProps) {
+  const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const inviteToTeam = useInviteToTeam();
   const [selectedCommunityId, setSelectedCommunityId] = useState<string | null>(
@@ -65,9 +66,9 @@ export function InviteToTeamDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Выберите команду</DialogTitle>
+          <DialogTitle>{t('inviteToTeamDialogTitle')}</DialogTitle>
           <DialogDescription>
-            Пользователю будет отправлено приглашение в выбранную команду. Он сможет принять или отклонить его.
+            {t('inviteToTeamDialogDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -115,7 +116,7 @@ export function InviteToTeamDialog({
             {inviteToTeam.isPending && (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             )}
-            Пригласить
+            {t('inviteButton')}
           </Button>
         </DialogFooter>
       </DialogContent>

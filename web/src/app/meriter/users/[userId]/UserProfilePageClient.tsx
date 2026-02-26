@@ -470,7 +470,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                       className="rounded-xl flex-1"
                     >
                       <Users className="mr-2 h-4 w-4" />
-                      Пригласить в команду
+                      {t('inviteToTeamButton')}
                     </Button>
                   )}
                   {isSuperadmin && (
@@ -480,7 +480,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                       className="rounded-xl flex-1"
                     >
                       <UserCog className="mr-2 h-4 w-4" />
-                      Назначить лидом
+                      {t('assignLeadDialogTitle')}
                     </Button>
                   )}
                 </div>

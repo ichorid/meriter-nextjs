@@ -177,7 +177,10 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         // Show success message if reward earned
         if (result.rewardEarned && result.userMeritsEarned) {
           addToast(
-            `Поздравляем! Вы получили ${formatMerits(result.userMeritsEarned)} меритов за ${progress?.comparisonsRequired || 10} сравнений!`,
+            t('congratulationsMerits', {
+              merits: formatMerits(result.userMeritsEarned),
+              count: progress?.comparisonsRequired ?? 10,
+            }),
             'success',
           );
         }
@@ -264,7 +267,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 bg-base-200">
         <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-        <p className="mt-4 text-base-content/70">Загрузка...</p>
+        <p className="mt-4 text-base-content/70">{t('loading')}</p>
       </div>
     );
   }
@@ -272,12 +275,12 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   if (!progress) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 bg-base-200">
-        <p className="text-base-content/70">Не удалось загрузить данные</p>
+        <p className="text-base-content/70">{t('loadError')}</p>
         <button
           onClick={onClose}
           className="mt-4 px-4 py-2 bg-brand-primary text-white rounded-lg"
         >
-          Закрыть
+          {t('close')}
         </button>
       </div>
     );
@@ -315,16 +318,16 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
           <div className="text-center max-w-md">
             <div className="text-6xl mb-4">📭</div>
             <h3 className="text-xl font-semibold text-base-content mb-2">
-              Нет постов для сравнения
+              {t('noPostsToCompare')}
             </h3>
             <p className="text-base-content/70 mb-6">
-              В этом сообществе пока нет достаточно постов для сравнения. Попробуйте позже!
+              {t('noPostsInCommunityMessage')}
             </p>
             <button
               onClick={onClose}
               className="px-6 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary/90 transition-colors"
             >
-              Закрыть
+              {t('close')}
             </button>
           </div>
         </div>
@@ -346,7 +349,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         {pairLoading ? (
           <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
-            <p className="text-base-content/70">Загрузка постов...</p>
+            <p className="text-base-content/70">{t('loadingPosts')}</p>
           </div>
         ) : pair ? (
           <>
@@ -508,7 +511,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       {/* Publication View Modal */}
       <Dialog open={!!viewingPostId} onOpenChange={(open) => !open && setViewingPostId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogTitle className="sr-only">Просмотр поста</DialogTitle>
+          <DialogTitle className="sr-only">{t('viewPost')}</DialogTitle>
           {isLoadingPublication ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />

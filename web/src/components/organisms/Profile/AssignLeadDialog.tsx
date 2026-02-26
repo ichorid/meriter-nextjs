@@ -65,9 +65,9 @@ export function AssignLeadDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Назначить лидом</DialogTitle>
+          <DialogTitle>{t('assignLeadDialogTitle')}</DialogTitle>
           <DialogDescription>
-            Выберите сообщество, в котором пользователь станет лидом.
+            {t('assignLeadDialogDescription')}
           </DialogDescription>
         </DialogHeader>
 
@@ -78,7 +78,7 @@ export function AssignLeadDialog({
             </div>
           ) : allCommunities.length === 0 ? (
             <div className="text-center py-8 text-base-content/60">
-              Нет доступных сообществ
+              {t('noCommunitiesAvailable')}
             </div>
           ) : (
             allCommunities.map((community) => (
@@ -103,7 +103,7 @@ export function AssignLeadDialog({
                       community.typeTag,
                     ) && (
                       <Badge variant="secondary" className="text-xs">
-                        Глобальное
+                        {t('globalLabel')}
                       </Badge>
                     )}
                 </div>

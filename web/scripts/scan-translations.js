@@ -202,10 +202,97 @@ function findHardcodedStrings() {
                     });
                 }
             }
+            
+            // Skip comments for the following checks
+            const lineTrimmed = line.trim();
+            if (lineTrimmed.startsWith('//') || lineTrimmed.startsWith('*') || lineTrimmed.startsWith('/*')) {
+                return;
+            }
+            const relativePathForRussian = path.relative(WEB_SRC, filePath);
+            if (relativePathForRussian.includes('getIcon.ts')) return;
+            
+            // 1. Template literals (backticks) containing Cyrillic
+            const templateLiteralPattern = /`([^`]*[А-Яа-яЁё][^`]*)`/g;
+            let tplMatch;
+            while ((tplMatch = templateLiteralPattern.exec(line)) !== null) {
+                const text = tplMatch[1].trim();
+                if (text.length > 0) {
+                    issues.russianText.push({
+                        file: relativePathForRussian,
+                        line: lineNum,
+                        text: text.length > 60 ? text.slice(0, 60) + '…' : text,
+                        fullLine: line.trim()
+                    });
+                }
+            }
+            
+            // 2. JSX text content: text between > and < or { that contains Cyrillic
+            const jsxTextPattern = />([^<{}]*[А-Яа-яЁё][^<{}]*)(?=<|\{|$)/g;
+            let jsxMatch;
+            while ((jsxMatch = jsxTextPattern.exec(line)) !== null) {
+                const text = jsxMatch[1].trim();
+                const firstCyrillicInMatch = jsxMatch[1].search(/[А-Яа-яЁё]/);
+                const cyrillicPos = firstCyrillicInMatch >= 0 ? jsxMatch.index + 1 + firstCyrillicInMatch : jsxMatch.index + 1;
+                if (text.length > 0 && !isCyrillicOnlyInRegex(line, cyrillicPos)) {
+                    issues.russianText.push({
+                        file: relativePathForRussian,
+                        line: lineNum,
+                        text,
+                        fullLine: line.trim()
+                    });
+                }
+            }
+            
+            // 3. Unquoted Cyrillic after } (e.g. "} меритов")
+            const afterExprPattern = /}\s*([А-Яа-яЁё][А-Яа-яЁёa-zA-Z\s]*?)(?=<|}|$)/g;
+            let afterMatch;
+            while ((afterMatch = afterExprPattern.exec(line)) !== null) {
+                const text = afterMatch[1].trim();
+                const cyrillicStart = afterMatch.index + afterMatch[0].indexOf(afterMatch[1]);
+                if (text.length > 0 && !isCyrillicOnlyInRegex(line, cyrillicStart)) {
+                    issues.russianText.push({
+                        file: relativePathForRussian,
+                        line: lineNum,
+                        text,
+                        fullLine: line.trim()
+                    });
+                }
+            }
+            
+            // 4. Line-starting Cyrillic (e.g. "            Прогресс: {x}")
+            const lineStartCyrillicPattern = /^\s*([А-Яа-яЁё][А-Яа-яЁё\s:,\-!?./]*?)(?=\s*[\{<]|\s*$)/;
+            const lineStartMatch = line.match(lineStartCyrillicPattern);
+            if (lineStartMatch) {
+                const text = lineStartMatch[1].trim();
+                const pos = line.indexOf(lineStartMatch[1]);
+                if (text.length > 0 && pos >= 0 && !isCyrillicOnlyInRegex(line, pos)) {
+                    issues.russianText.push({
+                        file: relativePathForRussian,
+                        line: lineNum,
+                        text,
+                        fullLine: line.trim()
+                    });
+                }
+            }
         });
     }
     
     return issues;
+}
+
+/**
+ * Avoid flagging Cyrillic inside regex literals (e.g. /^[a-zа-яё0-9_]+$/)
+ */
+function isCyrillicOnlyInRegex(line, cyrillicIndex) {
+    // Exclude < and > so we don't treat "/60">Баланс:</span>" as one regex
+    const regexLiteralPattern = /\/(?![*\/])(?:[^/\\<>]|\\.)*\/[gimsuy]*/g;
+    let reMatch;
+    while ((reMatch = regexLiteralPattern.exec(line)) !== null) {
+        if (cyrillicIndex >= reMatch.index && cyrillicIndex < reMatch.index + reMatch[0].length) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /**

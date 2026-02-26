@@ -211,9 +211,9 @@ export function AboutAdminPanel() {
         <div className="bg-base-200/50 rounded-xl p-4 border border-base-300">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-base-content mb-1">Инициализация демо-данных</h3>
+              <h3 className="font-semibold text-base-content mb-1">{t('initDemoTitle')}</h3>
               <p className="text-sm text-base-content/60">
-                Создать демонстрационные категории и статьи для тестирования
+                {t('initDemoDescription')}
               </p>
             </div>
             <Button
@@ -227,12 +227,12 @@ export function AboutAdminPanel() {
               {initializeDemoData.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Инициализация...
+                  {t('initializing')}
                 </>
               ) : (
                 <>
                   <Plus className="w-4 h-4 mr-2" />
-                  Инициализировать
+                  {t('initButton')}
                 </>
               )}
             </Button>
@@ -243,11 +243,11 @@ export function AboutAdminPanel() {
       {/* Introduction Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-base-content">Введение</h3>
+          <h3 className="text-lg font-semibold text-base-content">{t('introductionLabel')}</h3>
           {!editingIntroduction && (
             <Button variant="outline" size="sm" onClick={() => setEditingIntroduction(true)}>
               <Edit2 className="w-4 h-4 mr-2" />
-              Редактировать
+              {t('editButton')}
             </Button>
           )}
         </div>
