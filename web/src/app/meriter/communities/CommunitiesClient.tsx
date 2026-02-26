@@ -126,7 +126,7 @@ export default function CommunitiesPage() {
                 {specialCommunities.length > 0 && (
                     <div className="bg-base-100 py-4 space-y-3">
                         <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                            {tCommunities('specialCommunities')}
+                            {tCommunities('publicCommunities')}
                         </p>
                         <div className="flex flex-col gap-1">
                             {specialCommunities.map((community) => {
@@ -186,7 +186,7 @@ export default function CommunitiesPage() {
                         {specialCommunities.length > 0 && <Separator className="bg-base-300 my-0" />}
                         <div className="bg-base-100 py-4 space-y-3">
                             <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                                {tCommunities('yourCommunities')}
+                                {tCommunities('privateCommunities')}
                             </p>
                             {isLoading ? (
                                 <div className="flex flex-col gap-1">

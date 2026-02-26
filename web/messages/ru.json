@@ -1282,8 +1282,8 @@
     },
     "communities": {
         "title": "Сообщества",
-        "specialCommunities": "Основные сообщества",
-        "yourCommunities": "Группы команд",
+        "publicCommunities": "Публичные сообщества",
+        "privateCommunities": "Приватные сообщества",
         "teamGroupsName": "Группы команд",
         "searchPlaceholder": "Поиск сообществ...",
         "leads": "Лиды",

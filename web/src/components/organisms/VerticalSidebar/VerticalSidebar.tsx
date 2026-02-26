@@ -295,7 +295,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             <div className="flex flex-col gap-1 min-w-0">
               {isExpanded && (
                 <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
-                  {tCommunities('specialCommunities')}
+                  {tCommunities('publicCommunities')}
                 </p>
               )}
               {specialCommunities.map((community) => {
@@ -326,7 +326,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             <div className="flex flex-col gap-1 min-w-0">
               {isExpanded && (
                 <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
-                  {tCommunities('yourCommunities')}
+                  {tCommunities('privateCommunities')}
                 </p>
               )}
               {userCommunities.map((community) => {

@@ -1282,8 +1282,8 @@
     },
     "communities": {
         "title": "Communities",
-        "specialCommunities": "Special Communities",
-        "yourCommunities": "Your Communities",
+        "publicCommunities": "Public Communities",
+        "privateCommunities": "Private Communities",
         "teamGroupsName": "Team groups",
         "searchPlaceholder": "Search communities...",
         "leads": "Leads",

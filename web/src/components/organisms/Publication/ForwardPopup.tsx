@@ -161,7 +161,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
           {filteredSpecialCommunities.length > 0 && (
             <div>
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                {tCommunities('specialCommunities')}
+                {tCommunities('publicCommunities')}
               </h3>
               <div className="space-y-2">
                 {filteredSpecialCommunities.map((community) => (
@@ -190,7 +190,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
           {filteredTeamCommunities.length > 0 && (
             <div>
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                {tCommunities('yourCommunities')}
+                {tCommunities('privateCommunities')}
               </h3>
               <div className="space-y-2">
                 {filteredTeamCommunities.map((community) => (
