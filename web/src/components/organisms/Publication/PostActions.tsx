@@ -276,6 +276,21 @@ export const PostActions: React.FC<PostActionsProps> = ({
               <span className="hidden sm:inline">{withdrawLabel}</span>
             </button>
           )}
+          {showVoteButton && (
+            <button
+              onClick={onVoteClick}
+              disabled={!canVote}
+              className={`h-8 px-2 sm:px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 ${
+                canVote
+                  ? 'bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95'
+                  : 'bg-gray-200 dark:bg-gray-700 text-base-content/60 cursor-not-allowed'
+              }`}
+              title={voteTooltipText ?? voteLabel}
+            >
+              <Hand className={`w-4 h-4 shrink-0 ${canVote ? 'text-base-100' : 'text-base-content/60'}`} />
+              <span className="hidden sm:inline">{voteLabel}</span>
+            </button>
+          )}
         </div>
       );
     }

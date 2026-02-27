@@ -201,7 +201,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
   // Check if community allows withdrawals
   const allowWithdraw = community?.settings?.allowWithdraw ?? true;
-  const canShowWithdraw = ((isAuthor && !hasBeneficiary) || isBeneficiary);
+  const canShowWithdraw = (isAuthor && !hasBeneficiary && allowWithdraw) || isBeneficiary;
 
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
@@ -510,7 +510,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onClosePostClick={handleClosePostClick}
         onSettingsClick={handleSettingsClick}
         showInvestButton={!isAuthor && investingEnabled && !!myId}
-        showVoteButton={!hideVoteAndScore && !isClosed && !isAuthor && !isBeneficiary}
+        showVoteButton={!hideVoteAndScore && !isClosed && ((!isAuthor && !isBeneficiary) || (isAuthor && canVote))}
         canVote={canVote}
         onVoteClick={handleVoteClick}
         voteTooltipText={voteTooltipText}
