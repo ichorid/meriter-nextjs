@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# translation reports
+translation-report.json
+translation-validation-report.json
+translation-validate-output.txt

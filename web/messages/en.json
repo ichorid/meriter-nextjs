@@ -478,6 +478,7 @@
         },
         "postPermanentlyDeleted": "Post permanently deleted",
         "postMovedToDeleted": "Post moved to deleted",
+        "pollDeleted": "Poll deleted",
         "failedToDelete": "Failed to delete",
         "deleteConfirmation": {
             "investmentTitle": "Delete post with investments",
@@ -664,7 +665,9 @@
         "amountMustBeNumber": "Amount must be a number",
         "amountMustBeInteger": "Amount must be a whole number",
         "amountMinValue": "Amount must be at least 1",
-        "amountInsufficient": "Insufficient balance: you have {balance} available"
+        "amountInsufficient": "Insufficient balance: you have {balance} available",
+        "castSuccess": "Your vote has been cast",
+        "editTitle": "Edit Poll"
     },
     "feed": {
         "saving": "Saving...",
@@ -710,6 +713,7 @@
         "downvoteExplanation": "You are voting against publication. Please leave a detailed explanation, the reason for your decision.",
         "explanationDetails": "Explanations, details and descriptions",
         "textField": "Text field",
+        "images": "Images",
         "submit": "Submit",
         "upvoteQuota": "Vote for {used}/{total} daily quota",
         "upvoteBalance": "Vote for {amount} from Balance",
@@ -722,6 +726,7 @@
         "sliderHint": "Move the slider to choose the number of votes you want to give.",
         "noVotesAvailable": "No votes available",
         "adjustSliderToVote": "Adjust slider to vote",
+        "pleaseAdjustSlider": "Please adjust the slider",
         "addCommentOptional": "Add a comment (optional)",
         "commentHint": "Tell us why you gave this rating. We value your opinion",
         "reasonRequired": "A reason for your vote is required",
@@ -862,6 +867,7 @@
             "errorLoadingDeleted": "Error loading deleted publications",
             "restorePublication": "Restore publication",
             "restore": "Restore",
+            "noPermission": "You don't have permission to perform this action",
             "members": {
                 "title": "Members",
                 "empty": "No members found",
@@ -892,6 +898,27 @@
                     "error": "Error adding merits",
                     "invalidAmount": "Enter a valid amount of merits"
                 }
+            },
+            "teamRequests": {
+                "title": "Join Requests",
+                "approve": "Approve",
+                "reject": "Reject",
+                "approving": "Approving...",
+                "rejecting": "Rejecting...",
+                "approved": "Request approved",
+                "rejected": "Request rejected",
+                "approveFailed": "Failed to approve request",
+                "rejectFailed": "Failed to reject request",
+                "confirmReject": "Are you sure you want to reject this request?"
+            },
+            "unconfigured": {
+                "banner": {
+                    "adminPrefix": "This community is not fully configured, go to",
+                    "adminLink": "settings",
+                    "adminSuffix": "to complete community setup",
+                    "user": "This community will be setup by your admin soon"
+                },
+                "tooltip": "Community is unconfigured"
             },
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
@@ -1310,7 +1337,9 @@
         "other": "Other",
         "localGroups": {
             "title": "Local",
-            "noTeamNote": "You are not part of a team. If you want, you can create your own team (button in your profile) or apply to join an existing one – button in the lead's profile, list of leads below on this page."
+            "noTeamNote": "You are not part of a team. If you want, you can create your own team (button in your profile) or apply to join an existing one – button in the lead's profile, list of leads below on this page.",
+            "viewerNote": "You are currently in viewer mode. You can explore communities and teams but some actions are available only to participants and leads.",
+            "contactNote": "To join a local team, contact a team lead or organizer and send them your profile so they can invite you."
         },
         "joinTeam": {
             "title": "Join a Team",
@@ -1321,7 +1350,11 @@
             "title": "Create Community",
             "creating": "Creating...",
             "createButton": "Create",
-            "settings": "Settings"
+            "settings": "Settings",
+            "success": "Community created successfully",
+            "errors": {
+                "createFailed": "Failed to create community"
+            }
         },
         "createPost": "Create Post",
         "createPoll": "Create Poll",
@@ -1551,6 +1584,9 @@
         "editProfileSubtitle": "Update your profile information",
         "title": "Profile",
         "notFound": "User not found",
+        "errors": {
+            "required": "This field is required"
+        },
         "hero": {
             "stats": {
                 "publications": "Publications",
@@ -1656,6 +1692,7 @@
         },
         "characters": "characters",
         "errors": {
+            "required": "This field is required",
             "bioTooLong": "Bio must be no more than {max} characters",
             "aboutTooLong": "About must be no more than {max} characters",
             "educationalInstitutionTooLong": "Educational institution must be no more than {max} characters",

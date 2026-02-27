@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { findFiles } = require('./scan-translations-helpers');
+const { findFiles, flattenKeys, getNestedValue } = require('./scan-translations-helpers');
 
 const EN_JSON = path.join(__dirname, '../messages/en.json');
 const RU_JSON = path.join(__dirname, '../messages/ru.json');
@@ -52,44 +52,12 @@ function isPrimarilyRussian(text) {
 }
 
 /**
- * Flatten nested object to dot-notation keys
- */
-function flattenKeys(obj, prefix = '') {
-    const keys = [];
-    for (const key in obj) {
-        const fullKey = prefix ? `${prefix}.${key}` : key;
-        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-            keys.push(...flattenKeys(obj[key], fullKey));
-        } else {
-            keys.push(fullKey);
-        }
-    }
-    return keys;
-}
-
-/**
- * Get nested value from object using dot notation
- */
-function getNestedValue(obj, key) {
-    const parts = key.split('.');
-    let value = obj;
-    for (const part of parts) {
-        if (value && typeof value === 'object' && part in value) {
-            value = value[part];
-        } else {
-            return undefined;
-        }
-    }
-    return value;
-}
-
-/**
  * Validate translations
  */
 function validateTranslations() {
     const enKeys = flattenKeys(enTranslations);
     const ruKeys = flattenKeys(ruTranslations);
-    
+
     const issues = {
         missingInRu: [],
         missingInEn: [],
@@ -149,6 +117,152 @@ function validateTranslations() {
     }
     
     return issues;
+}
+
+/**
+ * Find translation keys used in code that are missing from message files
+ *
+ * Static-only analysis:
+ * - Tracks variables assigned from useTranslations('namespace')
+ * - Finds calls like t('key') or t('key', {...}) for those variables
+ * - Resolves to full key: `${namespace}.${key}`
+ * - Flags keys missing from en.json
+ * - Collects dynamic/unverifiable usages separately (template literals, non-literal args)
+ */
+function findMissingKeysInCode() {
+    const files = findFiles(WEB_SRC, /\.(ts|tsx)$/).filter(file =>
+        !file.includes('.test.') &&
+        !file.includes('__tests__') &&
+        !file.includes('node_modules')
+    );
+
+    const missingKeysSet = new Set();
+    const dynamicUsages = [];
+
+    for (const filePath of files) {
+        const relativePath = path.relative(WEB_SRC, filePath);
+        const content = fs.readFileSync(filePath, 'utf8');
+
+        // Map of translation variable -> list of namespace bindings with definition index
+        const translationVarsByName = {};
+
+        const useTranslationsRegex = /(?:const|let|var)\s+(\w+)\s*=\s*useTranslations\(\s*['"]([^'"]+)['"]\s*\)/g;
+        let match;
+        while ((match = useTranslationsRegex.exec(content)) !== null) {
+            const varName = match[1];
+            const namespace = match[2];
+            const defIndex = match.index;
+            if (!translationVarsByName[varName]) {
+                translationVarsByName[varName] = [];
+            }
+            translationVarsByName[varName].push({ namespace, index: defIndex });
+        }
+
+        // If no translation variables, skip further work for this file
+        const varEntries = Object.entries(translationVarsByName);
+        if (varEntries.length === 0) continue;
+
+        for (const [varName, defs] of varEntries) {
+            // Sort definitions so we can find the nearest one before each call
+            defs.sort((a, b) => a.index - b.index);
+
+            // Match calls like t('key') or t('key', {...}) with a proper identifier boundary
+            const callRegex = new RegExp(`(?:^|[^A-Za-z0-9_$])${varName}\\s*\\(([^)]*)\\)`, 'g');
+            let callMatch;
+
+            while ((callMatch = callRegex.exec(content)) !== null) {
+                const args = callMatch[1].trim();
+                if (!args) continue;
+
+                const callIndex = callMatch.index;
+                const line = content.slice(0, callIndex).split('\n').length;
+
+                // Choose the nearest definition at or before this call site
+                let namespace = null;
+                for (let i = defs.length - 1; i >= 0; i--) {
+                    if (defs[i].index <= callIndex) {
+                        namespace = defs[i].namespace;
+                        break;
+                    }
+                }
+
+                if (!namespace) {
+                    // No matching definition in scope – treat as dynamic/unverifiable usage
+                    dynamicUsages.push({
+                        file: relativePath,
+                        line,
+                        namespace: null,
+                        variable: varName,
+                        expression: args
+                    });
+                    continue;
+                }
+
+                const firstChar = args[0];
+
+                // String-literal key: t('key') or t("key", {...})
+                if (firstChar === '\'' || firstChar === '"') {
+                    const quote = firstChar;
+                    const endQuoteIndex = args.indexOf(quote, 1);
+                    if (endQuoteIndex <= 1) {
+                        continue;
+                    }
+                    const key = args.slice(1, endQuoteIndex);
+
+                    // Only treat \"key\" as a translation key when it looks like one:
+                    // dot-separated segments without spaces (e.g. \"pollDeleted\", \"errors.network\").
+                    // Anything else (sentences, Tailwind classes, etc.) is treated as dynamic/unverifiable.
+                    const isKeyLike = /^[A-Za-z0-9_.-]+$/.test(key);
+                    if (!isKeyLike) {
+                        dynamicUsages.push({
+                            file: relativePath,
+                            line,
+                            namespace,
+                            variable: varName,
+                            expression: `${quote}${key}${quote}`
+                        });
+                        continue;
+                    }
+
+                    const fullKey = `${namespace}.${key}`;
+
+                    if (getNestedValue(enTranslations, fullKey) === undefined) {
+                        missingKeysSet.add(fullKey);
+                    }
+                    continue;
+                }
+
+                // Template literal key: t(`foo.${bar}`)
+                if (firstChar === '`') {
+                    const endIndex = args.indexOf('`', 1);
+                    const expression = endIndex > 0 ? args.slice(0, endIndex + 1) : '`...`';
+                    dynamicUsages.push({
+                        file: relativePath,
+                        line,
+                        namespace,
+                        variable: varName,
+                        expression
+                    });
+                    continue;
+                }
+
+                // Non-literal / variable key: t(someVariable) or t(getKey())
+                const firstToken = args.split(/[,\s]/)[0];
+                dynamicUsages.push({
+                    file: relativePath,
+                    line,
+                    namespace,
+                    variable: varName,
+                    expression: firstToken
+                });
+            }
+        }
+    }
+
+    return {
+        missingInMessages: Array.from(missingKeysSet).sort(),
+        dynamicKeys: dynamicUsages
+    };
 }
 
 /**
@@ -246,6 +360,7 @@ function main() {
     // Validate translation quality
     console.log('📊 Validating translation quality...');
     const validationIssues = validateTranslations();
+    const codeUsageIssues = findMissingKeysInCode();
     
     if (validationIssues.missingInRu.length > 0) {
         console.log(`\n❌ Missing in ru.json (${validationIssues.missingInRu.length} keys):`);
@@ -300,6 +415,26 @@ function main() {
             console.log(`   ... and ${validationIssues.emptyTranslations.length - 10} more`);
         }
     }
+
+    if (codeUsageIssues.missingInMessages.length > 0) {
+        console.log(`\n❌ Keys used in code but missing from messages (${codeUsageIssues.missingInMessages.length}):`);
+        codeUsageIssues.missingInMessages.slice(0, 10).forEach(key => {
+            console.log(`   - ${key}`);
+        });
+        if (codeUsageIssues.missingInMessages.length > 10) {
+            console.log(`   ... and ${codeUsageIssues.missingInMessages.length - 10} more`);
+        }
+    }
+
+    if (codeUsageIssues.dynamicKeys.length > 0) {
+        console.log(`\nℹ️  Dynamic or unverifiable translation key usages (${codeUsageIssues.dynamicKeys.length}):`);
+        codeUsageIssues.dynamicKeys.slice(0, 10).forEach(issue => {
+            console.log(`   - ${issue.file}:${issue.line} [${issue.namespace}] ${issue.variable}(${issue.expression} ...)`);
+        });
+        if (codeUsageIssues.dynamicKeys.length > 10) {
+            console.log(`   ... and ${codeUsageIssues.dynamicKeys.length - 10} more`);
+        }
+    }
     
     // Find hardcoded UI strings
     console.log('\n🔎 Scanning for hardcoded user-facing strings...');
@@ -320,6 +455,7 @@ function main() {
     const report = {
         timestamp: new Date().toISOString(),
         validationIssues,
+        codeUsageIssues,
         hardcodedStrings
     };
     
@@ -332,7 +468,8 @@ function main() {
                        validationIssues.missingInEn.length +
                        validationIssues.englishInRussian.length +
                        validationIssues.russianInEnglish.length +
-                       validationIssues.emptyTranslations.length;
+                       validationIssues.emptyTranslations.length +
+                       codeUsageIssues.missingInMessages.length;
     const totalIssues = totalBlockingIssues + hardcodedStrings.length;
     
     console.log(`\n📊 Total issues found: ${totalIssues} (${hardcodedStrings.length} hardcoded strings; ${totalBlockingIssues} blocking)`);
