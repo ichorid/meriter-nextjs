@@ -138,20 +138,20 @@ export function InvestDialog({
                 })}
               </p>
 
-              {/* Pool with tooltip (same as investment breakdown on post) */}
+              {/* Total invested (not net pool balance after show costs) */}
               <div className="text-sm text-base-content/70">
                 <span
                   className="inline-flex items-center gap-1.5 text-base-content/60"
-                  title={t('poolTooltip')}
+                  title={t('totalInvestedTooltip', { defaultValue: 'Total merits ever invested in this post by all investors.' })}
                 >
-                  {t('poolLabel', { defaultValue: 'Pool' })}
-                  <span className="inline-flex" title={t('poolTooltip')} aria-label={t('poolTooltip')}>
+                  {t('totalInvestedLabel', { defaultValue: 'Total invested' })}
+                  <span className="inline-flex" title={t('totalInvestedTooltip', { defaultValue: 'Total merits ever invested in this post by all investors.' })} aria-label={t('totalInvestedTooltip', { defaultValue: 'Total merits ever invested in this post by all investors.' })}>
                     <Info className="w-4 h-4 text-base-content/50" />
                   </span>
                 </span>
                 {' '}
                 {t('poolValueFromInvestors', {
-                  amount: formatMerits(poolBalance),
+                  amount: formatMerits(poolTotal),
                   count: investorCountDisplay,
                   defaultValue: '{amount} merits from {count} investor(s)',
                 })}
