@@ -809,8 +809,38 @@ export const CreateCommunityDtoSchema = z
   .object({
     name: z.string().min(1),
     description: z.string().optional(),
+    avatarUrl: z.string().url().optional(),
+
+    typeTag: z.string().optional(),
+    isPriority: z.boolean().optional(),
+
+    futureVisionText: z.string().optional(),
+    futureVisionTags: z.array(z.string()).optional(),
+    futureVisionCover: z.string().url().optional(),
+
+    settings: z.unknown().optional(),
+    hashtags: z.array(z.string()).optional(),
+    hashtagDescriptions: z.record(z.string()).optional(),
+    postingRules: z.unknown().optional(),
+    votingRules: z.unknown().optional(),
+    visibilityRules: z.unknown().optional(),
+    meritRules: z.unknown().optional(),
+    linkedCurrencies: z.array(z.string()).optional(),
   })
-  .passthrough(); // Allow additional fields
+  .passthrough()
+  .superRefine((data, ctx) => {
+    const typeTag = data.typeTag;
+    const requiresFutureVisionText = typeTag !== "project" && typeTag !== "global";
+    const futureVisionText = (data.futureVisionText ?? "").trim();
+
+    if (requiresFutureVisionText && futureVisionText.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["futureVisionText"],
+        message: "futureVisionText is required when creating a community",
+      });
+    }
+  });
 
 export const VoteDirectionDtoSchema = z.object({
   amount: z.number().int(),

@@ -177,6 +177,9 @@ export const communitiesRouter = router({
         name: z.string().min(2).max(100),
         description: z.string().max(1000).optional(),
         avatarUrl: z.string().url().optional(),
+        futureVisionText: z.string().min(1).max(10000),
+        futureVisionTags: z.array(z.string()).optional(),
+        futureVisionCover: z.string().url().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

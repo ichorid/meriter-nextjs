@@ -937,7 +937,14 @@ export class CommunityService {
    */
   async createTeamByUser(
     userId: string,
-    data: { name: string; description?: string; avatarUrl?: string },
+    data: {
+      name: string;
+      description?: string;
+      avatarUrl?: string;
+      futureVisionText: string;
+      futureVisionTags?: string[];
+      futureVisionCover?: string;
+    },
   ): Promise<Community> {
     this.logger.log(`Creating team by user ${userId}: ${data.name}`);
 
@@ -947,6 +954,10 @@ export class CommunityService {
       description: data.description,
       avatarUrl: data.avatarUrl,
       typeTag: 'team',
+      creatorUserId: userId,
+      futureVisionText: data.futureVisionText,
+      futureVisionTags: data.futureVisionTags,
+      futureVisionCover: data.futureVisionCover,
     });
 
     // 2. Assign creator as lead
