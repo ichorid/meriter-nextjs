@@ -39,6 +39,9 @@ export interface CreatePublicationDto {
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
   beneficiaryId?: string;
+  /** When set (and caller verified as lead), post is attributed to this community. */
+  sourceEntityId?: string;
+  sourceEntityType?: 'project' | 'community';
   quotaAmount?: number;
   walletAmount?: number;
   // Merged from dev
@@ -66,6 +69,7 @@ export class PublicationService {
     private eventBus: EventBus,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
@@ -140,6 +144,8 @@ export class PublicationService {
         methods: dto.methods,
         stage: dto.stage,
         helpNeeded: dto.helpNeeded,
+        sourceEntityId: dto.sourceEntityId,
+        sourceEntityType: dto.sourceEntityType,
       },
     );
 
@@ -168,6 +174,8 @@ export class PublicationService {
       ttlExpiresAt,
       stopLoss: dto.stopLoss ?? 0,
       noAuthorWalletSpend: dto.noAuthorWalletSpend ?? false,
+      sourceEntityId: dto.sourceEntityId,
+      sourceEntityType: dto.sourceEntityType,
     });
 
     // Publish domain event
@@ -237,6 +245,136 @@ export class PublicationService {
       `Publication from project ${params.projectId} created on Birzha: ${id}`,
     );
     return { id };
+  }
+
+  /**
+   * Create an OB (Future Vision) post when a community is created with futureVisionText.
+   * System action: postCost=0, no fee deduction.
+   */
+  async createFutureVisionPost(params: {
+    futureVisionCommunityId: string;
+    authorId: string;
+    content: string;
+    sourceEntityId: string;
+  }): Promise<{ id: string }> {
+    const id = PublicationId.generate().getValue();
+    const now = new Date();
+
+    await this.publicationModel.create({
+      id,
+      communityId: params.futureVisionCommunityId,
+      authorId: params.authorId,
+      sourceEntityId: params.sourceEntityId,
+      sourceEntityType: 'community',
+      content: params.content,
+      type: 'text',
+      title: undefined,
+      description: undefined,
+      hashtags: [],
+      categories: [],
+      images: [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      investingEnabled: false,
+      investmentPool: 0,
+      investmentPoolTotal: 0,
+      investments: [],
+      status: 'active',
+      postType: 'basic',
+      isProject: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await this.eventBus.publish(
+      new PublicationCreatedEvent(
+        id,
+        params.authorId,
+        params.futureVisionCommunityId,
+      ),
+    );
+
+    this.logger.log(
+      `OB post created for community ${params.sourceEntityId}: ${id}`,
+    );
+    return { id };
+  }
+
+  /**
+   * Update OB post content when community futureVisionText is updated.
+   * Bypasses edit window; preserves rating, votes, comments.
+   */
+  async updateFutureVisionPostContent(
+    futureVisionCommunityId: string,
+    sourceCommunityId: string,
+    content: string,
+  ): Promise<boolean> {
+    const updated = await this.publicationModel
+      .findOneAndUpdate(
+        {
+          communityId: futureVisionCommunityId,
+          sourceEntityType: 'community',
+          sourceEntityId: sourceCommunityId,
+          deleted: { $ne: true },
+        },
+        {
+          $set: {
+            content,
+            updatedAt: new Date(),
+          },
+        },
+      )
+      .exec();
+
+    if (updated) {
+      this.logger.log(
+        `OB post content updated for community ${sourceCommunityId}`,
+      );
+    }
+    return !!updated;
+  }
+
+  /**
+   * Find OB publication id by source community (if any).
+   */
+  async findFutureVisionPostId(
+    futureVisionCommunityId: string,
+    sourceCommunityId: string,
+  ): Promise<string | null> {
+    const doc = await this.publicationModel
+      .findOne({
+        communityId: futureVisionCommunityId,
+        sourceEntityType: 'community',
+        sourceEntityId: sourceCommunityId,
+        deleted: { $ne: true },
+      })
+      .select('id')
+      .lean()
+      .exec();
+    return doc?.id ?? null;
+  }
+
+  /**
+   * List OB posts in future-vision community, sorted by metrics.score descending.
+   * Used for getFutureVisions feed.
+   */
+  async findObPostsSortedByScore(
+    futureVisionCommunityId: string,
+  ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number } }[]> {
+    const docs = await this.publicationModel
+      .find({
+        communityId: futureVisionCommunityId,
+        sourceEntityType: 'community',
+        deleted: { $ne: true },
+      })
+      .select('id sourceEntityId metrics.score')
+      .sort({ 'metrics.score': -1 })
+      .lean()
+      .exec();
+    return docs.map((d: any) => ({
+      id: d.id,
+      sourceEntityId: d.sourceEntityId,
+      metrics: { score: d.metrics?.score ?? 0 },
+    }));
   }
 
   async getPublication(id: string): Promise<Publication | null> {

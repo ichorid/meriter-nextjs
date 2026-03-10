@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema, IdInputSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
@@ -71,6 +71,25 @@ export const communitiesRouter = router({
         createdAt: community.createdAt.toISOString(),
         updatedAt: community.updatedAt.toISOString(),
       };
+    }),
+
+  /**
+   * Get future visions feed: communities via their OB posts, pagination, filter by tags, sort by rating.
+   */
+  getFutureVisions: publicProcedure
+    .input(
+      z.object({
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
+        tags: z.array(z.string()).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.communityService.getFutureVisions({
+        page: input.page,
+        pageSize: input.pageSize,
+        tags: input.tags,
+      });
     }),
 
   /**
@@ -189,11 +208,16 @@ export const communitiesRouter = router({
         meritRules: input.meritRules,
         linkedCurrencies: input.linkedCurrencies,
         typeTag: input.typeTag,
+        futureVisionText: input.futureVisionText,
+        futureVisionTags: input.futureVisionTags,
+        futureVisionCover: input.futureVisionCover,
       };
       
       if (isSuperadmin && typeof input.isPriority === 'boolean') {
         communityDto.isPriority = input.isPriority;
       }
+
+      communityDto.creatorUserId = ctx.user.id;
 
       const community = await ctx.communityService.createCommunity(communityDto);
 

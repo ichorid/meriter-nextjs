@@ -27,6 +27,7 @@ import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
+import { PublicationService } from './publication.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -57,6 +58,7 @@ export interface CreateCommunityDto {
     };
     dailyEmission?: number;
     postCost?: number;
+    allowWithdraw?: boolean;
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
@@ -69,6 +71,10 @@ export interface CreateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   communityWalletId?: string;
   futureVisionText?: string;
+  futureVisionTags?: string[];
+  futureVisionCover?: string;
+  /** Set by router: used to create OB post author when futureVisionText is present. */
+  creatorUserId?: string;
 }
 
 export interface UpdateCommunityDto {
@@ -132,6 +138,8 @@ export interface UpdateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   rejectionMessage?: string;
   futureVisionText?: string;
+  futureVisionTags?: string[];
+  futureVisionCover?: string;
   // Legacy rules fields (for backward compatibility)
   postingRules?: any;
   votingRules?: any;
@@ -168,6 +176,8 @@ export class CommunityService {
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
     private communityDefaultsService: CommunityDefaultsService,
+    @Inject(forwardRef(() => PublicationService))
+    private publicationService: PublicationService,
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
@@ -353,6 +363,7 @@ export class CommunityService {
               genitive: 'merits',
             },
             dailyEmission: 10,
+            allowWithdraw: false,
           },
         });
       } catch (e) {
@@ -537,6 +548,9 @@ export class CommunityService {
     if (dto.settings?.postCost !== undefined) {
       settings.postCost = dto.settings.postCost;
     }
+    if (dto.settings?.allowWithdraw !== undefined) {
+      settings.allowWithdraw = dto.settings.allowWithdraw;
+    }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,
@@ -553,6 +567,8 @@ export class CommunityService {
       updatedAt: new Date(),
     };
     if (dto.futureVisionText !== undefined) community.futureVisionText = dto.futureVisionText;
+    if (dto.futureVisionTags !== undefined) community.futureVisionTags = dto.futureVisionTags;
+    if (dto.futureVisionCover !== undefined) community.futureVisionCover = dto.futureVisionCover;
     if (dto.typeTag === 'project') {
       community.isProject = true;
       community.projectStatus = dto.projectStatus ?? 'active';
@@ -568,6 +584,29 @@ export class CommunityService {
     this.logger.log(
       `Community created: ${community.id}${dto.typeTag ? ` (typeTag: ${dto.typeTag})` : ''}`,
     );
+
+    if (
+      dto.futureVisionText &&
+      dto.typeTag !== 'future-vision' &&
+      dto.creatorUserId
+    ) {
+      const futureVision = await this.getCommunityByTypeTag('future-vision');
+      if (futureVision) {
+        try {
+          await this.publicationService.createFutureVisionPost({
+            futureVisionCommunityId: futureVision.id,
+            authorId: dto.creatorUserId,
+            content: dto.futureVisionText,
+            sourceEntityId: community.id as string,
+          });
+        } catch (e) {
+          this.logger.error(
+            `Failed to create OB post for community ${community.id}: ${e instanceof Error ? e.message : 'Unknown error'}`,
+          );
+        }
+      }
+    }
+
     return community as unknown as Community;
   }
 
@@ -593,6 +632,8 @@ export class CommunityService {
     if (dto.projectStatus !== undefined) updateData.projectStatus = dto.projectStatus;
     if (dto.rejectionMessage !== undefined) updateData.rejectionMessage = dto.rejectionMessage;
     if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
+    if (dto.futureVisionTags !== undefined) updateData.futureVisionTags = dto.futureVisionTags;
+    if (dto.futureVisionCover !== undefined) updateData.futureVisionCover = dto.futureVisionCover;
 
     if (dto.settings) {
       // Only merge nested properties if they exist
@@ -813,6 +854,23 @@ export class CommunityService {
       { id: communityId },
       { $set: updateData },
     );
+
+    if (dto.futureVisionText !== undefined) {
+      const futureVision = await this.getCommunityByTypeTag('future-vision');
+      if (futureVision) {
+        try {
+          await this.publicationService.updateFutureVisionPostContent(
+            futureVision.id,
+            communityId,
+            dto.futureVisionText,
+          );
+        } catch (e) {
+          this.logger.error(
+            `Failed to update OB post content for community ${communityId}: ${e instanceof Error ? e.message : 'Unknown error'}`,
+          );
+        }
+      }
+    }
 
     // Explicitly re-fetch the document to ensure we get the updated values
     const updatedCommunity = await this.communityModel
@@ -1340,5 +1398,98 @@ export class CommunityService {
     }));
 
     return { members: mappedMembers, total };
+  }
+
+  /**
+   * List communities through their OB posts (future-vision feed).
+   * Pagination, optional filter by futureVisionTags, sort by OB post rating.
+   */
+  async getFutureVisions(params: {
+    page?: number;
+    pageSize?: number;
+    tags?: string[];
+  }): Promise<{
+    items: Array<{
+      communityId: string;
+      name: string;
+      description?: string;
+      futureVisionText?: string;
+      futureVisionTags?: string[];
+      futureVisionCover?: string;
+      publicationId: string;
+      score: number;
+      memberCount: number;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const page = Math.max(1, params.page ?? 1);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize ?? 20));
+    const skip = (page - 1) * pageSize;
+
+    const futureVision = await this.getCommunityByTypeTag('future-vision');
+    if (!futureVision) {
+      return { items: [], total: 0, page, pageSize };
+    }
+
+    const obPosts = await this.publicationService.findObPostsSortedByScore(
+      futureVision.id,
+    );
+    if (obPosts.length === 0) {
+      return { items: [], total: 0, page, pageSize };
+    }
+
+    const communityIds = [...new Set(obPosts.map((p) => p.sourceEntityId))];
+    const communityDocs = await this.communityModel
+      .find({ id: { $in: communityIds } })
+      .lean()
+      .exec();
+    const communityMap = new Map(
+      communityDocs.map((c: any) => [c.id, c]),
+    );
+
+    const tagsFilter = params.tags?.length ? new Set(params.tags) : null;
+    const ordered: Array<{
+      communityId: string;
+      name: string;
+      description?: string;
+      futureVisionText?: string;
+      futureVisionTags?: string[];
+      futureVisionCover?: string;
+      publicationId: string;
+      score: number;
+      memberCount: number;
+    }> = [];
+
+    for (const post of obPosts) {
+      const community = communityMap.get(post.sourceEntityId) as any;
+      if (!community) continue;
+      if (tagsFilter && community.futureVisionTags?.length) {
+        const hasTag = community.futureVisionTags.some((t: string) =>
+          tagsFilter.has(t),
+        );
+        if (!hasTag) continue;
+      } else if (tagsFilter) {
+        continue;
+      }
+
+      ordered.push({
+        communityId: community.id,
+        name: community.name,
+        description: community.description,
+        futureVisionText: community.futureVisionText,
+        futureVisionTags: community.futureVisionTags,
+        futureVisionCover: community.futureVisionCover,
+        publicationId: post.id,
+        score: post.metrics.score,
+        memberCount: Array.isArray(community.members) ? community.members.length : 0,
+      });
+    }
+
+    const total = ordered.length;
+    const items = ordered.slice(skip, skip + pageSize);
+
+    return { items, total, page, pageSize };
   }
 }
