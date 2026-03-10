@@ -84,13 +84,17 @@ export class PermissionService {
 
   /**
    * Check if user can create publications in a community
-   * Uses permission rule engine with context for condition evaluation
+   * Uses permission rule engine with context for condition evaluation.
+   * Archived projects: deny POST_PUBLICATION.
    */
   async canCreatePublication(
     userId: string,
     communityId: string,
   ): Promise<boolean> {
-    // Build context for creation (needed for requiresTeamMembership checks)
+    const community = await this.communityService.getCommunity(communityId);
+    if (community?.isProject && community?.projectStatus === 'archived') {
+      return false;
+    }
     const context = await this.permissionContextService.buildContextForCommunity(
       userId,
       communityId,
@@ -106,13 +110,17 @@ export class PermissionService {
 
   /**
    * Check if user can create polls in a community
-   * Uses permission rule engine with context for condition evaluation
+   * Uses permission rule engine with context for condition evaluation.
+   * Archived projects: deny CREATE_POLL.
    */
   async canCreatePoll(
     userId: string,
     communityId: string,
   ): Promise<boolean> {
-    // Build context for creation (needed for requiresTeamMembership checks)
+    const community = await this.communityService.getCommunity(communityId);
+    if (community?.isProject && community?.projectStatus === 'archived') {
+      return false;
+    }
     const context = await this.permissionContextService.buildContextForCommunity(
       userId,
       communityId,
@@ -129,7 +137,8 @@ export class PermissionService {
 
   /**
    * Check if user can vote on a publication
-   * Uses permission rule engine with context
+   * Uses permission rule engine with context.
+   * Archived projects: deny vote (publication in project community).
    */
   async canVote(userId: string, publicationId: string): Promise<boolean> {
     this.logger.log(`[canVote] START: userId=${userId}, publicationId=${publicationId}`);
@@ -141,8 +150,11 @@ export class PermissionService {
     }
 
     const communityId = publication.getCommunityId.getValue();
-    
-    // Build context for voting
+    const community = await this.communityService.getCommunity(communityId);
+    if (community?.isProject && community?.projectStatus === 'archived') {
+      return false;
+    }
+
     const context = await this.permissionContextService.buildContextForPublication(
       userId,
       publicationId,

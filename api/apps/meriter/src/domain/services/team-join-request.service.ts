@@ -275,6 +275,26 @@ export class TeamJoinRequestService {
       message: `${leadName} approved your request to join "${community?.name || request.communityId}"`,
     });
 
+    if (community?.isProject) {
+      const leads = await this.userCommunityRoleService.getUsersByRole(request.communityId, 'lead');
+      const newMember = await this.userService.getUserById(request.userId);
+      const newMemberName = newMember?.displayName || newMember?.username || 'A member';
+      for (const r of leads) {
+        try {
+          await this.notificationService.createNotification({
+            userId: r.userId,
+            type: 'member_joined',
+            source: 'system',
+            metadata: { projectId: request.communityId, projectName: community.name, userId: request.userId },
+            title: 'Member joined project',
+            message: `${newMemberName} joined the project "${community.name}".`,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to send member_joined notification: ${err}`);
+        }
+      }
+    }
+
     this.logger.log(
       `Request ${requestId} approved, user ${request.userId} joined team ${request.communityId}`,
     );

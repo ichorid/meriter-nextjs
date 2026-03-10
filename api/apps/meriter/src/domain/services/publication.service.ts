@@ -836,6 +836,28 @@ export class PublicationService {
   }
 
   /**
+   * Find active publication IDs by source (e.g. project posts on Birzha).
+   */
+  async findActiveIdsBySource(
+    communityId: string,
+    sourceEntityType: string,
+    sourceEntityId: string,
+  ): Promise<string[]> {
+    const list = await this.publicationModel
+      .find({
+        communityId,
+        sourceEntityType,
+        sourceEntityId,
+        status: 'active',
+        deleted: { $ne: true },
+      })
+      .select('id')
+      .lean()
+      .exec();
+    return list.map((d) => d.id);
+  }
+
+  /**
    * Permanently delete a publication (hard delete)
    * This removes the publication, all its votes, and all its comments from the database
    * Only leads and superadmins can permanently delete publications

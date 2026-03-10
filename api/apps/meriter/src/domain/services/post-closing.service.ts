@@ -17,6 +17,7 @@ import { WalletService } from './wallet.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
+import { ProjectDistributionService } from './project-distribution.service';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 
 export type PostCloseReason =
@@ -47,6 +48,7 @@ export class PostClosingService {
     private readonly meritResolverService: MeritResolverService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
+    private readonly projectDistributionService: ProjectDistributionService,
   ) {}
 
   /**
@@ -93,23 +95,33 @@ export class PostClosingService {
     const runCloseLogic = async (session: ClientSession | undefined) => {
       result = await this.investmentService.handlePostClose(postId, session);
 
-      if (result.ratingDistributed.authorAmount > 0) {
-        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
-          community,
-          'withdrawal',
-        );
-        await this.walletService.addTransaction(
-          beneficiaryId,
-          targetCommunityId,
-          'credit',
-          result.ratingDistributed.authorAmount,
-          'personal',
-          'publication_withdrawal',
-          postId,
-          currency,
-          `Withdrawal from publication ${postId} (post closed)`,
-          session,
-        );
+      const authorAmount = result.ratingDistributed.authorAmount;
+      if (authorAmount > 0) {
+        const sourceEntityType = post.sourceEntityType;
+        const sourceEntityId = post.sourceEntityId as string | undefined;
+        if (sourceEntityType === 'project' && sourceEntityId) {
+          await this.projectDistributionService.distribute(
+            sourceEntityId,
+            authorAmount,
+          );
+        } else {
+          const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+            community,
+            'withdrawal',
+          );
+          await this.walletService.addTransaction(
+            beneficiaryId,
+            targetCommunityId,
+            'credit',
+            authorAmount,
+            'personal',
+            'publication_withdrawal',
+            postId,
+            currency,
+            `Withdrawal from publication ${postId} (post closed)`,
+            session,
+          );
+        }
       }
 
       if (result.totalRatingDistributed > 0) {
@@ -185,12 +197,21 @@ export class PostClosingService {
     const res = result!;
     const summary = closingSummary!;
 
+    let projectContext: { projectName: string } | undefined;
+    if (post.sourceEntityType === 'project' && post.sourceEntityId) {
+      const project = await this.communityService.getCommunity(post.sourceEntityId as string);
+      if (project?.name) {
+        projectContext = { projectName: project.name };
+      }
+    }
+
     await this.sendNotifications(
       postId,
       communityId,
       post.authorId,
       res,
       summary.authorReceived,
+      projectContext,
     );
 
     return { closingSummary: summary };
@@ -202,6 +223,7 @@ export class PostClosingService {
     authorId: string,
     result: HandlePostCloseResult,
     authorReceived: number,
+    projectContext?: { projectName: string },
   ): Promise<void> {
     const totalByInvestor = new Map<string, number>();
     for (const p of result.poolReturned) {
@@ -217,6 +239,10 @@ export class PostClosingService {
       );
     }
 
+    const projectPrefix = projectContext
+      ? `Project "${projectContext.projectName}" closed. `
+      : '';
+
     try {
       await Promise.all(
         Array.from(totalByInvestor.entries()).map(([invId, total]) => {
@@ -226,9 +252,9 @@ export class PostClosingService {
             userId: invId,
             type: 'post_closed_investment',
             source: 'system',
-            metadata: { postId, communityId, totalEarnings: total },
-            title: 'Post closed',
-            message: `Post closed. Pool returned: ${formatMeritsForDisplay(poolAmt)} merits. Your share of rating: ${formatMeritsForDisplay(ratingAmt)} merits. Total received: ${formatMeritsForDisplay(total)} merits`,
+            metadata: { postId, communityId, totalEarnings: total, projectName: projectContext?.projectName },
+            title: projectContext ? 'Project closed' : 'Post closed',
+            message: `${projectPrefix}Pool returned: ${formatMeritsForDisplay(poolAmt)} merits. Your share of rating: ${formatMeritsForDisplay(ratingAmt)} merits. Total received: ${formatMeritsForDisplay(total)} merits`,
           });
         }),
       );

@@ -54,6 +54,7 @@ export const projectRouter = router({
       z.object({
         parentCommunityId: z.string().optional(),
         projectStatus: ProjectStatusSchema.optional(),
+        memberId: z.string().optional(),
         search: z.string().optional(),
         page: z.number().int().min(1).optional(),
         pageSize: z.number().int().min(1).max(100).optional(),
@@ -63,6 +64,7 @@ export const projectRouter = router({
       return ctx.projectService.listProjects({
         parentCommunityId: input.parentCommunityId,
         projectStatus: input.projectStatus,
+        memberId: input.memberId,
         search: input.search,
         page: input.page,
         pageSize: input.pageSize,
@@ -85,6 +87,35 @@ export const projectRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
       await ctx.projectService.leaveProject(ctx.user.id, input.projectId);
+      return { success: true };
+    }),
+
+  closeProject: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.projectService.closeProject(input.projectId, ctx.user.id);
+      return { success: true };
+    }),
+
+  updateShares: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        newFounderSharePercent: z.number().int().min(0).max(100),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.projectService.updateShares(
+        input.projectId,
+        ctx.user.id,
+        input.newFounderSharePercent,
+      );
       return { success: true };
     }),
 
@@ -261,6 +292,24 @@ export const projectRouter = router({
         images: input.images,
         investorSharePercent,
       });
+
+      const leads = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'lead');
+      const participants = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'participant');
+      const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
+      for (const memberId of memberIds) {
+        try {
+          await ctx.notificationService.createNotification({
+            userId: memberId,
+            type: 'project_published',
+            source: 'system',
+            metadata: { projectId: input.projectId, publicationId: pub.id, projectName: project.name },
+            title: 'Project published to Birzha',
+            message: `"${project.name}" was published to the exchange.`,
+          });
+        } catch {
+          // best-effort
+        }
+      }
 
       return { id: pub.id };
     }),

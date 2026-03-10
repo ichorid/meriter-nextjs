@@ -11,6 +11,10 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
 import { TeamJoinRequestService } from './team-join-request.service';
+import { PostClosingService } from './post-closing.service';
+import { PublicationService } from './publication.service';
+import { TicketService } from './ticket.service';
+import { NotificationService } from './notification.service';
 import type { Community } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -39,6 +43,8 @@ export interface CreateProjectDto {
 export interface ListProjectsFilters {
   parentCommunityId?: string;
   projectStatus?: 'active' | 'closed' | 'archived';
+  /** When set, only projects where this user is a member (has role) are returned. */
+  memberId?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -61,6 +67,10 @@ export class ProjectService {
     private readonly userService: UserService,
     private readonly walletService: WalletService,
     private readonly teamJoinRequestService: TeamJoinRequestService,
+    private readonly postClosingService: PostClosingService,
+    private readonly publicationService: PublicationService,
+    private readonly ticketService: TicketService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -115,6 +125,24 @@ export class ProjectService {
       await this.communityService.addMember(project.id, userId);
       await this.userService.addCommunityMembership(userId, project.id);
       await this.userCommunityRoleService.setRole(userId, project.id, 'lead');
+
+      const parentLead = parentCommunityId
+        ? (await this.userCommunityRoleService.getUsersByRole(parentCommunityId, 'lead'))[0]
+        : null;
+      if (parentLead && parentLead.userId !== userId) {
+        try {
+          await this.notificationService.createNotification({
+            userId: parentLead.userId,
+            type: 'project_created',
+            source: 'system',
+            metadata: { projectId: project.id, projectName: project.name, creatorId: userId },
+            title: 'New project created',
+            message: `Project "${project.name}" was created.`,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to notify parent lead about project create: ${err}`);
+        }
+      }
 
       this.logger.log(`Project created: ${project.id} by user ${userId}`);
       const updated = await this.communityService.getCommunity(project.id);
@@ -179,6 +207,14 @@ export class ProjectService {
     if (filters.projectStatus) {
       query.projectStatus = filters.projectStatus;
     }
+    if (filters.memberId) {
+      const roles = await this.userCommunityRoleService.getUserRoles(filters.memberId);
+      const projectIds = roles.map((r) => r.communityId);
+      if (projectIds.length === 0) {
+        return { data: [], total: 0, page, pageSize };
+      }
+      query.id = { $in: projectIds };
+    }
     if (filters.search?.trim()) {
       const search = filters.search.trim();
       query.$or = [
@@ -204,7 +240,63 @@ export class ProjectService {
   }
 
   /**
-   * Leave project: remove role and membership (basic; Sprint 4 will extend with frozenInternalMerits).
+   * Close project: close all active Birzha posts (publications.close), then set projectStatus='archived'.
+   * Only lead. Idempotent for already archived.
+   */
+  async closeProject(projectId: string, leadUserId: string): Promise<void> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project || !project.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    if (project.projectStatus === 'archived') {
+      return;
+    }
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can close the project');
+    }
+
+    const birzha = await this.communityService.getCommunityByTypeTag('marathon-of-good');
+    if (!birzha) {
+      throw new NotFoundException('Birzha community (marathon-of-good) not found');
+    }
+
+    const postIds = await this.publicationService.findActiveIdsBySource(
+      birzha.id,
+      'project',
+      projectId,
+    );
+    for (const postId of postIds) {
+      await this.postClosingService.closePost(postId, 'manual');
+    }
+
+    await this.communityService.updateCommunity(projectId, {
+      projectStatus: 'archived',
+    });
+
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
+    const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
+    for (const memberId of memberIds) {
+      try {
+        await this.notificationService.createNotification({
+          userId: memberId,
+          type: 'project_closed',
+          source: 'system',
+          metadata: { projectId, projectName: project.name },
+          title: 'Project closed',
+          message: `Project "${project.name}" has been closed.`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify member about project close: ${err}`);
+      }
+    }
+
+    this.logger.log(`Project ${projectId} closed by lead ${leadUserId}; ${postIds.length} posts closed`);
+  }
+
+  /**
+   * Leave project: handle tickets (in_progress -> open/neutral, done -> closed), freeze merits, keep role with frozen, remove from members, notify lead.
    */
   async leaveProject(userId: string, projectId: string): Promise<void> {
     const project = await this.communityService.getCommunity(projectId);
@@ -217,15 +309,99 @@ export class ProjectService {
       throw new BadRequestException('You are not a member of this project');
     }
 
-    // TODO: when multiple leads supported, check any lead/admin role
     if (role.role === 'lead') {
       throw new BadRequestException('Lead cannot leave; assign another lead first or close the project');
     }
 
-    await this.userCommunityRoleService.removeRole(userId, projectId);
+    const tickets = await this.ticketService.getTicketsByBeneficiary(projectId, userId);
+    for (const ticket of tickets) {
+      const status = (ticket.ticketStatus ?? 'in_progress') as string;
+      if (status === 'in_progress') {
+        await this.ticketService.setTicketOpenAndNeutral(ticket.id);
+      } else if (status === 'done') {
+        await this.ticketService.setTicketClosed(ticket.id);
+      }
+    }
+
+    const shares = await this.ticketService.getProjectShares(projectId);
+    const row = shares.find((r) => r.userId === userId);
+    const frozen = row?.internalMerits ?? 0;
+    await this.userCommunityRoleService.setFrozenInternalMerits(userId, projectId, frozen);
+
     await this.communityService.removeMember(projectId, userId);
     await this.userService.removeCommunityMembership(userId, projectId);
-    this.logger.log(`User ${userId} left project ${projectId}`);
+
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    for (const lead of leads) {
+      try {
+        await this.notificationService.createNotification({
+          userId: lead.userId,
+          type: 'member_left_project',
+          source: 'system',
+          metadata: { projectId, userId, projectName: project.name },
+          title: 'Member left project',
+          message: `A member left the project "${project.name}".`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify lead ${lead.userId} about member leave: ${err}`);
+      }
+    }
+
+    this.logger.log(`User ${userId} left project ${projectId}; frozen merits=${frozen}`);
+  }
+
+  /**
+   * Update founder share percent (only decrease allowed). Notify all members.
+   */
+  async updateShares(
+    projectId: string,
+    leadUserId: string,
+    newFounderSharePercent: number,
+  ): Promise<void> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project || !project.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can update shares');
+    }
+
+    const current = project.founderSharePercent ?? 0;
+    if (newFounderSharePercent < 0 || newFounderSharePercent > 100) {
+      throw new BadRequestException('Founder share must be between 0 and 100');
+    }
+    if (newFounderSharePercent >= current) {
+      throw new BadRequestException('Founder share can only be decreased');
+    }
+
+    await this.communityService.updateCommunity(projectId, {
+      founderSharePercent: newFounderSharePercent,
+    });
+
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
+    const userIds = new Set<string>([
+      ...leads.map((r) => r.userId),
+      ...participants.map((r) => r.userId),
+    ]);
+    for (const uid of userIds) {
+      try {
+        await this.notificationService.createNotification({
+          userId: uid,
+          type: 'shares_changed',
+          source: 'system',
+          metadata: { projectId, projectName: project.name, newFounderSharePercent },
+          title: 'Project shares updated',
+          message: `Founder share in "${project.name}" is now ${newFounderSharePercent}%.`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify user ${uid} about shares change: ${err}`);
+      }
+    }
+
+    this.logger.log(`Project ${projectId} founder share updated to ${newFounderSharePercent}%`);
   }
 
   /**

@@ -128,6 +128,7 @@ export interface UpdateCommunityDto {
   isPriority?: boolean;
   permissionRules?: PermissionRule[];
   communityWalletId?: string;
+  founderSharePercent?: number;
   projectStatus?: 'active' | 'closed' | 'archived';
   rejectionMessage?: string;
   futureVisionText?: string;
@@ -588,6 +589,7 @@ export class CommunityService {
     }
     if (dto.isPriority !== undefined) updateData.isPriority = dto.isPriority;
     if (dto.communityWalletId !== undefined) updateData.communityWalletId = dto.communityWalletId;
+    if (dto.founderSharePercent !== undefined) updateData.founderSharePercent = dto.founderSharePercent;
     if (dto.projectStatus !== undefined) updateData.projectStatus = dto.projectStatus;
     if (dto.rejectionMessage !== undefined) updateData.rejectionMessage = dto.rejectionMessage;
     if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
