@@ -18,6 +18,8 @@ import { tappalkaRouter } from './routers/tappalka.router';
 import { investmentRouter } from './routers/investment.router';
 import { teamsRouter } from './routers/teams.router';
 import { platformSettingsRouter } from './routers/platform-settings.router';
+import { projectRouter } from './routers/project.router';
+import { ticketRouter } from './routers/ticket.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -43,6 +45,8 @@ export const appRouter = router({
   investments: investmentRouter,
   teams: teamsRouter,
   platformSettings: platformSettingsRouter,
+  project: projectRouter,
+  ticket: ticketRouter,
 });
 
 export type AppRouter = typeof appRouter;

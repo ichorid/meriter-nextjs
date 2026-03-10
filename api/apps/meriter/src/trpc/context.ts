@@ -38,6 +38,8 @@ import { MeritResolverService } from '../domain/services/merit-resolver.service'
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
+import { ProjectService } from '../domain/services/project.service';
+import { TicketService } from '../domain/services/ticket.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -75,6 +77,8 @@ export interface CreateContextOptions {
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   platformSettingsService: PlatformSettingsService;
+  projectService: ProjectService;
+  ticketService: TicketService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -124,6 +128,8 @@ export async function createContext(opts: CreateContextOptions) {
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
+    projectService,
+    ticketService,
     connection,
     configService,
     cookieManager,
@@ -222,6 +228,8 @@ export async function createContext(opts: CreateContextOptions) {
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
+    projectService,
+    ticketService,
     connection,
     configService,
     cookieManager,

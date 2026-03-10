@@ -65,7 +65,7 @@ export class Publication implements EditableEntity {
     private readonly imageUrl: string | null,
     private readonly images: string[],
     private readonly videoUrl: string | null,
-    private readonly postType: 'basic' | 'poll' | 'project',
+    private readonly postType: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion',
     private readonly isProject: boolean,
     private readonly title: string | null,
     private readonly description: string | null,
@@ -108,7 +108,7 @@ export class Publication implements EditableEntity {
       imageUrl?: string;
       images?: string[];
       videoUrl?: string;
-      postType?: 'basic' | 'poll' | 'project';
+      postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
       isProject?: boolean;
       title?: string;
       description?: string;

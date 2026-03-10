@@ -47,13 +47,29 @@ export interface PublicationClosingSummary {
   poolReturned: number;
 }
 
+export type PublicationPostType =
+  | 'basic'
+  | 'poll'
+  | 'project'
+  | 'ticket'
+  | 'discussion';
+export type PublicationTicketStatus =
+  | 'open'
+  | 'in_progress'
+  | 'done'
+  | 'closed';
+
 export interface Publication {
   id: string;
   communityId: string;
   authorId: string;
   beneficiaryId?: string;
-  postType?: 'basic' | 'poll' | 'project';
+  postType?: PublicationPostType;
   isProject?: boolean;
+  ticketStatus?: PublicationTicketStatus;
+  isNeutralTicket?: boolean;
+  applicants?: string[];
+  deadline?: Date;
   title?: string;
   description?: string;
   content: string;
@@ -125,13 +141,31 @@ export class PublicationSchemaClass implements Publication {
   @Prop()
   beneficiaryId?: string;
 
-  // НОВОЕ: Тип поста (базовый, опрос, проект)
-  @Prop({ enum: ['basic', 'poll', 'project'], default: 'basic' })
-  postType?: 'basic' | 'poll' | 'project';
+  // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта
+  @Prop({
+    enum: ['basic', 'poll', 'project', 'ticket', 'discussion'],
+    default: 'basic',
+  })
+  postType?: PublicationPostType;
 
-  // НОВОЕ: Метка проекта (для "Марафон добра")
   @Prop({ default: false })
   isProject?: boolean;
+
+  @Prop({
+    type: String,
+    enum: ['open', 'in_progress', 'done', 'closed'],
+    default: undefined,
+  })
+  ticketStatus?: PublicationTicketStatus;
+
+  @Prop({ default: false })
+  isNeutralTicket?: boolean;
+
+  @Prop({ type: [String], default: undefined })
+  applicants?: string[];
+
+  @Prop({ type: Date, default: undefined })
+  deadline?: Date;
 
   // НОВОЕ: Заголовок (обязательное поле для всех постов)
   @Prop({ maxlength: 500 })

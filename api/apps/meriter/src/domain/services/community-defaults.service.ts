@@ -47,6 +47,9 @@ export class CommunityDefaultsService {
       case 'team-projects':
         typeSpecificRules = this.getTeamProjectsRules();
         break;
+      case 'project':
+        // Projects use base rules (discussions free, postCost=0 set at creation)
+        break;
       default:
         // Custom or other types use base rules only
         break;
@@ -320,10 +323,20 @@ export class CommunityDefaultsService {
       case 'team-projects':
         return {
           ...baseDefaults,
-          dailyQuota: 10, // 10 comments per day (or 100, as requested)
-          quotaRecipients: ['superadmin', 'lead', 'participant'], // Everyone gets quota for voting
-          canEarn: false, // No merits earned from posts
-          canSpend: false, // No merits spent on posts
+          dailyQuota: 10,
+          quotaRecipients: ['superadmin', 'lead', 'participant'],
+          canEarn: false,
+          canSpend: false,
+        };
+
+      case 'project':
+        return {
+          ...baseDefaults,
+          dailyQuota: 10,
+          quotaRecipients: ['superadmin', 'lead', 'participant'],
+          canEarn: true,
+          canSpend: true,
+          quotaEnabled: true,
         };
 
       default:
@@ -340,9 +353,13 @@ export class CommunityDefaultsService {
     const baseSettings: CommunityVotingSettings = {
       spendsMerits: true,
       awardsMerits: true,
-      votingRestriction: 'any', // Self-voting allowed with wallet-only (enforced in VoteService via currency constraint)
-      // meritConversion is optional and community-specific
+      votingRestriction: 'any',
+      allowNegativeVoting: false,
     };
+
+    if (typeTag === 'project') {
+      return { ...baseSettings, allowNegativeVoting: false };
+    }
 
     // Team Projects: no merits earned or spent (just commenting/discussion)
     if (typeTag === 'team-projects') {

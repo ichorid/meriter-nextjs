@@ -22,6 +22,8 @@ import { PublicationCreatedEvent, PublicationUpdatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 import { PermissionService } from './permission.service';
+import { CommunityService } from './community.service';
+import { UserCommunityRoleService } from './user-community-role.service';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -29,7 +31,7 @@ export interface CreatePublicationDto {
   description?: string;
   content: string;
   type: 'text' | 'image' | 'video';
-  postType?: 'basic' | 'poll' | 'project';
+  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
   isProject?: boolean;
   hashtags?: string[];
   categories?: string[]; // Array of category IDs
@@ -63,7 +65,9 @@ export class PublicationService {
     private eventBus: EventBus,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
-  ) { }
+    private communityService: CommunityService,
+    private userCommunityRoleService: UserCommunityRoleService,
+  ) {}
 
   async createPublication(
     userId: string,
@@ -76,6 +80,22 @@ export class PublicationService {
     // Validate using value objects
     const authorId = UserId.fromString(userId);
     const _communityId = CommunityId.fromString(dto.communityId);
+
+    const community = await this.communityService.getCommunity(dto.communityId);
+    if (community?.isProject) {
+      if (dto.postType !== 'ticket' && dto.postType !== 'discussion') {
+        throw new BadRequestException(
+          'When creating a post in a project community, postType must be "ticket" or "discussion"',
+        );
+      }
+      const role = await this.userCommunityRoleService.getRole(userId, dto.communityId);
+      if (!role) {
+        throw new BadRequestException('Only project members can create posts');
+      }
+      if (dto.postType === 'ticket' && role.role !== 'lead') {
+        throw new BadRequestException('Only the project lead can create tickets');
+      }
+    }
 
     // Validate array lengths
     if (dto.beneficiaries && dto.beneficiaries.length > 2) {

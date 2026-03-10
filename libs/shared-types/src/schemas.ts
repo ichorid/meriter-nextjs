@@ -15,6 +15,24 @@ import {
 } from "./taxonomy";
 import { TappalkaSettingsSchema } from "./tappalka";
 
+// Project post types (ticket vs discussion inside a project community)
+export const PostTypeSchema = z.enum([
+  "basic",
+  "poll",
+  "project",
+  "ticket",
+  "discussion",
+]);
+export type PostType = z.infer<typeof PostTypeSchema>;
+
+export const TicketStatusSchema = z.enum([
+  "open",
+  "in_progress",
+  "done",
+  "closed",
+]);
+export type TicketStatus = z.infer<typeof TicketStatusSchema>;
+
 // Metrics schemas extending base VotableMetricsSchema
 export const PublicationMetricsSchema = VotableMetricsSchema.extend({
   commentCount: z.number().int().min(0),
@@ -187,9 +205,31 @@ export const CommunityVotingSettingsSchema = z.object({
     z.enum(["any", "not-same-team"]).optional()
   ),
   currencySource: z.enum(["quota-and-wallet", "quota-only", "wallet-only"]).optional(),
+  /** Whether negative (down) votes are allowed. Default false. */
+  allowNegativeVoting: z.boolean().optional().default(false),
   // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
   // Note: 'not-same-group' renamed to 'not-same-team' for clarity
 });
+
+export const ProjectDurationSchema = z.enum(["finite", "ongoing"]);
+export type ProjectDuration = z.infer<typeof ProjectDurationSchema>;
+
+export const ProjectStatusSchema = z.enum(["active", "closed", "archived"]);
+export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
+
+export const SourceEntityTypeSchema = z.enum(["project", "community"]);
+export type SourceEntityType = z.infer<typeof SourceEntityTypeSchema>;
+
+export const CommunityWalletSchema = z.object({
+  id: z.string(),
+  communityId: z.string(),
+  balance: z.number().int().min(0).default(0),
+  totalReceived: z.number().int().min(0).default(0),
+  totalDistributed: z.number().int().min(0).default(0),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CommunityWallet = z.infer<typeof CommunityWalletSchema>;
 
 // Permission rule schema - granular role -> action -> allow/deny rules
 export const PermissionRuleConditionsSchema = z.object({
@@ -296,6 +336,7 @@ export const CommunitySchema = IdentifiableSchema.merge(
       "volunteer",
       "corporate",
       "custom",
+      "project",
     ])
     .optional(),
   // НОВОЕ: Связанные валюты (настраивается)
@@ -309,6 +350,17 @@ export const CommunitySchema = IdentifiableSchema.merge(
   isPriority: z.boolean().optional().default(false), // Приоритетные сообщества отображаются первыми
   isAdmin: z.boolean().optional(), // Computed field - is current user an admin?
   needsSetup: z.boolean().optional(), // Computed field - does community need setup?
+  // Project-specific fields (optional, backward compatible)
+  isProject: z.boolean().optional().default(false),
+  projectDuration: ProjectDurationSchema.optional(),
+  founderSharePercent: z.number().int().min(0).max(100).optional(),
+  investorSharePercent: z.number().int().min(0).max(100).optional(),
+  founderUserId: z.string().optional(),
+  parentCommunityId: z.string().optional(),
+  projectStatus: ProjectStatusSchema.optional(),
+  communityWalletId: z.string().optional(),
+  rejectionMessage: z.string().optional(),
+  futureVisionText: z.string().optional(),
 });
 
 export const PublicationSchema = IdentifiableSchema.merge(
@@ -317,10 +369,18 @@ export const PublicationSchema = IdentifiableSchema.merge(
   communityId: z.string(),
   authorId: z.string(),
   beneficiaryId: z.string().optional(),
-  // НОВОЕ: Тип поста (базовый, опрос, проект)
-  postType: z.enum(["basic", "poll", "project"]).optional().default("basic"),
-  // НОВОЕ: Метка проекта (для "Марафон добра")
+  // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта (isProject=true)
+  postType: PostTypeSchema.optional().default("basic"),
+  // Метка проекта (сообщество-проект)
   isProject: z.boolean().optional().default(false),
+  // Тикет: статус (только при postType='ticket')
+  ticketStatus: TicketStatusSchema.optional(),
+  // Нейтральный тикет без бенефициара (Sprint 5)
+  isNeutralTicket: z.boolean().optional().default(false),
+  // Заявки на нейтральный тикет (Sprint 5)
+  applicants: z.array(z.string()).optional().default([]),
+  // Дедлайн (архитектурно)
+  deadline: z.date().optional(),
   // НОВОЕ: Заголовок (обязательное поле для всех постов)
   title: z.string().min(1).max(500).optional(),
   // НОВОЕ: Описание (обязательное поле)
@@ -490,7 +550,7 @@ export const TransactionSchema = IdentifiableSchema.merge(
 // DTO schemas for API requests
 export const CreatePublicationDtoSchema = z.object({
   communityId: z.string(),
-  postType: z.enum(["basic", "poll", "project"]).optional().default("basic"),
+  postType: PostTypeSchema.optional().default("basic"),
   isProject: z.boolean().optional().default(false),
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
@@ -531,13 +591,26 @@ export const CreatePublicationDtoSchema = z.object({
   .refine(
     (data) => {
       // Require impactArea and stage when postType is 'project'
-      if (data.postType === 'project') {
+      if (data.postType === "project") {
         return !!data.impactArea && !!data.stage;
       }
       return true;
     },
     {
       message: "impactArea and stage are required when postType is 'project'",
+    }
+  )
+  .refine(
+    (data) => {
+      // When isProject=true, postType must be 'ticket' or 'discussion'
+      if (data.isProject === true) {
+        return data.postType === "ticket" || data.postType === "discussion";
+      }
+      return true;
+    },
+    {
+      message:
+        "When creating in a project community, postType must be 'ticket' or 'discussion'",
     }
   )
   .refine(
@@ -911,8 +984,12 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   slug: z.string().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
-  postType: z.enum(["basic", "poll", "project"]).optional(),
+  postType: PostTypeSchema.optional(),
   isProject: z.boolean().optional(),
+  ticketStatus: TicketStatusSchema.optional(),
+  isNeutralTicket: z.boolean().optional(),
+  applicants: z.array(z.string()).optional(),
+  deadline: z.date().optional(),
   hashtags: z.array(z.string()).default([]),
   categories: z.array(z.string()).default([]), // Array of category IDs
   imageUrl: z.string().url().optional(),

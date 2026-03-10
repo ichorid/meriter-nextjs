@@ -27,6 +27,12 @@ export {
     CommunitySettingsSchema,
     CommunityVotingSettingsSchema,
     CommunityMeritConversionSchema,
+    ProjectDurationSchema,
+    ProjectStatusSchema,
+    SourceEntityTypeSchema,
+    CommunityWalletSchema,
+    PostTypeSchema,
+    TicketStatusSchema,
     PermissionRuleSchema,
     PermissionRuleConditionsSchema,
     PollOptionSchema,
@@ -150,6 +156,12 @@ export type {
     FeedItem,
     PublicationFeedItem,
     PollFeedItem,
+    ProjectDuration,
+    ProjectStatus,
+    SourceEntityType,
+    CommunityWallet,
+    PostType,
+    TicketStatus,
 } from './schemas';
 
 // Export Tappalka types

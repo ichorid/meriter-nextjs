@@ -72,6 +72,10 @@ import {
   PlatformSettingsSchemaClass,
   PlatformSettingsSchema,
 } from './domain/models/platform-settings/platform-settings.schema';
+import {
+  CommunityWalletSchemaClass,
+  CommunityWalletSchema,
+} from './domain/models/community-wallet/community-wallet.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -107,6 +111,9 @@ import { MeritResolverService } from './domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
 import { PlatformSettingsService } from './domain/services/platform-settings.service';
+import { CommunityWalletService } from './domain/services/community-wallet.service';
+import { ProjectService } from './domain/services/project.service';
+import { TicketService } from './domain/services/ticket.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -144,6 +151,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
       { name: TeamInvitationSchemaClass.name, schema: TeamInvitationSchema },
       { name: PlatformSettingsSchemaClass.name, schema: PlatformSettingsSchema },
+      { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
     ]),
   ],
   providers: [
@@ -181,6 +189,9 @@ import { EventBus } from './domain/events/event-bus';
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
+    CommunityWalletService,
+    ProjectService,
+    TicketService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -227,6 +238,9 @@ import { EventBus } from './domain/events/event-bus';
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
+    CommunityWalletService,
+    ProjectService,
+    TicketService,
 
     // Export vote factor services
     RoleHierarchyFactor,

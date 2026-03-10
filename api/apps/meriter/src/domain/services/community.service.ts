@@ -46,7 +46,8 @@ export interface CreateCommunityDto {
     | 'volunteer'
     | 'corporate'
     | 'custom'
-    | 'global';
+    | 'global'
+    | 'project';
   settings?: {
     iconUrl?: string;
     currencyNames?: {
@@ -55,8 +56,19 @@ export interface CreateCommunityDto {
       genitive: string;
     };
     dailyEmission?: number;
+    postCost?: number;
   };
   isPriority?: boolean;
+  /** Project-specific: set when typeTag === 'project' */
+  isProject?: boolean;
+  projectDuration?: 'finite' | 'ongoing';
+  founderSharePercent?: number;
+  investorSharePercent?: number;
+  founderUserId?: string;
+  parentCommunityId?: string;
+  projectStatus?: 'active' | 'closed' | 'archived';
+  communityWalletId?: string;
+  futureVisionText?: string;
 }
 
 export interface UpdateCommunityDto {
@@ -115,6 +127,10 @@ export interface UpdateCommunityDto {
   };
   isPriority?: boolean;
   permissionRules?: PermissionRule[];
+  communityWalletId?: string;
+  projectStatus?: 'active' | 'closed' | 'archived';
+  rejectionMessage?: string;
+  futureVisionText?: string;
   // Legacy rules fields (for backward compatibility)
   postingRules?: any;
   votingRules?: any;
@@ -508,37 +524,50 @@ export class CommunityService {
 
     // Defaults are now provided by CommunityDefaultsService at runtime
     // Only store custom overrides if provided in DTO (not implemented yet - always undefined for now)
-    const community = {
+    const settings: Record<string, unknown> = {
+      iconUrl: dto.settings?.iconUrl,
+      currencyNames: dto.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      },
+      dailyEmission: dto.settings?.dailyEmission ?? 10,
+    };
+    if (dto.settings?.postCost !== undefined) {
+      settings.postCost = dto.settings.postCost;
+    }
+    const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,
       typeTag: dto.typeTag,
       members: [],
-      settings: {
-        iconUrl: dto.settings?.iconUrl,
-        currencyNames: dto.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        },
-        dailyEmission: dto.settings?.dailyEmission || 10,
-      },
-      // Don't store default permission rules - they come from code via CommunityDefaultsService
-      // Default meritSettings and votingSettings are also provided by CommunityDefaultsService
+      settings,
       hashtags: [],
       hashtagDescriptions: {},
-      isActive: true, // Default to active
-      isPriority: dto.isPriority || false, // Default to false
+      isActive: true,
+      isPriority: dto.isPriority || false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    if (dto.futureVisionText !== undefined) community.futureVisionText = dto.futureVisionText;
+    if (dto.typeTag === 'project') {
+      community.isProject = true;
+      community.projectStatus = dto.projectStatus ?? 'active';
+      if (dto.projectDuration !== undefined) community.projectDuration = dto.projectDuration;
+      if (dto.founderSharePercent !== undefined) community.founderSharePercent = dto.founderSharePercent;
+      if (dto.investorSharePercent !== undefined) community.investorSharePercent = dto.investorSharePercent;
+      if (dto.founderUserId !== undefined) community.founderUserId = dto.founderUserId;
+      if (dto.parentCommunityId !== undefined) community.parentCommunityId = dto.parentCommunityId;
+      if (dto.communityWalletId !== undefined) community.communityWalletId = dto.communityWalletId;
+    }
 
     await this.communityModel.create([community]);
     this.logger.log(
       `Community created: ${community.id}${dto.typeTag ? ` (typeTag: ${dto.typeTag})` : ''}`,
     );
-    return community;
+    return community as unknown as Community;
   }
 
   async updateCommunity(
@@ -558,6 +587,10 @@ export class CommunityService {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;
     }
     if (dto.isPriority !== undefined) updateData.isPriority = dto.isPriority;
+    if (dto.communityWalletId !== undefined) updateData.communityWalletId = dto.communityWalletId;
+    if (dto.projectStatus !== undefined) updateData.projectStatus = dto.projectStatus;
+    if (dto.rejectionMessage !== undefined) updateData.rejectionMessage = dto.rejectionMessage;
+    if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
 
     if (dto.settings) {
       // Only merge nested properties if they exist
@@ -897,6 +930,31 @@ export class CommunityService {
       .skip(skip)
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
       .lean() as unknown as Community[];
+  }
+
+  /**
+   * List communities by arbitrary query (e.g. isProject: true + filters). Excludes global.
+   */
+  async listCommunitiesByQuery(
+    query: Record<string, unknown>,
+    limit: number,
+    skip: number,
+  ): Promise<Community[]> {
+    const q = { ...query, typeTag: { $ne: 'global' } };
+    return this.communityModel
+      .find(q)
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean() as unknown as Community[];
+  }
+
+  /**
+   * Count communities matching query. Excludes global.
+   */
+  async countCommunitiesByQuery(query: Record<string, unknown>): Promise<number> {
+    const q = { ...query, typeTag: { $ne: 'global' } };
+    return this.communityModel.countDocuments(q);
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {

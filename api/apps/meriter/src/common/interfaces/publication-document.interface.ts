@@ -18,8 +18,12 @@ export interface PublicationDocument {
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
-  postType?: 'basic' | 'poll' | 'project';
+  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
   isProject?: boolean;
+  ticketStatus?: 'open' | 'in_progress' | 'done' | 'closed';
+  isNeutralTicket?: boolean;
+  applicants?: string[];
+  deadline?: Date;
   title?: string;
   description?: string;
   // Taxonomy fields for project categorization

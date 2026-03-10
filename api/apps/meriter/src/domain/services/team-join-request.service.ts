@@ -53,8 +53,8 @@ export class TeamJoinRequestService {
     if (!community) {
       throw new NotFoundException('Community not found');
     }
-    if (community.typeTag !== 'team') {
-      throw new BadRequestException('Can only join team communities');
+    if (community.typeTag !== 'team' && community.typeTag !== 'project') {
+      throw new BadRequestException('Can only join team or project communities');
     }
 
     // 2. Check that user is not already a member

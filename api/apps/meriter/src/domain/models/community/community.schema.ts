@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 import { ActionType } from '../../common/constants/action-types.constants';
 
 /**
@@ -101,6 +101,7 @@ export interface CommunityVotingSettings {
   meritConversion?: CommunityMeritConversion;
   votingRestriction?: 'any' | 'not-own' | 'not-same-group'; // Restriction on who can vote for whom
   currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only'; // Source of merits for voting
+  allowNegativeVoting?: boolean;
 }
 
 // Tappalka settings (configuration for post comparison mechanic)
@@ -186,7 +187,7 @@ export interface Community {
   avatarUrl?: string;
   coverImageUrl?: string;
   members: string[]; // УСТАРЕВШЕЕ, использовать UserCommunityRole
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global' | 'project';
   linkedCurrencies?: string[];
   permissionRules?: PermissionRule[]; // Granular permission rules - replaces postingRules, votingRules, visibilityRules
   meritSettings?: CommunityMeritSettings; // Merit configuration (dailyQuota, quotaRecipients, etc.)
@@ -200,6 +201,17 @@ export interface Community {
   lastQuotaResetAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Project-specific fields (optional, backward compatible)
+  isProject?: boolean;
+  projectDuration?: 'finite' | 'ongoing';
+  founderSharePercent?: number;
+  investorSharePercent?: number;
+  founderUserId?: string;
+  parentCommunityId?: string;
+  projectStatus?: 'active' | 'closed' | 'archived';
+  communityWalletId?: string;
+  rejectionMessage?: string;
+  futureVisionText?: string;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -236,9 +248,10 @@ export class CommunitySchemaClass implements Community {
       'corporate',
       'custom',
       'global',
+      'project',
     ],
   })
-  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global';
+  typeTag?: 'future-vision' | 'marathon-of-good' | 'support' | 'team-projects' | 'team' | 'political' | 'housing' | 'volunteer' | 'corporate' | 'custom' | 'global' | 'project';
 
   // НОВОЕ: Связанные валюты (настраивается)
   @Prop({ type: [String], default: [] })
@@ -308,6 +321,7 @@ export class CommunitySchemaClass implements Community {
         type: String,
         enum: ['quota-and-wallet', 'quota-only', 'wallet-only'],
       },
+      allowNegativeVoting: { type: Boolean, default: false },
     },
     default: {
       spendsMerits: true,
@@ -396,6 +410,36 @@ export class CommunitySchemaClass implements Community {
 
   @Prop({ required: true })
   updatedAt!: Date;
+
+  @Prop({ default: false })
+  isProject?: boolean;
+
+  @Prop({ type: String, enum: ['finite', 'ongoing'] })
+  projectDuration?: 'finite' | 'ongoing';
+
+  @Prop({ type: Number, min: 0, max: 100, default: undefined })
+  founderSharePercent?: number;
+
+  @Prop({ type: Number, min: 0, max: 100, default: undefined })
+  investorSharePercent?: number;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+  founderUserId?: string;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Community' })
+  parentCommunityId?: string;
+
+  @Prop({ type: String, enum: ['active', 'closed', 'archived'] })
+  projectStatus?: 'active' | 'closed' | 'archived';
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'CommunityWallet' })
+  communityWalletId?: string;
+
+  @Prop({ type: String })
+  rejectionMessage?: string;
+
+  @Prop({ type: String })
+  futureVisionText?: string;
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);
@@ -408,3 +452,4 @@ export const Community = CommunitySchemaClass;
 // Note: id index is already created by @Prop({ unique: true }) decorator
 
 CommunitySchema.index({ isActive: 1 });
+CommunitySchema.index({ isProject: 1 }, { partialFilterExpression: { isProject: true } });
