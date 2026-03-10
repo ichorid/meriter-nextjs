@@ -1,0 +1,149 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProject, useJoinProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
+import { ProjectMembersList } from '@/components/organisms/Project/ProjectMembersList';
+import { ProjectTabs } from '@/components/organisms/Project/ProjectTabs';
+import { TopUpWalletDialog } from '@/components/organisms/Project/TopUpWalletDialog';
+import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { Button } from '@/components/ui/shadcn/button';
+import { Badge } from '@/components/ui/shadcn/badge';
+import { ChevronLeft, Wallet, Users } from 'lucide-react';
+
+interface ProjectPageClientProps {
+  projectId: string;
+}
+
+export default function ProjectPageClient({ projectId }: ProjectPageClientProps) {
+  const t = useTranslations('projects');
+  const { user } = useAuth();
+  const { data, isLoading } = useProject(projectId);
+  const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
+  const joinProject = useJoinProject();
+  const leaveProject = useLeaveProject();
+  const [topUpOpen, setTopUpOpen] = useState(false);
+
+  const isLead = useMemo(() => {
+    if (!user || !membersData?.data) return false;
+    const me = membersData.data.find(
+      (m: { id?: string; userId?: string; role?: string }) =>
+        (m.id ?? m.userId) === user.id,
+    );
+    return me?.role === 'lead';
+  }, [user, membersData?.data]);
+
+  if (isLoading || !data) {
+    return (
+      <AdaptiveLayout>
+        <div className="p-4">{isLoading ? 'Loading...' : 'Project not found'}</div>
+      </AdaptiveLayout>
+    );
+  }
+
+  const { project, walletBalance, parentCommunity } = data;
+  const status = project.projectStatus ?? 'active';
+  const statusLabel = status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
+  const isMember = user && project.members?.includes(user.id);
+
+  return (
+    <AdaptiveLayout>
+      <div className="flex flex-col gap-6 p-4">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/meriter/projects">
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back to projects
+          </Link>
+        </Button>
+
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">{project.name}</h1>
+            <Badge variant={status === 'active' ? 'default' : 'secondary'}>{statusLabel}</Badge>
+          </div>
+          {project.description && (
+            <p className="text-muted-foreground">{project.description}</p>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-4 text-sm">
+          {parentCommunity && (
+            <div>
+              <span className="text-muted-foreground">{t('parentCommunity')}: </span>
+              <Link
+                href={`/meriter/communities/${parentCommunity.id}`}
+                className="text-primary hover:underline"
+              >
+                {parentCommunity.name}
+              </Link>
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            <Wallet className="h-4 w-4" />
+            <span>{t('walletBalance')}: {walletBalance}</span>
+          </div>
+        </div>
+
+        <CooperativeSharesDisplay
+          founderSharePercent={project.founderSharePercent ?? 0}
+          investorSharePercent={project.investorSharePercent ?? 0}
+        />
+
+        {isMember && user && (
+          <ProjectTabs
+            projectId={projectId}
+            currentUserId={user.id}
+            isLead={isLead}
+            isMember={isMember}
+          />
+        )}
+
+        {user && (
+          <div className="flex flex-wrap gap-2">
+            {!isMember && (
+              <Button
+                size="sm"
+                onClick={() => joinProject.mutate({ projectId })}
+                disabled={joinProject.isPending}
+              >
+                Request to join
+              </Button>
+            )}
+            {isMember && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setTopUpOpen(true)}>
+                  Top up wallet
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => leaveProject.mutate({ projectId })}
+                  disabled={leaveProject.isPending}
+                >
+                  Leave project
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        <section>
+          <h2 className="flex items-center gap-2 text-lg font-medium mb-2">
+            <Users className="h-5 w-5" />
+            {t('members')}
+          </h2>
+          <ProjectMembersList projectId={projectId} />
+        </section>
+      </div>
+
+      <TopUpWalletDialog
+        projectId={projectId}
+        open={topUpOpen}
+        onOpenChange={setTopUpOpen}
+      />
+    </AdaptiveLayout>
+  );
+}

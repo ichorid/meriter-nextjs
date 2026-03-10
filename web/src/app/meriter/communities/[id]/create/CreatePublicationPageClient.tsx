@@ -34,15 +34,18 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   const walletBalance = feeWallet?.balance ?? 0;
   const hasInsufficientPayment = requiresPayment && walletBalance < postCost;
 
-  // Get postType from URL params (e.g., ?postType=project)
+  // Get postType from URL params (e.g., ?postType=project, ?postType=discussion)
   const postTypeParam = searchParams?.get('postType');
   let requestedPostType: PublicationPostType = 'basic';
   if (postTypeParam === 'poll' || postTypeParam === 'basic') {
     requestedPostType = postTypeParam as PublicationPostType;
   } else if (postTypeParam === 'project' && ENABLE_PROJECT_POSTS) {
     requestedPostType = 'project';
+  } else if (postTypeParam === 'discussion') {
+    requestedPostType = 'discussion';
   }
   const defaultPostType = requestedPostType;
+  const isProjectCommunity = !!community?.isProject;
 
   useEffect(() => {
     if (!userLoading && !isAuthenticated) {
@@ -117,6 +120,7 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
         <PublicationCreateForm
           communityId={communityId}
           defaultPostType={defaultPostType}
+          isProjectCommunity={isProjectCommunity}
           onSuccess={(publication) => {
             const postIdentifier = publication.slug || publication.id;
             router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);

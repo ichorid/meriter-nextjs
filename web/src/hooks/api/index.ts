@@ -13,4 +13,6 @@ export * from './useCommunityMembers';
 export * from './useFavorites';
 export * from './useTeamRequests';
 export * from './useInvestments';
+export * from './useProjects';
+export * from './useTickets';
 

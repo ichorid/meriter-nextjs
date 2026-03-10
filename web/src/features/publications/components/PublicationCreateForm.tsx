@@ -46,7 +46,7 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CategorySelector } from '@/shared/components/category-selector';
 import config from '@/config';
 
-export type PublicationPostType = 'basic' | 'poll' | 'project';
+export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
 
 interface PublicationDraft {
   title: string;
@@ -71,6 +71,8 @@ interface PublicationCreateFormProps {
   onSuccess?: (publication: { id: string; slug?: string }) => void;
   onCancel?: () => void;
   defaultPostType?: PublicationPostType;
+  /** When true and defaultPostType is 'discussion', submission sends postType: 'discussion', isProject: true */
+  isProjectCommunity?: boolean;
   publicationId?: string;
   initialData?: Publication;
 }
@@ -102,6 +104,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   onSuccess,
   onCancel,
   defaultPostType = 'basic',
+  isProjectCommunity = false,
   publicationId,
   initialData,
 }) => {
@@ -442,8 +445,15 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           description: description.trim(),
           content: description.trim(), // Оставляем для обратной совместимости
           type: 'text',
-          postType: finalPostType === 'project' && !ENABLE_PROJECT_POSTS ? 'basic' : finalPostType,
-          isProject: ENABLE_PROJECT_POSTS && finalPostType === 'project',
+          postType:
+            finalPostType === 'discussion'
+              ? 'discussion'
+              : finalPostType === 'project' && !ENABLE_PROJECT_POSTS
+                ? 'basic'
+                : finalPostType,
+          isProject:
+            (isProjectCommunity && finalPostType === 'discussion') ||
+            (ENABLE_PROJECT_POSTS && finalPostType === 'project'),
           hashtags: ENABLE_HASHTAGS ? hashtags : [],
           categories: ENABLE_HASHTAGS ? [] : categories,
           images: images.length > 0 ? images : undefined, // Always use array
