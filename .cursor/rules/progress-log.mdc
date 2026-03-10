@@ -1,0 +1,43 @@
+---
+description: Maintain a progress log for feature implementation to preserve context across sessions.
+globs:
+  - "docs/prd/**"
+alwaysApply: false
+---
+
+## Progress Log
+
+When working on a feature that has a PRD in `docs/prd/`:
+
+1. **At the start of a session**, check if `docs/prd/[feature-name]-progress.md` exists. If it does, read it to understand current state. If it doesn't, create it.
+
+2. **After completing each logical step**, append to the progress log:
+   ```markdown
+   ### Step N: [brief description]
+   - **Status**: Done / Partial / Blocked
+   - **Files changed**: [list]
+   - **What was done**: [1-2 sentences]
+   - **Known issues**: [if any]
+   ```
+
+3. **If the session ends mid-task** (user says stop, or context is getting long), write a handoff summary:
+   ```markdown
+   ## Session Handoff — [date]
+   - **Completed**: [steps done]
+   - **Next up**: [what to do next]
+   - **Open questions**: [if any]
+   - **Files in progress**: [list of partially modified files]
+   ```
+
+4. **Progress log template** (create if doesn't exist):
+   ```markdown
+   # Progress: [Feature Name]
+   PRD: @docs/prd/[feature-name].md
+   Branch: feat/[feature-name]
+   Started: [date]
+   
+   ## Steps
+   [append here]
+   ```
+
+This log serves as external memory. When starting a new chat session, attach it with `@docs/prd/[feature-name]-progress.md` to resume from where you left off.
