@@ -1,9 +1,30 @@
 ---
-description: After finishing a plan, run tests and build; on structural/pattern changes update .cursor/rules.
+description: After finishing a plan, run tests and build; on structural/pattern changes update .cursor/rules. Clean AI slop.
 alwaysApply: true
 ---
 
-when you finish todos for a plan, run tests and then build to check for errors. If there are errors, iterate until you fix them
+## After each step completion
 
-If this change introduces a new module, changes project structure, 
-or changes an established pattern — update the relevant .cursor/rules/*.mdc file.
+Before marking a step as done, briefly state what existing behavior could break and why you believe it won't.
+
+## After finishing all todos for a plan
+
+1. **Slop clean** — before running tests, clean up:
+   - Remove all `console.log` / `console.debug` (keep `console.error` / `console.warn` only if intentional)
+   - Remove commented-out code blocks
+   - Remove TODO/FIXME/HACK comments that don't reference a task ID
+   - Remove unused imports (let lint catch these too)
+   - Remove redundant comments that just restate the code (e.g. `// increment counter` above `counter++`)
+   - Remove any `// AI-generated`, `// Added by Cursor`, or similar markers
+   - Check for overengineered abstractions: if a wrapper/helper is used only once and adds no clarity, inline it
+
+2. **Run tests and build** to check for errors:
+   ```
+   pnpm lint
+   pnpm test
+   pnpm build
+   ```
+
+3. **If there are errors**, iterate until you fix them.
+
+4. **If this change introduces a new module, changes project structure, or changes an established pattern** — update the relevant `.cursor/rules/*.mdc` file.
