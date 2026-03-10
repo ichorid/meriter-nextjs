@@ -75,6 +75,13 @@
 - `web/src/app/meriter/projects/[id]/ProjectPageClient.tsx` — ProjectWalletCard, PublishToBirzhaButton; убраны дубли Top up
 - `web/messages/en.json`, `web/messages/ru.json` — i18n Биржа СИ, investment dialog total, ключи проектов
 
+## Контекст из разведки (Sprint 4)
+
+- **Модель членства:** `UserCommunityRole` (коллекция `user_community_roles`). Роли: `lead` | `participant`. Доступ через `UserCommunityRoleService.getRole(userId, communityId)`.
+- **Где перехвачен withdraw:** уже зафиксировано выше (publications.router.ts, мутация `withdraw`).
+- **Merit resolver override:** уже зафиксировано выше (ветка для `sourceEntityType === 'project'` → `projectDistributionService.distribute`).
+- **Важно для close:** при закрытии поста через `publications.close` вызывается `PostClosingService.closePost`. Сейчас авторская доля при close всегда идёт в кошелёк бенефициара через `walletService.addTransaction` (и `meritResolverService.getWalletCommunityId`). Для постов с `sourceEntityType === 'project'` авторская доля при close должна идти через `ProjectDistributionService.distribute` — в текущем коде этой ветки в PostClosingService нет, её нужно добавить в Sprint 4.
+
 ## Чеклист для проверки
 
 - [ ] publishToBirzha → пост в MARATHON_OF_GOOD_ID с sourceEntityId
