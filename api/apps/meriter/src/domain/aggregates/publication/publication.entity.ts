@@ -123,6 +123,8 @@ export class Publication implements EditableEntity {
       ttlExpiresAt?: Date | null;
       stopLoss?: number;
       noAuthorWalletSpend?: boolean;
+      sourceEntityId?: string;
+      sourceEntityType?: 'project' | 'community';
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
@@ -171,8 +173,8 @@ export class Publication implements EditableEntity {
       undefined, // lastEarnedAt
       false, // ttlWarningNotified
       false, // inactivityWarningNotified
-      undefined, // sourceEntityId
-      undefined, // sourceEntityType
+      options.sourceEntityId,
+      options.sourceEntityType,
     );
   }
 

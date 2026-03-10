@@ -564,11 +564,28 @@ export const publicationsRouter = router({
   create: protectedProcedure
     .input(CreatePublicationDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      const createDto = { ...input } as typeof input & { sourceEntityId?: string; sourceEntityType?: 'community' };
+      if (createDto.actingAsCommunityId) {
+        const role = await ctx.userCommunityRoleService.getRole(
+          ctx.user.id,
+          createDto.actingAsCommunityId,
+        );
+        if (role?.role !== 'lead') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only the community lead can publish on behalf of the community',
+          });
+        }
+        createDto.sourceEntityId = createDto.actingAsCommunityId;
+        createDto.sourceEntityType = 'community';
+      }
+      delete (createDto as any).actingAsCommunityId;
+
       // Check permissions
-      await checkPermissionInHandler(ctx, 'create', 'publication', input);
+      await checkPermissionInHandler(ctx, 'create', 'publication', createDto);
 
       // Get community to check payment requirements
-      const community = await ctx.communityService.getCommunity(input.communityId);
+      const community = await ctx.communityService.getCommunity(createDto.communityId);
       if (!community) {
         throw new TRPCError({
           code: 'NOT_FOUND',
@@ -577,7 +594,7 @@ export const publicationsRouter = router({
       }
 
       // Validate investment contract if investingEnabled
-      if (input.investingEnabled) {
+      if (createDto.investingEnabled) {
         const investingEnabled =
           community.settings?.investingEnabled ?? false;
         if (!investingEnabled) {
@@ -686,7 +703,7 @@ export const publicationsRouter = router({
       // Create publication
       const publication = await ctx.publicationService.createPublication(
         ctx.user.id,
-        input,
+        createDto,
       );
 
       // Extract IDs for enrichment
@@ -1151,7 +1168,20 @@ export const publicationsRouter = router({
             message: 'Only the project lead can withdraw from this publication',
           });
         }
-        // TODO: sourceEntityType === 'community' → Sprint 6
+      } else if (sourceEntityType === 'community') {
+        if (!sourceEntityId) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Community post is missing sourceEntityId',
+          });
+        }
+        const role = await ctx.userCommunityRoleService.getRole(userId, sourceEntityId);
+        if (role?.role !== 'lead') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only the community lead can withdraw from this publication',
+          });
+        }
       } else {
         // Validate user can withdraw (effective beneficiary)
         const canWithdraw = await ctx.voteService.canUserWithdraw(
@@ -1207,6 +1237,10 @@ export const publicationsRouter = router({
       let targetCommunityId: string;
       if (sourceEntityType === 'project' && sourceEntityId) {
         await ctx.projectDistributionService.distribute(sourceEntityId, authorShare);
+        targetCommunityId = GLOBAL_COMMUNITY_ID;
+      } else if (sourceEntityType === 'community' && sourceEntityId) {
+        await ctx.communityWalletService.createWallet(sourceEntityId);
+        await ctx.communityWalletService.deposit(sourceEntityId, authorShare, 'publication_withdrawal');
         targetCommunityId = GLOBAL_COMMUNITY_ID;
       } else {
         const result = await processWithdrawal(
