@@ -269,7 +269,21 @@ export type NotificationType =
     | "investment_received"
     | "investment_distributed"
     | "post_closed_investment"
-    | "post_closed";
+    | "investment_pool_depleted"
+    | "post_closed"
+    | "post_ttl_warning"
+    | "post_inactivity_warning"
+    | "project_created"
+    | "ticket_assigned"
+    | "ticket_done"
+    | "ticket_accepted"
+    | "ticket_evaluated"
+    | "project_published"
+    | "project_distributed"
+    | "project_closed"
+    | "member_joined"
+    | "member_left_project"
+    | "shares_changed";
 
 export interface Notification {
     id: string;

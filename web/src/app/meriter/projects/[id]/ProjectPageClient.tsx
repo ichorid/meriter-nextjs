@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +9,9 @@ import { ProjectMembersList } from '@/components/organisms/Project/ProjectMember
 import { ProjectTabs } from '@/components/organisms/Project/ProjectTabs';
 import { ProjectWalletCard } from '@/components/organisms/Project/ProjectWalletCard';
 import { PublishToBirzhaButton } from '@/components/organisms/Project/PublishToBirzhaButton';
+import { CloseProjectDialog } from '@/components/organisms/Project/CloseProjectDialog';
+import { LeaveProjectDialog } from '@/components/organisms/Project/LeaveProjectDialog';
+import { UpdateSharesDialog } from '@/components/organisms/Project/UpdateSharesDialog';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { Button } from '@/components/ui/shadcn/button';
@@ -27,6 +30,10 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const joinProject = useJoinProject();
   const leaveProject = useLeaveProject();
 
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [updateSharesDialogOpen, setUpdateSharesDialogOpen] = useState(false);
+
   const isLead = useMemo(() => {
     if (!user || !membersData?.data) return false;
     const me = membersData.data.find(
@@ -44,10 +51,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     );
   }
 
-  const { project, walletBalance, parentCommunity } = data;
+  const { project, parentCommunity } = data;
   const status = project.projectStatus ?? 'active';
   const statusLabel = status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
   const isMember = user && project.members?.includes(user.id);
+  const isArchived = status === 'archived';
 
   return (
     <AdaptiveLayout>
@@ -96,10 +104,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
             currentUserId={user.id}
             isLead={isLead}
             isMember={isMember}
+            readOnly={isArchived}
           />
         )}
 
-        {user && (
+        {user && !isArchived && (
           <div className="flex flex-wrap gap-2">
             {!isMember && (
               <Button
@@ -117,18 +126,43 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                   investorSharePercent={project.investorSharePercent}
                   isLead={isLead}
                 />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => leaveProject.mutate({ projectId })}
-                  disabled={leaveProject.isPending}
-                >
+                {isLead && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setUpdateSharesDialogOpen(true)}>
+                      {t('updateShares', { defaultValue: 'Update shares' })}
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => setCloseDialogOpen(true)}>
+                      {t('closeProject', { defaultValue: 'Close project' })}
+                    </Button>
+                  </>
+                )}
+                <Button size="sm" variant="outline" onClick={() => setLeaveDialogOpen(true)} disabled={leaveProject.isPending}>
                   Leave project
                 </Button>
               </>
             )}
           </div>
         )}
+
+        <CloseProjectDialog
+          projectId={projectId}
+          projectName={project.name}
+          open={closeDialogOpen}
+          onOpenChange={setCloseDialogOpen}
+        />
+        <LeaveProjectDialog
+          projectId={projectId}
+          projectName={project.name}
+          open={leaveDialogOpen}
+          onOpenChange={setLeaveDialogOpen}
+        />
+        <UpdateSharesDialog
+          projectId={projectId}
+          projectName={project.name}
+          currentFounderSharePercent={project.founderSharePercent ?? 0}
+          open={updateSharesDialogOpen}
+          onOpenChange={setUpdateSharesDialogOpen}
+        />
 
         <section>
           <h2 className="flex items-center gap-2 text-lg font-medium mb-2">

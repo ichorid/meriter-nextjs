@@ -192,6 +192,21 @@ export default function NotificationsPage() {
       case 'post_closed_investment':
       case 'post_closed':
         return '💰';
+      case 'project_created':
+      case 'project_published':
+      case 'project_distributed':
+      case 'project_closed':
+        return '📁';
+      case 'ticket_assigned':
+      case 'ticket_done':
+      case 'ticket_accepted':
+      case 'ticket_evaluated':
+        return '🎫';
+      case 'member_joined':
+      case 'member_left_project':
+        return '👤';
+      case 'shares_changed':
+        return '📊';
       default:
         return '🔔';
     }

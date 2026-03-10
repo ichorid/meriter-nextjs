@@ -9,6 +9,7 @@ import { STALE_TIME } from '@/lib/constants/query-config';
 export function useProjects(params: {
   parentCommunityId?: string;
   projectStatus?: 'active' | 'closed' | 'archived';
+  memberId?: string;
   search?: string;
   page?: number;
   pageSize?: number;
@@ -17,6 +18,7 @@ export function useProjects(params: {
     {
       parentCommunityId: params.parentCommunityId,
       projectStatus: params.projectStatus,
+      memberId: params.memberId,
       search: params.search,
       page: params.page,
       pageSize: params.pageSize,
@@ -137,6 +139,39 @@ export function usePublishToBirzha() {
     },
     onError: (error) => {
       addToast(error.message || t('publishToBirzhaError', { defaultValue: 'Failed to publish' }), 'error');
+    },
+  });
+}
+
+export function useCloseProject() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.closeProject.useMutation({
+    onSuccess: () => {
+      utils.project.getById.invalidate();
+      utils.project.list.invalidate();
+      addToast(t('closeSuccess', { defaultValue: 'Project closed' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('closeError', { defaultValue: 'Failed to close project' }), 'error');
+    },
+  });
+}
+
+export function useUpdateShares() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.updateShares.useMutation({
+    onSuccess: () => {
+      utils.project.getById.invalidate();
+      addToast(t('sharesUpdated', { defaultValue: 'Shares updated' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('sharesUpdateError', { defaultValue: 'Failed to update shares' }), 'error');
     },
   });
 }

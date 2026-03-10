@@ -24,6 +24,7 @@ interface ProjectTabsProps {
   currentUserId: string;
   isLead: boolean;
   isMember: boolean;
+  readOnly?: boolean;
 }
 
 export function ProjectTabs({
@@ -31,6 +32,7 @@ export function ProjectTabs({
   currentUserId,
   isLead,
   isMember,
+  readOnly = false,
 }: ProjectTabsProps) {
   const t = useTranslations('projects');
   const [activeTab, setActiveTab] = useState<TabId>('tickets');
@@ -67,14 +69,14 @@ export function ProjectTabs({
         >
           {t('tabs.discussions')}
         </button>
-        {activeTab === 'discussions' && (
+        {activeTab === 'discussions' && !readOnly && (
           <Button size="sm" variant="outline" className="ml-auto" asChild>
             <Link href={`/meriter/communities/${projectId}/create?postType=discussion`}>
               {t('createDiscussion')}
             </Link>
           </Button>
         )}
-        {isLead && activeTab === 'tickets' && (
+        {isLead && activeTab === 'tickets' && !readOnly && (
           <Dialog open={createTicketOpen} onOpenChange={setCreateTicketOpen}>
             <DialogTrigger asChild>
               <Button size="sm" className="ml-auto">{t('createTicket')}</Button>
