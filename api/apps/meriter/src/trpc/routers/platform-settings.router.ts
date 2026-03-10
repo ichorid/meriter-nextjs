@@ -7,6 +7,10 @@ const UpdatePlatformSettingsSchema = z.object({
   welcomeMeritsGlobal: z.number().int().min(0),
 });
 
+const UpdateFutureVisionTagsSchema = z.object({
+  tags: z.array(z.string()),
+});
+
 export const platformSettingsRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.platformSettingsService.get();
@@ -22,5 +26,17 @@ export const platformSettingsRouter = router({
         });
       }
       return await ctx.platformSettingsService.update(input);
+    }),
+
+  updateFutureVisionTags: protectedProcedure
+    .input(UpdateFutureVisionTagsSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can update future vision tags',
+        });
+      }
+      return await ctx.platformSettingsService.updateFutureVisionTags(input.tags);
     }),
 });

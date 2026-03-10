@@ -6,6 +6,8 @@ export const PLATFORM_SETTINGS_ID = 'platform';
 export interface PlatformSettings {
   id: string;
   welcomeMeritsGlobal: number;
+  /** Rubricator: allowed tags for OB feed filtering. Superadmin-managed. */
+  availableFutureVisionTags?: string[];
   updatedAt: Date;
 }
 
@@ -16,6 +18,9 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ required: true, default: 0 })
   welcomeMeritsGlobal!: number;
+
+  @Prop({ type: [String], default: [] })
+  availableFutureVisionTags?: string[];
 
   updatedAt!: Date;
 }

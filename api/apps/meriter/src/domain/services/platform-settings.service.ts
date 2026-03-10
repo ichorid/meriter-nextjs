@@ -34,10 +34,15 @@ export class PlatformSettingsService {
         .create({
           id: PLATFORM_SETTINGS_ID,
           welcomeMeritsGlobal: 0,
+          availableFutureVisionTags: [],
         })
         .then((d) => d.toObject());
     }
-    return doc as PlatformSettings;
+    const result = doc as PlatformSettings;
+    if (!result.availableFutureVisionTags) {
+      result.availableFutureVisionTags = [];
+    }
+    return result;
   }
 
   /**
@@ -63,6 +68,24 @@ export class PlatformSettingsService {
       .findOneAndUpdate(
         { id: PLATFORM_SETTINGS_ID },
         { $set: update },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
+    if (!doc) {
+      throw new Error('Failed to update platform settings');
+    }
+    return doc as PlatformSettings;
+  }
+
+  /**
+   * Update available future vision tags (rubricator). Superadmin only.
+   */
+  async updateFutureVisionTags(tags: string[]): Promise<PlatformSettings> {
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { availableFutureVisionTags: tags, updatedAt: new Date() } },
         { new: true, upsert: true, runValidators: true },
       )
       .lean()
