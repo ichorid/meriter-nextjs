@@ -10,6 +10,7 @@ import { Plus } from 'lucide-react';
 
 export default function ProjectsPageClient() {
   const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const { data, isLoading } = useGlobalProjectsList({ page: 1, pageSize: 50 });
 
   const items = data?.data ?? [];
@@ -28,7 +29,7 @@ export default function ProjectsPageClient() {
           </Button>
         </div>
         {isLoading ? (
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{tCommon('loading')}</p>
         ) : items.length === 0 ? (
           <p className="text-muted-foreground">{t('noProjects')}</p>
         ) : (

@@ -345,7 +345,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                     <div className="mt-6 space-y-4">
                         {investingEnabled && publicationId && (
                             <CollapsibleSection
-                                title={tInvesting('breakdownTitle', { defaultValue: 'Investments' })}
+                                title={tInvesting('breakdownTitle')}
                                 open={investmentBreakdownOpen}
                                 setOpen={setInvestmentBreakdownOpen}
                             >
@@ -354,7 +354,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         )}
 
                         <CollapsibleSection
-                            title={tPublicationsCreate('postParamsReadOnly', { defaultValue: 'Post parameters' })}
+                            title={tPublicationsCreate('postParamsReadOnly')}
                             open={postSettingsOpen}
                             setOpen={setPostSettingsOpen}
                         >

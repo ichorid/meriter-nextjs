@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Star } from 'lucide-react';
 import type { FavoriteTargetType } from '@/hooks/api/useFavorites';
 import {
@@ -17,6 +18,7 @@ export interface FavoriteStarProps {
 }
 
 export function FavoriteStar({ targetType, targetId, className = '' }: FavoriteStarProps) {
+  const tAria = useTranslations('common.ariaLabels');
   const { isAuthenticated } = useAuth();
   const { data } = useIsFavorite(targetType, targetId);
   const addFavorite = useAddFavorite();
@@ -53,7 +55,7 @@ export function FavoriteStar({ targetType, targetId, className = '' }: FavoriteS
       onClick={onToggle}
       disabled={!isAuthenticated || isBusy}
       className={`p-1 rounded-full hover:bg-base-200 transition-colors ${className}`}
-      aria-label={isFav ? 'Unfavorite' : 'Favorite'}
+      aria-label={isFav ? tAria('unfavorite') : tAria('favorite')}
     >
       <Star
         className={`w-5 h-5 ${

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
@@ -23,6 +24,7 @@ export interface FutureVisionCardProps {
 }
 
 export function FutureVisionCard({ item }: FutureVisionCardProps) {
+  const t = useTranslations('common');
   return (
     <Card className="h-full transition-shadow hover:shadow-md overflow-hidden">
       <Link href={`/meriter/communities/${item.communityId}`} className="block">
@@ -66,7 +68,7 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
       <CardContent className="pt-0 border-t">
         <Button asChild variant="default" className="w-full">
           <Link href={`/meriter/communities/${item.communityId}`}>
-            Join
+            {t('join')}
           </Link>
         </Button>
       </CardContent>

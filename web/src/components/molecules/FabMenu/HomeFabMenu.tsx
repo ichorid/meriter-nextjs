@@ -12,6 +12,7 @@ import { useUIStore } from '@/stores/ui.store';
 export const HomeFabMenu: React.FC = () => {
     const router = useRouter();
     const t = useTranslations('home');
+    const tAria = useTranslations('common.ariaLabels');
     const tCommunities = useTranslations('pages.communities');
     const { data: wallets = [] } = useWallets();
     const { canCreate: canCreateCommunity } = useCanCreateCommunity();
@@ -144,7 +145,7 @@ export const HomeFabMenu: React.FC = () => {
                         ? 'bg-brand-text-primary text-white rotate-45'
                         : 'bg-brand-primary text-white hover:bg-brand-primary/90 hover:scale-105'
                 }`}
-                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-label={isOpen ? tAria('closeMenu') : tAria('openMenu')}
             >
                 <Plus size={28} />
             </button>

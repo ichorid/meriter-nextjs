@@ -111,7 +111,7 @@ export function EmailAuthDialog({
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data?.error?.message ?? data?.message ?? "Failed to send code");
+                throw new Error(data?.error?.message ?? data?.message ?? t("sendFailed"));
             }
 
             if (data.canResendAt) {
@@ -123,7 +123,7 @@ export function EmailAuthDialog({
 
             setStep("otp");
         } catch (err: any) {
-            const message = err.message || "Failed to send email";
+            const message = err.message || t("sendFailed");
             setError(message);
             onError(message);
         } finally {
@@ -169,7 +169,7 @@ export function EmailAuthDialog({
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                throw new Error(data?.error?.message ?? data?.message ?? "Failed to verify code");
+                throw new Error(data?.error?.message ?? data?.message ?? t("verifyFailed"));
             }
 
             onSuccess({
@@ -178,7 +178,7 @@ export function EmailAuthDialog({
             });
             onOpenChange(false);
         } catch (err: any) {
-            const message = err.message || "Verification failed";
+            const message = err.message || t("verifyFailed");
             setError(message);
             onError(message);
         } finally {
@@ -213,10 +213,10 @@ export function EmailAuthDialog({
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                         )}
-                        Sign in with Email
+                        {t("title")}
                     </DialogTitle>
                     <DialogDescription>
-                        {step === "email" ? "Enter your email address to receive a login code" : "Enter the code sent to your email"}
+                        {step === "email" ? t("description") : t("otpDescription")}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -224,7 +224,7 @@ export function EmailAuthDialog({
                     {step === "email" ? (
                         <>
                             <BrandFormControl
-                                label="Email"
+                                label={t("emailLabel")}
                                 error={error}
                             >
                                 <Input
@@ -249,7 +249,7 @@ export function EmailAuthDialog({
                                 className="w-full"
                             >
                                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                                Send Code
+                                {t("sendCode")}
                             </Button>
                         </>
                     ) : (
@@ -259,7 +259,7 @@ export function EmailAuthDialog({
                             </div>
 
                             <BrandFormControl
-                                label="Verification Code"
+                                label={t("otpLabel")}
                                 error={error}
                             >
                                 <Input
@@ -293,10 +293,10 @@ export function EmailAuthDialog({
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Verifying...
+                                        {t("verifying")}
                                     </>
                                 ) : (
-                                    "Verify"
+                                    t("verify")
                                 )}
                             </Button>
 
@@ -307,8 +307,8 @@ export function EmailAuthDialog({
                                 className="w-full"
                             >
                                 {resendCountdown > 0
-                                    ? `Resend in ${resendCountdown}s`
-                                    : "Resend Code"}
+                                    ? t("resendIn", { seconds: resendCountdown })
+                                    : t("resendCode")}
                             </Button>
                         </>
                     )}

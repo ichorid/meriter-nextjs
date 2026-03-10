@@ -91,6 +91,9 @@
         "noVotesYet": "Пока нет голосов",
         "publicationNotFound": "Публикация не найдена",
         "backToCommunity": "Вернуться в сообщество",
+        "noFutureVisionsYet": "Пока нет образов будущего.",
+        "loadMore": "Загрузить ещё",
+        "join": "Войти",
         "urlPlaceholder": "https://...",
         "usernamePlaceholder": "имя_пользователя",
         "selectOption": "Выберите опцию",
@@ -115,7 +118,11 @@
             "imageGallery": "Галерея изображений",
             "close": "Закрыть",
             "previousImage": "Предыдущее изображение",
-            "nextImage": "Следующее изображение"
+            "nextImage": "Следующее изображение",
+            "favorite": "В избранное",
+            "unfavorite": "Убрать из избранного",
+            "closeMenu": "Закрыть меню",
+            "openMenu": "Открыть меню"
         },
         "profile": "Профиль",
         "account": "Аккаунт",
@@ -573,6 +580,7 @@
             "success": "Подтверждено!",
             "expired": "Срок действия истек",
             "failed": "Ошибка проверки",
+            "initFailed": "Не удалось инициировать звонок",
             "sentTo": "Номер для звонка:"
         },
         "emailDialog": {
@@ -1401,7 +1409,17 @@
         "updateShares": "Обновить доли",
         "updateSharesDescription": "Можно только уменьшить долю основателя (увеличить долю команды). Сейчас: {current}%.",
         "updateSharesTitle": "Обновить долю основателя",
-        "viewArchive": "Смотреть архив"
+        "viewArchive": "Смотреть архив",
+        "name": "Название",
+        "projectNamePlaceholder": "Название проекта",
+        "shortDescriptionPlaceholder": "Краткое описание",
+        "selectCommunityPlaceholder": "Выберите сообщество или создайте новое",
+        "createNewCommunity": "Создать новое сообщество",
+        "newCommunityName": "Название нового сообщества",
+        "communityNamePlaceholder": "Название сообщества",
+        "futureVisionRequired": "Образ будущего (обязательно)",
+        "futureVisionPlaceholder": "Опишите образ будущего",
+        "projectNotFound": "Проект не найден"
     },
     "teams": {
         "title": "Управление командой",

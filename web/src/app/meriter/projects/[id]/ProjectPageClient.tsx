@@ -25,6 +25,7 @@ interface ProjectPageClientProps {
 
 export default function ProjectPageClient({ projectId }: ProjectPageClientProps) {
   const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const { user } = useAuth();
   const { data, isLoading } = useProject(projectId);
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
@@ -48,7 +49,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   if (isLoading || !data) {
     return (
       <AdaptiveLayout>
-        <div className="p-4">{isLoading ? 'Loading...' : 'Project not found'}</div>
+        <div className="p-4">{isLoading ? tCommon('loading') : t('projectNotFound')}</div>
       </AdaptiveLayout>
     );
   }

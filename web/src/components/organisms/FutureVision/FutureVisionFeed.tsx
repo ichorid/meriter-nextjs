@@ -1,12 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { useFutureVisions } from '@/hooks/api/useFutureVisions';
 import { FutureVisionCard } from './FutureVisionCard';
 import { TagFilter } from './TagFilter';
 import type { FutureVisionItem } from './FutureVisionCard';
 
 export function FutureVisionFeed() {
+  const t = useTranslations('common');
   const [page, setPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
@@ -23,13 +25,13 @@ export function FutureVisionFeed() {
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
-    items.forEach((item) => item.futureVisionTags?.forEach((t) => set.add(t)));
+    items.forEach((item) => item.futureVisionTags?.forEach((tag) => set.add(tag)));
     return Array.from(set).sort();
   }, [items]);
 
   const handleToggleTag = (tag: string) => {
     setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+      prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag],
     );
     setPage(1);
   };
@@ -42,14 +44,14 @@ export function FutureVisionFeed() {
         onToggleTag={handleToggleTag}
       />
       {isLoading ? (
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground">{t('loading')}</p>
       ) : items.length === 0 ? (
-        <p className="text-muted-foreground">No future visions yet.</p>
+        <p className="text-muted-foreground">{t('noFutureVisionsYet')}</p>
       ) : (
         <>
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => (
-              <li key={item.communityId}>
+              <li key={item.publicationId ?? item.communityId}>
                 <FutureVisionCard item={item} />
               </li>
             ))}
@@ -60,7 +62,7 @@ export function FutureVisionFeed() {
               className="text-primary hover:underline"
               onClick={() => setPage((p) => p + 1)}
             >
-              Load more
+              {t('loadMore')}
             </button>
           )}
         </>

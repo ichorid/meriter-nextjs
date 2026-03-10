@@ -80,7 +80,7 @@ export function CreatePollPageClient({ communityId }: CreatePollPageClientProps)
                 onClick={() => router.push(`/meriter/communities/${communityId}?tappalka=1`)}
                 className="mt-2"
               >
-                {tCommunities('tappalka') || 'Earn merits'}
+                {tCommunities('tappalka')}
               </Button>
             </div>
           </DialogContent>

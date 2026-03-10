@@ -157,7 +157,7 @@ export function CallCheckAuthDialog({
             setStep("call");
             startPolling(data.checkId, phoneNumber);
         } catch (err: any) {
-            const message = err.message || "Failed to initiate call";
+            const message = err.message || t("initFailed");
             setError(message);
             onError(message);
         } finally {

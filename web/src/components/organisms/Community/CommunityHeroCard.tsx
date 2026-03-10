@@ -157,7 +157,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               ? 'right-[51px]'
               : 'right-3'
           }`}
-          title={tCommunities('members.title') || 'Members'}
+          title={tCommunities('members.title')}
         >
           <Users size={18} className="text-white" />
         </button>
@@ -174,8 +174,8 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                 ? 'right-[102px]'
                 : 'right-[51px]'
             }`}
-            aria-label={tCommunities('deleted') || 'Deleted'}
-            title={tCommunities('deleted') || 'Deleted'}
+            aria-label={tCommunities('deleted')}
+            title={tCommunities('deleted')}
           >
             <Trash2 size={18} className="text-white" />
           </button>

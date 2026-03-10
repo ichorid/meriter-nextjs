@@ -10,7 +10,8 @@
  */
 export const STATIC_ROUTE_PATTERNS = [
   /^\/meriter\/login$/,
-  /^\/meriter\/communities$/, // Exact match - /meriter/communities/123 should NOT match
+  /^\/meriter\/communities$/,
+  /^\/meriter\/communities\/create$/,
   /^\/meriter\/spaces$/,
   /^\/meriter\/settings$/,
   /^\/meriter\/profile$/,
@@ -18,6 +19,10 @@ export const STATIC_ROUTE_PATTERNS = [
   /^\/meriter\/welcome$/,
   /^\/meriter\/search$/,
   /^\/meriter\/notifications$/,
+  /^\/meriter\/future-visions$/,
+  /^\/meriter\/projects$/,
+  /^\/meriter\/projects\/create$/,
+  /^\/meriter\/auth\/callback$/,
   /^\/meriter\/invite$/,
   /^\/meriter\/invites$/,
   /^\/meriter\/teams$/,
@@ -40,6 +45,7 @@ export const DYNAMIC_ROUTE_PATTERNS = [
   /^\/meriter\/communities\/[^/]+\/rules$/, // /meriter/communities/[id]/rules
   /^\/meriter\/communities\/[^/]+\/members$/, // /meriter/communities/[id]/members
   /^\/meriter\/users\/[^/]+$/, // /meriter/users/[userId]
+  /^\/meriter\/projects\/[^/]+$/, // /meriter/projects/[id]
   /^\/meriter\/publications\/[^/]+$/, // /meriter/publications/[id]
   /^\/meriter\/polls\/[^/]+$/, // /meriter/polls/[id]
   /^\/meriter\/spaces\/[^/]+$/, // /meriter/spaces/[slug]

@@ -64,30 +64,30 @@ export function CreateProjectForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-xl">
       <div>
-        <Label htmlFor="name">{t('createProject')} — Name</Label>
+        <Label htmlFor="name">{t('createProject')} — {t('name')}</Label>
         <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Project name"
+          placeholder={t('projectNamePlaceholder')}
           required
         />
       </div>
       <div>
-        <Label htmlFor="description">Description</Label>
+        <Label htmlFor="description">{t('description')}</Label>
         <Textarea
           id="description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Short description"
+          placeholder={t('shortDescriptionPlaceholder')}
           rows={3}
         />
       </div>
       <div>
-        <Label>Parent community</Label>
+        <Label>{t('parentCommunity')}</Label>
         <Select value={parentChoice} onValueChange={setParentChoice} required>
           <SelectTrigger>
-            <SelectValue placeholder="Select community or create new" />
+            <SelectValue placeholder={t('selectCommunityPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {communities.map((c: { id: string; name: string }) => (
@@ -95,29 +95,29 @@ export function CreateProjectForm() {
                 {c.name}
               </SelectItem>
             ))}
-            <SelectItem value={NEW_COMMUNITY_VALUE}>Create new community</SelectItem>
+            <SelectItem value={NEW_COMMUNITY_VALUE}>{t('createNewCommunity')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
       {isNewCommunity && (
         <>
           <div>
-            <Label htmlFor="newName">New community name</Label>
+            <Label htmlFor="newName">{t('newCommunityName')}</Label>
             <Input
               id="newName"
               value={newCommunityName}
               onChange={(e) => setNewCommunityName(e.target.value)}
-              placeholder="Community name"
+              placeholder={t('communityNamePlaceholder')}
               required={isNewCommunity}
             />
           </div>
           <div>
-            <Label htmlFor="futureVision">Future vision (required)</Label>
+            <Label htmlFor="futureVision">{t('futureVisionRequired')}</Label>
             <Textarea
               id="futureVision"
               value={newCommunityFutureVision}
               onChange={(e) => setNewCommunityFutureVision(e.target.value)}
-              placeholder="Describe the image of the future"
+              placeholder={t('futureVisionPlaceholder')}
               rows={3}
               required={isNewCommunity}
             />

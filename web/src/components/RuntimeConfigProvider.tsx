@@ -61,8 +61,6 @@ export function RuntimeConfigProvider({
         [runtimeConfig?.email?.enabled]
     );
 
-    console.log("RuntimeConfigProvider", runtimeConfig);
-
     // Store previous array to compare by value and maintain stable reference
     const prevProvidersRef = useRef<string[] | null>(null);
 

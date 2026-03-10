@@ -90,6 +90,9 @@
         "addComment": "Add a comment",
         "publicationNotFound": "Publication not found",
         "backToCommunity": "Back to Community",
+        "noFutureVisionsYet": "No future visions yet.",
+        "loadMore": "Load more",
+        "join": "Join",
         "urlPlaceholder": "https://...",
         "usernamePlaceholder": "username",
         "selectOption": "Select an option",
@@ -114,7 +117,11 @@
             "imageGallery": "Image gallery",
             "close": "Close",
             "previousImage": "Previous image",
-            "nextImage": "Next image"
+            "nextImage": "Next image",
+            "favorite": "Favorite",
+            "unfavorite": "Unfavorite",
+            "closeMenu": "Close menu",
+            "openMenu": "Open menu"
         },
         "profile": "Profile",
         "account": "Account",
@@ -573,6 +580,7 @@
             "success": "Verified!",
             "expired": "Verification expired",
             "failed": "Verification failed",
+            "initFailed": "Failed to initiate call",
             "sentTo": "Calling number:"
         },
         "emailDialog": {
@@ -1401,7 +1409,17 @@
         "updateShares": "Update shares",
         "updateSharesDescription": "You can only decrease the founder share (increase the team share). Current: {current}%.",
         "updateSharesTitle": "Update founder share",
-        "viewArchive": "View archive"
+        "viewArchive": "View archive",
+        "name": "Name",
+        "projectNamePlaceholder": "Project name",
+        "shortDescriptionPlaceholder": "Short description",
+        "selectCommunityPlaceholder": "Select community or create new",
+        "createNewCommunity": "Create new community",
+        "newCommunityName": "New community name",
+        "communityNamePlaceholder": "Community name",
+        "futureVisionRequired": "Future vision (required)",
+        "futureVisionPlaceholder": "Describe the image of the future",
+        "projectNotFound": "Project not found"
     },
     "teams": {
         "title": "Team Management",
