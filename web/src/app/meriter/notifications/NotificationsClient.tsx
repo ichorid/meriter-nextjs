@@ -219,11 +219,13 @@ export default function NotificationsPage() {
   const tCommon = useTranslations('common');
 
   const formatNotificationMessage = (notification: typeof notifications[0]): string => {
-    if (notification.type === 'vote' && notification.metadata?.direction) {
-      const direction = notification.metadata.direction as 'up' | 'down';
-      const amount = typeof notification.metadata.amount === 'number' ? notification.metadata.amount : 0;
-      const targetType = notification.metadata.targetType === 'vote' ? 'comment' : 'post';
-      const actorName = notification.actor?.name || tCommon('someone');
+    const actorName = notification.actor?.name || tCommon('someone');
+    const meta = notification.metadata ?? {};
+
+    if (notification.type === 'vote' && meta.direction) {
+      const direction = meta.direction as 'up' | 'down';
+      const amount = typeof meta.amount === 'number' ? meta.amount : 0;
+      const targetType = meta.targetType === 'vote' ? 'comment' : 'post';
       const key = direction === 'up'
         ? (targetType === 'post' ? 'voteUpPost' : 'voteUpComment')
         : (targetType === 'post' ? 'voteDownPost' : 'voteDownComment');
@@ -231,24 +233,43 @@ export default function NotificationsPage() {
       const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
       return base + amountStr;
     }
-    if (notification.type === 'investment_received' && notification.metadata?.amount != null) {
-      const amount = Number(notification.metadata.amount);
-      const actorName = notification.actor?.name || tCommon('someone');
-      return t('investedInYourPost', { name: actorName, amount });
+    if (notification.type === 'investment_received' && meta.amount != null) {
+      return t('investedInYourPost', { name: actorName, amount: Number(meta.amount) });
     }
-    if (notification.type === 'investment_distributed' && notification.metadata) {
-      const withdrawAmount = Number(notification.metadata.withdrawAmount ?? 0);
-      const share = Number(notification.metadata.amount ?? 0);
-      const actorName = notification.actor?.name || tCommon('someone');
+    if (notification.type === 'investment_distributed' && meta) {
+      const withdrawAmount = Number(meta.withdrawAmount ?? 0);
+      const share = Number(meta.amount ?? 0);
       return t('authorWithdrewYourShare', { name: actorName, amount: withdrawAmount, share });
     }
-    if (notification.type === 'post_closed_investment' && notification.metadata?.totalEarnings != null) {
-      const total = Number(notification.metadata.totalEarnings);
-      return t('postClosedInvestmentTotal', { total });
+    if (notification.type === 'post_closed_investment' && meta.totalEarnings != null) {
+      return t('postClosedInvestmentTotal', { total: Number(meta.totalEarnings) });
     }
-    if (notification.type === 'post_closed' && notification.metadata?.authorReceived != null) {
-      const amount = Number(notification.metadata.authorReceived);
-      return t('postClosedAuthorReceived', { amount });
+    if (notification.type === 'post_closed' && meta.authorReceived != null) {
+      return t('postClosedAuthorReceived', { amount: Number(meta.authorReceived) });
+    }
+    if (notification.type === 'favorite_update') {
+      const targetType = meta.targetType as string | undefined;
+      if (targetType === 'project') return t('favoriteUpdateCommentedProject', { name: actorName });
+      if (targetType === 'poll') return t('favoriteUpdateVotedPoll', { name: actorName });
+      return t('favoriteUpdateCommentedPost', { name: actorName });
+    }
+    if (notification.type === 'beneficiary') {
+      return t('createdPostWithYouAsBeneficiary', { name: actorName });
+    }
+    if (notification.type === 'publication') {
+      return t('editedPost', { name: actorName });
+    }
+    if (notification.type === 'team_invitation') {
+      const teamName = (meta.communityName as string) ?? '';
+      return t('teamInvitationMessage', { name: actorName, teamName });
+    }
+    if (notification.type === 'forward_proposal') {
+      const targetName = (meta.targetCommunityName as string) ?? '';
+      return t('forwardProposalMessage', { name: actorName, targetName });
+    }
+    if (notification.type === 'quota') {
+      const count = Number(meta.amountAfter ?? meta.amount ?? 0);
+      return t('dailyQuotaResetMessage', { count });
     }
     return notification.message || '';
   };
@@ -258,6 +279,12 @@ export default function NotificationsPage() {
     if (notification.type === 'investment_received') return t('investmentReceived');
     if (notification.type === 'investment_distributed') return t('investmentDistributed');
     if (notification.type === 'post_closed_investment' || notification.type === 'post_closed') return t('postClosed');
+    if (notification.type === 'favorite_update') return t('favoriteUpdated');
+    if (notification.type === 'beneficiary') return t('newPublication');
+    if (notification.type === 'publication') return t('postEdited');
+    if (notification.type === 'team_invitation') return t('teamInvitation');
+    if (notification.type === 'forward_proposal') return t('forwardProposal');
+    if (notification.type === 'quota') return t('dailyQuotaReset');
     return notification.title || '';
   };
 
