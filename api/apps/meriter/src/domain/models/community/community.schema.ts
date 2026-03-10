@@ -212,6 +212,10 @@ export interface Community {
   communityWalletId?: string;
   rejectionMessage?: string;
   futureVisionText?: string;
+  /** Tags for rubricator (OB feed filtering). */
+  futureVisionTags?: string[];
+  /** Cover image URL for OB card. */
+  futureVisionCover?: string;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -440,6 +444,12 @@ export class CommunitySchemaClass implements Community {
 
   @Prop({ type: String })
   futureVisionText?: string;
+
+  @Prop({ type: [String], default: [] })
+  futureVisionTags?: string[];
+
+  @Prop({ type: String })
+  futureVisionCover?: string;
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);

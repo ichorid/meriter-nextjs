@@ -361,6 +361,10 @@ export const CommunitySchema = IdentifiableSchema.merge(
   communityWalletId: z.string().optional(),
   rejectionMessage: z.string().optional(),
   futureVisionText: z.string().optional(),
+  /** Tags for rubricator (OB feed filtering). Managed via platformSettings.availableFutureVisionTags. */
+  futureVisionTags: z.array(z.string()).optional().default([]),
+  /** Cover image URL for OB card. */
+  futureVisionCover: z.string().url().optional(),
 });
 
 export const PublicationSchema = IdentifiableSchema.merge(
@@ -579,6 +583,8 @@ export const CreatePublicationDtoSchema = z.object({
   ttlDays: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(60), z.literal(90)]).nullable().optional(),
   stopLoss: z.number().int().min(0).optional().default(0),
   noAuthorWalletSpend: z.boolean().optional().default(false),
+  /** When set, post is published on behalf of this community (caller must be lead). */
+  actingAsCommunityId: z.string().optional(),
 })
   .refine(
     (data) => {
@@ -770,6 +776,9 @@ export const UpdateCommunityDtoSchema = z.object({
   meritSettings: CommunityMeritSettingsSchema.optional(),
   tappalkaSettings: TappalkaSettingsSchema.partial().optional(),
   isPriority: z.boolean().optional(),
+  futureVisionText: z.string().optional(),
+  futureVisionTags: z.array(z.string()).optional(),
+  futureVisionCover: z.string().url().optional(),
 }).passthrough();
 
 export const UpdatePublicationDtoSchema = z.object({
