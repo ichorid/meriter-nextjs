@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { TestDatabaseHelper } from './test-db.helper';
 import { MeriterModule } from '../src/meriter.module';
 import { QuotaResetService } from '../src/domain/services/quota-reset.service';
+import { PublicationService } from '../src/domain/services/publication.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -50,7 +51,12 @@ describe('QuotaResetService', () => {
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
-    }).compile();
+    })
+      .overrideProvider(PublicationService)
+      .useValue({
+        // PublicationService is not used in quota reset tests, provide a minimal stub
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();

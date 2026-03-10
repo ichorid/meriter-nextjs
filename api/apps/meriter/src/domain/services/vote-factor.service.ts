@@ -40,6 +40,7 @@ export class VoteFactorService {
     private permissionContextService: PermissionContextService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
   ) {}
 

@@ -62,7 +62,7 @@
 - `trpc/routers/ticket.router.ts`:
   ```
   ticket.createNeutral    — protectedProcedure (lead)
-  ticket.apply            — protectedProcedure (any authenticated)
+  ticket.applyForTicket   — protectedProcedure (any authenticated)
   ticket.approve          — protectedProcedure (lead)
   ticket.reject           — protectedProcedure (lead)
   ticket.getApplicants    — protectedProcedure (lead)

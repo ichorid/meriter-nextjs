@@ -79,7 +79,7 @@ export const ticketRouter = router({
       });
     }),
 
-  apply: protectedProcedure
+  applyForTicket: protectedProcedure
     .input(applyForTicketInputSchema)
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {

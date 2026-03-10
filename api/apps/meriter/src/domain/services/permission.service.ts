@@ -22,7 +22,9 @@ export class PermissionService {
   private readonly logger = new Logger(PermissionService.name);
 
   constructor(
+    @Inject(forwardRef(() => UserService))
     private userService: UserService,
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,

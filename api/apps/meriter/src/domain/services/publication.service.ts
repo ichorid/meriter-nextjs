@@ -72,6 +72,7 @@ export class PublicationService {
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
+    @Inject(forwardRef(() => UserService))
     private userService: UserService,
   ) {}
 

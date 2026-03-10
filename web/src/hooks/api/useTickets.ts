@@ -93,7 +93,7 @@ export function useApplyForTicket() {
   const addToast = useToastStore((state) => state.addToast);
   const t = useTranslations('projects');
 
-  return trpc.ticket.apply.useMutation({
+  return trpc.ticket.applyForTicket.useMutation({
     onSuccess: () => {
       utils.project.getOpenTickets.invalidate();
       addToast(t('applySuccess', { defaultValue: 'Application sent' }), 'success');

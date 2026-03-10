@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { CommunityService } from '../community.service';
 import { ContextCurrencyModeResult, VoteFactorContext } from './vote-factor.types';
 
@@ -15,6 +15,7 @@ export class ContextCurrencyModeFactor {
   private readonly logger = new Logger(ContextCurrencyModeFactor.name);
 
   constructor(
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
   ) {}
 

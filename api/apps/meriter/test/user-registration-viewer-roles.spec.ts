@@ -5,6 +5,8 @@ import { MeriterModule } from '../src/meriter.module';
 import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import { PublicationService } from '../src/domain/services/publication.service';
+import { VoteService } from '../src/domain/services/vote.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
@@ -44,6 +46,10 @@ describe('User Registration - Viewer Role Assignment', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
     })
+      .overrideProvider(PublicationService)
+      .useValue({})
+      .overrideProvider(VoteService)
+      .useValue({})
       .compile();
 
     app = moduleFixture.createNestApplication();

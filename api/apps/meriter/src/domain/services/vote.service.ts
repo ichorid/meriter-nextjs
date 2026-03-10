@@ -21,13 +21,13 @@ export class VoteService {
     @InjectModel(VoteSchemaClass.name) private voteModel: Model<VoteDocument>,
     @InjectConnection() private mongoose: Connection,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
-    private communityService: CommunityService,
+    @Inject(forwardRef(() => CommunityService)) private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
-    private userService: UserService,
+    @Inject(forwardRef(() => UserService)) private userService: UserService,
     private voteFactorService: VoteFactorService,
     private eventBus: EventBus,
     private notificationService: NotificationService,
-  ) { }
+  ) {}
 
   /**
    * Get the effective beneficiary for a target (publication or vote)

@@ -18,9 +18,11 @@ export class RoleHierarchyFactor {
   private readonly logger = new Logger(RoleHierarchyFactor.name);
 
   constructor(
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
+    @Inject(forwardRef(() => UserService))
     private userService: UserService,
   ) {}
 

@@ -28,11 +28,12 @@ export class PermissionContextService {
     private pollService: PollService,
     @Inject(forwardRef(() => VoteService))
     private voteService: VoteService,
+    @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
-  ) { }
+  ) {}
 
   /**
    * Build context for a publication resource
