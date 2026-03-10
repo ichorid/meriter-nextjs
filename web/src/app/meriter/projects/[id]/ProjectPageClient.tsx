@@ -1,18 +1,19 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject, useJoinProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
 import { ProjectMembersList } from '@/components/organisms/Project/ProjectMembersList';
 import { ProjectTabs } from '@/components/organisms/Project/ProjectTabs';
-import { TopUpWalletDialog } from '@/components/organisms/Project/TopUpWalletDialog';
+import { ProjectWalletCard } from '@/components/organisms/Project/ProjectWalletCard';
+import { PublishToBirzhaButton } from '@/components/organisms/Project/PublishToBirzhaButton';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { ChevronLeft, Wallet, Users } from 'lucide-react';
+import { ChevronLeft, Users } from 'lucide-react';
 
 interface ProjectPageClientProps {
   projectId: string;
@@ -25,7 +26,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
   const joinProject = useJoinProject();
   const leaveProject = useLeaveProject();
-  const [topUpOpen, setTopUpOpen] = useState(false);
 
   const isLead = useMemo(() => {
     if (!user || !membersData?.data) return false;
@@ -81,11 +81,9 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
               </Link>
             </div>
           )}
-          <div className="flex items-center gap-1">
-            <Wallet className="h-4 w-4" />
-            <span>{t('walletBalance')}: {walletBalance}</span>
-          </div>
         </div>
+
+        <ProjectWalletCard projectId={projectId} />
 
         <CooperativeSharesDisplay
           founderSharePercent={project.founderSharePercent ?? 0}
@@ -114,9 +112,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
             )}
             {isMember && (
               <>
-                <Button size="sm" variant="outline" onClick={() => setTopUpOpen(true)}>
-                  Top up wallet
-                </Button>
+                <PublishToBirzhaButton
+                  projectId={projectId}
+                  investorSharePercent={project.investorSharePercent}
+                  isLead={isLead}
+                />
                 <Button
                   size="sm"
                   variant="outline"
@@ -138,12 +138,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <ProjectMembersList projectId={projectId} />
         </section>
       </div>
-
-      <TopUpWalletDialog
-        projectId={projectId}
-        open={topUpOpen}
-        onOpenChange={setTopUpOpen}
-      />
     </AdaptiveLayout>
   );
 }

@@ -114,3 +114,29 @@ export function useTopUpWallet() {
     },
   });
 }
+
+export function useProjectWallet(projectId: string | null) {
+  return trpc.project.getWallet.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId, staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function usePublishToBirzha() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.publishToBirzha.useMutation({
+    onSuccess: () => {
+      utils.project.getById.invalidate();
+      utils.project.getWallet.invalidate();
+      utils.publications.getFeed.invalidate();
+      utils.publications.getAll.invalidate();
+      addToast(t('publishedToBirzhaSuccess', { defaultValue: 'Published to Birzha' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('publishToBirzhaError', { defaultValue: 'Failed to publish' }), 'error');
+    },
+  });
+}

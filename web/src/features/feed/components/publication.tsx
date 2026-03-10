@@ -19,6 +19,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
 import { ResourcePermissions } from '@/types/api-v1';
+import { ProjectPostBadge } from '@/components/molecules/ProjectPostBadge';
 
 export const Publication = (props: any) => {
     const {
@@ -64,9 +65,11 @@ export const Publication = (props: any) => {
     } = props;
     
     const originalPublication = props;
+    const sourceEntityId = (originalPublication as { sourceEntityId?: string }).sourceEntityId;
+    const sourceEntityType = (originalPublication as { sourceEntityType?: 'project' | 'community' }).sourceEntityType;
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // This is required by React's Rules of Hooks
-    
+
     const t = useTranslations('feed');
     const router = useRouter();
     const pathname = usePathname();
@@ -116,6 +119,7 @@ export const Publication = (props: any) => {
     
     // Get community info to check typeTag
     const { data: communityInfo } = useCommunity(communityId || '');
+    const { data: sourceEntity } = useCommunity(sourceEntityId ?? '');
     const isSpecialGroup = communityInfo?.typeTag === 'marathon-of-good' || communityInfo?.typeTag === 'future-vision';
     
     // Check if this is a PROJECT post (no voting allowed)
@@ -203,9 +207,12 @@ export const Publication = (props: any) => {
     // Community info already fetched above - reuse it
     const communityIdForRouting = communityInfo?.id || communityId;
     
-    // Display title - use meta.author.name
-    const displayTitle = displayAuthorName;
-    
+    // Display title: for project posts on Birzha show project name, else author name
+    const displayTitle =
+      sourceEntityType === 'project' && sourceEntity?.name
+        ? sourceEntity.name
+        : displayAuthorName;
+
     const avatarUrl = authorPhotoUrl || meta?.author?.photoUrl;
     
     return (
@@ -218,6 +225,7 @@ export const Publication = (props: any) => {
             <CardPublication
                 title={displayTitle}
                 subtitle={dateVerbose(ts)}
+                titleBadge={sourceEntityType === 'project' && sourceEntityId ? <ProjectPostBadge /> : undefined}
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={() => {
                     // Avatar error handling - use meta.author.photoUrl as fallback

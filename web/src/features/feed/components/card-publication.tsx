@@ -34,6 +34,8 @@ interface CardPublicationProps {
     beneficiaryId?: string;
     coverImageUrl?: string;
     galleryImages?: string[];
+    /** Optional badge next to title (e.g. Project post) */
+    titleBadge?: React.ReactNode;
 }
 
 export const CardPublication = ({
@@ -61,6 +63,7 @@ export const CardPublication = ({
     beneficiaryId,
     coverImageUrl,
     galleryImages = [],
+    titleBadge,
 }: CardPublicationProps) => {
     const router = useRouter();
     const [viewingImageIndex, setViewingImageIndex] = useState<number | null>(null);
@@ -139,8 +142,9 @@ export const CardPublication = ({
                             {title ? title.charAt(0).toUpperCase() : '?'}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="info min-w-0 flex-1">
+                        <div className="info min-w-0 flex-1 flex items-center gap-2">
                             <div className="text-xs font-medium text-base-content dark:text-base-content break-words">{title}</div>
+                            {titleBadge}
                         </div>
                     </div>
                     {beneficiaryName && (
