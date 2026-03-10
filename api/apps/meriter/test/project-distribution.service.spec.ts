@@ -6,6 +6,7 @@ import { TicketService } from '../src/domain/services/ticket.service';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { CommunityWalletService } from '../src/domain/services/community-wallet.service';
 import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import { NotificationService } from '../src/domain/services/notification.service';
 
 describe('ProjectDistributionService', () => {
   let service: ProjectDistributionService;
@@ -40,6 +41,10 @@ describe('ProjectDistributionService', () => {
     };
     const mockUserCommunityRoleService = {
       getUsersByRole: jest.fn().mockResolvedValue([{ userId: founderUserId }]),
+      getTotalFrozenInternalMerits: jest.fn().mockResolvedValue(0),
+    };
+    const mockNotificationService = {
+      create: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -50,6 +55,7 @@ describe('ProjectDistributionService', () => {
         { provide: WalletService, useValue: mockWalletService },
         { provide: CommunityWalletService, useValue: mockCommunityWalletService },
         { provide: UserCommunityRoleService, useValue: mockUserCommunityRoleService },
+        { provide: NotificationService, useValue: mockNotificationService },
       ],
     }).compile();
 
