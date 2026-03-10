@@ -39,6 +39,8 @@ import { TeamInvitationService } from '../domain/services/team-invitation.servic
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
 import { ProjectService } from '../domain/services/project.service';
 import { TicketService } from '../domain/services/ticket.service';
+import { ProjectDistributionService } from '../domain/services/project-distribution.service';
+import { CommunityWalletService } from '../domain/services/community-wallet.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -82,6 +84,8 @@ export class TrpcService {
     private platformSettingsService: PlatformSettingsService,
     private projectService: ProjectService,
     private ticketService: TicketService,
+    private projectDistributionService: ProjectDistributionService,
+    private communityWalletService: CommunityWalletService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -131,6 +135,8 @@ export class TrpcService {
       platformSettingsService: this.platformSettingsService,
       projectService: this.projectService,
       ticketService: this.ticketService,
+      projectDistributionService: this.projectDistributionService,
+      communityWalletService: this.communityWalletService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

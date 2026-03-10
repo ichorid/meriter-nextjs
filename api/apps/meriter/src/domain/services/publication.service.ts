@@ -176,6 +176,60 @@ export class PublicationService {
     return publication;
   }
 
+  /**
+   * Create a publication on Birzha (marathon-of-good) from a project. Bypasses permission rules.
+   * Caller must be project lead; postCost is debited from project CommunityWallet by the caller.
+   */
+  async createFromProjectToBirzha(params: {
+    birzhaCommunityId: string;
+    projectId: string;
+    authorId: string;
+    content: string;
+    type: 'text' | 'image' | 'video';
+    title?: string;
+    description?: string;
+    images?: string[];
+    investorSharePercent: number;
+  }): Promise<{ id: string }> {
+    const id = PublicationId.generate().getValue();
+    const now = new Date();
+
+    await this.publicationModel.create({
+      id,
+      communityId: params.birzhaCommunityId,
+      authorId: params.authorId,
+      sourceEntityId: params.projectId,
+      sourceEntityType: 'project',
+      content: params.content,
+      type: params.type,
+      title: params.title,
+      description: params.description,
+      hashtags: [],
+      categories: [],
+      images: params.images ?? [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      investingEnabled: params.investorSharePercent > 0,
+      investorSharePercent: params.investorSharePercent,
+      investmentPool: 0,
+      investmentPoolTotal: 0,
+      investments: [],
+      status: 'active',
+      postType: 'basic',
+      isProject: false,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await this.eventBus.publish(
+      new PublicationCreatedEvent(id, params.authorId, params.birzhaCommunityId),
+    );
+
+    this.logger.log(
+      `Publication from project ${params.projectId} created on Birzha: ${id}`,
+    );
+    return { id };
+  }
+
   async getPublication(id: string): Promise<Publication | null> {
     // Direct Mongoose query
     const doc = await this.publicationModel.findOne({ id }).lean();

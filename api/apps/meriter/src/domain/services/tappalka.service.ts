@@ -21,6 +21,7 @@ import { MeritResolverService } from './merit-resolver.service';
 import { WalletService } from './wallet.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
+import { CommunityWalletService } from './community-wallet.service';
 import type {
   TappalkaPair,
   TappalkaPost,
@@ -52,6 +53,7 @@ export class TappalkaService {
     private meritService: MeritService,
     private meritResolverService: MeritResolverService,
     private walletService: WalletService,
+    private communityWalletService: CommunityWalletService,
     private userService: UserService,
     private notificationService: NotificationService,
   ) {}
@@ -457,7 +459,42 @@ export class TappalkaService {
       if (remainingCost <= 0) return;
     }
 
-    // 3. Remaining cost: author wallet or post exits tappalka
+    // 3. If post has sourceEntityId (project on Birzha), try CommunityWallet before author wallet
+    const sourceEntityId = post.sourceEntityId as string | undefined;
+    if (remainingCost > 0 && sourceEntityId) {
+      try {
+        await this.communityWalletService.deductBalance(
+          sourceEntityId,
+          remainingCost,
+          'tappalka_show_cost',
+        );
+        remainingCost = 0;
+        this.logger.debug(
+          `Deducted show cost from project CommunityWallet for post ${post.id}`,
+        );
+        return;
+      } catch {
+        // Insufficient balance → post exits tappalka (do not use author wallet)
+        try {
+          await this.notificationService.createNotification({
+            userId: post.authorId,
+            type: 'investment_pool_depleted',
+            source: 'system',
+            metadata: { postId: post.id, communityId: post.communityId },
+            title: 'Post exited tappalka',
+            message: 'Post exited tappalka — no funds available for shows.',
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to create post-exited-tappalka notification: ${err}`);
+        }
+        this.logger.debug(
+          `Post ${post.id} exited tappalka (CommunityWallet insufficient, remainingCost=${remainingCost})`,
+        );
+        return;
+      }
+    }
+
+    // 4. Remaining cost: author wallet or post exits tappalka
     // C-10: Notify author when post exits tappalka (noAuthorWalletSpend, no funds)
     if (noAuthorWalletSpend) {
       try {

@@ -1134,17 +1134,37 @@ export const publicationsRouter = router({
         }
       }
 
-      // Validate user can withdraw
-      const canWithdraw = await ctx.voteService.canUserWithdraw(
-        userId,
-        'publication',
-        input.publicationId,
-      );
-      if (!canWithdraw) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You are not authorized to withdraw from this publication',
-        });
+      const sourceEntityType = pubDoc?.sourceEntityType;
+      const sourceEntityId = pubDoc?.sourceEntityId as string | undefined;
+
+      if (sourceEntityType === 'project') {
+        if (!sourceEntityId) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Project post is missing sourceEntityId',
+          });
+        }
+        const role = await ctx.userCommunityRoleService.getRole(userId, sourceEntityId);
+        if (role?.role !== 'lead') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only the project lead can withdraw from this publication',
+          });
+        }
+        // TODO: sourceEntityType === 'community' → Sprint 6
+      } else {
+        // Validate user can withdraw (effective beneficiary)
+        const canWithdraw = await ctx.voteService.canUserWithdraw(
+          userId,
+          'publication',
+          input.publicationId,
+        );
+        if (!canWithdraw) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'You are not authorized to withdraw from this publication',
+          });
+        }
       }
 
       // Get current score
@@ -1169,32 +1189,31 @@ export const publicationsRouter = router({
       const beneficiaryId = effectiveBeneficiary.getValue();
       const communityId = publication.getCommunityId.getValue();
 
-      // If post has investments, split between author and investors
+      // If post has investments, split between author and investors (investors are paid first)
       const hasInvestments =
         pubDoc?.investments && pubDoc.investments.length > 0;
 
-      let targetCommunityId: string;
+      let authorShare: number;
       if (hasInvestments && pubDoc?.investorSharePercent != null) {
-        const distribution =
-          await ctx.investmentService.distributeOnWithdrawal(
-            input.publicationId,
-            amount,
-          );
-        const result = await processWithdrawal(
-          beneficiaryId,
-          communityId,
+        const distribution = await ctx.investmentService.distributeOnWithdrawal(
           input.publicationId,
-          distribution.authorAmount,
-          'publication_withdrawal',
-          ctx,
+          amount,
         );
-        targetCommunityId = result.targetCommunityId;
+        authorShare = distribution.authorAmount;
+      } else {
+        authorShare = amount;
+      }
+
+      let targetCommunityId: string;
+      if (sourceEntityType === 'project' && sourceEntityId) {
+        await ctx.projectDistributionService.distribute(sourceEntityId, authorShare);
+        targetCommunityId = GLOBAL_COMMUNITY_ID;
       } else {
         const result = await processWithdrawal(
           beneficiaryId,
           communityId,
           input.publicationId,
-          amount,
+          authorShare,
           'publication_withdrawal',
           ctx,
         );

@@ -87,6 +87,35 @@ export class CommunityWalletService {
   }
 
   /**
+   * Deduct from balance only (operational cost, e.g. postCost). Does not change totalDistributed.
+   */
+  async deductBalance(
+    communityId: string,
+    amount: number,
+    _reason?: string,
+  ): Promise<CommunityWallet> {
+    if (amount <= 0) {
+      throw new BadRequestException('Amount must be positive');
+    }
+    const doc = await this.communityWalletModel.findOneAndUpdate(
+      { communityId, balance: { $gte: amount } },
+      {
+        $inc: { balance: -amount },
+        $set: { updatedAt: new Date() },
+      },
+      { new: true },
+    );
+    if (!doc) {
+      const wallet = await this.getWallet(communityId);
+      const balance = wallet?.balance ?? 0;
+      throw new BadRequestException(
+        `Insufficient balance: have ${balance}, need ${amount}`,
+      );
+    }
+    return doc.toObject() as unknown as CommunityWallet;
+  }
+
+  /**
    * Atomic debit: decrement balance and increment totalDistributed only if balance >= amount.
    */
   async debit(
@@ -110,6 +139,32 @@ export class CommunityWalletService {
       const balance = wallet?.balance ?? 0;
       throw new BadRequestException(
         `Insufficient balance: have ${balance}, need ${amount}`,
+      );
+    }
+    return doc.toObject() as unknown as CommunityWallet;
+  }
+
+  /**
+   * Increment only totalDistributed (transit flow: distribution to members; balance unchanged).
+   */
+  async addTotalDistributed(
+    communityId: string,
+    amount: number,
+  ): Promise<CommunityWallet> {
+    if (amount <= 0) {
+      throw new BadRequestException('Amount must be positive');
+    }
+    const doc = await this.communityWalletModel.findOneAndUpdate(
+      { communityId },
+      {
+        $inc: { totalDistributed: amount },
+        $set: { updatedAt: new Date() },
+      },
+      { new: true },
+    );
+    if (!doc) {
+      throw new NotFoundException(
+        `CommunityWallet not found for community ${communityId}`,
       );
     }
     return doc.toObject() as unknown as CommunityWallet;

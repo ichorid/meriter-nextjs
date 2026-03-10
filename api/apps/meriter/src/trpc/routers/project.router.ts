@@ -183,4 +183,85 @@ export const projectRouter = router({
       }
       return ctx.ticketService.getProjectShares(input.projectId);
     }),
+
+  getWallet: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, input.projectId);
+      if (!role) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only project members can view the wallet',
+        });
+      }
+      const wallet = await ctx.communityWalletService.getWallet(input.projectId);
+      return wallet ?? { balance: 0, totalReceived: 0, totalDistributed: 0, id: '', communityId: input.projectId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+    }),
+
+  publishToBirzha: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        title: z.string().min(1).max(500).optional(),
+        description: z.string().max(5000).optional(),
+        content: z.string().min(1).max(10000),
+        type: z.enum(['text', 'image', 'video']),
+        images: z.array(z.string().url()).optional(),
+        investorSharePercent: z.number().int().min(1).max(99).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      const userId = ctx.user.id;
+
+      const role = await ctx.userCommunityRoleService.getRole(userId, input.projectId);
+      if (role?.role !== 'lead') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only the project lead can publish to Birzha',
+        });
+      }
+
+      const project = await ctx.communityService.getCommunity(input.projectId);
+      if (!project?.isProject) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
+
+      const birzha = await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
+      if (!birzha) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Birzha community not found' });
+      }
+
+      const minPct = birzha.settings?.investorShareMin ?? 1;
+      const maxPct = birzha.settings?.investorShareMax ?? 99;
+      const investorSharePercent = input.investorSharePercent ?? project.investorSharePercent ?? minPct;
+      if (investorSharePercent < minPct || investorSharePercent > maxPct) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `investorSharePercent must be between ${minPct} and ${maxPct}`,
+        });
+      }
+
+      const postCost = birzha.settings?.postCost ?? 1;
+      await ctx.communityWalletService.deductBalance(input.projectId, postCost);
+
+      const pub = await ctx.publicationService.createFromProjectToBirzha({
+        birzhaCommunityId: birzha.id,
+        projectId: input.projectId,
+        authorId: userId,
+        content: input.content,
+        type: input.type,
+        title: input.title,
+        description: input.description,
+        images: input.images,
+        investorSharePercent,
+      });
+
+      return { id: pub.id };
+    }),
 });

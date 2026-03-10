@@ -114,6 +114,7 @@ import { PlatformSettingsService } from './domain/services/platform-settings.ser
 import { CommunityWalletService } from './domain/services/community-wallet.service';
 import { ProjectService } from './domain/services/project.service';
 import { TicketService } from './domain/services/ticket.service';
+import { ProjectDistributionService } from './domain/services/project-distribution.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -192,6 +193,7 @@ import { EventBus } from './domain/events/event-bus';
     CommunityWalletService,
     ProjectService,
     TicketService,
+    ProjectDistributionService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -241,6 +243,7 @@ import { EventBus } from './domain/events/event-bus';
     CommunityWalletService,
     ProjectService,
     TicketService,
+    ProjectDistributionService,
 
     // Export vote factor services
     RoleHierarchyFactor,
