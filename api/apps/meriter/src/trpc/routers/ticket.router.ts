@@ -11,6 +11,31 @@ const createTicketInputSchema = z.object({
   beneficiaryId: z.string(),
 });
 
+const createNeutralTicketInputSchema = z.object({
+  projectId: z.string(),
+  title: z.string().max(500).optional(),
+  description: z.string().max(5000).optional(),
+  content: z.string().min(1).max(10000),
+});
+
+const applyForTicketInputSchema = z.object({
+  ticketId: z.string(),
+});
+
+const approveApplicantInputSchema = z.object({
+  ticketId: z.string(),
+  applicantUserId: z.string(),
+});
+
+const rejectApplicantInputSchema = z.object({
+  ticketId: z.string(),
+  applicantUserId: z.string(),
+});
+
+const getApplicantsInputSchema = z.object({
+  ticketId: z.string(),
+});
+
 const updateStatusInputSchema = z.object({
   ticketId: z.string(),
   newStatus: TicketStatusSchema,
@@ -39,6 +64,66 @@ export const ticketRouter = router({
         content: input.content,
         beneficiaryId: input.beneficiaryId,
       });
+    }),
+
+  createNeutral: protectedProcedure
+    .input(createNeutralTicketInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.ticketService.createNeutralTicket(input.projectId, ctx.user.id, {
+        title: input.title,
+        description: input.description,
+        content: input.content,
+      });
+    }),
+
+  apply: protectedProcedure
+    .input(applyForTicketInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.ticketService.applyForTicket(input.ticketId, ctx.user.id);
+      return { success: true };
+    }),
+
+  approve: protectedProcedure
+    .input(approveApplicantInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.ticketService.approveApplicant(
+        input.ticketId,
+        ctx.user.id,
+        input.applicantUserId,
+      );
+      return { success: true };
+    }),
+
+  reject: protectedProcedure
+    .input(rejectApplicantInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.ticketService.rejectApplicant(
+        input.ticketId,
+        ctx.user.id,
+        input.applicantUserId,
+      );
+      return { success: true };
+    }),
+
+  getApplicants: protectedProcedure
+    .input(getApplicantsInputSchema)
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.ticketService.getApplicants(input.ticketId, ctx.user.id);
     }),
 
   updateStatus: protectedProcedure

@@ -405,6 +405,62 @@ export class ProjectService {
   }
 
   /**
+   * Transfer project lead to another member. founderUserId is NOT changed.
+   */
+  async transferAdmin(
+    projectId: string,
+    currentLeadId: string,
+    newLeadId: string,
+  ): Promise<void> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project || !project.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const currentRole = await this.userCommunityRoleService.getRole(currentLeadId, projectId);
+    if (currentRole?.role !== 'lead') {
+      throw new ForbiddenException('Only the current project lead can transfer admin');
+    }
+
+    const newRole = await this.userCommunityRoleService.getRole(newLeadId, projectId);
+    if (!newRole) {
+      throw new BadRequestException('New lead must be a project member');
+    }
+    if (newLeadId === currentLeadId) {
+      throw new BadRequestException('New lead must be different from current lead');
+    }
+
+    await this.userCommunityRoleService.setRole(currentLeadId, projectId, 'participant', true);
+    await this.userCommunityRoleService.setRole(newLeadId, projectId, 'lead', true);
+
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
+    const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
+    for (const memberId of memberIds) {
+      try {
+        await this.notificationService.createNotification({
+          userId: memberId,
+          type: 'shares_changed',
+          source: 'system',
+          metadata: {
+            projectId,
+            projectName: project.name,
+            transferAdmin: true,
+            newLeadId,
+            previousLeadId: currentLeadId,
+          },
+          title: 'Project admin transferred',
+          message: `Lead of "${project.name}" was transferred to another member.`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify member ${memberId} about transfer admin: ${err}`);
+      }
+    }
+
+    this.logger.log(`Project ${projectId} admin transferred from ${currentLeadId} to ${newLeadId}`);
+  }
+
+  /**
    * Top-up project wallet from user's global wallet (donation; non-refundable).
    */
   async topUpWallet(userId: string, projectId: string, amount: number): Promise<{ balance: number }> {

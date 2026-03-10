@@ -49,6 +49,12 @@ export const projectRouter = router({
       return result;
     }),
 
+  getOpenTickets: publicProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.ticketService.getOpenNeutralTickets(input.projectId);
+    }),
+
   list: publicProcedure
     .input(
       z.object({
@@ -115,6 +121,25 @@ export const projectRouter = router({
         input.projectId,
         ctx.user.id,
         input.newFounderSharePercent,
+      );
+      return { success: true };
+    }),
+
+  transferAdmin: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        newLeadId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.projectService.transferAdmin(
+        input.projectId,
+        ctx.user.id,
+        input.newLeadId,
       );
       return { success: true };
     }),

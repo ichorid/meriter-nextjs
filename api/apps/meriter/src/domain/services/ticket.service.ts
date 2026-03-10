@@ -14,6 +14,7 @@ import {
 import { PublicationId } from '../value-objects';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
@@ -23,6 +24,12 @@ export interface CreateTicketDto {
   description?: string;
   content: string;
   beneficiaryId: string;
+}
+
+export interface CreateNeutralTicketDto {
+  title?: string;
+  description?: string;
+  content: string;
 }
 
 export type TicketStatus = 'open' | 'in_progress' | 'done' | 'closed';
@@ -42,6 +49,7 @@ export class TicketService {
     private publicationModel: Model<PublicationDocument>,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
+    private userService: UserService,
     private notificationService: NotificationService,
     private eventBus: EventBus,
   ) {}
@@ -113,6 +121,286 @@ export class TicketService {
 
     this.logger.log(`Ticket created: ${id} in project ${projectId}`);
     return { id };
+  }
+
+  /**
+   * Create a neutral ticket (no beneficiary). Lead only. ticketStatus='open', isNeutralTicket=true.
+   */
+  async createNeutralTicket(
+    projectId: string,
+    leadUserId: string,
+    dto: CreateNeutralTicketDto,
+  ): Promise<{ id: string }> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can create neutral tickets');
+    }
+
+    const id = PublicationId.generate().getValue();
+    const now = new Date();
+
+    await this.publicationModel.create({
+      id,
+      communityId: projectId,
+      authorId: leadUserId,
+      beneficiaryId: null,
+      postType: 'ticket',
+      isProject: true,
+      ticketStatus: 'open',
+      isNeutralTicket: true,
+      applicants: [],
+      title: dto.title,
+      description: dto.description,
+      content: dto.content,
+      type: 'text',
+      hashtags: [],
+      categories: [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      images: [],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await this.eventBus.publish(
+      new PublicationCreatedEvent(id, leadUserId, projectId),
+    );
+
+    this.logger.log(`Neutral ticket created: ${id} in project ${projectId}`);
+    return { id };
+  }
+
+  /**
+   * Apply for a neutral ticket. Any authenticated user. Adds to applicants[], notifies lead.
+   */
+  async applyForTicket(ticketId: string, userId: string): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      throw new BadRequestException('Ticket is not an open neutral ticket');
+    }
+
+    const applicants = doc.applicants ?? [];
+    if (applicants.includes(userId)) {
+      throw new BadRequestException('You have already applied for this ticket');
+    }
+
+    applicants.push(userId);
+    doc.applicants = applicants;
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    const projectId = doc.communityId;
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    for (const lead of leads) {
+      try {
+        await this.notificationService.createNotification({
+          userId: lead.userId,
+          type: 'ticket_apply',
+          source: 'system',
+          metadata: { ticketId, projectId, applicantUserId: userId },
+          title: 'New ticket application',
+          message: 'Someone applied for a neutral ticket in your project.',
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify lead about ticket apply: ${err}`);
+      }
+    }
+
+    this.logger.log(`User ${userId} applied for ticket ${ticketId}`);
+  }
+
+  /**
+   * Approve an applicant: auto-join if not member, set beneficiary, in_progress, clear applicants, notify approved + reject rest.
+   */
+  async approveApplicant(
+    ticketId: string,
+    leadUserId: string,
+    applicantUserId: string,
+  ): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      throw new BadRequestException('Ticket is not an open neutral ticket');
+    }
+
+    const projectId = doc.communityId;
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can approve applicants');
+    }
+
+    const applicants = doc.applicants ?? [];
+    if (!applicants.includes(applicantUserId)) {
+      throw new BadRequestException('User is not an applicant for this ticket');
+    }
+
+    const existingRole = await this.userCommunityRoleService.getRole(applicantUserId, projectId);
+    if (!existingRole) {
+      await this.communityService.addMember(projectId, applicantUserId);
+      await this.userService.addCommunityMembership(applicantUserId, projectId);
+      await this.userCommunityRoleService.setRole(applicantUserId, projectId, 'participant');
+    }
+
+    doc.beneficiaryId = applicantUserId;
+    doc.ticketStatus = 'in_progress';
+    doc.isNeutralTicket = false;
+    doc.applicants = [];
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    try {
+      await this.notificationService.createNotification({
+        userId: applicantUserId,
+        type: 'ticket_assigned',
+        source: 'system',
+        metadata: { ticketId, projectId, leadUserId },
+        title: 'Ticket assigned',
+        message: 'You were assigned a ticket in the project.',
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify approved applicant: ${err}`);
+    }
+
+    const project = await this.communityService.getCommunity(projectId);
+    const rejectionMessage =
+      (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
+
+    for (const otherUserId of applicants) {
+      if (otherUserId === applicantUserId) continue;
+      try {
+        await this.notificationService.createNotification({
+          userId: otherUserId,
+          type: 'ticket_rejection',
+          source: 'system',
+          metadata: { ticketId, projectId, rejectionMessage },
+          title: 'Application not selected',
+          message: rejectionMessage,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
+      }
+    }
+
+    this.logger.log(`Applicant ${applicantUserId} approved for ticket ${ticketId}`);
+  }
+
+  /**
+   * Reject an applicant: remove from applicants[], send rejection notification.
+   */
+  async rejectApplicant(
+    ticketId: string,
+    leadUserId: string,
+    applicantUserId: string,
+  ): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      throw new BadRequestException('Ticket is not an open neutral ticket');
+    }
+
+    const projectId = doc.communityId;
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can reject applicants');
+    }
+
+    const applicants = doc.applicants ?? [];
+    if (!applicants.includes(applicantUserId)) {
+      throw new BadRequestException('User is not an applicant for this ticket');
+    }
+
+    doc.applicants = applicants.filter((id) => id !== applicantUserId);
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    const project = await this.communityService.getCommunity(projectId);
+    const rejectionMessage =
+      (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
+
+    try {
+      await this.notificationService.createNotification({
+        userId: applicantUserId,
+        type: 'ticket_rejection',
+        source: 'system',
+        metadata: { ticketId, projectId, rejectionMessage },
+        title: 'Application not selected',
+        message: rejectionMessage,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify rejected applicant: ${err}`);
+    }
+
+    this.logger.log(`Applicant ${applicantUserId} rejected for ticket ${ticketId}`);
+  }
+
+  /**
+   * Get open neutral tickets for a project (public: title + description only).
+   */
+  async getOpenNeutralTickets(projectId: string): Promise<{ id: string; title?: string; description?: string }[]> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const list = await this.publicationModel
+      .find({
+        communityId: projectId,
+        postType: 'ticket',
+        isNeutralTicket: true,
+        ticketStatus: 'open',
+        deleted: { $ne: true },
+      })
+      .select('id title description')
+      .lean()
+      .exec();
+
+    return list.map((d) => ({
+      id: d.id,
+      title: d.title,
+      description: d.description,
+    }));
+  }
+
+  /**
+   * Get applicants for a neutral ticket. Lead only.
+   */
+  async getApplicants(ticketId: string, leadUserId: string): Promise<string[]> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+
+    const projectId = doc.communityId;
+    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
+    if (role?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can view applicants');
+    }
+
+    return doc.applicants ?? [];
   }
 
   /**

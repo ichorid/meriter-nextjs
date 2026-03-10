@@ -24,6 +24,7 @@ import { PublicationDocument as IPublicationDocument } from '../../common/interf
 import { PermissionService } from './permission.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { UserService } from './user.service';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -67,6 +68,7 @@ export class PublicationService {
     private permissionService: PermissionService,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
+    private userService: UserService,
   ) {}
 
   async createPublication(
@@ -94,6 +96,13 @@ export class PublicationService {
       }
       if (dto.postType === 'ticket' && role.role !== 'lead') {
         throw new BadRequestException('Only the project lead can create tickets');
+      }
+    }
+
+    if (dto.beneficiaryId) {
+      const beneficiaryUser = await this.userService.getUserById(dto.beneficiaryId);
+      if (!beneficiaryUser) {
+        throw new BadRequestException('Beneficiary must be a registered user');
       }
     }
 
