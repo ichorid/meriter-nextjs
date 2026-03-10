@@ -204,6 +204,8 @@ export default function NotificationsPage() {
       case 'ticket_apply':
       case 'ticket_rejection':
         return '🎫';
+      case 'ob_vote_join_offer':
+        return '🤝';
       case 'member_joined':
       case 'member_left_project':
         return '👤';

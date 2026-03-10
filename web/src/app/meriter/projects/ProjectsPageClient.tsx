@@ -2,17 +2,17 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useProjects } from '@/hooks/api/useProjects';
+import { useGlobalProjectsList } from '@/hooks/api/useProjects';
 import { ProjectCard } from '@/components/organisms/Project/ProjectCard';
 import { Button } from '@/components/ui/shadcn/button';
-import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
+import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLayout';
 import { Plus } from 'lucide-react';
 
 export default function ProjectsPageClient() {
   const t = useTranslations('projects');
-  const { data, isLoading } = useProjects({ page: 1, pageSize: 50 });
+  const { data, isLoading } = useGlobalProjectsList({ page: 1, pageSize: 50 });
 
-  const projects = data?.data ?? [];
+  const items = data?.data ?? [];
   const total = data?.total ?? 0;
 
   return (
@@ -29,12 +29,15 @@ export default function ProjectsPageClient() {
         </div>
         {isLoading ? (
           <p className="text-muted-foreground">Loading...</p>
-        ) : projects.length === 0 ? (
+        ) : items.length === 0 ? (
           <p className="text-muted-foreground">{t('noProjects')}</p>
         ) : (
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
+            {items.map(({ project, parentCommunityName }) => (
               <li key={project.id}>
+                {parentCommunityName && (
+                  <p className="text-xs text-muted-foreground mb-1">{parentCommunityName}</p>
+                )}
                 <ProjectCard project={project} />
               </li>
             ))}

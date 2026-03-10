@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, User, Bell, Info } from 'lucide-react';
+import { Users, User, Bell, Info, Sparkles, FolderKanban } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
@@ -139,6 +139,18 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
 
     const defaultTabs: NavTab[] = useMemo(() => [
         {
+            name: t('futureVisions', { defaultValue: 'Future Visions' }),
+            icon: Sparkles,
+            path: '/meriter/future-visions',
+            isActive: (path: string) => path.startsWith('/meriter/future-visions'),
+        },
+        {
+            name: t('projects', { defaultValue: 'Projects' }),
+            icon: FolderKanban,
+            path: '/meriter/projects',
+            isActive: (path: string) => path.startsWith('/meriter/projects'),
+        },
+        {
             name: t('communities'),
             icon: Users,
             path: '/meriter/communities',
@@ -156,12 +168,6 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
             icon: User,
             path: '/meriter/profile',
             isActive: (path: string) => path.startsWith('/meriter/profile'),
-        },
-        {
-            name: t('aboutProject'),
-            icon: Info,
-            path: routes.about,
-            isActive: (path: string) => path === routes.about,
         },
     ], [t, unreadCount]);
 

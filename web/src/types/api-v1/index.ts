@@ -285,7 +285,8 @@ export type NotificationType =
     | "member_left_project"
     | "shares_changed"
     | "ticket_apply"
-    | "ticket_rejection";
+    | "ticket_rejection"
+    | "ob_vote_join_offer";
 
 export interface Notification {
     id: string;

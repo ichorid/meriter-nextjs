@@ -27,6 +27,27 @@ export function useProjects(params: {
   );
 }
 
+export function useGlobalProjectsList(params: {
+  parentCommunityId?: string;
+  projectStatus?: 'active' | 'closed' | 'archived';
+  memberId?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  return trpc.project.getGlobalList.useQuery(
+    {
+      parentCommunityId: params.parentCommunityId,
+      projectStatus: params.projectStatus,
+      memberId: params.memberId,
+      search: params.search,
+      page: params.page,
+      pageSize: params.pageSize,
+    },
+    { staleTime: STALE_TIME.SHORT },
+  );
+}
+
 export function useProject(projectId: string | null) {
   return trpc.project.getById.useQuery(
     { id: projectId! },
