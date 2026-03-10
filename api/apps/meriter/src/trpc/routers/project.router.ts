@@ -77,6 +77,28 @@ export const projectRouter = router({
       });
     }),
 
+  getGlobalList: publicProcedure
+    .input(
+      z.object({
+        parentCommunityId: z.string().optional(),
+        projectStatus: ProjectStatusSchema.optional(),
+        memberId: z.string().optional(),
+        search: z.string().optional(),
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return ctx.projectService.getGlobalList({
+        parentCommunityId: input.parentCommunityId,
+        projectStatus: input.projectStatus,
+        memberId: input.memberId,
+        search: input.search,
+        page: input.page,
+        pageSize: input.pageSize,
+      });
+    }),
+
   join: protectedProcedure
     .input(z.object({ projectId: z.string() }))
     .mutation(async ({ ctx, input }) => {

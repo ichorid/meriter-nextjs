@@ -232,6 +232,55 @@ export class ProjectService {
   }
 
   /**
+   * Global project list: all projects with parent community name and futureVisionText.
+   * Public, with same filters as listProjects.
+   */
+  async getGlobalList(filters: ListProjectsFilters): Promise<{
+    data: Array<{
+      project: Community;
+      parentCommunityName: string | null;
+      parentFutureVisionText: string | null;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const result = await this.listProjects(filters);
+    const parentIds = [
+      ...new Set(
+        result.data
+          .map((p) => p.parentCommunityId)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    const parentCommunities = new Map<string, Community>();
+    for (const id of parentIds) {
+      const parent = await this.communityService.getCommunity(id);
+      if (parent) {
+        parentCommunities.set(id, parent);
+      }
+    }
+
+    const data = result.data.map((project) => {
+      const parent = project.parentCommunityId
+        ? parentCommunities.get(project.parentCommunityId)
+        : null;
+      return {
+        project,
+        parentCommunityName: parent?.name ?? null,
+        parentFutureVisionText: parent?.futureVisionText ?? null,
+      };
+    });
+
+    return {
+      data,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+    };
+  }
+
+  /**
    * Join project: reuse team join-request flow (submit request; lead approves later).
    */
   async joinProject(userId: string, projectId: string): Promise<{ status: string }> {
