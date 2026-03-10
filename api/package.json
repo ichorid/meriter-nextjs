@@ -12,6 +12,7 @@
     "migrate:comment-mode:dry": "ts-node scripts/migrate-comment-mode.ts --dry-run",
     "migrate:global-merit": "ts-node scripts/migrate-to-global-merit.ts",
     "migrate:global-merit:dry": "ts-node scripts/migrate-to-global-merit.ts --dry-run",
+    "migration:ob-posts": "ts-node scripts/create-ob-posts.ts",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/meriter/main",
     "start:prod": "node dist/apps/meriter/main",
