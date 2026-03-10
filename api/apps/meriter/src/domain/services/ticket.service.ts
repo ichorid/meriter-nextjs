@@ -14,6 +14,7 @@ import {
 import { PublicationId } from '../value-objects';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { NotificationService } from './notification.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
 
@@ -41,6 +42,7 @@ export class TicketService {
     private publicationModel: Model<PublicationDocument>,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
+    private notificationService: NotificationService,
     private eventBus: EventBus,
   ) {}
 
@@ -96,6 +98,19 @@ export class TicketService {
       new PublicationCreatedEvent(id, leadUserId, projectId),
     );
 
+    try {
+      await this.notificationService.createNotification({
+        userId: dto.beneficiaryId,
+        type: 'ticket_assigned',
+        source: 'system',
+        metadata: { ticketId: id, projectId, leadUserId },
+        title: 'Ticket assigned',
+        message: `You were assigned a ticket in the project.`,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify beneficiary about ticket: ${err}`);
+    }
+
     this.logger.log(`Ticket created: ${id} in project ${projectId}`);
     return { id };
   }
@@ -125,6 +140,24 @@ export class TicketService {
       doc.ticketStatus = 'done';
       doc.updatedAt = new Date();
       await doc.save();
+
+      const projectId = doc.communityId;
+      const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+      for (const lead of leads) {
+        try {
+          await this.notificationService.createNotification({
+            userId: lead.userId,
+            type: 'ticket_done',
+            source: 'system',
+            metadata: { ticketId, projectId, beneficiaryId: userId },
+            title: 'Ticket marked done',
+            message: 'A ticket was marked as done and is ready for review.',
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to notify lead about ticket done: ${err}`);
+        }
+      }
+
       this.logger.log(`Ticket ${ticketId} marked done by beneficiary`);
       return;
     }
@@ -159,7 +192,71 @@ export class TicketService {
     doc.ticketStatus = 'closed';
     doc.updatedAt = new Date();
     await doc.save();
+
+    const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
+    try {
+      await this.notificationService.createNotification({
+        userId: beneficiaryId,
+        type: 'ticket_accepted',
+        source: 'system',
+        metadata: { ticketId, projectId: doc.communityId },
+        title: 'Work accepted',
+        message: 'Your work was accepted by the project lead.',
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify beneficiary about accept: ${err}`);
+    }
+
     this.logger.log(`Ticket ${ticketId} accepted (closed) by lead`);
+  }
+
+  /**
+   * Find tickets in project where beneficiaryId = userId (for leaveProject).
+   */
+  async getTicketsByBeneficiary(
+    projectId: string,
+    userId: string,
+  ): Promise<PublicationDocument[]> {
+    const list = await this.publicationModel
+      .find({
+        communityId: projectId,
+        postType: 'ticket',
+        beneficiaryId: userId,
+        deleted: { $ne: true },
+      })
+      .exec();
+    return list as PublicationDocument[];
+  }
+
+  /**
+   * Set ticket to open, no beneficiary, neutral (for leaveProject when user had in_progress).
+   */
+  async setTicketOpenAndNeutral(ticketId: string): Promise<void> {
+    await this.publicationModel
+      .updateOne(
+        { id: ticketId, postType: 'ticket' },
+        {
+          $set: {
+            ticketStatus: 'open',
+            beneficiaryId: null,
+            isNeutralTicket: true,
+            updatedAt: new Date(),
+          },
+        },
+      )
+      .exec();
+  }
+
+  /**
+   * Set ticket to closed (for leaveProject when user had done - work counted).
+   */
+  async setTicketClosed(ticketId: string): Promise<void> {
+    await this.publicationModel
+      .updateOne(
+        { id: ticketId, postType: 'ticket' },
+        { $set: { ticketStatus: 'closed', updatedAt: new Date() } },
+      )
+      .exec();
   }
 
   /**
@@ -200,7 +297,8 @@ export class TicketService {
 
   /**
    * Aggregate shares: for each user, sum of metrics.score where they are effective beneficiary
-   * (beneficiaryId for tickets, authorId for discussions). Sprint 4 will add frozenInternalMerits.
+   * (beneficiaryId for tickets, authorId for discussions). Total includes frozenInternalMerits
+   * of left members (from UserCommunityRole) so distribution shares are correct.
    */
   async getProjectShares(projectId: string): Promise<ProjectShareRow[]> {
     const project = await this.communityService.getCommunity(projectId);
@@ -239,8 +337,9 @@ export class TicketService {
     ];
 
     const grouped = await this.publicationModel.aggregate<{ _id: string; internalMerits: number }>(pipeline);
-
-    const total = grouped.reduce((sum, r) => sum + r.internalMerits, 0);
+    const totalActive = grouped.reduce((sum, r) => sum + r.internalMerits, 0);
+    const totalFrozen = await this.userCommunityRoleService.getTotalFrozenInternalMerits(projectId);
+    const total = totalActive + totalFrozen;
 
     return grouped.map((r) => ({
       userId: r._id,

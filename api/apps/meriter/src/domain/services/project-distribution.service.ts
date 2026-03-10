@@ -10,6 +10,7 @@ import { TicketService } from './ticket.service';
 import { WalletService } from './wallet.service';
 import { CommunityWalletService } from './community-wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { NotificationService } from './notification.service';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -32,6 +33,7 @@ export class ProjectDistributionService {
     private readonly walletService: WalletService,
     private readonly communityWalletService: CommunityWalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -58,7 +60,9 @@ export class ProjectDistributionService {
 
     const founderSharePercent = project.founderSharePercent ?? 0;
     const shares = await this.ticketService.getProjectShares(projectId);
-    const totalInternalMerits = shares.reduce((s, r) => s + r.internalMerits, 0);
+    const totalActive = shares.reduce((s, r) => s + r.internalMerits, 0);
+    const totalFrozen = await this.userCommunityRoleService.getTotalFrozenInternalMerits(projectId);
+    const totalInternalMerits = totalActive + totalFrozen;
 
     if (totalInternalMerits === 0) {
       await this.walletService.addTransaction(
@@ -130,6 +134,25 @@ export class ProjectDistributionService {
     }
 
     await this.communityWalletService.addTotalDistributed(projectId, authorShare);
+
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
+    const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
+    for (const memberId of memberIds) {
+      try {
+        await this.notificationService.createNotification({
+          userId: memberId,
+          type: 'project_distributed',
+          source: 'system',
+          metadata: { projectId, projectName: project.name, amount: authorShare },
+          title: 'Project distribution',
+          message: `Merits were distributed for project "${project.name}".`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify member ${memberId} about distribution: ${err}`);
+      }
+    }
+
     this.logger.log(
       `Distributed ${authorShare} for project ${projectId}: founderFixed=${founderFixed}, teamPool=${teamPool}, remainder=${remainder}`,
     );

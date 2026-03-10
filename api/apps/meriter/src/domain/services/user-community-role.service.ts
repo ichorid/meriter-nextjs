@@ -173,6 +173,37 @@ export class UserCommunityRoleService {
   }
 
   /**
+   * Sum of frozenInternalMerits for all records in a community (project).
+   * Used by getProjectShares to include left members' frozen merits in total.
+   */
+  async getTotalFrozenInternalMerits(communityId: string): Promise<number> {
+    const result = await this.userCommunityRoleModel
+      .aggregate<{ total: number }>([
+        { $match: { communityId, frozenInternalMerits: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: '$frozenInternalMerits' } } },
+      ])
+      .exec();
+    return result[0]?.total ?? 0;
+  }
+
+  /**
+   * Set frozenInternalMerits on the role record (e.g. when user leaves project).
+   * Does not remove the record so getTotalFrozenInternalMerits can include it.
+   */
+  async setFrozenInternalMerits(
+    userId: string,
+    communityId: string,
+    amount: number,
+  ): Promise<void> {
+    await this.userCommunityRoleModel
+      .updateOne(
+        { userId, communityId },
+        { $set: { frozenInternalMerits: Math.max(0, amount), updatedAt: new Date() } },
+      )
+      .exec();
+  }
+
+  /**
    * Remove user role from a community
    */
   async removeRole(userId: string, communityId: string): Promise<void> {

@@ -21,6 +21,8 @@ export interface UserCommunityRole {
   userId: string;
   communityId: string;
   role: 'lead' | 'participant';
+  /** Sprint 4: frozen merits when user left project; included in getProjectShares total */
+  frozenInternalMerits?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +44,9 @@ export class UserCommunityRoleSchemaClass implements UserCommunityRole {
     index: true,
   })
   role!: 'lead' | 'participant';
+
+  @Prop({ type: Number, default: 0 })
+  frozenInternalMerits?: number;
 
   @Prop({ required: true })
   createdAt!: Date;
