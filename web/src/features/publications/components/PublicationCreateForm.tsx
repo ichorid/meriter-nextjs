@@ -44,6 +44,7 @@ import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CategorySelector } from '@/shared/components/category-selector';
+import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
 import config from '@/config';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
@@ -196,6 +197,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [methods, setMethods] = useState<Method[]>((initialData as any)?.methods || []);
   const [stage, setStage] = useState<Stage | ''>((initialData as any)?.stage || '');
   const [helpNeeded, setHelpNeeded] = useState<HelpNeeded[]>((initialData as any)?.helpNeeded || []);
+  const [beneficiaryId, setBeneficiaryId] = useState<string | null>((initialData as any)?.beneficiaryId ?? null);
   // Collapsible sections state (folded by default)
   const [openBeneficiaries, setOpenBeneficiaries] = useState(false);
   const [openMethods, setOpenMethods] = useState(false);
@@ -467,6 +469,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           ttlDays: ttlDays ?? undefined,
           stopLoss: stopLoss ?? 0,
           noAuthorWalletSpend: noAuthorWalletSpend || undefined,
+          beneficiaryId: beneficiaryId ?? undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -578,6 +581,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               className={isSubmitting ? 'opacity-50 pointer-events-none' : ''}
             />
           </BrandFormControl>
+
+          {!isProjectCommunity && (
+            <BeneficiarySelector
+              value={beneficiaryId}
+              onChange={setBeneficiaryId}
+              disabled={isSubmitting}
+            />
+          )}
 
           {/* Taxonomy fields - show for project posts */}
           {postType === 'project' && (

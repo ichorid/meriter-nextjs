@@ -69,3 +69,80 @@ export function useProjectShares(projectId: string | null) {
     },
   );
 }
+
+export function useCreateNeutralTicket() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.createNeutral.useMutation({
+    onSuccess: () => {
+      utils.ticket.getByProject.invalidate();
+      utils.project.getById.invalidate();
+      utils.project.getOpenTickets.invalidate();
+      addToast(t('ticketCreated'), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('ticketCreateError'), 'error');
+    },
+  });
+}
+
+export function useApplyForTicket() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.apply.useMutation({
+    onSuccess: () => {
+      utils.project.getOpenTickets.invalidate();
+      addToast(t('applySuccess', { defaultValue: 'Application sent' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('applyError', { defaultValue: 'Failed to apply' }), 'error');
+    },
+  });
+}
+
+export function useGetApplicants(ticketId: string | null) {
+  return trpc.ticket.getApplicants.useQuery(
+    { ticketId: ticketId! },
+    { enabled: !!ticketId, staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function useApproveApplicant() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.approve.useMutation({
+    onSuccess: () => {
+      utils.ticket.getByProject.invalidate();
+      utils.project.getOpenTickets.invalidate();
+      utils.ticket.getApplicants.invalidate();
+      addToast(t('approveApplicantSuccess', { defaultValue: 'Applicant approved' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('approveApplicantError', { defaultValue: 'Failed to approve' }), 'error');
+    },
+  });
+}
+
+export function useRejectApplicant() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.reject.useMutation({
+    onSuccess: () => {
+      utils.ticket.getByProject.invalidate();
+      utils.project.getOpenTickets.invalidate();
+      utils.ticket.getApplicants.invalidate();
+      addToast(t('rejectApplicantSuccess', { defaultValue: 'Applicant rejected' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('rejectApplicantError', { defaultValue: 'Failed to reject' }), 'error');
+    },
+  });
+}

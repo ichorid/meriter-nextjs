@@ -201,6 +201,8 @@ export default function NotificationsPage() {
       case 'ticket_done':
       case 'ticket_accepted':
       case 'ticket_evaluated':
+      case 'ticket_apply':
+      case 'ticket_rejection':
         return '🎫';
       case 'member_joined':
       case 'member_left_project':

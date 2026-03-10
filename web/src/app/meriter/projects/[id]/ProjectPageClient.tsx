@@ -12,6 +12,7 @@ import { PublishToBirzhaButton } from '@/components/organisms/Project/PublishToB
 import { CloseProjectDialog } from '@/components/organisms/Project/CloseProjectDialog';
 import { LeaveProjectDialog } from '@/components/organisms/Project/LeaveProjectDialog';
 import { UpdateSharesDialog } from '@/components/organisms/Project/UpdateSharesDialog';
+import { TransferAdminDialog } from '@/components/organisms/Project/TransferAdminDialog';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { Button } from '@/components/ui/shadcn/button';
@@ -33,6 +34,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [updateSharesDialogOpen, setUpdateSharesDialogOpen] = useState(false);
+  const [transferAdminDialogOpen, setTransferAdminDialogOpen] = useState(false);
 
   const isLead = useMemo(() => {
     if (!user || !membersData?.data) return false;
@@ -128,6 +130,9 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                 />
                 {isLead && (
                   <>
+                    <Button size="sm" variant="outline" onClick={() => setTransferAdminDialogOpen(true)}>
+                      {t('transferAdmin', { defaultValue: 'Transfer admin' })}
+                    </Button>
                     <Button size="sm" variant="outline" onClick={() => setUpdateSharesDialogOpen(true)}>
                       {t('updateShares', { defaultValue: 'Update shares' })}
                     </Button>
@@ -163,6 +168,15 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           open={updateSharesDialogOpen}
           onOpenChange={setUpdateSharesDialogOpen}
         />
+        {user && (
+          <TransferAdminDialog
+            projectId={projectId}
+            projectName={project.name}
+            currentUserId={user.id}
+            open={transferAdminDialogOpen}
+            onOpenChange={setTransferAdminDialogOpen}
+          />
+        )}
 
         <section>
           <h2 className="flex items-center gap-2 text-lg font-medium mb-2">

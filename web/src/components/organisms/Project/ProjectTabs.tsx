@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { TicketList } from './TicketList';
 import { DiscussionList } from './DiscussionList';
 import { CreateTicketForm } from './CreateTicketForm';
+import { CreateNeutralTicketForm } from './CreateNeutralTicketForm';
 import { ProjectSharesDisplay } from './ProjectSharesDisplay';
 import { Button } from '@/components/ui/shadcn/button';
 import {
@@ -37,6 +38,7 @@ export function ProjectTabs({
   const t = useTranslations('projects');
   const [activeTab, setActiveTab] = useState<TabId>('tickets');
   const [createTicketOpen, setCreateTicketOpen] = useState(false);
+  const [createNeutralTicketOpen, setCreateNeutralTicketOpen] = useState(false);
 
   if (!isMember) {
     return null;
@@ -77,21 +79,38 @@ export function ProjectTabs({
           </Button>
         )}
         {isLead && activeTab === 'tickets' && !readOnly && (
-          <Dialog open={createTicketOpen} onOpenChange={setCreateTicketOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="ml-auto">{t('createTicket')}</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{t('createTicket')}</DialogTitle>
-              </DialogHeader>
-              <CreateTicketForm
-                projectId={projectId}
-                onSuccess={() => setCreateTicketOpen(false)}
-                onCancel={() => setCreateTicketOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
+          <>
+            <Dialog open={createNeutralTicketOpen} onOpenChange={setCreateNeutralTicketOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline" className="ml-auto">{t('createOpenTask', { defaultValue: 'Open task' })}</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('createOpenTask', { defaultValue: 'Create open task' })}</DialogTitle>
+                </DialogHeader>
+                <CreateNeutralTicketForm
+                  projectId={projectId}
+                  onSuccess={() => setCreateNeutralTicketOpen(false)}
+                  onCancel={() => setCreateNeutralTicketOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+            <Dialog open={createTicketOpen} onOpenChange={setCreateTicketOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="ml-auto">{t('createTicket')}</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('createTicket')}</DialogTitle>
+                </DialogHeader>
+                <CreateTicketForm
+                  projectId={projectId}
+                  onSuccess={() => setCreateTicketOpen(false)}
+                  onCancel={() => setCreateTicketOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </div>
 

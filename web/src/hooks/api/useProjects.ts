@@ -175,3 +175,27 @@ export function useUpdateShares() {
     },
   });
 }
+
+export function useOpenTickets(projectId: string | null) {
+  return trpc.project.getOpenTickets.useQuery(
+    { projectId: projectId! },
+    { enabled: !!projectId, staleTime: STALE_TIME.SHORT },
+  );
+}
+
+export function useTransferAdmin() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.transferAdmin.useMutation({
+    onSuccess: () => {
+      utils.project.getById.invalidate();
+      utils.project.getMembers.invalidate();
+      addToast(t('transferAdminSuccess', { defaultValue: 'Admin transferred' }), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('transferAdminError', { defaultValue: 'Failed to transfer admin' }), 'error');
+    },
+  });
+}

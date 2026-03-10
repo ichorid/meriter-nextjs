@@ -5,6 +5,7 @@ import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { useUpdateTicketStatus, useAcceptWork } from '@/hooks/api/useTickets';
 import { Button } from '@/components/ui/shadcn/button';
+import { ApplicantsPanel } from './ApplicantsPanel';
 import type { TicketStatus } from '@meriter/shared-types';
 
 interface TicketCardProps {
@@ -15,6 +16,7 @@ interface TicketCardProps {
     ticketStatus?: TicketStatus;
     beneficiaryId?: string;
     authorId: string;
+    isNeutralTicket?: boolean;
     metrics?: { score?: number };
   };
   currentUserId: string;
@@ -29,6 +31,7 @@ export function TicketCard({ ticket, currentUserId, isLead }: TicketCardProps) {
   const status = (ticket.ticketStatus ?? 'in_progress') as TicketStatus;
   const beneficiaryId = ticket.beneficiaryId ?? ticket.authorId;
   const isBeneficiary = currentUserId === beneficiaryId;
+  const isOpenNeutral = status === 'open' && ticket.isNeutralTicket;
 
   const canMarkDone = isBeneficiary && status === 'in_progress';
   const canAccept = isLead && status === 'done';
@@ -45,7 +48,7 @@ export function TicketCard({ ticket, currentUserId, isLead }: TicketCardProps) {
         {ticket.content}
       </p>
       <div className="mt-2 flex items-center justify-between gap-2">
-        <BeneficiaryLabel userId={beneficiaryId} />
+        {!isOpenNeutral && <BeneficiaryLabel userId={beneficiaryId} />}
         <div className="flex gap-2">
           {canMarkDone && (
             <Button
@@ -68,6 +71,11 @@ export function TicketCard({ ticket, currentUserId, isLead }: TicketCardProps) {
           )}
         </div>
       </div>
+      {isLead && isOpenNeutral && (
+        <div className="mt-3 pt-3 border-t">
+          <ApplicantsPanel ticketId={ticket.id} />
+        </div>
+      )}
     </div>
   );
 }
