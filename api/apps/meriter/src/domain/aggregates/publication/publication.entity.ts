@@ -94,6 +94,8 @@ export class Publication implements EditableEntity {
     private readonly lastEarnedAt?: Date | null,
     private readonly ttlWarningNotified?: boolean,
     private readonly inactivityWarningNotified?: boolean,
+    private readonly sourceEntityId?: string,
+    private readonly sourceEntityType?: 'project' | 'community',
   ) {}
 
   static create(
@@ -169,6 +171,8 @@ export class Publication implements EditableEntity {
       undefined, // lastEarnedAt
       false, // ttlWarningNotified
       false, // inactivityWarningNotified
+      undefined, // sourceEntityId
+      undefined, // sourceEntityType
     );
   }
 
@@ -218,6 +222,8 @@ export class Publication implements EditableEntity {
       snapshot.lastEarnedAt != null ? (snapshot.lastEarnedAt instanceof Date ? snapshot.lastEarnedAt : new Date(snapshot.lastEarnedAt)) : null,
       snapshot.ttlWarningNotified ?? false,
       snapshot.inactivityWarningNotified ?? false,
+      snapshot.sourceEntityId,
+      snapshot.sourceEntityType,
     );
   }
 
@@ -400,6 +406,8 @@ export class Publication implements EditableEntity {
       lastEarnedAt: this.lastEarnedAt ?? undefined,
       ttlWarningNotified: this.ttlWarningNotified ?? false,
       inactivityWarningNotified: this.inactivityWarningNotified ?? false,
+      sourceEntityId: this.sourceEntityId,
+      sourceEntityType: this.sourceEntityType,
     };
   }
 }

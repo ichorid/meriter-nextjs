@@ -369,6 +369,10 @@ export const PublicationSchema = IdentifiableSchema.merge(
   communityId: z.string(),
   authorId: z.string(),
   beneficiaryId: z.string().optional(),
+  /** Project/source community id when post is published to Birzha from a project (Sprint 3). */
+  sourceEntityId: z.string().optional(),
+  /** 'project' = from project to Birzha; 'community' = reserved (Sprint 6). */
+  sourceEntityType: SourceEntityTypeSchema.optional(),
   // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта (isProject=true)
   postType: PostTypeSchema.optional().default("basic"),
   // Метка проекта (сообщество-проект)
@@ -1016,6 +1020,8 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   ttlExpiresAt: z.date().nullable().optional(),
   stopLoss: z.number().int().min(0).optional().default(0),
   noAuthorWalletSpend: z.boolean().optional().default(false),
+  sourceEntityId: z.string().optional(),
+  sourceEntityType: z.enum(['project', 'community']).optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

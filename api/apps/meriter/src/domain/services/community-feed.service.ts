@@ -237,6 +237,8 @@ export class CommunityFeedService {
           investorSharePercent: snapshot.investorSharePercent,
           investmentPool: snapshot.investmentPool ?? 0,
           investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
+          sourceEntityId: snapshot.sourceEntityId,
+          sourceEntityType: snapshot.sourceEntityType,
         };
       },
     );

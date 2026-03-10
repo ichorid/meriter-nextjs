@@ -77,6 +77,9 @@ export interface PublicationDocument {
   inactivityWarningNotified?: boolean;
   /** Total merits ever credited to this post (votes, author top-up, tappalka wins). Used for closingSummary.totalEarned. */
   lifetimeCredits?: number;
+  /** Sprint 3: project/community source when post is on Birzha (e.g. marathon-of-good) */
+  sourceEntityId?: string;
+  sourceEntityType?: 'project' | 'community';
 }
 
 /**

@@ -64,6 +64,10 @@ export interface Publication {
   communityId: string;
   authorId: string;
   beneficiaryId?: string;
+  /** Project community id when post is on Birzha from project (Sprint 3). */
+  sourceEntityId?: string;
+  /** 'project' = from project; 'community' = reserved (Sprint 6). */
+  sourceEntityType?: 'project' | 'community';
   postType?: PublicationPostType;
   isProject?: boolean;
   ticketStatus?: PublicationTicketStatus;
@@ -140,6 +144,14 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop()
   beneficiaryId?: string;
+
+  /** Project community id when post is on Birzha from project (Sprint 3). Logical ref: Community.id (string). */
+  @Prop({ type: String, default: undefined })
+  sourceEntityId?: string;
+
+  /** 'project' = from project; 'community' = reserved (Sprint 6). */
+  @Prop({ type: String, enum: ['project', 'community'], default: undefined })
+  sourceEntityType?: 'project' | 'community';
 
   // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта
   @Prop({
@@ -375,3 +387,4 @@ PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For q
 PublicationSchema.index({ 'investments.investorId': 1 }); // C-1: efficient investment lookups by investor
 PublicationSchema.index({ status: 1 }); // D-1: cron and guards for closed posts
 PublicationSchema.index({ ttlExpiresAt: 1 }); // D-1: TTL cron queries
+PublicationSchema.index({ sourceEntityId: 1 }); // Sprint 3: project posts on Birzha
