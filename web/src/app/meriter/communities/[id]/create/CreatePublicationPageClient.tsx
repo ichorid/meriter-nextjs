@@ -15,6 +15,7 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
+import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
 
 interface CreatePublicationPageClientProps {
   communityId: string;
@@ -117,6 +118,9 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
       }
     >
       <div className="space-y-6">
+        <div className="flex justify-end">
+          <ContextSwitcher />
+        </div>
         <PublicationCreateForm
           communityId={communityId}
           defaultPostType={defaultPostType}

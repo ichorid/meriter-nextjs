@@ -45,6 +45,7 @@ import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features'
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CategorySelector } from '@/shared/components/category-selector';
 import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
+import { useActingAsStore } from '@/stores/acting-as.store';
 import config from '@/config';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
@@ -121,6 +122,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
+  const { actingAsCommunityId } = useActingAsStore();
   // FR-4: Fee is always paid from global wallet (all communities)
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
 
@@ -470,6 +472,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           stopLoss: stopLoss ?? 0,
           noAuthorWalletSpend: noAuthorWalletSpend || undefined,
           beneficiaryId: beneficiaryId ?? undefined,
+          actingAsCommunityId: actingAsCommunityId ?? undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
