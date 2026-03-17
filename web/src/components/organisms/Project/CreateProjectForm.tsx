@@ -3,11 +3,14 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useCreateProject } from '@/hooks/api/useProjects';
+import { useFutureVisionTags } from '@/hooks/api/useFutureVisions';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Textarea } from '@/components/ui/shadcn/textarea';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
+import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
 import {
   Select,
   SelectContent,
@@ -21,6 +24,9 @@ const NEW_COMMUNITY_VALUE = '__new__';
 export function CreateProjectForm() {
   const t = useTranslations('projects');
   const createProject = useCreateProject();
+  const { data: platformSettings } = useFutureVisionTags();
+  const availableTags = platformSettings?.availableFutureVisionTags ?? [];
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [projectDuration, setProjectDuration] = useState<'finite' | 'ongoing' | undefined>(undefined);
@@ -29,6 +35,8 @@ export function CreateProjectForm() {
   const [parentChoice, setParentChoice] = useState<string>('');
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
+  const [newCommunitySelectedTags, setNewCommunitySelectedTags] = useState<string[]>([]);
+  const [newCommunityCover, setNewCommunityCover] = useState('');
 
   const { data: communitiesData } = trpc.communities.getAll.useQuery({});
   const communities = (communitiesData?.data ?? []).filter(
@@ -36,6 +44,12 @@ export function CreateProjectForm() {
   );
 
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
+
+  const toggleNewCommunityTag = (tag: string) => {
+    setNewCommunitySelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag],
+    );
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +69,8 @@ export function CreateProjectForm() {
         ? {
             name: newCommunityName.trim(),
             futureVisionText: newCommunityFutureVision.trim(),
+            futureVisionTags: newCommunitySelectedTags.length > 0 ? newCommunitySelectedTags : undefined,
+            futureVisionCover: newCommunityCover.trim() || undefined,
             typeTag: 'custom',
           }
         : undefined,
@@ -120,6 +136,34 @@ export function CreateProjectForm() {
               placeholder={t('futureVisionPlaceholder')}
               rows={3}
               required={isNewCommunity}
+            />
+          </div>
+          {availableTags.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-sm font-medium">{t('valueTagsLabel')}</span>
+              <div className="flex flex-wrap gap-2">
+                {availableTags.map((tag) => (
+                  <label key={tag} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={newCommunitySelectedTags.includes(tag)}
+                      onCheckedChange={() => toggleNewCommunityTag(tag)}
+                      disabled={createProject.isPending}
+                    />
+                    <span className="text-sm">{tag}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <span className="text-sm font-medium">{t('futureVisionCoverLabel')}</span>
+            <ImageUploader
+              value={newCommunityCover || undefined}
+              onUpload={setNewCommunityCover}
+              onRemove={() => setNewCommunityCover('')}
+              disabled={createProject.isPending}
+              aspectRatio={16 / 9}
+              compact
             />
           </div>
         </>

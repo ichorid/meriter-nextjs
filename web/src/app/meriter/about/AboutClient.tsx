@@ -85,6 +85,100 @@ function WelcomeMeritsPlatformRow() {
   );
 }
 
+function FutureVisionRubricatorRow() {
+  const t = useTranslations('settings');
+  const addToast = useToastStore((s) => s.addToast);
+  const utils = trpc.useUtils();
+  const { data, isLoading } = trpc.platformSettings.get.useQuery(undefined, { retry: false });
+  const updateMutation = trpc.platformSettings.updateFutureVisionTags.useMutation({
+    onSuccess: () => {
+      void utils.platformSettings.get.invalidate();
+      addToast('Saved', 'success');
+    },
+    onError: (e) => addToast(e.message || 'Failed to save', 'error'),
+  });
+  const [localTags, setLocalTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+
+  useEffect(() => {
+    if (data?.availableFutureVisionTags) {
+      setLocalTags(data.availableFutureVisionTags);
+    } else {
+      setLocalTags([]);
+    }
+  }, [data?.availableFutureVisionTags]);
+
+  const handleAddTag = () => {
+    const trimmed = newTag.trim();
+    if (!trimmed || localTags.includes(trimmed)) return;
+    setLocalTags((prev) => [...prev, trimmed].sort());
+    setNewTag('');
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    setLocalTags((prev) => prev.filter((t) => t !== tag));
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate({ tags: localTags });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 text-base-content/60">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        <span className="text-sm">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 border-t border-base-300 pt-6">
+      <div className="font-medium text-base-content">{t('futureVisionRubricatorTitle')}</div>
+      <Label htmlFor="future-vision-tags">{t('futureVisionRubricatorLabel')}</Label>
+      <p className="text-xs text-base-content/60">{t('futureVisionRubricatorHelp')}</p>
+      <div className="flex flex-wrap gap-2 mb-2">
+        {localTags.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-base-300 text-sm"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => handleRemoveTag(tag)}
+              className="hover:text-error rounded p-0.5"
+              aria-label={`Remove ${tag}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-2 flex-wrap items-center">
+        <Input
+          id="future-vision-tags"
+          value={newTag}
+          onChange={(e) => setNewTag(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+          placeholder={t('futureVisionRubricatorPlaceholder')}
+          className="w-40"
+        />
+        <Button type="button" size="sm" variant="outline" onClick={handleAddTag} disabled={!newTag.trim()}>
+          {t('futureVisionRubricatorAdd')}
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={updateMutation.isPending}
+        >
+          {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function ResetAboutToDemoRow() {
   const t = useTranslations('about');
   const addToast = useToastStore((s) => s.addToast);
@@ -210,6 +304,7 @@ const AboutPage = () => {
                         <div className="pt-4 space-y-6">
                             <WelcomeMeritsPlatformRow />
                             <CategoryManagement />
+                            <FutureVisionRubricatorRow />
                             <ResetAboutToDemoRow />
                         </div>
                     </DialogContent>

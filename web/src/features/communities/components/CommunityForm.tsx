@@ -7,12 +7,14 @@ import {
     useUpdateCommunity,
     useCreateCommunity,
 } from "@/hooks/api";
+import { useFutureVisionTags } from "@/hooks/api/useFutureVisions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { IconPicker } from "@/shared/components/iconpicker";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import {
     Select,
     SelectContent,
@@ -65,6 +67,12 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
         "🙏"
     )}</text></svg>`;
     const [iconUrl, setIconUrl] = useState(defaultIconUrl);
+    const [futureVisionText, setFutureVisionText] = useState("");
+    const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
+    const [futureVisionCover, setFutureVisionCover] = useState("");
+
+    const { data: platformSettings } = useFutureVisionTags();
+    const availableFutureVisionTags = platformSettings?.availableFutureVisionTags ?? [];
 
     useEffect(() => {
         if (community && isEditMode) {
@@ -80,8 +88,17 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             );
             setIsPriority(c.isPriority || false);
             setIconUrl(c.settings?.iconUrl || defaultIconUrl);
+            setFutureVisionText(c.futureVisionText || "");
+            setFutureVisionTags(Array.isArray(c.futureVisionTags) ? c.futureVisionTags : []);
+            setFutureVisionCover(c.futureVisionCover || "");
         }
     }, [community, isEditMode]);
+
+    const toggleFutureVisionTag = (tag: string) => {
+        setFutureVisionTags((prev) =>
+            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+        );
+    };
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
@@ -112,6 +129,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     data: {
                         ...data,
                         ...(isSuperadmin && { isPriority }),
+                        futureVisionText: futureVisionText.trim() || undefined,
+                        futureVisionTags: futureVisionTags.length > 0 ? futureVisionTags : undefined,
+                        futureVisionCover: futureVisionCover.trim() || undefined,
                     },
                 });
                 router.push(`/meriter/communities/${communityId}`);
@@ -119,6 +139,9 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 const createData = {
                     ...data,
                     ...(isSuperadmin && { isPriority }),
+                    futureVisionText: futureVisionText.trim(),
+                    futureVisionTags: futureVisionTags.length > 0 ? futureVisionTags : undefined,
+                    futureVisionCover: futureVisionCover.trim() || undefined,
                 };
                 const result = await createCommunity.mutateAsync(createData);
 
@@ -279,6 +302,56 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
 
             <div className="border-t border-base-300 pt-6">
                 <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                    {t("futureVisionSection")}
+                </h2>
+                <div className="space-y-4 mb-6">
+                    <BrandFormControl label={t("futureVisionText")} required={!isEditMode}>
+                        <Textarea
+                            value={futureVisionText}
+                            onChange={(e) => setFutureVisionText(e.target.value)}
+                            placeholder={t("futureVisionPlaceholder")}
+                            maxLength={10000}
+                            rows={4}
+                            className="rounded-xl w-full"
+                        />
+                    </BrandFormControl>
+                    {availableFutureVisionTags.length > 0 && (
+                        <div className="space-y-2">
+                            <Label className="text-sm font-medium">{t("futureVisionValueTags")}</Label>
+                            <div className="flex flex-wrap gap-2">
+                                {availableFutureVisionTags.map((tag: string) => (
+                                    <label key={tag} className="flex items-center gap-2 cursor-pointer">
+                                        <Checkbox
+                                            checked={futureVisionTags.includes(tag)}
+                                            onCheckedChange={() => toggleFutureVisionTag(tag)}
+                                            disabled={isPending}
+                                        />
+                                        <span className="text-sm">{tag}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                    <BrandFormControl label={t("futureVisionCover")}>
+                        <ImageUploader
+                            value={futureVisionCover || undefined}
+                            onUpload={setFutureVisionCover}
+                            onRemove={() => setFutureVisionCover("")}
+                            aspectRatio={16 / 9}
+                            compact
+                            disabled={isPending}
+                            labels={{
+                                placeholder: t("coverImagePlaceholder"),
+                                uploading: t("uploading"),
+                                uploadFailed: t("uploadFailed"),
+                            }}
+                        />
+                    </BrandFormControl>
+                </div>
+            </div>
+
+            <div className="border-t border-base-300 pt-6">
+                <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
                     {t("configuration")}
                 </h2>
 
@@ -396,7 +469,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     variant="default"
                     size="lg"
                     onClick={handleSubmit}
-                    disabled={!name || isPending}
+                    disabled={!name || (!isEditMode && !futureVisionText.trim()) || isPending}
                     className="rounded-xl active:scale-[0.98]"
                 >
                     {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

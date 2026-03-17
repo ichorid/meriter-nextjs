@@ -599,6 +599,40 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
+            {/* Future vision block (OB: text, value tags, cover) */}
+            {comms && (comms.futureVisionText || (comms.futureVisionTags && comms.futureVisionTags.length > 0) || comms.futureVisionCover) && (
+                <div className="mb-6 rounded-xl bg-base-200/60 border border-base-300 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-base-content/80 uppercase tracking-wide">
+                        {t('futureVisions', { defaultValue: 'Future vision' })}
+                    </h3>
+                    {comms.futureVisionCover && (
+                        <div className="aspect-video w-full max-w-2xl rounded-lg overflow-hidden bg-base-300">
+                            <img
+                                src={comms.futureVisionCover}
+                                alt=""
+                                className="object-cover w-full h-full"
+                            />
+                        </div>
+                    )}
+                    {comms.futureVisionText && (
+                        <p className="text-base-content/90 whitespace-pre-wrap">
+                            {comms.futureVisionText}
+                        </p>
+                    )}
+                    {comms.futureVisionTags && comms.futureVisionTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                            {comms.futureVisionTags.map((tag: string) => (
+                                <span
+                                    key={tag}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300 text-base-content/90"
+                                >
+                                    {tag}
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Banners */}
             {error === false &&
