@@ -820,7 +820,7 @@ export const CreateCommunityDtoSchema = z
 
     settings: z.unknown().optional(),
     hashtags: z.array(z.string()).optional(),
-    hashtagDescriptions: z.record(z.string()).optional(),
+    hashtagDescriptions: z.record(z.string(), z.string()).optional(),
     postingRules: z.unknown().optional(),
     votingRules: z.unknown().optional(),
     visibilityRules: z.unknown().optional(),
