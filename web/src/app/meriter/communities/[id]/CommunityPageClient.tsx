@@ -609,11 +609,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     >
                         <div className="flex items-center gap-3 min-w-0">
                             <Users className="h-5 w-5 flex-shrink-0 text-base-content/70" />
-                            <div className="min-w-0">
-                                <span className="font-medium text-base-content block truncate">
+                            <div className="flex items-baseline gap-2 min-w-0">
+                                <span className="font-medium text-base-content truncate">
                                     {tCommunities('members.title')}
                                 </span>
-                                <span className="text-sm text-base-content/60">
+                                <span className="text-sm text-base-content/60 tabular-nums flex-shrink-0">
                                     {comms.memberCount ?? 0}
                                 </span>
                             </div>
@@ -629,11 +629,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     >
                         <div className="flex items-center gap-3 min-w-0">
                             <FolderKanban className="h-5 w-5 flex-shrink-0 text-base-content/70" />
-                            <div className="min-w-0">
-                                <span className="font-medium text-base-content block truncate">
+                            <div className="flex items-baseline gap-2 min-w-0">
+                                <span className="font-medium text-base-content truncate">
                                     {tCommunities('communityProjects')}
                                 </span>
-                                <span className="text-sm text-base-content/60">
+                                <span className="text-sm text-base-content/60 tabular-nums flex-shrink-0">
                                     {0}
                                 </span>
                             </div>
