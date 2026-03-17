@@ -1431,6 +1431,7 @@
         "futureVisionPlaceholder": "Describe the image of the future",
         "valueTagsLabel": "Value tags",
         "futureVisionCoverLabel": "Future vision cover (optional)",
+        "devCoverPlaceholdersTitle": "Add placeholder cover (dev only)",
         "projectNotFound": "Project not found"
     },
     "teams": {

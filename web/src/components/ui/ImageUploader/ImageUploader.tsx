@@ -3,6 +3,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ImagePlus, X, Loader2, AlertCircle } from 'lucide-react';
 import { useUploadImage } from '@/hooks/api/useUploads';
+import { Input } from '@/components/ui/shadcn/input';
+import { Button } from '@/components/ui/shadcn/button';
 import { fileToBase64 } from '@/lib/utils/file-utils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -27,6 +29,10 @@ export interface ImageUploaderLabels {
   invalidType?: string;
   tooLarge?: string;
   uploadFailed?: string;
+  /** Shown when upload is unavailable (e.g. S3 not configured) and allowUrlFallback is true */
+  uploadUnavailableHint?: string;
+  pasteUrlLabel?: string;
+  useUrlButton?: string;
 }
 
 export interface ImageVersion {
@@ -75,6 +81,8 @@ export interface ImageUploaderProps {
   compact?: boolean;
   /** Error message */
   error?: string;
+  /** When true, if upload fails with "not configured" / "not available", show URL input fallback */
+  allowUrlFallback?: boolean;
   /** Custom labels for internationalization */
   labels?: ImageUploaderLabels;
 }
@@ -93,17 +101,38 @@ export function ImageUploader({
   className = '',
   compact = false,
   error: externalError,
+  allowUrlFallback = false,
   labels: customLabels,
 }: ImageUploaderProps) {
   // Merge custom labels with defaults
   const labels = { ...DEFAULT_LABELS, ...customLabels };
-  
+
   const uploadMutation = useUploadImage();
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(value || null);
+  const [urlFallbackInput, setUrlFallbackInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentError = externalError || error;
+  const isUploadUnavailable =
+    allowUrlFallback &&
+    !!currentError &&
+    (currentError.toLowerCase().includes('not configured') ||
+      currentError.toLowerCase().includes('not available'));
+
+  const handleUseUrlFallback = () => {
+    const trimmed = urlFallbackInput.trim();
+    if (!trimmed) return;
+    if (!/^https?:\/\/.+/i.test(trimmed)) {
+      setError('Please enter a valid HTTP(S) URL.');
+      return;
+    }
+    setError(null);
+    setUrlFallbackInput('');
+    onUpload(trimmed);
+  };
 
   // Update preview when value changes externally
   useEffect(() => {
@@ -219,7 +248,7 @@ export function ImageUploader({
     onRemove?.();
   };
 
-  const displayError = externalError || error;
+  const displayError = currentError;
 
   if (compact) {
     return (
@@ -266,6 +295,22 @@ export function ImageUploader({
 
         {displayError && (
           <span className="text-xs text-error">{displayError}</span>
+        )}
+        {isUploadUnavailable && (
+          <div className="flex gap-1.5 items-center flex-wrap">
+            <Input
+              type="url"
+              value={urlFallbackInput}
+              onChange={(e) => setUrlFallbackInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleUseUrlFallback())}
+              placeholder="https://..."
+              className="w-36 h-8 text-xs"
+              disabled={disabled}
+            />
+            <Button type="button" size="sm" className="h-8 text-xs" onClick={handleUseUrlFallback} disabled={disabled || !urlFallbackInput.trim()}>
+              {labels.useUrlButton ?? 'Use URL'}
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -362,6 +407,29 @@ export function ImageUploader({
         <div className="flex items-center gap-1.5 mt-2 text-error">
           <AlertCircle size={14} />
           <span className="text-sm font-medium">{displayError}</span>
+        </div>
+      )}
+
+      {/* URL fallback when upload unavailable (e.g. S3 not configured) */}
+      {isUploadUnavailable && (
+        <div className="mt-3 p-3 rounded-lg bg-base-200/80 space-y-2">
+          <p className="text-sm text-base-content/80">
+            {labels.uploadUnavailableHint ?? 'Upload is unavailable in this environment. You can use an image URL instead.'}
+          </p>
+          <div className="flex gap-2 flex-wrap items-center">
+            <Input
+              type="url"
+              value={urlFallbackInput}
+              onChange={(e) => setUrlFallbackInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleUseUrlFallback())}
+              placeholder="https://..."
+              className="flex-1 min-w-[200px]"
+              disabled={disabled}
+            />
+            <Button type="button" size="sm" onClick={handleUseUrlFallback} disabled={disabled || !urlFallbackInput.trim()}>
+              {labels.useUrlButton ?? 'Use URL'}
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { useCreateTeam } from '@/hooks/api/useTeams';
 import { useFutureVisionTags } from '@/hooks/api/useFutureVisions';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
+import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisionCoverDevPlaceholders';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 
@@ -147,6 +148,11 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
               disabled={createTeam.isPending}
               aspectRatio={16 / 9}
               compact
+              allowUrlFallback
+            />
+            <FutureVisionCoverDevPlaceholders
+              onSelectUrl={setFutureVisionCover}
+              disabled={createTeam.isPending}
             />
           </div>
 

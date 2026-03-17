@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { Loader2, Sparkles } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { ImageUploader } from "@/components/ui/ImageUploader";
+import { FutureVisionCoverDevPlaceholders } from "@/shared/components/FutureVisionCoverDevPlaceholders";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
 
@@ -340,11 +341,16 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             aspectRatio={16 / 9}
                             compact
                             disabled={isPending}
+                            allowUrlFallback
                             labels={{
                                 placeholder: t("coverImagePlaceholder"),
                                 uploading: t("uploading"),
                                 uploadFailed: t("uploadFailed"),
                             }}
+                        />
+                        <FutureVisionCoverDevPlaceholders
+                            onSelectUrl={setFutureVisionCover}
+                            disabled={isPending}
                         />
                     </BrandFormControl>
                 </div>

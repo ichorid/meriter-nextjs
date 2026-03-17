@@ -1431,6 +1431,7 @@
         "futureVisionPlaceholder": "Опишите образ будущего",
         "valueTagsLabel": "Рубрикатор ценностей",
         "futureVisionCoverLabel": "Обложка образа будущего (необязательно)",
+        "devCoverPlaceholdersTitle": "Добавить плейсхолдер обложки (только в dev)",
         "projectNotFound": "Проект не найден"
     },
     "teams": {

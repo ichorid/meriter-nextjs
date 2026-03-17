@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
+import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisionCoverDevPlaceholders';
 import {
   Select,
   SelectContent,
@@ -164,6 +165,11 @@ export function CreateProjectForm() {
               disabled={createProject.isPending}
               aspectRatio={16 / 9}
               compact
+              allowUrlFallback
+            />
+            <FutureVisionCoverDevPlaceholders
+              onSelectUrl={setNewCommunityCover}
+              disabled={createProject.isPending}
             />
           </div>
         </>
