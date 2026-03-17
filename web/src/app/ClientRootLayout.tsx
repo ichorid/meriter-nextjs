@@ -146,7 +146,10 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
                   fallbackEnabledProviders={fallbackEnabledProviders}
                   fallbackAuthnEnabled={fallbackAuthnEnabled}
                 >
-                  <div className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}>
+                  <div
+                  className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
+                  style={isTestAuthMode() ? { ['--dev-tools-bar-height' as string]: '60px' } : undefined}
+                >
                     <Root>{children}</Root>
                   </div>
                 </RuntimeConfigProvider>

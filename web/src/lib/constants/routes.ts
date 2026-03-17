@@ -10,6 +10,8 @@ export const routes = {
     // Main
     home: "/meriter/home", // Deprecated - use profile instead
     profile: "/meriter/profile",
+    futureVisions: "/meriter/future-visions",
+    projects: "/meriter/projects",
     userProfile: (userId: string) => `/meriter/users/${userId}`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
