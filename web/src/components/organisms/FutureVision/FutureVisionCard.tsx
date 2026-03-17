@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Users, Star, ArrowUp } from 'lucide-react';
+import { Users, TrendingUp, ArrowUp, Share2 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
 import { Button } from '@/components/ui/shadcn/button';
+import { formatMerits } from '@/lib/utils/currency';
+import { shareUrl } from '@shared/lib/share-utils';
+import { routes } from '@/lib/constants/routes';
 
 export interface FutureVisionItem {
   communityId: string;
@@ -37,16 +40,36 @@ function futureVisionGradient(name: string): [string, string] {
 
 export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const t = useTranslations('common');
+  const tShared = useTranslations('shared');
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [gradientFrom, gradientTo] = futureVisionGradient(item.name);
   const hasCover = !!item.futureVisionCover;
 
+  const handleRatingClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openVotingPopup(item.publicationId, 'publication', 'wallet-only');
+  };
+
+  const handleSupportClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openVotingPopup(item.publicationId, 'publication', 'wallet-only');
+  };
+
+  const handleShareClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = routes.community(item.communityId);
+    await shareUrl(url, tShared('urlCopiedToBuffer'));
+  };
+
   return (
     <Link
       href={`/meriter/communities/${item.communityId}`}
-      className="flex h-full flex-col rounded-xl overflow-hidden bg-base-100 shadow-none border border-base-200 transition-all duration-200 hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="block w-full rounded-xl overflow-hidden bg-[#F5F5F5] dark:bg-[#2a3239] p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <div className="aspect-video w-full relative overflow-hidden flex-shrink-0">
+      <div className="h-28 w-full relative overflow-hidden flex-shrink-0 rounded-lg mb-4">
         {hasCover ? (
           <img
             src={item.futureVisionCover}
@@ -61,59 +84,78 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-4 min-w-0 gap-2">
-        <h3 className="font-semibold text-base-content line-clamp-2 text-lg leading-tight">
-          {item.name}
-        </h3>
-        {item.futureVisionText && (
-          <p className="text-sm text-base-content/70 line-clamp-2">
-            {item.futureVisionText}
-          </p>
-        )}
-        {item.futureVisionTags && item.futureVisionTags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {item.futureVisionTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex px-2 py-0.5 rounded-md text-xs bg-base-300/80 text-base-content/80"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-xs text-base-content/60 mt-auto">
-          <span className="flex items-center gap-1" aria-label={t('membersCount', { defaultValue: 'Members' })}>
-            <Users className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
-            {item.memberCount}
-          </span>
-          <span className="text-base-content/40" aria-hidden>·</span>
-          <span className="flex items-center gap-1" aria-label={t('ratingLabel', { defaultValue: 'Rating' })}>
-            <Star className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
-            {item.score}
-          </span>
+      <h3 className="text-lg font-semibold text-base-content leading-tight mb-2">
+        {item.name}
+      </h3>
+      {item.futureVisionText && (
+        <p className="text-sm text-base-content/70 mb-3 line-clamp-4">
+          {item.futureVisionText}
+        </p>
+      )}
+      {item.futureVisionTags && item.futureVisionTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {item.futureVisionTags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-normal text-base-content/80 bg-base-200"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
-      </div>
+      )}
 
-      <div className="border-t border-base-300 p-2.5 flex-shrink-0 flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openVotingPopup(item.publicationId, 'publication', 'wallet-only');
-          }}
-          aria-label={t('giveMerits', { defaultValue: 'Give merits' })}
-        >
-          <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
-          {t('giveMerits', { defaultValue: 'Give merits' })}
-        </Button>
-        <span className="flex-1 min-w-0 flex items-center justify-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
-          {t('toCommunity', { defaultValue: 'To community' })}
-        </span>
+      <div className="pt-3 border-t border-base-300">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 min-w-0">
+            <button
+              type="button"
+              onClick={handleRatingClick}
+              className="flex items-center gap-1.5 text-sm hover:bg-base-200 rounded-lg px-2 py-1.5 transition-colors group flex-shrink-0"
+              title={tShared('totalVotesTooltip', { defaultValue: 'Total votes including withdrawn' })}
+            >
+              <TrendingUp className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 flex-shrink-0" />
+              <span
+                className={`font-medium tabular-nums ${
+                  item.score > 0
+                    ? 'text-success'
+                    : item.score < 0
+                      ? 'text-error'
+                      : 'text-base-content/60'
+                }`}
+              >
+                {item.score > 0 ? '+' : ''}
+                {formatMerits(item.score)}
+              </span>
+            </button>
+            <span className="flex items-center gap-1.5 text-sm text-base-content/60 flex-shrink-0" aria-label={t('membersCount', { defaultValue: 'Members' })}>
+              <Users className="w-4 h-4 flex-shrink-0" aria-hidden />
+              {item.memberCount}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleShareClick}
+              className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80 flex-shrink-0"
+              title={tShared('share', { defaultValue: 'Share' })}
+              aria-label={tShared('share', { defaultValue: 'Share' })}
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+              onClick={handleSupportClick}
+              aria-label={t('support', { defaultValue: 'Support' })}
+            >
+              <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="whitespace-nowrap">{t('support', { defaultValue: 'Support' })}</span>
+            </Button>
+          </div>
+        </div>
       </div>
     </Link>
   );
