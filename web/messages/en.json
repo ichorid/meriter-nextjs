@@ -941,6 +941,11 @@
             "vision": "Future",
             "noVisionPosts": "No future posts yet",
             "visionCommunityNotFound": "Future community not found",
+            "showMore": "Show more",
+            "showLess": "Show less",
+            "communityProjects": "Community projects",
+            "all": "All",
+            "comingSoon": "Coming soon",
             "filters": {
                 "title": "Filters",
                 "show": "Show",

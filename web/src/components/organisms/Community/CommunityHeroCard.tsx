@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User } from 'lucide-react';
+import { User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Users, FileText, Settings, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
@@ -25,6 +25,9 @@ interface CommunityHeroCardProps {
     settings?: {
       iconUrl?: string;
     };
+    futureVisionCover?: string;
+    futureVisionText?: string;
+    futureVisionTags?: string[];
   };
   className?: string;
   /** Compact mode for embedding in other pages */
@@ -68,7 +71,16 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   };
 
   const [gradientFrom, gradientTo] = generateGradient(community.name);
-  const hasCoverImage = !!community.coverImageUrl;
+  const obCover = community.futureVisionCover;
+  const headerImageUrl = obCover || community.coverImageUrl;
+  const hasCoverImage = !!headerImageUrl;
+  const obCoverUsedInHeader = !!obCover;
+  const hasFutureVision =
+    !!community.futureVisionText?.trim() ||
+    (community.futureVisionTags && community.futureVisionTags.length > 0) ||
+    !!obCover;
+  const [obExpanded, setObExpanded] = useState(false);
+  const tPages = useTranslations('pages');
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
@@ -124,10 +136,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
       className={`bg-base-100 rounded-xl overflow-hidden shadow-none ${onClick ? 'cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] transition-all duration-300' : ''} ${className}`}
       onClick={onClick}
     >
-      {/* Cover Image / Gradient Background */}
+      {/* Cover Image / Gradient Background (OB cover preferred when present) */}
       <div
-        className={`relative h-32 sm:h-40 ${!hasCoverImage ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ''}`}
-        style={hasCoverImage ? { backgroundImage: `url(${community.coverImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        className={`relative h-28 sm:h-36 ${!hasCoverImage ? `bg-gradient-to-r ${gradientFrom} ${gradientTo}` : ''}`}
+        style={hasCoverImage ? { backgroundImage: `url(${headerImageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         {/* Overlay for better text visibility */}
         <div className="absolute inset-0 bg-black/20" />
@@ -222,7 +234,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
 
           {/* Description */}
           {community.description && (
-            <p className="text-sm text-base-content/70 mb-3">
+            <p className="text-sm text-base-content/70 mb-3 line-clamp-2">
               {community.description}
             </p>
           )}
@@ -242,6 +254,67 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               </div>
             )}
           </div>
+
+          {/* Future vision subsection (inside same block) */}
+          {hasFutureVision && (
+            <div className="mt-4 pt-4 border-t border-base-200 space-y-2">
+              <h3 className="text-sm font-semibold text-base-content/80">
+                {tPages('futureVisions')}
+              </h3>
+              {obCover && !obCoverUsedInHeader && (
+                <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300">
+                  <img
+                    src={obCover}
+                    alt=""
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              )}
+              {community.futureVisionText?.trim() && (
+                <>
+                  <p
+                    className={`text-sm text-base-content/90 whitespace-pre-wrap ${obExpanded ? '' : 'line-clamp-3'}`}
+                  >
+                    {community.futureVisionText.trim()}
+                  </p>
+                  {community.futureVisionText.trim().length > 180 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setObExpanded((v) => !v);
+                      }}
+                      className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                    >
+                      {obExpanded ? (
+                        <>
+                          <ChevronUp size={14} />
+                          {tCommunities('showLess')}
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown size={14} />
+                          {tCommunities('showMore')}
+                        </>
+                      )}
+                    </button>
+                  )}
+                </>
+              )}
+              {community.futureVisionTags && community.futureVisionTags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {community.futureVisionTags.map((tag: string) => (
+                    <span
+                      key={tag}
+                      className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300 text-base-content/90"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

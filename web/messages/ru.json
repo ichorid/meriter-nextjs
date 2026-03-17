@@ -941,6 +941,11 @@
             "vision": "Будущее",
             "noVisionPosts": "Пока нет постов будущего",
             "visionCommunityNotFound": "Сообщество будущего не найдено",
+            "showMore": "Показать больше",
+            "showLess": "Свернуть",
+            "communityProjects": "Проекты сообщества",
+            "all": "Все",
+            "comingSoon": "Скоро",
             "filters": {
                 "title": "Фильтры",
                 "show": "Показать",

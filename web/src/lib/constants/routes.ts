@@ -21,6 +21,7 @@ export const routes = {
     communities: "/meriter/communities",
     community: (id: string) => `/meriter/communities/${id}`,
     communityMembers: (id: string) => `/meriter/communities/${id}/members`,
+    communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
     setupCommunity: "/meriter/setup-community",

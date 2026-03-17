@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useMemo } from "react";
+import Link from "next/link";
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
@@ -13,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -587,7 +588,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 />
             }
         >
-            {/* Community Hero Card - Twitter-style with cover */}
+            {/* Community header: hero with integrated future vision subsection */}
             {comms && (
                 <div className="mb-6">
                     <CommunityHeroCard
@@ -599,38 +600,49 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Future vision block (OB: text, value tags, cover) */}
-            {comms && (comms.futureVisionText || (comms.futureVisionTags && comms.futureVisionTags.length > 0) || comms.futureVisionCover) && (
-                <div className="mb-6 rounded-xl bg-base-200/60 border border-base-300 p-4 space-y-3">
-                    <h3 className="text-sm font-semibold text-base-content/80 uppercase tracking-wide">
-                        {t('futureVisions')}
-                    </h3>
-                    {comms.futureVisionCover && (
-                        <div className="aspect-video w-full max-w-2xl rounded-lg overflow-hidden bg-base-300">
-                            <img
-                                src={comms.futureVisionCover}
-                                alt=""
-                                className="object-cover w-full h-full"
-                            />
-                        </div>
-                    )}
-                    {comms.futureVisionText && (
-                        <p className="text-base-content/90 whitespace-pre-wrap">
-                            {comms.futureVisionText}
-                        </p>
-                    )}
-                    {comms.futureVisionTags && comms.futureVisionTags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                            {comms.futureVisionTags.map((tag: string) => (
-                                <span
-                                    key={tag}
-                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300 text-base-content/90"
-                                >
-                                    {tag}
+            {/* Members and Community projects teaser blocks */}
+            {comms && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    <Link
+                        href={routes.communityMembers(chatId)}
+                        className="rounded-xl bg-base-200/60 border border-base-300 p-4 flex items-center justify-between gap-3 hover:bg-base-300/60 transition-colors"
+                    >
+                        <div className="flex items-center gap-3 min-w-0">
+                            <Users className="h-5 w-5 flex-shrink-0 text-base-content/70" />
+                            <div className="min-w-0">
+                                <span className="font-medium text-base-content block truncate">
+                                    {tCommunities('members.title')}
                                 </span>
-                            ))}
+                                <span className="text-sm text-base-content/60">
+                                    {comms.memberCount ?? 0}
+                                </span>
+                            </div>
                         </div>
-                    )}
+                        <span className="text-sm text-primary font-medium flex items-center gap-1 flex-shrink-0">
+                            {tCommunities('all')}
+                            <ChevronRight size={14} />
+                        </span>
+                    </Link>
+                    <Link
+                        href={routes.communityProjects(chatId)}
+                        className="rounded-xl bg-base-200/60 border border-base-300 p-4 flex items-center justify-between gap-3 hover:bg-base-300/60 transition-colors"
+                    >
+                        <div className="flex items-center gap-3 min-w-0">
+                            <FolderKanban className="h-5 w-5 flex-shrink-0 text-base-content/70" />
+                            <div className="min-w-0">
+                                <span className="font-medium text-base-content block truncate">
+                                    {tCommunities('communityProjects')}
+                                </span>
+                                <span className="text-sm text-base-content/60">
+                                    {0}
+                                </span>
+                            </div>
+                        </div>
+                        <span className="text-sm text-primary font-medium flex items-center gap-1 flex-shrink-0">
+                            {tCommunities('all')}
+                            <ChevronRight size={14} />
+                        </span>
+                    </Link>
                 </div>
             )}
 
