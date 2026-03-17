@@ -820,6 +820,7 @@
         "insufficientWalletForDownvotes": "You have insufficient wallet balance for downvotes."
     },
     "pages": {
+        "futureVisions": "Future vision",
         "setupCommunity": {
             "title": "Community Setup",
             "welcome": "You've added the Meriter bot to your group! Now let's configure it.",

@@ -1,0 +1,13 @@
+---
+description: Default rules for formatting commits.
+alwaysApply: true
+---
+
+# Commit formatting (default)
+
+When creating or formatting commits:
+
+1. **Message language**: Use **English only**. No Cyrillic or other non-Latin script in commit messages.
+2. **Do not push to origin** unless the user explicitly asks to push. After committing, do not run `git push origin ...`.
+
+These apply by default unless the user says otherwise.

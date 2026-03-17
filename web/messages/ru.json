@@ -820,6 +820,7 @@
         "insufficientWalletForDownvotes": "Недостаточно меритов на кошельке для голосования против."
     },
     "pages": {
+        "futureVisions": "Образ будущего",
         "setupCommunity": {
             "title": "Настройка сообщества",
             "welcome": "Вы добавили бота Meriter в свою группу! Сейчас мы настроим его работу.",
