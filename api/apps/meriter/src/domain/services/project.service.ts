@@ -36,6 +36,8 @@ export interface CreateProjectDto {
   newCommunity?: {
     name: string;
     futureVisionText?: string;
+    futureVisionTags?: string[];
+    futureVisionCover?: string;
     typeTag?: 'team' | 'custom';
   };
 }
@@ -88,6 +90,8 @@ export class ProjectService {
           name: dto.newCommunity.name,
           description: undefined,
           futureVisionText: dto.newCommunity.futureVisionText,
+          futureVisionTags: dto.newCommunity.futureVisionTags,
+          futureVisionCover: dto.newCommunity.futureVisionCover,
           typeTag: dto.newCommunity.typeTag ?? 'custom',
         });
         createdParentId = parent.id;

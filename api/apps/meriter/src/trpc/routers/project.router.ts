@@ -18,6 +18,8 @@ const createProjectInputSchema = z.object({
     .object({
       name: z.string().min(1).max(200),
       futureVisionText: z.string().max(5000).optional(),
+      futureVisionTags: z.array(z.string()).optional(),
+      futureVisionCover: z.string().url().optional(),
       typeTag: z.enum(['team', 'custom']).optional(),
     })
     .optional(),
