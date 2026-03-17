@@ -378,6 +378,38 @@ export class PublicationService {
     }));
   }
 
+  /**
+   * List OB posts in future-vision community with configurable sorting.
+   * Used for getFutureVisions feed.
+   */
+  async findObPosts(
+    futureVisionCommunityId: string,
+    params: { sort: 'score' | 'createdAt' },
+  ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number }; createdAt: Date }[]> {
+    const sort =
+      params.sort === 'createdAt'
+        ? ({ createdAt: -1 } as const)
+        : ({ 'metrics.score': -1 } as const);
+
+    const docs = await this.publicationModel
+      .find({
+        communityId: futureVisionCommunityId,
+        sourceEntityType: 'community',
+        deleted: { $ne: true },
+      })
+      .select('id sourceEntityId metrics.score createdAt')
+      .sort(sort)
+      .lean()
+      .exec();
+
+    return docs.map((d: any) => ({
+      id: d.id,
+      sourceEntityId: d.sourceEntityId,
+      metrics: { score: d.metrics?.score ?? 0 },
+      createdAt: d.createdAt ? new Date(d.createdAt) : new Date(0),
+    }));
+  }
+
   async getPublication(id: string): Promise<Publication | null> {
     // Direct Mongoose query
     const doc = await this.publicationModel.findOne({ id }).lean();

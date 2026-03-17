@@ -7,6 +7,7 @@ export interface FutureVisionsFilters {
   page?: number;
   pageSize?: number;
   tags?: string[];
+  sort?: 'score' | 'createdAt';
 }
 
 export function useFutureVisions(filters: FutureVisionsFilters = {}) {
@@ -15,6 +16,7 @@ export function useFutureVisions(filters: FutureVisionsFilters = {}) {
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 20,
       tags: filters.tags,
+      sort: filters.sort,
     },
     { staleTime: STALE_TIME.SHORT },
   );

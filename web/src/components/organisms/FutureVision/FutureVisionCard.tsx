@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { Users, Star } from 'lucide-react';
+import { useUIStore } from '@/stores/ui.store';
 
 export interface FutureVisionItem {
   communityId: string;
@@ -35,6 +36,7 @@ function futureVisionGradient(name: string): [string, string] {
 
 export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const t = useTranslations('common');
+  const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [gradientFrom, gradientTo] = futureVisionGradient(item.name);
   const hasCover = !!item.futureVisionCover;
 
@@ -84,16 +86,26 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
             <Users className="h-4 w-4 flex-shrink-0" />
             {item.memberCount}
           </span>
-          <span className="flex items-center gap-1">
+          <button
+            type="button"
+            className="flex items-center gap-1 hover:text-base-content transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openVotingPopup(item.publicationId, 'publication', 'wallet-only');
+            }}
+            aria-label={t('vote', { defaultValue: 'Vote' })}
+            title={t('vote', { defaultValue: 'Vote' })}
+          >
             <Star className="h-4 w-4 flex-shrink-0" />
             {item.score}
-          </span>
+          </button>
         </div>
       </div>
 
       <div className="border-t border-base-300 p-3 flex-shrink-0">
         <span className="flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          {t('join')}
+          {t('joinCommunity', { defaultValue: 'Join' })}
         </span>
       </div>
     </Link>

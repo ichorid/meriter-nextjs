@@ -1419,6 +1419,7 @@ export class CommunityService {
     page?: number;
     pageSize?: number;
     tags?: string[];
+    sort?: 'score' | 'createdAt';
   }): Promise<{
     items: Array<{
       communityId: string;
@@ -1444,9 +1445,10 @@ export class CommunityService {
       return { items: [], total: 0, page, pageSize };
     }
 
-    const obPosts = await this.publicationService.findObPostsSortedByScore(
-      futureVision.id,
-    );
+    const sort: 'score' | 'createdAt' = params.sort ?? 'score';
+    const obPosts = await this.publicationService.findObPosts(futureVision.id, {
+      sort,
+    });
     if (obPosts.length === 0) {
       return { items: [], total: 0, page, pageSize };
     }

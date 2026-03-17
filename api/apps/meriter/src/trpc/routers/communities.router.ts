@@ -82,6 +82,7 @@ export const communitiesRouter = router({
         page: z.number().int().min(1).optional(),
         pageSize: z.number().int().min(1).max(100).optional(),
         tags: z.array(z.string()).optional(),
+        sort: z.enum(['score', 'createdAt']).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -89,6 +90,7 @@ export const communitiesRouter = router({
         page: input.page,
         pageSize: input.pageSize,
         tags: input.tags,
+        sort: input.sort,
       });
     }),
 

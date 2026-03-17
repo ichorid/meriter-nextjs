@@ -5,12 +5,14 @@ import { useTranslations } from 'next-intl';
 import { useFutureVisions, useFutureVisionTags } from '@/hooks/api/useFutureVisions';
 import { FutureVisionCard } from './FutureVisionCard';
 import { TagFilter } from './TagFilter';
+import { SortToggle } from '@/components/ui/SortToggle';
 import type { FutureVisionItem } from './FutureVisionCard';
 
 export function FutureVisionFeed() {
   const t = useTranslations('common');
   const [page, setPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [sort, setSort] = useState<'score' | 'createdAt'>('score');
 
   const { data: platformSettings } = useFutureVisionTags();
   const rubricatorTags = platformSettings?.availableFutureVisionTags ?? [];
@@ -19,6 +21,7 @@ export function FutureVisionFeed() {
     page,
     pageSize: 20,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
+    sort,
   });
 
   const items = (data?.items ?? []) as FutureVisionItem[];
@@ -41,13 +44,25 @@ export function FutureVisionFeed() {
     setPage(1);
   };
 
+  const handleSortChange = (value: 'recent' | 'voted') => {
+    setSort(value === 'recent' ? 'createdAt' : 'score');
+    setPage(1);
+  };
+
   return (
     <div className="flex flex-col gap-4">
-      <TagFilter
-        tags={filterTags}
-        selectedTags={selectedTags}
-        onToggleTag={handleToggleTag}
-      />
+      <div className="flex items-center justify-between gap-3">
+        <TagFilter
+          tags={filterTags}
+          selectedTags={selectedTags}
+          onToggleTag={handleToggleTag}
+        />
+        <SortToggle
+          value={sort === 'createdAt' ? 'recent' : 'voted'}
+          onChange={handleSortChange}
+          compact={true}
+        />
+      </div>
       {isLoading ? (
         <p className="text-muted-foreground">{t('loading')}</p>
       ) : items.length === 0 ? (

@@ -31,7 +31,7 @@ describe('FavoriteStar', () => {
       { authContextValue: { isAuthenticated: true } },
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Favorite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.ariaLabels.favorite' }));
 
     expect(mockAddMutateAsync).toHaveBeenCalledWith({ targetType: 'publication', targetId: 'p1' });
     expect(mockRemoveMutateAsync).not.toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe('FavoriteStar', () => {
       { authContextValue: { isAuthenticated: true } },
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Unfavorite' }));
+    fireEvent.click(screen.getByRole('button', { name: 'common.ariaLabels.unfavorite' }));
 
     expect(mockRemoveMutateAsync).toHaveBeenCalledWith({ targetType: 'publication', targetId: 'p1' });
     expect(mockAddMutateAsync).not.toHaveBeenCalled();
