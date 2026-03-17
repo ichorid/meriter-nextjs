@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Users, Star } from 'lucide-react';
+import { Users, Star, ArrowUp } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
+import { Button } from '@/components/ui/shadcn/button';
 
 export interface FutureVisionItem {
   communityId: string;
@@ -60,52 +61,58 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-4 min-w-0">
+      <div className="flex flex-1 flex-col p-4 min-w-0 gap-2">
         <h3 className="font-semibold text-base-content line-clamp-2 text-lg leading-tight">
           {item.name}
         </h3>
         {item.futureVisionText && (
-          <p className="text-sm text-base-content/70 line-clamp-3 mt-2">
+          <p className="text-sm text-base-content/70 line-clamp-2">
             {item.futureVisionText}
           </p>
         )}
         {item.futureVisionTags && item.futureVisionTags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="flex flex-wrap gap-1">
             {item.futureVisionTags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300 text-base-content/90"
+                className="inline-flex px-2 py-0.5 rounded-md text-xs bg-base-300/80 text-base-content/80"
               >
                 {tag}
               </span>
             ))}
           </div>
         )}
-        <div className="flex items-center gap-4 text-sm text-base-content/60 mt-3">
-          <span className="flex items-center gap-1">
-            <Users className="h-4 w-4 flex-shrink-0" />
+        <div className="flex items-center gap-2 text-xs text-base-content/60 mt-auto">
+          <span className="flex items-center gap-1" aria-label={t('membersCount', { defaultValue: 'Members' })}>
+            <Users className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
             {item.memberCount}
           </span>
-          <button
-            type="button"
-            className="flex items-center gap-1 hover:text-base-content transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              openVotingPopup(item.publicationId, 'publication', 'wallet-only');
-            }}
-            aria-label={t('vote', { defaultValue: 'Vote' })}
-            title={t('vote', { defaultValue: 'Vote' })}
-          >
-            <Star className="h-4 w-4 flex-shrink-0" />
+          <span className="text-base-content/40" aria-hidden>·</span>
+          <span className="flex items-center gap-1" aria-label={t('ratingLabel', { defaultValue: 'Rating' })}>
+            <Star className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
             {item.score}
-          </button>
+          </span>
         </div>
       </div>
 
-      <div className="border-t border-base-300 p-3 flex-shrink-0">
-        <span className="flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-          {t('joinCommunity', { defaultValue: 'Join' })}
+      <div className="border-t border-base-300 p-2.5 flex-shrink-0 flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openVotingPopup(item.publicationId, 'publication', 'wallet-only');
+          }}
+          aria-label={t('giveMerits', { defaultValue: 'Give merits' })}
+        >
+          <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+          {t('giveMerits', { defaultValue: 'Give merits' })}
+        </Button>
+        <span className="flex-1 min-w-0 flex items-center justify-center rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+          {t('toCommunity', { defaultValue: 'To community' })}
         </span>
       </div>
     </Link>
