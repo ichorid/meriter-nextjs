@@ -23,6 +23,15 @@ export const usersRouter = router({
   }),
 
   /**
+   * Ensure the current user is in base (priority) communities.
+   * Useful for legacy users created before base community sync existed.
+   */
+  ensureBaseCommunities: protectedProcedure.mutation(async ({ ctx }) => {
+    await ctx.userService.ensureUserInBaseCommunities(ctx.user.id);
+    return { ok: true as const };
+  }),
+
+  /**
    * Get user by ID
    */
   getUser: protectedProcedure

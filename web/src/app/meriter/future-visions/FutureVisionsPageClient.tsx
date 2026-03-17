@@ -1,18 +1,25 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FutureVisionFeed } from '@/components/organisms/FutureVision/FutureVisionFeed';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLayout';
 import { useCommunities } from '@/hooks/api';
 import { useWalletBalance } from '@/hooks/api/useWallet';
-import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
+import { useUserQuota } from '@/hooks/api/useQuota';
+import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { TappalkaScreen } from '@/features/tappalka';
+import { routes } from '@/lib/constants/routes';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { trpc } from '@/lib/trpc/client';
 
 export default function FutureVisionsPageClient() {
   const t = useTranslations('common');
   const tCommunities = useTranslations('pages.communities');
+  const router = useRouter();
   const [showTappalkaModal, setShowTappalkaModal] = useState(false);
 
   const { data: communitiesData } = useCommunities();
@@ -21,34 +28,55 @@ export default function FutureVisionsPageClient() {
     return data?.find((c) => c.typeTag === 'future-vision')?.id ?? null;
   }, [communitiesData?.data]);
 
-  const { data: balanceData } = useWalletBalance(futureVisionCommunityId ?? undefined);
-  const balance = balanceData?.balance ?? 0;
+  const ensureBaseCommunitiesMutation = trpc.users.ensureBaseCommunities.useMutation();
+  useEffect(() => {
+    // Fix legacy accounts missing roles in priority communities (Future Vision voting relies on it).
+    void ensureBaseCommunitiesMutation.mutateAsync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const { data: balance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
+  const { data: quotaData } = useUserQuota(futureVisionCommunityId ?? GLOBAL_COMMUNITY_ID);
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  const quotaMax = quotaData?.dailyQuota ?? 0;
+  const hasQuota = quotaMax > 0;
 
   return (
     <AdaptiveLayout
       communityId={futureVisionCommunityId ?? undefined}
       stickyHeader={
         futureVisionCommunityId ? (
-          <CommunityTopBar
-            communityId={futureVisionCommunityId}
+          <SimpleStickyHeader
+            title={t('futureVisionsPageTitle', { defaultValue: 'Future Visions' })}
+            showBack={true}
+            onBack={() => router.push(routes.communities)}
             asStickyHeader={true}
-            showQuotaInHeader={true}
-            quotaData={{
-              balance,
-              showPermanent: true,
-              showDaily: false,
-            }}
-            tappalkaEnabled={true}
-            onTappalkaClick={() => setShowTappalkaModal(true)}
+            showScrollToTop={true}
+            rightAction={
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <QuotaDisplay
+                  balance={balance}
+                  quotaRemaining={hasQuota ? quotaRemaining : undefined}
+                  quotaMax={hasQuota ? quotaMax : undefined}
+                  currencyIconUrl={undefined}
+                  isMarathonOfGood={false}
+                  showPermanent={true}
+                  showDaily={hasQuota}
+                  compact={true}
+                  className="mr-2 -ml-[15px] mt-[5px]"
+                  onEarnMeritsClick={() => setShowTappalkaModal(true)}
+                />
+              </div>
+            }
           />
         ) : undefined
       }
     >
       <div className="flex flex-col gap-4 p-4">
-        <h1 className="text-2xl font-semibold">
-          {t('futureVisions', { defaultValue: 'Future Visions' })}
-        </h1>
-        <FutureVisionFeed />
+        <FutureVisionFeed
+          onEarnMeritsClick={() => setShowTappalkaModal(true)}
+          tappalkaEnabled={!!futureVisionCommunityId}
+        />
       </div>
 
       {/* Tappalka Modal */}
