@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Settings } from 'lucide-react';
 import { FutureVisionFeed } from '@/components/organisms/FutureVision/FutureVisionFeed';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLayout';
@@ -12,7 +11,6 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
-import { Button } from '@/components/ui/shadcn/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { TappalkaScreen } from '@/features/tappalka';
 import { routes } from '@/lib/constants/routes';
@@ -70,17 +68,6 @@ export default function FutureVisionsPageClient() {
             showScrollToTop={true}
             rightAction={
               <div className="flex items-center gap-2 flex-shrink-0">
-                {canManageFutureVision && futureVisionCommunityId && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(routes.communitySettings(futureVisionCommunityId))}
-                    className="h-9 rounded-xl px-3 gap-2"
-                  >
-                    <Settings size={16} />
-                    {t('settings', { defaultValue: 'Settings' })}
-                  </Button>
-                )}
                 <QuotaDisplay
                   balance={balance}
                   quotaRemaining={hasQuota ? quotaRemaining : undefined}

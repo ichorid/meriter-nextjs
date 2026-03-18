@@ -258,9 +258,6 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           {/* Future vision subsection (inside same block) */}
           {hasFutureVision && (
             <div className="mt-4 pt-4 border-t border-base-200 space-y-2">
-              <h3 className="text-sm font-semibold text-base-content/80">
-                {tPages('futureVisions')}
-              </h3>
               {obCover && !obCoverUsedInHeader && (
                 <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300">
                   <img
