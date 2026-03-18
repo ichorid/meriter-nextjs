@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Settings } from 'lucide-react';
 import { FutureVisionFeed } from '@/components/organisms/FutureVision/FutureVisionFeed';
+import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLayout';
 import { useCommunities } from '@/hooks/api';
 import { useWalletBalance } from '@/hooks/api/useWallet';
@@ -19,6 +20,7 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 export default function FutureVisionsPageClient() {
   const t = useTranslations('common');
@@ -33,6 +35,7 @@ export default function FutureVisionsPageClient() {
     const data = communitiesData?.data as Array<{ id: string; typeTag?: string }> | undefined;
     return data?.find((c) => c.typeTag === 'future-vision')?.id ?? null;
   }, [communitiesData?.data]);
+  const { data: futureVisionCommunity } = useCommunity(futureVisionCommunityId ?? '');
 
   const canManageFutureVision = useMemo(() => {
     if (!futureVisionCommunityId || !user) return false;
@@ -97,6 +100,24 @@ export default function FutureVisionsPageClient() {
       }
     >
       <div className="flex flex-col gap-4 p-4">
+        {futureVisionCommunity && (
+          <CommunityHeroCard
+            community={{
+              id: futureVisionCommunity.id,
+              name: futureVisionCommunity.name,
+              description: futureVisionCommunity.description,
+              avatarUrl: futureVisionCommunity.avatarUrl,
+              coverImageUrl: futureVisionCommunity.coverImageUrl,
+              typeTag: futureVisionCommunity.typeTag,
+              isAdmin: canManageFutureVision,
+              needsSetup: futureVisionCommunity.needsSetup,
+              settings: { iconUrl: futureVisionCommunity.settings?.iconUrl },
+              futureVisionCover: futureVisionCommunity.futureVisionCover,
+              futureVisionText: futureVisionCommunity.futureVisionText,
+              futureVisionTags: futureVisionCommunity.futureVisionTags,
+            }}
+          />
+        )}
         <FutureVisionFeed
           onEarnMeritsClick={() => setShowTappalkaModal(true)}
           tappalkaEnabled={!!futureVisionCommunityId}
