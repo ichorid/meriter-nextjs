@@ -354,10 +354,15 @@ export class CommunityDefaultsService {
       spendsMerits: true,
       awardsMerits: true,
       votingRestriction: 'any',
-      allowNegativeVoting: false,
+      allowNegativeVoting: true,
     };
 
     if (typeTag === 'project') {
+      return { ...baseSettings, allowNegativeVoting: false };
+    }
+
+    // Future Vision (OB): support-only by default
+    if (typeTag === 'future-vision') {
       return { ...baseSettings, allowNegativeVoting: false };
     }
 

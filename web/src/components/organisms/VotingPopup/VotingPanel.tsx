@@ -81,6 +81,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const features = useFeaturesConfig();
     const enableCommentImageUploads = features.commentImageUploads;
     const isFutureVision = community?.typeTag === 'future-vision';
+    const allowDownvote = !isFutureVision && community?.votingSettings?.allowNegativeVoting !== false;
 
     // Direction is determined by the sign of amount
     const isPositive = amount >= 0;
@@ -121,7 +122,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return t("ownPostVotingMechanics");
         }
         if (isFutureVision) {
-            return "Если вам нравится этот образ будущего, вы можете поддержать его меритами.";
+            return t("futureVisionVotingHint");
         }
         if (currencySource === 'quota-only') {
             return t("votingMechanicsQuotaOnly");
@@ -134,7 +135,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
 
     const headerTitle = useMemo(() => {
         if (commentMode === 'neutralOnly') return t("commentButton");
-        if (isFutureVision) return "Поддержать";
+        if (isFutureVision) return t("futureVisionSupportTitle");
         return title || t("voteTitle");
     }, [commentMode, isFutureVision, t, title]);
     
@@ -308,6 +309,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             setAmount(0);
             return;
         }
+        // Future Vision is support-only (no downvotes)
+        if (!hideQuota && !allowDownvote && value.startsWith('-')) {
+            setInputValue('');
+            setInputSign('');
+            setAmount(0);
+            return;
+        }
+
         // Block minus sign if no wallet balance (downvotes require wallet merits)
         if (value === '-') {
             if (walletBalance === 0) {
@@ -333,6 +342,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         // Parse number (handles negative values correctly)
         const numValue = Number(value);
         if (!isNaN(numValue) && cleanValue !== '' && cleanValue !== '0') {
+            if (!hideQuota && !allowDownvote && numValue < 0) {
+                setInputValue('');
+                setInputSign('');
+                setAmount(0);
+                return;
+            }
             // Block negative values if no wallet balance (downvotes require wallet merits)
             if (numValue < 0 && walletBalance === 0) {
                 setInputValue('');
@@ -344,13 +359,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
             // For downvotes, use wallet only
             const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-            const minByMerits = -maxAvailableMerits;
+            const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
             
             // Use maxAvailableMerits for upvotes, maxMinus for downvotes
             const maxLimit = isPositive 
                 ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                 : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-            const minLimit = maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits;
+            const minLimit = (!hideQuota && !allowDownvote)
+                ? 0
+                : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
             
             const clampedValue = Math.max(minLimit, Math.min(maxLimit, numValue));
             setAmount(clampedValue);
@@ -368,6 +385,12 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     setAmount(0);
                     return;
                 }
+                if (!hideQuota && !allowDownvote && isNegative) {
+                    setInputValue('');
+                    setInputSign('');
+                    setAmount(0);
+                    return;
+                }
                 // Store the numeric part and sign
                 setInputValue(numericMatch[0]);
                 setInputSign(isNegative ? '-' : '+');
@@ -377,11 +400,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
                     // For downvotes, use wallet only
                     const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-                    const minByMerits = -maxAvailableMerits;
+                    const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
                     const maxLimit = isPositive 
                         ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                         : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-                    const minLimit = maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits;
+                    const minLimit = (!hideQuota && !allowDownvote)
+                        ? 0
+                        : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
                     const clampedValue = Math.max(minLimit, Math.min(maxLimit, partialValue));
                     setAmount(clampedValue);
                 }
@@ -442,6 +467,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             const newAmount = Math.max(0, amount - 1);
             setAmount(newAmount);
             setInputValue(newAmount.toString());
+            return;
+        }
+
+        if (!allowDownvote) {
+            const newAmount = Math.max(0, amount - 1);
+            setAmount(newAmount);
+            setInputValue(Math.abs(newAmount).toString());
+            setInputSign('');
             return;
         }
         
@@ -616,6 +649,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 onClick={handleDecrease}
                                 disabled={
                                     // Disable if:
+                                    // 0. Future Vision is support-only (can't go below 0)
+                                    (!hideQuota && !allowDownvote && amount <= 0) ||
                                     // 1. Amount is 0 and no wallet balance (can't go negative)
                                     // 2. Amount is negative and already at minimum (-maxMinus or -walletBalance)
                                     (amount === 0 && walletBalance === 0) ||
@@ -754,7 +789,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     </label>
                     {commentMode !== 'neutralOnly' && (
                         <p className="text-xs text-base-content/60 mb-2">
-                            {t("explanationPlaceholder")}
+                            {isFutureVision ? t("futureVisionCommentHelper") : t("explanationPlaceholder")}
                         </p>
                     )}
                     <Textarea
@@ -769,7 +804,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     />
                     {!comment.trim() && (
                         <p className="text-xs text-error">
-                            {commentMode === 'neutralOnly' ? t("commentEmptyHint") : t("commentRequired")}
+                            {commentMode === 'neutralOnly'
+                                ? t("commentEmptyHint")
+                                : (isFutureVision ? t("futureVisionCommentRequired") : t("commentRequired"))}
                         </p>
                     )}
                 </div>
@@ -796,7 +833,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         if (onSubmitSimple) {
                             onSubmitSimple();
                         } else {
-                            onSubmit(isPositive);
+                            onSubmit(isFutureVision ? true : isPositive);
                         }
                     }}
                     disabled={isButtonDisabled}

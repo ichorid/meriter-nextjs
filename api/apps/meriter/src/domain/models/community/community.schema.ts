@@ -325,7 +325,7 @@ export class CommunitySchemaClass implements Community {
         type: String,
         enum: ['quota-and-wallet', 'quota-only', 'wallet-only'],
       },
-      allowNegativeVoting: { type: Boolean, default: false },
+      allowNegativeVoting: { type: Boolean, default: true },
     },
     default: {
       spendsMerits: true,

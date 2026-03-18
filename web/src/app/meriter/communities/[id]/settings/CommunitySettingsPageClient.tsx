@@ -65,6 +65,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         votingSettings?: {
             votingRestriction?: 'any' | 'not-same-team';
             currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only';
+            allowNegativeVoting?: boolean;
         };
     }) => {
         await updateCommunity.mutateAsync({

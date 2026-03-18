@@ -205,8 +205,8 @@ export const CommunityVotingSettingsSchema = z.object({
     z.enum(["any", "not-same-team"]).optional()
   ),
   currencySource: z.enum(["quota-and-wallet", "quota-only", "wallet-only"]).optional(),
-  /** Whether negative (down) votes are allowed. Default false. */
-  allowNegativeVoting: z.boolean().optional().default(false),
+  /** Whether negative (down) votes are allowed. Default true. */
+  allowNegativeVoting: z.boolean().optional().default(true),
   // Note: 'not-own' removed - self-voting now uses currency constraint (wallet-only)
   // Note: 'not-same-group' renamed to 'not-same-team' for clarity
 });

@@ -123,7 +123,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
-  const calculatedMaxMinus = walletBalance || 0;
+  const calculatedMaxMinus =
+    community?.typeTag === 'future-vision' || community?.votingSettings?.allowNegativeVoting === false
+      ? 0
+      : (walletBalance || 0);
 
   // Use shared hook for form data management
   const { formData, handleCommentChange } = usePopupFormData({
@@ -189,9 +192,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   };
 
   const handleSubmit = async (directionPlus: boolean) => {
-    console.log('[VotingPopup] handleSubmit called', { directionPlus });
     if (!activeVotingTarget || !votingTargetType || !targetCommunityId) {
-      console.log('[VotingPopup] Early return: missing required data', { activeVotingTarget, votingTargetType, targetCommunityId });
       return;
     }
 
@@ -202,13 +203,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     }
 
     const delta = formData.delta;
-    console.log('[VotingPopup] Initial values', {
-      delta,
-      commentMode: effectiveCommentMode,
-      quotaRemaining,
-      walletBalance,
-      effectiveVotingMode,
-    });
     if (delta === 0) {
       if (effectiveCommentMode === 'weightedOnly') {
         updateVotingFormData({ error: t('weightRequired') });
@@ -235,11 +229,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       return;
     }
     const absoluteAmount = Math.abs(delta);
-    console.log('[VotingPopup] After initial checks', {
-      absoluteAmount,
-      isUpvote,
-      commentMode,
-    });
 
     // Calculate vote breakdown for submission (quota first, then wallet overflow).
     // Neutral comment (delta === 0) when effectiveCommentMode is all or neutralOnly: submit 0,0
@@ -250,8 +239,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       quotaAmount = 0;
       walletAmount = 0;
     } else if (isUpvote) {
-      console.log('[VotingPopup] Calculating upvote amounts, effectiveVotingMode:', effectiveVotingMode);
-
       if (effectiveVotingMode === 'wallet-only') {
         if (!canUseWallet) {
           updateVotingFormData({ error: t('downvoteRequiresBalance') });
@@ -275,7 +262,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       }
     } else {
       // Downvotes use wallet only (quota cannot be used for downvotes)
-      console.log('[VotingPopup] Calculating downvote amounts');
       if (!canUseWallet) {
         updateVotingFormData({ error: t('downvoteRequiresBalance') });
         return;
@@ -303,18 +289,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       }
     }
 
-    console.log('[VotingPopup] Final amounts before API call:', {
-      quotaAmount,
-      walletAmount,
-      absoluteAmount,
-      isUpvote,
-      votingTargetType,
-      'quotaAmount type': typeof quotaAmount,
-      'walletAmount type': typeof walletAmount,
-      'quotaAmount value': quotaAmount,
-      'walletAmount value': walletAmount,
-    });
-
     // Close popup immediately to prevent flash of updated progress bars
     // The optimistic updates will happen in onMutate, but the popup will already be closed
     const targetId = activeVotingTarget;
@@ -338,13 +312,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           },
           communityId: targetCommunityId,
         };
-        console.log('[VotingPopup] Calling voteOnPublicationWithCommentMutation with:', JSON.stringify(mutationPayload, null, 2));
-        console.log('[VotingPopup] Raw values:', {
-          quotaAmount,
-          walletAmount,
-          'quotaAmount === 0': quotaAmount === 0,
-          'walletAmount === 0': walletAmount === 0,
-        });
         // Single vote with both quota and wallet amounts
         await voteOnPublicationWithCommentMutation.mutateAsync({
           publicationId: targetId,
@@ -360,13 +327,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       } else {
         // For votes, use the vote-on-vote endpoint
         // Include comment field for vote-comments (L2, L3, etc.)
-        console.log('[VotingPopup] Calling voteOnVoteMutation with:', {
-          voteId: targetId,
-          quotaAmount,
-          walletAmount,
-          comment: commentText || undefined,
-          direction: isUpvote ? 'up' : 'down',
-        });
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
           data: {
@@ -381,8 +341,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       }
 
       // Popup already closed, mutation successful
-      console.log('[VotingPopup] Vote submitted successfully');
-      
       // Show success toast
       addToast(t('voteSubmittedSuccess'), 'success');
     } catch (err: unknown) {
