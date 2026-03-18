@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Settings } from 'lucide-react';
 import { FutureVisionFeed } from '@/components/organisms/FutureVision/FutureVisionFeed';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLayout';
 import { useCommunities } from '@/hooks/api';
@@ -10,23 +11,35 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
+import { Button } from '@/components/ui/shadcn/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { TappalkaScreen } from '@/features/tappalka';
 import { routes } from '@/lib/constants/routes';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { trpc } from '@/lib/trpc/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 
 export default function FutureVisionsPageClient() {
   const t = useTranslations('common');
   const tCommunities = useTranslations('pages.communities');
   const router = useRouter();
   const [showTappalkaModal, setShowTappalkaModal] = useState(false);
+  const { user } = useAuth();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
   const { data: communitiesData } = useCommunities();
   const futureVisionCommunityId = useMemo(() => {
     const data = communitiesData?.data as Array<{ id: string; typeTag?: string }> | undefined;
     return data?.find((c) => c.typeTag === 'future-vision')?.id ?? null;
   }, [communitiesData?.data]);
+
+  const canManageFutureVision = useMemo(() => {
+    if (!futureVisionCommunityId || !user) return false;
+    if (user.globalRole === 'superadmin') return true;
+    const role = userRoles.find((r) => r.communityId === futureVisionCommunityId);
+    return role?.role === 'lead';
+  }, [futureVisionCommunityId, user, userRoles]);
 
   const ensureBaseCommunitiesMutation = trpc.users.ensureBaseCommunities.useMutation();
   useEffect(() => {
@@ -54,6 +67,17 @@ export default function FutureVisionsPageClient() {
             showScrollToTop={true}
             rightAction={
               <div className="flex items-center gap-2 flex-shrink-0">
+                {canManageFutureVision && futureVisionCommunityId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => router.push(routes.communitySettings(futureVisionCommunityId))}
+                    className="h-9 rounded-xl px-3 gap-2"
+                  >
+                    <Settings size={16} />
+                    {t('settings', { defaultValue: 'Settings' })}
+                  </Button>
+                )}
                 <QuotaDisplay
                   balance={balance}
                   quotaRemaining={hasQuota ? quotaRemaining : undefined}

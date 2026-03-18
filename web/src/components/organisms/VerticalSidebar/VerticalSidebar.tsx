@@ -41,7 +41,9 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     const userComms: typeof allCommunities = [];
 
     allCommunities.forEach(community => {
-      const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'future-vision' || community.typeTag === 'team-projects' || community.typeTag === 'support';
+      // Future Vision has its own dedicated entrypoint (/meriter/future-visions) and should not
+      // be shown as a regular community card in navigation.
+      const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'team-projects' || community.typeTag === 'support';
       if (isSpecial) {
         special.push(community);
       } else {
@@ -49,13 +51,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       }
     });
 
-    // Sort special communities: marathon-of-good, future-vision, team-projects, support
+    // Sort special communities: marathon-of-good, team-projects, support
     special.sort((a, b) => {
       const order: Record<string, number> = {
         'marathon-of-good': 1,
-        'future-vision': 2,
-        'team-projects': 3,
-        'support': 4,
+        'team-projects': 2,
+        'support': 3,
       };
       return (order[a.typeTag || ''] || 999) - (order[b.typeTag || ''] || 999);
     });

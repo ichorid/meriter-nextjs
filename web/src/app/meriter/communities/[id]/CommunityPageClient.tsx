@@ -279,6 +279,13 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
+    // Canonical entrypoint: Future Vision is accessed via /meriter/future-visions (not as a regular community page)
+    useEffect(() => {
+        if (!communityLoading && comms?.typeTag === 'future-vision') {
+            router.replace(routes.futureVisions);
+        }
+    }, [communityLoading, comms?.typeTag, router]);
+
     // Open tappalka modal when navigating with ?tappalka=1 (e.g. from "Earn merits" in invest dialog)
     const tappalkaParam = searchParams?.get('tappalka');
     useEffect(() => {
