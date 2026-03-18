@@ -80,6 +80,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const tShared = useTranslations("shared");
     const features = useFeaturesConfig();
     const enableCommentImageUploads = features.commentImageUploads;
+    const isFutureVision = community?.typeTag === 'future-vision';
 
     // Direction is determined by the sign of amount
     const isPositive = amount >= 0;
@@ -119,6 +120,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         if (isOwnPost) {
             return t("ownPostVotingMechanics");
         }
+        if (isFutureVision) {
+            return "Если вам нравится этот образ будущего, вы можете поддержать его меритами.";
+        }
         if (currencySource === 'quota-only') {
             return t("votingMechanicsQuotaOnly");
         }
@@ -126,7 +130,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return t("votingMechanicsWalletOnly");
         }
         return t("votingMechanics");
-    }, [isOwnPost, currencySource, t]);
+    }, [isOwnPost, isFutureVision, currencySource, t]);
+
+    const headerTitle = useMemo(() => {
+        if (commentMode === 'neutralOnly') return t("commentButton");
+        if (isFutureVision) return "Поддержать";
+        return title || t("voteTitle");
+    }, [commentMode, isFutureVision, t, title]);
     
     // Determine if quota bar should be shown
     const showQuotaBar = useMemo(() => {
@@ -513,7 +523,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Header */}
             <div className="flex flex-col gap-1">
                 <h2 className="text-xl font-bold text-base-content">
-                    {commentMode === 'neutralOnly' ? t("commentButton") : (title || t("voteTitle"))}
+                    {headerTitle}
                 </h2>
                 {/* Explanation - only for weighted communities */}
                 {!hideQuota && commentMode !== 'neutralOnly' && (
