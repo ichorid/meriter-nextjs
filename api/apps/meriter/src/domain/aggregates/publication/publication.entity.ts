@@ -320,7 +320,7 @@ export class Publication implements EditableEntity {
     return this.metrics.score;
   }
 
-  get getPostType(): 'basic' | 'poll' | 'project' {
+  get getPostType(): 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' {
     return this.postType;
   }
 

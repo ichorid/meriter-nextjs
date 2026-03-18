@@ -155,7 +155,7 @@ export class TappalkaService {
       `Found ${posts.length} eligible posts for tappalka in community ${communityId}`,
     );
 
-    return posts as PublicationDocument[];
+    return posts as unknown as PublicationDocument[];
   }
 
   /**
@@ -326,8 +326,8 @@ export class TappalkaService {
     }
 
     // 1. Deduct showCost from both posts
-    await this.deductShowCost(winner as PublicationDocument, showCost);
-    await this.deductShowCost(loser as PublicationDocument, showCost);
+    await this.deductShowCost(winner as unknown as PublicationDocument, showCost);
+    await this.deductShowCost(loser as unknown as PublicationDocument, showCost);
 
     // 2. Award winReward to winner (EMISSION, not transfer - add to rating). D-8: track lastEarnedAt.
     const now = new Date();
@@ -580,7 +580,7 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject();
+      progress = newProgress.toObject() as typeof progress;
     } else {
       // Increment comparison count
       const currentCount = progress.comparisonCount || 0;
@@ -733,7 +733,7 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject();
+      progress = newProgress.toObject() as typeof progress;
     }
 
     // Get user's wallet balance (global for priority communities)
@@ -742,13 +742,14 @@ export class TappalkaService {
       'tappalka_reward',
     );
     const wallet = await this.walletService.getWallet(userId, walletCommunityId);
-    const meritBalance = wallet?.balance || 0;
+    const meritBalance = wallet?.getBalance() ?? 0;
 
+    const progressSafe = progress!;
     return {
-      currentComparisons: progress.comparisonCount || 0,
+      currentComparisons: progressSafe.comparisonCount || 0,
       comparisonsRequired: tappalkaSettings.comparisonsRequired,
       meritBalance,
-      onboardingSeen: progress.onboardingSeen || false,
+      onboardingSeen: progressSafe.onboardingSeen || false,
       onboardingText: tappalkaSettings.onboardingText,
     };
   }

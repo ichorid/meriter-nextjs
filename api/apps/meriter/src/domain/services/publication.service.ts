@@ -386,10 +386,10 @@ export class PublicationService {
     futureVisionCommunityId: string,
     params: { sort: 'score' | 'createdAt' },
   ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number }; createdAt: Date }[]> {
-    const sort =
+    const sort: { createdAt?: number; 'metrics.score'?: number } =
       params.sort === 'createdAt'
-        ? ({ createdAt: -1 } as const)
-        : ({ 'metrics.score': -1 } as const);
+        ? { createdAt: -1 }
+        : { 'metrics.score': -1 };
 
     const docs = await this.publicationModel
       .find({
@@ -1006,13 +1006,6 @@ export class PublicationService {
         },
       },
     );
-  }
-
-  /**
-   * Get publication document (for accessing raw fields)
-   */
-  async getPublicationDocument(publicationId: string): Promise<any> {
-    return await this.publicationModel.findOne({ id: publicationId }).lean();
   }
 
   /**

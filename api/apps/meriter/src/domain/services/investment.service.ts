@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, ClientSession } from 'mongoose';
+import { Model, ClientSession, type PipelineStage } from 'mongoose';
 import {
   PublicationSchemaClass,
   PublicationDocument,
@@ -453,7 +453,7 @@ export class InvestmentService {
           ? 'myInv.amount'
           : 'myInv.totalEarnings';
 
-    const pipeline: Record<string, unknown>[] = [
+    const pipeline: PipelineStage[] = [
       {
         $match: {
           'investments.investorId': userId,

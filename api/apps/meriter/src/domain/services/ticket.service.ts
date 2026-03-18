@@ -513,7 +513,7 @@ export class TicketService {
         deleted: { $ne: true },
       })
       .exec();
-    return list as PublicationDocument[];
+    return list as unknown as PublicationDocument[];
   }
 
   /**
@@ -580,7 +580,7 @@ export class TicketService {
       .lean()
       .exec();
 
-    return list as PublicationDocument[];
+    return list as unknown as PublicationDocument[];
   }
 
   /**

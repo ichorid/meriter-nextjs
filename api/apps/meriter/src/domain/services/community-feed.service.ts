@@ -237,6 +237,9 @@ export class CommunityFeedService {
           investorSharePercent: snapshot.investorSharePercent,
           investmentPool: snapshot.investmentPool ?? 0,
           investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
+          investments: snapshot.investments ?? [],
+          stopLoss: snapshot.stopLoss ?? 0,
+          noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
           sourceEntityId: snapshot.sourceEntityId,
           sourceEntityType: snapshot.sourceEntityType,
         };

@@ -30,13 +30,12 @@ export class PlatformSettingsService {
       .lean()
       .exec();
     if (!doc) {
-      doc = await this.platformSettingsModel
-        .create({
-          id: PLATFORM_SETTINGS_ID,
-          welcomeMeritsGlobal: 0,
-          availableFutureVisionTags: [],
-        })
-        .then((d) => d.toObject());
+      const created = await this.platformSettingsModel.create({
+        id: PLATFORM_SETTINGS_ID,
+        welcomeMeritsGlobal: 0,
+        availableFutureVisionTags: [],
+      });
+      doc = created.toObject() as typeof doc;
     }
     const result = doc as PlatformSettings;
     if (!result.availableFutureVisionTags) {

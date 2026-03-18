@@ -235,6 +235,15 @@ export const favoritesRouter = router({
           deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),
           updatedAt: snapshot.updatedAt.toISOString(),
+          investingEnabled: snapshot.investingEnabled ?? false,
+          investorSharePercent: snapshot.investorSharePercent,
+          investmentPool: snapshot.investmentPool ?? 0,
+          investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
+          investments: snapshot.investments ?? [],
+          stopLoss: snapshot.stopLoss ?? 0,
+          noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
+          sourceEntityId: snapshot.sourceEntityId,
+          sourceEntityType: snapshot.sourceEntityType,
         };
 
         publicationMap.set(item.id, item);

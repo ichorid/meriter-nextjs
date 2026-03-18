@@ -416,12 +416,9 @@ export class NotificationService {
         }
 
         let url = `/meriter/communities/${communityId}?post=${publicationId}`;
-        
-        // If it's a vote on a comment, add highlight
-        if (type === 'vote' && targetType === 'vote' && targetId) {
+        if (targetType === 'vote' && targetId) {
           url += `&highlight=${targetId}`;
         }
-
         return url;
       }
 
