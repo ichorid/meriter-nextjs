@@ -75,12 +75,11 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const headerImageUrl = obCover || community.coverImageUrl;
   const hasCoverImage = !!headerImageUrl;
   const obCoverUsedInHeader = !!obCover;
-  const hasFutureVision =
+  const showFutureVisionSubsection =
+    (!!obCover && !obCoverUsedInHeader) ||
     !!community.futureVisionText?.trim() ||
-    (community.futureVisionTags && community.futureVisionTags.length > 0) ||
-    !!obCover;
+    (community.futureVisionTags && community.futureVisionTags.length > 0);
   const [obExpanded, setObExpanded] = useState(false);
-  const tPages = useTranslations('pages');
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
@@ -256,7 +255,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           </div>
 
           {/* Future vision subsection (inside same block) */}
-          {hasFutureVision && (
+          {showFutureVisionSubsection && (
             <div className="mt-4 pt-4 border-t border-base-200 space-y-2">
               {obCover && !obCoverUsedInHeader && (
                 <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300">
