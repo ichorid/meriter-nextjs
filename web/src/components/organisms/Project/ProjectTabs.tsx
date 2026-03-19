@@ -46,12 +46,13 @@ export function ProjectTabs({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2 border-b">
+      <div className="flex flex-wrap items-center gap-2 border-b border-base-300">
         <button
           type="button"
           onClick={() => setActiveTab('tickets')}
+          title={t('tabs.tickets')}
           className={cn(
-            'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+            'border-b-2 px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0',
             activeTab === 'tickets'
               ? 'border-primary text-primary'
               : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -62,8 +63,9 @@ export function ProjectTabs({
         <button
           type="button"
           onClick={() => setActiveTab('discussions')}
+          title={t('tabs.discussions')}
           className={cn(
-            'border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+            'border-b-2 px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap shrink-0',
             activeTab === 'discussions'
               ? 'border-primary text-primary'
               : 'border-transparent text-muted-foreground hover:text-foreground',

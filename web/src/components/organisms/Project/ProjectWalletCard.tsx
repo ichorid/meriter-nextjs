@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useProjectWallet } from '@/hooks/api/useProjects';
 import { TopUpWalletDialog } from './TopUpWalletDialog';
-import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Wallet } from 'lucide-react';
 
@@ -21,24 +20,20 @@ export function ProjectWalletCard({ projectId }: ProjectWalletCardProps) {
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            <span className="font-medium">{t('walletBalance', { defaultValue: 'Wallet' })}</span>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">...</p>
-          ) : (
-            <p className="text-2xl font-semibold">{balance} merits</p>
-          )}
-          <Button size="sm" variant="outline" onClick={() => setTopUpOpen(true)}>
-            {t('topUp', { defaultValue: 'Top up' })}
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-5 w-5 text-base-content/70" aria-hidden />
+          <span className="font-medium">{t('walletBalance', { defaultValue: 'Wallet balance' })}</span>
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-base-content/60">...</p>
+        ) : (
+          <p className="text-2xl font-semibold tabular-nums">{balance} merits</p>
+        )}
+        <Button size="sm" variant="outline" onClick={() => setTopUpOpen(true)}>
+          {t('topUp', { defaultValue: 'Top up' })}
+        </Button>
+      </div>
       <TopUpWalletDialog projectId={projectId} open={topUpOpen} onOpenChange={setTopUpOpen} />
     </>
   );
