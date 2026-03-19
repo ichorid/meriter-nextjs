@@ -67,8 +67,7 @@ export default function FutureVisionsPageClient() {
         futureVisionCommunityId ? (
           <SimpleStickyHeader
             title={t('futureVisions', { defaultValue: 'Future Visions' })}
-            showBack={true}
-            onBack={() => router.push(routes.communities)}
+            showBack={false}
             asStickyHeader={true}
             showScrollToTop={true}
             rightAction={

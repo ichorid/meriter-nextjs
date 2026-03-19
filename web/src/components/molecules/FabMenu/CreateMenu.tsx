@@ -138,9 +138,9 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         })
         : trigger;
 
-    // Always render, but hide with CSS when needed
+    // Always render, but hide with CSS when needed. z-[60] so dropdown appears above left sidebar (z-40) on desktop.
     return (
-        <div className={`relative ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
+        <div className={`relative z-[60] ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
             {triggerWithHandler || defaultTrigger}
 
             {/* Menu Dropdown */}

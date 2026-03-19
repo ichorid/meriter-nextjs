@@ -26,7 +26,11 @@ export function CooperativeSharesDisplay({
           {t('investorShare')}: {investorSharePercent}%
         </span>
       )}
-      {other > 0 && <span>Other: {other}%</span>}
+      {other > 0 && (
+        <span>
+          {t('otherShare')}: {other}%
+        </span>
+      )}
       {founderSharePercent === 0 && investorSharePercent === 0 && (
         <span>—</span>
       )}
