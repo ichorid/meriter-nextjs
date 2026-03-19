@@ -844,7 +844,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("giveVote")}
+                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("support")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
