@@ -30,6 +30,8 @@ export interface CreateProjectDto {
   projectDuration?: 'finite' | 'ongoing';
   founderSharePercent?: number;
   investorSharePercent?: number;
+  /** When true, project accepts investments; investor share is then used. Cannot be changed after create. */
+  investingEnabled?: boolean;
   /** When set, project is linked to this community. Required unless newCommunity is set. */
   parentCommunityId?: string;
   /** When set, create a new community first and use it as parent. */
@@ -48,6 +50,8 @@ export interface ListProjectsFilters {
   /** When set, only projects where this user is a member (has role) are returned. */
   memberId?: string;
   search?: string;
+  /** 'createdAt' = recent first, 'score' = by rating (when available) */
+  sort?: 'createdAt' | 'score';
   page?: number;
   pageSize?: number;
 }
@@ -114,7 +118,10 @@ export class ProjectService {
         name: dto.name,
         description: dto.description,
         typeTag: 'project',
-        settings: { postCost: 0 },
+        settings: {
+          postCost: 0,
+          investingEnabled: dto.investingEnabled ?? false,
+        },
         isProject: true,
         founderUserId: userId,
         parentCommunityId,
@@ -230,8 +237,13 @@ export class ProjectService {
       ];
     }
 
+    const sortOrder: Record<string, 1 | -1> =
+      filters.sort === 'score'
+        ? ({ createdAt: -1 } as Record<string, 1 | -1>)
+        : { createdAt: -1 };
+
     const [data, total] = await Promise.all([
-      this.communityService.listCommunitiesByQuery(query, pageSize, skip),
+      this.communityService.listCommunitiesByQuery(query, pageSize, skip, sortOrder),
       this.communityService.countCommunitiesByQuery(query),
     ]);
 

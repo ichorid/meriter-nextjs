@@ -30,6 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/shadcn/select';
+import { CollapsibleSection } from '@/components/ui/taxonomy';
+import { AlertTriangle } from 'lucide-react';
 
 const NEW_COMMUNITY_VALUE = '__new__';
 const PRIORITY_TYPE_TAGS = ['future-vision', 'marathon-of-good', 'team-projects', 'support'] as const;
@@ -65,6 +67,8 @@ export function CreateProjectForm() {
   const [investorSharePercent, setInvestorSharePercent] = useState<number>(0);
   const [founderShareInput, setFounderShareInput] = useState('0');
   const [investorShareInput, setInvestorShareInput] = useState('0');
+  const [investingEnabled, setInvestingEnabled] = useState(false);
+  const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
   const [parentChoice, setParentChoice] = useState<string>('');
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
@@ -91,7 +95,8 @@ export function CreateProjectForm() {
       description: description.trim() || undefined,
       projectDuration,
       founderSharePercent: founderSharePercent || 0,
-      investorSharePercent: investorSharePercent || 0,
+      investorSharePercent: investingEnabled ? (investorSharePercent || 0) : 0,
+      investingEnabled,
       parentCommunityId: isNewCommunity ? undefined : parentChoice,
       newCommunity: isNewCommunity
         ? {
@@ -222,20 +227,19 @@ export function CreateProjectForm() {
           </div>
         </>
       )}
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="founderShare">{t('founderShare')} %</Label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <Slider
-                minValue={0}
-                maxValue={100}
-                value={founderSharePercent}
-                onChange={(v) => {
-                  setFounderSharePercent(v);
-                  setFounderShareInput(String(v));
-                }}
-              >
+      <div className="space-y-2">
+        <Label htmlFor="founderShare">{t('founderShare')} %</Label>
+        <div className="flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <Slider
+              minValue={0}
+              maxValue={100}
+              value={founderSharePercent}
+              onChange={(v) => {
+                setFounderSharePercent(v);
+                setFounderShareInput(String(v));
+              }}
+            >
               <SliderTrack
                 style={{
                   height: 8,
@@ -264,86 +268,115 @@ export function CreateProjectForm() {
                   boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                 }}
               />
-              </Slider>
-            </div>
-            <Input
-              id="founderShare"
-              type="text"
-              inputMode="numeric"
-              value={founderShareInput}
-              onChange={(e) => setFounderShareInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              onBlur={() => {
-                const n = parseInt(founderShareInput, 10);
-                const committed = Number.isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
-                setFounderSharePercent(committed);
-                setFounderShareInput(String(committed));
-              }}
-              className="w-14 h-10 text-center text-base tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              aria-label={t('founderShare')}
-            />
+            </Slider>
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="investorShare">{t('investorShare')} %</Label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <Slider
-                minValue={0}
-                maxValue={100}
-                value={investorSharePercent}
-                onChange={(v) => {
-                  setInvestorSharePercent(v);
-                  setInvestorShareInput(String(v));
-                }}
-              >
-              <SliderTrack
-                style={{
-                  height: 8,
-                  borderRadius: 8,
-                  backgroundColor: 'oklch(var(--b3) / 0.8)',
-                  borderWidth: 1,
-                  borderColor: 'oklch(var(--bc) / 0.3)',
-                }}
-              >
-                <SliderFilledTrack
-                  style={{
-                    height: 8,
-                    borderRadius: 8,
-                    backgroundColor: 'oklch(var(--p) / 0.9)',
-                  }}
-                />
-              </SliderTrack>
-              <SliderThumb
-                style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
-                  backgroundColor: 'oklch(var(--bc) / 1)',
-                  borderWidth: 2,
-                  borderColor: 'oklch(var(--b1) / 1)',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                }}
-              />
-              </Slider>
-            </div>
-            <Input
-              id="investorShare"
-              type="text"
-              inputMode="numeric"
-              value={investorShareInput}
-              onChange={(e) => setInvestorShareInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
-              onBlur={() => {
-                const n = parseInt(investorShareInput, 10);
-                const committed = Number.isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
-                setInvestorSharePercent(committed);
-                setInvestorShareInput(String(committed));
-              }}
-              className="w-14 h-10 text-center text-base tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              aria-label={t('investorShare')}
-            />
-          </div>
+          <Input
+            id="founderShare"
+            type="text"
+            inputMode="numeric"
+            value={founderShareInput}
+            onChange={(e) => setFounderShareInput(e.target.value.replace(/\D/g, '').slice(0, 3))}
+            onBlur={() => {
+              const n = parseInt(founderShareInput, 10);
+              const committed = Number.isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
+              setFounderSharePercent(committed);
+              setFounderShareInput(String(committed));
+            }}
+            className="w-14 h-10 text-center text-base tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+            aria-label={t('founderShare')}
+          />
         </div>
       </div>
+      <CollapsibleSection
+        title={t('advancedTitle')}
+        open={openAdvancedSettings}
+        setOpen={setOpenAdvancedSettings}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Checkbox
+              id="investingEnabled"
+              checked={investingEnabled}
+              onCheckedChange={(checked) => setInvestingEnabled(checked === true)}
+              disabled={createProject.isPending}
+            />
+            <Label htmlFor="investingEnabled" className="text-sm font-medium cursor-pointer">
+              {t('investingEnable')}
+            </Label>
+            <span
+              className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-500"
+              title={t('immutableHint')}
+            >
+              <AlertTriangle className="h-4 w-4" aria-hidden />
+              <span className="text-xs">{t('immutableHint')}</span>
+            </span>
+          </div>
+          {investingEnabled && (
+            <div className="space-y-2 pl-6">
+              <Label htmlFor="investorShare">{t('investorShare')} %</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <Slider
+                    minValue={0}
+                    maxValue={100}
+                    value={investorSharePercent}
+                    onChange={(v) => {
+                      setInvestorSharePercent(v);
+                      setInvestorShareInput(String(v));
+                    }}
+                  >
+                    <SliderTrack
+                      style={{
+                        height: 8,
+                        borderRadius: 8,
+                        backgroundColor: 'oklch(var(--b3) / 0.8)',
+                        borderWidth: 1,
+                        borderColor: 'oklch(var(--bc) / 0.3)',
+                      }}
+                    >
+                      <SliderFilledTrack
+                        style={{
+                          height: 8,
+                          borderRadius: 8,
+                          backgroundColor: 'oklch(var(--p) / 0.9)',
+                        }}
+                      />
+                    </SliderTrack>
+                    <SliderThumb
+                      style={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        backgroundColor: 'oklch(var(--bc) / 1)',
+                        borderWidth: 2,
+                        borderColor: 'oklch(var(--b1) / 1)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      }}
+                    />
+                  </Slider>
+                </div>
+                <Input
+                  id="investorShare"
+                  type="text"
+                  inputMode="numeric"
+                  value={investorShareInput}
+                  onChange={(e) =>
+                    setInvestorShareInput(e.target.value.replace(/\D/g, '').slice(0, 3))
+                  }
+                  onBlur={() => {
+                    const n = parseInt(investorShareInput, 10);
+                    const committed = Number.isNaN(n) ? 0 : Math.min(100, Math.max(0, n));
+                    setInvestorSharePercent(committed);
+                    setInvestorShareInput(String(committed));
+                  }}
+                  className="w-14 h-10 text-center text-base tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  aria-label={t('investorShare')}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
       <div>
         <Label>{t('duration')}</Label>
         <Select

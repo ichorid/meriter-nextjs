@@ -13,6 +13,7 @@ const createProjectInputSchema = z.object({
   projectDuration: ProjectDurationSchema.optional(),
   founderSharePercent: z.number().int().min(0).max(100).optional(),
   investorSharePercent: z.number().int().min(0).max(100).optional(),
+  investingEnabled: z.boolean().optional(),
   parentCommunityId: z.string().optional(),
   newCommunity: z
     .object({
@@ -38,6 +39,7 @@ export const projectRouter = router({
         projectDuration: input.projectDuration,
         founderSharePercent: input.founderSharePercent,
         investorSharePercent: input.investorSharePercent,
+        investingEnabled: input.investingEnabled,
         parentCommunityId: input.parentCommunityId,
         newCommunity: input.newCommunity,
       });
@@ -86,6 +88,7 @@ export const projectRouter = router({
         projectStatus: ProjectStatusSchema.optional(),
         memberId: z.string().optional(),
         search: z.string().optional(),
+        sort: z.enum(['createdAt', 'score']).optional(),
         page: z.number().int().min(1).optional(),
         pageSize: z.number().int().min(1).max(100).optional(),
       }),
@@ -96,6 +99,7 @@ export const projectRouter = router({
         projectStatus: input.projectStatus,
         memberId: input.memberId,
         search: input.search,
+        sort: input.sort,
         page: input.page,
         pageSize: input.pageSize,
       });

@@ -59,6 +59,9 @@ export interface CreateCommunityDto {
     dailyEmission?: number;
     postCost?: number;
     allowWithdraw?: boolean;
+    investingEnabled?: boolean;
+    investorShareMin?: number;
+    investorShareMax?: number;
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
@@ -551,6 +554,15 @@ export class CommunityService {
     if (dto.settings?.allowWithdraw !== undefined) {
       settings.allowWithdraw = dto.settings.allowWithdraw;
     }
+    if (dto.settings?.investingEnabled !== undefined) {
+      settings.investingEnabled = dto.settings.investingEnabled;
+    }
+    if (dto.settings?.investorShareMin !== undefined) {
+      settings.investorShareMin = dto.settings.investorShareMin;
+    }
+    if (dto.settings?.investorShareMax !== undefined) {
+      settings.investorShareMax = dto.settings.investorShareMax;
+    }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,
@@ -1010,13 +1022,15 @@ export class CommunityService {
     query: Record<string, unknown>,
     limit: number,
     skip: number,
+    sort?: Record<string, 1 | -1>,
   ): Promise<Community[]> {
     const q = { ...query, typeTag: { $ne: 'global' } };
+    const order = sort ?? { createdAt: -1 };
     return this.communityModel
       .find(q)
       .limit(limit)
       .skip(skip)
-      .sort({ createdAt: -1 })
+      .sort(order)
       .lean() as unknown as Community[];
   }
 
