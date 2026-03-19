@@ -50,13 +50,30 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     [userRoles]
   );
 
+  const communitiesOnly = useMemo(
+    () => userCommunities.filter((c) => !c.isProject),
+    [userCommunities]
+  );
+  const projectsOnly = useMemo(
+    () => userCommunities.filter((c) => c.isProject === true),
+    [userCommunities]
+  );
+
   const administeredCommunities = useMemo(
-    () => userCommunities.filter((c) => leadCommunityIds.has(c.id)),
-    [userCommunities, leadCommunityIds]
+    () => communitiesOnly.filter((c) => leadCommunityIds.has(c.id)),
+    [communitiesOnly, leadCommunityIds]
   );
   const memberCommunities = useMemo(
-    () => userCommunities.filter((c) => !leadCommunityIds.has(c.id)),
-    [userCommunities, leadCommunityIds]
+    () => communitiesOnly.filter((c) => !leadCommunityIds.has(c.id)),
+    [communitiesOnly, leadCommunityIds]
+  );
+  const administeredProjects = useMemo(
+    () => projectsOnly.filter((c) => leadCommunityIds.has(c.id)),
+    [projectsOnly, leadCommunityIds]
+  );
+  const memberProjects = useMemo(
+    () => projectsOnly.filter((c) => !leadCommunityIds.has(c.id)),
+    [projectsOnly, leadCommunityIds]
   );
 
   // Don't show sidebar on login page
@@ -394,6 +411,66 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   })
                 ) : (
                   <p className="text-xs text-base-content/50 px-2">{tCommunities('noMemberCommunities')}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('administeredProjects')}
+                </p>
+                {communitiesLoading ? (
+                  <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
+                ) : administeredProjects.length > 0 ? (
+                  administeredProjects.map((community) => {
+                    const wallet = walletsMap.get(community.id);
+                    const quota = quotasMap.get(community.id);
+                    return (
+                      <CommunityCard
+                        key={community.id}
+                        communityId={community.id}
+                        pathname={pathname}
+                        isExpanded={true}
+                        hideDescription={true}
+                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        quota={
+                          quota && typeof quota.remainingToday === 'number'
+                            ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                            : undefined
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-base-content/50 px-2">{tCommunities('noAdministeredProjects')}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('memberProjects')}
+                </p>
+                {communitiesLoading ? (
+                  <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
+                ) : memberProjects.length > 0 ? (
+                  memberProjects.map((community) => {
+                    const wallet = walletsMap.get(community.id);
+                    const quota = quotasMap.get(community.id);
+                    return (
+                      <CommunityCard
+                        key={community.id}
+                        communityId={community.id}
+                        pathname={pathname}
+                        isExpanded={true}
+                        hideDescription={true}
+                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        quota={
+                          quota && typeof quota.remainingToday === 'number'
+                            ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                            : undefined
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-base-content/50 px-2">{tCommunities('noMemberProjects')}</p>
                 )}
               </div>
             </div>

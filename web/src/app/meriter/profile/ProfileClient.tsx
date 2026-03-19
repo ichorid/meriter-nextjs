@@ -52,13 +52,30 @@ function ProfilePageComponent() {
     [roles]
   );
 
+  const communitiesOnly = useMemo(
+    () => userCommunities.filter((c) => !c.isProject),
+    [userCommunities]
+  );
+  const projectsOnly = useMemo(
+    () => userCommunities.filter((c) => c.isProject === true),
+    [userCommunities]
+  );
+
   const administeredCommunities = useMemo(
-    () => userCommunities.filter((c) => leadCommunityIds.has(c.id)),
-    [userCommunities, leadCommunityIds]
+    () => communitiesOnly.filter((c) => leadCommunityIds.has(c.id)),
+    [communitiesOnly, leadCommunityIds]
   );
   const memberCommunities = useMemo(
-    () => userCommunities.filter((c) => !leadCommunityIds.has(c.id)),
-    [userCommunities, leadCommunityIds]
+    () => communitiesOnly.filter((c) => !leadCommunityIds.has(c.id)),
+    [communitiesOnly, leadCommunityIds]
+  );
+  const administeredProjects = useMemo(
+    () => projectsOnly.filter((c) => leadCommunityIds.has(c.id)),
+    [projectsOnly, leadCommunityIds]
+  );
+  const memberProjects = useMemo(
+    () => projectsOnly.filter((c) => !leadCommunityIds.has(c.id)),
+    [projectsOnly, leadCommunityIds]
   );
 
   // Get unique community IDs from user roles (for MeritsAndQuotaSection)
@@ -271,6 +288,70 @@ function ProfilePageComponent() {
               </div>
             ) : (
               <p className="text-sm text-base-content/50 px-4">{tCommunities('noMemberCommunities')}</p>
+            )}
+
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('administeredProjects')}
+            </p>
+            {communitiesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+              </div>
+            ) : administeredProjects.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {administeredProjects.map((community) => {
+                  const wallet = walletsMap.get(community.id);
+                  const quota = quotasMap.get(community.id);
+                  return (
+                    <CommunityCard
+                      key={community.id}
+                      communityId={community.id}
+                      pathname={pathname}
+                      isExpanded={true}
+                      wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                      quota={
+                        quota && typeof quota.remainingToday === 'number'
+                          ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">{tCommunities('noAdministeredProjects')}</p>
+            )}
+
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('memberProjects')}
+            </p>
+            {communitiesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+              </div>
+            ) : memberProjects.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {memberProjects.map((community) => {
+                  const wallet = walletsMap.get(community.id);
+                  const quota = quotasMap.get(community.id);
+                  return (
+                    <CommunityCard
+                      key={community.id}
+                      communityId={community.id}
+                      pathname={pathname}
+                      isExpanded={true}
+                      wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                      quota={
+                        quota && typeof quota.remainingToday === 'number'
+                          ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">{tCommunities('noMemberProjects')}</p>
             )}
           </div>
         </div>

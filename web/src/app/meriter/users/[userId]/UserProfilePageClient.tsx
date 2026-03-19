@@ -56,7 +56,12 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     return Array.from(
       new Set(
         userRoles
-          .filter((r) => r.role === 'lead' && !isPriorityTypeTag(r.communityTypeTag))
+          .filter(
+            (r) =>
+              r.role === 'lead' &&
+              !isPriorityTypeTag(r.communityTypeTag) &&
+              r.communityTypeTag !== 'project'
+          )
           .map((r) => r.communityId)
           .filter(Boolean)
       )
@@ -67,7 +72,34 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     return Array.from(
       new Set(
         userRoles
-          .filter((r) => r.role !== 'lead' && !isPriorityTypeTag(r.communityTypeTag))
+          .filter(
+            (r) =>
+              r.role !== 'lead' &&
+              !isPriorityTypeTag(r.communityTypeTag) &&
+              r.communityTypeTag !== 'project'
+          )
+          .map((r) => r.communityId)
+          .filter(Boolean)
+      )
+    ) as string[];
+  }, [userRoles]);
+
+  const administeredProjectIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        userRoles
+          .filter((r) => r.role === 'lead' && r.communityTypeTag === 'project')
+          .map((r) => r.communityId)
+          .filter(Boolean)
+      )
+    ) as string[];
+  }, [userRoles]);
+
+  const memberProjectIds = useMemo(() => {
+    return Array.from(
+      new Set(
+        userRoles
+          .filter((r) => r.role !== 'lead' && r.communityTypeTag === 'project')
           .map((r) => r.communityId)
           .filter(Boolean)
       )
@@ -195,6 +227,54 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
             ) : (
               <p className="text-sm text-base-content/50 px-4">
                 {tCommunities('noMemberCommunitiesOther', { name: displayName })}
+              </p>
+            )}
+
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('administeredProjects')}
+            </p>
+            {rolesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+              </div>
+            ) : administeredProjectIds.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {administeredProjectIds.map((communityId) => (
+                  <CommunityCard
+                    key={communityId}
+                    communityId={communityId}
+                    pathname={pathname}
+                    isExpanded={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">
+                {tCommunities('noAdministeredProjectsOther', { name: displayName })}
+              </p>
+            )}
+
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('memberProjects')}
+            </p>
+            {rolesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+              </div>
+            ) : memberProjectIds.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {memberProjectIds.map((communityId) => (
+                  <CommunityCard
+                    key={communityId}
+                    communityId={communityId}
+                    pathname={pathname}
+                    isExpanded={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">
+                {tCommunities('noMemberProjectsOther', { name: displayName })}
               </p>
             )}
           </div>
