@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
+import { useUserRoles } from '@/hooks/api/useProfile';
+import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 
@@ -27,8 +29,35 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { data: unreadFavoritesData } = useUnreadFavoritesCount();
   const unreadFavoritesCount = unreadFavoritesData?.count ?? 0;
   const t = useTranslations('common');
-  // Get user's communities (for Marathon/Support nav items)
-  const { communities: allCommunities } = useUserCommunities();
+  const tCommunities = useTranslations('communities');
+  const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+  const userCommunities = useMemo(
+    () =>
+      allCommunities.filter(
+        (c) =>
+          c.typeTag !== 'future-vision' &&
+          c.typeTag !== 'marathon-of-good' &&
+          c.typeTag !== 'team-projects' &&
+          c.typeTag !== 'support'
+      ),
+    [allCommunities]
+  );
+
+  const leadCommunityIds = useMemo(
+    () => new Set(userRoles.filter((r) => r.role === 'lead').map((r) => r.communityId)),
+    [userRoles]
+  );
+
+  const administeredCommunities = useMemo(
+    () => userCommunities.filter((c) => leadCommunityIds.has(c.id)),
+    [userCommunities, leadCommunityIds]
+  );
+  const memberCommunities = useMemo(
+    () => userCommunities.filter((c) => !leadCommunityIds.has(c.id)),
+    [userCommunities, leadCommunityIds]
+  );
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -297,6 +326,79 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             </button>
           </Link>
         </div>
+      )}
+
+      {/* Desktop only: scrollable communities (Administrator / Member, same as profile) */}
+      {isAuthenticated && isExpanded && (
+        <>
+          <div className={`${paddingClass} mb-2`}>
+            <div className="border-t border-base-300" />
+          </div>
+          <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
+            <div className="flex flex-col gap-3 min-w-0">
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('administeredCommunities')}
+                </p>
+                {communitiesLoading ? (
+                  <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
+                ) : administeredCommunities.length > 0 ? (
+                  administeredCommunities.map((community) => {
+                    const wallet = walletsMap.get(community.id);
+                    const quota = quotasMap.get(community.id);
+                    return (
+                      <CommunityCard
+                        key={community.id}
+                        communityId={community.id}
+                        pathname={pathname}
+                        isExpanded={true}
+                        hideDescription={true}
+                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        quota={
+                          quota && typeof quota.remainingToday === 'number'
+                            ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                            : undefined
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-base-content/50 px-2">{tCommunities('noAdministeredCommunities')}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1 min-w-0">
+                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                  {tCommunities('communitiesIMemberOf')}
+                </p>
+                {communitiesLoading ? (
+                  <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
+                ) : memberCommunities.length > 0 ? (
+                  memberCommunities.map((community) => {
+                    const wallet = walletsMap.get(community.id);
+                    const quota = quotasMap.get(community.id);
+                    return (
+                      <CommunityCard
+                        key={community.id}
+                        communityId={community.id}
+                        pathname={pathname}
+                        isExpanded={true}
+                        hideDescription={true}
+                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        quota={
+                          quota && typeof quota.remainingToday === 'number'
+                            ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                            : undefined
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-base-content/50 px-2">{tCommunities('noMemberCommunities')}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
     </aside>
