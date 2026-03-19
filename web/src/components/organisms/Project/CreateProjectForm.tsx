@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCreateProject } from '@/hooks/api/useProjects';
+import { useUserCommunities } from '@/hooks/useUserCommunities';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { useFutureVisionTags } from '@/hooks/api/useFutureVisions';
-import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -15,18 +17,40 @@ import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisi
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/shadcn/select';
 
 const NEW_COMMUNITY_VALUE = '__new__';
+const PRIORITY_TYPE_TAGS = ['future-vision', 'marathon-of-good', 'team-projects', 'support'] as const;
+
+const submitButtonClass =
+  'inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-4 gap-2';
 
 export function CreateProjectForm() {
   const t = useTranslations('projects');
+  const tCommunities = useTranslations('communities');
+  const { user } = useAuth();
   const createProject = useCreateProject();
   const { data: platformSettings } = useFutureVisionTags();
   const availableTags = platformSettings?.availableFutureVisionTags ?? [];
+
+  const { communities: allCommunities } = useUserCommunities();
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+  const { administeredCommunities, memberCommunities } = useMemo(() => {
+    const privateOnly = allCommunities.filter(
+      (c) => !PRIORITY_TYPE_TAGS.includes(c.typeTag as (typeof PRIORITY_TYPE_TAGS)[number])
+    );
+    const leadIds = new Set(userRoles.filter((r) => r.role === 'lead').map((r) => r.communityId));
+    const administered = privateOnly.filter((c) => leadIds.has(c.id));
+    const member = privateOnly.filter((c) => !leadIds.has(c.id));
+    return { administeredCommunities: administered, memberCommunities: member };
+  }, [allCommunities, userRoles]);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -38,11 +62,6 @@ export function CreateProjectForm() {
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
   const [newCommunitySelectedTags, setNewCommunitySelectedTags] = useState<string[]>([]);
   const [newCommunityCover, setNewCommunityCover] = useState('');
-
-  const { data: communitiesData } = trpc.communities.getAll.useQuery({});
-  const communities = (communitiesData?.data ?? []).filter(
-    (c: { typeTag?: string }) => c.typeTag !== 'project' && c.typeTag !== 'global',
-  );
 
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
 
@@ -81,7 +100,7 @@ export function CreateProjectForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 max-w-xl">
       <div>
-        <Label htmlFor="name">{t('createProject')} — {t('name')}</Label>
+        <Label htmlFor="name">{t('name')} *</Label>
         <Input
           id="name"
           value={name}
@@ -101,25 +120,46 @@ export function CreateProjectForm() {
         />
       </div>
       <div>
-        <Label>{t('parentCommunity')}</Label>
+        <Label>{t('parentCommunity')} *</Label>
         <Select value={parentChoice} onValueChange={setParentChoice} required>
           <SelectTrigger>
             <SelectValue placeholder={t('selectCommunityPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            {communities.map((c: { id: string; name: string }) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-            <SelectItem value={NEW_COMMUNITY_VALUE}>{t('createNewCommunity')}</SelectItem>
+            {administeredCommunities.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
+                {administeredCommunities.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+            {memberCommunities.length > 0 && (
+              <SelectGroup>
+                <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
+                {memberCommunities.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
+            <SelectSeparator className="my-2" />
+            <SelectItem
+              value={NEW_COMMUNITY_VALUE}
+              className="font-semibold border-t border-base-200 pt-2 mt-1 bg-base-200/50 dark:bg-base-300/50"
+            >
+              {t('createNewCommunity')}
+            </SelectItem>
           </SelectContent>
         </Select>
       </div>
       {isNewCommunity && (
         <>
           <div>
-            <Label htmlFor="newName">{t('newCommunityName')}</Label>
+            <Label htmlFor="newName">{t('newCommunityName')} *</Label>
             <Input
               id="newName"
               value={newCommunityName}
@@ -129,7 +169,7 @@ export function CreateProjectForm() {
             />
           </div>
           <div>
-            <Label htmlFor="futureVision">{t('futureVisionRequired')}</Label>
+            <Label htmlFor="futureVision">{t('futureVisionRequired')} *</Label>
             <Textarea
               id="futureVision"
               value={newCommunityFutureVision}
@@ -199,22 +239,22 @@ export function CreateProjectForm() {
         </div>
       </div>
       <div>
-        <Label>Duration</Label>
+        <Label>{t('duration')}</Label>
         <Select
           value={projectDuration ?? ''}
           onValueChange={(v) => setProjectDuration(v === '' ? undefined : (v as 'finite' | 'ongoing'))}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Optional" />
+            <SelectValue placeholder={t('durationOptional')} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="finite">Finite</SelectItem>
-            <SelectItem value="ongoing">Ongoing</SelectItem>
+            <SelectItem value="finite">{t('durationFinite')}</SelectItem>
+            <SelectItem value="ongoing">{t('durationOngoing')}</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      <Button type="submit" disabled={createProject.isPending}>
-        {createProject.isPending ? 'Creating...' : t('create')}
+      <Button type="submit" disabled={createProject.isPending} variant="outline" size="sm" className={submitButtonClass}>
+        {createProject.isPending ? t('creating') : t('create')}
       </Button>
     </form>
   );
