@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Users, User, Bell, Info, Sparkles, FolderKanban } from 'lucide-react';
+import { User, Bell, Info, Sparkles, FolderKanban, TrendingUp, Star, LifeBuoy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useMarathonOfGoodQuota } from '@/hooks/useMarathonOfGoodQuota';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
-import { WalletChip } from '@/components/molecules/WalletChip';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { routes } from '@/lib/constants/routes';
 import {
@@ -33,14 +33,20 @@ export interface BottomNavigationProps {
     customTabs?: NavTab[];
 }
 
+const LONG_PRESS_MS = 500;
+
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
     const router = useRouter();
     const t = useTranslations('common');
     const tCommunities = useTranslations('communities');
+    const { logout } = useAuth();
     const { data } = useUnreadCount();
     const unreadCount = data?.count ?? 0;
     const [showQuotaHint, setShowQuotaHint] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const longPressFiredRef = useRef(false);
 
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
@@ -123,19 +129,10 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     // If in community context, we check if it is marathon-of-good -> golden
     const isMarathonQuota = !isInCommunityContext || communityForIcon?.typeTag === 'marathon-of-good';
 
-    // Handle click on WalletChip
-    const handleWalletChipClick = () => {
-        if (isInCommunityContext) {
-            // Inside community: show quota hint dialog
-            setShowQuotaHint(true);
-        } else if (marathonOfGoodCommunityId) {
-            // Out of community context, navigate to marathon-of-good
-            router.push(`/meriter/communities/${marathonOfGoodCommunityId}`);
-        } else {
-            // Fallback to communities list
-            router.push(routes.communities);
-        }
-    };
+    const supportCommunityId = useMemo(() => {
+        const support = userCommunities.find((c: { typeTag?: string }) => c?.typeTag === 'support');
+        return support?.id ?? null;
+    }, [userCommunities]);
 
     const defaultTabs: NavTab[] = useMemo(() => [
         {
@@ -145,16 +142,17 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
             isActive: (path: string) => path.startsWith('/meriter/future-visions'),
         },
         {
+            name: t('marathonOfGoodLabel', { defaultValue: 'Exchange' }),
+            icon: TrendingUp,
+            path: marathonOfGoodCommunityId ? `/meriter/communities/${marathonOfGoodCommunityId}` : '/meriter/profile',
+            isActive: (path: string) =>
+                !!marathonOfGoodCommunityId && (path === `/meriter/communities/${marathonOfGoodCommunityId}` || path.startsWith(`/meriter/communities/${marathonOfGoodCommunityId}/`)),
+        },
+        {
             name: t('projects', { defaultValue: 'Projects' }),
             icon: FolderKanban,
             path: '/meriter/projects',
             isActive: (path: string) => path.startsWith('/meriter/projects'),
-        },
-        {
-            name: t('myCommunities'),
-            icon: Users,
-            path: '/meriter/communities',
-            isActive: (path: string) => path.startsWith('/meriter/communities'),
         },
         {
             name: t('notifications'),
@@ -164,14 +162,49 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
             badge: unreadCount > 0 ? unreadCount : undefined,
         },
         {
-            name: t('profile'),
+            name: t('myProfile', { defaultValue: 'Profile' }),
             icon: User,
             path: '/meriter/profile',
             isActive: (path: string) => path.startsWith('/meriter/profile'),
         },
-    ], [t, unreadCount]);
+    ], [t, unreadCount, marathonOfGoodCommunityId]);
 
     const tabs = customTabs || defaultTabs;
+
+    const handleProfilePointerDown = useCallback(() => {
+        longPressFiredRef.current = false;
+        longPressTimerRef.current = setTimeout(() => {
+            longPressTimerRef.current = null;
+            longPressFiredRef.current = true;
+            setShowProfileMenu(true);
+        }, LONG_PRESS_MS);
+    }, []);
+
+    const handleProfilePointerUp = useCallback(
+        (path: string) => {
+            if (longPressTimerRef.current) {
+                clearTimeout(longPressTimerRef.current);
+                longPressTimerRef.current = null;
+            }
+            if (!longPressFiredRef.current) {
+                router.push(path);
+            }
+        },
+        [router]
+    );
+
+    const handleProfileMenuAction = useCallback(
+        (path: string | null) => {
+            setShowProfileMenu(false);
+            if (path) router.push(path);
+        },
+        [router]
+    );
+
+    const handleLogout = useCallback(async () => {
+        setShowProfileMenu(false);
+        await logout();
+    }, [logout]);
 
     return (
         <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-40 lg:hidden w-full" style={{ maxWidth: '100vw' }}>
@@ -179,11 +212,21 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                 {tabs.map((tab) => {
                     const active = tab.isActive(pathname || '');
                     const Icon = tab.icon;
+                    const isProfile = tab.path === '/meriter/profile';
 
                     return (
                         <button
                             key={tab.name}
-                            onClick={() => router.push(tab.path)}
+                            onClick={() => { if (!isProfile) router.push(tab.path); }}
+                            onPointerDown={isProfile ? handleProfilePointerDown : undefined}
+                            onPointerUp={isProfile ? () => handleProfilePointerUp(tab.path) : undefined}
+                            onPointerLeave={() => {
+                                if (isProfile && longPressTimerRef.current) {
+                                    clearTimeout(longPressTimerRef.current);
+                                    longPressTimerRef.current = null;
+                                }
+                            }}
+                            onContextMenu={isProfile ? (e) => e.preventDefault() : undefined}
                             className="flex-1 flex flex-col items-center justify-center py-1 bg-transparent border-none relative"
                             type="button"
                         >
@@ -229,6 +272,50 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                             {tCommunities('quotaHelper')}
                         </DialogDescription>
                     </DialogHeader>
+                </DialogContent>
+            </Dialog>
+
+            {/* Profile long-press menu: About, Support, Favorites, Log out */}
+            <Dialog open={showProfileMenu} onOpenChange={setShowProfileMenu}>
+                <DialogContent className="sm:max-w-xs p-0 gap-0">
+                    <DialogHeader className="px-4 pt-4 pb-2">
+                        <DialogTitle className="text-left text-base">{t('myProfile', { defaultValue: 'Profile' })}</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col py-2">
+                        <button
+                            type="button"
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-base-200 transition-colors"
+                            onClick={() => handleProfileMenuAction(routes.about)}
+                        >
+                            <Info className="w-5 h-5 text-base-content/60" />
+                            <span className="text-sm font-medium">{t('aboutProject')}</span>
+                        </button>
+                        {supportCommunityId && (
+                            <button
+                                type="button"
+                                className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-base-200 transition-colors"
+                                onClick={() => handleProfileMenuAction(routes.community(supportCommunityId))}
+                            >
+                                <LifeBuoy className="w-5 h-5 text-base-content/60" />
+                                <span className="text-sm font-medium">{t('support')}</span>
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-base-200 transition-colors"
+                            onClick={() => handleProfileMenuAction(`${routes.profile}/favorites`)}
+                        >
+                            <Star className="w-5 h-5 text-base-content/60" />
+                            <span className="text-sm font-medium">{t('favorites')}</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-base-200 transition-colors text-error"
+                            onClick={handleLogout}
+                        >
+                            <span className="text-sm font-medium">{t('logoutLabel', { defaultValue: 'Log out' })}</span>
+                        </button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
