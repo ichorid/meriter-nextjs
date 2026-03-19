@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useMemo, memo, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useMeritStats } from '@/hooks/api/useProfile';
+import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
@@ -14,23 +16,52 @@ import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuo
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/shadcn/button';
 import { Separator } from '@/components/ui/shadcn/separator';
-import { routes } from '@/lib/constants/routes';
-import Link from 'next/link';
-import { Loader2, Users } from 'lucide-react';
-import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { CreateTeamDialog } from '@/components/organisms/Profile/CreateTeamDialog';
+import { CommunityCard } from '@/components/organisms/CommunityCard';
+import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
+import { Loader2, Plus } from 'lucide-react';
 
 function ProfilePageComponent() {
+  const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
+  const tCommunities = useTranslations('communities');
   const { user, isLoading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [showCreateTeamDialog, setShowCreateTeamDialog] = useState(false);
 
   const { data: roles } = useUserRoles(user?.id || '');
   const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>('profile.meritsExpanded', true);
 
-  // Get unique community IDs from user roles
+  const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
+
+  // Private communities only (no special: future-vision, marathon-of-good, team-projects, support)
+  const userCommunities = useMemo(
+    () =>
+      allCommunities.filter(
+        (c) =>
+          c.typeTag !== 'future-vision' &&
+          c.typeTag !== 'marathon-of-good' &&
+          c.typeTag !== 'team-projects' &&
+          c.typeTag !== 'support'
+      ),
+    [allCommunities]
+  );
+
+  const leadCommunityIds = useMemo(
+    () => new Set((roles || []).filter((r) => r.role === 'lead').map((r) => r.communityId)),
+    [roles]
+  );
+
+  const administeredCommunities = useMemo(
+    () => userCommunities.filter((c) => leadCommunityIds.has(c.id)),
+    [userCommunities, leadCommunityIds]
+  );
+  const memberCommunities = useMemo(
+    () => userCommunities.filter((c) => !leadCommunityIds.has(c.id)),
+    [userCommunities, leadCommunityIds]
+  );
+
+  // Get unique community IDs from user roles (for MeritsAndQuotaSection)
   const communityIds = useMemo(() => {
     if (!roles) return [];
     return Array.from(new Set(roles.map(role => role.communityId).filter(Boolean)));
@@ -141,14 +172,14 @@ function ProfilePageComponent() {
           />
         </div>
 
-        {/* Merits & Quota Section */}
+        {/* Merits & Quota Section (global/priority only; team groups moved to communities below) */}
         {communityIds.length > 0 && (
           <div>
             <Separator className="bg-base-300" />
-            <MeritsAndQuotaSection 
-              userId={user.id} 
-              communityIds={communityIds} 
-              userRoles={userRolesArray.map(role => ({
+            <MeritsAndQuotaSection
+              userId={user.id}
+              communityIds={communityIds}
+              userRoles={userRolesArray.map((role) => ({
                 id: role.id || '',
                 communityId: role.communityId || '',
                 communityName: role.communityName,
@@ -157,30 +188,92 @@ function ProfilePageComponent() {
               }))}
               expanded={meritsExpanded}
               onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
+              showLocalTeamGroups={false}
             />
           </div>
         )}
 
-        {/* Create Team Button */}
+        {/* My communities: administered + create + member */}
         <div>
           <Separator className="bg-base-300" />
-          <div className="p-4">
-            <Button
-              onClick={() => setShowCreateTeamDialog(true)}
-              className="w-full rounded-xl"
-              variant="outline"
-            >
-              <Users className="mr-2 h-4 w-4" />
-              {t('createTeam')}
-            </Button>
+          <div className="bg-base-100 py-4 space-y-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('administeredCommunities')}
+            </p>
+            {communitiesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+                <CardSkeleton />
+              </div>
+            ) : administeredCommunities.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {administeredCommunities.map((community) => {
+                  const wallet = walletsMap.get(community.id);
+                  const quota = quotasMap.get(community.id);
+                  return (
+                    <CommunityCard
+                      key={community.id}
+                      communityId={community.id}
+                      pathname={pathname}
+                      isExpanded={true}
+                      wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                      quota={
+                        quota && typeof quota.remainingToday === 'number'
+                          ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">{tCommunities('noAdministeredCommunities')}</p>
+            )}
+
+            <div className="px-4">
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={() => router.push('/meriter/communities/create')}
+              >
+                <Plus className="w-4 h-4" />
+                {tCommon('createCommunity')}
+              </Button>
+            </div>
+
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+              {tCommunities('communitiesIMemberOf')}
+            </p>
+            {communitiesLoading ? (
+              <div className="flex flex-col gap-1 px-4">
+                <CardSkeleton />
+              </div>
+            ) : memberCommunities.length > 0 ? (
+              <div className="flex flex-col gap-1 px-4">
+                {memberCommunities.map((community) => {
+                  const wallet = walletsMap.get(community.id);
+                  const quota = quotasMap.get(community.id);
+                  return (
+                    <CommunityCard
+                      key={community.id}
+                      communityId={community.id}
+                      pathname={pathname}
+                      isExpanded={true}
+                      wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                      quota={
+                        quota && typeof quota.remainingToday === 'number'
+                          ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-base-content/50 px-4">{tCommunities('noMemberCommunities')}</p>
+            )}
           </div>
         </div>
-
-        {/* Create Team Dialog */}
-        <CreateTeamDialog
-          open={showCreateTeamDialog}
-          onClose={() => setShowCreateTeamDialog(false)}
-        />
       </div>
     </AdaptiveLayout>
   );
