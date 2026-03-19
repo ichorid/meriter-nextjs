@@ -3,14 +3,12 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Users, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User } from 'lucide-react';
+import { Info, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { routes } from '@/lib/constants/routes';
-import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useTranslations } from 'next-intl';
 
 export interface VerticalSidebarProps {
@@ -29,21 +27,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { data: unreadFavoritesData } = useUnreadFavoritesCount();
   const unreadFavoritesCount = unreadFavoritesData?.count ?? 0;
   const t = useTranslations('common');
-  const tCommunities = useTranslations('communities');
-
-  // Get user's communities with wallets and quotas
-  const { communities: allCommunities, wallets, quotasMap, walletsMap, isLoading: communitiesLoading } = useUserCommunities();
-
-  // Private communities only (no priority/special: future-vision, marathon-of-good, team-projects, support)
-  const userCommunities = useMemo(() => {
-    return allCommunities.filter(
-      (c) =>
-        c.typeTag !== 'future-vision' &&
-        c.typeTag !== 'marathon-of-good' &&
-        c.typeTag !== 'team-projects' &&
-        c.typeTag !== 'support'
-    );
-  }, [allCommunities]);
+  // Get user's communities (for Marathon/Support nav items)
+  const { communities: allCommunities } = useUserCommunities();
 
   // Don't show sidebar on login page
   if (pathname?.includes('/login')) {
@@ -142,55 +127,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             </Link>
           </div>
 
-          {/* Support (dynamic label from community name) */}
-          {(() => {
-            const support = allCommunities.find((c) => c.typeTag === 'support');
-            if (!support) return null;
-            const isActive = pathname === routes.community(support.id);
-            return (
-              <div key="support" className={paddingClass}>
-                <Link href={routes.community(support.id)}>
-                  <button
-                    className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${isActive
-                      ? 'bg-base-300 text-base-content'
-                      : 'hover:bg-base-300 text-base-content'
-                      }`}
-                  >
-                    {isExpanded ? (
-                      <div className="flex items-center w-full min-w-0">
-                        <LifeBuoy className="w-5 h-5 shrink-0" />
-                        <span className="ml-2 text-sm font-medium truncate">{support.name}</span>
-                      </div>
-                    ) : (
-                      <LifeBuoy className="w-6 h-6" />
-                    )}
-                  </button>
-                </Link>
-              </div>
-            );
-          })()}
-
-          {/* My Communities */}
-          <div className={paddingClass}>
-            <Link href={routes.communities}>
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.communities
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
-                {isExpanded ? (
-                  <div className="flex items-center w-full">
-                    <Users className="w-5 h-5" />
-                    <span className="ml-2 text-sm font-medium">{t('myCommunities')}</span>
-                  </div>
-                ) : (
-                  <Users className="w-6 h-6" />
-                )}
-              </button>
-            </Link>
-          </div>
-
           {/* Notifications */}
           <div className={paddingClass}>
             <Link href={routes.notifications}>
@@ -239,6 +175,55 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               </button>
             </Link>
           </div>
+
+          {/* Favorites */}
+          <div className={paddingClass}>
+            <Link href={`${routes.profile}/favorites`}>
+              <button
+                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
+                  ? 'bg-base-300 text-base-content'
+                  : 'hover:bg-base-300 text-base-content'
+                  }`}
+              >
+                {isExpanded ? (
+                  <div className="flex items-center w-full">
+                    <div className="relative">
+                      <Star className="w-5 h-5" />
+                      {unreadFavoritesCount > 0 && (
+                        <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
+                          ? 'bg-primary-content text-primary'
+                          : 'bg-warning text-warning-content'
+                          }`}>
+                          {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="ml-2 text-sm font-medium">{t('favorites')}</span>
+                    {unreadFavoritesCount > 0 && (
+                      <span className={`ml-auto text-xs font-semibold ${pathname === `${routes.profile}/favorites`
+                        ? 'text-primary-content'
+                        : 'text-warning'
+                        }`}>
+                        {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <Star className="w-6 h-6" />
+                    {unreadFavoritesCount > 0 && (
+                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
+                        ? 'bg-primary-content text-primary'
+                        : 'bg-warning text-warning-content'
+                        }`}>
+                        {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </button>
+            </Link>
+          </div>
         </>
       )}
 
@@ -263,6 +248,34 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </Link>
       </div>
 
+      {/* Support (dynamic label from community name; below My profile, above About) */}
+      {(() => {
+        const support = allCommunities.find((c) => c.typeTag === 'support');
+        if (!support) return null;
+        const isActive = pathname === routes.community(support.id);
+        return (
+          <div key="support" className={paddingClass}>
+            <Link href={routes.community(support.id)}>
+              <button
+                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${isActive
+                  ? 'bg-base-300 text-base-content'
+                  : 'hover:bg-base-300 text-base-content'
+                  }`}
+              >
+                {isExpanded ? (
+                  <div className="flex items-center w-full min-w-0">
+                    <LifeBuoy className="w-5 h-5 shrink-0" />
+                    <span className="ml-2 text-sm font-medium truncate">{support.name}</span>
+                  </div>
+                ) : (
+                  <LifeBuoy className="w-6 h-6" />
+                )}
+              </button>
+            </Link>
+          </div>
+        );
+      })()}
+
       {/* About Button */}
       {isAuthenticated && (
         <div className={paddingClass}>
@@ -286,104 +299,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       )}
 
-      {/* Favorites Button */}
-      {isAuthenticated && (
-        <div className={paddingClass}>
-          <Link href={`${routes.profile}/favorites`}>
-            <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
-                ? 'bg-base-300 text-base-content'
-                : 'hover:bg-base-300 text-base-content'
-                }`}
-            >
-              {isExpanded ? (
-                <div className="flex items-center w-full">
-                  <div className="relative">
-                    <Star className="w-5 h-5" />
-                    {unreadFavoritesCount > 0 && (
-                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
-                        ? 'bg-primary-content text-primary'
-                        : 'bg-warning text-warning-content'
-                        }`}>
-                        {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
-                      </span>
-                    )}
-                  </div>
-                  <span className="ml-2 text-sm font-medium">{t('favorites')}</span>
-                  {unreadFavoritesCount > 0 && (
-                    <span className={`ml-auto text-xs font-semibold ${pathname === `${routes.profile}/favorites`
-                      ? 'text-primary-content'
-                      : 'text-warning'
-                      }`}>
-                      {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div className="relative">
-                  <Star className="w-6 h-6" />
-                  {unreadFavoritesCount > 0 && (
-                    <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
-                      ? 'bg-primary-content text-primary'
-                      : 'bg-warning text-warning-content'
-                      }`}>
-                      {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
-                    </span>
-                  )}
-                </div>
-              )}
-            </button>
-          </Link>
-        </div>
-      )}
-
-      {/* Separator */}
-      {isAuthenticated && (
-        <div className={`${paddingClass} mb-2`}>
-          <div className="border-t border-base-300"></div>
-        </div>
-      )}
-
-      <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
-        {/* Community Cards or Avatars */}
-        <div className="flex flex-col gap-3 min-w-0">
-          {isAuthenticated && communitiesLoading && (
-            <div className="text-xs text-base-content/50 px-2">
-              {t('loadingCommunities')}
-            </div>
-          )}
-          {isAuthenticated && !communitiesLoading && userCommunities.length === 0 && wallets.length > 0 && (
-            <div className="text-xs text-base-content/50 px-2">
-              {t('noCommunitiesFound')}
-            </div>
-          )}
-
-          {/* User's (private) communities only */}
-          {isAuthenticated && userCommunities.length > 0 && (
-            <div className="flex flex-col gap-1 min-w-0">
-              {userCommunities.map((community) => {
-                const wallet = walletsMap.get(community.id);
-                const quota = quotasMap.get(community.id);
-
-                return (
-                  <CommunityCard
-                    key={community.id}
-                    communityId={community.id}
-                    pathname={pathname}
-                    isExpanded={isExpanded}
-                    hideDescription={true}
-                    wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
-                    quota={quota && typeof quota.remainingToday === 'number' ? {
-                      remainingToday: quota.remainingToday,
-                      dailyQuota: quota.dailyQuota ?? 0
-                    } : undefined}
-                  />
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
     </aside>
   );
 };
