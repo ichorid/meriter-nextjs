@@ -1503,6 +1503,8 @@
         "communitiesIMemberOf": "Участник сообществ:",
         "noAdministeredCommunities": "Вы не администрируете ни одного сообщества.",
         "noMemberCommunities": "Вы не состоите в других сообществах.",
+        "noAdministeredCommunitiesOther": "{name} не администрирует ни одного сообщества.",
+        "noMemberCommunitiesOther": "{name} не состоит в других сообществах.",
         "teamGroupsName": "Группы команд",
         "searchPlaceholder": "Поиск сообществ...",
         "leads": "Лиды",

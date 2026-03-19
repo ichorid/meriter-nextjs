@@ -1503,6 +1503,8 @@
         "communitiesIMemberOf": "Member of communities:",
         "noAdministeredCommunities": "You do not administer any communities.",
         "noMemberCommunities": "You are not a member of any other communities.",
+        "noAdministeredCommunitiesOther": "{name} does not administer any communities.",
+        "noMemberCommunitiesOther": "{name} is not a member of any other communities.",
         "teamGroupsName": "Team groups",
         "searchPlaceholder": "Search communities...",
         "leads": "Leads",
