@@ -1,15 +1,12 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User as UserIcon, Edit, Settings, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { Button } from '@/components/ui/shadcn/button';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
-import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
-import { routes } from '@/lib/constants/routes';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 import type { User } from '@/types/api-v1';
@@ -28,67 +25,8 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const router = useRouter();
-  const [rolesExpanded, setRolesExpanded] = useLocalStorage<boolean>('profile.rolesExpanded', true);
   const [aboutExpanded, setAboutExpanded] = useLocalStorage<boolean>('profile.aboutExpanded', true);
   const [contactsExpanded, setContactsExpanded] = useLocalStorage<boolean>('profile.contactsExpanded', true);
-
-  // Filter team roles (only communities with typeTag === 'team')
-  // Now we can use communityTypeTag directly from userRoles, no need to fetch communities
-  // Note: If typeTag is undefined but user is lead, we treat it as a team (fallback for communities without typeTag set)
-  const teamRoles = React.useMemo(() => {
-    return userRoles.filter(role => {
-      const isLeadOrParticipant = role.role === 'lead' || role.role === 'participant';
-      if (!isLeadOrParticipant) {
-        return false;
-      }
-      
-      // Team if typeTag is 'team', or if typeTag is undefined (fallback for communities without typeTag set)
-      // We show both lead and participant roles if typeTag is undefined, assuming they are in teams
-      const isTeam = role.communityTypeTag === 'team' || role.communityTypeTag === undefined;
-      return isTeam;
-    });
-  }, [userRoles]);
-
-  // Separate into lead and participant roles
-  const leadTeamRoles = React.useMemo(() => {
-    return teamRoles.filter(r => r.role === 'lead');
-  }, [teamRoles]);
-
-  const participantTeamRoles = React.useMemo(() => {
-    return teamRoles.filter(r => r.role === 'participant');
-  }, [teamRoles]);
-
-  // Check if user has any lead/participant roles (in any communities, not just teams)
-  const hasLeadOrParticipantRoles = React.useMemo(() => {
-    return userRoles.some(r => r.role === 'lead' || r.role === 'participant');
-  }, [userRoles]);
-
-  // Get team members for each participant role to find leads
-  const participantTeamIds = participantTeamRoles.map(r => r.communityId!).filter(Boolean);
-  // We'll fetch members for the first participant team (to avoid too many requests)
-  // For multiple teams, we'd need a different approach, but for now let's use the first one
-  const firstParticipantTeamId = participantTeamIds[0];
-  const { data: firstTeamMembersData } = useCommunityMembers(firstParticipantTeamId || '', {});
-
-  // Create a map of communityId -> lead user for participant roles
-  const teamLeadsMap = React.useMemo(() => {
-    const map = new Map<string, { id: string; displayName: string }>();
-    
-    // For now, we only get the lead for the first participant team
-    // In a full implementation, we'd need to fetch for all teams
-    if (firstParticipantTeamId && firstTeamMembersData?.data) {
-      const members = Array.isArray(firstTeamMembersData.data) ? firstTeamMembersData.data : [];
-      const lead = members.find((member: any) => member.role === 'lead');
-      if (lead) {
-        map.set(firstParticipantTeamId, {
-          id: lead.id,
-          displayName: lead.displayName || lead.username || tCommon('user'),
-        });
-      }
-    }
-    
-    return map;
-  }, [firstParticipantTeamId, firstTeamMembersData, tCommon]);
 
   if (!user) return null;
 
@@ -101,20 +39,11 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
   const educationalInstitution = user.profile?.educationalInstitution;
   const contacts = user.profile?.contacts;
 
-  // Check if user is Representative (lead) or Member (participant) - show educationalInstitution
   const isRepresentativeOrMember = user.globalRole === 'superadmin' ||
     userRoles.some(r => r.role === 'lead' || r.role === 'participant');
 
-  // Check if user is Representative (lead) or Organizer (superadmin) - show contacts
   const showContacts = user.globalRole === 'superadmin' ||
     userRoles.some(r => r.role === 'lead');
-
-  const hasTeamRoles = leadTeamRoles.length > 0 || participantTeamRoles.length > 0;
-  
-  // Show roles section if:
-  // - user is superadmin, OR
-  // - user has lead/participant roles (even if teams are still loading)
-  const showRolesSection = user?.globalRole === 'superadmin' || hasLeadOrParticipantRoles;
 
   return (
     <div className="relative bg-base-100 overflow-hidden">
@@ -297,109 +226,7 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
                 )}
               </div>
             </>
-          )}
-
-          {/* Role Display */}
-          {showRolesSection && (
-            <>
-              {(about || bio || (isRepresentativeOrMember && educationalInstitution) || (showContacts && contacts && (contacts.email || contacts.messenger))) && <Separator className="bg-base-300 my-0" />}
-              <div className="bg-base-100 py-4">
-                {user?.globalRole === 'superadmin' ? (
-                  <div>
-                    <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide mb-1">
-                      {t('role')}
-                    </p>
-                    <p className="text-sm text-base-content">
-                      {tCommon('superadmin')}
-                    </p>
-                  </div>
-                ) : hasLeadOrParticipantRoles ? (
-                  // Show collapsible block if user has lead/participant roles
-                  // Even if teams are still loading, show the block (it will be empty or show roles as they load)
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => setRolesExpanded(!rolesExpanded)}
-                      className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
-                    >
-                      <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-                        {t('roles')}
-                      </p>
-                      {rolesExpanded ? (
-                        <ChevronUp className="w-4 h-4 text-base-content/40" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4 text-base-content/40" />
-                      )}
-                    </button>
-                    {rolesExpanded && (
-                      <div className="animate-in fade-in duration-200 space-y-3">
-                        {hasTeamRoles ? (
-                          <>
-                          {/* Lead roles */}
-                          {leadTeamRoles.length > 0 && (
-                            <div className="space-y-2">
-                              {leadTeamRoles.map((role, index) => (
-                                <div
-                                  key={role.id}
-                                  className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50"
-                                >
-                                  <p className="text-sm font-medium text-base-content">
-                                    {t('leadLabel')}
-                                  </p>
-                                  <p className="text-xs text-base-content/60 mt-0.5">
-                                    {tCommon('team')}: "{role.communityName || role.communityId || ''}"
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          
-                          {/* Separator between lead and participant roles */}
-                          {leadTeamRoles.length > 0 && participantTeamRoles.length > 0 && (
-                            <Separator className="bg-base-300" />
-                          )}
-                          
-                          {/* Participant roles */}
-                          {participantTeamRoles.length > 0 && (
-                            <div className="space-y-2">
-                              {participantTeamRoles.map((role) => {
-                                const teamLead = role.communityId ? teamLeadsMap.get(role.communityId) : null;
-                                return (
-                                  <div
-                                    key={role.id}
-                                    className="rounded-xl border border-base-300 bg-base-100/50 p-3 transition-colors hover:bg-base-200/50"
-                                  >
-                                    <p className="text-sm font-medium text-base-content">
-                                      {tCommon('participant')}
-                                    </p>
-                                    <p className="text-xs text-base-content/60 mt-0.5">
-                                      {tCommon('team')}: "{role.communityName || role.communityId || ''}"
-                                    </p>
-                                    {teamLead && (
-                                      <p className="text-xs text-base-content/60 mt-1.5">
-                                        <Link 
-                                          href={routes.userProfile(teamLead.id)}
-                                          className="hover:text-base-content transition-colors underline"
-                                        >
-                                          {t('contactTeamRepresentative')}
-                                        </Link>
-                                      </p>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                          </>
-                        ) : (
-                          <p className="text-xs text-base-content/50">No team roles to display</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : null}
-              </div>
-            </>
-          )}
+            )}
         </div>
       </div>
     </div>
