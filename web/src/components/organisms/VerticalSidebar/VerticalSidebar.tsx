@@ -41,8 +41,9 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     const userComms: typeof allCommunities = [];
 
     allCommunities.forEach(community => {
-      // Future Vision has its own dedicated entrypoint (/meriter/future-visions) and should not
-      // be shown as a regular community card in navigation.
+      // Future Vision is a global community (everyone is in it); has dedicated entrypoint
+      // /meriter/future-visions and must not appear in the private communities list.
+      if (community.typeTag === 'future-vision') return;
       const isSpecial = community.typeTag === 'marathon-of-good' || community.typeTag === 'team-projects' || community.typeTag === 'support';
       if (isSpecial) {
         special.push(community);

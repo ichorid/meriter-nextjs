@@ -108,11 +108,11 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
                 onClick={onEarnMeritsClick}
                 variant="outline"
                 size="sm"
-                className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                className="inline-flex items-center justify-center text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2 min-w-9"
                 aria-label={t('earnMerits')}
               >
-                <Scale size={16} />
-                {t('earnMerits')}
+                <Scale size={16} className="shrink-0" />
+                <span className="hidden sm:inline whitespace-nowrap">{t('earnMerits')}</span>
               </Button>
             )}
             <Button
@@ -133,15 +133,16 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
               />
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               variant={bOpenFilters ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => setBOpenFilters((s) => !s)}
               className="gap-2"
+              aria-label={tCommunities('filters.title')}
             >
-              <Filter className="h-4 w-4" />
-              {tCommunities('filters.title')}
+              <Filter className="h-4 w-4 shrink-0" />
+              <span className="hidden xl:inline">{tCommunities('filters.title')}</span>
             </Button>
           </div>
         </div>
