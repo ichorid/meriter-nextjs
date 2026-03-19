@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Users, TrendingUp, ArrowUp, Share2 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui.store';
@@ -41,6 +42,9 @@ function futureVisionGradient(name: string): [string, string] {
 export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const t = useTranslations('common');
   const tShared = useTranslations('shared');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [gradientFrom, gradientTo] = futureVisionGradient(item.name);
   const hasCover = !!item.futureVisionCover;
@@ -48,7 +52,9 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const handleRatingClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    openVotingPopup(item.publicationId, 'publication', 'wallet-only');
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('post', item.publicationId);
+    router.push(`${pathname ?? routes.futureVisions}?${params.toString()}`);
   };
 
   const handleSupportClick = (e: React.MouseEvent) => {

@@ -19,6 +19,7 @@ import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useCommunity } from '@/hooks/api/useCommunities';
+import { useWallets } from '@/hooks/api/useWallet';
 
 export default function FutureVisionsPageClient() {
   const t = useTranslations('common');
@@ -50,6 +51,7 @@ export default function FutureVisionsPageClient() {
   }, []);
 
   const { data: balance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
+  const { data: wallets = [] } = useWallets();
   const { data: quotaData } = useUserQuota(futureVisionCommunityId ?? GLOBAL_COMMUNITY_ID);
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const quotaMax = quotaData?.dailyQuota ?? 0;
@@ -58,6 +60,9 @@ export default function FutureVisionsPageClient() {
   return (
     <AdaptiveLayout
       communityId={futureVisionCommunityId ?? undefined}
+      balance={balance}
+      wallets={Array.isArray(wallets) ? wallets : []}
+      myId={user?.id}
       stickyHeader={
         futureVisionCommunityId ? (
           <SimpleStickyHeader
