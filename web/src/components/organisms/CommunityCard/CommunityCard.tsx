@@ -49,7 +49,9 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('common');
   const tCommunities = useTranslations('communities');
-  const isActive = pathname?.includes(`/communities/${communityId}`);
+  const isActive = community?.isProject
+    ? pathname === `/meriter/projects/${communityId}` || pathname?.startsWith(`/meriter/projects/${communityId}/`)
+    : pathname?.includes(`/communities/${communityId}`);
 
   // Determine user's role per community for badge display
   const userRoleBadge = React.useMemo(() => {
@@ -139,10 +141,12 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const coverImageUrl = community.coverImageUrl;
   const hasCover = !!coverImageUrl;
 
+  const href = community.isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
+
   // Expanded version (desktop)
   if (isExpanded) {
     return (
-      <Link href={`/meriter/communities/${communityId}`}>
+      <Link href={href}>
         <div
           className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 pb-6 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
             ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
@@ -244,7 +248,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   // Collapsed version (tablet/mobile)
   return (
-    <Link href={`/meriter/communities/${communityId}`}>
+    <Link href={href}>
       <div className="flex flex-col items-center relative py-1">
         <div
           className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer overflow-hidden ${isActive
