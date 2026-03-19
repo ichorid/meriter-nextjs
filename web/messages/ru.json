@@ -34,7 +34,7 @@
         "aboutProject": "О проекте",
         "favorites": "Избранное",
         "communities": "Сообщества",
-        "futureVisions": "Образ будущего",
+        "futureVisions": "Образы будущего",
         "projects": "Проекты",
         "allCommunities": "Все сообщества",
         "copy": "Копировать",
@@ -99,7 +99,6 @@
         "giveMerits": "Дать мериты",
         "support": "Поддержать",
         "ratingLabel": "Рейтинг",
-        "futureVisionsPageTitle": "Образы будущего",
         "urlPlaceholder": "https://...",
         "usernamePlaceholder": "имя_пользователя",
         "selectOption": "Выберите опцию",
@@ -830,7 +829,7 @@
         "insufficientWalletForDownvotes": "Недостаточно меритов на кошельке для голосования против."
     },
     "pages": {
-        "futureVisions": "Образ будущего",
+        "futureVisions": "Образы будущего",
         "setupCommunity": {
             "title": "Настройка сообщества",
             "welcome": "Вы добавили бота Meriter в свою группу! Сейчас мы настроим его работу.",

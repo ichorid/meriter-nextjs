@@ -61,7 +61,7 @@ export default function FutureVisionsPageClient() {
       stickyHeader={
         futureVisionCommunityId ? (
           <SimpleStickyHeader
-            title={t('futureVisionsPageTitle', { defaultValue: 'Future Visions' })}
+            title={t('futureVisions', { defaultValue: 'Future Visions' })}
             showBack={true}
             onBack={() => router.push(routes.communities)}
             asStickyHeader={true}
