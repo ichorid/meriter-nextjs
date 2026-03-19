@@ -1351,6 +1351,7 @@
         "topUpError": "Не удалось пополнить кошелёк",
         "topUpWarning": "Это донат, не инвестиция. Мериты не возвращаются.",
         "noProjects": "Пока нет проектов",
+        "requestToJoin": "Подать заявку",
         "members": "Участники",
         "walletBalance": "Баланс кошелька",
         "parentCommunity": "Родительское сообщество",
@@ -1361,6 +1362,8 @@
         "active": "Активен",
         "closed": "Закрыт",
         "archived": "В архиве",
+        "backToProjects": "Назад к проектам",
+        "actionsSection": "Действия",
         "tabs": {
             "tickets": "Задачи",
             "discussions": "Обсуждения"

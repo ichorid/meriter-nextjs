@@ -1351,6 +1351,7 @@
         "topUpError": "Failed to top up wallet",
         "topUpWarning": "This is a donation, not an investment. Merits will not be returned.",
         "noProjects": "No projects yet",
+        "requestToJoin": "Request to join",
         "members": "Members",
         "walletBalance": "Wallet balance",
         "parentCommunity": "Parent community",
@@ -1361,6 +1362,8 @@
         "active": "Active",
         "closed": "Closed",
         "archived": "Archived",
+        "backToProjects": "Back to projects",
+        "actionsSection": "Actions",
         "tabs": {
             "tickets": "Tasks",
             "discussions": "Discussions"
