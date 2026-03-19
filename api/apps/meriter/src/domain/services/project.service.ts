@@ -96,6 +96,9 @@ export class ProjectService {
         });
         createdParentId = parent.id;
         parentCommunityId = parent.id;
+        await this.communityService.addMember(parent.id, userId);
+        await this.userService.addCommunityMembership(userId, parent.id);
+        await this.userCommunityRoleService.setRole(userId, parent.id, 'lead');
       }
 
       if (!parentCommunityId) {
