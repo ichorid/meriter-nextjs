@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Schema as MongooseSchema } from 'mongoose';
+import { Document } from 'mongoose';
 import { ActionType } from '../../common/constants/action-types.constants';
 
 /**
@@ -427,16 +427,19 @@ export class CommunitySchemaClass implements Community {
   @Prop({ type: Number, min: 0, max: 100, default: undefined })
   investorSharePercent?: number;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+  /** User id (string, same as User.id). Stored as string to match app IDs. */
+  @Prop({ type: String })
   founderUserId?: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Community' })
+  /** Parent community id (string, same as Community.id). Stored as string to match app IDs. */
+  @Prop({ type: String })
   parentCommunityId?: string;
 
   @Prop({ type: String, enum: ['active', 'closed', 'archived'] })
   projectStatus?: 'active' | 'closed' | 'archived';
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'CommunityWallet' })
+  /** CommunityWallet id (string, same as CommunityWallet.id). Stored as string to match app IDs. */
+  @Prop({ type: String })
   communityWalletId?: string;
 
   @Prop({ type: String })
