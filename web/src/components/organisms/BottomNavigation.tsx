@@ -151,7 +151,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
             isActive: (path: string) => path.startsWith('/meriter/projects'),
         },
         {
-            name: t('communities'),
+            name: t('myCommunities'),
             icon: Users,
             path: '/meriter/communities',
             isActive: (path: string) => path.startsWith('/meriter/communities'),
