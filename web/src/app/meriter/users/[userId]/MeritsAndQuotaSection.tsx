@@ -22,6 +22,8 @@ interface MeritsAndQuotaSectionProps {
   }>;
   expanded: boolean;
   onToggleExpanded: () => void;
+  /** When false, only global/priority merits block is shown (no "Team groups" list). Default true. */
+  showLocalTeamGroups?: boolean;
 }
 
 function getPriorityDisplayName(communityName: string | undefined, typeTag: string | undefined, t: (key: string) => string): string {
@@ -37,6 +39,7 @@ export function MeritsAndQuotaSection({
   userRoles,
   expanded,
   onToggleExpanded,
+  showLocalTeamGroups = true,
 }: MeritsAndQuotaSectionProps) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
@@ -82,7 +85,7 @@ export function MeritsAndQuotaSection({
               getDisplayName={(name, typeTag) => getPriorityDisplayName(name, typeTag, tCommunities)}
             />
           )}
-          {hasLocal && (
+          {showLocalTeamGroups && hasLocal && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-base-content/50 uppercase tracking-wide px-0.5">
                 {tCommon('teamGroupsSection')}

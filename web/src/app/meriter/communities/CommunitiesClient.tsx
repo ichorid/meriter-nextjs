@@ -13,6 +13,7 @@ import { useTranslations } from 'next-intl';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { LeadsSection } from '@/features/communities/components';
 import { Plus } from 'lucide-react';
+import { routes } from '@/lib/constants/routes';
 
 /** Leads section is hidden in current UI; set to true to show again. */
 const SHOW_LEADS_SECTION = false;
@@ -24,6 +25,13 @@ export default function CommunitiesPage() {
     const { user, isLoading: userLoading } = useAuth();
     const t = useTranslations('common');
     const tCommunities = useTranslations('communities');
+
+    // Redirect /meriter/communities (list) to profile; create and [id] routes stay
+    useEffect(() => {
+        if (pathname === routes.communities) {
+            router.replace(routes.profile);
+        }
+    }, [pathname, router]);
 
     // Handle scroll to leads section from URL param (when leads section is enabled)
     useEffect(() => {
