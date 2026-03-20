@@ -252,7 +252,14 @@ export class PostClosingService {
             userId: invId,
             type: 'post_closed_investment',
             source: 'system',
-            metadata: { postId, communityId, totalEarnings: total, projectName: projectContext?.projectName },
+            metadata: {
+              postId,
+              communityId,
+              totalEarnings: total,
+              projectName: projectContext?.projectName,
+              poolReturned: poolAmt,
+              ratingShare: ratingAmt,
+            },
             title: projectContext ? 'Project closed' : 'Post closed',
             message: `${projectPrefix}Pool returned: ${formatMeritsForDisplay(poolAmt)} merits. Your share of rating: ${formatMeritsForDisplay(ratingAmt)} merits. Total received: ${formatMeritsForDisplay(total)} merits`,
           });

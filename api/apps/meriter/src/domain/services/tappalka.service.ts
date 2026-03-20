@@ -433,7 +433,7 @@ export class TappalkaService {
             userId: post.authorId,
             type: 'investment_pool_depleted',
             source: 'system',
-            metadata: { postId: post.id, communityId: post.communityId },
+            metadata: { postId: post.id, communityId: post.communityId, variant: 'pool_depleted' },
             title: 'Investment pool depleted',
             message: 'Investment pool depleted. Shows now deducted from post rating.',
           });
@@ -502,7 +502,7 @@ export class TappalkaService {
           userId: post.authorId,
           type: 'investment_pool_depleted',
           source: 'system',
-          metadata: { postId: post.id, communityId: post.communityId },
+          metadata: { postId: post.id, communityId: post.communityId, variant: 'exited_tappalka' },
           title: 'Post exited tappalka',
           message: 'Post exited tappalka — no funds available for shows.',
         });

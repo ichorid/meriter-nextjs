@@ -81,7 +81,7 @@ export class PostClosingCronService {
           { ttlWarningNotified: { $exists: false } },
         ],
       })
-      .select({ id: 1, authorId: 1, title: 1 })
+      .select({ id: 1, authorId: 1, title: 1, communityId: 1 })
       .lean()
       .exec();
 
@@ -97,7 +97,11 @@ export class PostClosingCronService {
           userId: post.authorId,
           type: 'post_ttl_warning',
           source: 'system',
-          metadata: { postId: post.id },
+          metadata: {
+            postId: post.id,
+            communityId: post.communityId,
+            postTitle: post.title ?? '',
+          },
           title: 'Post closing soon',
           message: `Your post "${post.title ?? 'Untitled'}" will close in 24 hours (TTL).`,
         });
@@ -198,7 +202,12 @@ export class PostClosingCronService {
             userId: post.authorId,
             type: 'post_inactivity_warning',
             source: 'system',
-            metadata: { postId: post.id },
+            metadata: {
+              postId: post.id,
+              communityId: post.communityId,
+              postTitle: post.title ?? '',
+              inactiveCloseDays,
+            },
             title: 'Post will close soon',
             message: `Your post "${post.title ?? 'Untitled'}" will be closed in 24 hours due to no activity for ${inactiveCloseDays} days.`,
           });
