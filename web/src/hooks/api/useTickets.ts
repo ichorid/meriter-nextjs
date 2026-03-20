@@ -87,6 +87,9 @@ export function useDeclineAsAssignee() {
       void utils.ticket.getByProject.invalidate();
       void utils.publications.getById.invalidate({ id: variables.ticketId });
       void utils.project.getOpenTickets.invalidate();
+      void utils.comments.getByPublicationId.invalidate({
+        publicationId: variables.ticketId,
+      });
       addToast(t('declineAssigneeSuccess'), 'success');
     },
     onError: (error) => {

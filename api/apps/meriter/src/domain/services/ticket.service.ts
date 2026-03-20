@@ -16,6 +16,7 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
+import { VoteService } from './vote.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
@@ -52,8 +53,17 @@ export class TicketService {
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
     private notificationService: NotificationService,
+    private voteService: VoteService,
     private eventBus: EventBus,
   ) {}
+
+  private assigneeDeclinePublicationComment(locale: string | undefined, reason: string): string {
+    const loc = (locale ?? '').toLowerCase();
+    if (loc === 'ru' || loc.startsWith('ru-')) {
+      return `Отказался: ${reason}`;
+    }
+    return `Declined: ${reason}`;
+  }
 
   private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {
     const role = await this.userCommunityRoleService.getRole(userId, projectId);
@@ -531,8 +541,14 @@ export class TicketService {
   /**
    * Assignee gives up: in_progress → open, clears beneficiary, neutral again (new applications).
    * Reason is stored on ticket activity log (visible in task history).
+   * Also creates a neutral vote (0 merits) so the text appears in the publication comments list.
    */
-  async declineAsAssignee(ticketId: string, userId: string, reason: string): Promise<void> {
+  async declineAsAssignee(
+    ticketId: string,
+    userId: string,
+    reason: string,
+    locale?: string,
+  ): Promise<void> {
     const trimmed = reason.trim();
     if (trimmed.length === 0) {
       throw new BadRequestException('Comment is required');
@@ -571,6 +587,25 @@ export class TicketService {
       from: 'in_progress',
       to: 'open',
     });
+
+    const commentText = this.assigneeDeclinePublicationComment(locale, trimmed);
+    try {
+      await this.voteService.createVote(
+        userId,
+        'publication',
+        ticketId,
+        0,
+        0,
+        'up',
+        commentText,
+        doc.communityId,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Ticket ${ticketId}: assignee declined but failed to add publication comment vote: ${err}`,
+      );
+      throw err;
+    }
 
     const projectId = doc.communityId;
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');

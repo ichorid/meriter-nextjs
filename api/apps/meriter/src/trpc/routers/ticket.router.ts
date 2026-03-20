@@ -48,6 +48,8 @@ const acceptWorkInputSchema = z.object({
 const declineAsAssigneeInputSchema = z.object({
   ticketId: z.string(),
   reason: z.string().min(1).max(2000),
+  /** UI locale for the publication comment prefix (votes feed). */
+  locale: z.string().max(16).optional(),
 });
 
 const updateTicketInputSchema = z
@@ -182,6 +184,7 @@ export const ticketRouter = router({
         input.ticketId,
         ctx.user.id,
         input.reason,
+        input.locale,
       );
       return { success: true };
     }),

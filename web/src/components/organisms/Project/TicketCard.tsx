@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { useUserProfile } from '@/hooks/api/useUsers';
@@ -53,6 +53,7 @@ export function TicketCard({
   canModerateTickets,
 }: TicketCardProps) {
   const t = useTranslations('projects');
+  const locale = useLocale();
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
   const applyForTicket = useApplyForTicket();
@@ -82,7 +83,7 @@ export function TicketCard({
     const r = declineReason.trim();
     if (!r) return;
     declineAsAssignee.mutate(
-      { ticketId: ticket.id, reason: r },
+      { ticketId: ticket.id, reason: r, locale },
       {
         onSuccess: () => {
           setDeclineOpen(false);
