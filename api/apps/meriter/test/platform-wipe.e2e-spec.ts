@@ -120,6 +120,16 @@ describe('PlatformWipeService (e2e)', () => {
     const beforeCommunities = await communityModel.countDocuments();
     expect(beforeCommunities).toBeGreaterThanOrEqual(5);
 
+    await communityModel.updateOne(
+      { typeTag: 'future-vision' },
+      {
+        $set: {
+          name: 'Custom OB title after admin edit',
+          votingSettings: { currencySource: 'wallet-only' as const },
+        },
+      },
+    );
+
     const result = await platformWipeService.wipeUserContentAndLocalData();
     expect(result.superadminCount).toBeGreaterThanOrEqual(1);
 
@@ -143,5 +153,9 @@ describe('PlatformWipeService (e2e)', () => {
 
     const pubs = await publicationModel.countDocuments();
     expect(pubs).toBe(0);
+
+    const fvAfter = await communityModel.findOne({ typeTag: 'future-vision' }).lean();
+    expect(fvAfter?.name).toBe('Образ Будущего');
+    expect(fvAfter?.votingSettings).toBeUndefined();
   });
 });

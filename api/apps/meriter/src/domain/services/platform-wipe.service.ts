@@ -3,6 +3,7 @@ import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { UserService } from './user.service';
 import { PlatformSettingsService } from './platform-settings.service';
+import { CommunityService } from './community.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
 const PRIORITY_HUB_TAGS = [
@@ -16,7 +17,7 @@ const PRIORITY_HUB_TAGS = [
  * Superadmin-only destructive reset: removes all users except superadmins, all communities
  * except the global merit hub and the four priority hubs, and all related domain data.
  *
- * Preserves: platform_settings (except demoSeedVersion cleared), categories, about_* collections.
+ * Preserves: categories, about_* collections. Resets platform_settings and priority hubs to code bootstrap.
  *
  * NOT gated by environment — a mistaken call on production destroys data. UI must warn loudly.
  * Optional future hard-stop: MERITER_DISABLE_PLATFORM_WIPE (not implemented yet).
@@ -29,6 +30,7 @@ export class PlatformWipeService {
     @InjectConnection() private readonly connection: Connection,
     private readonly userService: UserService,
     private readonly platformSettingsService: PlatformSettingsService,
+    private readonly communityService: CommunityService,
   ) {}
 
   async wipeUserContentAndLocalData(): Promise<{ superadminCount: number }> {
@@ -135,7 +137,8 @@ export class PlatformWipeService {
       },
     );
 
-    await this.platformSettingsService.clearDemoSeedVersion();
+    await this.communityService.resetPriorityCommunitiesAfterPlatformWipe();
+    await this.platformSettingsService.resetAfterPlatformWipe();
 
     for (const id of superadminIds) {
       await this.userService.ensureUserInBaseCommunities(id);

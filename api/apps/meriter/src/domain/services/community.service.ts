@@ -30,6 +30,11 @@ import { CommunityDefaultsService } from './community-defaults.service';
 import { PublicationService } from './publication.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import {
+  PRIORITY_HUB_BOOTSTRAP,
+  PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS,
+  GLOBAL_COMMUNITY_BOOTSTRAP,
+} from '../common/constants/platform-bootstrap.constants';
 
 export interface CreateCommunityDto {
   id?: string;
@@ -322,17 +327,10 @@ export class CommunityService {
     try {
       await this.createCommunity({
         id: GLOBAL_COMMUNITY_ID,
-        name: 'Global',
-        description: 'Platform-wide merit storage for fees and priority communities.',
+        name: GLOBAL_COMMUNITY_BOOTSTRAP.name,
+        description: GLOBAL_COMMUNITY_BOOTSTRAP.description,
         typeTag: 'global',
-        settings: {
-          currencyNames: {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          },
-          dailyEmission: 0,
-        },
+        settings: { ...GLOBAL_COMMUNITY_BOOTSTRAP.settings },
       });
     } catch (e) {
       this.logger.error('Failed to create Global community', e);
@@ -354,20 +352,13 @@ export class CommunityService {
     if (!futureVision) {
       this.logger.log('Creating "Future Vision" community...');
       try {
+        const b = PRIORITY_HUB_BOOTSTRAP['future-vision'];
         await this.createCommunity({
-          name: 'Образ Будущего',
-          description: 'Группа для публикации и обсуждения образов будущего.',
+          name: b.name,
+          description: b.description,
           typeTag: 'future-vision',
           isPriority: true,
-          settings: {
-            currencyNames: {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            },
-            dailyEmission: 10,
-            allowWithdraw: false,
-          },
+          settings: { ...b.settings },
         });
       } catch (e) {
         this.logger.error('Failed to create Future Vision', e);
@@ -383,19 +374,13 @@ export class CommunityService {
     if (!marathon) {
       this.logger.log('Creating "Marathon of Good" community...');
       try {
+        const b = PRIORITY_HUB_BOOTSTRAP['marathon-of-good'];
         await this.createCommunity({
-          name: 'Марафон Добра',
-          description: 'Группа для отчетов о добрых делах.',
+          name: b.name,
+          description: b.description,
           typeTag: 'marathon-of-good',
           isPriority: true,
-          settings: {
-            currencyNames: {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            },
-            dailyEmission: 10,
-          },
+          settings: { ...b.settings },
         });
       } catch (e) {
         this.logger.error('Failed to create Marathon of Good', e);
@@ -428,19 +413,13 @@ export class CommunityService {
     if (!teamProjects) {
       this.logger.log('Creating "Team Projects" community...');
       try {
+        const b = PRIORITY_HUB_BOOTSTRAP['team-projects'];
         await this.createCommunity({
-          name: 'Проекты команд',
-          description: 'Группа для публикации проектов команд.',
+          name: b.name,
+          description: b.description,
           typeTag: 'team-projects',
           isPriority: true,
-          settings: {
-            currencyNames: {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            },
-            dailyEmission: 10,
-          },
+          settings: { ...b.settings },
         });
       } catch (e) {
         this.logger.error('Failed to create Team Projects', e);
@@ -456,19 +435,13 @@ export class CommunityService {
     if (!support) {
       this.logger.log('Creating "Support" community...');
       try {
+        const b = PRIORITY_HUB_BOOTSTRAP.support;
         await this.createCommunity({
-          name: 'Поддержка',
-          description: 'Группа поддержки.',
+          name: b.name,
+          description: b.description,
           typeTag: 'support',
           isPriority: true,
-          settings: {
-            currencyNames: {
-              singular: 'merit',
-              plural: 'merits',
-              genitive: 'merits',
-            },
-            dailyEmission: 10,
-          },
+          settings: { ...b.settings },
         });
       } catch (e) {
         this.logger.error('Failed to create Support', e);
@@ -478,6 +451,74 @@ export class CommunityService {
       this.logger.log('Updating "Support" community to set isPriority=true...');
       await this.updateCommunity(support.id, { isPriority: true });
     }
+  }
+
+  /**
+   * After platform wipe: restore priority hubs + global to bootstrap names/settings and drop
+   * stored overrides so CommunityDefaultsService rules apply again.
+   */
+  async resetPriorityCommunitiesAfterPlatformWipe(): Promise<void> {
+    const now = new Date();
+    const unsetStoredOverrides: Record<string, string> = {
+      votingSettings: '',
+      meritSettings: '',
+      permissionRules: '',
+      futureVisionText: '',
+      futureVisionTags: '',
+      futureVisionCover: '',
+      avatarUrl: '',
+      coverImageUrl: '',
+      linkedCurrencies: '',
+      tappalkaSettings: '',
+      lastQuotaResetAt: '',
+      rejectionMessage: '',
+    };
+
+    for (const typeTag of PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS) {
+      const doc = await this.communityModel.findOne({ typeTag }).lean();
+      if (!doc?.id) {
+        continue;
+      }
+      const b = PRIORITY_HUB_BOOTSTRAP[typeTag];
+      await this.communityModel.updateOne(
+        { id: doc.id },
+        {
+          $set: {
+            name: b.name,
+            description: b.description,
+            isPriority: true,
+            isActive: true,
+            settings: { ...b.settings },
+            hashtags: [],
+            hashtagDescriptions: {},
+            updatedAt: now,
+          },
+          $unset: unsetStoredOverrides,
+        },
+      );
+    }
+
+    const g = await this.communityModel.findOne({ id: GLOBAL_COMMUNITY_ID }).lean();
+    if (g?.id) {
+      await this.communityModel.updateOne(
+        { id: GLOBAL_COMMUNITY_ID },
+        {
+          $set: {
+            name: GLOBAL_COMMUNITY_BOOTSTRAP.name,
+            description: GLOBAL_COMMUNITY_BOOTSTRAP.description,
+            typeTag: 'global',
+            isActive: true,
+            settings: { ...GLOBAL_COMMUNITY_BOOTSTRAP.settings },
+            hashtags: [],
+            hashtagDescriptions: {},
+            updatedAt: now,
+          },
+          $unset: unsetStoredOverrides,
+        },
+      );
+    }
+
+    this.logger.log('Priority communities and global hub reset to bootstrap defaults');
   }
 
   /**

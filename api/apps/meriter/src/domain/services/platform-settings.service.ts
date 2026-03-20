@@ -7,6 +7,7 @@ import {
   PlatformSettings,
   PLATFORM_SETTINGS_ID,
 } from '../models/platform-settings/platform-settings.schema';
+import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
 
 export interface UpdatePlatformSettingsDto {
   welcomeMeritsGlobal?: number;
@@ -113,8 +114,10 @@ export class PlatformSettingsService {
     if (res.matchedCount === 0) {
       await this.platformSettingsModel.create({
         id: PLATFORM_SETTINGS_ID,
-        welcomeMeritsGlobal: 0,
-        availableFutureVisionTags: [],
+        welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+        availableFutureVisionTags: [
+          ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
+        ],
         demoSeedVersion: version,
       });
     }
@@ -124,6 +127,28 @@ export class PlatformSettingsService {
   async clearDemoSeedVersion(): Promise<void> {
     await this.platformSettingsModel
       .updateOne({ id: PLATFORM_SETTINGS_ID }, { $unset: { demoSeedVersion: 1 } })
+      .exec();
+  }
+
+  /**
+   * Full platform_settings row to code bootstrap (welcome merits, empty FV rubric, no demo marker).
+   */
+  async resetAfterPlatformWipe(): Promise<void> {
+    await this.platformSettingsModel
+      .updateOne(
+        { id: PLATFORM_SETTINGS_ID },
+        {
+          $set: {
+            welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+            availableFutureVisionTags: [
+              ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
+            ],
+            updatedAt: new Date(),
+          },
+          $unset: { demoSeedVersion: '' },
+        },
+        { upsert: true },
+      )
       .exec();
   }
 }
