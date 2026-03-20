@@ -525,15 +525,15 @@ export const usersRouter = router({
     }),
 
   /**
-   * Invite user to a team
-   * Only leads can invite to their teams
-   * Creates an invitation that requires user confirmation
+   * Invite user to a local community (team, project, etc.)
+   * Any member (lead or participant) may invite; optional message for the invitee
    */
   inviteToTeam: protectedProcedure
     .input(
       z.object({
         targetUserId: z.string(),
         communityId: z.string(),
+        inviterMessage: z.string().max(500).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -541,6 +541,7 @@ export const usersRouter = router({
         ctx.user.id,
         input.targetUserId,
         input.communityId,
+        input.inviterMessage,
       );
       return { success: true };
     }),
@@ -602,8 +603,7 @@ export const usersRouter = router({
     }),
 
   /**
-   * Get communities where current user is lead and target user is not a member
-   * Used for inviting users to teams
+   * Get local communities where current user is a member and target is not
    */
   getInvitableCommunities: protectedProcedure
     .input(

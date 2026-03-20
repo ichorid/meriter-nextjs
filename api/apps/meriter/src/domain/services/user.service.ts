@@ -691,17 +691,21 @@ export class UserService implements OnModuleInit {
   }
 
   /**
-   * Get communities where current user is lead and target user is not a member
-   * Used for inviting users to teams
+   * Local communities where the current user is a member (lead or participant)
+   * and the target user is not yet a member. Used for profile invites.
    */
   async getInvitableCommunities(
     currentUserId: string,
     targetUserId: string,
   ): Promise<Community[]> {
-    // Get communities where current user is lead
-    const leadCommunities = await this.getLeadCommunities(currentUserId);
+    const currentRoles =
+      await this.userCommunityRoleService.getUserRoles(currentUserId);
+    const candidateIds = [
+      ...new Set(
+        currentRoles.map((r) => r.communityId).filter(Boolean) as string[],
+      ),
+    ];
 
-    // Get communities where target user is already a member
     const targetRoles = await this.userCommunityRoleService.getUserRoles(
       targetUserId,
     );
@@ -709,10 +713,14 @@ export class UserService implements OnModuleInit {
       targetRoles.map((r) => r.communityId.toString()),
     );
 
-    // Filter: only team communities where target is not a member
-    return leadCommunities.filter(
-      (c) =>
-        c.typeTag === 'team' &&
+    const communities = await Promise.all(
+      candidateIds.map((id) => this.communityService.getCommunity(id)),
+    );
+
+    return communities.filter(
+      (c): c is Community =>
+        c !== null &&
+        this.communityService.isLocalMembershipCommunity(c) &&
         !targetCommunityIds.has(c.id.toString()),
     );
   }

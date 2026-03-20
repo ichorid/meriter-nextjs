@@ -4,8 +4,8 @@ import { Document } from 'mongoose';
 /**
  * TeamInvitation Mongoose Schema
  *
- * Stores invitations from team leads to users to join teams (local communities).
- * Only team communities (typeTag === 'team') can have invitations.
+ * Stores invitations from community members to users to join local communities.
+ * Inviter must be a lead or participant; invitee accepts to join as participant.
  *
  * Status flow:
  * - 'pending' - Invitation sent, waiting for user's decision
@@ -17,9 +17,11 @@ export type TeamInvitationStatus = 'pending' | 'accepted' | 'rejected';
 
 export interface TeamInvitation {
   id: string;
-  inviterId: string; // Lead who sent the invitation
+  inviterId: string; // Member who sent the invitation (lead or participant)
   targetUserId: string; // User who received the invitation
-  communityId: string; // Team community
+  communityId: string; // Local community (team, project, etc.)
+  /** Optional note from inviter, shown to the invitee */
+  inviterMessage?: string;
   status: TeamInvitationStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -39,6 +41,9 @@ export class TeamInvitationSchemaClass implements TeamInvitation {
 
   @Prop({ required: true, index: true })
   communityId!: string;
+
+  @Prop({ maxlength: 500 })
+  inviterMessage?: string;
 
   @Prop({
     required: true,

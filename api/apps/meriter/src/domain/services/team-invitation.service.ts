@@ -36,19 +36,25 @@ export class TeamInvitationService {
   ) {}
 
   /**
-   * Create an invitation to join a team
-   * Only leads can invite to their teams
+   * Create an invitation to join a local community (team, project, etc.)
+   * Any member (lead or participant) may invite; superadmin bypasses membership.
    */
   async createInvitation(
     inviterId: string,
     targetUserId: string,
     communityId: string,
+    inviterMessage?: string,
   ): Promise<TeamInvitation> {
     this.logger.log(
-      `Lead ${inviterId} creating invitation for user ${targetUserId} to team ${communityId}`,
+      `User ${inviterId} creating invitation for user ${targetUserId} to community ${communityId}`,
     );
 
-    // 1. Check that inviter is lead in this community
+    const trimmedMessage =
+      typeof inviterMessage === 'string'
+        ? inviterMessage.trim().slice(0, 500)
+        : '';
+
+    // 1. Check that inviter is a member (lead or participant) of this community
     const inviterRole = await this.userCommunityRoleService.getRole(
       inviterId,
       communityId,
@@ -56,11 +62,20 @@ export class TeamInvitationService {
     const inviter = await this.userService.getUserById(inviterId);
     const isSuperadmin = inviter?.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
-    if (inviterRole?.role !== 'lead' && !isSuperadmin) {
-      throw new ForbiddenException('Only leads can invite to team');
+    const canInviteAsMember =
+      inviterRole?.role === 'lead' || inviterRole?.role === 'participant';
+
+    if (!canInviteAsMember && !isSuperadmin) {
+      throw new ForbiddenException(
+        'You must be a member of this community to send an invite',
+      );
     }
 
-    // 2. Check that community exists and is a team
+    if (inviterId === targetUserId) {
+      throw new BadRequestException('Cannot invite yourself');
+    }
+
+    // 2. Check that community exists and is a local membership community
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
@@ -82,19 +97,18 @@ export class TeamInvitationService {
       );
     }
 
-    // 4. Check for existing pending invitation
-    const existingInvitation = await this.teamInvitationModel
+    // 4. At most one pending invitation per target user per community (any inviter)
+    const existingPending = await this.teamInvitationModel
       .findOne({
-        inviterId,
         targetUserId,
         communityId,
         status: 'pending',
       })
       .lean();
 
-    if (existingInvitation) {
+    if (existingPending) {
       throw new BadRequestException(
-        'You already have a pending invitation for this user to this team',
+        'This user already has a pending invitation to this community',
       );
     }
 
@@ -104,13 +118,14 @@ export class TeamInvitationService {
       inviterId,
       targetUserId,
       communityId,
+      ...(trimmedMessage ? { inviterMessage: trimmedMessage } : {}),
       status: 'pending',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     // 6. Create notification for target user
-    const inviterName = inviter?.displayName || inviter?.username || 'Team lead';
+    const inviterName = inviter?.displayName || inviter?.username || 'Member';
 
     await this.notificationService.createNotification({
       userId: targetUserId,
@@ -122,9 +137,10 @@ export class TeamInvitationService {
         communityId,
         inviterId,
         communityName: community.name,
+        ...(trimmedMessage ? { inviterMessage: trimmedMessage } : {}),
       },
       title: 'Team invitation',
-      message: `${inviterName} invited you to join team "${community.name}"`,
+      message: `${inviterName} invited you to join "${community.name}"`,
     });
 
     this.logger.log(

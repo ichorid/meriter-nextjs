@@ -302,8 +302,17 @@ export default function NotificationsPage() {
       return notification.message || '';
     }
     if (notification.type === 'team_invitation') {
-      const teamName = (meta.communityName as string) ?? '';
-      return t('teamInvitationMessage', { name: actorName, teamName });
+      const placeName = (meta.communityName as string) ?? '';
+      const note =
+        typeof meta.inviterMessage === 'string' ? meta.inviterMessage.trim() : '';
+      if (note) {
+        return t('teamInvitationMessageWithComment', {
+          name: actorName,
+          placeName,
+          comment: note,
+        });
+      }
+      return t('teamInvitationMessage', { name: actorName, placeName });
     }
     if (notification.type === 'forward_proposal') {
       const targetName = (meta.targetCommunityName as string) ?? '';

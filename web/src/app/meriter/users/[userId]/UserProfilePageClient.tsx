@@ -1,20 +1,23 @@
 'use client';
 
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { routes } from '@/lib/constants/routes';
+import { useInvitableCommunities } from '@/hooks/api/useTeams';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
+import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
+import { Button } from '@/components/ui/shadcn/button';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -27,9 +30,19 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const pathname = usePathname();
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
+  const tProfile = useTranslations('profile');
+  const { user: authUser, isAuthenticated } = useAuth();
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data: user, isLoading, error, isFetched } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
+
+  const canInviteFromProfile =
+    isAuthenticated && !!authUser?.id && authUser.id !== userId;
+
+  const { data: invitableCommunities = [] } = useInvitableCommunities(
+    canInviteFromProfile ? userId : '',
+  );
 
   const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.meritsExpanded`, true);
 
@@ -181,6 +194,29 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         <div>
           <Separator className="bg-base-300" />
           <div className="bg-base-100 py-4 space-y-4">
+            {canInviteFromProfile && (
+              <>
+                <div className="px-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                    aria-label={tProfile('inviteUserProfileButton')}
+                    onClick={() => setInviteOpen(true)}
+                  >
+                    <UserPlus className="h-4 w-4 shrink-0" />
+                    {tProfile('inviteUserProfileButton')}
+                  </Button>
+                </div>
+                <InviteToTeamDialog
+                  open={inviteOpen}
+                  onClose={() => setInviteOpen(false)}
+                  targetUserId={user.id}
+                  communities={invitableCommunities}
+                />
+              </>
+            )}
             <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
               {tCommunities('administeredCommunities')}
             </p>
