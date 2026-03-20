@@ -54,7 +54,10 @@ export function PublishToBirzhaDialog({
     }
   }, [open, defaultInvestorSharePercent]);
 
-  const isValid = useMemo(() => content.trim().length > 0, [content]);
+  const isValid = useMemo(
+    () => title.trim().length > 0 && content.trim().length > 0,
+    [title, content],
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +66,7 @@ export function PublishToBirzhaDialog({
     publish.mutate(
       {
         projectId,
-        title: title.trim() || undefined,
+        title: title.trim(),
         content: content.trim(),
         type: images.length > 0 ? 'image' : 'text',
         images: images.length > 0 ? images : undefined,
@@ -95,12 +98,14 @@ export function PublishToBirzhaDialog({
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div>
-              <Label htmlFor="birzha-title">{t('publishBirzhaPostTitle')}</Label>
+              <Label htmlFor="birzha-title">{t('publishBirzhaPostTitle')} *</Label>
               <Input
                 id="birzha-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('titlePlaceholder')}
+                placeholder={t('publishBirzhaPostTitlePlaceholder')}
+                required
+                maxLength={500}
               />
             </div>
             <div>
