@@ -16,6 +16,7 @@ import {
     DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { CategoryManagement } from '@/components/settings/CategoryManagement';
+import { PlatformDevDangerSection } from '@/components/settings/PlatformDevDangerSection';
 import { AboutContent } from '@/components/organisms/About/AboutContent';
 import { AboutAdminPanel } from '@/components/organisms/About/AboutAdminPanel';
 import { useResetAboutToDemoData } from '@/hooks/api/useAbout';
@@ -306,6 +307,7 @@ const AboutPage = () => {
                             <WelcomeMeritsPlatformRow />
                             <CategoryManagement />
                             <FutureVisionRubricatorRow />
+                            <PlatformDevDangerSection />
                             <ResetAboutToDemoRow />
                         </div>
                     </DialogContent>
