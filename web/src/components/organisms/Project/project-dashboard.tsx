@@ -3,25 +3,16 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { PieChart, Users, Wallet } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { ProjectWalletCard } from './ProjectWalletCard';
+import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
-
-export type ProjectDashboardMember = {
-  id?: string;
-  userId?: string;
-  displayName?: string;
-  role?: string;
-  avatarUrl?: string;
-};
 
 export interface ProjectDashboardProps {
   projectId: string;
   founderSharePercent: number;
   investorSharePercent: number;
-  members: ProjectDashboardMember[];
   totalMembers: number;
 }
 
@@ -58,12 +49,9 @@ export function ProjectDashboard({
   projectId,
   founderSharePercent,
   investorSharePercent,
-  members,
   totalMembers,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
-
-  const preview = members.slice(0, 4);
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -88,28 +76,12 @@ export function ProjectDashboard({
           {t('cardTeam')}
         </div>
         <p className="text-3xl font-semibold tabular-nums text-base-content">{totalMembers}</p>
-        {preview.length > 0 ? (
-          <div className="flex -space-x-2">
-            {preview.map((m) => {
-              const key = m.id ?? m.userId ?? m.displayName ?? '';
-              const label = (m.displayName ?? key).slice(0, 2).toUpperCase();
-              return (
-                <Avatar key={key} className="h-9 w-9 ring-2 ring-base-100 text-xs">
-                  {m.avatarUrl ? <AvatarImage src={m.avatarUrl} alt="" /> : null}
-                  <AvatarFallback className="text-[10px] font-medium">{label || '?'}</AvatarFallback>
-                </Avatar>
-              );
-            })}
-          </div>
-        ) : (
+        {totalMembers === 0 && (
           <p className="text-sm text-base-content/50">{t('teamNoMembersPreview')}</p>
         )}
-        <Link
-          href={routes.communityMembers(projectId)}
-          className="text-sm font-medium text-blue-400 hover:underline w-fit"
-        >
-          {t('inviteMembersLink')}
-        </Link>
+        <Button variant="outline" size="sm" className="w-full sm:w-auto rounded-xl" asChild>
+          <Link href={routes.projectMembersManage(projectId)}>{t('viewTeamMembers')}</Link>
+        </Button>
       </div>
 
       <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col">

@@ -21,6 +21,14 @@ export const routes = {
     communities: "/meriter/communities",
     community: (id: string) => `/meriter/communities/${id}`,
     communityMembers: (id: string) => `/meriter/communities/${id}/members`,
+    /** Project team list: same members route with query so back/invite UX stays on the project. */
+    projectMembersManage: (projectCommunityId: string) => {
+      const q = new URLSearchParams({
+        context: 'project',
+        returnTo: `/meriter/projects/${projectCommunityId}`,
+      });
+      return `/meriter/communities/${projectCommunityId}/members?${q.toString()}`;
+    },
     /** Invite accept flow; append ?t=<jwt> */
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,

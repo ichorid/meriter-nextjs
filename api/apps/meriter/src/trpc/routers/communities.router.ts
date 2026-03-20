@@ -8,6 +8,7 @@ import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import {
   signCommunityInviteToken,
   verifyCommunityInviteToken,
+  type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
 
 export const communitiesRouter = router({
@@ -127,12 +128,19 @@ export const communitiesRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Only leads can create invite links' });
       }
       const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
-      const token = signCommunityInviteToken(input.communityId, secret);
+      const parentCommunityId =
+        community.isProject && community.parentCommunityId
+          ? community.parentCommunityId
+          : undefined;
+      const token = signCommunityInviteToken(input.communityId, secret, {
+        parentCommunityId,
+      });
       return { token };
     }),
 
   /**
    * Accept invite: add current user as participant (idempotent if already a member).
+   * Project invites embed parent community id so the user is added to the project and the parent team.
    */
   acceptCommunityInvite: protectedProcedure
     .input(
@@ -144,15 +152,16 @@ export const communitiesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
-      let communityId: string;
+      let invite: VerifiedCommunityInvite;
       try {
-        communityId = verifyCommunityInviteToken(input.token, secret);
+        invite = verifyCommunityInviteToken(input.token, secret);
       } catch {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Invalid or expired invite link',
         });
       }
+      const { communityId, parentCommunityId: parentFromToken } = invite;
       if (
         input.expectedCommunityId &&
         input.expectedCommunityId !== communityId
@@ -169,13 +178,53 @@ export const communitiesRouter = router({
       if (!ctx.communityService.isLocalMembershipCommunity(community)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid invite' });
       }
+      if (
+        parentFromToken &&
+        (!community.isProject || community.parentCommunityId !== parentFromToken)
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid invite',
+        });
+      }
+
+      const addToParentIfNeeded = async () => {
+        if (!community.isProject || !community.parentCommunityId || !parentFromToken) {
+          return;
+        }
+        const parentId = community.parentCommunityId;
+        const parent = await ctx.communityService.getCommunity(parentId);
+        if (!parent || !ctx.communityService.isLocalMembershipCommunity(parent)) {
+          return;
+        }
+        const existingParent = await ctx.userCommunityRoleService.getRole(
+          ctx.user.id,
+          parentId,
+        );
+        if (existingParent) {
+          return;
+        }
+        const parentLeads = await ctx.userCommunityRoleService.getUsersByRole(
+          parentId,
+          'lead',
+        );
+        const parentInviterId = parentLeads[0]?.userId ?? ctx.user.id;
+        await ctx.userService.addUserToTeam(
+          parentInviterId,
+          ctx.user.id,
+          parentId,
+        );
+      };
+
       const existing = await ctx.userCommunityRoleService.getRole(ctx.user.id, communityId);
       if (existing) {
+        await addToParentIfNeeded();
         return { communityId, alreadyMember: true as const };
       }
       const leads = await ctx.userCommunityRoleService.getUsersByRole(communityId, 'lead');
       const inviterId = leads[0]?.userId ?? ctx.user.id;
       await ctx.userService.addUserToTeam(inviterId, ctx.user.id, communityId);
+      await addToParentIfNeeded();
       return { communityId, alreadyMember: false as const };
     }),
 

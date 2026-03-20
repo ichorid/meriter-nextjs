@@ -2,6 +2,7 @@ import { CommunityMembersPageClient } from './CommunityMembersPageClient';
 
 interface CommunityMembersPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string; context?: string }>;
 }
 
 export async function generateMetadata() {
@@ -10,7 +11,14 @@ export async function generateMetadata() {
   };
 }
 
-export default async function CommunityMembersPage({ params }: CommunityMembersPageProps) {
+export default async function CommunityMembersPage({ params, searchParams }: CommunityMembersPageProps) {
   const { id } = await params;
-  return <CommunityMembersPageClient communityId={id} />;
+  const sp = await searchParams;
+  return (
+    <CommunityMembersPageClient
+      communityId={id}
+      returnTo={typeof sp.returnTo === 'string' ? sp.returnTo : undefined}
+      membersContext={sp.context === 'project' ? 'project' : undefined}
+    />
+  );
 }

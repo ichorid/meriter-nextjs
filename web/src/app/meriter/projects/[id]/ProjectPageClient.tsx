@@ -3,10 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle, Users } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject, useJoinProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
-import { ProjectMembersList } from '@/components/organisms/Project/ProjectMembersList';
 import { ProjectHero } from '@/components/organisms/Project/project-hero';
 import { ProjectDashboard } from '@/components/organisms/Project/project-dashboard';
 import { ProjectWorkArea } from '@/components/organisms/Project/project-work-area';
@@ -90,8 +89,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const heroStatus: 'active' | 'closed' | 'archived' =
     status === 'closed' ? 'closed' : status === 'archived' ? 'archived' : 'active';
 
-  const members = membersData?.data ?? [];
-  const totalMembers = membersData?.pagination?.total ?? members.length;
+  const totalMembers = membersData?.pagination?.total ?? membersData?.data?.length ?? 0;
 
   const stickyHeader = (
     <SimpleStickyHeader
@@ -127,7 +125,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           projectId={projectId}
           founderSharePercent={project.founderSharePercent ?? 0}
           investorSharePercent={project.investorSharePercent ?? 0}
-          members={members}
           totalMembers={totalMembers}
         />
 
@@ -248,13 +245,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           />
         )}
 
-        <section aria-labelledby="project-members-heading">
-          <h2 id="project-members-heading" className="flex items-center gap-2 text-lg font-medium mb-2 text-base-content">
-            <Users className="h-5 w-5" aria-hidden />
-            {t('members')}
-          </h2>
-          <ProjectMembersList projectId={projectId} />
-        </section>
       </div>
     </AdaptiveLayout>
   );

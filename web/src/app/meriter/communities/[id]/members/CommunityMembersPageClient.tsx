@@ -36,13 +36,30 @@ import {
 import { Input } from '@/components/ui/shadcn/input';
 import { trpc } from '@/lib/trpc/client';
 
-interface CommunityMembersPageClientProps {
-  communityId: string;
+function sanitizeMeriterReturnPath(path: string | undefined): string | undefined {
+  if (!path || typeof path !== 'string') return undefined;
+  const trimmed = path.trim();
+  if (!trimmed.startsWith('/meriter/')) return undefined;
+  if (trimmed.includes('//')) return undefined;
+  return trimmed;
 }
 
-export function CommunityMembersPageClient({ communityId }: CommunityMembersPageClientProps) {
+interface CommunityMembersPageClientProps {
+  communityId: string;
+  /** Safe in-app path (e.g. project page) for sticky back; must start with /meriter/ */
+  returnTo?: string;
+  /** When opened from project UI: copy and back behavior stay project-centric */
+  membersContext?: 'project';
+}
+
+export function CommunityMembersPageClient({
+  communityId,
+  returnTo,
+  membersContext,
+}: CommunityMembersPageClientProps) {
     const router = useRouter();
     const t = useTranslations('pages.communities');
+    const tProjects = useTranslations('projects');
     const tSearch = useTranslations('search');
     const { user } = useAuth();
 
@@ -73,6 +90,8 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const { mutate: approveRequest, isPending: isApproving } = useApproveTeamRequest();
     const { mutate: rejectRequest, isPending: isRejecting } = useRejectTeamRequest();
     const addToast = useToastStore((state) => state.addToast);
+
+    const isProjectMembersUi = membersContext === 'project';
 
     const INVITE_BLOCKED_TYPE_TAGS = new Set([
         'future-vision',
@@ -144,11 +163,13 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
         }
     };
 
+    const backTarget = sanitizeMeriterReturnPath(returnTo) ?? routes.community(communityId);
+
     const pageHeader = (
         <SimpleStickyHeader
             title={t('members.title')}
             showBack={true}
-            onBack={() => router.push(routes.community(communityId))}
+            onBack={() => router.push(backTarget)}
             asStickyHeader={true}
             showScrollToTop={true}
         />
@@ -197,7 +218,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                                     ) : (
                                         <UserPlus className="h-4 w-4" />
                                     )}
-                                    {t('members.invite.button')}
+                                    {isProjectMembersUi ? tProjects('inviteToProject') : t('members.invite.button')}
                                 </Button>
                             )}
                             <div className={canCreateInviteLink ? 'flex-1 min-w-0' : 'w-full'}>
@@ -317,8 +338,12 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                 <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>{t('members.invite.dialogTitle')}</DialogTitle>
-                        <DialogDescription>{t('members.invite.dialogHint')}</DialogDescription>
+                        <DialogTitle>
+                            {isProjectMembersUi ? tProjects('inviteToProject') : t('members.invite.dialogTitle')}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {isProjectMembersUi ? tProjects('inviteToProjectHint') : t('members.invite.dialogHint')}
+                        </DialogDescription>
                     </DialogHeader>
                     <Input readOnly value={inviteUrl} className="font-mono text-xs" />
                     <DialogFooter className="gap-2 sm:gap-0">

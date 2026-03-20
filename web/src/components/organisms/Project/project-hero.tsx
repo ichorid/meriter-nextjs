@@ -109,7 +109,7 @@ export function ProjectHero({
         {showMembersLink && (
           <button
             type="button"
-            onClick={() => router.push(routes.communityMembers(project.id))}
+            onClick={() => router.push(routes.projectMembersManage(project.id))}
             className={cn(
               'absolute top-3 p-2 rounded-full bg-black/45 hover:bg-black/55 transition-colors backdrop-blur-sm',
               showModerationLinks ? 'right-[102px]' : 'right-3',
