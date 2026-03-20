@@ -10,7 +10,7 @@ import type { TicketStatus } from '@meriter/shared-types';
 interface TicketListProps {
   projectId: string;
   currentUserId: string;
-  isLead: boolean;
+  canModerateTickets: boolean;
   statusFilter: TicketStatus | 'all';
   onOpenCreateTask?: () => void;
   onOpenCreateOpenTask?: () => void;
@@ -19,7 +19,7 @@ interface TicketListProps {
 export function TicketList({
   projectId,
   currentUserId,
-  isLead,
+  canModerateTickets,
   statusFilter,
   onOpenCreateTask,
   onOpenCreateOpenTask,
@@ -37,7 +37,7 @@ export function TicketList({
   }
 
   const list = tickets ?? [];
-  const showLeadCtas = isLead && (onOpenCreateTask || onOpenCreateOpenTask);
+  const showLeadCtas = canModerateTickets && (onOpenCreateTask || onOpenCreateOpenTask);
 
   if (list.length === 0) {
     return (
@@ -76,7 +76,11 @@ export function TicketList({
           metrics?: { score?: number };
         }) => (
           <li key={ticket.id}>
-            <TicketCard ticket={ticket} currentUserId={currentUserId} isLead={isLead} />
+            <TicketCard
+              ticket={ticket}
+              currentUserId={currentUserId}
+              canModerateTickets={canModerateTickets}
+            />
           </li>
         ),
       )}
