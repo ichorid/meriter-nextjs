@@ -138,14 +138,14 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         })
         : trigger;
 
-    // Always render, but hide with CSS when needed. z-[60] so dropdown appears above left sidebar (z-40) on desktop.
+    // Stacking: mainWrap > leftNav in globals.css; keep menu high so panel stays above fixed sidebar.
     return (
-        <div className={`relative z-[60] ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
+        <div className={`relative z-[70] ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
             {triggerWithHandler || defaultTrigger}
 
             {/* Menu Dropdown */}
             {isOpen && !permissionLoading && (
-                <div className="absolute right-0 bottom-full mb-2 lg:bottom-auto lg:top-full lg:mt-2 lg:mb-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-50">
+                <div className="absolute right-0 bottom-full mb-2 lg:bottom-auto lg:top-full lg:mt-2 lg:mb-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-[80]">
                     <div className="py-2">
                         {canCreate ? (
                             <>

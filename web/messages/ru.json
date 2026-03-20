@@ -823,7 +823,7 @@
         "voteType": "Тип голоса",
         "upvote": "За",
         "downvote": "Против",
-        "beneficiary": "Получатель",
+        "beneficiary": "Бенефициар",
         "viewInPublication": "Посмотреть в публикации →",
         "totals": "Итоги по этому комментарию",
         "totalSum": "Итого",
@@ -1153,11 +1153,12 @@
     "publications": {
         "publicationDetails": "Детали публикации",
         "projectTag": "ПРОЕКТ",
-        "beneficiary": "Получатель",
+        "beneficiaryLineHint": "Автор указал бенефициара: при выводе мериты получает бенефициар (если правила сообщества это допускают).",
+        "beneficiary": "Бенефициар",
         "editHistory": "История редактирования",
         "noEditsYet": "Пока нет правок",
         "create": {
-            "beneficiary": "Получатель",
+            "beneficiary": "Бенефициар",
             "clear": "Очистить",
             "noUsersFound": "Пользователи не найдены",
             "searchUser": "Поиск пользователя (мин. 2 символа)",

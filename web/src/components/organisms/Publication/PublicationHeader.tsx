@@ -3,6 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Edit, Trash2, ArrowRight, Eye, Send, Lock } from 'lucide-react';
 import { Badge } from '@/components/atoms';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
@@ -81,6 +82,8 @@ interface PublicationHeaderProps {
   publicationId?: string;
   communityId?: string;
   isPoll?: boolean;
+  /** When set with meta.beneficiary, beneficiary name links to profile */
+  beneficiaryId?: string;
 }
 
 export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
@@ -92,6 +95,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   publicationId,
   communityId,
   isPoll = false,
+  beneficiaryId: beneficiaryIdProp,
 }) => {
   const router = useRouter();
   const { user } = useAuth();
@@ -102,6 +106,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const [showDetailsPopup, setShowDetailsPopup] = useState(false);
   const [showClosePostDialog, setShowClosePostDialog] = useState(false);
   const t = useTranslations('shared');
+  const tPub = useTranslations('publications');
   
   const deletePublication = useDeletePublication();
   const permanentDeletePublication = usePermanentDeletePublication();
@@ -174,11 +179,18 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     id: authorId,
   }), [publication.meta?.author?.name, publication.meta?.author?.photoUrl, publication.meta?.author?.username, authorId]);
 
-  const beneficiary = publication.meta?.beneficiary ? {
-    name: publication.meta.beneficiary.name,
-    photoUrl: publication.meta.beneficiary.photoUrl,
-    username: publication.meta.beneficiary.username,
-  } : null;
+  const beneficiary = publication.meta?.beneficiary
+    ? {
+        name: publication.meta.beneficiary.name,
+        photoUrl: publication.meta.beneficiary.photoUrl,
+        username: publication.meta.beneficiary.username,
+        id:
+          beneficiaryIdProp ??
+          (publication.meta.beneficiary as { id?: string }).id,
+      }
+    : null;
+
+  const beneficiaryLineHint = tPub('beneficiaryLineHint');
 
   // Use API permissions instead of calculating on frontend
   const canEdit = publication.permissions?.canEdit ?? false;
@@ -283,15 +295,46 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm text-base-content truncate">{author.name}</span>
-            {beneficiary && (
-              <>
-                <span className="text-xs text-base-content/30">→</span>
-                <span className="font-medium text-sm text-base-content/70 truncate">{beneficiary.name}</span>
-              </>
-            )}
-          </div>
+          {beneficiary ? (
+            <div
+              className="flex items-center gap-2 flex-wrap cursor-help"
+              title={beneficiaryLineHint}
+            >
+              {author.id ? (
+                <Link
+                  href={routes.userProfile(author.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-sm text-base-content truncate max-w-[11rem] hover:underline shrink min-w-0"
+                >
+                  {author.name}
+                </Link>
+              ) : (
+                <span className="font-medium text-sm text-base-content truncate max-w-[11rem] min-w-0">
+                  {author.name}
+                </span>
+              )}
+              <span className="text-xs text-base-content/30 shrink-0" aria-hidden>
+                →
+              </span>
+              {beneficiary.id ? (
+                <Link
+                  href={routes.userProfile(beneficiary.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-sm text-base-content/70 truncate max-w-[11rem] hover:underline shrink min-w-0"
+                >
+                  {beneficiary.name}
+                </Link>
+              ) : (
+                <span className="font-medium text-sm text-base-content/70 truncate max-w-[11rem] min-w-0">
+                  {beneficiary.name}
+                </span>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm text-base-content truncate">{author.name}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             {author.username && (
               <span className="text-xs text-base-content/40">@{author.username}</span>

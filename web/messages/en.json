@@ -1153,6 +1153,7 @@
     "publications": {
         "publicationDetails": "Publication Details",
         "projectTag": "PROJECT",
+        "beneficiaryLineHint": "Author posted on behalf of the beneficiary; merits go to the beneficiary on withdrawal where rules allow.",
         "beneficiary": "Beneficiary",
         "editHistory": "Edit History",
         "noEditsYet": "No edits yet",

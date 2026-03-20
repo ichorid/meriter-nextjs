@@ -215,6 +215,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         showCommunityAvatar={showCommunityAvatar}
         className="mb-3"
         authorId={pubItem.authorId}
+        beneficiaryId={pubItem.beneficiaryId}
         metrics={pubItem.metrics}
         publicationId={pubItem.id}
         communityId={pubItem.communityId}

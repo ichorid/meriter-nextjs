@@ -832,9 +832,11 @@
     width: 100%;
   }
 
-  /* Left nav */
+  /* Left nav: keep below main so dropdowns/popovers in main paint above fixed sidebar */
   .leftNav {
     overflow: hidden;
+    position: relative;
+    z-index: 1;
     /* Let sidebar handle its own scrolling */
     min-height: 0;
     min-width: 0;
@@ -848,6 +850,8 @@
     min-height: 0;
     min-width: 0;
     width: 100%;
+    position: relative;
+    z-index: 2;
   }
 
   .main {
