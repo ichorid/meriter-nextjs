@@ -131,6 +131,7 @@ describe('Project publishToBirzha and getWallet', () => {
     (global as any).testUserId = leadId;
     const result = await trpcMutation(app, 'project.publishToBirzha', {
       projectId,
+      title: 'Birzha post title',
       content: 'Post on Birzha',
       type: 'text',
       investorSharePercent: 25,
@@ -139,6 +140,7 @@ describe('Project publishToBirzha and getWallet', () => {
     expect(result.id).toBeDefined();
 
     const pub = await publicationModel.findOne({ id: result.id }).lean();
+    expect(pub?.title).toBe('Birzha post title');
     expect(pub?.sourceEntityId).toBe(projectId);
     expect(pub?.sourceEntityType).toBe('project');
     expect(pub?.communityId).toBe(marathonId);
@@ -184,6 +186,7 @@ describe('Project publishToBirzha and getWallet', () => {
     (global as any).testUserId = leadId;
     const res = await trpcMutationWithError(app, 'project.publishToBirzha', {
       projectId,
+      title: 'Title',
       content: 'Post',
       type: 'text',
     });

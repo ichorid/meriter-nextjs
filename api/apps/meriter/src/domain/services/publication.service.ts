@@ -204,7 +204,7 @@ export class PublicationService {
     authorId: string;
     content: string;
     type: 'text' | 'image' | 'video';
-    title?: string;
+    title: string;
     description?: string;
     images?: string[];
     investorSharePercent: number;

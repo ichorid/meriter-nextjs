@@ -289,7 +289,7 @@ export const projectRouter = router({
     .input(
       z.object({
         projectId: z.string(),
-        title: z.string().min(1).max(500).optional(),
+        title: z.string().min(1).max(500),
         description: z.string().max(5000).optional(),
         content: z.string().min(1).max(10000),
         type: z.enum(['text', 'image', 'video']),
