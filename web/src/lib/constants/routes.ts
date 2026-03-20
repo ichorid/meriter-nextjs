@@ -29,6 +29,14 @@ export const routes = {
       });
       return `/meriter/communities/${projectCommunityId}/members?${q.toString()}`;
     },
+    /** Create discussion in project community; after publish, return to project discussions tab. */
+    projectDiscussionCreate: (projectCommunityId: string) => {
+      const q = new URLSearchParams({
+        postType: 'discussion',
+        returnTo: `/meriter/projects/${projectCommunityId}?tab=discussions`,
+      });
+      return `/meriter/communities/${projectCommunityId}/create?${q.toString()}`;
+    },
     /** Invite accept flow; append ?t=<jwt> */
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,

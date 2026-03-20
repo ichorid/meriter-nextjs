@@ -1,14 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import { routes } from '@/lib/constants/routes';
 import { TicketList } from './TicketList';
 import { DiscussionList } from './DiscussionList';
 import { CreateTicketForm } from './CreateTicketForm';
 import { CreateNeutralTicketForm } from './CreateNeutralTicketForm';
-import { ProjectSharesDisplay } from './ProjectSharesDisplay';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Dialog,
@@ -37,10 +38,18 @@ export function ProjectWorkArea({
   readOnly = false,
 }: ProjectWorkAreaProps) {
   const t = useTranslations('projects');
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>('tickets');
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [createTicketOpen, setCreateTicketOpen] = useState(false);
   const [createNeutralTicketOpen, setCreateNeutralTicketOpen] = useState(false);
+
+  const tabFromUrl = searchParams.get('tab');
+  useEffect(() => {
+    if (tabFromUrl === 'discussions') {
+      setActiveTab('discussions');
+    }
+  }, [tabFromUrl]);
 
   if (!isMember) {
     return null;
@@ -139,9 +148,7 @@ export function ProjectWorkArea({
       {activeTab === 'discussions' && !readOnly && (
         <div className="flex justify-end">
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/meriter/communities/${projectId}/create?postType=discussion`}>
-              {t('createDiscussion')}
-            </Link>
+            <Link href={routes.projectDiscussionCreate(projectId)}>{t('createDiscussion')}</Link>
           </Button>
         </div>
       )}
@@ -159,10 +166,6 @@ export function ProjectWorkArea({
         />
       )}
       {activeTab === 'discussions' && <DiscussionList projectId={projectId} />}
-
-      <div className="pt-2 border-t border-white/10">
-        <ProjectSharesDisplay projectId={projectId} />
-      </div>
     </section>
   );
 }

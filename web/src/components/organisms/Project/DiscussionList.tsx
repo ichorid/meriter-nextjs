@@ -6,6 +6,7 @@ import { useTickets } from '@/hooks/api/useTickets';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
+import { routes } from '@/lib/constants/routes';
 
 interface DiscussionListProps {
   projectId: string;
@@ -34,9 +35,7 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
         <MessagesSquare className="h-12 w-12 text-base-content/30" aria-hidden />
         <p className="max-w-md text-sm text-base-content/70">{t('emptyDiscussionsHint')}</p>
         <Button size="sm" variant="default" asChild>
-          <Link href={`/meriter/communities/${projectId}/create?postType=discussion`}>
-            {t('createDiscussion')}
-          </Link>
+          <Link href={routes.projectDiscussionCreate(projectId)}>{t('createDiscussion')}</Link>
         </Button>
       </div>
     );

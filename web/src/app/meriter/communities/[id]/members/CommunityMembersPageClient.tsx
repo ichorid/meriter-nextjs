@@ -35,14 +35,7 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { Input } from '@/components/ui/shadcn/input';
 import { trpc } from '@/lib/trpc/client';
-
-function sanitizeMeriterReturnPath(path: string | undefined): string | undefined {
-  if (!path || typeof path !== 'string') return undefined;
-  const trimmed = path.trim();
-  if (!trimmed.startsWith('/meriter/')) return undefined;
-  if (trimmed.includes('//')) return undefined;
-  return trimmed;
-}
+import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -163,7 +156,7 @@ export function CommunityMembersPageClient({
         }
     };
 
-    const backTarget = sanitizeMeriterReturnPath(returnTo) ?? routes.community(communityId);
+    const backTarget = sanitizeMeriterInternalPath(returnTo) ?? routes.community(communityId);
 
     const pageHeader = (
         <SimpleStickyHeader

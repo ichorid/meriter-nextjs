@@ -16,6 +16,7 @@ import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
 import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
+import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
 
 interface CreatePublicationPageClientProps {
   communityId: string;
@@ -47,6 +48,9 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   }
   const defaultPostType = requestedPostType;
   const isProjectCommunity = !!community?.isProject;
+  const afterCreatePath = sanitizeMeriterInternalPath(searchParams?.get('returnTo') ?? undefined);
+  const fallbackCommunityPath = `/meriter/communities/${communityId}`;
+  const cancelOrBackPath = afterCreatePath ?? fallbackCommunityPath;
 
   useEffect(() => {
     if (!userLoading && !isAuthenticated) {
@@ -77,7 +81,7 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
           <SimpleStickyHeader
             title={t('title')}
             showBack={true}
-            onBack={() => router.push(`/meriter/communities/${communityId}`)}
+            onBack={() => router.push(cancelOrBackPath)}
             asStickyHeader={true}
           />
         }
@@ -86,14 +90,20 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
           <DialogContent
             className="max-w-sm"
             onPointerDownOutside={(e) => e.preventDefault()}
-            onEscapeKeyDown={() => router.push(`/meriter/communities/${communityId}`)}
+            onEscapeKeyDown={() => router.push(cancelOrBackPath)}
           >
             <p className="text-base-content text-center">
               {t('insufficientMeritsPopup', { cost: postCost })}
             </p>
             <div className="flex justify-center mt-4">
               <Button
-                onClick={() => router.push(`/meriter/communities/${communityId}?tappalka=1`)}
+                onClick={() =>
+                  router.push(
+                    afterCreatePath
+                      ? `${afterCreatePath}${afterCreatePath.includes('?') ? '&' : '?'}tappalka=1`
+                      : `${fallbackCommunityPath}?tappalka=1`,
+                  )
+                }
                 className="mt-2"
               >
                 {tCommunities('tappalka')}
@@ -112,7 +122,7 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
         <SimpleStickyHeader
           title={t('title')}
           showBack={true}
-          onBack={() => router.push(`/meriter/communities/${communityId}`)}
+          onBack={() => router.push(cancelOrBackPath)}
           asStickyHeader={true}
         />
       }
@@ -126,11 +136,15 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
           defaultPostType={defaultPostType}
           isProjectCommunity={isProjectCommunity}
           onSuccess={(publication) => {
+            if (afterCreatePath) {
+              router.push(afterCreatePath);
+              return;
+            }
             const postIdentifier = publication.slug || publication.id;
-            router.push(`/meriter/communities/${communityId}?highlight=${postIdentifier}`);
+            router.push(`${fallbackCommunityPath}?highlight=${postIdentifier}`);
           }}
           onCancel={() => {
-            router.push(`/meriter/communities/${communityId}`);
+            router.push(cancelOrBackPath);
           }}
         />
       </div>

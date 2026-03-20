@@ -79,7 +79,7 @@ export function ProjectDashboard({
         {totalMembers === 0 && (
           <p className="text-sm text-base-content/50">{t('teamNoMembersPreview')}</p>
         )}
-        <Button variant="outline" size="sm" className="w-full sm:w-auto rounded-xl" asChild>
+        <Button variant="outline" size="sm" className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto" asChild>
           <Link href={routes.projectMembersManage(projectId)}>{t('viewTeamMembers')}</Link>
         </Button>
       </div>

@@ -36,7 +36,12 @@ export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCar
           <p className="text-2xl font-semibold tabular-nums text-base-content">{balance} merits</p>
         )}
         {footer}
-        <Button size="sm" variant="outline" className="w-full sm:w-auto" onClick={() => setTopUpOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+          onClick={() => setTopUpOpen(true)}
+        >
           {t('topUp', { defaultValue: 'Top up' })}
         </Button>
       </div>
