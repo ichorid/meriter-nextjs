@@ -12,7 +12,12 @@ import { PublicationSchemaClass, PublicationDocument } from '../src/domain/model
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../src/domain/models/user-community-role/user-community-role.schema';
 import { uid } from 'uid';
-import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import {
+  trpcMutation,
+  trpcMutationWithError,
+  trpcQuery,
+} from './helpers/trpc-test-helper';
+import { withSuppressedErrors } from './helpers/error-suppression.helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
@@ -817,15 +822,15 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
       expect(details.metrics.score).toBeGreaterThan(0);
     });
 
-    it('should allow actual downvotes in Future Vision (wallet-only with negative amount)', async () => {
+    it('should reject downvotes in Future Vision (support-only; wallet-only still applies)', async () => {
       (global as any).testUserId = testUserId;
-      
+
       const pubId = uid();
       await publicationModel.create({
         id: pubId,
         communityId: visionCommunityId,
         authorId: testUserId2,
-        content: 'Future Vision publication for downvote test',
+        content: 'Future Vision publication for downvote rejection test',
         type: 'text',
         hashtags: ['vision'],
         postType: 'basic',
@@ -840,26 +845,30 @@ describe('Special Groups Updated Voting Rules (e2e)', () => {
         updatedAt: new Date(),
       });
 
-      // Create a downvote using explicit direction field (wallet-only)
-      const vote = await trpcMutation(app, 'votes.createWithComment', {
-        targetType: 'publication',
-        targetId: pubId,
-        quotaAmount: 0,
-        walletAmount: 5,
-        direction: 'down', // Explicit direction for downvote
-        comment: 'Downvote in Future Vision',
+      await withSuppressedErrors(['FORBIDDEN'], async () => {
+        const result = await trpcMutationWithError(
+          app,
+          'votes.createWithComment',
+          {
+            targetType: 'publication',
+            targetId: pubId,
+            quotaAmount: 0,
+            walletAmount: 5,
+            direction: 'down',
+            comment: 'Attempted downvote in Future Vision',
+          },
+        );
+
+        expect(result.error?.code).toBe('FORBIDDEN');
+        expect(result.error?.message).toContain(
+          'Downvotes are not allowed in Future Vision',
+        );
       });
 
-      expect(vote.amountWallet).toBe(5);
-      expect(vote.amountQuota).toBe(0);
-      expect(vote.direction).toBe('down');
-
-      // Verify publication metrics were updated correctly (downvote decreases score)
       const publication = await publicationModel.findOne({ id: pubId }).lean();
       expect(publication.metrics.upvotes).toBe(0);
-      // Publication metrics store total vote amounts (not "count of votes")
-      expect(publication.metrics.downvotes).toBe(5);
-      expect(publication.metrics.score).toBe(-5); // Score should decrease
+      expect(publication.metrics.downvotes).toBe(0);
+      expect(publication.metrics.score).toBe(0);
     });
   });
 });

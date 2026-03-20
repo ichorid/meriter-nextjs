@@ -353,12 +353,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       
       // User has 100 wallet balance, try to use 150 wallet
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.create', {
-          targetType: 'publication',
-          targetId: futureVisionPublicationId,
-          quotaAmount: 0,
-          walletAmount: 150,
-        });
+        const result = await trpcMutationWithError(
+          app,
+          'votes.createWithComment',
+          {
+            targetType: 'publication',
+            targetId: futureVisionPublicationId,
+            quotaAmount: 0,
+            walletAmount: 150,
+            comment: 'FV vote exceeds wallet',
+          },
+        );
 
         expect(result.error?.code).toBe('BAD_REQUEST');
         expect(result.error?.message).toContain('Insufficient wallet balance');
@@ -421,11 +426,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       // Set global testUserId for AllowAllGuard to use
       (global as any).testUserId = testUserId;
       
-      const vote = await trpcMutation(app, 'votes.create', {
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: futureVisionPublicationId,
         quotaAmount: 0,
         walletAmount: 20,
+        comment: 'Valid wallet-only vote in FV',
       });
 
       expect(vote).toBeDefined();
@@ -438,12 +444,17 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       (global as any).testUserId = testUserId;
       
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
-        const result = await trpcMutationWithError(app, 'votes.create', {
-          targetType: 'publication',
-          targetId: futureVisionPublicationId,
-          quotaAmount: 1,
-          walletAmount: 1,
-        });
+        const result = await trpcMutationWithError(
+          app,
+          'votes.createWithComment',
+          {
+            targetType: 'publication',
+            targetId: futureVisionPublicationId,
+            quotaAmount: 1,
+            walletAmount: 1,
+            comment: 'Attempt quota+wallet in FV',
+          },
+        );
         expect(result.error?.code).toBe('BAD_REQUEST');
         expect(result.error?.message).toContain('Future Vision only allows wallet voting');
       });
@@ -455,11 +466,12 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
       const walletBefore = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);
       const balanceBefore = walletBefore ? walletBefore.getBalance() : 0;
 
-      await trpcMutation(app, 'votes.create', {
+      await trpcMutation(app, 'votes.createWithComment', {
         targetType: 'publication',
         targetId: futureVisionPublicationId,
         quotaAmount: 0,
         walletAmount: 5,
+        comment: 'Wallet debit test in FV',
       });
 
       const walletAfter = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);

@@ -612,19 +612,6 @@ export const CreatePublicationDtoSchema = z.object({
   )
   .refine(
     (data) => {
-      // When isProject=true, postType must be 'ticket' or 'discussion'
-      if (data.isProject === true) {
-        return data.postType === "ticket" || data.postType === "discussion";
-      }
-      return true;
-    },
-    {
-      message:
-        "When creating in a project community, postType must be 'ticket' or 'discussion'",
-    }
-  )
-  .refine(
-    (data) => {
       // Validate array lengths
       if (data.beneficiaries && data.beneficiaries.length > 2) return false;
       if (data.methods && data.methods.length > 3) return false;

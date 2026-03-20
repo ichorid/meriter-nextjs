@@ -36,12 +36,16 @@ describe('Comments and Votes Integration (e2e)', () => {
     await TestSetupHelper.cleanup({ app, testDb });
   });
 
-  async function seed(): Promise<{
+  async function seed(options?: {
+    /** Default future-vision (wallet via global). Use custom for flows that require downvotes. */
+    communityType?: 'future-vision' | 'custom';
+  }): Promise<{
     communityId: string;
     authorId: string;
     voterId: string;
     publicationId: string;
   }> {
+    const communityType = options?.communityType ?? 'future-vision';
     const now = new Date();
     const communityId = uid();
     const authorId = uid();
@@ -85,13 +89,23 @@ describe('Comments and Votes Integration (e2e)', () => {
     await communityModel.create({
       id: communityId,
       name: 'Comments/Votes Community',
-      typeTag: 'future-vision',
+      typeTag: communityType,
       members: [authorId, voterId],
       settings: {
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
         dailyEmission: 10,
         postCost: 1,
+        canPayPostFromQuota: false,
       },
+      ...(communityType === 'custom'
+        ? {
+            meritSettings: {
+              dailyQuota: 10,
+              quotaEnabled: true,
+              quotaRecipients: ['superadmin', 'lead', 'participant'],
+            },
+          }
+        : {}),
       votingRules: {
         allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
         canVoteForOwnPosts: false,
@@ -111,8 +125,9 @@ describe('Comments and Votes Integration (e2e)', () => {
       { id: uid(), userId: voterId, communityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    // Post fee and vote deduction use global wallet (GLOBAL_COMMUNITY_ID). Seed global wallets.
-    await walletModel.create([
+    // Post fee uses global wallet; priority hubs (future-vision) vote via global too.
+    // Custom communities vote from the community wallet — seed those when needed.
+    const wallets: Array<Record<string, unknown>> = [
       {
         id: uid(),
         userId: voterId,
@@ -133,7 +148,32 @@ describe('Comments and Votes Integration (e2e)', () => {
         createdAt: now,
         updatedAt: now,
       },
-    ]);
+    ];
+    if (communityType === 'custom') {
+      wallets.push(
+        {
+          id: uid(),
+          userId: voterId,
+          communityId,
+          balance: 100,
+          currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          lastUpdated: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+        {
+          id: uid(),
+          userId: authorId,
+          communityId,
+          balance: 100,
+          currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+          lastUpdated: now,
+          createdAt: now,
+          updatedAt: now,
+        },
+      );
+    }
+    await walletModel.create(wallets);
 
     (global as any).testUserId = authorId;
     const publication = await trpcMutation(app, 'publications.create', {
@@ -183,7 +223,7 @@ describe('Comments and Votes Integration (e2e)', () => {
   });
 
   it('handles downvotes with comment correctly in the comment list', async () => {
-    const { voterId, publicationId } = await seed();
+    const { voterId, publicationId } = await seed({ communityType: 'custom' });
 
     (global as any).testUserId = voterId;
     const vote = await trpcMutation(app, 'votes.createWithComment', {
