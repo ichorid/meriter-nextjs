@@ -3,7 +3,10 @@ import { InjectModel } from '@nestjs/mongoose';
 import { readFileSync } from 'fs';
 import { Model } from 'mongoose';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
-import { parseFutureVisionsMarketingTsv } from '../../seed-data/parse-future-visions-marketing-tsv';
+import {
+  parseFutureVisionsMarketingTsv,
+  type FutureVisionMarketingRow,
+} from '../../seed-data/parse-future-visions-marketing-tsv';
 import { resolveFutureVisionsMarketingTsvPath } from '../../seed-data/resolve-seed-data-path';
 import { PublicationCreatedEvent } from '../events';
 import {
@@ -22,13 +25,24 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
 
-const DEMO_SEED_VERSION = 2;
+const DEMO_SEED_VERSION = 3;
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
   plural: 'merits',
   genitive: 'merits',
 } as const;
+
+/**
+ * Вымышленные названия команд — в TSV могут быть реальные школы; в продукте показываем только эти имена.
+ */
+const DEMO_FICTIONAL_TEAM_NAMES = [
+  'Лицей «Северный луч»',
+  'Школа «Речной вокзал»',
+  'Гимназия «Зелёный мыс»',
+  'Образовательный центр «Кедровая аллея»',
+  'Школа «Ясная поляна»',
+] as const;
 
 /** Рубрикатор социальных ценностей (Образ будущего / категории постов). */
 const DEMO_SOCIAL_RUBRIC = [
@@ -292,7 +306,7 @@ export class PlatformDemoSeedService {
       });
     }
 
-    const schoolToRows = new Map<string, typeof rows>();
+    const schoolToRows = new Map<string, FutureVisionMarketingRow[]>();
     for (const r of rows) {
       const list = schoolToRows.get(r.school) ?? [];
       list.push(r);
@@ -322,8 +336,10 @@ export class PlatformDemoSeedService {
     }[] = [];
 
     for (let s = 0; s < uniqueSchools.length; s++) {
-      const schoolName = uniqueSchools[s];
-      const rowsForSchool = schoolToRows.get(schoolName) ?? [];
+      const tsvSchoolKey = uniqueSchools[s];
+      const teamDisplayName =
+        DEMO_FICTIONAL_TEAM_NAMES[s] ?? `Демо-школа «Команда ${s + 1}»`;
+      const rowsForSchool = schoolToRows.get(tsvSchoolKey) ?? [];
       const leadId = demoUsers[s % demoUsers.length];
 
       const restMembers: string[] = [];
@@ -335,18 +351,20 @@ export class PlatformDemoSeedService {
       }
       const allTeamMembers = [leadId, ...restMembers];
 
-      const visionSource = rowsForSchool[0]?.visionText?.trim();
+      const uniqueVisionRows = this.collectDistinctVisionRows(rowsForSchool);
+      const primaryRow = uniqueVisionRows[0];
+      const visionSource = primaryRow?.visionText?.trim();
       const fvText = this.shortenVision(
         visionSource && visionSource.length > 24
           ? visionSource
-          : `Мы видим школу, где каждый чувствует себя частью сообщества: доверие, забота и совместные дела — опора нашей учёбы в «${this.shortSchoolLabel(schoolName)}».`,
+          : `Мы видим школу, где каждый чувствует себя частью сообщества: доверие, забота и совместные дела — опора нашей учёбы в «${this.shortSchoolLabel(teamDisplayName)}».`,
       );
       const fvTags = this.pickFvCategories(rubric, fvText);
-      const coverLabel = this.shortSchoolLabel(schoolName);
+      const coverLabel = this.shortSchoolLabel(teamDisplayName);
       const futureVisionCover = `https://placehold.co/1200x400/0d9488/fcfbf9/png?text=${encodeURIComponent(coverLabel)}`;
 
       const team = await this.communityService.createCommunity({
-        name: schoolName,
+        name: teamDisplayName,
         typeTag: 'team',
         creatorUserId: leadId,
         futureVisionText: fvText,
@@ -371,25 +389,22 @@ export class PlatformDemoSeedService {
 
       await this.communityService.updateCommunity(team.id, {
         hashtags: fvTags,
-        description: `Команда «${schoolName}» — участники Марафона добра. Совместные проекты и образ будущего школы.`,
+        description: `Команда «${teamDisplayName}» — участники Марафона добра. Совместные проекты и образ будущего школы.`,
       });
 
       await this.patchPrimaryFutureVisionPost(fvHub.id, team.id, {
         categories: fvTags,
         images: [futureVisionCover],
-        description: rowsForSchool[0]?.publicationUrl
-          ? `Материал: ${rowsForSchool[0].publicationUrl}`
-          : `Образ будущего команды «${this.shortSchoolLabel(schoolName)}».`,
+        description: primaryRow?.publicationUrl
+          ? `Материал: ${primaryRow.publicationUrl}`
+          : `Образ будущего команды «${this.shortSchoolLabel(teamDisplayName)}».`,
       });
       fvCount += 1;
 
-      const extraFvLimit = Math.min(rowsForSchool.length - 1, 2);
-      for (let ri = 1; ri <= extraFvLimit; ri++) {
-        const row = rowsForSchool[ri];
-        if (!row?.visionText?.trim()) {
-          continue;
-        }
-        const authorId = allTeamMembers[ri % allTeamMembers.length];
+      const extraRows = uniqueVisionRows.slice(1, 3);
+      for (let ei = 0; ei < extraRows.length; ei++) {
+        const row = extraRows[ei];
+        const authorId = allTeamMembers[(ei + 1) % allTeamMembers.length];
         const extraTags = this.pickFvCategories(rubric, row.visionText);
         const { id: extraId } = await this.publicationService.createFutureVisionPost({
           futureVisionCommunityId: fvHub.id,
@@ -399,7 +414,7 @@ export class PlatformDemoSeedService {
         });
         await this.patchFutureVisionPostById(extraId, {
           categories: extraTags,
-          images: this.placeholderImages(row.illustrationFilename, s * 10 + ri),
+          images: this.placeholderImages(row.illustrationFilename, s * 10 + ei + 1),
           description: row.publicationUrl ? `Материал: ${row.publicationUrl}` : undefined,
         });
         fvCount += 1;
@@ -645,6 +660,36 @@ export class PlatformDemoSeedService {
       teamWallPosts,
       projectDiscussions,
     };
+  }
+
+  /**
+   * Уникальные по смыслу строки ОБ (в TSV часто дублируют один и тот же текст в нескольких строках).
+   */
+  private collectDistinctVisionRows(rows: FutureVisionMarketingRow[]): FutureVisionMarketingRow[] {
+    const seen = new Set<string>();
+    const out: FutureVisionMarketingRow[] = [];
+    for (const r of rows) {
+      const t = r.visionText?.trim();
+      if (!t || t.length < 8) {
+        continue;
+      }
+      const fp = this.visionFingerprint(t);
+      if (seen.has(fp)) {
+        continue;
+      }
+      seen.add(fp);
+      out.push(r);
+    }
+    return out;
+  }
+
+  private visionFingerprint(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFKC')
+      .replace(/\s+/g, ' ')
+      .replace(/[.,!?«»"""''\-–—:;]/g, '')
+      .trim();
   }
 
   private pickFvCategories(rubric: string[], visionText: string): string[] {
