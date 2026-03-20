@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Scale, Filter, Search, X, Users } from 'lucide-react';
 import { useFutureVisions, useFutureVisionTags } from '@/hooks/api/useFutureVisions';
@@ -12,6 +12,7 @@ import { SortToggle } from '@/components/ui/SortToggle';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
+import { routes } from '@/lib/constants/routes';
 import type { FutureVisionItem } from './FutureVisionCard';
 
 export interface FutureVisionFeedProps {
@@ -19,10 +20,14 @@ export interface FutureVisionFeedProps {
   tappalkaEnabled?: boolean;
 }
 
+const FV_TAG_QUERY = 'fvTag';
+
 export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }: FutureVisionFeedProps) {
   const t = useTranslations('common');
   const tCommunities = useTranslations('pages.communities');
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { canCreate: canCreateCommunity } = useCanCreateCommunity();
   const [page, setPage] = useState(1);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -64,10 +69,31 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
 
   const filterTags = rubricatorTags.length > 0 ? rubricatorTags : tagsFromItems;
 
+  const fvTagFromUrl = searchParams.get(FV_TAG_QUERY);
+
+  useEffect(() => {
+    if (!fvTagFromUrl) {
+      return;
+    }
+    setSelectedTags([fvTagFromUrl]);
+    setPage(1);
+    setBOpenFilters(true);
+  }, [fvTagFromUrl]);
+
   const handleToggleTag = (tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag],
-    );
+    setSelectedTags((prev) => {
+      const next = prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag];
+      if (next.length === 0 && searchParams.get(FV_TAG_QUERY)) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete(FV_TAG_QUERY);
+        const q = nextParams.toString();
+        const base = pathname ?? routes.futureVisions;
+        queueMicrotask(() => {
+          router.replace(q ? `${base}?${q}` : base, { scroll: false });
+        });
+      }
+      return next;
+    });
     setPage(1);
   };
 

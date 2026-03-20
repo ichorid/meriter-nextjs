@@ -70,6 +70,14 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
     await shareUrl(url, tShared('urlCopiedToBuffer'));
   };
 
+  const handleRubricClick = (e: React.MouseEvent, tag: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const params = new URLSearchParams();
+    params.set('fvTag', tag);
+    router.push(`${routes.futureVisions}?${params.toString()}`);
+  };
+
   return (
     <Link
       href={`/meriter/communities/${item.communityId}`}
@@ -101,12 +109,14 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
       {item.futureVisionTags && item.futureVisionTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {item.futureVisionTags.map((tag) => (
-            <span
+            <button
               key={tag}
-              className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-normal text-base-content/80 bg-base-200"
+              type="button"
+              onClick={(e) => handleRubricClick(e, tag)}
+              className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-normal text-base-content/80 bg-base-200 hover:bg-base-300 cursor-pointer transition-colors text-left"
             >
               {tag}
-            </span>
+            </button>
           ))}
         </div>
       )}
