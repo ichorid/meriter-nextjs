@@ -693,9 +693,6 @@ export const publicationsRouter = router({
       // Get post cost from community settings (default to 1 if not set)
       const postCost = community.settings?.postCost ?? 1;
       const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
-      
-      // Log for debugging
-      console.log(`[PublicationsRouter] Creating post in community ${input.communityId}, postCost: ${postCost}, canPayFromQuota: ${canPayFromQuota}, settings: ${JSON.stringify(community.settings)}`);
 
       // Calculate payment breakdown and validate if cost > 0
       let quotaAmount = 0;

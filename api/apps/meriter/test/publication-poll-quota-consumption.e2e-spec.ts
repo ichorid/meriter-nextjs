@@ -1,12 +1,18 @@
 import { INestApplication } from '@nestjs/common';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
-import { Community, CommunityDocument } from '../src/domain/models/community/community.schema';
-import { User, UserDocument } from '../src/domain/models/user/user.schema';
-import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
+import {
+  CommunitySchemaClass,
+  CommunityDocument,
+} from '../src/domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
+import {
+  QuotaUsageSchemaClass,
+  QuotaUsageDocument,
+} from '../src/domain/models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
+import type { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import type { WalletService } from '../src/domain/services/wallet.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
@@ -37,12 +43,22 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
-    walletService = app.get<WalletService>(WalletService);
+    const { UserCommunityRoleService: UserCommunityRoleServiceCls } = await import(
+      '../src/domain/services/user-community-role.service'
+    );
+    const { WalletService: WalletServiceCls } = await import(
+      '../src/domain/services/wallet.service'
+    );
+    userCommunityRoleService = app.get(UserCommunityRoleServiceCls);
+    walletService = app.get(WalletServiceCls);
 
-    communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
-    userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
-    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(getModelToken(QuotaUsage.name));
+    communityModel = app.get<Model<CommunityDocument>>(
+      getModelToken(CommunitySchemaClass.name),
+    );
+    userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
+    quotaUsageModel = app.get<Model<QuotaUsageDocument>>(
+      getModelToken(QuotaUsageSchemaClass.name),
+    );
 
     testUserId = uid();
     testAuthorId = uid(); // Different user to author publications

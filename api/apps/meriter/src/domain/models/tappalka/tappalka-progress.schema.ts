@@ -37,7 +37,7 @@ export class TappalkaProgressSchemaClass implements TappalkaProgress {
   @Prop({ required: true, index: true })
   userId!: string;
 
-  @Prop({ required: true, index: true })
+  @Prop({ required: true })
   communityId!: string;
 
   @Prop({ type: Number, default: 0 })

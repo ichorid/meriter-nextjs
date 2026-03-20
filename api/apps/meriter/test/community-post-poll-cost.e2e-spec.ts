@@ -8,8 +8,8 @@ import { Poll, PollDocument } from '../src/domain/models/poll/poll.schema';
 import { QuotaUsage, QuotaUsageDocument } from '../src/domain/models/quota-usage/quota-usage.schema';
 import { Wallet, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
-import { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
-import { WalletService } from '../src/domain/services/wallet.service';
+import type { UserCommunityRoleService } from '../src/domain/services/user-community-role.service';
+import type { WalletService } from '../src/domain/services/wallet.service';
 import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { withSuppressedErrors } from './helpers/error-suppression.helper';
@@ -39,8 +39,14 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     testDb = ctx.testDb;
 
     connection = app.get(getConnectionToken());
-    userCommunityRoleService = app.get<UserCommunityRoleService>(UserCommunityRoleService);
-    walletService = app.get<WalletService>(WalletService);
+    const { UserCommunityRoleService: UserCommunityRoleServiceCls } = await import(
+      '../src/domain/services/user-community-role.service'
+    );
+    const { WalletService: WalletServiceCls } = await import(
+      '../src/domain/services/wallet.service'
+    );
+    userCommunityRoleService = app.get(UserCommunityRoleServiceCls);
+    walletService = app.get(WalletServiceCls);
 
     communityModel = app.get<Model<CommunityDocument>>(getModelToken(Community.name));
     userModel = app.get<Model<UserDocument>>(getModelToken(User.name));
