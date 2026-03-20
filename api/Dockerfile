@@ -45,7 +45,10 @@ RUN mkdir -p /out && \
     cp -R libs/shared-types/dist /out/libs/shared-types/dist && \
     cp libs/shared-types/package.json /out/libs/shared-types/package.json && \
     # Copy public directory (favicon)
-    cp -R api/apps/meriter/public /out/public
+    cp -R api/apps/meriter/public /out/public && \
+    # Demo seed TSV (webpack bundle does not include these; platformDemo.seedDemoWorld reads from here)
+    mkdir -p /out/dist/apps/meriter/seed-data && \
+    cp -R api/apps/meriter/seed-data/. /out/dist/apps/meriter/seed-data/
 
 # --- run ---
 FROM node:22.11-alpine AS runner
