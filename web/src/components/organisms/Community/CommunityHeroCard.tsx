@@ -221,8 +221,8 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
         )}
       </div>
 
-      {/* Avatar - overlapping cover */}
-      <div className="relative px-4 sm:px-6">
+      {/* Avatar - overlapping cover (px-4 matches member/projects teaser tiles p-4) */}
+      <div className="relative px-4">
         <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
           <div className="relative inline-block ring-4 ring-base-100 rounded-full bg-base-100">
             <Avatar className="w-20 h-20 sm:w-24 sm:h-24 text-xl bg-base-200">
