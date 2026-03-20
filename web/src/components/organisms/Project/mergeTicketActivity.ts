@@ -59,6 +59,10 @@ export function mergeTicketActivity(
         return t('taskActivity_assignee_set');
       case 'ticket_updated':
         return t('taskActivity_ticket_updated');
+      case 'assignee_declined': {
+        const reason = typeof d.reason === 'string' ? d.reason : '';
+        return t('taskActivity_assignee_declined', { reason });
+      }
       default:
         return action;
     }

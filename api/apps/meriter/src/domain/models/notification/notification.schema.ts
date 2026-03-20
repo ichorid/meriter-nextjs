@@ -25,6 +25,7 @@ export type NotificationType =
   | 'project_created'
   | 'ticket_assigned'
   | 'ticket_done'
+  | 'ticket_assignee_declined'
   | 'ticket_accepted'
   | 'ticket_evaluated'
   | 'project_published'
@@ -68,7 +69,7 @@ export class NotificationSchemaClass implements Notification {
 
   @Prop({
     required: true,
-    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation', 'investment_received', 'investment_distributed', 'post_closed_investment', 'investment_pool_depleted', 'post_closed', 'post_ttl_warning', 'post_inactivity_warning', 'project_created', 'ticket_assigned', 'ticket_done', 'ticket_accepted', 'ticket_evaluated', 'project_published', 'project_distributed', 'project_closed', 'member_joined', 'member_left_project', 'shares_changed', 'ticket_apply', 'ticket_rejection', 'ob_vote_join_offer'],
+    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation', 'investment_received', 'investment_distributed', 'post_closed_investment', 'investment_pool_depleted', 'post_closed', 'post_ttl_warning', 'post_inactivity_warning', 'project_created', 'ticket_assigned', 'ticket_done', 'ticket_assignee_declined', 'ticket_accepted', 'ticket_evaluated', 'project_published', 'project_distributed', 'project_closed', 'member_joined', 'member_left_project', 'shares_changed', 'ticket_apply', 'ticket_rejection', 'ob_vote_join_offer'],
     index: true,
   })
   type!: NotificationType;

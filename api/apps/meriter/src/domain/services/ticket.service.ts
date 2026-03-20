@@ -529,6 +529,70 @@ export class TicketService {
   }
 
   /**
+   * Assignee gives up: in_progress → open, clears beneficiary, neutral again (new applications).
+   * Reason is stored on ticket activity log (visible in task history).
+   */
+  async declineAsAssignee(ticketId: string, userId: string, reason: string): Promise<void> {
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException('Comment is required');
+    }
+    if (trimmed.length > 2000) {
+      throw new BadRequestException('Comment is too long');
+    }
+
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+
+    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
+    if (current !== 'in_progress') {
+      throw new BadRequestException('Only a task in progress can be declined by the assignee');
+    }
+
+    const assigneeId = doc.beneficiaryId;
+    if (!assigneeId || assigneeId !== userId) {
+      throw new ForbiddenException('Only the current assignee can decline this task');
+    }
+
+    doc.set('beneficiaryId', null);
+    doc.ticketStatus = 'open';
+    doc.isNeutralTicket = true;
+    doc.applicants = [];
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    await this.appendTicketActivity(ticketId, userId, 'assignee_declined', {
+      reason: trimmed,
+      from: 'in_progress',
+      to: 'open',
+    });
+
+    const projectId = doc.communityId;
+    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+    for (const lead of leads) {
+      try {
+        await this.notificationService.createNotification({
+          userId: lead.userId,
+          type: 'ticket_assignee_declined',
+          source: 'system',
+          metadata: { ticketId, projectId, assigneeId: userId, reason: trimmed },
+          title: 'Assignee declined task',
+          message: `The assignee declined the task: ${trimmed.slice(0, 200)}`,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify lead about assignee decline: ${err}`);
+      }
+    }
+
+    this.logger.log(`Ticket ${ticketId} declined by assignee ${userId}`);
+  }
+
+  /**
    * Lead accepts work: done → closed.
    */
   async acceptWork(ticketId: string, leadUserId: string): Promise<void> {

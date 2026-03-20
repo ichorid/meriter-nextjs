@@ -77,6 +77,24 @@ export function useAcceptWork() {
   });
 }
 
+export function useDeclineAsAssignee() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.declineAsAssignee.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.ticket.getByProject.invalidate();
+      void utils.publications.getById.invalidate({ id: variables.ticketId });
+      void utils.project.getOpenTickets.invalidate();
+      addToast(t('declineAssigneeSuccess'), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('declineAssigneeError'), 'error');
+    },
+  });
+}
+
 export function useProjectShares(projectId: string | null) {
   return trpc.project.getShares.useQuery(
     { projectId: projectId! },

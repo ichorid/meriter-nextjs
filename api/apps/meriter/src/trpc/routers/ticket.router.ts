@@ -45,6 +45,11 @@ const acceptWorkInputSchema = z.object({
   ticketId: z.string(),
 });
 
+const declineAsAssigneeInputSchema = z.object({
+  ticketId: z.string(),
+  reason: z.string().min(1).max(2000),
+});
+
 const updateTicketInputSchema = z
   .object({
     ticketId: z.string(),
@@ -164,6 +169,20 @@ export const ticketRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
       await ctx.ticketService.acceptWork(input.ticketId, ctx.user.id);
+      return { success: true };
+    }),
+
+  declineAsAssignee: protectedProcedure
+    .input(declineAsAssigneeInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.ticketService.declineAsAssignee(
+        input.ticketId,
+        ctx.user.id,
+        input.reason,
+      );
       return { success: true };
     }),
 

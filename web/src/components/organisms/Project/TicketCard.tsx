@@ -1,12 +1,27 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { useUserProfile } from '@/hooks/api/useUsers';
-import { useApplyForTicket, useUpdateTicketStatus, useAcceptWork } from '@/hooks/api/useTickets';
+import {
+  useApplyForTicket,
+  useUpdateTicketStatus,
+  useAcceptWork,
+  useDeclineAsAssignee,
+} from '@/hooks/api/useTickets';
 import { Button } from '@/components/ui/shadcn/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { Label } from '@/components/ui/shadcn/label';
+import { Textarea } from '@/components/ui/shadcn/textarea';
 import { ApplicantsPanel } from './ApplicantsPanel';
 import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
@@ -41,6 +56,9 @@ export function TicketCard({
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
   const applyForTicket = useApplyForTicket();
+  const declineAsAssignee = useDeclineAsAssignee();
+  const [declineOpen, setDeclineOpen] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
 
   const status = (ticket.ticketStatus ?? 'in_progress') as TicketStatus;
   const beneficiaryId = ticket.beneficiaryId ?? ticket.authorId;
@@ -55,8 +73,24 @@ export function TicketCard({
     isOpenNeutral && currentUserId !== ticket.authorId && applicants.includes(currentUserId);
 
   const canMarkDone = isBeneficiary && status === 'in_progress';
+  const canDeclineAssignee =
+    status === 'in_progress' && Boolean(ticket.beneficiaryId) && ticket.beneficiaryId === currentUserId;
   const canAccept = canModerateTickets && status === 'done';
   const canReopen = canModerateTickets && status === 'closed';
+
+  const submitDecline = () => {
+    const r = declineReason.trim();
+    if (!r) return;
+    declineAsAssignee.mutate(
+      { ticketId: ticket.id, reason: r },
+      {
+        onSuccess: () => {
+          setDeclineOpen(false);
+          setDeclineReason('');
+        },
+      },
+    );
+  };
 
   return (
     <div
@@ -108,6 +142,17 @@ export function TicketCard({
               {t('markDone')}
             </Button>
           )}
+          {canDeclineAssignee && (
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              onClick={() => setDeclineOpen(true)}
+              disabled={declineAsAssignee.isPending}
+            >
+              {t('declineAssignee')}
+            </Button>
+          )}
           {canAccept && (
             <Button
               size="sm"
@@ -135,6 +180,38 @@ export function TicketCard({
           <ApplicantsPanel ticketId={ticket.id} />
         </div>
       )}
+
+      <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
+        <DialogContent className="sm:max-w-md" onCloseAutoFocus={() => setDeclineReason('')}>
+          <DialogHeader>
+            <DialogTitle>{t('declineAssigneeTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-1">
+            <Label htmlFor={`decline-reason-${ticket.id}`}>{t('declineAssigneeReasonLabel')}</Label>
+            <Textarea
+              id={`decline-reason-${ticket.id}`}
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder={t('declineAssigneeReasonPlaceholder')}
+              className="min-h-[100px] resize-y"
+              maxLength={2000}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setDeclineOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={declineReason.trim().length === 0 || declineAsAssignee.isPending}
+              onClick={submitDecline}
+            >
+              {declineAsAssignee.isPending ? '…' : t('declineAssigneeConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
