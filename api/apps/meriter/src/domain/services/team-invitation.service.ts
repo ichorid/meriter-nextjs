@@ -65,8 +65,10 @@ export class TeamInvitationService {
     if (!community) {
       throw new NotFoundException('Community not found');
     }
-    if (community.typeTag !== 'team') {
-      throw new BadRequestException('Can only invite to team communities');
+    if (!this.communityService.isLocalMembershipCommunity(community)) {
+      throw new BadRequestException(
+        'Can only invite to local communities (team, project, custom, etc.)',
+      );
     }
 
     // 3. Check that target is not already a member

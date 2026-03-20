@@ -550,8 +550,10 @@ export class UserService implements OnModuleInit {
     if (!community) {
       throw new NotFoundException('Community not found');
     }
-    if (community.typeTag !== 'team') {
-      throw new BadRequestException('Can only add to team communities');
+    if (!this.communityService.isLocalMembershipCommunity(community)) {
+      throw new BadRequestException(
+        'Can only add to local communities (team, project, custom, etc.)',
+      );
     }
 
     // 2. Check that target is not already a member

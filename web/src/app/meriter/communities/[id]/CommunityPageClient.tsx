@@ -52,6 +52,7 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations as useCommonTranslations } from 'next-intl';
 import { useInfiniteDeletedPublications } from '@/hooks/api/usePublications';
+import { useGlobalProjectsList } from '@/hooks/api/useProjects';
 import { useCommunityPolling } from '@/hooks/useCommunityPolling';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { isFakeDataMode } from '@/config';
@@ -278,6 +279,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
+
+    const { data: communityProjectsSummary, isPending: communityProjectsCountPending } = useGlobalProjectsList({
+        parentCommunityId: chatId,
+        page: 1,
+        pageSize: 1,
+    });
 
     // Canonical entrypoint: Future Vision is accessed via /meriter/future-visions (not as a regular community page)
     useEffect(() => {
@@ -641,7 +648,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     {tCommunities('communityProjects')}
                                 </span>
                                 <span className="text-sm text-base-content/60 tabular-nums flex-shrink-0">
-                                    {0}
+                                    {communityProjectsCountPending
+                                        ? '…'
+                                        : (communityProjectsSummary?.total ?? 0)}
                                 </span>
                             </div>
                         </div>

@@ -927,6 +927,22 @@ export class CommunityService {
     );
   }
 
+  /**
+   * Membership is managed via roles / invites / join requests (not auto-joined base globals).
+   */
+  isLocalMembershipCommunity(community: Community): boolean {
+    const tag = community.typeTag;
+    if (tag === 'global') return false;
+    const autoJoinedBase: string[] = [
+      'future-vision',
+      'marathon-of-good',
+      'team-projects',
+      'support',
+    ];
+    if (tag && autoJoinedBase.includes(tag)) return false;
+    return true;
+  }
+
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
     // 1. Check global superadmin role
     const user = await this.userService.getUserById(userId);
@@ -1145,10 +1161,13 @@ export class CommunityService {
       throw new NotFoundException('Community not found');
     }
 
-    const memberIds = community.members || [];
+    const legacyMemberIds = community.members || [];
+    const roleMemberIds =
+      await this.userCommunityRoleService.getMemberUserIdsInCommunity(communityId);
+    const memberIds = [...new Set([...legacyMemberIds, ...roleMemberIds])];
 
     // Build search filter if search query is provided
-    const searchFilter: any = { id: { $in: memberIds } };
+    const searchFilter: Record<string, unknown> = { id: { $in: memberIds } };
     if (search && search.trim()) {
       // Escape special regex characters and create case-insensitive regex
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

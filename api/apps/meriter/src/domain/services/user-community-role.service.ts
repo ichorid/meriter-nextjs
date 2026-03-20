@@ -65,6 +65,16 @@ export class UserCommunityRoleService {
       .exec();
   }
 
+  /** Count users with any role in the community (source of truth for membership UI). */
+  async countMembersInCommunity(communityId: string): Promise<number> {
+    return this.userCommunityRoleModel.countDocuments({ communityId }).exec();
+  }
+
+  /** Distinct user IDs that have a role in the community. */
+  async getMemberUserIdsInCommunity(communityId: string): Promise<string[]> {
+    return this.userCommunityRoleModel.distinct('userId', { communityId }).exec();
+  }
+
   /**
    * Get the paired community typeTag for marathon-of-good and future-vision
    * Returns null if the community is not one of these special communities

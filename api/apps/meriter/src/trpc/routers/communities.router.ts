@@ -24,12 +24,15 @@ export const communitiesRouter = router({
       const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
       const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
       const adminIds = adminRoles.map(role => role.userId);
+      const memberCount =
+        await ctx.userCommunityRoleService.countMembersInCommunity(input.id);
 
       // Extract legacy fields if they exist in the document (they may not be in TypeScript interface)
       const communityDoc = community as any;
       
       return {
         ...community,
+        memberCount,
         permissionRules: ctx.communityService.getEffectivePermissionRules(community),
         meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
         votingSettings: ctx.communityService.getEffectiveVotingSettings(community),

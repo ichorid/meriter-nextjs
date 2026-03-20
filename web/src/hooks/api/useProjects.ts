@@ -66,7 +66,12 @@ export function useCreateProject() {
   return trpc.project.create.useMutation({
     onSuccess: (project) => {
       utils.project.list.invalidate();
+      utils.project.getGlobalList.invalidate();
       utils.communities.getAll.invalidate();
+      if (project.parentCommunityId) {
+        utils.communities.getById.invalidate({ id: project.parentCommunityId });
+      }
+      utils.communities.getById.invalidate({ id: project.id });
       utils.users.getMe.invalidate();
       addToast(t('created'), 'success');
       router.push(`/meriter/projects/${project.id}`);
@@ -175,6 +180,7 @@ export function useCloseProject() {
     onSuccess: () => {
       utils.project.getById.invalidate();
       utils.project.list.invalidate();
+      utils.project.getGlobalList.invalidate();
       addToast(t('closeSuccess', { defaultValue: 'Project closed' }), 'success');
     },
     onError: (error) => {
