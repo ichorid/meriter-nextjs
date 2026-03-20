@@ -50,6 +50,23 @@ export function useUpdateTicketStatus() {
   });
 }
 
+export function useUpdateTicket() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.update.useMutation({
+    onSuccess: (_data, variables) => {
+      utils.ticket.getByProject.invalidate();
+      void utils.publications.getById.invalidate({ id: variables.ticketId });
+      addToast(t('ticketUpdated'), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('ticketUpdateError'), 'error');
+    },
+  });
+}
+
 export function useAcceptWork() {
   const utils = trpc.useUtils();
 
@@ -95,7 +112,8 @@ export function useApplyForTicket() {
 
   return trpc.ticket.applyForTicket.useMutation({
     onSuccess: () => {
-      utils.project.getOpenTickets.invalidate();
+      void utils.project.getOpenTickets.invalidate();
+      void utils.ticket.getByProject.invalidate();
       addToast(t('applySuccess', { defaultValue: 'Application sent' }), 'success');
     },
     onError: (error) => {

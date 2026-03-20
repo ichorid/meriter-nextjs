@@ -1465,6 +1465,7 @@
         "immutableHint": "Cannot be changed after creation",
         "details": "Details",
         "iWillTake": "I'll take it",
+        "alreadyApplied": "You have already applied",
         "investorSharePercent": "Investor share",
         "leaveConfirm": "Leave anyway?",
         "leaveProject": "Leave project",

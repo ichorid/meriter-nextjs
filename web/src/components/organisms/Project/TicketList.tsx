@@ -73,10 +73,12 @@ export function TicketList({
           beneficiaryId?: string;
           authorId: string;
           isNeutralTicket?: boolean;
+          applicants?: string[];
           metrics?: { score?: number };
         }) => (
           <li key={ticket.id}>
             <TicketCard
+              projectId={projectId}
               ticket={ticket}
               currentUserId={currentUserId}
               canModerateTickets={canModerateTickets}

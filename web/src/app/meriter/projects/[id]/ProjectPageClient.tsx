@@ -54,6 +54,10 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     return isLead;
   }, [user, isLead]);
 
+  const canModerateTickets = Boolean(
+    user && (isLead || user.globalRole === 'superadmin'),
+  );
+
   if (isLoading || !data) {
     return (
       <AdaptiveLayout
@@ -117,7 +121,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           parentCommunity={parentCommunity ? { id: parentCommunity.id, name: parentCommunity.name } : null}
           statusLabel={statusLabel}
           status={heroStatus}
-          showMembersLink={Boolean(user)}
           showModerationLinks={canModerateCover}
         />
 
@@ -132,7 +135,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <ProjectWorkArea
             projectId={projectId}
             currentUserId={user.id}
-            isLead={isLead}
+            canModerateTickets={canModerateTickets}
             isMember={isMember}
             readOnly={isArchived}
           />

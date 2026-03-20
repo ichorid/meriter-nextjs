@@ -4,9 +4,8 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Settings, Trash2, Users } from 'lucide-react';
+import { Settings, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
-import { User } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import type { Community } from '@meriter/shared-types';
@@ -39,9 +38,7 @@ export interface ProjectHeroProps {
   parentCommunity: ProjectHeroParentCommunity | null;
   statusLabel: string;
   status: 'active' | 'closed' | 'archived';
-  /** Logged-in user: quick link to project members (community route). */
-  showMembersLink?: boolean;
-  /** Lead or superadmin: settings + deleted content on cover. */
+  /** Lead or superadmin: project settings shortcut on cover. */
   showModerationLinks?: boolean;
 }
 
@@ -50,13 +47,11 @@ export function ProjectHero({
   parentCommunity,
   statusLabel,
   status,
-  showMembersLink = false,
   showModerationLinks = false,
 }: ProjectHeroProps) {
   const router = useRouter();
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
-  const tCommunities = useTranslations('pages.communities');
 
   const [gradientFrom, gradientTo] = projectGradient(project.name);
   const coverImageUrl = project.coverImageUrl ?? project.futureVisionCover;
@@ -86,37 +81,13 @@ export function ProjectHero({
         <div className="absolute inset-0 bg-black/20" aria-hidden />
 
         {showModerationLinks && (
-          <>
-            <button
-              type="button"
-              onClick={() => router.push(routes.communitySettings(project.id))}
-              className="absolute top-3 right-3 p-2 rounded-full bg-black/45 hover:bg-black/55 transition-colors backdrop-blur-sm"
-              title={tCommon('settings')}
-            >
-              <Settings size={18} className="text-white" />
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(routes.communityDeleted(project.id))}
-              className="absolute top-3 right-[51px] p-2 rounded-full bg-black/45 hover:bg-black/55 transition-colors backdrop-blur-sm"
-              aria-label={tCommunities('deleted')}
-              title={tCommunities('deleted')}
-            >
-              <Trash2 size={18} className="text-white" />
-            </button>
-          </>
-        )}
-        {showMembersLink && (
           <button
             type="button"
-            onClick={() => router.push(routes.projectMembersManage(project.id))}
-            className={cn(
-              'absolute top-3 p-2 rounded-full bg-black/45 hover:bg-black/55 transition-colors backdrop-blur-sm',
-              showModerationLinks ? 'right-[102px]' : 'right-3',
-            )}
-            title={t('members')}
+            onClick={() => router.push(routes.communitySettings(project.id))}
+            className="absolute top-3 right-3 p-2 rounded-full bg-black/45 hover:bg-black/55 transition-colors backdrop-blur-sm"
+            title={tCommon('settings')}
           >
-            <Users size={18} className="text-white" />
+            <Settings size={18} className="text-white" />
           </button>
         )}
       </div>
