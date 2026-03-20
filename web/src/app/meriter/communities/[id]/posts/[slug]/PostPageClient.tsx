@@ -332,7 +332,6 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         {isTicketPost && publication && (
                             <TicketOpenNeutralApply
                                 ticketId={(publication as { id: string }).id}
-                                authorId={(publication as { authorId: string }).authorId}
                                 currentUserId={user?.id}
                                 isNeutralTicket={Boolean(
                                     (publication as { isNeutralTicket?: boolean }).isNeutralTicket,

@@ -66,12 +66,9 @@ export function TicketCard({
   const isBeneficiary = currentUserId === beneficiaryId;
   const isOpenNeutral = status === 'open' && Boolean(ticket.isNeutralTicket);
   const applicants = ticket.applicants ?? [];
-  const canTakeOpenNeutral =
-    isOpenNeutral &&
-    currentUserId !== ticket.authorId &&
-    !applicants.includes(currentUserId);
-  const hasAppliedForOpenNeutral =
-    isOpenNeutral && currentUserId !== ticket.authorId && applicants.includes(currentUserId);
+  /** Author may apply too; lead then approves from ApplicantsPanel (possibly self). */
+  const canTakeOpenNeutral = isOpenNeutral && !applicants.includes(currentUserId);
+  const hasAppliedForOpenNeutral = isOpenNeutral && applicants.includes(currentUserId);
 
   const canMarkDone = isBeneficiary && status === 'in_progress';
   const canDeclineAssignee =

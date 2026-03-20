@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 
 export interface TicketOpenNeutralApplyProps {
   ticketId: string;
-  authorId: string;
   currentUserId: string | undefined;
   isNeutralTicket: boolean;
   ticketStatus: string;
@@ -17,7 +16,6 @@ export interface TicketOpenNeutralApplyProps {
 
 export function TicketOpenNeutralApply({
   ticketId,
-  authorId,
   currentUserId,
   isNeutralTicket,
   ticketStatus,
@@ -32,8 +30,8 @@ export function TicketOpenNeutralApply({
     return null;
   }
 
-  const canTake = currentUserId !== authorId && !applicants.includes(currentUserId);
-  const hasApplied = currentUserId !== authorId && applicants.includes(currentUserId);
+  const canTake = !applicants.includes(currentUserId);
+  const hasApplied = applicants.includes(currentUserId);
 
   if (!canTake && !hasApplied) {
     return null;
