@@ -132,16 +132,6 @@ export function TicketCard({
           {hasAppliedForOpenNeutral && (
             <span className="text-xs text-base-content/60">{t('alreadyApplied')}</span>
           )}
-          {canMarkDone && (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => updateStatus.mutate({ ticketId: ticket.id, newStatus: 'done' })}
-              disabled={updateStatus.isPending}
-            >
-              {t('markDone')}
-            </Button>
-          )}
           {canDeclineAssignee && (
             <Button
               type="button"
@@ -151,6 +141,16 @@ export function TicketCard({
               disabled={declineAsAssignee.isPending}
             >
               {t('declineAssignee')}
+            </Button>
+          )}
+          {canMarkDone && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => updateStatus.mutate({ ticketId: ticket.id, newStatus: 'done' })}
+              disabled={updateStatus.isPending}
+            >
+              {t('markDone')}
             </Button>
           )}
           {canAccept && (
