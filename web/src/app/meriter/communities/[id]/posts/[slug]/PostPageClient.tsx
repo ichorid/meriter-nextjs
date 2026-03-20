@@ -12,6 +12,7 @@ import { useComments } from "@shared/hooks/use-comments";
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
 import { usePublication, useCommunity, useWallets } from '@/hooks/api';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { getWalletBalance } from '@/lib/utils/wallet';
 import { trpc } from '@/lib/trpc/client';
@@ -64,6 +65,17 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const utils = trpc.useUtils();
     const { data: publication, isLoading: publicationLoading, error: publicationError, isFetched: publicationFetched } = usePublication(slug);
     const { data: community } = useCommunity(chatId);
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const isLeadInCommunity = userRoles.some(
+        (r: { communityId: string; role: string }) => r.communityId === chatId && r.role === 'lead',
+    );
+    const canModerateTicketsOnPost = Boolean(
+        user &&
+        (publication as { postType?: string } | undefined)?.postType === 'ticket' &&
+        community &&
+        (community as { isProject?: boolean }).isProject &&
+        (isLeadInCommunity || user.globalRole === 'superadmin'),
+    );
     const publicationId = (publication as { id?: string })?.id;
     const investingEnabled = (publication as { investingEnabled?: boolean })?.investingEnabled ?? false;
     
@@ -333,6 +345,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             <TicketOpenNeutralApply
                                 ticketId={(publication as { id: string }).id}
                                 currentUserId={user?.id}
+                                canModerateTickets={canModerateTicketsOnPost}
                                 isNeutralTicket={Boolean(
                                     (publication as { isNeutralTicket?: boolean }).isNeutralTicket,
                                 )}

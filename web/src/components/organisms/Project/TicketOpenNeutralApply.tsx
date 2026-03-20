@@ -1,13 +1,15 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useApplyForTicket } from '@/hooks/api/useTickets';
+import { useApplyForTicket, useTakeOpenNeutralAsModerator } from '@/hooks/api/useTickets';
 import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
 
 export interface TicketOpenNeutralApplyProps {
   ticketId: string;
   currentUserId: string | undefined;
+  /** Project lead or superadmin: take task without applying. */
+  canModerateTickets?: boolean;
   isNeutralTicket: boolean;
   ticketStatus: string;
   applicants: string[];
@@ -17,6 +19,7 @@ export interface TicketOpenNeutralApplyProps {
 export function TicketOpenNeutralApply({
   ticketId,
   currentUserId,
+  canModerateTickets = false,
   isNeutralTicket,
   ticketStatus,
   applicants,
@@ -24,22 +27,36 @@ export function TicketOpenNeutralApply({
 }: TicketOpenNeutralApplyProps) {
   const t = useTranslations('projects');
   const apply = useApplyForTicket();
+  const takeAsModerator = useTakeOpenNeutralAsModerator();
 
   const isOpenNeutral = ticketStatus === 'open' && isNeutralTicket;
   if (!isOpenNeutral || !currentUserId) {
     return null;
   }
 
-  const canTake = !applicants.includes(currentUserId);
-  const hasApplied = applicants.includes(currentUserId);
+  const canTakeAsModerator = canModerateTickets;
+  const canTakeAsMember = !canModerateTickets && !applicants.includes(currentUserId);
+  const hasApplied = !canModerateTickets && applicants.includes(currentUserId);
 
-  if (!canTake && !hasApplied) {
+  if (!canTakeAsModerator && !canTakeAsMember && !hasApplied) {
     return null;
   }
 
   return (
     <div className={cn('mb-4 flex flex-wrap items-center gap-2', className)}>
-      {canTake && (
+      {canTakeAsModerator && (
+        <Button
+          type="button"
+          size="sm"
+          variant="default"
+          className="h-9 rounded-lg"
+          onClick={() => takeAsModerator.mutate({ ticketId })}
+          disabled={takeAsModerator.isPending}
+        >
+          {takeAsModerator.isPending ? '…' : t('takeTask')}
+        </Button>
+      )}
+      {canTakeAsMember && (
         <Button
           type="button"
           size="sm"

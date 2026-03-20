@@ -22,6 +22,10 @@ const applyForTicketInputSchema = z.object({
   ticketId: z.string(),
 });
 
+const takeOpenNeutralAsModeratorInputSchema = z.object({
+  ticketId: z.string(),
+});
+
 const approveApplicantInputSchema = z.object({
   ticketId: z.string(),
   applicantUserId: z.string(),
@@ -110,6 +114,19 @@ export const ticketRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
       await ctx.ticketService.applyForTicket(input.ticketId, ctx.user.id);
+      return { success: true };
+    }),
+
+  takeOpenNeutralAsModerator: protectedProcedure
+    .input(takeOpenNeutralAsModeratorInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.ticketService.assignOpenNeutralToSelfAsModerator(
+        input.ticketId,
+        ctx.user.id,
+      );
       return { success: true };
     }),
 

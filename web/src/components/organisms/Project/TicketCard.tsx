@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avat
 import { useUserProfile } from '@/hooks/api/useUsers';
 import {
   useApplyForTicket,
+  useTakeOpenNeutralAsModerator,
   useUpdateTicketStatus,
   useAcceptWork,
   useDeclineAsAssignee,
@@ -57,6 +58,7 @@ export function TicketCard({
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
   const applyForTicket = useApplyForTicket();
+  const takeOpenNeutralAsModerator = useTakeOpenNeutralAsModerator();
   const declineAsAssignee = useDeclineAsAssignee();
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
@@ -66,9 +68,11 @@ export function TicketCard({
   const isBeneficiary = currentUserId === beneficiaryId;
   const isOpenNeutral = status === 'open' && Boolean(ticket.isNeutralTicket);
   const applicants = ticket.applicants ?? [];
-  /** Author may apply too; lead then approves from ApplicantsPanel (possibly self). */
-  const canTakeOpenNeutral = isOpenNeutral && !applicants.includes(currentUserId);
-  const hasAppliedForOpenNeutral = isOpenNeutral && applicants.includes(currentUserId);
+  const canTakeOpenNeutralAsModerator = isOpenNeutral && canModerateTickets;
+  const canTakeOpenNeutralAsMember =
+    isOpenNeutral && !canModerateTickets && !applicants.includes(currentUserId);
+  const hasAppliedForOpenNeutral =
+    isOpenNeutral && !canModerateTickets && applicants.includes(currentUserId);
 
   const canMarkDone = isBeneficiary && status === 'in_progress';
   const canDeclineAssignee =
@@ -116,7 +120,18 @@ export function TicketCard({
         </div>
       </Link>
       <div className="flex flex-wrap items-center justify-end gap-2 px-4 pb-4">
-          {canTakeOpenNeutral && (
+          {canTakeOpenNeutralAsModerator && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => takeOpenNeutralAsModerator.mutate({ ticketId: ticket.id })}
+              disabled={takeOpenNeutralAsModerator.isPending}
+            >
+              {takeOpenNeutralAsModerator.isPending ? '…' : t('takeTask')}
+            </Button>
+          )}
+          {canTakeOpenNeutralAsMember && (
             <Button
               type="button"
               size="sm"

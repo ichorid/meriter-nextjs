@@ -1476,6 +1476,8 @@
         "details": "Подробности",
         "iWillTake": "Взяться",
         "takeTask": "Взять задачу",
+        "takeOpenNeutralModeratorSuccess": "Вы назначены исполнителем",
+        "takeOpenNeutralModeratorError": "Не удалось взять задачу",
         "alreadyApplied": "Вы уже откликнулись",
         "investorSharePercent": "Доля инвесторов",
         "leaveConfirm": "Всё равно выйти?",

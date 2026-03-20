@@ -144,6 +144,25 @@ export function useApplyForTicket() {
   });
 }
 
+export function useTakeOpenNeutralAsModerator() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.takeOpenNeutralAsModerator.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.project.getOpenTickets.invalidate();
+      void utils.ticket.getByProject.invalidate();
+      void utils.publications.getById.invalidate({ id: variables.ticketId });
+      void utils.ticket.getApplicants.invalidate({ ticketId: variables.ticketId });
+      addToast(t('takeOpenNeutralModeratorSuccess'), 'success');
+    },
+    onError: (error) => {
+      addToast(error.message || t('takeOpenNeutralModeratorError'), 'error');
+    },
+  });
+}
+
 export function useGetApplicants(ticketId: string | null) {
   return trpc.ticket.getApplicants.useQuery(
     { ticketId: ticketId! },

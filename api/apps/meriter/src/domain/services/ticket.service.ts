@@ -359,6 +359,84 @@ export class TicketService {
   }
 
   /**
+   * Lead/superadmin: take an open neutral ticket as assignee immediately (no applicant queue).
+   */
+  async assignOpenNeutralToSelfAsModerator(ticketId: string, userId: string): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      throw new BadRequestException('Ticket is not an open neutral ticket');
+    }
+
+    const projectId = doc.communityId;
+    await this.assertProjectLeadOrSuperadmin(userId, projectId);
+
+    const assigneeId = userId;
+    const previousApplicants = [...(doc.applicants ?? [])];
+
+    const existingRole = await this.userCommunityRoleService.getRole(assigneeId, projectId);
+    if (!existingRole) {
+      await this.communityService.addMember(projectId, assigneeId);
+      await this.userService.addCommunityMembership(assigneeId, projectId);
+      await this.userCommunityRoleService.setRole(assigneeId, projectId, 'participant');
+    }
+
+    doc.beneficiaryId = assigneeId;
+    doc.ticketStatus = 'in_progress';
+    doc.isNeutralTicket = false;
+    doc.applicants = [];
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    await this.appendTicketActivity(ticketId, userId, 'assignee_set', {
+      beneficiaryId: assigneeId,
+      fromOpenNeutral: true,
+      status: 'in_progress',
+      selfAssignedByModerator: true,
+    });
+
+    try {
+      await this.notificationService.createNotification({
+        userId: assigneeId,
+        type: 'ticket_assigned',
+        source: 'system',
+        metadata: { ticketId, projectId, leadUserId: userId },
+        title: 'Ticket assigned',
+        message: 'You were assigned a ticket in the project.',
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify assignee: ${err}`);
+    }
+
+    const project = await this.communityService.getCommunity(projectId);
+    const rejectionMessage =
+      (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
+
+    for (const otherUserId of previousApplicants) {
+      if (otherUserId === assigneeId) continue;
+      try {
+        await this.notificationService.createNotification({
+          userId: otherUserId,
+          type: 'ticket_rejection',
+          source: 'system',
+          metadata: { ticketId, projectId, rejectionMessage },
+          title: 'Application not selected',
+          message: rejectionMessage,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
+      }
+    }
+
+    this.logger.log(`Open neutral ticket ${ticketId} self-assigned by moderator ${userId}`);
+  }
+
+  /**
    * Reject an applicant: remove from applicants[], send rejection notification.
    */
   async rejectApplicant(

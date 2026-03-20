@@ -1476,6 +1476,8 @@
         "details": "Details",
         "iWillTake": "I'll take it",
         "takeTask": "Take task",
+        "takeOpenNeutralModeratorSuccess": "You are now assigned to this task",
+        "takeOpenNeutralModeratorError": "Could not assign the task",
         "alreadyApplied": "You have already applied",
         "investorSharePercent": "Investor share",
         "leaveConfirm": "Leave anyway?",
