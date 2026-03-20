@@ -5,6 +5,10 @@ import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSch
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import {
+  signCommunityInviteToken,
+  verifyCommunityInviteToken,
+} from '../../common/helpers/community-invite-jwt';
 
 export const communitiesRouter = router({
   /**
@@ -97,6 +101,82 @@ export const communitiesRouter = router({
         futureVisionPublicationId,
         futureVisionPublicationScore,
       };
+    }),
+
+  /**
+   * Create a signed invite token (lead/superadmin). Client builds URL: /meriter/communities/{id}/join?t=...
+   */
+  createCommunityInviteLink: protectedProcedure
+    .input(z.object({ communityId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
+      }
+      if (!ctx.communityService.isLocalMembershipCommunity(community)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invite links are only available for local communities',
+        });
+      }
+      const isAdmin = await ctx.communityService.isUserAdmin(
+        input.communityId,
+        ctx.user.id,
+      );
+      if (!isAdmin) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only leads can create invite links' });
+      }
+      const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
+      const token = signCommunityInviteToken(input.communityId, secret);
+      return { token };
+    }),
+
+  /**
+   * Accept invite: add current user as participant (idempotent if already a member).
+   */
+  acceptCommunityInvite: protectedProcedure
+    .input(
+      z.object({
+        token: z.string().min(20),
+        /** When set, must match community id embedded in the token (prevents wrong /join/:id page). */
+        expectedCommunityId: z.string().min(1).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
+      let communityId: string;
+      try {
+        communityId = verifyCommunityInviteToken(input.token, secret);
+      } catch {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid or expired invite link',
+        });
+      }
+      if (
+        input.expectedCommunityId &&
+        input.expectedCommunityId !== communityId
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invite link does not match this community',
+        });
+      }
+      const community = await ctx.communityService.getCommunity(communityId);
+      if (!community) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
+      }
+      if (!ctx.communityService.isLocalMembershipCommunity(community)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid invite' });
+      }
+      const existing = await ctx.userCommunityRoleService.getRole(ctx.user.id, communityId);
+      if (existing) {
+        return { communityId, alreadyMember: true as const };
+      }
+      const leads = await ctx.userCommunityRoleService.getUsersByRole(communityId, 'lead');
+      const inviterId = leads[0]?.userId ?? ctx.user.id;
+      await ctx.userService.addUserToTeam(inviterId, ctx.user.id, communityId);
+      return { communityId, alreadyMember: false as const };
     }),
 
   /**

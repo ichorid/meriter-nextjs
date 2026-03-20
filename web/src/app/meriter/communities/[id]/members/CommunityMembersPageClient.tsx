@@ -9,17 +9,32 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { Loader2, UserX, Users } from 'lucide-react';
+import { Coins, Copy, Loader2, UserPlus, UserX, Users } from 'lucide-react';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
 import { useDebounce } from '@/hooks/useDebounce';
 import { AddMeritsDialog } from '@/components/organisms/Community/AddMeritsDialog';
-import { Coins } from 'lucide-react';
-import { useTeamRequestsForLead, useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
+import {
+    useTeamRequestsForLead,
+    useApproveTeamRequest,
+    useRejectTeamRequest,
+    type TeamJoinRequest,
+} from '@/hooks/api/useTeamRequests';
 import { TeamRequestCard } from '@/components/molecules/TeamRequestCard/TeamRequestCard';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Separator } from '@/components/ui/shadcn/separator';
+import { Button } from '@/components/ui/shadcn/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { Input } from '@/components/ui/shadcn/input';
+import { trpc } from '@/lib/trpc/client';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -36,6 +51,8 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
     const [addMeritsDialogOpen, setAddMeritsDialogOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
+    const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+    const [inviteUrl, setInviteUrl] = useState('');
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId, {
         search: debouncedSearchQuery.trim() || undefined,
     });
@@ -56,6 +73,30 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
     const { mutate: approveRequest, isPending: isApproving } = useApproveTeamRequest();
     const { mutate: rejectRequest, isPending: isRejecting } = useRejectTeamRequest();
     const addToast = useToastStore((state) => state.addToast);
+
+    const INVITE_BLOCKED_TYPE_TAGS = new Set([
+        'future-vision',
+        'marathon-of-good',
+        'team-projects',
+        'support',
+        'global',
+    ]);
+    const canCreateInviteLink =
+        !!isAdmin &&
+        !!community?.typeTag &&
+        !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag);
+
+    const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
+        onSuccess: (data) => {
+            const path = `${routes.communityJoin(communityId)}?t=${encodeURIComponent(data.token)}`;
+            const full = `${window.location.origin}${path}`;
+            setInviteUrl(full);
+            setInviteDialogOpen(true);
+        },
+        onError: (e) => {
+            addToast(e.message || t('members.invite.generateFailed'), 'error');
+        },
+    });
     
     const requests = requestsData || [];
 
@@ -142,14 +183,32 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                     </div>
                 ) : (
                     <>
-                        <div className="mb-4">
-                            <SearchInput
-                                placeholder={tSearch('results.searchMembersPlaceholder')}
-                                value={searchQuery}
-                                onSearch={setSearchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full"
-                            />
+                        <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:items-center">
+                            {canCreateInviteLink && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="shrink-0 gap-2"
+                                    disabled={createInviteMutation.isPending}
+                                    onClick={() => createInviteMutation.mutate({ communityId })}
+                                >
+                                    {createInviteMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <UserPlus className="h-4 w-4" />
+                                    )}
+                                    {t('members.invite.button')}
+                                </Button>
+                            )}
+                            <div className={canCreateInviteLink ? 'flex-1 min-w-0' : 'w-full'}>
+                                <SearchInput
+                                    placeholder={tSearch('results.searchMembersPlaceholder')}
+                                    value={searchQuery}
+                                    onSearch={setSearchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full"
+                                />
+                            </div>
                         </div>
                         
                         {/* Team Join Requests Section (only for team communities and admins) */}
@@ -162,7 +221,7 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                                     {requests.map((request) => (
                                         <TeamRequestCard
                                             key={request.id}
-                                            request={request}
+                                            request={request as TeamJoinRequest}
                                             onApprove={handleApproveRequest}
                                             onReject={handleRejectRequest}
                                             isApproving={isApproving}
@@ -254,6 +313,34 @@ export function CommunityMembersPageClient({ communityId }: CommunityMembersPage
                     }}
                 />
             )}
+
+            <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>{t('members.invite.dialogTitle')}</DialogTitle>
+                        <DialogDescription>{t('members.invite.dialogHint')}</DialogDescription>
+                    </DialogHeader>
+                    <Input readOnly value={inviteUrl} className="font-mono text-xs" />
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            className="gap-2"
+                            onClick={async () => {
+                                try {
+                                    await navigator.clipboard.writeText(inviteUrl);
+                                    addToast(t('members.invite.copied'), 'success');
+                                } catch {
+                                    addToast(t('members.invite.copyFailed'), 'error');
+                                }
+                            }}
+                        >
+                            <Copy className="h-4 w-4" />
+                            {t('members.invite.copyLink')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdaptiveLayout>
     );
 }

@@ -21,6 +21,8 @@ export const routes = {
     communities: "/meriter/communities",
     community: (id: string) => `/meriter/communities/${id}`,
     communityMembers: (id: string) => `/meriter/communities/${id}/members`,
+    /** Invite accept flow; append ?t=<jwt> */
+    communityJoin: (id: string) => `/meriter/communities/${id}/join`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,

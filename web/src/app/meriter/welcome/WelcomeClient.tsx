@@ -1,17 +1,23 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Logo } from "@/components/ui";
 import { Button } from "@/components/ui/shadcn/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 
 export default function WelcomePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const t = useTranslations("login");
     const { user, isLoading: authLoading } = useAuth();
+    const safeReturn = safeMeriterReturnPath(searchParams?.get("returnTo"));
+    const newUserHref = safeReturn
+        ? `/meriter/new-user?returnTo=${encodeURIComponent(safeReturn)}`
+        : "/meriter/new-user";
 
     if (authLoading) {
         return (
@@ -61,7 +67,7 @@ export default function WelcomePage() {
                         size="lg"
                         variant="default"
                         className="rounded-xl active:scale-[0.98] w-full"
-                        onClick={() => router.push("/meriter/new-user")}
+                        onClick={() => router.push(newUserHref)}
                     >
                         {t("fillProfile")}
                     </Button>

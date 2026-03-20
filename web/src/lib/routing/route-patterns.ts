@@ -44,6 +44,7 @@ export const DYNAMIC_ROUTE_PATTERNS = [
   /^\/meriter\/communities\/[^/]+\/posts\/[^/]+$/, // /meriter/communities/[id]/posts/[slug]
   /^\/meriter\/communities\/[^/]+\/rules$/, // /meriter/communities/[id]/rules
   /^\/meriter\/communities\/[^/]+\/members$/, // /meriter/communities/[id]/members
+  /^\/meriter\/communities\/[^/]+\/join$/, // /meriter/communities/[id]/join
   /^\/meriter\/users\/[^/]+$/, // /meriter/users/[userId]
   /^\/meriter\/projects\/[^/]+$/, // /meriter/projects/[id]
   /^\/meriter\/publications\/[^/]+$/, // /meriter/publications/[id]

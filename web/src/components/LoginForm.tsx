@@ -16,6 +16,7 @@ import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 import { LoadingState } from "@/components/atoms/LoadingState";
 import { getErrorMessage } from "@/lib/api/errors";
+import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 import { isFakeDataMode, isTestAuthMode } from "@/config";
 import { mockOAuthAuth } from "@/lib/utils/mock-auth";
 import {
@@ -86,6 +87,14 @@ export function LoginForm({
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
 
+    const welcomeUrlForNewUser = (): string => {
+        const safe = safeMeriterReturnPath(returnTo);
+        if (safe) {
+            return `/meriter/welcome?returnTo=${encodeURIComponent(safe)}`;
+        }
+        return "/meriter/welcome";
+    };
+
     // Filter providers if enabledProviders is passed
     const displayedProviders = enabledProviders
         ? OAUTH_PROVIDERS.filter((p) => enabledProviders.includes(p.id))
@@ -146,7 +155,7 @@ export function LoginForm({
                 // Redirect based on isNewUser
                 let redirectUrl = buildRedirectUrl();
                 if (result.isNewUser) {
-                    redirectUrl = "/meriter/welcome";
+                    redirectUrl = welcomeUrlForNewUser();
                 }
                 
                 // Reload to trigger auth context update
@@ -243,7 +252,7 @@ export function LoginForm({
                                             onSuccess={(result) => {
                                                 let redirectUrl = buildRedirectUrl();
                                                 if (result?.isNewUser) {
-                                                    redirectUrl = "/meriter/welcome";
+                                                    redirectUrl = welcomeUrlForNewUser();
                                                 }
                                                 window.location.href = redirectUrl;
                                             }}
@@ -364,7 +373,7 @@ export function LoginForm({
 
                                                 // Force welcome page for new users
                                                 if (result?.isNewUser) {
-                                                    redirectUrl = "/meriter/welcome";
+                                                    redirectUrl = welcomeUrlForNewUser();
                                                 }
 
                                                 window.location.href = redirectUrl;
@@ -446,7 +455,7 @@ export function LoginForm({
 
                         // Force welcome page for new users
                         if (result?.isNewUser) {
-                            redirectUrl = "/meriter/welcome";
+                            redirectUrl = welcomeUrlForNewUser();
                         }
 
                         window.location.href = redirectUrl;
@@ -465,7 +474,7 @@ export function LoginForm({
                     onOpenChange={setCallDialogOpen}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
-                        if (result?.isNewUser) redirectUrl = "/meriter/welcome";
+                        if (result?.isNewUser) redirectUrl = welcomeUrlForNewUser();
                         window.location.href = redirectUrl;
                     }}
                     onError={(msg) => {
@@ -482,7 +491,7 @@ export function LoginForm({
                     onOpenChange={setEmailDialogOpen}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
-                        if (result?.isNewUser) redirectUrl = "/meriter/welcome";
+                        if (result?.isNewUser) redirectUrl = welcomeUrlForNewUser();
                         window.location.href = redirectUrl;
                     }}
                     onError={(msg) => {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUpdateUser } from "@/hooks/api/useProfile";
@@ -10,10 +10,12 @@ import { Logo } from "@/components/ui";
 import { Button } from "@/components/ui/shadcn/button";
 import { Loader2 } from "lucide-react";
 import { useToastStore } from "@/shared/stores/toast.store";
+import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 
 function NewUserPageContent() {
     const t = useTranslations("profile");
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user, isLoading: authLoading } = useAuth();
     const { mutateAsync: updateUser, isPending: isUpdating } = useUpdateUser();
     const addToast = useToastStore((state) => state.addToast);
@@ -63,7 +65,8 @@ function NewUserPageContent() {
             });
 
             addToast(t("saved"), "success");
-            router.push("/meriter/profile");
+            const next = safeMeriterReturnPath(searchParams?.get("returnTo"));
+            router.push(next ?? "/meriter/profile");
         } catch (error: any) {
             addToast(error?.message || t("error"), "error");
         }
