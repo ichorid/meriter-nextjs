@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useRouter } from 'next/navigation';
@@ -77,7 +78,7 @@ export function useCreateProject() {
       router.push(`/meriter/projects/${project.id}`);
     },
     onError: (error) => {
-      addToast(error.message || t('createError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -94,7 +95,7 @@ export function useJoinProject() {
       addToast(t('joinRequestSent'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('joinError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -112,7 +113,7 @@ export function useLeaveProject() {
       addToast(t('left'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('leaveError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -144,7 +145,7 @@ export function useTopUpWallet() {
       addToast(t('topUpSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('topUpError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -167,10 +168,10 @@ export function usePublishToBirzha() {
       utils.project.getWallet.invalidate();
       utils.publications.getFeed.invalidate();
       utils.publications.getAll.invalidate();
-      addToast(t('publishedToBirzhaSuccess', { defaultValue: 'Published to Birzha' }), 'success');
+      addToast(t('publishedToBirzhaSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('publishToBirzhaError', { defaultValue: 'Failed to publish' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -185,10 +186,10 @@ export function useCloseProject() {
       utils.project.getById.invalidate();
       utils.project.list.invalidate();
       utils.project.getGlobalList.invalidate();
-      addToast(t('closeSuccess', { defaultValue: 'Project closed' }), 'success');
+      addToast(t('closeSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('closeError', { defaultValue: 'Failed to close project' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -201,10 +202,10 @@ export function useUpdateShares() {
   return trpc.project.updateShares.useMutation({
     onSuccess: () => {
       utils.project.getById.invalidate();
-      addToast(t('sharesUpdated', { defaultValue: 'Shares updated' }), 'success');
+      addToast(t('sharesUpdated'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('sharesUpdateError', { defaultValue: 'Failed to update shares' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -225,10 +226,10 @@ export function useTransferAdmin() {
     onSuccess: () => {
       utils.project.getById.invalidate();
       utils.project.getMembers.invalidate();
-      addToast(t('transferAdminSuccess', { defaultValue: 'Admin transferred' }), 'success');
+      addToast(t('transferAdminSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('transferAdminError', { defaultValue: 'Failed to transfer admin' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }

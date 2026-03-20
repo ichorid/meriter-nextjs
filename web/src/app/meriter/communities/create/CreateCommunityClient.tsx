@@ -14,6 +14,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 export default function CreateCommunityPage() {
     const router = useRouter();
     const t = useTranslations('communities.create');
+    const tHome = useTranslations('home');
     const { user, isLoading: authLoading } = useAuth();
     const { canCreate, isLoading: permissionLoading } = useCanCreateCommunity();
     const addToast = useToastStore((state) => state.addToast);
@@ -28,13 +29,10 @@ export default function CreateCommunityPage() {
         }
 
         if (!canCreate) {
-            addToast(
-                'Only organizers and team leads can create communities. Contact an organizer if you want to create a team.',
-                'info'
-            );
+            addToast(tHome('createCommunityRestrictedToast'), 'info');
             router.push('/meriter/communities');
         }
-    }, [user, canCreate, authLoading, permissionLoading, router, addToast]);
+    }, [user, canCreate, authLoading, permissionLoading, router, addToast, tHome]);
 
     if (authLoading || permissionLoading) {
         return (

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/button';
 import { X, User, Shield, LogOut, Loader2, Languages } from 'lucide-react';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useLogout } from '@/hooks/api/useAuth';
 import { cn } from '@/lib/utils';
@@ -62,7 +63,11 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
       await authenticateFakeUser();
       addToast(tCommon('loginAsTestUser'), 'success');
     } catch (error: unknown) {
-      addToast(error instanceof Error ? error.message : tCommon('loginError'), 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : tCommon('loginError'),
+        'error',
+      );
     } finally {
       setIsAuthenticating(false);
     }
@@ -74,7 +79,11 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
       await authenticateFakeSuperadmin();
       addToast(tCommon('loginAsSuperadmin'), 'success');
     } catch (error: unknown) {
-      addToast(error instanceof Error ? error.message : tCommon('loginError'), 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : tCommon('loginError'),
+        'error',
+      );
     } finally {
       setIsAuthenticating(false);
     }
@@ -85,7 +94,11 @@ export function DevToolsBar({ className }: DevToolsBarProps) {
       await logoutMutation.mutateAsync();
       addToast(tCommon('logoutSuccess'), 'success');
     } catch (error: unknown) {
-      addToast(error instanceof Error ? error.message : tCommon('logoutError'), 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : tCommon('logoutError'),
+        'error',
+      );
     }
   };
 

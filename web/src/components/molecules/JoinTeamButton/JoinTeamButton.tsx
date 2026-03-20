@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 
 interface JoinTeamButtonProps {
@@ -53,8 +54,12 @@ export const JoinTeamButton: React.FC<JoinTeamButtonProps> = ({
         onSuccess: () => {
           addToast(t('joinTeam.requestSubmitted'), 'success');
         },
-        onError: (error: any) => {
-          addToast(error.message || t('joinTeam.requestFailed'), 'error');
+        onError: (error: unknown) => {
+          const raw = error instanceof Error ? error.message : undefined;
+          addToast(
+            raw?.trim() ? resolveApiErrorToastMessage(raw) : t('joinTeam.requestFailed'),
+            'error',
+          );
         },
       }
     );

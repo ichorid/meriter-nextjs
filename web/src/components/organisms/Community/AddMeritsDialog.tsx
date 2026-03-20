@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Label } from '@/components/ui/shadcn/label';
 import { AmountStepper } from '@/components/ui/shadcn/amount-stepper';
 import { Loader2 } from 'lucide-react';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
 
@@ -55,8 +56,8 @@ export function AddMeritsDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t('addMeritsDialog.error');
-      addToast(message, 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(resolveApiErrorToastMessage(raw), 'error');
     } finally {
       setIsSubmitting(false);
     }

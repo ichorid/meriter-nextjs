@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Loader2, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { cn } from '@/lib/utils';
 import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 
 export const CategoryManagement: React.FC = () => {
   const t = useTranslations('settings.categories');
-  const tCommon = useTranslations('common');
   const addToast = useToastStore((state) => state.addToast);
   const { data: categories, isLoading } = useCategories();
   const createCategory = useCreateCategory();
@@ -59,8 +59,7 @@ export const CategoryManagement: React.FC = () => {
       setEditingId(null);
       setEditName('');
       addToast(t('updated'), 'success');
-    } catch (error) {
-      console.error('Update category error:', error);
+    } catch {
       addToast(t('errors.updateFailed'), 'error');
     }
   };
@@ -78,9 +77,12 @@ export const CategoryManagement: React.FC = () => {
       });
       setNewCategoryName('');
       addToast(t('created'), 'success');
-    } catch (error: any) {
-      console.error('Create category error:', error);
-      addToast(error?.message || t('errors.createFailed'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('errors.createFailed'),
+        'error',
+      );
     } finally {
       setIsCreating(false);
     }
@@ -94,8 +96,7 @@ export const CategoryManagement: React.FC = () => {
     try {
       await deleteCategory.mutateAsync({ id: categoryId });
       addToast(t('deleted'), 'success');
-    } catch (error) {
-      console.error('Delete category error:', error);
+    } catch {
       addToast(t('errors.deleteFailed'), 'error');
     }
   };
@@ -108,9 +109,12 @@ export const CategoryManagement: React.FC = () => {
     try {
       await initializeDefaults.mutateAsync();
       addToast(t('initialized'), 'success');
-    } catch (error: any) {
-      console.error('Initialize defaults error:', error);
-      addToast(error?.message || t('errors.initializeFailed'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('errors.initializeFailed'),
+        'error',
+      );
     }
   };
 

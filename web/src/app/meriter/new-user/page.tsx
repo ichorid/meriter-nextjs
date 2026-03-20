@@ -9,6 +9,7 @@ import { UserForm, UserFormData } from "@/components/organisms/UserForm";
 import { Logo } from "@/components/ui";
 import { Button } from "@/components/ui/shadcn/button";
 import { Loader2 } from "lucide-react";
+import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 
@@ -67,8 +68,12 @@ function NewUserPageContent() {
             addToast(t("saved"), "success");
             const next = safeMeriterReturnPath(searchParams?.get("returnTo"));
             router.push(next ?? "/meriter/profile");
-        } catch (error: any) {
-            addToast(error?.message || t("error"), "error");
+        } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : undefined;
+            addToast(
+                msg?.trim() ? resolveApiErrorToastMessage(msg) : t("error"),
+                "error",
+            );
         }
     };
 

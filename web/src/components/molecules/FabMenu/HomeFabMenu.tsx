@@ -35,10 +35,7 @@ export const HomeFabMenu: React.FC = () => {
 
     const handleCreateCommunity = () => {
         if (!canCreateCommunity) {
-            addToast(
-                'Only organizers and team leads can create communities. Contact an organizer if you want to create a team.',
-                'info'
-            );
+            addToast(t('createCommunityRestrictedToast'), 'info');
             setIsOpen(false);
             return;
         }

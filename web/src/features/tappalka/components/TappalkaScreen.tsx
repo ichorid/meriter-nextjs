@@ -4,6 +4,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import {
   useTappalkaProgress,
   useTappalkaPair,
@@ -208,8 +209,8 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         }
       } catch (error) {
         console.error('Failed to submit choice:', error);
-        const message = error instanceof Error ? error.message : t('submitChoiceError');
-        addToast(message, 'error');
+        const raw = error instanceof Error ? error.message : undefined;
+        addToast(resolveApiErrorToastMessage(raw), 'error');
         setSelectedPostId(null);
         setVotedSessionId(null);
       } finally {

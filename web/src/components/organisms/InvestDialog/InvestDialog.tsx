@@ -13,6 +13,7 @@ import { useInvest } from '@/hooks/api/useInvestments';
 import { useWallet } from '@/hooks/api/useWallet';
 import { trpc } from '@/lib/trpc/client';
 import { formatMerits } from '@/lib/utils/currency';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 
 interface InvestDialogProps {
   open: boolean;
@@ -107,8 +108,8 @@ export function InvestDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : t('investError', { defaultValue: 'Investment failed' });
-      addToast(message, 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(resolveApiErrorToastMessage(raw), 'error');
     }
   };
 

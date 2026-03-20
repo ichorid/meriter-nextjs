@@ -16,12 +16,9 @@ export const useToastStore = create<ToastState>((set) => ({
     toasts: [],
     addToast: (message, type = "info") => {
         const id = `${Date.now()}-${Math.random()}`;
-        console.log("Adding toast to store:", { id, message, type });
-        set((state) => {
-            const newToasts = [...state.toasts, { id, message, type }];
-            console.log("Toast store updated, total toasts:", newToasts.length);
-            return { toasts: newToasts };
-        });
+        set((state) => ({
+            toasts: [...state.toasts, { id, message, type }],
+        }));
     },
     removeToast: (id) =>
         set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),

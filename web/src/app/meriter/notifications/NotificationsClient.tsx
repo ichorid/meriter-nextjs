@@ -31,7 +31,27 @@ import {
 import { useAcceptTeamInvitation, useRejectTeamInvitation } from '@/hooks/api/useTeams';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import type { NotificationType } from '@/types/api-v1';
+import type { Notification, NotificationType } from '@/types/api-v1';
+
+const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
+  'Team join request approved': 'team_join_approved',
+  'Team join request rejected': 'team_join_rejected',
+  'Team invitation accepted': 'team_invitation_accepted',
+  'Team invitation rejected': 'team_invitation_rejected',
+};
+
+function resolveSystemNoticeKind(n: Notification): string | undefined {
+  const raw = n.metadata?.noticeKind;
+  if (
+    raw === 'team_join_approved' ||
+    raw === 'team_join_rejected' ||
+    raw === 'team_invitation_accepted' ||
+    raw === 'team_invitation_rejected'
+  ) {
+    return raw;
+  }
+  return SYSTEM_NOTICE_TITLE_TO_KIND[n.title || ''];
+}
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -200,6 +220,7 @@ export default function NotificationsPage() {
       case 'ticket_assigned':
       case 'ticket_done':
       case 'ticket_accepted':
+      case 'ticket_assignee_declined':
       case 'ticket_evaluated':
       case 'ticket_apply':
       case 'ticket_rejection':
@@ -242,7 +263,22 @@ export default function NotificationsPage() {
       return t('authorWithdrewYourShare', { name: actorName, amount: withdrawAmount, share });
     }
     if (notification.type === 'post_closed_investment' && meta.totalEarnings != null) {
-      return t('postClosedInvestmentTotal', { total: Number(meta.totalEarnings) });
+      const total = Number(meta.totalEarnings);
+      const pool = meta.poolReturned;
+      const rating = meta.ratingShare;
+      const projectName = meta.projectName as string | undefined;
+      if (typeof pool === 'number' && typeof rating === 'number') {
+        if (projectName) {
+          return t('postClosedInvestmentBreakdownWithProject', {
+            projectName,
+            pool,
+            rating,
+            total,
+          });
+        }
+        return t('postClosedInvestmentBreakdown', { pool, rating, total });
+      }
+      return t('postClosedInvestmentTotal', { total });
     }
     if (notification.type === 'post_closed' && meta.authorReceived != null) {
       return t('postClosedAuthorReceived', { amount: Number(meta.authorReceived) });
@@ -257,7 +293,13 @@ export default function NotificationsPage() {
       return t('createdPostWithYouAsBeneficiary', { name: actorName });
     }
     if (notification.type === 'publication') {
-      return t('editedPost', { name: actorName });
+      if (meta.targetType === 'publication_edit') {
+        if (notification.message?.includes('favorite')) {
+          return t('editedFavoritePost', { name: actorName });
+        }
+        return t('editedPost', { name: actorName });
+      }
+      return notification.message || '';
     }
     if (notification.type === 'team_invitation') {
       const teamName = (meta.communityName as string) ?? '';
@@ -271,6 +313,116 @@ export default function NotificationsPage() {
       const count = Number(meta.amountAfter ?? meta.amount ?? 0);
       return t('dailyQuotaResetMessage', { count });
     }
+    if (notification.type === 'team_join_request') {
+      const teamName =
+        (meta.communityName as string) || notification.community?.name || '';
+      return t('teamJoinRequestMessage', { name: actorName, teamName });
+    }
+    if (notification.type === 'project_created') {
+      const name = (meta.projectName as string) || '';
+      return t('projectCreatedMessage', { name });
+    }
+    if (notification.type === 'project_published') {
+      const name = (meta.projectName as string) || '';
+      return t('projectPublishedMessage', { name });
+    }
+    if (notification.type === 'project_distributed') {
+      const name = (meta.projectName as string) || '';
+      return t('projectDistributedMessage', { name });
+    }
+    if (notification.type === 'project_closed') {
+      const name = (meta.projectName as string) || '';
+      return t('projectClosedMessage', { name });
+    }
+    if (notification.type === 'member_joined') {
+      const memberName = (meta.memberName as string) || actorName;
+      const projectName = (meta.projectName as string) || notification.community?.name || '';
+      return t('memberJoinedMessage', { memberName, projectName });
+    }
+    if (notification.type === 'member_left_project') {
+      const projectName = (meta.projectName as string) || notification.community?.name || '';
+      return t('memberLeftProjectMessage', { projectName });
+    }
+    if (notification.type === 'shares_changed') {
+      const projectName = (meta.projectName as string) || notification.community?.name || '';
+      if (meta.transferAdmin === true) {
+        return t('projectAdminTransferredMessage', { projectName });
+      }
+      const pct = Number(meta.newFounderSharePercent ?? 0);
+      return t('projectSharesUpdatedMessage', { projectName, percent: pct });
+    }
+    if (notification.type === 'ticket_assigned') {
+      return t('ticketAssignedBody');
+    }
+    if (notification.type === 'ticket_apply') {
+      return t('ticketApplyBody');
+    }
+    if (notification.type === 'ticket_done') {
+      return t('ticketDoneBody');
+    }
+    if (notification.type === 'ticket_accepted') {
+      return t('ticketAcceptedBody');
+    }
+    if (notification.type === 'ticket_assignee_declined') {
+      const reason = typeof meta.reason === 'string' ? meta.reason : '';
+      return t('ticketAssigneeDeclinedBody', { reason });
+    }
+    if (notification.type === 'ticket_rejection') {
+      const custom = typeof meta.rejectionMessage === 'string' ? meta.rejectionMessage : '';
+      return custom || t('ticketRejectionDefaultBody');
+    }
+    if (notification.type === 'ticket_evaluated') {
+      return notification.message || '';
+    }
+    if (notification.type === 'post_ttl_warning') {
+      const postTitle =
+        (meta.postTitle as string)?.trim() || t('untitledPost');
+      return t('postTtlWarningBody', { postTitle });
+    }
+    if (notification.type === 'post_inactivity_warning') {
+      const postTitle =
+        (meta.postTitle as string)?.trim() || t('untitledPost');
+      const days = Number(meta.inactiveCloseDays ?? 7);
+      return t('postInactivityWarningBody', { postTitle, days });
+    }
+    if (notification.type === 'investment_pool_depleted') {
+      const exited =
+        meta.variant === 'exited_tappalka' || notification.title === 'Post exited tappalka';
+      if (exited) {
+        return t('postExitedTappalkaBody');
+      }
+      return t('investmentPoolDepletedBody');
+    }
+    if (notification.type === 'ob_vote_join_offer') {
+      const communityName =
+        notification.community?.name || (meta.communityId as string) || '';
+      return t('obVoteJoinOfferBody', { communityName });
+    }
+    if (notification.type === 'system') {
+      const kind = resolveSystemNoticeKind(notification);
+      const teamName =
+        (meta.communityName as string) || notification.community?.name || '';
+      if (kind === 'team_join_approved') {
+        const leadName = (meta.leadName as string) || tCommon('someone');
+        return t('systemTeamJoinApprovedMessage', { leadName, teamName });
+      }
+      if (kind === 'team_join_rejected') {
+        const leadName = (meta.leadName as string) || tCommon('someone');
+        return t('systemTeamJoinRejectedMessage', { leadName, teamName });
+      }
+      if (kind === 'team_invitation_accepted') {
+        return t('teamInvitationAcceptedMessage', {
+          name: actorName,
+          teamName,
+        });
+      }
+      if (kind === 'team_invitation_rejected') {
+        return t('teamInvitationRejectedMessage', {
+          name: actorName,
+          teamName,
+        });
+      }
+    }
     return notification.message || '';
   };
 
@@ -278,13 +430,61 @@ export default function NotificationsPage() {
     if (notification.type === 'vote') return t('newVote');
     if (notification.type === 'investment_received') return t('investmentReceived');
     if (notification.type === 'investment_distributed') return t('investmentDistributed');
-    if (notification.type === 'post_closed_investment' || notification.type === 'post_closed') return t('postClosed');
+    if (notification.type === 'post_closed_investment') {
+      return notification.metadata?.projectName
+        ? t('projectClosedInvestorsTitle')
+        : t('postClosed');
+    }
+    if (notification.type === 'post_closed') return t('postClosed');
     if (notification.type === 'favorite_update') return t('favoriteUpdated');
     if (notification.type === 'beneficiary') return t('newPublication');
     if (notification.type === 'publication') return t('postEdited');
     if (notification.type === 'team_invitation') return t('teamInvitation');
+    if (notification.type === 'team_join_request') return t('teamJoinRequestTitle');
     if (notification.type === 'forward_proposal') return t('forwardProposal');
     if (notification.type === 'quota') return t('dailyQuotaReset');
+    if (notification.type === 'project_created') return t('projectCreatedTitle');
+    if (notification.type === 'project_published') return t('projectPublishedTitle');
+    if (notification.type === 'project_distributed') return t('projectDistributedTitle');
+    if (notification.type === 'project_closed') return t('projectClosedTitle');
+    if (notification.type === 'member_joined') return t('memberJoinedTitle');
+    if (notification.type === 'member_left_project') return t('memberLeftTitle');
+    if (notification.type === 'shares_changed') {
+      return notification.metadata?.transferAdmin === true
+        ? t('projectAdminTransferredTitle')
+        : t('projectSharesUpdatedTitle');
+    }
+    if (notification.type === 'ticket_assigned') return t('ticketAssignedTitle');
+    if (notification.type === 'ticket_apply') return t('ticketApplyTitle');
+    if (notification.type === 'ticket_done') return t('ticketDoneTitle');
+    if (notification.type === 'ticket_accepted') return t('ticketAcceptedTitle');
+    if (notification.type === 'ticket_assignee_declined') {
+      return t('ticketAssigneeDeclinedTitle');
+    }
+    if (notification.type === 'ticket_rejection') return t('ticketRejectionTitle');
+    if (notification.type === 'ticket_evaluated') return t('ticketEvaluatedTitle');
+    if (notification.type === 'post_ttl_warning') return t('postTtlWarningTitle');
+    if (notification.type === 'post_inactivity_warning') {
+      return t('postInactivityWarningTitle');
+    }
+    if (notification.type === 'investment_pool_depleted') {
+      const exited =
+        notification.metadata?.variant === 'exited_tappalka' ||
+        notification.title === 'Post exited tappalka';
+      return exited ? t('postExitedTappalkaTitle') : t('investmentPoolDepletedTitle');
+    }
+    if (notification.type === 'ob_vote_join_offer') return t('obVoteJoinOfferTitle');
+    if (notification.type === 'system') {
+      const kind = resolveSystemNoticeKind(notification);
+      if (kind === 'team_join_approved') return t('systemTeamJoinApprovedTitle');
+      if (kind === 'team_join_rejected') return t('systemTeamJoinRejectedTitle');
+      if (kind === 'team_invitation_accepted') {
+        return t('teamInvitationAccepted');
+      }
+      if (kind === 'team_invitation_rejected') {
+        return t('teamInvitationRejected');
+      }
+    }
     return notification.title || '';
   };
 
@@ -390,7 +590,21 @@ export default function NotificationsPage() {
                   subtitle={
                     [
                       formatNotificationMessage(notification),
-                      ['vote', 'investment_received', 'investment_distributed'].includes(notification.type) ? null : notification.actor?.name,
+                      [
+                        'vote',
+                        'investment_received',
+                        'investment_distributed',
+                        'team_join_request',
+                        'team_invitation',
+                        'forward_proposal',
+                        'favorite_update',
+                        'beneficiary',
+                        'publication',
+                        'quota',
+                        'system',
+                      ].includes(notification.type)
+                        ? null
+                        : notification.actor?.name,
                       notification.community?.name,
                       formatDate(notification.createdAt),
                     ]

@@ -1,5 +1,6 @@
 'use client';
 
+import { messageFromBundle, resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '../stores/toast.store';
 
 /**
@@ -35,7 +36,10 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
   try {
     await navigator.clipboard.writeText(absoluteUrl);
     const toast = useToastStore.getState().addToast;
-    toast(toastMessage || 'URL copied to buffer', 'success');
+    toast(
+      toastMessage || messageFromBundle('shared.urlCopiedToBuffer') || 'URL copied to buffer',
+      'success',
+    );
   } catch (error) {
     // Fallback for older browsers
     const textArea = document.createElement('textarea');
@@ -47,10 +51,13 @@ export async function shareUrl(url: string, toastMessage?: string): Promise<void
     try {
       document.execCommand('copy');
       const toast = useToastStore.getState().addToast;
-      toast(toastMessage || 'URL copied to buffer', 'success');
+      toast(
+        toastMessage || messageFromBundle('shared.urlCopiedToBuffer') || 'URL copied to buffer',
+        'success',
+      );
     } catch (err) {
       const toast = useToastStore.getState().addToast;
-      toast('Failed to copy URL', 'error');
+      toast(resolveApiErrorToastMessage('Failed to copy URL'), 'error');
     } finally {
       document.body.removeChild(textArea);
     }

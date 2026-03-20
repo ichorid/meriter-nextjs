@@ -14,6 +14,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoadingState } from '@/components/atoms/LoadingState';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 
 interface AuthGuardProps {
@@ -53,7 +54,7 @@ export function AuthGuard({
   // Show error toast when authError changes
   useEffect(() => {
     if (authError) {
-      addToast(authError, 'error');
+      addToast(resolveApiErrorToastMessage(authError), 'error');
       router.push('/meriter/login');
     }
   }, [authError, addToast, router]);

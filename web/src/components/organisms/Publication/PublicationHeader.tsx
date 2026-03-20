@@ -14,6 +14,7 @@ import { routes } from '@/lib/constants/routes';
 import { useDeletePublication, usePermanentDeletePublication } from '@/hooks/api/usePublications';
 import { useDeletePoll } from '@/hooks/api/usePolls';
 import { DeleteConfirmationModal } from '@/components/organisms/DeleteConfirmationModal/DeleteConfirmationModal';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { ResourcePermissions } from '@/types/api-v1';
 import { useTranslations } from 'next-intl';
@@ -273,8 +274,12 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
         }
       }
       setShowDeleteModal(false);
-    } catch (error: any) {
-      addToast(error?.message || t('failedToDelete'), 'error');
+    } catch (error: unknown) {
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : t('failedToDelete'),
+        'error',
+      );
     }
   };
 

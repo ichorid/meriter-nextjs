@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { useCommunity } from '@/hooks/api';
 import { useForward, useRejectForward } from '@/hooks/api/usePublications';
+import { resolveApiErrorToastMessage, toastUiText } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
 import { useUserProfile } from '@/hooks/api/useUsers';
@@ -43,10 +44,11 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
         publicationId,
         targetCommunityId,
       });
-      addToast('Post forwarded successfully', 'success');
+      addToast(toastUiText('forwardPostSuccess'), 'success');
       onClose();
-    } catch (error: any) {
-      addToast(error?.message || 'Failed to forward post', 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(resolveApiErrorToastMessage(msg), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -58,10 +60,11 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
       await rejectForward.mutateAsync({
         publicationId,
       });
-      addToast('Forward proposal rejected', 'success');
+      addToast(toastUiText('forwardProposalRejected'), 'success');
       onClose();
-    } catch (error: any) {
-      addToast(error?.message || 'Failed to reject proposal', 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(resolveApiErrorToastMessage(msg), 'error');
     } finally {
       setIsSubmitting(false);
     }

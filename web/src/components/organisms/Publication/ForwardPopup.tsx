@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { useProposeForward, useForward } from '@/hooks/api/usePublications';
+import { resolveApiErrorToastMessage, toastUiText } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
 import { BottomPortal } from '@/shared/components/bottom-portal';
@@ -85,7 +86,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
 
   const handleSubmit = async () => {
     if (!selectedTarget) {
-      addToast('Please select a target group', 'error');
+      addToast(toastUiText('forwardSelectTarget'), 'error');
       return;
     }
 
@@ -96,17 +97,18 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
           publicationId,
           targetCommunityId: selectedTarget,
         });
-        addToast('Post forwarded successfully', 'success');
+        addToast(toastUiText('forwardPostSuccess'), 'success');
       } else {
         await proposeForward.mutateAsync({
           publicationId,
           targetCommunityId: selectedTarget,
         });
-        addToast('Forward proposal submitted. Waiting for lead approval.', 'success');
+        addToast(toastUiText('forwardProposalSubmitted'), 'success');
       }
       onClose();
-    } catch (error: any) {
-      addToast(error?.message || 'Failed to forward post', 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(resolveApiErrorToastMessage(msg), 'error');
     } finally {
       setIsSubmitting(false);
     }

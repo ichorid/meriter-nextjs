@@ -16,6 +16,7 @@ import { shareUrl, getPostUrl, getPollUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 import { useInvestors } from '@/hooks/api/useInvestments';
 import { isTestAuthMode } from '@/config';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
 import { PostMetrics } from './PostMetrics';
@@ -340,14 +341,18 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       await utils.publications.getById.invalidate({ id: publicationId });
       await utils.publications.getAll.invalidate();
       
-      addToast('Добавлено +10 рейтинга от фейкового пользователя', 'success');
+      addToast(t('devAddPositiveRatingSuccess'), 'success');
       
       // Call updateAll if provided to refresh parent component
       if (updateAll) {
         updateAll();
       }
     } catch (error: unknown) {
-      addToast(error instanceof Error ? error.message : t('addRatingError'), 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : t('addRatingError'),
+        'error',
+      );
     } finally {
       setIsAddingVote(false);
     }
@@ -383,7 +388,11 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         updateAll();
       }
     } catch (error: unknown) {
-      addToast(error instanceof Error ? error.message : t('addNegativeRatingError'), 'error');
+      const raw = error instanceof Error ? error.message : undefined;
+      addToast(
+        raw?.trim() ? resolveApiErrorToastMessage(raw) : t('addNegativeRatingError'),
+        'error',
+      );
     } finally {
       setIsAddingNegativeVote(false);
     }

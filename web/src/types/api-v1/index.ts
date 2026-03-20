@@ -277,6 +277,7 @@ export type NotificationType =
     | "ticket_assigned"
     | "ticket_done"
     | "ticket_accepted"
+    | "ticket_assignee_declined"
     | "ticket_evaluated"
     | "project_published"
     | "project_distributed"

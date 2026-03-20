@@ -37,6 +37,7 @@ import { Separator } from "@/components/ui/shadcn/separator";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
 import { Phone, Mail } from "lucide-react";
+import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
@@ -77,8 +78,6 @@ export function LoginForm({
     // Local loading state for OAuth authentication
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
 
-    console.log("LoginForm", enabledProviders, authnEnabled, smsEnabled);
-
     // State for auth dialogs
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
     const [callDialogOpen, setCallDialogOpen] = useState(false);
@@ -103,7 +102,7 @@ export function LoginForm({
     // Show auth error toast when error changes
     useEffect(() => {
         if (authError) {
-            addToast(authError, "error");
+            addToast(resolveApiErrorToastMessage(authError), "error");
         }
     }, [authError, addToast]);
 
@@ -136,7 +135,7 @@ export function LoginForm({
             const message = getErrorMessage(error);
             console.error("❌ Fake superadmin authentication failed:", error);
             setAuthError(message);
-            addToast(message, "error");
+            addToast(resolveApiErrorToastMessage(message), "error");
         }
     };
 
@@ -163,7 +162,7 @@ export function LoginForm({
             } catch (error: unknown) {
                 const message = getErrorMessage(error);
                 setAuthError(message);
-                addToast(message, "error");
+                addToast(resolveApiErrorToastMessage(message), "error");
                 setIsOAuthLoading(false);
             }
         } else {
@@ -258,7 +257,7 @@ export function LoginForm({
                                             }}
                                             onError={(msg) => {
                                                 setAuthError(msg);
-                                                addToast(msg, "error");
+                                                addToast(resolveApiErrorToastMessage(msg), "error");
                                             }}
                                         />
                                     </div>
@@ -380,7 +379,7 @@ export function LoginForm({
                                             }}
                                             onError={(msg) => {
                                                 setAuthError(msg);
-                                                addToast(msg, "error");
+                                                addToast(resolveApiErrorToastMessage(msg), "error");
                                             }}
                                         />
                                     )}
@@ -462,7 +461,7 @@ export function LoginForm({
                     }}
                     onError={(msg) => {
                         setAuthError(msg);
-                        addToast(msg, "error");
+                        addToast(resolveApiErrorToastMessage(msg), "error");
                     }}
                 />
             )}
@@ -479,7 +478,7 @@ export function LoginForm({
                     }}
                     onError={(msg) => {
                         setAuthError(msg);
-                        addToast(msg, "error");
+                        addToast(resolveApiErrorToastMessage(msg), "error");
                     }}
                 />
             )}
@@ -496,7 +495,7 @@ export function LoginForm({
                     }}
                     onError={(msg) => {
                         setAuthError(msg);
-                        addToast(msg, "error");
+                        addToast(resolveApiErrorToastMessage(msg), "error");
                     }}
                 />
             )}

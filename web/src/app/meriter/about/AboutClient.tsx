@@ -19,6 +19,7 @@ import { CategoryManagement } from '@/components/settings/CategoryManagement';
 import { AboutContent } from '@/components/organisms/About/AboutContent';
 import { AboutAdminPanel } from '@/components/organisms/About/AboutAdminPanel';
 import { useResetAboutToDemoData } from '@/hooks/api/useAbout';
+import { resolveApiErrorToastMessage, toastUiText } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -30,9 +31,9 @@ function WelcomeMeritsPlatformRow() {
   const updateMutation = trpc.platformSettings.update.useMutation({
     onSuccess: () => {
       void utils.platformSettings.get.invalidate();
-      addToast('Saved', 'success');
+      addToast(toastUiText('aboutSaved'), 'success');
     },
-    onError: (e) => addToast(e.message || 'Failed to save', 'error'),
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
   const [value, setValue] = useState<string>('0');
   useEffect(() => {
@@ -43,7 +44,7 @@ function WelcomeMeritsPlatformRow() {
   const handleSave = () => {
     const n = parseInt(value, 10);
     if (Number.isNaN(n) || n < 0) {
-      addToast('Enter a number >= 0', 'error');
+      addToast(toastUiText('aboutInvalidNumber'), 'error');
       return;
     }
     updateMutation.mutate({ welcomeMeritsGlobal: n });
@@ -93,9 +94,9 @@ function FutureVisionRubricatorRow() {
   const updateMutation = trpc.platformSettings.updateFutureVisionTags.useMutation({
     onSuccess: () => {
       void utils.platformSettings.get.invalidate();
-      addToast('Saved', 'success');
+      addToast(toastUiText('aboutSaved'), 'success');
     },
-    onError: (e) => addToast(e.message || 'Failed to save', 'error'),
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
   const [localTags, setLocalTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
@@ -193,7 +194,7 @@ function ResetAboutToDemoRow() {
         addToast(t('resetSuccess'), 'success');
       },
       onError: (e) => {
-        addToast(e.message || t('resetError'), 'error');
+        addToast(resolveApiErrorToastMessage(e.message), 'error');
       },
     });
   };

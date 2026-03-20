@@ -1,5 +1,6 @@
 'use client';
 
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
@@ -35,7 +36,7 @@ export function useCreateTicket() {
       addToast(t('ticketCreated'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('ticketCreateError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -62,7 +63,7 @@ export function useUpdateTicket() {
       addToast(t('ticketUpdated'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('ticketUpdateError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -93,7 +94,7 @@ export function useDeclineAsAssignee() {
       addToast(t('declineAssigneeSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('declineAssigneeError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -121,7 +122,7 @@ export function useCreateNeutralTicket() {
       addToast(t('ticketCreated'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('ticketCreateError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -136,10 +137,10 @@ export function useApplyForTicket() {
       void utils.project.getOpenTickets.invalidate();
       void utils.ticket.getByProject.invalidate();
       void utils.publications.getById.invalidate({ id: variables.ticketId });
-      addToast(t('applySuccess', { defaultValue: 'Application sent' }), 'success');
+      addToast(t('applySuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('applyError', { defaultValue: 'Failed to apply' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -158,7 +159,7 @@ export function useTakeOpenNeutralAsModerator() {
       addToast(t('takeOpenNeutralModeratorSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('takeOpenNeutralModeratorError'), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -180,10 +181,10 @@ export function useApproveApplicant() {
       utils.ticket.getByProject.invalidate();
       utils.project.getOpenTickets.invalidate();
       utils.ticket.getApplicants.invalidate();
-      addToast(t('approveApplicantSuccess', { defaultValue: 'Applicant approved' }), 'success');
+      addToast(t('approveApplicantSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('approveApplicantError', { defaultValue: 'Failed to approve' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -198,10 +199,10 @@ export function useRejectApplicant() {
       utils.ticket.getByProject.invalidate();
       utils.project.getOpenTickets.invalidate();
       utils.ticket.getApplicants.invalidate();
-      addToast(t('rejectApplicantSuccess', { defaultValue: 'Applicant rejected' }), 'success');
+      addToast(t('rejectApplicantSuccess'), 'success');
     },
     onError: (error) => {
-      addToast(error.message || t('rejectApplicantError', { defaultValue: 'Failed to reject' }), 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }

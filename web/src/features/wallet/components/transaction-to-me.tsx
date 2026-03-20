@@ -3,6 +3,7 @@
 import { CardCommentVote } from "@shared/components/card-comment-vote";
 import { telegramGetAvatarLink } from "@/lib/utils/telegram";
 import { useTranslations } from 'next-intl';
+import { useToastStore } from '@/shared/stores/toast.store';
 import { useQuery } from '@tanstack/react-query';
 import { useCommunity } from '@/hooks/api';
 import { dateVerbose } from "@shared/lib/date";
@@ -38,6 +39,7 @@ export const TransactionToMe = ({
     transaction: RestTransactionObject;
 }) => {
     const t = useTranslations('shared');
+    const tFeed = useTranslations('feed');
     
     // Fetch community info to get currency icon using v1 API
     const { data: communityInfo } = useCommunity(transaction.currencyOfCommunityTgChatId || '');
@@ -107,10 +109,8 @@ export const TransactionToMe = ({
                             // Admin: redirect to settings
                             window.location.href = `/meriter/communities/${transaction.currencyOfCommunityTgChatId}/settings`;
                         } else {
-                            // Non-admin: show toast
-                            const { useToastStore } = require('@/shared/stores/toast.store');
                             useToastStore.getState().addToast(
-                                'Community setup pending, your admin will set it up soon',
+                                tFeed('communitySetupPending'),
                                 'info'
                             );
                         }

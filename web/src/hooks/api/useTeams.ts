@@ -1,3 +1,4 @@
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -26,8 +27,7 @@ export function useCreateTeam() {
       router.push(`/meriter/communities/${community.id}`);
     },
     onError: (error) => {
-      const message = error.message || t('teamCreateError');
-      addToast(message, 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -51,8 +51,7 @@ export function useInviteToTeam() {
       addToast(t('inviteSent'), 'success');
     },
     onError: (error) => {
-      const message = error.message || t('inviteError');
-      addToast(message, 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -77,8 +76,7 @@ export function useAssignLead() {
       addToast(t('leadAssigned'), 'success');
     },
     onError: (error) => {
-      const message = error.message || t('assignLeadError');
-      addToast(message, 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -120,8 +118,7 @@ export function useAcceptTeamInvitation() {
       addToast(t('invitationAccepted'), 'success');
     },
     onError: (error) => {
-      const message = error.message || t('acceptInvitationError');
-      addToast(message, 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }
@@ -142,8 +139,7 @@ export function useRejectTeamInvitation() {
       addToast(t('invitationRejected'), 'success');
     },
     onError: (error) => {
-      const message = error.message || t('rejectInvitationError');
-      addToast(message, 'error');
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
     },
   });
 }

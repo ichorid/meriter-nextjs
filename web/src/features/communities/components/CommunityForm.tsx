@@ -29,6 +29,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { ImageUploader } from "@/components/ui/ImageUploader";
 import { FutureVisionCoverDevPlaceholders } from "@/shared/components/FutureVisionCoverDevPlaceholders";
+import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
 
@@ -157,11 +158,11 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 `Failed to ${isEditMode ? "update" : "create"} community:`,
                 error
             );
-            const errorMessage = extractErrorMessage(
-                error,
-                tCreate("errors.createFailed")
-            );
-            addToast(errorMessage, "error");
+            const extracted = extractErrorMessage(error, "");
+            const toastMsg = extracted.trim()
+                ? resolveApiErrorToastMessage(extracted)
+                : tCreate("errors.createFailed");
+            addToast(toastMsg, "error");
         }
     };
 

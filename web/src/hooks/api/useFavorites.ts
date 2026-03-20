@@ -1,3 +1,4 @@
+import { toastUiText } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -66,7 +67,7 @@ export function useAddFavorite() {
       ]);
       
       // Show toast notification
-      useToastStore.getState().addToast('Added to favorites', 'success');
+      useToastStore.getState().addToast(toastUiText('favoritesAdded'), 'success');
     },
   });
 }
@@ -121,7 +122,7 @@ export function useRemoveFavorite() {
       ]);
       
       // Show toast notification
-      useToastStore.getState().addToast('Removed from favorites', 'success');
+      useToastStore.getState().addToast(toastUiText('favoritesRemoved'), 'success');
     },
   });
 }

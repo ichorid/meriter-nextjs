@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { Loader2, Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 import DOMPurify from 'dompurify';
@@ -72,8 +73,12 @@ export function AboutAdminPanel() {
       setNewCategoryTitle('');
       setNewCategoryDescription('');
       addToast(t('categoryCreated'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('categoryCreateError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('categoryCreateError'),
+        'error',
+      );
     }
   };
 
@@ -93,8 +98,12 @@ export function AboutAdminPanel() {
       setEditCategoryTitle('');
       setEditCategoryDescription('');
       addToast(t('categoryUpdated'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('categoryUpdateError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('categoryUpdateError'),
+        'error',
+      );
     }
   };
 
@@ -106,8 +115,12 @@ export function AboutAdminPanel() {
     try {
       await deleteCategory.mutateAsync({ id });
       addToast(t('categoryDeleted'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('categoryDeleteError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('categoryDeleteError'),
+        'error',
+      );
     }
   };
 
@@ -139,8 +152,12 @@ export function AboutAdminPanel() {
       setNewArticleContent('');
       setNewArticleCategoryId('');
       addToast(t('articleCreated'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('articleCreateError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('articleCreateError'),
+        'error',
+      );
     }
   };
 
@@ -162,8 +179,12 @@ export function AboutAdminPanel() {
       setEditArticleContent('');
       setEditArticleCategoryId('');
       addToast(t('articleUpdated'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('articleUpdateError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('articleUpdateError'),
+        'error',
+      );
     }
   };
 
@@ -175,8 +196,12 @@ export function AboutAdminPanel() {
     try {
       await deleteArticle.mutateAsync({ id });
       addToast(t('articleDeleted'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('articleDeleteError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('articleDeleteError'),
+        'error',
+      );
     }
   };
 
@@ -199,8 +224,12 @@ export function AboutAdminPanel() {
       await setIntroduction.mutateAsync({ content: introductionContent });
       setEditingIntroduction(false);
       addToast(t('introductionUpdated'), 'success');
-    } catch (error: any) {
-      addToast(error?.message || t('introductionSaveError'), 'error');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : undefined;
+      addToast(
+        msg?.trim() ? resolveApiErrorToastMessage(msg) : t('introductionSaveError'),
+        'error',
+      );
     }
   };
 

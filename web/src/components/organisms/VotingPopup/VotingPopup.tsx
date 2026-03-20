@@ -17,6 +17,7 @@ import { BottomPortal } from '@/shared/components/bottom-portal';
 import { IntlPortalWrapper } from '@/components/providers/IntlPortalWrapper';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { canUseWalletForVoting } from './voting-utils';
 
 interface VotingPopupProps {
@@ -371,14 +372,17 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     } catch (err: unknown) {
       // Mutation hooks handle rollback automatically via onError
       console.error('[VotingPopup] Error submitting vote:', err);
-      let message = err instanceof Error ? err.message : t('errorCommenting');
-      if (message === 'This community only allows neutral comments') {
+      const raw = err instanceof Error ? err.message : '';
+      let message: string;
+      if (raw === 'This community only allows neutral comments') {
         message = tShared('voteDisabled.neutralOnlyError');
       } else if (
-        message === 'QUOTA_OR_WALLET_REQUIRED' ||
-        (typeof message === 'string' && message.includes('quotaAmount or walletAmount'))
+        raw === 'QUOTA_OR_WALLET_REQUIRED' ||
+        (typeof raw === 'string' && raw.includes('quotaAmount or walletAmount'))
       ) {
         message = t('quotaOrWalletRequired');
+      } else {
+        message = resolveApiErrorToastMessage(raw || undefined);
       }
       addToast(message, 'error');
     }

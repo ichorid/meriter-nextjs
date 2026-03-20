@@ -7,6 +7,7 @@ import { ValidationError as ZodValidationError } from './validation';
 import { formatValidationError, logValidationError } from './validation-error-handler';
 import { clearAuthStorage, hasPreviousSession, isOnAuthPage, clearCookiesIfNeeded } from '@/lib/utils/auth';
 import { invalidateAuthQueries } from '@/lib/utils/query-client-cache';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 
@@ -95,12 +96,11 @@ export class ApiClient {
             // Only show toast if user has had a previous session
             // This prevents scary error messages for first-time visitors
             if (hasPreviousSession()) {
-              // Show toast notification with server message or fallback
               const serverMessage = (error.response?.data as any)?.error?.message ||
                 (error.response?.data as any)?.message ||
                 'Session expired. Please login again.';
               if (!skipToast) {
-                useToastStore.getState().addToast(serverMessage, 'error');
+                useToastStore.getState().addToast(resolveApiErrorToastMessage(serverMessage), 'error');
               }
             }
           }
@@ -114,14 +114,16 @@ export class ApiClient {
             (error.response?.data as any)?.message ||
             'Server error. Please try again later.';
           if (!skipToast) {
-            useToastStore.getState().addToast(serverMessage, 'error');
+            useToastStore.getState().addToast(resolveApiErrorToastMessage(serverMessage), 'error');
           }
         }
 
         // Handle Network Errors globally
         if (apiError.code === 'NETWORK_ERROR') {
           if (!skipToast) {
-            useToastStore.getState().addToast('Network error. Please check your connection.', 'error');
+            useToastStore
+              .getState()
+              .addToast(resolveApiErrorToastMessage('Network error. Please check your connection.'), 'error');
           }
         } else if (!error.response?.status || error.response.status < 500) {
           // Handle other API errors (except 500s which are already handled)
@@ -129,7 +131,9 @@ export class ApiClient {
           // But we need to make sure we don't duplicate toasts if we add more specific handlers later
           if (error.response?.status !== 401) {
             if (!skipToast) {
-              useToastStore.getState().addToast(apiError.message || 'An error occurred', 'error');
+              useToastStore
+                .getState()
+                .addToast(resolveApiErrorToastMessage(apiError.message || 'An error occurred'), 'error');
             }
           }
         }

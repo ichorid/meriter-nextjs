@@ -7,6 +7,7 @@ import { useCastPoll } from '@/hooks/api/usePolls';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { usePollTimeRemaining } from '../hooks/usePollTimeRemaining';
 import { usePollAmountValidation } from '../hooks/usePollAmountValidation';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Loader2 } from 'lucide-react';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
@@ -138,9 +139,12 @@ export const PollCasting = ({
             addToast(t('castSuccess'), 'success');
             onCastSuccess && onCastSuccess();
         } catch (err: unknown) {
-            const errorMessage = extractErrorMessage(err, t('castError'));
-            setError(errorMessage);
-            addToast(errorMessage, 'error');
+            const extracted = extractErrorMessage(err, '');
+            const toastMsg = extracted.trim()
+                ? resolveApiErrorToastMessage(extracted)
+                : t('castError');
+            setError(toastMsg);
+            addToast(toastMsg, 'error');
         }
     };
 

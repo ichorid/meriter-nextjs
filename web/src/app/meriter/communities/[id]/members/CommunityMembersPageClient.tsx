@@ -22,6 +22,7 @@ import {
     type TeamJoinRequest,
 } from '@/hooks/api/useTeamRequests';
 import { TeamRequestCard } from '@/components/molecules/TeamRequestCard/TeamRequestCard';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { Button } from '@/components/ui/shadcn/button';
@@ -106,7 +107,12 @@ export function CommunityMembersPageClient({
             setInviteDialogOpen(true);
         },
         onError: (e) => {
-            addToast(e.message || t('members.invite.generateFailed'), 'error');
+            addToast(
+                e.message?.trim()
+                    ? resolveApiErrorToastMessage(e.message)
+                    : t('members.invite.generateFailed'),
+                'error',
+            );
         },
     });
     
@@ -133,8 +139,14 @@ export function CommunityMembersPageClient({
                 onSuccess: () => {
                     addToast(t('teamRequests.approved'), 'success');
                 },
-                onError: (error: any) => {
-                    addToast(error.message || t('teamRequests.approveFailed'), 'error');
+                onError: (error: unknown) => {
+                    const raw = error instanceof Error ? error.message : undefined;
+                    addToast(
+                        raw?.trim()
+                            ? resolveApiErrorToastMessage(raw)
+                            : t('teamRequests.approveFailed'),
+                        'error',
+                    );
                 },
             }
         );
@@ -148,8 +160,14 @@ export function CommunityMembersPageClient({
                     onSuccess: () => {
                         addToast(t('teamRequests.rejected'), 'success');
                     },
-                    onError: (error: any) => {
-                        addToast(error.message || t('teamRequests.rejectFailed'), 'error');
+                    onError: (error: unknown) => {
+                        const raw = error instanceof Error ? error.message : undefined;
+                        addToast(
+                            raw?.trim()
+                                ? resolveApiErrorToastMessage(raw)
+                                : t('teamRequests.rejectFailed'),
+                            'error',
+                        );
                     },
                 }
             );

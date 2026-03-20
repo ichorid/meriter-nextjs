@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -12,7 +13,8 @@ import { useApplyForTicket } from '@/hooks/api/useTickets';
 import { useUIStore } from '@/stores/ui.store';
 import { shareUrl } from '@shared/lib/share-utils';
 import { formatMerits } from '@/lib/utils/currency';
-import { ArrowUp, Share2, TrendingUp, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ArrowUp, ChevronDown, Share2, TrendingUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { NeutralTicketPublicCard } from './NeutralTicketPublicCard';
 
@@ -53,6 +55,7 @@ export function ProjectCard({
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const { data: openTickets = [] } = useOpenTickets(project.id);
   const applyForTicket = useApplyForTicket();
+  const [openTasksExpanded, setOpenTasksExpanded] = useState(false);
   const status = project.projectStatus ?? 'active';
   const statusLabel =
     status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
@@ -171,23 +174,46 @@ export function ProjectCard({
 
       {showOpenTickets && (
         <div className="pt-3 border-t border-base-300 mt-3">
-          <h4 className="text-sm font-medium mb-2">{t('openTasks', { defaultValue: 'Open tasks' })}</h4>
-          <div
-            className="space-y-2"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-2 rounded-lg py-1.5 -mx-1 px-1 text-left hover:bg-base-200/80 transition-colors"
+            onClick={() => setOpenTasksExpanded((v) => !v)}
+            aria-expanded={openTasksExpanded}
+            aria-controls={`project-open-tasks-${project.id}`}
+            id={`project-open-tasks-trigger-${project.id}`}
           >
-            {openTickets.map((ticket: { id: string; title?: string; description?: string }) => (
-              <NeutralTicketPublicCard
-                key={ticket.id}
-                ticket={ticket}
-                projectId={project.id}
-                onApply={(ticketId) => applyForTicket.mutate({ ticketId })}
-                isApplying={applyForTicket.isPending}
-                isAuthenticated={!!user}
-              />
-            ))}
-          </div>
+            <span className="text-sm font-medium text-base-content">
+              {t('openTasks', { defaultValue: 'Open tasks' })} ({openTickets.length})
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 text-base-content/60 transition-transform',
+                openTasksExpanded && 'rotate-180',
+              )}
+              aria-hidden
+            />
+          </button>
+          {openTasksExpanded ? (
+            <div
+              id={`project-open-tasks-${project.id}`}
+              role="region"
+              aria-labelledby={`project-open-tasks-trigger-${project.id}`}
+              className="space-y-2 mt-2"
+              onClick={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {openTickets.map((ticket: { id: string; title?: string; description?: string }) => (
+                <NeutralTicketPublicCard
+                  key={ticket.id}
+                  ticket={ticket}
+                  projectId={project.id}
+                  onApply={(ticketId) => applyForTicket.mutate({ ticketId })}
+                  isApplying={applyForTicket.isPending}
+                  isAuthenticated={!!user}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       )}
     </div>
