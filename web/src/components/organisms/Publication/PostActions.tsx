@@ -98,6 +98,7 @@ export const PostActions: React.FC<PostActionsProps> = ({
   maxWithdrawAmount,
   withdrawDisabledTitle,
   showMoreMenu,
+  showModeratorEditMenu = false,
   showCloseInMore,
   showSettingsInMore,
   onClosePostClick,
