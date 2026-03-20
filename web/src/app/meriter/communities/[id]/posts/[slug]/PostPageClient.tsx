@@ -25,6 +25,12 @@ import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Comment as CommentComponent } from "@features/comments/components/comment";
+import {
+  TicketPostPanel,
+  type TicketPostPanelPublication,
+} from '@/components/organisms/Project/TicketPostPanel';
+import { TicketActivityLogCollapsible } from '@/components/organisms/Project/TicketActivityLogCollapsible';
+import type { TicketActivityPublicationSlice } from '@/components/organisms/Project/mergeTicketActivity';
 
 interface PostPageClientProps {
     communityId: string;
@@ -226,6 +232,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
         );
     }
 
+    const isTicketPost = (publication as { postType?: string }).postType === 'ticket';
+
     return (
         <AdaptiveLayout
             className="feed"
@@ -300,6 +308,21 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             className="mb-4"
                         />
 
+                        {isTicketPost && (
+                            <TicketPostPanel
+                                communityId={chatId}
+                                communityIsProject={Boolean(
+                                    community && (community as { isProject?: boolean }).isProject,
+                                )}
+                                publication={publication as unknown as TicketPostPanelPublication}
+                                onInvalidate={() => {
+                                    void utils.publications.getById.invalidate({
+                                        id: getPublicationIdentifier(publication) ?? '',
+                                    });
+                                }}
+                            />
+                        )}
+
                         <PublicationActions
                             publication={{
                                 id: (publication as Record<string, unknown>).id,
@@ -331,7 +354,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             isCommenting={false}
                             maxPlus={currentBalance}
                             wallets={wallets}
-                            hideVoteAndScore={false}
+                            ticketPostMode={isTicketPost}
                             updateAll={() => {
                                 void utils.publications.getById.invalidate({ id: getPublicationIdentifier(publication) ?? '' });
                             }}
@@ -343,28 +366,34 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                 {/* Expanded sections (E-4): collapsible Investment breakdown, Post settings - collapsed by default */}
                 {publication && (
                     <div className="mt-6 space-y-4">
-                        {investingEnabled && publicationId && (
-                            <CollapsibleSection
-                                title={tInvesting('breakdownTitle')}
-                                open={investmentBreakdownOpen}
-                                setOpen={setInvestmentBreakdownOpen}
-                            >
-                                <InvestmentBreakdownInline postId={publicationId} compact />
-                            </CollapsibleSection>
-                        )}
+                        {isTicketPost ? (
+                            <TicketActivityLogCollapsible publication={publication as TicketActivityPublicationSlice} />
+                        ) : (
+                            <>
+                                {investingEnabled && publicationId && (
+                                    <CollapsibleSection
+                                        title={tInvesting('breakdownTitle')}
+                                        open={investmentBreakdownOpen}
+                                        setOpen={setInvestmentBreakdownOpen}
+                                    >
+                                        <InvestmentBreakdownInline postId={publicationId} compact />
+                                    </CollapsibleSection>
+                                )}
 
-                        <CollapsibleSection
-                            title={tPublicationsCreate('postParamsReadOnly')}
-                            open={postSettingsOpen}
-                            setOpen={setPostSettingsOpen}
-                        >
-                            <PostInvestingSettingsReadOnly
-                                investorSharePercent={(publication as Record<string, unknown>).investorSharePercent as number | undefined}
-                                ttlExpiresAt={(publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
-                                stopLoss={(publication as Record<string, unknown>).stopLoss as number | undefined}
-                                noAuthorWalletSpend={(publication as Record<string, unknown>).noAuthorWalletSpend as boolean | undefined}
-                            />
-                        </CollapsibleSection>
+                                <CollapsibleSection
+                                    title={tPublicationsCreate('postParamsReadOnly')}
+                                    open={postSettingsOpen}
+                                    setOpen={setPostSettingsOpen}
+                                >
+                                    <PostInvestingSettingsReadOnly
+                                        investorSharePercent={(publication as Record<string, unknown>).investorSharePercent as number | undefined}
+                                        ttlExpiresAt={(publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
+                                        stopLoss={(publication as Record<string, unknown>).stopLoss as number | undefined}
+                                        noAuthorWalletSpend={(publication as Record<string, unknown>).noAuthorWalletSpend as boolean | undefined}
+                                    />
+                                </CollapsibleSection>
+                            </>
+                        )}
                     </div>
                 )}
 
