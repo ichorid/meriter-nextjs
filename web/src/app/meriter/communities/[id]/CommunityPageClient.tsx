@@ -293,6 +293,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
     }, [communityLoading, comms?.typeTag, router]);
 
+    // Project communities use /meriter/projects/[id] as the user-facing feed; preserve query (e.g. highlight=)
+    const projectRedirectQuery = searchParams?.toString() ?? '';
+    useEffect(() => {
+        if (!communityFetched || communityLoading || communityError) return;
+        if (!comms?.isProject) return;
+        const base = routes.project(chatId);
+        router.replace(projectRedirectQuery ? `${base}?${projectRedirectQuery}` : base);
+    }, [
+        chatId,
+        comms?.isProject,
+        communityError,
+        communityFetched,
+        communityLoading,
+        projectRedirectQuery,
+        router,
+    ]);
+
     // Open tappalka modal when navigating with ?tappalka=1 (e.g. from "Earn merits" in invest dialog)
     const tappalkaParam = searchParams?.get('tappalka');
     useEffect(() => {

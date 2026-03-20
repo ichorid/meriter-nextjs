@@ -12,6 +12,7 @@ export const routes = {
     profile: "/meriter/profile",
     futureVisions: "/meriter/future-visions",
     projects: "/meriter/projects",
+    project: (id: string) => `/meriter/projects/${id}`,
     userProfile: (userId: string) => `/meriter/users/${userId}`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
