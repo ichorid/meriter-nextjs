@@ -7,6 +7,7 @@ import { useUserProfile } from '@/hooks/api/useUsers';
 import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
+import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 
 interface DiscussionListProps {
   projectId: string;
@@ -46,11 +47,13 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
       {list.map((post: { id: string; title?: string; content: string; authorId: string }) => (
         <li key={post.id}>
           <Link
-            href={`/meriter/communities/${projectId}/posts/${post.id}`}
+            href={routes.communityPost(projectId, post.id)}
             className="block rounded-xl border border-white/10 bg-white/5 p-4 text-card-foreground shadow-none transition-colors duration-200 hover:bg-white/[0.07]"
           >
             {post.title && <div className="font-medium">{post.title}</div>}
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{post.content}</p>
+            <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+              {plainTextExcerpt(post.content)}
+            </div>
             <AuthorLabel userId={post.authorId} />
           </Link>
         </li>

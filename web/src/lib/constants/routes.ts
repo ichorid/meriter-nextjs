@@ -44,6 +44,9 @@ export const routes = {
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
     setupCommunity: "/meriter/setup-community",
+    /** Community post detail (publication id as slug). */
+    communityPost: (communityId: string, postId: string) =>
+      `/meriter/communities/${communityId}/posts/${postId}`,
 
     // Publications
     publication: (id: string) => `/meriter/publications/${id}`,

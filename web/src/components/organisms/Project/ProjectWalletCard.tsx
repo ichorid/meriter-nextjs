@@ -25,7 +25,7 @@ export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCar
 
   return (
     <>
-      <div className="flex flex-col gap-2">
+      <div className="flex h-full min-h-0 flex-col gap-3">
         <div className="flex items-center gap-2">
           <Wallet className="h-5 w-5 text-base-content/70" aria-hidden />
           <span className="font-medium">{heading}</span>
@@ -39,7 +39,7 @@ export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCar
         <Button
           size="sm"
           variant="outline"
-          className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+          className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
           onClick={() => setTopUpOpen(true)}
         >
           {t('topUp', { defaultValue: 'Top up' })}

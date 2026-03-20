@@ -7,7 +7,6 @@ import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeShar
 import { ProjectWalletCard } from './ProjectWalletCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
-import { cn } from '@/lib/utils';
 
 export interface ProjectDashboardProps {
   projectId: string;
@@ -22,7 +21,7 @@ function SharesMiniBar({ founder, investor }: { founder: number; investor: numbe
     return null;
   }
   return (
-    <div className="mt-3 h-1.5 w-full overflow-hidden flex rounded-full bg-white/10">
+    <div className="h-1.5 w-full overflow-hidden flex rounded-full bg-white/10">
       {founder > 0 && (
         <div
           className="h-full shrink-0 bg-blue-500 transition-all"
@@ -55,22 +54,24 @@ export function ProjectDashboard({
 
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+      <div className="flex min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
         <ProjectWalletCard
           projectId={projectId}
           title={t('cardWallet')}
           footer={
-            <div className="text-xs text-base-content/60">
-              <CooperativeSharesDisplay
-                founderSharePercent={founderSharePercent}
-                investorSharePercent={investorSharePercent}
-              />
-            </div>
+            founderSharePercent > 0 || investorSharePercent > 0 ? (
+              <div className="text-xs text-base-content/60">
+                <CooperativeSharesDisplay
+                  founderSharePercent={founderSharePercent}
+                  investorSharePercent={investorSharePercent}
+                />
+              </div>
+            ) : undefined
           }
         />
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col gap-3">
+      <div className="flex min-h-0 flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
         <div className="flex items-center gap-2 text-sm font-medium text-base-content">
           <Users className="h-5 w-5 text-base-content/70 shrink-0" aria-hidden />
           {t('cardTeam')}
@@ -79,27 +80,30 @@ export function ProjectDashboard({
         {totalMembers === 0 && (
           <p className="text-sm text-base-content/50">{t('teamNoMembersPreview')}</p>
         )}
-        <Button variant="outline" size="sm" className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto" asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+          asChild
+        >
           <Link href={routes.projectMembersManage(projectId)}>{t('viewTeamMembers')}</Link>
         </Button>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-white/5 p-4 flex flex-col">
+      <div className="flex min-h-0 flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
         <div className="flex items-center gap-2 text-sm font-medium text-base-content">
           <PieChart className="h-5 w-5 text-base-content/70 shrink-0" aria-hidden />
           {t('cardShares')}
         </div>
-        <div
-          className={cn(
-            'mt-2 text-sm text-base-content/70 flex-1',
-            founderSharePercent === 0 && investorSharePercent === 0 && 'text-base-content/50',
-          )}
-        >
-          <CooperativeSharesDisplay
-            founderSharePercent={founderSharePercent}
-            investorSharePercent={investorSharePercent}
-          />
-        </div>
+        {(founderSharePercent > 0 || investorSharePercent > 0) && (
+          <div className="text-sm text-base-content/70">
+            <CooperativeSharesDisplay
+              founderSharePercent={founderSharePercent}
+              investorSharePercent={investorSharePercent}
+            />
+          </div>
+        )}
+        <div className="min-h-0 flex-1" aria-hidden />
         <SharesMiniBar founder={founderSharePercent} investor={investorSharePercent} />
       </div>
     </div>

@@ -49,6 +49,8 @@ interface PostActionsProps {
   maxWithdrawAmount: number;
   withdrawDisabledTitle: string | undefined;
   showMoreMenu: boolean;
+  /** Lead/superadmin editing someone else's post: overflow with Edit only. */
+  showModeratorEditMenu?: boolean;
   showCloseInMore: boolean;
   showSettingsInMore: boolean;
   onClosePostClick: () => void;
@@ -119,18 +121,23 @@ export const PostActions: React.FC<PostActionsProps> = ({
 }) => {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  const [moderatorMenuOpen, setModeratorMenuOpen] = useState(false);
+  const moderatorMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
         setMoreMenuOpen(false);
       }
+      if (moderatorMenuRef.current && !moderatorMenuRef.current.contains(e.target as Node)) {
+        setModeratorMenuOpen(false);
+      }
     };
-    if (moreMenuOpen) {
+    if (moreMenuOpen || moderatorMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [moreMenuOpen]);
+  }, [moreMenuOpen, moderatorMenuOpen]);
 
   // Left: Fav, Share (always)
   const leftButtons = (
@@ -299,6 +306,37 @@ export const PostActions: React.FC<PostActionsProps> = ({
     // E-5: Admin +/- only in overflow - add More menu for non-authors when showAdminButtons
     return (
       <div className="flex flex-wrap items-center justify-center gap-2">
+        {showModeratorEditMenu && (
+          <div className="relative" ref={moderatorMenuRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setModeratorMenuOpen(!moderatorMenuOpen);
+              }}
+              className="p-1.5 rounded-full hover:bg-base-200 transition-colors text-base-content/60 hover:text-base-content/80"
+              title={settingsTitle}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {moderatorMenuOpen && (
+              <div className="absolute left-0 top-full mt-1 w-48 bg-base-100 rounded-lg shadow-lg border border-base-300 py-1 z-50">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSettingsClick();
+                    setModeratorMenuOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-base-200 flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  {settingsTitle}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {showAdminButtons && (
           <div className="relative" ref={moreMenuRef}>
             <button

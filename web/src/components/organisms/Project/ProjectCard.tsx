@@ -105,12 +105,14 @@ export function ProjectCard({
         {project.description && (
           <p className="text-sm text-base-content/70 mb-2 line-clamp-2">{project.description}</p>
         )}
-        <div className="mb-3">
-          <CooperativeSharesDisplay
-            founderSharePercent={project.founderSharePercent ?? 0}
-            investorSharePercent={project.investorSharePercent ?? 0}
-          />
-        </div>
+        {((project.founderSharePercent ?? 0) > 0 || (project.investorSharePercent ?? 0) > 0) && (
+          <div className="mb-3">
+            <CooperativeSharesDisplay
+              founderSharePercent={project.founderSharePercent ?? 0}
+              investorSharePercent={project.investorSharePercent ?? 0}
+            />
+          </div>
+        )}
       </Link>
 
       <div className="pt-3 border-t border-base-300">

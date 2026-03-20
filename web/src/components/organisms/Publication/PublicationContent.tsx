@@ -72,6 +72,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   const title = (publication as any).title;
   const description = (publication as any).description;
   const isProject = (publication as any).isProject;
+  const postType = (publication as { postType?: string }).postType;
   const coverImageUrl = publication.imageUrl || (publication as any).imageUrl;
   const galleryImages = (publication as Record<string, unknown>).images || [];
 
@@ -112,7 +113,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
           altPrefix={title ? `${title} - Image` : 'Publication image'}
         />
       )}
-      {isProject && (
+      {isProject && postType !== 'ticket' && postType !== 'discussion' && (
         <div className="mb-2">
           <span className="inline-block px-2 py-1 text-xs font-semibold text-white bg-blue-600 rounded">
             {tPub('projectTag')}
@@ -132,7 +133,8 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
       ) : null}
       
       {/* Taxonomy badges - show for project posts */}
-      {((publication as any).postType === 'project' || (publication as any).isProject) && (
+      {((publication as any).postType === 'project' || (publication as any).isProject) &&
+        postType !== 'ticket' && (
         <div className="mb-3 space-y-2">
           <div className="flex flex-wrap gap-2">
             {(publication as any).impactArea && (

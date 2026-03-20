@@ -118,11 +118,15 @@ export function useLeaveProject() {
 }
 
 export function useProjectMembers(projectId: string | null, opts?: { page?: number; limit?: number; search?: string }) {
+  const rawLimit = opts?.limit;
+  const limit =
+    rawLimit === undefined ? undefined : Math.min(100, Math.max(1, Math.floor(rawLimit)));
+
   return trpc.project.getMembers.useQuery(
     {
       projectId: projectId!,
       page: opts?.page,
-      limit: opts?.limit,
+      limit,
       search: opts?.search,
     },
     { enabled: !!projectId, staleTime: STALE_TIME.SHORT },

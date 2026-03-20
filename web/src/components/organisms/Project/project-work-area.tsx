@@ -25,7 +25,8 @@ type TabId = 'tickets' | 'discussions';
 export interface ProjectWorkAreaProps {
   projectId: string;
   currentUserId: string;
-  isLead: boolean;
+  /** Lead or superadmin: task moderation (create, accept, reopen, applicants). */
+  canModerateTickets: boolean;
   isMember: boolean;
   readOnly?: boolean;
 }
@@ -33,7 +34,7 @@ export interface ProjectWorkAreaProps {
 export function ProjectWorkArea({
   projectId,
   currentUserId,
-  isLead,
+  canModerateTickets,
   isMember,
   readOnly = false,
 }: ProjectWorkAreaProps) {
@@ -104,7 +105,7 @@ export function ProjectWorkArea({
               <option value="closed">{t('statusClosed')}</option>
             </select>
           </div>
-          {isLead && !readOnly && (
+          {canModerateTickets && !readOnly && (
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Dialog open={createNeutralTicketOpen} onOpenChange={setCreateNeutralTicketOpen}>
                 <DialogTrigger asChild>
@@ -157,12 +158,14 @@ export function ProjectWorkArea({
         <TicketList
           projectId={projectId}
           currentUserId={currentUserId}
-          isLead={isLead}
+          canModerateTickets={canModerateTickets}
           statusFilter={statusFilter}
           onOpenCreateOpenTask={
-            isLead && !readOnly ? () => setCreateNeutralTicketOpen(true) : undefined
+            canModerateTickets && !readOnly ? () => setCreateNeutralTicketOpen(true) : undefined
           }
-          onOpenCreateTask={isLead && !readOnly ? () => setCreateTicketOpen(true) : undefined}
+          onOpenCreateTask={
+            canModerateTickets && !readOnly ? () => setCreateTicketOpen(true) : undefined
+          }
         />
       )}
       {activeTab === 'discussions' && <DiscussionList projectId={projectId} />}

@@ -107,6 +107,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const [showClosePostDialog, setShowClosePostDialog] = useState(false);
   const t = useTranslations('shared');
   const tPub = useTranslations('publications');
+  const tProjects = useTranslations('projects');
   
   const deletePublication = useDeletePublication();
   const permanentDeletePublication = usePermanentDeletePublication();
@@ -435,9 +436,14 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             Closed · {closeReasonLabel}
           </Badge>
         ) : null}
-        {(publication as any).postType === 'project' || (publication as any).isProject ? (
+        {(publication as any).postType === 'ticket' ? (
           <Badge variant="warning" size="sm">
-            PROJECT
+            {tProjects('postTypeBadgeTicket')}
+          </Badge>
+        ) : (publication as any).postType === 'project' ||
+          ((publication as any).isProject && (publication as any).postType !== 'ticket') ? (
+          <Badge variant="warning" size="sm">
+            {tProjects('postTypeBadgeProject')}
           </Badge>
         ) : null}
         {(publication as any).forwardStatus === 'pending' && (

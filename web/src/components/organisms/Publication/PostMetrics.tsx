@@ -20,6 +20,8 @@ export interface ClosingSummary {
 interface PostMetricsProps {
   /** Active vs closed */
   isClosed: boolean;
+  /** Task/ticket post: no rating, investment, TTL, or merit closing summary */
+  ticketPost?: boolean;
   /** Hide rating (e.g. for polls) */
   hideVoteAndScore?: boolean;
 
@@ -50,6 +52,7 @@ interface PostMetricsProps {
 
 export const PostMetrics: React.FC<PostMetricsProps> = ({
   isClosed,
+  ticketPost = false,
   hideVoteAndScore = false,
   currentScore = 0,
   totalVotes,
@@ -69,6 +72,7 @@ export const PostMetrics: React.FC<PostMetricsProps> = ({
   closingSummary,
 }) => {
   const tInvesting = useTranslations('investing');
+  const tProjects = useTranslations('projects');
 
   const ttlClosesInDays = useMemo(() => {
     if (!ttlExpiresAt || isClosed) return null;
@@ -82,8 +86,15 @@ export const PostMetrics: React.FC<PostMetricsProps> = ({
   const effectiveTtlLabel =
     ttlClosesInLabel ?? (ttlClosesInDays != null ? tInvesting('ttlClosesIn', { days: ttlClosesInDays }) : null);
 
-  // CLOSED: show ClosingSummaryBlock only
+  // CLOSED: show ClosingSummaryBlock only (tasks: no merit summary)
   if (isClosed) {
+    if (ticketPost) {
+      return (
+        <div className="mb-3">
+          <span className="text-sm text-base-content/50">{tProjects('closed')}</span>
+        </div>
+      );
+    }
     return (
       <div className="mb-3">
         {closingSummary ? (
@@ -93,6 +104,10 @@ export const PostMetrics: React.FC<PostMetricsProps> = ({
         )}
       </div>
     );
+  }
+
+  if (ticketPost) {
+    return null;
   }
 
   // ACTIVE: rating + investment + TTL
