@@ -27,6 +27,27 @@ export const communitiesRouter = router({
       const memberCount =
         await ctx.userCommunityRoleService.countMembersInCommunity(input.id);
 
+      let futureVisionPublicationId: string | undefined;
+      let futureVisionPublicationScore: number | undefined;
+      if (community.typeTag !== 'future-vision') {
+        const fvCommunity = await ctx.communityService.getCommunityByTypeTag(
+          'future-vision',
+        );
+        if (fvCommunity) {
+          const obPostId = await ctx.publicationService.findFutureVisionPostId(
+            fvCommunity.id,
+            input.id,
+          );
+          if (obPostId) {
+            const obPublication = await ctx.publicationService.getPublication(obPostId);
+            if (obPublication) {
+              futureVisionPublicationId = obPostId;
+              futureVisionPublicationScore = obPublication.getScore;
+            }
+          }
+        }
+      }
+
       // Extract legacy fields if they exist in the document (they may not be in TypeScript interface)
       const communityDoc = community as any;
       
@@ -73,6 +94,8 @@ export const communitiesRouter = router({
         needsSetup,
         createdAt: community.createdAt.toISOString(),
         updatedAt: community.updatedAt.toISOString(),
+        futureVisionPublicationId,
+        futureVisionPublicationScore,
       };
     }),
 

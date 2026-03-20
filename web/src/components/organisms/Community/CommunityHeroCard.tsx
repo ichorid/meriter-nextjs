@@ -3,12 +3,15 @@
 import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User, ChevronDown, ChevronUp } from 'lucide-react';
-import { Users, FileText, Settings, Trash2 } from 'lucide-react';
+import { Users, Settings, Trash2, TrendingUp, ArrowUp } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
+import { Button } from '@/components/ui/shadcn/button';
+import { formatMerits } from '@/lib/utils/currency';
+import { useUIStore } from '@/stores/ui.store';
 
 interface CommunityHeroCardProps {
   community: {
@@ -18,7 +21,6 @@ interface CommunityHeroCardProps {
     avatarUrl?: string;
     coverImageUrl?: string;
     memberCount?: number;
-    publicationCount?: number;
     typeTag?: string;
     isAdmin?: boolean;
     needsSetup?: boolean;
@@ -28,6 +30,9 @@ interface CommunityHeroCardProps {
     futureVisionCover?: string;
     futureVisionText?: string;
     futureVisionTags?: string[];
+    /** Linked OB publication in the future-vision community (from getById) */
+    futureVisionPublicationId?: string;
+    futureVisionPublicationScore?: number;
   };
   className?: string;
   /** Compact mode for embedding in other pages */
@@ -48,9 +53,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const router = useRouter();
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
-  const t = useTranslations('pages.communitySettings');
   const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
+  const tShared = useTranslations('shared');
+  const openVotingPopup = useUIStore((s) => s.openVotingPopup);
 
   // Check if user is a lead (for deleted button visibility)
   const isLead = user?.globalRole === 'superadmin' ||
@@ -80,6 +86,23 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     !!community.futureVisionText?.trim() ||
     (community.futureVisionTags && community.futureVisionTags.length > 0);
   const [obExpanded, setObExpanded] = useState(false);
+
+  const obPublicationId = community.futureVisionPublicationId;
+  const obScore = community.futureVisionPublicationScore ?? 0;
+
+  const handleObRatingClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!obPublicationId) return;
+    router.push(`${routes.futureVisions}?post=${obPublicationId}`);
+  };
+
+  const handleObSupportClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!obPublicationId) return;
+    openVotingPopup(obPublicationId, 'publication', 'wallet-only');
+  };
 
   // Compact mode renders a simpler, smaller card
   if (isCompact) {
@@ -115,12 +138,6 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                 <div className="flex items-center gap-1">
                   <Users size={12} />
                   <span>{community.memberCount}</span>
-                </div>
-              )}
-              {community.publicationCount !== undefined && (
-                <div className="flex items-center gap-1">
-                  <FileText size={12} />
-                  <span>{community.publicationCount}</span>
                 </div>
               )}
             </div>
@@ -239,24 +256,24 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           )}
 
           {/* Stats */}
-          <div className="flex items-center gap-4 text-sm text-base-content/60">
-            {community.memberCount !== undefined && (
+          {community.memberCount !== undefined && (
+            <div className="flex items-center gap-4 text-sm text-base-content/60">
               <div className="flex items-center gap-1">
                 <Users size={14} />
                 <span>{community.memberCount}</span>
               </div>
-            )}
-            {community.publicationCount !== undefined && (
-              <div className="flex items-center gap-1">
-                <FileText size={14} />
-                <span>{community.publicationCount}</span>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Future vision subsection (inside same block) */}
           {showFutureVisionSubsection && (
-            <div className="mt-4 pt-4 border-t border-base-200 space-y-2">
+            <div className="mt-4 pt-4 border-t border-base-200 space-y-3">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+                  {tCommunities('futureVisionSectionTitle')}
+                </h2>
+              </div>
+
               {obCover && !obCoverUsedInHeader && (
                 <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300">
                   <img
@@ -309,6 +326,45 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                   ))}
                 </div>
               )}
+
+              {obPublicationId && (
+                <div className="pt-2 border-t border-base-200">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                    <button
+                      type="button"
+                      onClick={handleObRatingClick}
+                      className="flex items-center gap-1.5 text-sm hover:bg-base-200 rounded-lg px-2 py-1.5 transition-colors group flex-shrink-0"
+                      title={tShared('totalVotesTooltip', { defaultValue: 'Total votes including withdrawn' })}
+                      aria-label={tCommunities('futureVisionOpenSupporters')}
+                    >
+                      <TrendingUp className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 flex-shrink-0" />
+                      <span
+                        className={`font-medium tabular-nums ${
+                          obScore > 0
+                            ? 'text-success'
+                            : obScore < 0
+                              ? 'text-error'
+                              : 'text-base-content/60'
+                        }`}
+                      >
+                        {obScore > 0 ? '+' : ''}
+                        {formatMerits(obScore)}
+                      </span>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+                      onClick={handleObSupportClick}
+                      aria-label={tCommon('support', { defaultValue: 'Support' })}
+                    >
+                      <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="whitespace-nowrap">{tCommon('support', { defaultValue: 'Support' })}</span>
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -316,4 +372,3 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     </div>
   );
 };
-
