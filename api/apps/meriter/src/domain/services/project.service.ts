@@ -97,6 +97,8 @@ export class ProjectService {
           futureVisionTags: dto.newCommunity.futureVisionTags,
           futureVisionCover: dto.newCommunity.futureVisionCover,
           typeTag: dto.newCommunity.typeTag ?? 'custom',
+          /** Required so createCommunity registers an OB post in the future-vision feed */
+          creatorUserId: userId,
         });
         createdParentId = parent.id;
         parentCommunityId = parent.id;
