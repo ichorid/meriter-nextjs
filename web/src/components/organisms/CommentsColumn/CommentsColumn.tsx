@@ -10,6 +10,7 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { SortToggle } from '@/components/ui/SortToggle';
 import { useUIStore } from '@/stores/ui.store';
 import { useCommunity } from '@/hooks/api';
+import { usePublication } from '@/hooks/api/usePublications';
 
 export interface CommentsColumnProps {
   publicationSlug: string;
@@ -49,8 +50,12 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
   // Sort state for comments
   const [sortBy, setSortBy] = useState<'recent' | 'voted'>('recent');
 
+  const { data: publication } = usePublication(publicationSlug);
+  /** Publication may live in another community (e.g. OB post in future-vision while viewing a team page). */
+  const effectiveCommunityId = publication?.communityId ?? communityId;
+
   // Get community data for voting mode determination
-  const { data: community } = useCommunity(communityId);
+  const { data: community } = useCommunity(effectiveCommunityId);
 
   // Get comments data - useComments hook manages comment state
   // API provides enriched data (author, vote transaction fields)
@@ -66,7 +71,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
     0, // minusGiven - not used for display only
     activeCommentHook,
     true, // onlyPublication - show comments by default
-    communityId, // communityId
+    effectiveCommunityId, // communityId (quota / context)
     wallets, // wallets array for balance lookup
     sortBy // sort preference
   );
@@ -156,7 +161,7 @@ export const CommentsColumn: React.FC<CommentsColumnProps> = ({
                   wallets={wallets}
                   updateWalletBalance={() => { }}
                   updateAll={() => { }}
-                  communityId={communityId}
+                  communityId={effectiveCommunityId}
                   isDetailPage={false}
                 />
               ))}

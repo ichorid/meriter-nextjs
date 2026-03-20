@@ -43,17 +43,24 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   
   const addToast = useToastStore((state) => state.addToast);
 
-  // Use shared hook for community data
-  const { targetCommunityId, currencyIconUrl, walletBalance } = usePopupCommunityData(communityId);
+  const { data: publication } = usePublication(
+    votingTargetType === 'publication' && activeVotingTarget ? activeVotingTarget : '',
+  );
+
+  const voteContextCommunityId = useMemo(() => {
+    if (votingTargetType === 'publication' && publication?.communityId) {
+      return publication.communityId;
+    }
+    return communityId;
+  }, [votingTargetType, publication?.communityId, communityId]);
+
+  // Wallet / quota context: publication's community when voting on a post (e.g. OB in future-vision)
+  const { targetCommunityId, currencyIconUrl, walletBalance } =
+    usePopupCommunityData(voteContextCommunityId);
 
   // Get user role in community
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(targetCommunityId || '');
-  
-  // Get publication to check if user is voting for own post
-  const { data: publication } = usePublication(
-    votingTargetType === 'publication' && activeVotingTarget ? activeVotingTarget : ''
-  );
   
   // Check if user is voting for own post (author or beneficiary)
   const isOwnPost = useMemo(() => {

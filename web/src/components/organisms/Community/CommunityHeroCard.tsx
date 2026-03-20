@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Users, Settings, Trash2, TrendingUp, ArrowUp } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,8 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   onClick,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const tCommunities = useTranslations('pages.communities');
@@ -93,8 +95,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const handleObRatingClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!obPublicationId) return;
-    router.push(`${routes.futureVisions}?post=${obPublicationId}`);
+    if (!obPublicationId || !pathname) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('post', obPublicationId);
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const handleObSupportClick = (e: React.MouseEvent) => {
@@ -255,85 +259,73 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
             </p>
           )}
 
-          {/* Stats */}
-          {community.memberCount !== undefined && (
-            <div className="flex items-center gap-4 text-sm text-base-content/60">
-              <div className="flex items-center gap-1">
-                <Users size={14} />
-                <span>{community.memberCount}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Future vision subsection (inside same block) */}
+          {/* Future vision: single inset card (members count is on the cover toolbar) */}
           {showFutureVisionSubsection && (
-            <div className="mt-4 pt-4 border-t border-base-200 space-y-3">
-              <div>
+            <div className="mt-4">
+              <div className="rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 py-4 sm:px-5 sm:py-4 space-y-3">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
                   {tCommunities('futureVisionSectionTitle')}
                 </h2>
-              </div>
 
-              {obCover && !obCoverUsedInHeader && (
-                <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300">
-                  <img
-                    src={obCover}
-                    alt=""
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-              )}
-              {community.futureVisionText?.trim() && (
-                <>
-                  <p
-                    className={`text-sm text-base-content/90 whitespace-pre-wrap ${obExpanded ? '' : 'line-clamp-3'}`}
-                  >
-                    {community.futureVisionText.trim()}
-                  </p>
-                  {community.futureVisionText.trim().length > 180 && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setObExpanded((v) => !v);
-                      }}
-                      className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                {obCover && !obCoverUsedInHeader && (
+                  <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300/80">
+                    <img
+                      src={obCover}
+                      alt=""
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
+                )}
+                {community.futureVisionText?.trim() && (
+                  <>
+                    <p
+                      className={`text-sm text-base-content/90 whitespace-pre-wrap ${obExpanded ? '' : 'line-clamp-3'}`}
                     >
-                      {obExpanded ? (
-                        <>
-                          <ChevronUp size={14} />
-                          {tCommunities('showLess')}
-                        </>
-                      ) : (
-                        <>
-                          <ChevronDown size={14} />
-                          {tCommunities('showMore')}
-                        </>
-                      )}
-                    </button>
-                  )}
-                </>
-              )}
-              {community.futureVisionTags && community.futureVisionTags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {community.futureVisionTags.map((tag: string) => (
-                    <span
-                      key={tag}
-                      className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300 text-base-content/90"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+                      {community.futureVisionText.trim()}
+                    </p>
+                    {community.futureVisionText.trim().length > 180 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setObExpanded((v) => !v);
+                        }}
+                        className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                      >
+                        {obExpanded ? (
+                          <>
+                            <ChevronUp size={14} />
+                            {tCommunities('showLess')}
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown size={14} />
+                            {tCommunities('showMore')}
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </>
+                )}
+                {community.futureVisionTags && community.futureVisionTags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {community.futureVisionTags.map((tag: string) => (
+                      <span
+                        key={tag}
+                        className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/90 dark:bg-base-300/50 text-base-content/90"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-              {obPublicationId && (
-                <div className="pt-2 border-t border-base-200">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                {obPublicationId && (
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5">
                     <button
                       type="button"
                       onClick={handleObRatingClick}
-                      className="flex items-center gap-1.5 text-sm hover:bg-base-200 rounded-lg px-2 py-1.5 transition-colors group flex-shrink-0"
+                      className="flex items-center gap-1.5 text-sm hover:bg-base-300/50 dark:hover:bg-base-300/40 rounded-lg px-2 py-1.5 transition-colors group flex-shrink-0"
                       title={tShared('totalVotesTooltip', { defaultValue: 'Total votes including withdrawn' })}
                       aria-label={tCommunities('futureVisionOpenSupporters')}
                     >
@@ -355,7 +347,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+                      className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0 border-base-300 bg-base-100/80"
                       onClick={handleObSupportClick}
                       aria-label={tCommon('support', { defaultValue: 'Support' })}
                     >
@@ -363,8 +355,8 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                       <span className="whitespace-nowrap">{tCommon('support', { defaultValue: 'Support' })}</span>
                     </Button>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
         </div>
