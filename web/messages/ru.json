@@ -1494,6 +1494,8 @@
         "publishToBirzhaDescription": "Опубликовать этот пост проекта на Бирже Социальных Инвестиций. Стоимость поста будет списана с кошелька проекта.",
         "publishToBirzhaError": "Не удалось опубликовать",
         "publishToBirzhaTitle": "Опубликовать на Бирже",
+        "publishBirzhaPostTitle": "Заголовок поста (необязательно)",
+        "publishBirzhaPostText": "Текст публикации",
         "publishedToBirzhaSuccess": "Опубликовано на Бирже",
         "publishing": "Публикация…",
         "reject": "Отклонить",

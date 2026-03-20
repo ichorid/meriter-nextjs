@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePublishToBirzha } from '@/hooks/api/useProjects';
 import {
@@ -17,6 +17,14 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Slider } from '@/components/ui/slider';
 import { Loader2 } from 'lucide-react';
 
+/** Birzha posts require 1–99; project may store 0 or unset before first publish. */
+function clampInvestorSharePercent(pct: number | undefined | null): number {
+  if (pct == null || Number.isNaN(pct) || pct < 1) {
+    return 20;
+  }
+  return Math.min(99, pct);
+}
+
 interface PublishToBirzhaDialogProps {
   projectId: string;
   open: boolean;
@@ -32,35 +40,41 @@ export function PublishToBirzhaDialog({
 }: PublishToBirzhaDialogProps) {
   const t = useTranslations('projects');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const [investorSharePercent, setInvestorSharePercent] = useState(defaultInvestorSharePercent);
+  const [investorSharePercent, setInvestorSharePercent] = useState(() =>
+    clampInvestorSharePercent(defaultInvestorSharePercent),
+  );
   const [images, setImages] = useState<string[]>([]);
 
   const publish = usePublishToBirzha();
+
+  useEffect(() => {
+    if (open) {
+      setInvestorSharePercent(clampInvestorSharePercent(defaultInvestorSharePercent));
+    }
+  }, [open, defaultInvestorSharePercent]);
 
   const isValid = useMemo(() => content.trim().length > 0, [content]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isValid) return;
+    const share = clampInvestorSharePercent(investorSharePercent);
     publish.mutate(
       {
         projectId,
         title: title.trim() || undefined,
-        description: description.trim() || undefined,
         content: content.trim(),
         type: images.length > 0 ? 'image' : 'text',
         images: images.length > 0 ? images : undefined,
-        investorSharePercent,
+        investorSharePercent: share,
       },
       {
         onSuccess: () => {
           onOpenChange(false);
           setTitle('');
-          setDescription('');
           setContent('');
-          setInvestorSharePercent(defaultInvestorSharePercent);
+          setInvestorSharePercent(clampInvestorSharePercent(defaultInvestorSharePercent));
           setImages([]);
         },
       },
@@ -81,25 +95,16 @@ export function PublishToBirzhaDialog({
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div>
-              <Label htmlFor="birzha-title">{t('title', { defaultValue: 'Title' })}</Label>
+              <Label htmlFor="birzha-title">{t('publishBirzhaPostTitle')}</Label>
               <Input
                 id="birzha-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={t('titlePlaceholder', { defaultValue: 'Optional' })}
+                placeholder={t('titlePlaceholder')}
               />
             </div>
             <div>
-              <Label htmlFor="birzha-description">{t('description', { defaultValue: 'Description' })}</Label>
-              <Input
-                id="birzha-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={t('descriptionPlaceholder', { defaultValue: 'Optional' })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="birzha-content">{t('content', { defaultValue: 'Content' })} *</Label>
+              <Label htmlFor="birzha-content">{t('publishBirzhaPostText')} *</Label>
               <textarea
                 id="birzha-content"
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -114,7 +119,9 @@ export function PublishToBirzhaDialog({
               </Label>
               <Slider
                 value={[investorSharePercent]}
-                onValueChange={([v]) => setInvestorSharePercent(v ?? 20)}
+                onValueChange={([v]) =>
+                  setInvestorSharePercent(clampInvestorSharePercent(v ?? 20))
+                }
                 min={1}
                 max={99}
                 step={1}
