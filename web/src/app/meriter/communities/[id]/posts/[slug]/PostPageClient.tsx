@@ -429,7 +429,9 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                                     : typeTag === 'marathon-of-good'
                                                         ? 'quota-only'
                                                         : 'standard';
-                                            useUIStore.getState().openVotingPopup(slug, 'publication', mode);
+                                            useUIStore.getState().openVotingPopup(slug, 'publication', mode, {
+                                                publicationIsTask: isTicketPost,
+                                            });
                                         }}
                                         className="w-full"
                                     >

@@ -259,6 +259,16 @@ async function createVoteLogic(
     });
   }
 
+  let publicationDoc: Awaited<
+    ReturnType<typeof ctx.publicationService.getPublicationDocument>
+  > | null = null;
+  if (input.targetType === 'publication') {
+    publicationDoc = await ctx.publicationService.getPublicationDocument(
+      input.targetId,
+    );
+  }
+  const isTicketPublication = publicationDoc?.postType === 'ticket';
+
   // Validate amounts
   const requestedQuotaAmount = input.quotaAmount ?? 0;
   const requestedWalletAmount = input.walletAmount ?? 0;
@@ -268,13 +278,10 @@ async function createVoteLogic(
   // this bypasses commentMode — it is not a vote/comment, just a transfer.
   let isAuthorTopup = false;
   if (input.targetType === 'publication' && requestedTotalAmount > 0) {
-    const pubDoc = await ctx.publicationService.getPublicationDocument(
-      input.targetId,
-    );
-    if (pubDoc?.authorId === ctx.user.id) {
+    if (publicationDoc?.authorId === ctx.user.id) {
       isAuthorTopup = true;
     }
-    if ((pubDoc?.status ?? 'active') === 'closed') {
+    if ((publicationDoc?.status ?? 'active') === 'closed') {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'This post is closed and cannot be modified',
@@ -286,6 +293,13 @@ async function createVoteLogic(
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Vote amount cannot be negative',
+    });
+  }
+
+  if (isTicketPublication && requestedTotalAmount > 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Task posts only accept free text comments (no merits)',
     });
   }
 
@@ -301,16 +315,30 @@ async function createVoteLogic(
         message: 'This community only allows neutral comments',
       });
     }
-    if (commentMode === 'weightedOnly' && requestedTotalAmount === 0) {
+    if (
+      commentMode === 'weightedOnly' &&
+      requestedTotalAmount === 0 &&
+      !isTicketPublication
+    ) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'This community requires comments to have merit weight',
       });
     }
-    if (requestedTotalAmount === 0 && commentMode !== 'neutralOnly') {
+    if (
+      requestedTotalAmount === 0 &&
+      commentMode !== 'neutralOnly' &&
+      !isTicketPublication
+    ) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
         message: 'At least one of quotaAmount or walletAmount must be greater than zero',
+      });
+    }
+    if (isTicketPublication && requestedTotalAmount === 0 && !input.comment?.trim()) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Comment text is required for task comments',
       });
     }
   }

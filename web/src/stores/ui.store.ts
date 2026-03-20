@@ -29,6 +29,8 @@ interface UIState {
   activeVotingTarget: string | null;
   votingTargetType: VotingTargetType;
   votingMode?: 'standard' | 'wallet-only' | 'quota-only';
+  /** When opening the popup from a task post page, free-comment UI before publication query resolves */
+  votingPublicationIsTask?: boolean;
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -64,6 +66,7 @@ const initialState: UIState = {
   activeVotingTarget: null,
   votingTargetType: null,
   votingMode: 'standard',
+  votingPublicationIsTask: false,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -84,15 +87,17 @@ export const useUIStore = create<UIState & UIActions>()(
         setActiveSlider: (id) => set({ activeSlider: id }),
         setActiveTab: (tab) => set({ activeTab: tab }),
         resetUI: () => set(initialState),
-        openVotingPopup: (targetId, targetType, mode = 'standard') => set({
+        openVotingPopup: (targetId, targetType, mode = 'standard', opts) => set({
           activeVotingTarget: targetId,
           votingTargetType: targetType,
           votingMode: mode,
+          votingPublicationIsTask: opts?.publicationIsTask === true,
           activeVotingFormData: { comment: '', delta: 0, error: '', images: [] }
         }),
         closeVotingPopup: () => set({
           activeVotingTarget: null,
           votingTargetType: null,
+          votingPublicationIsTask: false,
           activeVotingFormData: null
         }),
         updateVotingFormData: (data) => set((state) => ({

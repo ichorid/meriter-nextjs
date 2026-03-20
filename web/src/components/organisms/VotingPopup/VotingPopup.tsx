@@ -36,6 +36,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     activeVotingTarget,
     votingTargetType,
     votingMode,
+    votingPublicationIsTask,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -57,6 +58,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Wallet / quota context: publication's community when voting on a post (e.g. OB in future-vision)
   const { targetCommunityId, currencyIconUrl, walletBalance } =
     usePopupCommunityData(voteContextCommunityId);
+
+  const { data: freeBalance } = useFreeBalance(targetCommunityId || undefined);
 
   // Get user role in community
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -87,6 +90,20 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // D-10: Closed posts — force neutral-only (no weighted vote) regardless of community setting
   const effectiveCommentMode =
     (publication as { status?: string })?.status === 'closed' ? 'neutralOnly' : commentMode;
+
+  const isTicketPost = useMemo(
+    () =>
+      votingTargetType === 'publication' &&
+      (votingPublicationIsTask === true ||
+        (publication as { postType?: string } | undefined)?.postType === 'ticket'),
+    [votingTargetType, votingPublicationIsTask, publication],
+  );
+
+  /** Tasks: free text comments only; submit/validate as neutral-only regardless of community commentMode */
+  const effectiveCommentModeForSubmit = useMemo(
+    () => (isTicketPost ? 'neutralOnly' : effectiveCommentMode),
+    [isTicketPost, effectiveCommentMode],
+  );
 
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
@@ -211,11 +228,11 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const delta = formData.delta;
     if (delta === 0) {
-      if (effectiveCommentMode === 'weightedOnly') {
+      if (effectiveCommentModeForSubmit === 'weightedOnly') {
         updateVotingFormData({ error: t('weightRequired') });
         return;
       }
-      if (effectiveCommentMode === 'all' || effectiveCommentMode === 'neutralOnly') {
+      if (effectiveCommentModeForSubmit === 'all' || effectiveCommentModeForSubmit === 'neutralOnly') {
         // Neutral comment: allow with 0 weight (require comment text)
         if (!formData.comment?.trim()) {
           updateVotingFormData({ error: t('reasonRequired') });
@@ -281,9 +298,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const isNeutralSubmit = quotaAmount === 0 && walletAmount === 0;
     if (isNeutralSubmit) {
       const allowedNeutral =
-        effectiveCommentMode === 'neutralOnly' || (effectiveCommentMode === 'all' && formData.comment?.trim());
+        effectiveCommentModeForSubmit === 'neutralOnly' ||
+        (effectiveCommentModeForSubmit === 'all' && formData.comment?.trim());
       if (!allowedNeutral) {
-        if (absoluteAmount === 0 && effectiveCommentMode === 'weightedOnly') {
+        if (absoluteAmount === 0 && effectiveCommentModeForSubmit === 'weightedOnly') {
           updateVotingFormData({ error: t('weightRequired') });
           return;
         }
@@ -394,12 +412,15 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           walletBalance={walletBalance}
           community={community}
           error={formData.error}
-          isOwnPost={isOwnPost}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
-          commentMode={effectiveCommentMode}
-          hideQuota={effectiveCommentMode === 'neutralOnly'}
-          submitButtonLabel={effectiveCommentMode === 'neutralOnly' ? t('commentButton') : undefined}
+          commentMode={isTicketPost ? 'neutralOnly' : effectiveCommentMode}
+          hideQuota={isTicketPost || effectiveCommentMode === 'neutralOnly'}
+          submitButtonLabel={
+            isTicketPost || effectiveCommentMode === 'neutralOnly' ? t('commentButton') : undefined
+          }
+          isOwnPost={isTicketPost ? false : isOwnPost}
+          neutralHelperText={isTicketPost ? t('taskCommentFreeHint') : undefined}
         />
         </div>
       </div>

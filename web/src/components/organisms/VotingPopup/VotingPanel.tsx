@@ -43,6 +43,8 @@ interface VotingPanelProps {
     onSubmitSimple?: () => void;
     /** Community comment mode: all (0 or weighted), neutralOnly (text only), weightedOnly (weight required) */
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
+    /** Shown under the title when in neutral-only mode (e.g. free task comments) */
+    neutralHelperText?: string;
     /** When hideQuota: which hint to show — 'add' (add merits to post) or 'withdraw' (withdraw merits). Default 'withdraw'. */
     hintMode?: 'add' | 'withdraw';
 }
@@ -74,6 +76,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     submitButtonLabel,
     onSubmitSimple,
     commentMode,
+    neutralHelperText,
     hintMode = 'withdraw',
 }) => {
     const t = useTranslations("comments");
@@ -134,10 +137,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     }, [isOwnPost, isFutureVision, currencySource, t]);
 
     const headerTitle = useMemo(() => {
+        if (title) return title;
         if (commentMode === 'neutralOnly') return t("commentButton");
         if (isFutureVision) return t("futureVisionSupportTitle");
-        return title || t("voteTitle");
-    }, [commentMode, isFutureVision, t, title]);
+        return t("voteTitle");
+    }, [title, commentMode, isFutureVision, t]);
     
     // Determine if quota bar should be shown
     const showQuotaBar = useMemo(() => {
@@ -558,6 +562,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 <h2 className="text-xl font-bold text-base-content">
                     {headerTitle}
                 </h2>
+                {commentMode === 'neutralOnly' && neutralHelperText ? (
+                    <p className="text-xs text-base-content/60 leading-relaxed whitespace-pre-line">
+                        {neutralHelperText}
+                    </p>
+                ) : null}
                 {/* Explanation - only for weighted communities */}
                 {!hideQuota && commentMode !== 'neutralOnly' && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">

@@ -91,6 +91,8 @@ interface PublicationActionsProps {
   className?: string;
   /** Hide vote button and score display, show only favorite and share */
   hideVoteAndScore?: boolean;
+  /** Project task post: hide rating, merits, withdraw, investment UI */
+  ticketPostMode?: boolean;
 }
 
 export const PublicationActions: React.FC<PublicationActionsProps> = ({
@@ -106,6 +108,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   updateAll,
   className = '',
   hideVoteAndScore = false,
+  ticketPostMode = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -183,8 +186,12 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const currentBalance = getWalletBalance(wallets, balanceCommunityId);
   const maxTopUpAmount = Math.floor(10 * currentBalance) / 10;
 
+  const hideEconomy = hideVoteAndScore || ticketPostMode;
+
   // Investment data (only when post has investing enabled)
-  const investingEnabled = (publication as any).investingEnabled ?? false;
+  const investingEnabled = ticketPostMode
+    ? false
+    : ((publication as any).investingEnabled ?? false);
   const investorSharePercent = (publication as any).investorSharePercent ?? 50;
   const investmentPool = (publication as any).investmentPool ?? 0;
   const investmentPoolTotal = (publication as any).investmentPoolTotal ?? 0;
@@ -201,7 +208,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
   // Check if community allows withdrawals
   const allowWithdraw = community?.settings?.allowWithdraw ?? true;
-  const canShowWithdraw = (isAuthor && !hasBeneficiary && allowWithdraw) || isBeneficiary;
+  const canShowWithdraw =
+    !ticketPostMode && ((isAuthor && !hasBeneficiary && allowWithdraw) || isBeneficiary);
 
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
@@ -214,6 +222,14 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     ?? (effectivePublication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } } | undefined)?.closingSummary;
 
   const handleVoteClick = () => {
+    if (!publicationId) return;
+    if ((publication as { postType?: string }).postType === 'ticket') {
+      useUIStore.getState().openVotingPopup(publicationId, 'publication', 'standard', {
+        publicationIsTask: true,
+      });
+      return;
+    }
+
     // Check if user is voting for own post (author or beneficiary)
     const isEffectiveBeneficiary = isAuthor || isBeneficiary;
     
@@ -418,7 +434,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // D-10: When closed, open voting popup for neutral comment only (popup forces neutralOnly)
   const handleCommentOnlyClick = () => {
     if (!publicationId) return;
-    useUIStore.getState().openVotingPopup(publicationId, 'publication', 'standard');
+    const isTask = (publication as { postType?: string }).postType === 'ticket';
+    useUIStore.getState().openVotingPopup(publicationId, 'publication', 'standard', {
+      publicationIsTask: isTask,
+    });
   };
 
   const withdrawDisabledTitle =
@@ -455,7 +474,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
     <div className={`pt-3 border-t border-base-300 ${className}`}>
       <PostMetrics
         isClosed={isClosed}
-        hideVoteAndScore={hideVoteAndScore}
+        ticketPost={ticketPostMode}
+        hideVoteAndScore={hideEconomy}
         currentScore={currentScore}
         totalVotes={totalVotes}
         totalVotesTooltip={t('totalVotesTooltip')}
@@ -479,7 +499,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         isAuthor={isAuthor}
         isBeneficiary={isBeneficiary}
         isClosed={isClosed}
-        hideVoteAndScore={hideVoteAndScore}
+        hideVoteAndScore={hideEconomy}
         publicationIdForFavorite={publicationIdForFavorite}
         targetType={targetType}
         communityId={communityId}
@@ -505,6 +525,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         maxWithdrawAmount={maxWithdrawAmount}
         withdrawDisabledTitle={withdrawDisabledTitle}
         showMoreMenu={isAuthor && !isClosed && (showClosePostButton || canEdit || (testAuthMode && isSuperadmin))}
+        showModeratorEditMenu={!isAuthor && canEdit && !isClosed && !isPoll}
         showCloseInMore={showClosePostButton}
         showSettingsInMore={canEdit}
         onClosePostClick={handleClosePostClick}
