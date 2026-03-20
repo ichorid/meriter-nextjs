@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Zap, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
 import { Badge } from '@/components/atoms';
 import { useCommunity } from '@/hooks/api';
@@ -33,7 +33,7 @@ export interface CommunityCardProps {
  * Layout (expanded):
  * - Flex row layout with avatar (46px), content section, and chevron icon
  * - Content section contains: title, merits/quota indicators (conditional), and description
- * - Role badge overlays avatar in top-right corner
+ * - Participant role badge below avatar (expanded); lead has no badge
  * Used in both the left sidebar and the communities page
  */
 export const CommunityCard: React.FC<CommunityCardProps> = ({
@@ -65,16 +65,13 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     // Find role in userRoles array matching the communityId
     const role = userRoles.find(r => r.communityId === communityId);
 
-    // Only show badge for lead and participant (not superadmin)
-    if (role?.role === 'lead') {
-      return { role: 'lead', label: t('lead'), variant: 'secondary' as const };
-    }
+    // Lead: no badge (obvious from context). Participant still gets a label.
     if (role?.role === 'participant') {
       return { role: 'participant', label: t('participant'), variant: 'secondary' as const };
     }
 
     return null;
-  }, [community?.typeTag, user?.id, userRoles, communityId, t]);
+  }, [community?.typeTag, userRoles, communityId, t]);
 
   // Get user's role for this community to check merit rules
   const userRole = React.useMemo(() => {

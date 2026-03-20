@@ -26,13 +26,6 @@ interface MeritsAndQuotaSectionProps {
   showLocalTeamGroups?: boolean;
 }
 
-function getPriorityDisplayName(communityName: string | undefined, typeTag: string | undefined, t: (key: string) => string): string {
-  if (typeTag === 'team-projects') {
-    return t('teamGroupsName');
-  }
-  return communityName || '';
-}
-
 export function MeritsAndQuotaSection({
   userId,
   communityIds,
@@ -78,12 +71,7 @@ export function MeritsAndQuotaSection({
       {expanded && (
         <div className="animate-in fade-in duration-200 space-y-4">
           {hasPriority && canViewGlobal && firstPriorityId && (
-            <GlobalMeritBlock
-              userId={userId}
-              walletCommunityId={firstPriorityId}
-              priorityRoles={priorityRoles}
-              getDisplayName={(name, typeTag) => getPriorityDisplayName(name, typeTag, tCommunities)}
-            />
+            <GlobalMeritBlock userId={userId} walletCommunityId={firstPriorityId} />
           )}
           {showLocalTeamGroups && hasLocal && (
             <div className="space-y-2">
@@ -111,21 +99,14 @@ export function MeritsAndQuotaSection({
 function GlobalMeritBlock({
   userId,
   walletCommunityId,
-  priorityRoles,
-  getDisplayName,
 }: {
   userId: string;
   walletCommunityId: string;
-  priorityRoles: Array<{ communityId: string; communityName?: string; communityTypeTag?: string }>;
-  getDisplayName: (name: string | undefined, typeTag: string | undefined) => string;
 }) {
   const tCommon = useTranslations('common');
   const { data: globalWallet } = useOtherUserWallet(userId, walletCommunityId);
 
   const balance = globalWallet?.balance ?? 0;
-  const names = priorityRoles
-    .map((r) => getDisplayName(r.communityName, r.communityTypeTag))
-    .filter(Boolean);
 
   return (
     <div className="rounded-xl border border-base-200 bg-gradient-to-br from-base-100 to-base-200/50 p-4 shadow-sm">
@@ -141,11 +122,6 @@ function GlobalMeritBlock({
           <p className="mt-2 text-xs text-base-content/60">
             {tCommon('sharedMeritUsedIn')}
           </p>
-          {names.length > 0 && (
-            <p className="mt-1 text-xs text-base-content/50">
-              {names.join(' · ')}
-            </p>
-          )}
         </div>
       </div>
     </div>
