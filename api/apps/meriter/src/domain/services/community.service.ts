@@ -1479,12 +1479,26 @@ export class CommunityService {
     }
 
     const sort: 'score' | 'createdAt' = params.sort ?? 'score';
-    const obPosts = await this.publicationService.findObPosts(futureVision.id, {
+    const obPostsRaw = await this.publicationService.findObPosts(futureVision.id, {
       sort,
     });
-    if (obPosts.length === 0) {
+    if (obPostsRaw.length === 0) {
       return { items: [], total: 0, page, pageSize };
     }
+
+    /** One feed card per source team/community; list is already sorted by score or createdAt. */
+    const seenSourceIds = new Set<string>();
+    const obPosts = obPostsRaw.filter((p) => {
+      const sid = p.sourceEntityId;
+      if (typeof sid !== 'string' || sid.length === 0) {
+        return false;
+      }
+      if (seenSourceIds.has(sid)) {
+        return false;
+      }
+      seenSourceIds.add(sid);
+      return true;
+    });
 
     const communityIds = [...new Set(obPosts.map((p) => p.sourceEntityId))];
     const communityDocs = await this.communityModel

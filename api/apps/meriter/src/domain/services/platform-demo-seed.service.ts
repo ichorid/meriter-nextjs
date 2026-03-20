@@ -25,7 +25,7 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
 
-const DEMO_SEED_VERSION = 3;
+const DEMO_SEED_VERSION = 4;
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -401,25 +401,6 @@ export class PlatformDemoSeedService {
       });
       fvCount += 1;
 
-      const extraRows = uniqueVisionRows.slice(1, 3);
-      for (let ei = 0; ei < extraRows.length; ei++) {
-        const row = extraRows[ei];
-        const authorId = allTeamMembers[(ei + 1) % allTeamMembers.length];
-        const extraTags = this.pickFvCategories(rubric, row.visionText);
-        const { id: extraId } = await this.publicationService.createFutureVisionPost({
-          futureVisionCommunityId: fvHub.id,
-          authorId,
-          content: this.shortenVision(row.visionText),
-          sourceEntityId: team.id,
-        });
-        await this.patchFutureVisionPostById(extraId, {
-          categories: extraTags,
-          images: this.placeholderImages(row.illustrationFilename, s * 10 + ei + 1),
-          description: row.publicationUrl ? `Материал: ${row.publicationUrl}` : undefined,
-        });
-        fvCount += 1;
-      }
-
       teamsCreated += 1;
 
       const numTeamPosts = 2 + (s % 3);
@@ -744,13 +725,6 @@ export class PlatformDemoSeedService {
     return `${t.slice(0, 27)}…`;
   }
 
-  private placeholderImages(filename: string | null, idx: number): string[] {
-    const label = filename ?? `ОБ-${idx + 1}`;
-    return [
-      `https://placehold.co/1200x630/1e293b/f8fafc/png?text=${encodeURIComponent(label)}`,
-    ];
-  }
-
   /** Самый ранний OB-пост по команде (созданный при createCommunity). */
   private async patchPrimaryFutureVisionPost(
     fvCommunityId: string,
@@ -782,25 +756,6 @@ export class PlatformDemoSeedService {
       update.description = patch.description;
     }
     await this.publicationModel.updateOne({ id: doc.id }, { $set: update });
-  }
-
-  private async patchFutureVisionPostById(
-    publicationId: string,
-    patch: {
-      categories: string[];
-      images: string[];
-      description?: string;
-    },
-  ): Promise<void> {
-    const update: Record<string, unknown> = {
-      categories: patch.categories,
-      images: patch.images,
-      updatedAt: new Date(),
-    };
-    if (patch.description !== undefined) {
-      update.description = patch.description;
-    }
-    await this.publicationModel.updateOne({ id: publicationId }, { $set: update });
   }
 
   private async patchPublicationCategories(
