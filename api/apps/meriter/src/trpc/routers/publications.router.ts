@@ -299,10 +299,22 @@ export const publicationsRouter = router({
       const editorIds = editHistory.map((entry: any) => entry.editedBy);
       const uniqueEditorIds = [...new Set(editorIds)];
 
+      const ticketActivityLogRaw = (doc as any)?.ticketActivityLog || [];
+      const ticketActorIds = [
+        ...new Set(
+          ticketActivityLogRaw.map((e: { actorId?: string }) => e.actorId).filter(Boolean),
+        ),
+      ] as string[];
+
       // Deleted publications are only accessible to leads/superadmins (see gate above).
 
       // Batch fetch users and communities
-      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : []), ...uniqueEditorIds];
+      const userIds = [
+        authorId,
+        ...(beneficiaryId ? [beneficiaryId] : []),
+        ...uniqueEditorIds,
+        ...ticketActorIds,
+      ];
       const [usersMap, communitiesMap, permissions] = await Promise.all([
         ctx.userEnrichmentService.batchFetchUsers(userIds as string[]),
         ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
@@ -365,6 +377,40 @@ export const publicationsRouter = router({
       } else {
         mappedPublication.editHistory = [];
       }
+
+      mappedPublication.ticketStatus = (doc as any)?.ticketStatus ?? undefined;
+      mappedPublication.isNeutralTicket = (doc as any)?.isNeutralTicket ?? undefined;
+      if (ticketActivityLogRaw.length > 0) {
+        mappedPublication.ticketActivityLog = ticketActivityLogRaw
+          .map((entry: { at?: Date | string; actorId: string; action: string; detail?: unknown }) => {
+            let atString: string;
+            if (entry.at instanceof Date) {
+              atString = entry.at.toISOString();
+            } else if (typeof entry.at === 'string') {
+              atString = entry.at;
+            } else {
+              atString = new Date(entry.at as string).toISOString();
+            }
+            const actor = usersMap.get(entry.actorId);
+            return {
+              at: atString,
+              actorId: entry.actorId,
+              action: entry.action,
+              detail: entry.detail ?? {},
+              actor: actor
+                ? {
+                    id: entry.actorId,
+                    name: actor.name || actor.displayName || 'Unknown',
+                    photoUrl: actor.photoUrl || actor.avatarUrl,
+                  }
+                : undefined,
+            };
+          })
+          .reverse();
+      } else {
+        mappedPublication.ticketActivityLog = [];
+      }
+
       // Add permissions to response
       mappedPublication.permissions = permissions;
 

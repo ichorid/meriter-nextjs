@@ -39,10 +39,6 @@ export class EntityMappers {
     const snapshot = publication.toSnapshot();
     const images = publication.getImages;
 
-    // DEBUG: Log images data
-    console.log('[DEBUG] Publication ID:', publication.getId.getValue());
-    console.log('[DEBUG] getImages:', images);
-
     return {
       id: publication.getId.getValue(),
       _id: publication.getId.getValue(), // For compatibility with Publication component

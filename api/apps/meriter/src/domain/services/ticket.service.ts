@@ -18,6 +18,7 @@ import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
+import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 
 export interface CreateTicketDto {
   title?: string;
@@ -53,6 +54,47 @@ export class TicketService {
     private notificationService: NotificationService,
     private eventBus: EventBus,
   ) {}
+
+  private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {
+    const role = await this.userCommunityRoleService.getRole(userId, projectId);
+    if (role?.role === 'lead') {
+      return;
+    }
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      return;
+    }
+    throw new ForbiddenException(
+      'Only the project lead or a platform administrator can perform this action',
+    );
+  }
+
+  private async appendTicketActivity(
+    ticketId: string,
+    actorId: string,
+    action: string,
+    detail?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.publicationModel.updateOne(
+      { id: ticketId },
+      {
+        $push: {
+          ticketActivityLog: {
+            $each: [
+              {
+                at: new Date(),
+                actorId,
+                action,
+                detail: detail ?? {},
+              },
+            ],
+            $slice: -200,
+          },
+        },
+        $set: { updatedAt: new Date() },
+      },
+    );
+  }
 
   /**
    * Create a named ticket (beneficiary assigned). Lead only. Ticket starts in_progress.
@@ -264,6 +306,12 @@ export class TicketService {
     doc.updatedAt = new Date();
     await doc.save();
 
+    await this.appendTicketActivity(ticketId, leadUserId, 'assignee_set', {
+      beneficiaryId: applicantUserId,
+      fromOpenNeutral: true,
+      status: 'in_progress',
+    });
+
     try {
       await this.notificationService.createNotification({
         userId: applicantUserId,
@@ -404,7 +452,8 @@ export class TicketService {
   }
 
   /**
-   * Update ticket status. Allowed: in_progress → done (by beneficiary only).
+   * Update ticket status. Allowed: in_progress → done (beneficiary only);
+   * closed → in_progress (lead or superadmin, assignee required).
    */
   async updateStatus(
     ticketId: string,
@@ -429,6 +478,11 @@ export class TicketService {
       doc.updatedAt = new Date();
       await doc.save();
 
+      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
+        from: current,
+        to: 'done',
+      });
+
       const projectId = doc.communityId;
       const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
       for (const lead of leads) {
@@ -447,6 +501,25 @@ export class TicketService {
       }
 
       this.logger.log(`Ticket ${ticketId} marked done by beneficiary`);
+      return;
+    }
+
+    if (newStatus === 'in_progress' && current === 'closed') {
+      await this.assertProjectLeadOrSuperadmin(userId, doc.communityId);
+      const beneficiaryId = doc.beneficiaryId;
+      if (!beneficiaryId) {
+        throw new BadRequestException('Cannot reopen a ticket without an assignee');
+      }
+      doc.ticketStatus = 'in_progress';
+      doc.updatedAt = new Date();
+      await doc.save();
+
+      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
+        from: 'closed',
+        to: 'in_progress',
+      });
+
+      this.logger.log(`Ticket ${ticketId} reopened (closed → in_progress) by lead/superadmin`);
       return;
     }
 
@@ -472,14 +545,16 @@ export class TicketService {
       throw new BadRequestException('Ticket must be in done status to accept work');
     }
 
-    const role = await this.userCommunityRoleService.getRole(leadUserId, doc.communityId);
-    if (role?.role !== 'lead') {
-      throw new ForbiddenException('Only the project lead can accept work');
-    }
+    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
 
     doc.ticketStatus = 'closed';
     doc.updatedAt = new Date();
     await doc.save();
+
+    await this.appendTicketActivity(ticketId, leadUserId, 'work_accepted', {
+      from: 'done',
+      to: 'closed',
+    });
 
     const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
     try {
@@ -496,6 +571,131 @@ export class TicketService {
     }
 
     this.logger.log(`Ticket ${ticketId} accepted (closed) by lead`);
+  }
+
+  /**
+   * Lead/superadmin: update task text and/or assignee (not for open neutral — use applicant approval).
+   */
+  async updateTicket(
+    ticketId: string,
+    moderatorUserId: string,
+    patch: {
+      title?: string;
+      description?: string;
+      content?: string;
+      beneficiaryId?: string;
+    },
+  ): Promise<void> {
+    const normalized: typeof patch = { ...patch };
+    if (normalized.title !== undefined) {
+      normalized.title = normalized.title.trim();
+      if (normalized.title === '') {
+        delete normalized.title;
+      }
+    }
+    if (normalized.description !== undefined) {
+      normalized.description = normalized.description.trim();
+    }
+    if (normalized.content !== undefined) {
+      normalized.content = normalized.content.trim();
+      if (normalized.content === '') {
+        throw new BadRequestException('Task body cannot be empty');
+      }
+    }
+
+    const hasUpdate =
+      normalized.title !== undefined ||
+      normalized.description !== undefined ||
+      normalized.content !== undefined ||
+      normalized.beneficiaryId !== undefined;
+    if (!hasUpdate) {
+      throw new BadRequestException('No updates provided');
+    }
+
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+
+    const project = await this.communityService.getCommunity(doc.communityId);
+    if (!project?.isProject) {
+      throw new BadRequestException('Ticket must belong to a project community');
+    }
+
+    await this.assertProjectLeadOrSuperadmin(moderatorUserId, doc.communityId);
+
+    if (
+      normalized.beneficiaryId !== undefined &&
+      doc.isNeutralTicket &&
+      doc.ticketStatus === 'open'
+    ) {
+      throw new BadRequestException(
+        'Assignee for open neutral tasks is set via applicant approval',
+      );
+    }
+
+    if (normalized.beneficiaryId !== undefined) {
+      const benRole = await this.userCommunityRoleService.getRole(
+        normalized.beneficiaryId,
+        doc.communityId,
+      );
+      if (!benRole) {
+        throw new BadRequestException('Assignee must be a project member');
+      }
+    }
+
+    const $set: Record<string, unknown> = { updatedAt: new Date() };
+    const detail: Record<string, unknown> = {};
+
+    if (normalized.title !== undefined) {
+      $set.title = normalized.title;
+      detail.titleUpdated = true;
+    }
+    if (normalized.description !== undefined) {
+      $set.description = normalized.description;
+      detail.descriptionUpdated = true;
+    }
+    if (normalized.content !== undefined) {
+      $set.content = normalized.content;
+      detail.contentUpdated = true;
+    }
+    if (normalized.beneficiaryId !== undefined) {
+      detail.previousBeneficiaryId = doc.beneficiaryId ?? null;
+      detail.newBeneficiaryId = normalized.beneficiaryId;
+      $set.beneficiaryId = normalized.beneficiaryId;
+    }
+
+    const $push: Record<string, unknown> = {
+      ticketActivityLog: {
+        $each: [
+          {
+            at: new Date(),
+            actorId: moderatorUserId,
+            action: 'ticket_updated',
+            detail,
+          },
+        ],
+        $slice: -200,
+      },
+    };
+
+    const shouldPushEditHistory =
+      normalized.content !== undefined ||
+      normalized.title !== undefined ||
+      normalized.description !== undefined;
+
+    if (shouldPushEditHistory) {
+      $push.editHistory = {
+        editedBy: moderatorUserId,
+        editedAt: new Date(),
+      };
+    }
+
+    await this.publicationModel.updateOne({ id: ticketId }, { $set, $push }).exec();
+    this.logger.log(`Ticket ${ticketId} updated by moderator ${moderatorUserId}`);
   }
 
   /**

@@ -45,6 +45,23 @@ const acceptWorkInputSchema = z.object({
   ticketId: z.string(),
 });
 
+const updateTicketInputSchema = z
+  .object({
+    ticketId: z.string(),
+    title: z.string().max(500).optional(),
+    description: z.string().max(5000).optional(),
+    content: z.string().min(1).max(10000).optional(),
+    beneficiaryId: z.string().optional(),
+  })
+  .refine(
+    (d) =>
+      d.title !== undefined ||
+      d.description !== undefined ||
+      d.content !== undefined ||
+      d.beneficiaryId !== undefined,
+    { message: 'At least one field is required' },
+  );
+
 const getByProjectInputSchema = z.object({
   projectId: z.string(),
   postType: z.enum(['ticket', 'discussion']).optional(),
@@ -147,6 +164,17 @@ export const ticketRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
       await ctx.ticketService.acceptWork(input.ticketId, ctx.user.id);
+      return { success: true };
+    }),
+
+  update: protectedProcedure
+    .input(updateTicketInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      const { ticketId, ...patch } = input;
+      await ctx.ticketService.updateTicket(ticketId, ctx.user.id, patch);
       return { success: true };
     }),
 

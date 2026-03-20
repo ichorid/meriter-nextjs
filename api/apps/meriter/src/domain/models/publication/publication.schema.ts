@@ -103,6 +103,12 @@ export interface Publication {
     editedBy: string;
     editedAt: Date;
   }>;
+  ticketActivityLog?: Array<{
+    at: Date;
+    actorId: string;
+    action: string;
+    detail?: Record<string, unknown>;
+  }>;
   // Investment fields (C-1: investment pool and investor records)
   investingEnabled?: boolean;
   investorSharePercent?: number;
@@ -274,6 +280,24 @@ export class PublicationSchemaClass implements Publication {
   editHistory?: Array<{
     editedBy: string;
     editedAt: Date;
+  }>;
+
+  @Prop({
+    type: [
+      {
+        at: { type: Date, required: true },
+        actorId: { type: String, required: true },
+        action: { type: String, required: true },
+        detail: { type: Object, required: false },
+      },
+    ],
+    default: [],
+  })
+  ticketActivityLog?: Array<{
+    at: Date;
+    actorId: string;
+    action: string;
+    detail?: Record<string, unknown>;
   }>;
 
   // Investment fields (C-1: investment pool and investor records)
