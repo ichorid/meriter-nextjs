@@ -126,14 +126,15 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
       {title && !hideTitle && (
         <h3 className="text-lg font-semibold mb-2 text-base-content">{title}</h3>
       )}
-      {description && isHtmlContent ? (
-        <div
-          className="text-base-content mb-3"
-          dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-        />
-      ) : description ? (
-        <p className="text-base-content mb-3">{description}</p>
-      ) : null}
+      {postType !== 'ticket' &&
+        (description && isHtmlContent ? (
+          <div
+            className="text-base-content mb-3"
+            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+          />
+        ) : description ? (
+          <p className="text-base-content mb-3">{description}</p>
+        ) : null)}
       
       {/* Taxonomy badges - show for project posts */}
       {((publication as any).postType === 'project' || (publication as any).isProject) &&
@@ -173,8 +174,9 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
           )}
         </div>
       )}
-      {content && !description && (
-        isHtmlContent ? (
+      {content &&
+        (postType === 'ticket' || !description) &&
+        (isHtmlContent ? (
           <div className="text-base-content" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
         ) : (
           <WithTelegramEntities
@@ -182,8 +184,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
           >
             {content}
           </WithTelegramEntities>
-        )
-      )}
+        ))}
       
       {/* Hashtags or Categories - show if they exist */}
       {ENABLE_HASHTAGS ? (

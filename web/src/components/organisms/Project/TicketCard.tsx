@@ -127,7 +127,7 @@ export function TicketCard({
               onClick={() => applyForTicket.mutate({ ticketId: ticket.id })}
               disabled={applyForTicket.isPending}
             >
-              {applyForTicket.isPending ? '…' : t('iWillTake')}
+              {applyForTicket.isPending ? '…' : t('takeTask')}
             </Button>
           )}
           {hasAppliedForOpenNeutral && (

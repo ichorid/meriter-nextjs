@@ -132,9 +132,10 @@ export function useApplyForTicket() {
   const t = useTranslations('projects');
 
   return trpc.ticket.applyForTicket.useMutation({
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void utils.project.getOpenTickets.invalidate();
       void utils.ticket.getByProject.invalidate();
+      void utils.publications.getById.invalidate({ id: variables.ticketId });
       addToast(t('applySuccess', { defaultValue: 'Application sent' }), 'success');
     },
     onError: (error) => {

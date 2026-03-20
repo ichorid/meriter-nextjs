@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 
 export interface NeutralTicketPublicCardProps {
-  ticket: { id: string; title?: string; description?: string };
+  ticket: { id: string; title?: string };
   projectId: string;
   onApply: (ticketId: string) => void;
   isApplying?: boolean;
@@ -41,7 +41,7 @@ export function NeutralTicketPublicCard({
             }}
             disabled={isApplying}
           >
-            {isApplying ? '…' : t('iWillTake', { defaultValue: 'I\'ll take it' })}
+            {isApplying ? '…' : t('takeTask')}
           </Button>
         )}
       </CardContent>

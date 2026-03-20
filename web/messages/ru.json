@@ -1475,6 +1475,7 @@
         "immutableHint": "Нельзя изменить после создания",
         "details": "Подробности",
         "iWillTake": "Взяться",
+        "takeTask": "Взять задачу",
         "alreadyApplied": "Вы уже откликнулись",
         "investorSharePercent": "Доля инвесторов",
         "leaveConfirm": "Всё равно выйти?",

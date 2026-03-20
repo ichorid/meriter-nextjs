@@ -30,6 +30,7 @@ import {
   type TicketPostPanelPublication,
 } from '@/components/organisms/Project/TicketPostPanel';
 import { TicketPostPageHeaderBlock } from '@/components/organisms/Project/ticket-post-page-header';
+import { TicketOpenNeutralApply } from '@/components/organisms/Project/TicketOpenNeutralApply';
 import { TicketActivityLogCollapsible } from '@/components/organisms/Project/TicketActivityLogCollapsible';
 import type { TicketStatus } from '@meriter/shared-types';
 import type { TicketActivityPublicationSlice } from '@/components/organisms/Project/mergeTicketActivity';
@@ -327,6 +328,25 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 />
                             );
                         })() : null}
+
+                        {isTicketPost && publication && (
+                            <TicketOpenNeutralApply
+                                ticketId={(publication as { id: string }).id}
+                                authorId={(publication as { authorId: string }).authorId}
+                                currentUserId={user?.id}
+                                isNeutralTicket={Boolean(
+                                    (publication as { isNeutralTicket?: boolean }).isNeutralTicket,
+                                )}
+                                ticketStatus={String(
+                                    (publication as { ticketStatus?: string }).ticketStatus ?? 'open',
+                                )}
+                                applicants={
+                                    Array.isArray((publication as { applicants?: unknown }).applicants)
+                                        ? (publication as { applicants: string[] }).applicants
+                                        : []
+                                }
+                            />
+                        )}
 
                         {isTicketPost && (
                             <TicketPostPanel

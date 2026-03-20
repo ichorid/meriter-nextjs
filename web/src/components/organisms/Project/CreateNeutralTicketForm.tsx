@@ -26,7 +26,6 @@ export function CreateNeutralTicketForm({
   const createNeutral = useCreateNeutralTicket();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,11 +35,9 @@ export function CreateNeutralTicketForm({
         projectId,
         content: content.trim(),
         title: title.trim() || undefined,
-        description: description.trim() || undefined,
       });
       setContent('');
       setTitle('');
-      setDescription('');
       onSuccess?.();
     } catch {
       // Toast in hook
@@ -60,18 +57,7 @@ export function CreateNeutralTicketForm({
         />
       </div>
       <div>
-        <Label htmlFor="neutral-ticket-description">{t('description', { defaultValue: 'Description' })} (optional)</Label>
-        <Textarea
-          id="neutral-ticket-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder={t('details', { defaultValue: 'Details' })}
-          rows={2}
-          className="mt-1"
-        />
-      </div>
-      <div>
-        <Label htmlFor="neutral-ticket-content">{t('content', { defaultValue: 'Content' })} *</Label>
+        <Label htmlFor="neutral-ticket-content">{t('taskFieldBody')} *</Label>
         <Textarea
           id="neutral-ticket-content"
           value={content}

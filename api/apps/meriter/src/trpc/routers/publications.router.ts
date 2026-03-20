@@ -380,6 +380,9 @@ export const publicationsRouter = router({
 
       mappedPublication.ticketStatus = (doc as any)?.ticketStatus ?? undefined;
       mappedPublication.isNeutralTicket = (doc as any)?.isNeutralTicket ?? undefined;
+      mappedPublication.applicants = Array.isArray((doc as any)?.applicants)
+        ? ((doc as any).applicants as string[])
+        : [];
       if (ticketActivityLogRaw.length > 0) {
         mappedPublication.ticketActivityLog = ticketActivityLogRaw
           .map((entry: { at?: Date | string; actorId: string; action: string; detail?: unknown }) => {
