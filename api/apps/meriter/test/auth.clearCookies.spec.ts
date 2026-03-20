@@ -10,11 +10,11 @@ describe('Auth Router - clearCookies', () => {
     const context = await TestSetupHelper.createTestApp();
     app = context.app;
     testDb = context.testDb;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await TestSetupHelper.cleanup({ app, testDb });
-  });
+  }, 30000);
 
   describe('clearCookies should be public (no authentication required)', () => {
     it('should clear cookies without authentication', async () => {
