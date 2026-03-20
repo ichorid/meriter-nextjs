@@ -1414,6 +1414,8 @@
         "editTask": "Edit task",
         "backToProject": "Back to project",
         "postTypeBadgeTicket": "Task",
+        "ticketAuthorLabel": "Author",
+        "assigneeNotAssigned": "Not assigned",
         "postTypeBadgeProject": "Project",
         "taskActivityTitle": "Task activity",
         "taskActivity_status_changed": "Status: {from} → {to}",

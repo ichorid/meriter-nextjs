@@ -1414,6 +1414,8 @@
         "editTask": "Редактировать",
         "backToProject": "К проекту",
         "postTypeBadgeTicket": "Задача",
+        "ticketAuthorLabel": "Автор",
+        "assigneeNotAssigned": "Не назначен",
         "postTypeBadgeProject": "Проект",
         "taskActivityTitle": "История задачи",
         "taskActivity_status_changed": "Статус: {from} → {to}",

@@ -51,12 +51,15 @@ interface PublicationContentProps {
   publication: Publication;
   className?: string;
   onCategoryClick?: (categoryId: string) => void;
+  /** When title is rendered elsewhere (e.g. ticket post hero). */
+  hideTitle?: boolean;
 }
 
 export const PublicationContent: React.FC<PublicationContentProps> = ({
   publication,
   className = '',
   onCategoryClick,
+  hideTitle = false,
 }) => {
   const t = useTranslations('publications.create.taxonomy');
   const tPub = useTranslations('publications');
@@ -120,7 +123,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
           </span>
         </div>
       )}
-      {title && (
+      {title && !hideTitle && (
         <h3 className="text-lg font-semibold mb-2 text-base-content">{title}</h3>
       )}
       {description && isHtmlContent ? (

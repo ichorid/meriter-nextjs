@@ -29,7 +29,9 @@ import {
   TicketPostPanel,
   type TicketPostPanelPublication,
 } from '@/components/organisms/Project/TicketPostPanel';
+import { TicketPostPageHeaderBlock } from '@/components/organisms/Project/ticket-post-page-header';
 import { TicketActivityLogCollapsible } from '@/components/organisms/Project/TicketActivityLogCollapsible';
+import type { TicketStatus } from '@meriter/shared-types';
 import type { TicketActivityPublicationSlice } from '@/components/organisms/Project/mergeTicketActivity';
 
 interface PostPageClientProps {
@@ -284,7 +286,63 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             publicationId={(publication as any).id}
                             communityId={chatId}
                             isPoll={false}
+                            ticketToolbarOnly={isTicketPost}
                         />
+
+                        {isTicketPost ? (() => {
+                            const pub = publication as Record<string, unknown>;
+                            const ticketStatus = (pub.ticketStatus ?? 'in_progress') as TicketStatus;
+                            const beneficiaryId = typeof pub.beneficiaryId === 'string' ? pub.beneficiaryId : '';
+                            const assigneeUnset = Boolean(
+                                pub.isNeutralTicket &&
+                                    pub.ticketStatus === 'open' &&
+                                    !beneficiaryId,
+                            );
+                            const assignee = beneficiaryId
+                                ? {
+                                    id: beneficiaryId,
+                                    name:
+                                        transformedMeta.beneficiary?.name?.trim() ||
+                                        transformedMeta.beneficiary?.username ||
+                                        beneficiaryId.slice(0, 8),
+                                    photoUrl: transformedMeta.beneficiary?.photoUrl,
+                                    username: transformedMeta.beneficiary?.username,
+                                }
+                                : null;
+                            const authorIdStr =
+                                typeof pub.authorId === 'string' ? pub.authorId : '';
+                            return (
+                                <TicketPostPageHeaderBlock
+                                    title={(pub.title as string | undefined) || undefined}
+                                    publicationId={String(pub.id ?? '')}
+                                    ticketStatus={ticketStatus}
+                                    author={{
+                                        id: authorIdStr || undefined,
+                                        name: transformedMeta.author?.name || 'Unknown',
+                                        photoUrl: transformedMeta.author?.photoUrl,
+                                        username: transformedMeta.author?.username,
+                                    }}
+                                    assignee={assignee}
+                                    assigneeUnset={assigneeUnset}
+                                />
+                            );
+                        })() : null}
+
+                        {isTicketPost && (
+                            <TicketPostPanel
+                                communityId={chatId}
+                                communityIsProject={Boolean(
+                                    community && (community as { isProject?: boolean }).isProject,
+                                )}
+                                publication={publication as unknown as TicketPostPanelPublication}
+                                layout="actionsOnly"
+                                onInvalidate={() => {
+                                    void utils.publications.getById.invalidate({
+                                        id: getPublicationIdentifier(publication) ?? '',
+                                    });
+                                }}
+                            />
+                        )}
 
                         <PublicationContent
                             publication={{
@@ -306,22 +364,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 meta: transformedMeta,
                             }}
                             className="mb-4"
+                            hideTitle={isTicketPost}
                         />
-
-                        {isTicketPost && (
-                            <TicketPostPanel
-                                communityId={chatId}
-                                communityIsProject={Boolean(
-                                    community && (community as { isProject?: boolean }).isProject,
-                                )}
-                                publication={publication as unknown as TicketPostPanelPublication}
-                                onInvalidate={() => {
-                                    void utils.publications.getById.invalidate({
-                                        id: getPublicationIdentifier(publication) ?? '',
-                                    });
-                                }}
-                            />
-                        )}
 
                         <PublicationActions
                             publication={{

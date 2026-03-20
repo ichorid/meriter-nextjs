@@ -35,6 +35,9 @@ export interface TicketPostPanelPublication {
   description?: string;
   content?: string;
   beneficiaryId?: string;
+  meta?: {
+    beneficiary?: { name?: string; photoUrl?: string; username?: string };
+  };
   permissions?: { canEdit?: boolean };
   ticketActivityLog?: Array<{
     at: string;
@@ -55,6 +58,8 @@ export interface TicketPostPanelProps {
   communityIsProject: boolean;
   publication: TicketPostPanelPublication;
   onInvalidate: () => void;
+  /** Strip card + status; only back / edit row (hero shows status). */
+  layout?: 'default' | 'actionsOnly';
 }
 
 export function TicketPostPanel({
@@ -62,6 +67,7 @@ export function TicketPostPanel({
   communityIsProject,
   publication,
   onInvalidate,
+  layout = 'default',
 }: TicketPostPanelProps) {
   const t = useTranslations('projects');
   const [editOpen, setEditOpen] = useState(false);
@@ -74,7 +80,6 @@ export function TicketPostPanel({
   const members = membersData?.data ?? [];
 
   const canModerate = Boolean(publication.permissions?.canEdit);
-  const status = (publication.ticketStatus ?? 'in_progress') as TicketStatus;
   const blockAssigneeChange = Boolean(
     publication.isNeutralTicket && publication.ticketStatus === 'open',
   );
@@ -148,24 +153,22 @@ export function TicketPostPanel({
     });
   };
 
-  return (
-    <div className="mb-4 space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
-          {communityIsProject && (
-            <Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
-              <Link href={routes.project(communityId)}>{t('backToProject')}</Link>
-            </Button>
-          )}
-        </div>
-        {canModerate && (
-          <Button type="button" variant="secondary" size="sm" className="h-8 rounded-lg" onClick={openEdit}>
-            {t('editTask')}
-          </Button>
-        )}
-      </div>
+  const actionsRow = (
+    <div className="flex flex-wrap items-center gap-2">
+      {communityIsProject && (
+        <Button variant="default" size="sm" className="h-9 rounded-lg" asChild>
+          <Link href={routes.project(communityId)}>{t('backToProject')}</Link>
+        </Button>
+      )}
+      {canModerate && (
+        <Button type="button" variant="outline" size="sm" className="h-9 rounded-lg" onClick={openEdit}>
+          {t('editTask')}
+        </Button>
+      )}
+    </div>
+  );
 
+  const dialog = (
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
@@ -234,6 +237,38 @@ export function TicketPostPanel({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+  );
+
+  if (layout === 'actionsOnly') {
+    return (
+      <div className="mb-4">
+        {actionsRow}
+        {dialog}
+      </div>
+    );
+  }
+
+  const status = (publication.ticketStatus ?? 'in_progress') as TicketStatus;
+
+  return (
+    <div className="mb-4 space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
+          {communityIsProject && (
+            <Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
+              <Link href={routes.project(communityId)}>{t('backToProject')}</Link>
+            </Button>
+          )}
+        </div>
+        {canModerate && (
+          <Button type="button" variant="secondary" size="sm" className="h-8 rounded-lg" onClick={openEdit}>
+            {t('editTask')}
+          </Button>
+        )}
+      </div>
+
+      {dialog}
     </div>
   );
 }

@@ -84,6 +84,8 @@ interface PublicationHeaderProps {
   isPoll?: boolean;
   /** When set with meta.beneficiary, beneficiary name links to profile */
   beneficiaryId?: string;
+  /** Ticket post detail: toolbar only (type/author live in page hero). */
+  ticketToolbarOnly?: boolean;
 }
 
 export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
@@ -96,6 +98,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   communityId,
   isPoll = false,
   beneficiaryId: beneficiaryIdProp,
+  ticketToolbarOnly = false,
 }) => {
   const router = useRouter();
   const { user } = useAuth();
@@ -282,9 +285,15 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     }
   };
 
+  const isTicketPost = (publication as { postType?: string }).postType === 'ticket';
+  const showTicketTypeBadge = isTicketPost && !ticketToolbarOnly;
+
   return (
-    <div className={`flex items-start justify-between gap-3 ${className}`}>
+    <div
+      className={`flex gap-3 ${ticketToolbarOnly ? 'flex-col items-stretch' : 'items-start justify-between'} ${className}`}
+    >
       {/* Author Info */}
+      {!ticketToolbarOnly ? (
       <div className="flex items-center gap-3 min-w-0">
         <Avatar 
           className="w-12 h-12 cursor-pointer"
@@ -347,9 +356,12 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
           </div>
         </div>
       </div>
+      ) : null}
       
       {/* Tags & Badges & Action Buttons */}
-      <div className="flex items-center gap-1.5 flex-shrink-0">
+      <div
+        className={`flex items-center gap-1.5 flex-shrink-0 ${ticketToolbarOnly ? 'w-full flex-wrap justify-end' : ''}`}
+      >
         {showEditButton && (
           <Button
             variant="ghost"
@@ -436,7 +448,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             Closed · {closeReasonLabel}
           </Badge>
         ) : null}
-        {(publication as any).postType === 'ticket' ? (
+        {showTicketTypeBadge ? (
           <Badge variant="warning" size="sm">
             {tProjects('postTypeBadgeTicket')}
           </Badge>
