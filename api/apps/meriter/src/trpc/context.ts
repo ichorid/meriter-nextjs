@@ -42,6 +42,8 @@ import { ProjectService } from '../domain/services/project.service';
 import { TicketService } from '../domain/services/ticket.service';
 import { ProjectDistributionService } from '../domain/services/project-distribution.service';
 import { CommunityWalletService } from '../domain/services/community-wallet.service';
+import { PlatformWipeService } from '../domain/services/platform-wipe.service';
+import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -83,6 +85,8 @@ export interface CreateContextOptions {
   ticketService: TicketService;
   projectDistributionService: ProjectDistributionService;
   communityWalletService: CommunityWalletService;
+  platformWipeService: PlatformWipeService;
+  platformDemoSeedService: PlatformDemoSeedService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -136,6 +140,8 @@ export async function createContext(opts: CreateContextOptions) {
     ticketService,
     projectDistributionService,
     communityWalletService,
+    platformWipeService,
+    platformDemoSeedService,
     connection,
     configService,
     cookieManager,
@@ -238,6 +244,8 @@ export async function createContext(opts: CreateContextOptions) {
     ticketService,
     projectDistributionService,
     communityWalletService,
+    platformWipeService,
+    platformDemoSeedService,
     connection,
     configService,
     cookieManager,

@@ -8,6 +8,8 @@ export interface PlatformSettings {
   welcomeMeritsGlobal: number;
   /** Rubricator: allowed tags for OB feed filtering. Superadmin-managed. */
   availableFutureVisionTags?: string[];
+  /** Set after demo seed; cleared on platform wipe. */
+  demoSeedVersion?: number;
   updatedAt: Date;
 }
 
@@ -21,6 +23,9 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ type: [String], default: [] })
   availableFutureVisionTags?: string[];
+
+  @Prop({ type: Number, required: false })
+  demoSeedVersion?: number;
 
   updatedAt!: Date;
 }

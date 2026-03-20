@@ -94,4 +94,36 @@ export class PlatformSettingsService {
     }
     return doc as PlatformSettings;
   }
+
+  async getDemoSeedVersion(): Promise<number | undefined> {
+    const doc = await this.platformSettingsModel
+      .findOne({ id: PLATFORM_SETTINGS_ID })
+      .lean()
+      .exec();
+    return doc?.demoSeedVersion;
+  }
+
+  async setDemoSeedVersion(version: number): Promise<void> {
+    const res = await this.platformSettingsModel
+      .updateOne(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { demoSeedVersion: version, updatedAt: new Date() } },
+      )
+      .exec();
+    if (res.matchedCount === 0) {
+      await this.platformSettingsModel.create({
+        id: PLATFORM_SETTINGS_ID,
+        welcomeMeritsGlobal: 0,
+        availableFutureVisionTags: [],
+        demoSeedVersion: version,
+      });
+    }
+  }
+
+  /** Cleared after platform wipe so demo seed can run again. */
+  async clearDemoSeedVersion(): Promise<void> {
+    await this.platformSettingsModel
+      .updateOne({ id: PLATFORM_SETTINGS_ID }, { $unset: { demoSeedVersion: 1 } })
+      .exec();
+  }
 }

@@ -41,6 +41,8 @@ import { ProjectService } from '../domain/services/project.service';
 import { TicketService } from '../domain/services/ticket.service';
 import { ProjectDistributionService } from '../domain/services/project-distribution.service';
 import { CommunityWalletService } from '../domain/services/community-wallet.service';
+import { PlatformWipeService } from '../domain/services/platform-wipe.service';
+import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -86,6 +88,8 @@ export class TrpcService {
     private ticketService: TicketService,
     private projectDistributionService: ProjectDistributionService,
     private communityWalletService: CommunityWalletService,
+    private platformWipeService: PlatformWipeService,
+    private platformDemoSeedService: PlatformDemoSeedService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -137,6 +141,8 @@ export class TrpcService {
       ticketService: this.ticketService,
       projectDistributionService: this.projectDistributionService,
       communityWalletService: this.communityWalletService,
+      platformWipeService: this.platformWipeService,
+      platformDemoSeedService: this.platformDemoSeedService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

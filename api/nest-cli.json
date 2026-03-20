@@ -25,6 +25,11 @@
             "include": "../public/**/*",
             "outDir": "dist/apps/meriter",
             "watchAssets": true
+          },
+          {
+            "include": "../seed-data/**/*.tsv",
+            "outDir": "dist/apps/meriter",
+            "watchAssets": true
           }
         ]
       }

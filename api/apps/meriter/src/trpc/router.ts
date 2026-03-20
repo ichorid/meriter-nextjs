@@ -20,6 +20,7 @@ import { teamsRouter } from './routers/teams.router';
 import { platformSettingsRouter } from './routers/platform-settings.router';
 import { projectRouter } from './routers/project.router';
 import { ticketRouter } from './routers/ticket.router';
+import { platformDevRouter } from './routers/platform-dev.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -47,6 +48,7 @@ export const appRouter = router({
   platformSettings: platformSettingsRouter,
   project: projectRouter,
   ticket: ticketRouter,
+  platformDev: platformDevRouter,
 });
 
 export type AppRouter = typeof appRouter;
