@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { FileText, BarChart2, Info, FolderKanban } from 'lucide-react';
@@ -11,6 +12,10 @@ import { useUIStore } from '@/stores/ui.store';
 import { Button } from '@/components/ui/shadcn/button';
 import { Plus } from 'lucide-react';
 import { ENABLE_PROJECT_POSTS } from '@/lib/constants/features';
+
+const MENU_WIDTH_PX = 224; // w-56
+const FLOAT_GAP_PX = 8;
+const BODY_MENU_Z = 10000;
 
 interface CreateMenuProps {
     communityId: string;
@@ -26,30 +31,80 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
     const addToast = useToastStore((state) => state.addToast);
     const { activeVotingTarget, activeWithdrawTarget, activeModal } = useUIStore();
     const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
+    const [floatingPos, setFloatingPos] = useState({ top: 0, left: 0 });
+    const triggerWrapRef = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
 
-    // Check if any popup is active
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
-    // Check if community is future-vision (polls disabled)
     const isFutureVision = community?.typeTag === 'future-vision';
-    
-    // Check if community supports project creation (marathon-of-good or team)
-    // Feature flag: projects are currently disabled
+
     const isGoodDeedsMarathon = community?.typeTag === 'marathon-of-good';
     const isTeamCommunity = community?.typeTag === 'team';
     const canCreateProjects = ENABLE_PROJECT_POSTS && (isGoodDeedsMarathon || isTeamCommunity);
 
-    // Calculate available actions
     const hasAvailableActions = canCreate === true;
+
+    const updateFloatingPosition = useCallback(() => {
+        const triggerEl = triggerWrapRef.current;
+        const panelEl = panelRef.current;
+        if (!triggerEl) return;
+
+        const rect = triggerEl.getBoundingClientRect();
+        const isLg = window.matchMedia('(min-width: 1024px)').matches;
+        const panelH = panelEl?.offsetHeight || 160;
+
+        let left = rect.right - MENU_WIDTH_PX;
+        left = Math.min(
+            Math.max(FLOAT_GAP_PX, left),
+            window.innerWidth - MENU_WIDTH_PX - FLOAT_GAP_PX,
+        );
+
+        let top: number;
+        if (isLg) {
+            top = rect.bottom + FLOAT_GAP_PX;
+            if (top + panelH > window.innerHeight - FLOAT_GAP_PX) {
+                top = rect.top - FLOAT_GAP_PX - panelH;
+            }
+        } else {
+            top = rect.top - FLOAT_GAP_PX - panelH;
+            if (top < FLOAT_GAP_PX) {
+                top = rect.bottom + FLOAT_GAP_PX;
+            }
+        }
+
+        top = Math.max(
+            FLOAT_GAP_PX,
+            Math.min(top, window.innerHeight - panelH - FLOAT_GAP_PX),
+        );
+
+        setFloatingPos({ top, left });
+    }, []);
+
+    useLayoutEffect(() => {
+        if (!isOpen) return;
+
+        updateFloatingPosition();
+        const raf = requestAnimationFrame(() => updateFloatingPosition());
+
+        const onWin = () => updateFloatingPosition();
+        window.addEventListener('resize', onWin);
+        window.addEventListener('scroll', onWin, true);
+        const mainWrap = document.querySelector('.mainWrap');
+        mainWrap?.addEventListener('scroll', onWin, { passive: true });
+
+        return () => {
+            cancelAnimationFrame(raf);
+            window.removeEventListener('resize', onWin);
+            window.removeEventListener('scroll', onWin, true);
+            mainWrap?.removeEventListener('scroll', onWin);
+        };
+    }, [isOpen, updateFloatingPosition, canCreate, isFutureVision, canCreateProjects, reason]);
 
     const handleCreatePost = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canCreate) {
-            addToast(
-                reason || t('noPermission'),
-                'info'
-            );
+            addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
@@ -60,10 +115,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
     const handleCreatePoll = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canCreate) {
-            addToast(
-                reason || t('noPermission'),
-                'info'
-            );
+            addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
@@ -74,10 +126,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
     const handleCreateProject = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canCreate) {
-            addToast(
-                reason || t('noPermission'),
-                'info'
-            );
+            addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
@@ -85,11 +134,10 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         setIsOpen(false);
     };
 
-    // Close menu when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const target = event.target as Node;
-            if (menuRef.current && menuRef.current.contains(target)) {
+            if (triggerWrapRef.current?.contains(target) || panelRef.current?.contains(target)) {
                 return;
             }
             setIsOpen(false);
@@ -109,7 +157,6 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         return undefined;
     }, [isOpen]);
 
-    // Hide when any popup is active (unless the menu itself is open)
     const shouldHide = (hasActivePopup && !isOpen) || (!permissionLoading && !hasAvailableActions);
 
     const defaultTrigger = (
@@ -124,118 +171,124 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         </Button>
     );
 
-    // Clone trigger and add onClick handler if it's a React element
-    const triggerWithHandler = trigger && React.isValidElement(trigger)
-        ? React.cloneElement(trigger as React.ReactElement<any>, {
-            onClick: (e: React.MouseEvent) => {
-                e.stopPropagation();
-                // Call original onClick if it exists
-                if ((trigger as React.ReactElement<any>).props.onClick) {
-                    (trigger as React.ReactElement<any>).props.onClick(e);
-                }
-                setIsOpen(!isOpen);
-            },
-        })
-        : trigger;
+    const triggerWithHandler =
+        trigger && React.isValidElement(trigger)
+            ? React.cloneElement(trigger as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>, {
+                  onClick: (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      const orig = (trigger as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>).props
+                          .onClick;
+                      orig?.(e);
+                      setIsOpen(!isOpen);
+                  },
+              })
+            : trigger;
 
-    // Stacking: mainWrap > leftNav in globals.css; keep menu high so panel stays above fixed sidebar.
-    return (
-        <div className={`relative z-[70] ${shouldHide ? 'hidden' : ''}`} ref={menuRef}>
-            {triggerWithHandler || defaultTrigger}
-
-            {/* Menu Dropdown */}
-            {isOpen && !permissionLoading && (
-                <div className="absolute right-0 bottom-full mb-2 lg:bottom-auto lg:top-full lg:mt-2 lg:mb-0 w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden z-[80]">
-                    <div className="py-2">
-                        {canCreate ? (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={handleCreatePost}
-                                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <FileText size={16} className="text-primary" />
-                                    </div>
-                                    <span className="text-sm font-medium text-base-content">{t('createPost')}</span>
-                                </button>
-                                {!isFutureVision && (
-                                    <button
-                                        type="button"
-                                        onClick={handleCreatePoll}
-                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                            <BarChart2 size={16} className="text-primary" />
-                                        </div>
-                                        <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
-                                    </button>
-                                )}
-                                {canCreateProjects && (
-                                    <button
-                                        type="button"
-                                        onClick={handleCreateProject}
-                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                            <FolderKanban size={16} className="text-primary" />
-                                        </div>
-                                        <span className="text-sm font-medium text-base-content">{t('createProject')}</span>
-                                    </button>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    type="button"
-                                    disabled
-                                    className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
-                                        <FileText size={16} className="text-base-content/50" />
-                                    </div>
-                                    <span className="text-sm font-medium text-base-content/50">{t('createPost')}</span>
-                                </button>
-                                {!isFutureVision && (
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
-                                            <BarChart2 size={16} className="text-base-content/50" />
-                                        </div>
-                                        <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
-                                    </button>
-                                )}
-                                {canCreateProjects && (
-                                    <button
-                                        type="button"
-                                        disabled
-                                        className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
-                                    >
-                                        <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
-                                            <FolderKanban size={16} className="text-base-content/50" />
-                                        </div>
-                                        <span className="text-sm font-medium text-base-content/50">{t('createProject')}</span>
-                                    </button>
-                                )}
-                                {reason && (
-                                    <div className="mx-3 mt-2 p-3 rounded-xl bg-base-200/50">
-                                        <div className="flex items-start gap-2">
-                                            <Info size={14} className="text-base-content/50 flex-shrink-0 mt-0.5" />
-                                            <p className="text-xs text-base-content/60 leading-relaxed">
-                                                {reason}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                            </>
+    const menuPanel = (
+        <div
+            ref={panelRef}
+            className="w-56 bg-base-100 rounded-xl shadow-2xl shadow-none overflow-hidden border border-base-300"
+            style={{
+                position: 'fixed',
+                top: floatingPos.top,
+                left: floatingPos.left,
+                zIndex: BODY_MENU_Z,
+            }}
+        >
+            <div className="py-2">
+                {canCreate ? (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleCreatePost}
+                            className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <FileText size={16} className="text-primary" />
+                            </div>
+                            <span className="text-sm font-medium text-base-content">{t('createPost')}</span>
+                        </button>
+                        {!isFutureVision && (
+                            <button
+                                type="button"
+                                onClick={handleCreatePoll}
+                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <BarChart2 size={16} className="text-primary" />
+                                </div>
+                                <span className="text-sm font-medium text-base-content">{t('createPoll')}</span>
+                            </button>
                         )}
-                    </div>
-                </div>
-            )}
+                        {canCreateProjects && (
+                            <button
+                                type="button"
+                                onClick={handleCreateProject}
+                                className="w-full px-4 py-3 flex items-center gap-3 hover:bg-base-content/5 transition-colors text-left"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <FolderKanban size={16} className="text-primary" />
+                                </div>
+                                <span className="text-sm font-medium text-base-content">{t('createProject')}</span>
+                            </button>
+                        )}
+                    </>
+                ) : (
+                    <>
+                        <button
+                            type="button"
+                            disabled
+                            className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                <FileText size={16} className="text-base-content/50" />
+                            </div>
+                            <span className="text-sm font-medium text-base-content/50">{t('createPost')}</span>
+                        </button>
+                        {!isFutureVision && (
+                            <button
+                                type="button"
+                                disabled
+                                className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                    <BarChart2 size={16} className="text-base-content/50" />
+                                </div>
+                                <span className="text-sm font-medium text-base-content/50">{t('createPoll')}</span>
+                            </button>
+                        )}
+                        {canCreateProjects && (
+                            <button
+                                type="button"
+                                disabled
+                                className="w-full px-4 py-3 flex items-center gap-3 text-left opacity-40 cursor-not-allowed"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-base-content/5 flex items-center justify-center">
+                                    <FolderKanban size={16} className="text-base-content/50" />
+                                </div>
+                                <span className="text-sm font-medium text-base-content/50">{t('createProject')}</span>
+                            </button>
+                        )}
+                        {reason && (
+                            <div className="mx-3 mt-2 p-3 rounded-xl bg-base-200/50">
+                                <div className="flex items-start gap-2">
+                                    <Info size={14} className="text-base-content/50 flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs text-base-content/60 leading-relaxed">{reason}</p>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+        </div>
+    );
+
+    return (
+        <div ref={triggerWrapRef} className={`relative ${shouldHide ? 'hidden' : ''}`}>
+            {triggerWithHandler || defaultTrigger}
+            {isOpen && !permissionLoading && typeof document !== 'undefined'
+                ? createPortal(menuPanel, document.body)
+                : null}
         </div>
     );
 };
-
