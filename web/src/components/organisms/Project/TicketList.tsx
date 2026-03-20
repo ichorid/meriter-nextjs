@@ -1,28 +1,31 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CheckCircle2 } from 'lucide-react';
 import { useTickets } from '@/hooks/api/useTickets';
 import { TicketCard } from './TicketCard';
+import { Button } from '@/components/ui/shadcn/button';
 import type { TicketStatus } from '@meriter/shared-types';
 
 interface TicketListProps {
   projectId: string;
   currentUserId: string;
   isLead: boolean;
+  statusFilter: TicketStatus | 'all';
+  onOpenCreateTask?: () => void;
+  onOpenCreateOpenTask?: () => void;
 }
 
-const STATUS_FILTER_OPTIONS: { value: TicketStatus | 'all'; labelKey: string }[] = [
-  { value: 'all', labelKey: 'filterAll' },
-  { value: 'in_progress', labelKey: 'statusInProgress' },
-  { value: 'done', labelKey: 'statusDone' },
-  { value: 'closed', labelKey: 'statusClosed' },
-  { value: 'open', labelKey: 'statusOpen' },
-];
-
-export function TicketList({ projectId, currentUserId, isLead }: TicketListProps) {
+export function TicketList({
+  projectId,
+  currentUserId,
+  isLead,
+  statusFilter,
+  onOpenCreateTask,
+  onOpenCreateOpenTask,
+}: TicketListProps) {
   const t = useTranslations('projects');
-  const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
+  const tCommon = useTranslations('common');
 
   const { data: tickets, isLoading } = useTickets(projectId, {
     postType: 'ticket',
@@ -30,42 +33,53 @@ export function TicketList({ projectId, currentUserId, isLead }: TicketListProps
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading tasks…</p>;
+    return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
   }
 
   const list = tickets ?? [];
+  const showLeadCtas = isLead && (onOpenCreateTask || onOpenCreateOpenTask);
+
+  if (list.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] px-6 py-12 text-center">
+        <CheckCircle2 className="h-12 w-12 text-base-content/30" aria-hidden />
+        <p className="max-w-md text-sm text-base-content/70">{t('emptyTasksHint')}</p>
+        {showLeadCtas && (
+          <div className="flex w-full max-w-sm flex-col gap-2 sm:flex-row sm:justify-center">
+            {onOpenCreateOpenTask && (
+              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onOpenCreateOpenTask}>
+                {t('createOpenTask')}
+              </Button>
+            )}
+            {onOpenCreateTask && (
+              <Button type="button" className="w-full sm:w-auto" onClick={onOpenCreateTask}>
+                {t('createTicket')}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium">{t('ticket')}</span>
-        <select
-          className="rounded border bg-background px-2 py-1 text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as TicketStatus | 'all')}
-        >
-          {STATUS_FILTER_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {t(opt.labelKey)}
-            </option>
-          ))}
-        </select>
-      </div>
-      {list.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('noTickets')}</p>
-      ) : (
-        <ul className="space-y-3">
-          {list.map((ticket: { id: string; title?: string; content: string; ticketStatus?: string; beneficiaryId?: string; authorId: string; metrics?: { score?: number } }) => (
-            <li key={ticket.id}>
-              <TicketCard
-                ticket={ticket}
-                currentUserId={currentUserId}
-                isLead={isLead}
-              />
-            </li>
-          ))}
-        </ul>
+    <ul className="space-y-3">
+      {list.map(
+        (ticket: {
+          id: string;
+          title?: string;
+          content: string;
+          ticketStatus?: string;
+          beneficiaryId?: string;
+          authorId: string;
+          isNeutralTicket?: boolean;
+          metrics?: { score?: number };
+        }) => (
+          <li key={ticket.id}>
+            <TicketCard ticket={ticket} currentUserId={currentUserId} isLead={isLead} />
+          </li>
+        ),
       )}
-    </div>
+    </ul>
   );
 }

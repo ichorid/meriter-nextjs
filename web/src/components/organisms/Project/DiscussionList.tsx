@@ -1,9 +1,11 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { MessagesSquare } from 'lucide-react';
 import { useTickets } from '@/hooks/api/useTickets';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import Link from 'next/link';
+import { Button } from '@/components/ui/shadcn/button';
 
 interface DiscussionListProps {
   projectId: string;
@@ -18,14 +20,26 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
   const t = useTranslations('projects');
   const { data: discussions, isLoading } = useTickets(projectId, { postType: 'discussion' });
 
+  const tCommon = useTranslations('common');
+
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading discussions…</p>;
+    return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
   }
 
   const list = discussions ?? [];
 
   if (list.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t('noDiscussions')}</p>;
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] px-6 py-12 text-center">
+        <MessagesSquare className="h-12 w-12 text-base-content/30" aria-hidden />
+        <p className="max-w-md text-sm text-base-content/70">{t('emptyDiscussionsHint')}</p>
+        <Button size="sm" variant="default" asChild>
+          <Link href={`/meriter/communities/${projectId}/create?postType=discussion`}>
+            {t('createDiscussion')}
+          </Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -34,7 +48,7 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
         <li key={post.id}>
           <Link
             href={`/meriter/communities/${projectId}/posts/${post.id}`}
-            className="block rounded-lg border bg-card p-4 text-card-foreground shadow-sm hover:bg-accent/50"
+            className="block rounded-xl border border-white/10 bg-white/5 p-4 text-card-foreground shadow-none transition-colors duration-200 hover:bg-white/[0.07]"
           >
             {post.title && <div className="font-medium">{post.title}</div>}
             <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{post.content}</p>

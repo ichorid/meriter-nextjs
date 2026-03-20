@@ -14,7 +14,7 @@ export function ProjectMembersList({ projectId }: ProjectMembersListProps) {
   }
 
   const members = data?.data ?? [];
-  const total = data?.total ?? 0;
+  const total = data?.pagination?.total ?? 0;
 
   if (total === 0) {
     return <p className="text-sm text-muted-foreground">No members yet.</p>;
