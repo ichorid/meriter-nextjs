@@ -1,7 +1,10 @@
 import { trpc } from '@/lib/trpc/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import { refetchCommunityFeed } from '@/hooks/api/invalidate-community-session-caches';
+import {
+  invalidateFutureVisionsList,
+  refetchCommunityFeed,
+} from '@/hooks/api/invalidate-community-session-caches';
 import type { SubmitTappalkaChoiceInput } from '../types';
 
 /**
@@ -52,6 +55,8 @@ export function useTappalkaChoice() {
       if (variables.communityId) {
         await refetchCommunityFeed(utils, variables.communityId);
       }
+
+      await invalidateFutureVisionsList(utils);
     },
   });
 }

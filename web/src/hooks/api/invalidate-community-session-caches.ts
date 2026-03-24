@@ -36,6 +36,17 @@ export async function refetchCommunityFeed(
  * Refetch infinite community feed + balances (page community + global wallet) +
  * quota for both useUserQuota input (`me`) and numeric user id (older invalidations).
  */
+/** Future Vision hub cards (`FutureVisionFeed`) use `getFutureVisions`, not `getFeed`. */
+export type FutureVisionsListUtils = {
+  communities: {
+    getFutureVisions: { invalidate: () => Promise<unknown> };
+  };
+};
+
+export async function invalidateFutureVisionsList(utils: FutureVisionsListUtils): Promise<void> {
+  await utils.communities.getFutureVisions.invalidate();
+}
+
 export async function invalidateFeedWalletQuotaForCommunity(
   utils: CommunitySessionCacheUtils,
   options: { communityId: string; userId?: string | null },

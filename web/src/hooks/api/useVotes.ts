@@ -6,7 +6,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { updateQuotaOptimistically, updateWalletOptimistically, withdrawEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import { invalidateFeedWalletQuotaForCommunity } from './invalidate-community-session-caches';
+import {
+  invalidateFeedWalletQuotaForCommunity,
+  invalidateFutureVisionsList,
+} from './invalidate-community-session-caches';
 
 // Vote on publication
 export function useVoteOnPublication() {
@@ -222,6 +225,7 @@ export function useVoteOnPublicationWithComment() {
       if (vars.targetId && vars.targetType === 'publication') {
         await utils.publications.getById.invalidate({ id: vars.targetId });
         await utils.publications.getById.refetch({ id: vars.targetId });
+        await invalidateFutureVisionsList(utils);
       }
 
       // Invalidate and refetch communities

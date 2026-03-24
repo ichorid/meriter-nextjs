@@ -4,7 +4,10 @@ import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, updateEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import { invalidateFeedWalletQuotaForCommunity } from './invalidate-community-session-caches';
+import {
+  invalidateFeedWalletQuotaForCommunity,
+  invalidateFutureVisionsList,
+} from './invalidate-community-session-caches';
 
 export interface VoteMutationConfig {
   mutationFn: (variables: any) => Promise<any>;
@@ -92,6 +95,9 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
             await utils.publications.getById.invalidate({ id: publicationId });
             await utils.publications.getById.refetch({ id: publicationId });
           }
+
+          // Future Visions page lists communities via getFutureVisions (scores on cards)
+          await invalidateFutureVisionsList(utils);
         }
 
         // Invalidate and refetch communities if needed
