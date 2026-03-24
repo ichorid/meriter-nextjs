@@ -2,12 +2,14 @@
 
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User as UserIcon, Edit, Settings, ChevronDown, ChevronUp, Mail } from 'lucide-react';
+import { User as UserIcon, Edit, Settings, ChevronDown, ChevronUp, Mail, Share2 } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { Button } from '@/components/ui/shadcn/button';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { shareUrl, getProfileUrl } from '@shared/lib/share-utils';
+import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 import type { User } from '@/types/api-v1';
 
@@ -24,6 +26,7 @@ interface ProfileHeroProps {
 function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles = [], onEdit }: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
+  const tShared = useTranslations('shared');
   const router = useRouter();
   const [aboutExpanded, setAboutExpanded] = useLocalStorage<boolean>('profile.aboutExpanded', true);
   const [contactsExpanded, setContactsExpanded] = useLocalStorage<boolean>('profile.contactsExpanded', true);
@@ -45,33 +48,50 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
   const showContacts = user.globalRole === 'superadmin' ||
     userRoles.some(r => r.role === 'lead');
 
+  const handleShareProfile = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    hapticImpact('light');
+    await shareUrl(getProfileUrl(user.id), tShared('urlCopiedToBuffer'));
+  };
+
   return (
     <div className="relative bg-base-100 overflow-hidden">
       {/* Cover Section */}
       <div className="relative h-24 bg-gradient-to-br from-base-content/5 via-base-content/3 to-transparent">
-        {/* Edit and Settings buttons */}
-        {showEdit && (
-          <div className="absolute top-3 right-3 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit ? onEdit() : router.push('/meriter/profile/edit')}
-              className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
-            >
-              <Edit size={14} className="mr-1.5" />
-              <span className="text-xs">{tCommon('edit')}</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/meriter/settings')}
-              aria-label={tCommon('settings')}
-              className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 w-8 p-0"
-            >
-              <Settings size={18} />
-            </Button>
-          </div>
-        )}
+        <div className="absolute top-3 right-3 flex items-center gap-2">
+          {showEdit && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => (onEdit ? onEdit() : router.push('/meriter/profile/edit'))}
+                className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
+              >
+                <Edit size={14} className="mr-1.5" />
+                <span className="text-xs">{tCommon('edit')}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/meriter/settings')}
+                aria-label={tCommon('settings')}
+                className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 w-8 p-0"
+              >
+                <Settings size={18} />
+              </Button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={handleShareProfile}
+            className="p-1.5 rounded-full hover:bg-base-200/90 transition-colors text-base-content/60 hover:text-base-content/90 flex-shrink-0 bg-base-100/80 backdrop-blur-sm"
+            aria-label={tShared('share')}
+            title={tShared('share')}
+          >
+            <Share2 className="w-4 h-4" aria-hidden />
+          </button>
+        </div>
       </div>
 
       {/* Profile Content */}

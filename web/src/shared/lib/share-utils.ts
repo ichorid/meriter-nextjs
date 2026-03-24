@@ -85,3 +85,10 @@ export function getCommentUrl(communityId: string, publicationSlug: string, comm
   return `/meriter/communities/${communityId}/posts/${publicationSlug}?highlight=${commentId}`;
 }
 
+/**
+ * Public user profile URL (same route for own profile when opened by id)
+ */
+export function getProfileUrl(userId: string): string {
+  return `/meriter/users/${userId}`;
+}
+
