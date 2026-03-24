@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useDebounce } from '@/hooks/useDebounce';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -12,7 +11,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout/AdaptiveLa
 import { routes } from '@/lib/constants/routes';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { InlineSearchField } from '@/components/ui/InlineSearchField';
-import { Plus, FolderKanban, Filter } from 'lucide-react';
+import { Plus, FolderKanban, Filter, X } from 'lucide-react';
 import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 
@@ -35,30 +34,10 @@ export default function ProjectsPageClient() {
 
   const { sections } = usePlatformValueRubricatorSections();
 
-  const searchParamsKey = searchParams.toString();
   const selectedValueTags = useMemo(() => {
-    const raw = new URLSearchParams(searchParamsKey).get('vt');
+    const raw = searchParams.get('vt');
     return raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
-  }, [searchParamsKey]);
-
-  const debouncedSearch = useDebounce(searchQuery, 350);
-
-  const projectStatus =
-    statusFilter === 'all' ? undefined : (statusFilter as 'active' | 'closed' | 'archived');
-
-  const listInput = useMemo(
-    () => ({
-      page: 1 as const,
-      pageSize: 50 as const,
-      search: debouncedSearch.trim() || undefined,
-      sort,
-      projectStatus,
-      valueTags: selectedValueTags.length > 0 ? selectedValueTags : undefined,
-    }),
-    [debouncedSearch, sort, projectStatus, selectedValueTags],
-  );
-
-  const { data, isPending, isError, error, refetch } = useGlobalProjectsList(listInput);
+  }, [searchParams]);
 
   const setValueTagsInUrl = (next: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -77,6 +56,18 @@ export default function ProjectsPageClient() {
       : [...selectedValueTags, tag];
     setValueTagsInUrl(next);
   };
+
+  const projectStatus =
+    statusFilter === 'all' ? undefined : (statusFilter as 'active' | 'closed' | 'archived');
+
+  const { data, isLoading } = useGlobalProjectsList({
+    page: 1,
+    pageSize: 50,
+    search: searchQuery.trim() || undefined,
+    sort,
+    projectStatus,
+    valueTags: selectedValueTags.length > 0 ? selectedValueTags : undefined,
+  });
 
   const items = data?.data ?? [];
 
@@ -166,18 +157,8 @@ export default function ProjectsPageClient() {
           )}
         </div>
 
-        {isPending && data === undefined ? (
+        {isLoading ? (
           <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
-        ) : isError ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-base-content">
-            <p className="font-medium">{tCommon('somethingWentWrong')}</p>
-            <p className="mt-1 text-base-content/70">
-              {error?.message ?? tCommon('somethingWentWrongMessage')}
-            </p>
-            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => refetch()}>
-              {tCommon('retry')}
-            </Button>
-          </div>
         ) : items.length === 0 ? (
           <div className="rounded-xl bg-base-100 py-12 px-4 text-center">
             <FolderKanban className="mx-auto h-12 w-12 text-base-content/30" />
