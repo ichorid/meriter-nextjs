@@ -6,6 +6,7 @@
         "logout": "Logout",
         "loading": "Loading...",
         "error": "Error",
+        "retry": "Try again",
         "unexpectedError": "An unexpected error occurred",
         "somethingWentWrong": "Something went wrong",
         "somethingWentWrongMessage": "An unexpected error occurred. Please try refreshing the page.",
