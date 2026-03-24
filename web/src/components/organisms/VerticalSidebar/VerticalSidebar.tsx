@@ -11,6 +11,7 @@ import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { routes } from '@/lib/constants/routes';
+import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 
 export interface VerticalSidebarProps {
@@ -95,82 +96,89 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     height: `calc(100vh - ${devToolsOffset})`,
   };
 
+  const primaryNavBtn = (active: boolean) =>
+    cn(
+      isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center',
+      isExpanded ? 'h-auto py-2.5' : 'h-12',
+      'rounded-xl flex items-center transition-all duration-200 active:scale-[0.99]',
+      active
+        ? 'bg-primary/12 font-semibold text-base-content ring-1 ring-inset ring-primary/20 dark:bg-primary/20 dark:ring-primary/30'
+        : 'text-base-content/90 hover:bg-base-300/80 dark:hover:bg-base-300/55',
+    );
+
   return (
     <aside
       className={`flex fixed left-0 bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
       style={asideStyle}
     >
-      {/* Primary nav: same order as mobile (Future Visions, Projects, Communities, Notifications, Profile) */}
+      {/* Primary hubs (expanded desktop: labeled card + divider; collapsed: compact stack) */}
       {isAuthenticated && (
         <>
-          {/* Future Visions */}
-          <div className={paddingClass}>
-            <Link href={routes.futureVisions}>
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname?.startsWith(routes.futureVisions)
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
-                {isExpanded ? (
-                  <div className="flex items-center w-full">
-                    <Sparkles className="w-5 h-5" />
-                    <span className="ml-2 text-sm font-medium">{t('futureVisions', { defaultValue: 'Future Visions' })}</span>
-                  </div>
-                ) : (
-                  <Sparkles className="w-6 h-6" />
-                )}
-              </button>
-            </Link>
+          <div className={cn(paddingClass, isExpanded ? 'mb-2' : 'mb-2')}>
+            {isExpanded ? (
+              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-base-content/45">
+                {t('sidebarPrimary')}
+              </p>
+            ) : null}
+            <div className={cn('flex flex-col', isExpanded ? 'gap-0.5' : 'gap-1')}>
+              <Link href={routes.futureVisions}>
+                <button
+                  type="button"
+                  className={primaryNavBtn(Boolean(pathname?.startsWith(routes.futureVisions)))}
+                >
+                  {isExpanded ? (
+                    <div className="flex w-full items-center">
+                      <Sparkles className="h-6 w-6 shrink-0 text-primary" />
+                      <span className="ml-2.5 text-base font-medium leading-snug">{t('futureVisions', { defaultValue: 'Future Visions' })}</span>
+                    </div>
+                  ) : (
+                    <Sparkles className="h-6 w-6 text-primary" />
+                  )}
+                </button>
+              </Link>
+
+              {(() => {
+                const marathon = allCommunities.find((c) => c.typeTag === 'marathon-of-good');
+                if (!marathon) return null;
+                const marathonHref = routes.community(marathon.id);
+                const marathonActive =
+                  pathname === marathonHref || Boolean(pathname?.startsWith(`${marathonHref}/`));
+                return (
+                  <Link key="marathon" href={marathonHref}>
+                    <button type="button" className={primaryNavBtn(marathonActive)}>
+                      {isExpanded ? (
+                        <div className="flex w-full min-w-0 items-center">
+                          <TrendingUp className="h-6 w-6 shrink-0 text-primary" />
+                          <span className="ml-2.5 truncate text-base font-medium leading-snug">{marathon.name}</span>
+                        </div>
+                      ) : (
+                        <TrendingUp className="h-6 w-6 text-primary" />
+                      )}
+                    </button>
+                  </Link>
+                );
+              })()}
+
+              <Link href={routes.projects}>
+                <button
+                  type="button"
+                  className={primaryNavBtn(Boolean(pathname?.startsWith(routes.projects)))}
+                >
+                  {isExpanded ? (
+                    <div className="flex w-full items-center">
+                      <FolderKanban className="h-6 w-6 shrink-0 text-primary" />
+                      <span className="ml-2.5 text-base font-medium leading-snug">{t('projects', { defaultValue: 'Projects' })}</span>
+                    </div>
+                  ) : (
+                    <FolderKanban className="h-6 w-6 text-primary" />
+                  )}
+                </button>
+              </Link>
+            </div>
           </div>
 
-          {/* Marathon of Good (dynamic label from community name) */}
-          {(() => {
-            const marathon = allCommunities.find((c) => c.typeTag === 'marathon-of-good');
-            if (!marathon) return null;
-            const isActive = pathname === routes.community(marathon.id);
-            return (
-              <div key="marathon" className={paddingClass}>
-                <Link href={routes.community(marathon.id)}>
-                  <button
-                    className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${isActive
-                      ? 'bg-base-300 text-base-content'
-                      : 'hover:bg-base-300 text-base-content'
-                      }`}
-                  >
-                    {isExpanded ? (
-                      <div className="flex items-center w-full min-w-0">
-                        <TrendingUp className="w-5 h-5 shrink-0" />
-                        <span className="ml-2 text-sm font-medium truncate">{marathon.name}</span>
-                      </div>
-                    ) : (
-                      <TrendingUp className="w-6 h-6" />
-                    )}
-                  </button>
-                </Link>
-              </div>
-            );
-          })()}
-
-          {/* Projects */}
-          <div className={paddingClass}>
-            <Link href={routes.projects}>
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname?.startsWith(routes.projects)
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
-                {isExpanded ? (
-                  <div className="flex items-center w-full">
-                    <FolderKanban className="w-5 h-5" />
-                    <span className="ml-2 text-sm font-medium">{t('projects', { defaultValue: 'Projects' })}</span>
-                  </div>
-                ) : (
-                  <FolderKanban className="w-6 h-6" />
-                )}
-              </button>
-            </Link>
+          <div className={cn(paddingClass, 'mb-2 mt-1')}>
+            <div className="border-t border-base-300" role="separator" aria-hidden />
           </div>
 
           {/* Notifications */}
