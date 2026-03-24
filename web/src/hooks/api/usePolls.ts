@@ -1,6 +1,10 @@
 // Polls React Query hooks - migrated to tRPC
 import { trpc } from "@/lib/trpc/client";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+    invalidateFeedWalletQuotaForCommunity,
+    refetchCommunityFeed,
+} from "@/hooks/api/invalidate-community-session-caches";
 
 interface PollCreate {
     question: string;
@@ -72,13 +76,22 @@ export function usePollResults(id: string) {
 // Create poll
 export const useCreatePoll = () => {
     const utils = trpc.useUtils();
+    const { user } = useAuth();
 
     return trpc.polls.create.useMutation({
-        onSuccess: () => {
-            // Invalidate polls lists
-            utils.polls.getAll.invalidate();
-            // Invalidate quota queries for the community
-            // Note: quota router not yet migrated, invalidate manually if needed
+        onSuccess: async (_result, variables) => {
+            await utils.polls.getAll.invalidate();
+            if (!variables.communityId) return;
+            const spent =
+                (variables.quotaAmount ?? 0) > 0 || (variables.walletAmount ?? 0) > 0;
+            if (spent && user?.id) {
+                await invalidateFeedWalletQuotaForCommunity(utils, {
+                    communityId: variables.communityId,
+                    userId: user.id,
+                });
+            } else {
+                await refetchCommunityFeed(utils, variables.communityId);
+            }
         },
     });
 };
@@ -96,24 +109,16 @@ export function useCastPoll(communityId?: string) {
             // Invalidate polls list to ensure consistency
             await utils.polls.getAll.invalidate();
 
-            // Invalidate wallet queries to ensure balance is up to date
             await utils.wallets.getAll.invalidate();
             await utils.wallets.getAll.refetch();
 
-            if (communityId) {
-                await utils.wallets.getBalance.invalidate({ communityId });
-                await utils.wallets.getBalance.refetch({ communityId });
-            }
-
-            // Invalidate quota queries if quota was used
-            if (variables.data.quotaAmount && variables.data.quotaAmount > 0 && user?.id && communityId) {
-                await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
-                await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
-            }
-
-            // Invalidate community feed to show updated poll in feed
-            if (communityId) {
-                await utils.communities.getFeed.invalidate({ communityId });
+            if (communityId && user?.id) {
+                await invalidateFeedWalletQuotaForCommunity(utils, {
+                    communityId,
+                    userId: user.id,
+                });
+            } else if (communityId) {
+                await refetchCommunityFeed(utils, communityId);
             }
         },
         onError: (error) => {
@@ -127,10 +132,18 @@ export const useUpdatePoll = () => {
     const utils = trpc.useUtils();
 
     return trpc.polls.update.useMutation({
-        onSuccess: (_result, variables) => {
-            // Invalidate polls lists and specific poll
-            utils.polls.getAll.invalidate();
-            utils.polls.getById.invalidate({ id: variables.id });
+        onSuccess: async (_result, variables) => {
+            const poll = utils.polls.getById.getData({ id: variables.id }) as
+                | { communityId?: string }
+                | undefined;
+            const feedCommunityId = poll?.communityId;
+
+            await utils.polls.getAll.invalidate();
+            await utils.polls.getById.invalidate({ id: variables.id });
+
+            if (feedCommunityId) {
+                await refetchCommunityFeed(utils, feedCommunityId);
+            }
         },
     });
 };
@@ -141,9 +154,17 @@ export const useDeletePoll = () => {
 
     return trpc.polls.delete.useMutation({
         onSuccess: async (_result, variables) => {
+            const poll = utils.polls.getById.getData({ id: variables.id }) as
+                | { communityId?: string }
+                | undefined;
+            const feedCommunityId = poll?.communityId;
+
             await utils.polls.getAll.invalidate();
             utils.polls.getById.setData({ id: variables.id }, undefined);
-            await utils.communities.getFeed.invalidate();
+
+            if (feedCommunityId) {
+                await refetchCommunityFeed(utils, feedCommunityId);
+            }
         },
     });
 };

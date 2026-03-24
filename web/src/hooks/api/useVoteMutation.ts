@@ -4,7 +4,7 @@ import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { updateQuotaOptimistically, updateWalletOptimistically, updateEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
-import { commentsKeys } from './useComments';
+import { invalidateFeedWalletQuotaForCommunity } from './invalidate-community-session-caches';
 
 export interface VoteMutationConfig {
   mutationFn: (variables: any) => Promise<any>;
@@ -100,50 +100,19 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
           await utils.communities.getAll.refetch();
         }
 
-        // CRITICAL: Always invalidate community feed to update vote counters in feed
-        // This ensures vote counts update immediately in the community feed view
-        if (communityId) {
-          await utils.communities.getFeed.invalidate({ communityId });
-          await utils.communities.getFeed.refetch({ communityId });
-        }
-
-        // Invalidate and refetch wallet queries to update balance
+        // Invalidate and refetch wallet list first (used by sidebars etc.)
         await utils.wallets.getAll.invalidate();
         await utils.wallets.getAll.refetch();
 
-        // Invalidate wallet balance - need to handle with/without communityId
+        // Community feed + tRPC balance/quota (useUserQuota uses userId: 'me')
         if (communityId) {
-          await utils.wallets.getBalance.invalidate({ communityId });
-          await utils.wallets.getBalance.refetch({ communityId });
+          await invalidateFeedWalletQuotaForCommunity(utils, {
+            communityId,
+            userId: user?.id ?? null,
+          });
         } else {
-          // Invalidate all balance queries - use queryClient for broad invalidation
           queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
           queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
-        }
-
-        // Invalidate and refetch quota queries to update remaining quota (for quota votes)
-        // Quota is accessed via wallets.getQuota, so use tRPC utils
-        if (user?.id && communityId) {
-          await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
-          await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
-        } else if (communityId) {
-          // Broad invalidation for all quota queries in this community
-          queryClient.invalidateQueries({
-            queryKey: ['quota'],
-            predicate: (query) => {
-              const key = query.queryKey;
-              return key.length >= 3 && key[2] === communityId;
-            }
-          });
-          queryClient.refetchQueries({
-            queryKey: ['quota'],
-            predicate: (query) => {
-              const key = query.queryKey;
-              return key.length >= 3 && key[2] === communityId;
-            }
-          });
-        } else {
-          // Broad invalidation for all quota queries
           queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
           queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
         }
@@ -185,6 +154,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
       onSettled: async (_data, _err, vars, ctx) => {
         const communityId = vars?.communityId;
         if (user?.id && communityId) {
+          await utils.wallets.getQuota.invalidate({ userId: 'me', communityId });
           await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
         }
         if (ctx?.quotaKey) {

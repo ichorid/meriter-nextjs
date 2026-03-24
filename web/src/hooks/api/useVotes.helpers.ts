@@ -1,5 +1,7 @@
 /**
- * Shared optimistic update helpers for vote mutations
+ * Shared optimistic update helpers for vote mutations.
+ * Quota/cache keys here are legacy (`['quota', userId, communityId]`) and do not match
+ * tRPC React Query keys; server-aligned updates rely on invalidate/refetch in mutation onSuccess.
  */
 import { QueryClient } from '@tanstack/react-query';
 import type { Wallet } from './useWallet';

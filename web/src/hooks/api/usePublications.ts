@@ -8,6 +8,8 @@ import {
 import { STALE_TIME } from "@/lib/constants/query-config";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { useAuth } from "@/contexts/AuthContext";
+import { refetchCommunityFeed } from "@/hooks/api/invalidate-community-session-caches";
+import { GLOBAL_COMMUNITY_ID } from "@/lib/constants/app";
 
 interface ListQueryParams {
     skip?: number;
@@ -343,10 +345,13 @@ export const useCreatePublication = () => {
             const communityId = (result as any)?.communityId || variables.communityId;
             if (communityId) {
                 await utils.communities.getById.invalidate({ id: communityId });
+                await refetchCommunityFeed(utils, communityId);
             }
 
             // Invalidate quota queries (publication creation uses quota)
             if (user?.id && communityId) {
+                await utils.wallets.getQuota.invalidate({ userId: 'me', communityId });
+                await utils.wallets.getQuota.refetch({ userId: 'me', communityId });
                 await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
                 await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
             } else if (communityId) {
@@ -359,6 +364,14 @@ export const useCreatePublication = () => {
                 });
             } else {
                 queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
+            }
+
+            // Post fees use global wallet; header may show community or global balance
+            await utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
+            await utils.wallets.getBalance.refetch({ communityId: GLOBAL_COMMUNITY_ID });
+            if (communityId) {
+                await utils.wallets.getBalance.invalidate({ communityId });
+                await utils.wallets.getBalance.refetch({ communityId });
             }
         },
     });
@@ -432,6 +445,7 @@ export const useUpdatePublication = () => {
             if (communityId) {
                 // Invalidate infinite queries for this community
                 utils.publications.getAll.invalidate({ communityId });
+                await refetchCommunityFeed(utils, communityId);
             }
         },
     });
@@ -484,6 +498,11 @@ export const useDeletePublication = () => {
 
     return trpc.publications.delete.useMutation({
         onSuccess: async (_result, variables) => {
+            const cached = utils.publications.getById.getData({ id: variables.id }) as
+                | { communityId?: string }
+                | undefined;
+            const feedCommunityId = cached?.communityId;
+
             // Invalidate and refetch publications lists
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
@@ -495,6 +514,10 @@ export const useDeletePublication = () => {
 
             // Remove the deleted publication from cache (but keep it in deleted query)
             utils.publications.getById.setData({ id: variables.id }, undefined);
+
+            if (feedCommunityId) {
+                await refetchCommunityFeed(utils, feedCommunityId);
+            }
 
             // Invalidate infinite queries (publication might have been in a community feed)
             queryClient.invalidateQueries({
@@ -515,6 +538,11 @@ export const useRestorePublication = () => {
 
     return trpc.publications.restore.useMutation({
         onSuccess: async (_result, variables) => {
+            const cached = utils.publications.getById.getData({ id: variables.id }) as
+                | { communityId?: string }
+                | undefined;
+            const feedCommunityId = cached?.communityId;
+
             // Invalidate and refetch publications lists
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
@@ -525,6 +553,10 @@ export const useRestorePublication = () => {
             // Invalidate the specific publication to refetch it (now it should be visible)
             await utils.publications.getById.invalidate({ id: variables.id });
             await utils.publications.getById.refetch({ id: variables.id });
+
+            if (feedCommunityId) {
+                await refetchCommunityFeed(utils, feedCommunityId);
+            }
 
             // Invalidate infinite queries (publication should appear in community feed)
             queryClient.invalidateQueries({
@@ -545,6 +577,11 @@ export const usePermanentDeletePublication = () => {
 
     return trpc.publications.permanentDelete.useMutation({
         onSuccess: async (_result, variables) => {
+            const cached = utils.publications.getById.getData({ id: variables.id }) as
+                | { communityId?: string }
+                | undefined;
+            const feedCommunityId = cached?.communityId;
+
             // Invalidate and refetch publications lists
             await utils.publications.getAll.invalidate();
             await utils.publications.getAll.refetch();
@@ -554,6 +591,10 @@ export const usePermanentDeletePublication = () => {
 
             // Remove the permanently deleted publication from cache completely
             utils.publications.getById.setData({ id: variables.id }, undefined);
+
+            if (feedCommunityId) {
+                await refetchCommunityFeed(utils, feedCommunityId);
+            }
 
             // Invalidate infinite queries (publication should disappear from all feeds)
             queryClient.invalidateQueries({

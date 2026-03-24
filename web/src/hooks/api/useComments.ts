@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
+import { refetchCommunityFeed } from "@/hooks/api/invalidate-community-session-caches";
 
 interface GetCommentsRequest {
     skip?: number;
@@ -192,6 +193,12 @@ export const useCreateComment = () => {
             if (variables.publicationId) {
                 await utils.publications.getById.invalidate({ id: variables.publicationId });
                 await utils.publications.getById.refetch({ id: variables.publicationId });
+                const pub = utils.publications.getById.getData({ id: variables.publicationId }) as
+                    | { communityId?: string }
+                    | undefined;
+                if (pub?.communityId) {
+                    await refetchCommunityFeed(utils, pub.communityId);
+                }
             }
         },
     });
@@ -251,6 +258,11 @@ export const useUpdateComment = () => {
             }
         },
         onSuccess: async (result, variables) => {
+            const existing = utils.comments.getById.getData({ id: variables.id }) as
+                | { publicationId?: string }
+                | undefined;
+            const publicationIdForFeed = existing?.publicationId;
+
             // Invalidate and refetch comments lists to get real data
             await utils.comments.getByPublicationId.invalidate();
             await utils.comments.getByPublicationId.refetch();
@@ -264,6 +276,15 @@ export const useUpdateComment = () => {
             // Invalidate and refetch comment details
             await utils.comments.getDetails.invalidate({ id: variables.id });
             await utils.comments.getDetails.refetch({ id: variables.id });
+
+            if (publicationIdForFeed) {
+                const pub = utils.publications.getById.getData({ id: publicationIdForFeed }) as
+                    | { communityId?: string }
+                    | undefined;
+                if (pub?.communityId) {
+                    await refetchCommunityFeed(utils, pub.communityId);
+                }
+            }
         },
     });
 };
@@ -275,6 +296,11 @@ export const useDeleteComment = () => {
     
     return trpc.comments.delete.useMutation({
         onSuccess: async (result, variables) => {
+            const existing = utils.comments.getById.getData({ id: variables.id }) as
+                | { publicationId?: string }
+                | undefined;
+            const publicationIdForFeed = existing?.publicationId;
+
             // Invalidate and refetch comments lists
             await utils.comments.getByPublicationId.invalidate();
             await utils.comments.getByPublicationId.refetch();
@@ -293,6 +319,15 @@ export const useDeleteComment = () => {
             // Broadly invalidate publication details; without publicationId, invalidate all getById queries
             await utils.publications.getById.invalidate();
             await utils.publications.getById.refetch();
+
+            if (publicationIdForFeed) {
+                const pub = utils.publications.getById.getData({ id: publicationIdForFeed }) as
+                    | { communityId?: string }
+                    | undefined;
+                if (pub?.communityId) {
+                    await refetchCommunityFeed(utils, pub.communityId);
+                }
+            }
         },
     });
 };

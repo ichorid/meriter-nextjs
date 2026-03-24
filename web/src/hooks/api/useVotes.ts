@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { updateQuotaOptimistically, updateWalletOptimistically, withdrawEntityVoteOptimistically, rollbackOptimisticUpdates, type OptimisticUpdateContext } from './useVotes.helpers';
 import { queryKeys } from '@/lib/constants/queryKeys';
+import { invalidateFeedWalletQuotaForCommunity } from './invalidate-community-session-caches';
 
 // Vote on publication
 export function useVoteOnPublication() {
@@ -64,6 +65,7 @@ export function useVoteOnVote() {
 export function useRemovePublicationVote() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: async (_result, variables) => {
       const vars = variables as any;
@@ -85,9 +87,20 @@ export function useRemovePublicationVote() {
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
 
-      // Invalidate wallet balance - use queryClient for broad invalidation
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
+      const pub =
+        vars.targetType === 'publication' && vars.targetId
+          ? utils.publications.getById.getData({ id: vars.targetId })
+          : undefined;
+      const communityId = (pub as { communityId?: string } | undefined)?.communityId;
+      if (communityId) {
+        await invalidateFeedWalletQuotaForCommunity(utils, {
+          communityId,
+          userId: user?.id ?? null,
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+        queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
+      }
     },
     onError: (error) => {
       console.error('Remove publication vote error:', error);
@@ -105,6 +118,7 @@ export function useRemovePublicationVote() {
 export function useRemoveCommentVote() {
   const utils = trpc.useUtils();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const deleteMutation = trpc.votes.delete.useMutation({
     onSuccess: async (_result, variables) => {
       const vars = variables as any;
@@ -123,9 +137,28 @@ export function useRemoveCommentVote() {
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
 
-      // Invalidate wallet balance - use queryClient for broad invalidation
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
+      let communityId: string | undefined;
+      if (vars.targetType === 'vote' && vars.targetId) {
+        const comment = utils.comments.getById.getData({ id: vars.targetId }) as
+          | { publicationId?: string }
+          | undefined;
+        const publicationId = comment?.publicationId;
+        if (publicationId) {
+          const pub = utils.publications.getById.getData({ id: publicationId }) as
+            | { communityId?: string }
+            | undefined;
+          communityId = pub?.communityId;
+        }
+      }
+      if (communityId) {
+        await invalidateFeedWalletQuotaForCommunity(utils, {
+          communityId,
+          userId: user?.id ?? null,
+        });
+      } else {
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+        queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
+      }
     },
     onError: (error) => {
       console.error('Remove comment vote error:', error);
@@ -195,20 +228,17 @@ export function useVoteOnPublicationWithComment() {
       await utils.communities.getAll.invalidate();
       await utils.communities.getAll.refetch();
 
-      // Invalidate and refetch wallet queries
       await utils.wallets.getAll.invalidate();
       await utils.wallets.getAll.refetch();
 
-      // Invalidate wallet balance - use queryClient for broad invalidation
-      queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
-      queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
-
-      // Invalidate and refetch quota queries
-      if (user?.id && vars.communityId) {
-        await utils.wallets.getQuota.invalidate({ userId: user.id, communityId: vars.communityId });
-        await utils.wallets.getQuota.refetch({ userId: user.id, communityId: vars.communityId });
+      if (vars.communityId) {
+        await invalidateFeedWalletQuotaForCommunity(utils, {
+          communityId: vars.communityId,
+          userId: user?.id ?? null,
+        });
       } else {
-        // Broad invalidation for all quota queries
+        queryClient.invalidateQueries({ queryKey: queryKeys.wallet.balance() });
+        queryClient.refetchQueries({ queryKey: queryKeys.wallet.balance() });
         queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
         queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
       }
@@ -233,6 +263,7 @@ export function useVoteOnPublicationWithComment() {
     onSettled: async (_data, _err, vars, ctx) => {
       const communityId = (vars as any)?.communityId;
       if (user?.id && communityId) {
+        await utils.wallets.getQuota.invalidate({ userId: 'me', communityId });
         await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
       }
       if (ctx?.quotaKey) {
