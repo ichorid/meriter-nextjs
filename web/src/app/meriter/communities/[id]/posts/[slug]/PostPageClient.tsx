@@ -248,6 +248,9 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     }
 
     const isTicketPost = (publication as { postType?: string }).postType === 'ticket';
+    const isProjectDiscussion =
+        (publication as { postType?: string }).postType === 'discussion' &&
+        Boolean((publication as { isProject?: boolean }).isProject);
 
     return (
         <AdaptiveLayout
@@ -456,18 +459,20 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                     </CollapsibleSection>
                                 )}
 
-                                <CollapsibleSection
-                                    title={tPublicationsCreate('postParamsReadOnly')}
-                                    open={postSettingsOpen}
-                                    setOpen={setPostSettingsOpen}
-                                >
-                                    <PostInvestingSettingsReadOnly
-                                        investorSharePercent={(publication as Record<string, unknown>).investorSharePercent as number | undefined}
-                                        ttlExpiresAt={(publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
-                                        stopLoss={(publication as Record<string, unknown>).stopLoss as number | undefined}
-                                        noAuthorWalletSpend={(publication as Record<string, unknown>).noAuthorWalletSpend as boolean | undefined}
-                                    />
-                                </CollapsibleSection>
+                                {!isProjectDiscussion && (
+                                    <CollapsibleSection
+                                        title={tPublicationsCreate('postParamsReadOnly')}
+                                        open={postSettingsOpen}
+                                        setOpen={setPostSettingsOpen}
+                                    >
+                                        <PostInvestingSettingsReadOnly
+                                            investorSharePercent={(publication as Record<string, unknown>).investorSharePercent as number | undefined}
+                                            ttlExpiresAt={(publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
+                                            stopLoss={(publication as Record<string, unknown>).stopLoss as number | undefined}
+                                            noAuthorWalletSpend={(publication as Record<string, unknown>).noAuthorWalletSpend as boolean | undefined}
+                                        />
+                                    </CollapsibleSection>
+                                )}
                             </>
                         )}
                     </div>
