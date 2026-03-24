@@ -108,9 +108,6 @@ export function ProjectCard({
             {statusLabel}
           </Badge>
         </div>
-        {project.isPersonalProject === true && (
-          <p className="text-xs font-medium uppercase tracking-wide text-base-content/50 mb-2">{t('personalProject')}</p>
-        )}
         {project.description && (
           <p className="text-sm text-base-content/70 mb-2 line-clamp-2">{project.description}</p>
         )}
@@ -128,16 +125,14 @@ export function ProjectCard({
                       e.stopPropagation();
                       onValueTagClick(tag);
                     }}
-                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal cursor-pointer hover:opacity-80 transition-opacity"
-                    style={{ backgroundColor: '#E0E0E0' }}
+                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-normal text-base-content/80 bg-base-200 hover:bg-base-300 cursor-pointer transition-colors text-left"
                   >
                     {tag}
                   </button>
                 ) : (
                   <span
                     key={tag}
-                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
-                    style={{ backgroundColor: '#E0E0E0' }}
+                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-normal text-base-content/80 bg-base-200"
                   >
                     {tag}
                   </span>

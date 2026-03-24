@@ -47,6 +47,7 @@ export interface ProjectHeroProps {
 export function ProjectHero({
   project,
   parentCommunity,
+  isPersonalProject = false,
   statusLabel,
   status,
   showModerationLinks = false,

@@ -203,9 +203,16 @@ export default function ProjectsPageClient() {
           </div>
         ) : (
           <ul className="flex flex-col gap-4 list-none p-0 m-0">
-            {items.map(({ project, parentCommunityName }) => (
+            {items.map(({ project, parentCommunityName, founderDisplayName }) => (
               <li key={project.id}>
-                {parentCommunityName && project.parentCommunityId ? (
+                {project.isPersonalProject === true && project.founderUserId ? (
+                  <Link
+                    href={routes.userProfile(project.founderUserId)}
+                    className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-base-content/50 hover:text-base-content/80 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {founderDisplayName ?? t('personalProject')}
+                  </Link>
+                ) : parentCommunityName && project.parentCommunityId ? (
                   <Link
                     href={routes.community(project.parentCommunityId)}
                     className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-base-content/50 hover:text-base-content/80 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring"
