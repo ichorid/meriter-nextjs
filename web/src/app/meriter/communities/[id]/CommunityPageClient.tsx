@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -42,9 +42,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/shadcn/select';
-import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
-import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
+import { InlineSearchField } from '@/components/ui/InlineSearchField';
 import { useCanCreatePost } from '@/hooks/useCanCreatePost';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
@@ -124,7 +123,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const searchQuery = searchParams?.get('q') || '';
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-    const [showSearchModal, setShowSearchModal] = useState(false);
     const [showTappalkaModal, setShowTappalkaModal] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
@@ -137,15 +135,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         } else {
             params.delete('q');
         }
-        router.push(`?${params.toString()}`);
-    };
-
-    // Handle search clear
-    const handleSearchClear = () => {
-        setLocalSearchQuery('');
-        const params = new URLSearchParams(searchParams?.toString() ?? '');
-        params.delete('q');
-        router.push(`?${params.toString()}`);
+        const qs = params.toString();
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     };
 
     // Sync local search query with URL params
@@ -819,8 +810,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             <div className="space-y-4 pb-24">
                 {/* Taxonomy Filters */}
                 <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
+                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-3">
                             {/* Create Menu - desktop only, shows dropdown with "Create Post" and "Create Poll" */}
                             {canCreatePost.canCreate && (
                                 <div className="hidden lg:block">
@@ -853,18 +845,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     {tCommunities('tappalka')}
                                 </Button>
                             )}
-                            {/* Search Button */}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setShowSearchModal(true)}
-                                className="rounded-xl active:scale-[0.98] px-2"
-                                aria-label={tCommon('search')}
-                                title={tCommon('search')}
-                            >
-                                <Search size={18} className="text-base-content/70" />
-                            </Button>
-
                             {/* Sort Toggle */}
                             <div className="flex gap-0.5 bg-base-200/50 p-0.5 rounded-lg">
                                 <SortToggle
@@ -875,7 +855,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </div>
 
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             {isMarathonOfGood ? (
                                 <>
                                     {selectedValueTags.length > 0 && (
@@ -953,6 +933,17 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 </>
                             )}
                         </div>
+                    </div>
+
+                    <div className="min-w-0 w-full lg:max-w-2xl">
+                        <InlineSearchField
+                            value={localSearchQuery}
+                            onChange={handleSearchChange}
+                            placeholder={tCommunities('searchPlaceholder')}
+                            aria-label={tCommon('search')}
+                            clearAriaLabel={tCommon('clearSearch')}
+                        />
+                    </div>
                     </div>
 
                     {/* Compact active filters summary when collapsed */}
@@ -1280,36 +1271,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </div>
                 )}
             </div>
-
-            {/* Search Modal */}
-            {showSearchModal && (
-                <BottomActionSheet
-                    isOpen={showSearchModal}
-                    onClose={() => setShowSearchModal(false)}
-                    title={tCommon('search')}
-                >
-                    <div className="relative w-full">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-                        <Input
-                            type="text"
-                            placeholder={tCommunities('searchPlaceholder')}
-                            value={localSearchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="h-11 rounded-xl pl-10 pr-10"
-                            autoFocus
-                        />
-                        {localSearchQuery && (
-                            <button
-                                type="button"
-                                onClick={handleSearchClear}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                            >
-                                <X size={18} />
-                            </button>
-                        )}
-                    </div>
-                </BottomActionSheet>
-            )}
 
             {/* Tappalka Modal */}
             <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>

@@ -2,6 +2,7 @@
 export * from "./BrandFormControl";
 export * from "./InfoCard";
 export * from "./PageHeader";
+export * from "./InlineSearchField";
 export * from "./BottomActionSheet";
 export * from "./CardHeader";
 export * from "./CardFooter";
