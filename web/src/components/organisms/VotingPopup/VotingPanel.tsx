@@ -84,7 +84,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const features = useFeaturesConfig();
     const enableCommentImageUploads = features.commentImageUploads;
     const isFutureVision = community?.typeTag === 'future-vision';
-    const allowDownvote = !isFutureVision && community?.votingSettings?.allowNegativeVoting !== false;
+    const allowDownvote = community?.votingSettings?.allowNegativeVoting !== false;
 
     // Direction is determined by the sign of amount
     const isPositive = amount >= 0;
@@ -139,9 +139,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const headerTitle = useMemo(() => {
         if (title) return title;
         if (commentMode === 'neutralOnly') return t("commentButton");
-        if (isFutureVision) return t("futureVisionSupportTitle");
         return t("voteTitle");
-    }, [title, commentMode, isFutureVision, t]);
+    }, [title, commentMode, t]);
     
     // Determine if quota bar should be shown
     const showQuotaBar = useMemo(() => {
@@ -313,7 +312,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             setAmount(0);
             return;
         }
-        // Future Vision is support-only (no downvotes)
         if (!hideQuota && !allowDownvote && value.startsWith('-')) {
             setInputValue('');
             setInputSign('');
@@ -618,7 +616,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {showWalletBar && (
                             <div className="flex-1 flex flex-col gap-2">
                                 <div className="text-sm font-medium text-base-content">
-                                    {currencySource === 'quota-and-wallet' && quotaRemaining === 0
+                                    {currencySource === 'quota-and-wallet' &&
+                                    dailyQuota > 0 &&
+                                    quotaRemaining === 0
                                         ? t("walletLabelQuotaExhausted")
                                         : t("walletLabel")}
                                 </div>
@@ -658,7 +658,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 onClick={handleDecrease}
                                 disabled={
                                     // Disable if:
-                                    // 0. Future Vision is support-only (can't go below 0)
                                     (!hideQuota && !allowDownvote && amount <= 0) ||
                                     // 1. Amount is 0 and no wallet balance (can't go negative)
                                     // 2. Amount is negative and already at minimum (-maxMinus or -walletBalance)
@@ -842,7 +841,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         if (onSubmitSimple) {
                             onSubmitSimple();
                         } else {
-                            onSubmit(isFutureVision ? true : isPositive);
+                            onSubmit(isPositive);
                         }
                     }}
                     disabled={isButtonDisabled}
@@ -853,7 +852,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("support")}
+                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("voteTitle")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (

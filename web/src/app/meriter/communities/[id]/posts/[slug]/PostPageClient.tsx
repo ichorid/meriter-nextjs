@@ -64,7 +64,10 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const { user } = useAuth();
     const utils = trpc.useUtils();
     const { data: publication, isLoading: publicationLoading, error: publicationError, isFetched: publicationFetched } = usePublication(slug);
+    const publicationCommunityId =
+        (publication as { communityId?: string } | undefined)?.communityId ?? chatId;
     const { data: community } = useCommunity(chatId);
+    const { data: votingContextCommunity } = useCommunity(publicationCommunityId);
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const isLeadInCommunity = userRoles.some(
         (r: { communityId: string; role: string }) => r.communityId === chatId && r.role === 'lead',
@@ -101,7 +104,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
         0, // minusGiven
         activeCommentHook, // activeCommentHook - still needed for reply comments
         true, // onlyPublication - show comments by default
-        chatId, // communityId
+        publicationCommunityId, // publication's home community (OB vs URL community)
         wallets, // wallets
         commentSort // sortBy
     );
@@ -408,7 +411,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 createdAt: (publication as Record<string, unknown>).createdAt,
                                 authorId: (publication as Record<string, unknown>).authorId,
                                 beneficiaryId: (publication as Record<string, unknown>).beneficiaryId,
-                                communityId: chatId,
+                                communityId: publicationCommunityId,
                                 slug: (publication as Record<string, unknown>).slug || (publication as Record<string, unknown>).id,
                                 content: (publication as Record<string, unknown>).content,
                                 permissions: (publication as Record<string, unknown>).permissions,
@@ -503,7 +506,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         onClick={() => {
                                             // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
                                             // Special groups preserve their restrictions.
-                                            const typeTag = community?.typeTag;
+                                            const typeTag = votingContextCommunity?.typeTag;
                                             const mode: 'standard' | 'wallet-only' | 'quota-only' =
                                                 typeTag === 'future-vision'
                                                     ? 'wallet-only'
@@ -516,7 +519,9 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         }}
                                         className="w-full"
                                     >
-                                        {tComments('commentButton')}
+                                        {votingContextCommunity?.typeTag === 'future-vision'
+                                            ? tComments('voteTitle')
+                                            : tComments('commentButton')}
                                     </Button>
                                 </div>
                             );
@@ -539,7 +544,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                     wallets={wallets}
                                     updateWalletBalance={() => { }}
                                     updateAll={() => { }}
-                                    communityId={chatId}
+                                    communityId={publicationCommunityId}
                                     isDetailPage={true}
                                 />
                             ))}

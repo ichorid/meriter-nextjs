@@ -41,6 +41,7 @@ function futureVisionGradient(name: string): [string, string] {
 
 export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const t = useTranslations('common');
+  const tComments = useTranslations('comments');
   const tShared = useTranslations('shared');
   const router = useRouter();
   const pathname = usePathname();
@@ -165,10 +166,10 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
               size="sm"
               className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
               onClick={handleSupportClick}
-              aria-label={t('support', { defaultValue: 'Support' })}
+              aria-label={tComments('voteTitle')}
             >
               <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="whitespace-nowrap">{t('support', { defaultValue: 'Support' })}</span>
+              <span className="whitespace-nowrap">{tComments('voteTitle')}</span>
             </Button>
           </div>
         </div>

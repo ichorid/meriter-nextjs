@@ -149,9 +149,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
   const calculatedMaxMinus =
-    community?.typeTag === 'future-vision' || community?.votingSettings?.allowNegativeVoting === false
-      ? 0
-      : (walletBalance || 0);
+    community?.votingSettings?.allowNegativeVoting === false ? 0 : (walletBalance || 0);
 
   // Use shared hook for form data management
   const { formData, handleCommentChange } = usePopupFormData({

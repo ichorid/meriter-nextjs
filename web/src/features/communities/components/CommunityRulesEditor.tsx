@@ -234,10 +234,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     getDefaultCurrencySource(community.votingSettings, community.typeTag)
   );
 
-  const [allowNegativeVoting, setAllowNegativeVoting] = useState<boolean>(() => {
-    if (community.typeTag === 'future-vision') return false;
-    return community.votingSettings?.allowNegativeVoting ?? true;
-  });
+  const [allowNegativeVoting, setAllowNegativeVoting] = useState<boolean>(
+    () => community.votingSettings?.allowNegativeVoting ?? true,
+  );
   
   const [forwardRule, setForwardRule] = useState<'standard' | 'project'>(
     (community.settings?.forwardRule as 'standard' | 'project') || 'standard'
@@ -290,10 +289,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       return (restriction as 'any' | 'not-same-team') || 'any';
     })(),
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
-    allowNegativeVoting:
-      community.typeTag === 'future-vision'
-        ? false
-        : (community.votingSettings?.allowNegativeVoting ?? true),
+    allowNegativeVoting: community.votingSettings?.allowNegativeVoting ?? true,
     startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
     quotaRecipients: (() => {
       const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
@@ -383,11 +379,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       setVotingRestriction((restriction as 'any' | 'not-same-team') || 'any');
     }
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
-    setAllowNegativeVoting(
-      community.typeTag === 'future-vision'
-        ? false
-        : (community.votingSettings?.allowNegativeVoting ?? true),
-    );
+    setAllowNegativeVoting(community.votingSettings?.allowNegativeVoting ?? true);
     setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
     const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
     setQuotaRecipients(recipients.filter((r): r is Role => r !== 'viewer'));
@@ -414,10 +406,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       return (restriction as 'any' | 'not-same-team') || 'any';
     })(),
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
-      allowNegativeVoting:
-        community.typeTag === 'future-vision'
-          ? false
-          : (community.votingSettings?.allowNegativeVoting ?? true),
+      allowNegativeVoting: community.votingSettings?.allowNegativeVoting ?? true,
       startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
       quotaRecipients: (() => {
       const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
@@ -480,7 +469,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         votingSettings: {
           votingRestriction: validVotingRestriction,
           currencySource,
-          allowNegativeVoting: community.typeTag === 'future-vision' ? false : allowNegativeVoting,
+          allowNegativeVoting,
         },
       };
       
@@ -501,7 +490,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         forwardRule,
         votingRestriction,
         currencySource,
-        allowNegativeVoting: community.typeTag === 'future-vision' ? false : allowNegativeVoting,
+        allowNegativeVoting,
         startingMerits,
         quotaRecipients: [...quotaRecipients],
         quotaEnabled,
@@ -538,6 +527,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setForwardRule(originalSettings.forwardRule);
     setVotingRestriction(originalSettings.votingRestriction);
     setCurrencySource(originalSettings.currencySource);
+    setAllowNegativeVoting(originalSettings.allowNegativeVoting);
     setStartingMerits(originalSettings.startingMerits);
     setQuotaRecipients([...originalSettings.quotaRecipients]);
     setQuotaEnabled(originalSettings.quotaEnabled);
@@ -558,6 +548,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       forwardRule !== originalSettings.forwardRule ||
       votingRestriction !== originalSettings.votingRestriction ||
       currencySource !== originalSettings.currencySource ||
+      allowNegativeVoting !== originalSettings.allowNegativeVoting ||
       startingMerits !== originalSettings.startingMerits ||
       JSON.stringify(quotaRecipients.sort()) !== JSON.stringify(originalSettings.quotaRecipients.sort()) ||
       quotaEnabled !== originalSettings.quotaEnabled
@@ -951,17 +942,12 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
         <BrandFormControl
           label={tSettings('allowNegativeVoting')}
-          helperText={
-            community.typeTag === 'future-vision'
-              ? tSettings('allowNegativeVotingFutureVisionHelp')
-              : tSettings('allowNegativeVotingHelp')
-          }
+          helperText={tSettings('allowNegativeVotingHelp')}
         >
           <div className="flex items-center gap-2.5">
             <Checkbox
               id="allowNegativeVoting"
-              checked={community.typeTag === 'future-vision' ? false : allowNegativeVoting}
-              disabled={community.typeTag === 'future-vision'}
+              checked={allowNegativeVoting}
               onCheckedChange={(checked) => setAllowNegativeVoting(Boolean(checked))}
             />
             <Label htmlFor="allowNegativeVoting" className="text-sm cursor-pointer">

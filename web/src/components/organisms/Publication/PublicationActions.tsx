@@ -551,7 +551,11 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onDevAddNegativeVote={handleDevAddNegativeVote}
         shareTitle={t('share')}
         commentsTitle={t('comments')}
-        voteLabel={tComments('commentButton')}
+        voteLabel={
+          community?.typeTag === 'future-vision'
+            ? tComments('voteTitle')
+            : tComments('commentButton')
+        }
         withdrawLabel={t('withdraw')}
         closePostTitle={tPostClosing('closePostTitle', { defaultValue: 'Close post' })}
         settingsTitle={tCommon('edit')}

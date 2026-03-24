@@ -57,6 +57,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
+  const tComments = useTranslations('comments');
   const tShared = useTranslations('shared');
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
 
@@ -349,10 +350,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                       size="sm"
                       className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0 border-base-300 bg-base-100/80"
                       onClick={handleObSupportClick}
-                      aria-label={tCommon('support', { defaultValue: 'Support' })}
+                      aria-label={tComments('voteTitle')}
                     >
                       <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="whitespace-nowrap">{tCommon('support', { defaultValue: 'Support' })}</span>
+                      <span className="whitespace-nowrap">{tComments('voteTitle')}</span>
                     </Button>
                   </div>
                 )}

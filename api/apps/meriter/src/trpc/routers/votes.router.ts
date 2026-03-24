@@ -347,16 +347,8 @@ async function createVoteLogic(
   // Default to "up" when not specified. Downvotes must be explicit.
   const direction: 'up' | 'down' = input.direction ?? 'up';
 
-  // Future Vision (OB): support-only voting
-  // - downvotes are forbidden
-  // - comment is required (even for weighted votes)
+  // Future Vision (OB): wallet-only on posts/comments; comment required for weighted votes
   if (community?.typeTag === 'future-vision' && (input.targetType === 'publication' || input.targetType === 'vote')) {
-    if (direction === 'down') {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Downvotes are not allowed in Future Vision',
-      });
-    }
     if (!input.comment?.trim()) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
@@ -366,7 +358,6 @@ async function createVoteLogic(
   }
 
   // Community-level setting: allow/disallow negative (down) votes.
-  // Default is allowed (except Future Vision where it is hard-forbidden above).
   if (direction === 'down' && community?.votingSettings?.allowNegativeVoting === false) {
     throw new TRPCError({
       code: 'FORBIDDEN',
