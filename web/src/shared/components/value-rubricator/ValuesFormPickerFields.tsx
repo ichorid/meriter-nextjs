@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import { Separator } from '@/components/ui/shadcn/separator';
-import { VALUE_TAGS_MAX_PER_POST } from '@meriter/shared-types';
+import { VALUE_TAGS_MAX_PER_POST } from '@meriter/shared-types/value-rubricator';
 
 export interface ValuesFormPickerFieldsProps {
   decree809Tags: string[];

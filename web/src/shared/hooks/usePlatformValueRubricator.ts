@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { trpc } from '@/lib/trpc/client';
-import { buildEffectiveRubricatorSections } from '@meriter/shared-types';
+import { buildEffectiveRubricatorSections } from '@meriter/shared-types/value-rubricator';
 
 export function usePlatformValueRubricatorSections() {
   const { data, isLoading } = trpc.platformSettings.get.useQuery(undefined, {

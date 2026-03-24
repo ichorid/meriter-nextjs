@@ -4,6 +4,16 @@
   "description": "Shared domain types for Meriter API and Frontend",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./value-rubricator": {
+      "types": "./dist/value-rubricator.d.ts",
+      "default": "./dist/value-rubricator.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
