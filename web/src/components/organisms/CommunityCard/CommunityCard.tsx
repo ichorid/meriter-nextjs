@@ -49,6 +49,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const t = useTranslations('common');
   const tCommunities = useTranslations('communities');
+  const tProjects = useTranslations('projects');
   const isActive = community?.isProject
     ? pathname === `/meriter/projects/${communityId}` || pathname?.startsWith(`/meriter/projects/${communityId}/`)
     : pathname?.includes(`/communities/${communityId}`);
@@ -201,6 +202,13 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                   }`}>
                   {community.name}
                 </div>
+                {community.isProject && community.isPersonalProject === true && (
+                  <span
+                    className={`text-[11px] font-medium uppercase tracking-wide mt-0.5 ${hasCover ? 'text-white/70' : 'text-base-content/50'}`}
+                  >
+                    {tProjects('personalProject')}
+                  </span>
+                )}
                 {/* Merits indicator - right below name */}
                 {showMerits && (
                   <div className="flex items-center gap-1 min-w-0 flex-shrink mt-0.5">

@@ -85,6 +85,11 @@ User-created team communities (`typeTag: 'team'`).
 | meritSettings / votingSettings / tappalkaSettings | Optional custom override blocks (effective values are merged with defaults at runtime) |
 | linkedCurrencies | Optional linked currency IDs |
 
+### Project communities (`isProject`)
+
+- **Standard project:** `parentCommunityId` links to the parent team/community. Parent lead may receive a `project_created` notification when a different user creates the project under that parent.
+- **Personal project:** `isPersonalProject === true`, no `parentCommunityId`; the logical owner is `founderUserId`. No parent-community notification on create. Invite links do not embed a parent team; accepting an invite adds the user only to the project, not to a parent community.
+
 ---
 
 ## Community Settings (Complete List)

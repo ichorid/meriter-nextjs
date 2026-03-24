@@ -69,6 +69,7 @@ export function CreateProjectForm() {
   const [investorShareInput, setInvestorShareInput] = useState('0');
   const [investingEnabled, setInvestingEnabled] = useState(false);
   const [openAdvancedSettings, setOpenAdvancedSettings] = useState(false);
+  const [personalProject, setPersonalProject] = useState(false);
   const [parentChoice, setParentChoice] = useState<string>('');
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
@@ -77,14 +78,38 @@ export function CreateProjectForm() {
 
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
 
+  const setPersonalProjectChecked = (checked: boolean) => {
+    setPersonalProject(checked);
+    if (checked) {
+      setParentChoice('');
+      setNewCommunityName('');
+      setNewCommunityFutureVision('');
+      setNewCommunityCover('');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (!parentChoice) return;
-    if (isNewCommunity && !newCommunityName.trim()) return;
-    if (isNewCommunity && !newCommunityFutureVision.trim()) return;
+    if (!personalProject && !parentChoice) return;
+    if (!personalProject && isNewCommunity && !newCommunityName.trim()) return;
+    if (!personalProject && isNewCommunity && !newCommunityFutureVision.trim()) return;
 
     const tagsPayload = valueTags.length > 0 ? valueTags : undefined;
+    if (personalProject) {
+      createProject.mutate({
+        name: name.trim(),
+        description: description.trim() || undefined,
+        projectDuration,
+        founderSharePercent: founderSharePercent || 0,
+        investorSharePercent: investingEnabled ? (investorSharePercent || 0) : 0,
+        investingEnabled,
+        personalProject: true,
+        futureVisionTags: tagsPayload,
+      });
+      return;
+    }
+
     createProject.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
@@ -128,44 +153,62 @@ export function CreateProjectForm() {
           rows={3}
         />
       </div>
-      <div>
-        <Label>{t('parentCommunity')} *</Label>
-        <Select value={parentChoice} onValueChange={setParentChoice} required>
-          <SelectTrigger>
-            <SelectValue placeholder={t('selectCommunityPlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            {administeredCommunities.length > 0 && (
-              <SelectGroup>
-                <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
-                {administeredCommunities.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-            {memberCommunities.length > 0 && (
-              <SelectGroup>
-                <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
-                {memberCommunities.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            )}
-            <SelectSeparator className="my-2" />
-            <SelectItem
-              value={NEW_COMMUNITY_VALUE}
-              className="font-semibold border-t border-base-200 pt-2 mt-1 bg-base-200/50 dark:bg-base-300/50"
-            >
-              {t('createNewCommunity')}
-            </SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col gap-2 rounded-lg border border-base-300 p-3">
+        <div className="flex items-start gap-3">
+          <Checkbox
+            id="personalProject"
+            checked={personalProject}
+            onCheckedChange={(c) => setPersonalProjectChecked(c === true)}
+            disabled={createProject.isPending}
+          />
+          <div className="space-y-1 min-w-0">
+            <Label htmlFor="personalProject" className="text-sm font-medium cursor-pointer leading-tight">
+              {t('personalProject')}
+            </Label>
+            <p className="text-xs text-base-content/60">{t('personalProjectHint')}</p>
+          </div>
+        </div>
       </div>
-      {!!parentChoice && (
+      {!personalProject && (
+        <div>
+          <Label>{t('parentCommunity')} *</Label>
+          <Select value={parentChoice} onValueChange={setParentChoice} required>
+            <SelectTrigger>
+              <SelectValue placeholder={t('selectCommunityPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              {administeredCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
+                  {administeredCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              {memberCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
+                  {memberCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              <SelectSeparator className="my-2" />
+              <SelectItem
+                value={NEW_COMMUNITY_VALUE}
+                className="font-semibold border-t border-base-200 pt-2 mt-1 bg-base-200/50 dark:bg-base-300/50"
+              >
+                {t('createNewCommunity')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      {(personalProject || !!parentChoice) && (
         <ValuesFormPickerFields
           decree809Tags={rubricatorSections.decree809}
           adminExtrasTags={rubricatorSections.adminExtras}

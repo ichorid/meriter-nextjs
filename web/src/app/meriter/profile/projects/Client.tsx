@@ -14,7 +14,6 @@ import { useWallets } from '@/hooks/api';
 import { Loader2 } from 'lucide-react';
 
 export default function ProfileProjectsPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('profile');
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();

@@ -7,25 +7,41 @@ import {
 } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
-const createProjectInputSchema = z.object({
-  name: z.string().min(1).max(200),
-  description: z.string().max(5000).optional(),
-  projectDuration: ProjectDurationSchema.optional(),
-  founderSharePercent: z.number().int().min(0).max(100).optional(),
-  investorSharePercent: z.number().int().min(0).max(100).optional(),
-  investingEnabled: z.boolean().optional(),
-  parentCommunityId: z.string().optional(),
-  futureVisionTags: z.array(z.string()).optional(),
-  newCommunity: z
-    .object({
-      name: z.string().min(1).max(200),
-      futureVisionText: z.string().max(5000).optional(),
-      futureVisionTags: z.array(z.string()).optional(),
-      futureVisionCover: z.string().url().optional(),
-      typeTag: z.enum(['team', 'custom']).optional(),
-    })
-    .optional(),
-});
+const createProjectInputSchema = z
+  .object({
+    name: z.string().min(1).max(200),
+    description: z.string().max(5000).optional(),
+    projectDuration: ProjectDurationSchema.optional(),
+    founderSharePercent: z.number().int().min(0).max(100).optional(),
+    investorSharePercent: z.number().int().min(0).max(100).optional(),
+    investingEnabled: z.boolean().optional(),
+    parentCommunityId: z.string().optional(),
+    personalProject: z.boolean().optional(),
+    futureVisionTags: z.array(z.string()).optional(),
+    newCommunity: z
+      .object({
+        name: z.string().min(1).max(200),
+        futureVisionText: z.string().max(5000).optional(),
+        futureVisionTags: z.array(z.string()).optional(),
+        futureVisionCover: z.string().url().optional(),
+        typeTag: z.enum(['team', 'custom']).optional(),
+      })
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasParent = Boolean(data.parentCommunityId?.trim());
+    const hasNew = data.newCommunity !== undefined;
+    const personal = data.personalProject === true;
+    const modes = (hasParent ? 1 : 0) + (hasNew ? 1 : 0) + (personal ? 1 : 0);
+    if (modes !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Specify exactly one of: parentCommunityId, newCommunity, or personalProject true',
+        path: ['personalProject'],
+      });
+    }
+  });
 
 export const projectRouter = router({
   create: protectedProcedure
@@ -41,7 +57,8 @@ export const projectRouter = router({
         founderSharePercent: input.founderSharePercent,
         investorSharePercent: input.investorSharePercent,
         investingEnabled: input.investingEnabled,
-        parentCommunityId: input.parentCommunityId,
+        parentCommunityId: input.parentCommunityId?.trim() || undefined,
+        personalProject: input.personalProject,
         futureVisionTags: input.futureVisionTags,
         newCommunity: input.newCommunity,
       });

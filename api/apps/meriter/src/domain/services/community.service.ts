@@ -76,6 +76,8 @@ export interface CreateCommunityDto {
   investorSharePercent?: number;
   founderUserId?: string;
   parentCommunityId?: string;
+  /** When true with typeTag project: no parent community (owner is founderUserId). */
+  isPersonalProject?: boolean;
   projectStatus?: 'active' | 'closed' | 'archived';
   communityWalletId?: string;
   futureVisionText?: string;
@@ -630,6 +632,9 @@ export class CommunityService {
       if (dto.investorSharePercent !== undefined) community.investorSharePercent = dto.investorSharePercent;
       if (dto.founderUserId !== undefined) community.founderUserId = dto.founderUserId;
       if (dto.parentCommunityId !== undefined) community.parentCommunityId = dto.parentCommunityId;
+      if (dto.isPersonalProject === true) {
+        community.isPersonalProject = true;
+      }
       if (dto.communityWalletId !== undefined) community.communityWalletId = dto.communityWalletId;
     }
 

@@ -36,6 +36,8 @@ export interface ProjectHeroParentCommunity {
 export interface ProjectHeroProps {
   project: ProjectHeroProject;
   parentCommunity: ProjectHeroParentCommunity | null;
+  /** When true, show personal-project line instead of parent community link. */
+  isPersonalProject?: boolean;
   statusLabel: string;
   status: 'active' | 'closed' | 'archived';
   /** Lead or superadmin: project settings shortcut on cover. */
@@ -136,16 +138,20 @@ export function ProjectHero({
             </div>
           )}
 
-          {parentCommunity && (
-            <p className="text-sm text-base-content/60">
-              {t('parentCommunity')}:{' '}
-              <Link
-                href={`/meriter/communities/${parentCommunity.id}`}
-                className="text-blue-400 hover:underline"
-              >
-                {parentCommunity.name}
-              </Link>
-            </p>
+          {isPersonalProject ? (
+            <p className="text-sm text-base-content/60">{t('personalProject')}</p>
+          ) : (
+            parentCommunity && (
+              <p className="text-sm text-base-content/60">
+                {t('parentCommunity')}:{' '}
+                <Link
+                  href={`/meriter/communities/${parentCommunity.id}`}
+                  className="text-blue-400 hover:underline"
+                >
+                  {parentCommunity.name}
+                </Link>
+              </p>
+            )
           )}
         </div>
       </div>

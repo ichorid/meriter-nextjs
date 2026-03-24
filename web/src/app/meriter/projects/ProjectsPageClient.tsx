@@ -205,19 +205,14 @@ export default function ProjectsPageClient() {
           <ul className="flex flex-col gap-4 list-none p-0 m-0">
             {items.map(({ project, parentCommunityName }) => (
               <li key={project.id}>
-                {parentCommunityName && project.parentCommunityId && (
+                {parentCommunityName && project.parentCommunityId ? (
                   <Link
                     href={routes.community(project.parentCommunityId)}
                     className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-base-content/50 hover:text-base-content/80 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     {parentCommunityName}
                   </Link>
-                )}
-                {parentCommunityName && !project.parentCommunityId && (
-                  <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-base-content/50">
-                    {parentCommunityName}
-                  </p>
-                )}
+                ) : null}
                 <ProjectCard project={project} onValueTagClick={toggleValueTag} />
               </li>
             ))}

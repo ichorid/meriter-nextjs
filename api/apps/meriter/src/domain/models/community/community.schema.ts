@@ -208,6 +208,8 @@ export interface Community {
   investorSharePercent?: number;
   founderUserId?: string;
   parentCommunityId?: string;
+  /** True when project has no parent community (owner is founderUserId). */
+  isPersonalProject?: boolean;
   projectStatus?: 'active' | 'closed' | 'archived';
   communityWalletId?: string;
   rejectionMessage?: string;
@@ -434,6 +436,9 @@ export class CommunitySchemaClass implements Community {
   /** Parent community id (string, same as Community.id). Stored as string to match app IDs. */
   @Prop({ type: String })
   parentCommunityId?: string;
+
+  @Prop({ type: Boolean, default: false })
+  isPersonalProject?: boolean;
 
   @Prop({ type: String, enum: ['active', 'closed', 'archived'] })
   projectStatus?: 'active' | 'closed' | 'archived';

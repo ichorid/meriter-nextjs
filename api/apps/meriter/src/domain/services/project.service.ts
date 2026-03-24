@@ -32,8 +32,10 @@ export interface CreateProjectDto {
   investorSharePercent?: number;
   /** When true, project accepts investments; investor share is then used. Cannot be changed after create. */
   investingEnabled?: boolean;
-  /** When set, project is linked to this community. Required unless newCommunity is set. */
+  /** When set, project is linked to this community. Mutually exclusive with personalProject and newCommunity. */
   parentCommunityId?: string;
+  /** When true, project has no parent community (owner is creator). Mutually exclusive with parentCommunityId and newCommunity. */
+  personalProject?: boolean;
   /** When set, create a new community first and use it as parent. */
   newCommunity?: {
     name: string;
@@ -88,9 +90,51 @@ export class ProjectService {
    * If newCommunity is provided, creates parent community first; on project creation failure, deletes the new parent (compensation).
    */
   async createProject(userId: string, dto: CreateProjectDto): Promise<Community> {
+    if (dto.personalProject) {
+      if (dto.parentCommunityId || dto.newCommunity) {
+        throw new BadRequestException(
+          'personalProject cannot be combined with parentCommunityId or newCommunity',
+        );
+      }
+    }
+
     let createdParentId: string | null = null;
 
     try {
+      if (dto.personalProject) {
+        const project = await this.communityService.createCommunity({
+          name: dto.name,
+          description: dto.description,
+          typeTag: 'project',
+          settings: {
+            postCost: 0,
+            investingEnabled: dto.investingEnabled ?? false,
+          },
+          isProject: true,
+          isPersonalProject: true,
+          founderUserId: userId,
+          projectStatus: 'active',
+          projectDuration: dto.projectDuration,
+          founderSharePercent: dto.founderSharePercent ?? 0,
+          investorSharePercent: dto.investorSharePercent ?? 0,
+          futureVisionTags: dto.futureVisionTags,
+        });
+
+        const wallet = await this.communityWalletService.createWallet(project.id);
+        await this.communityService.updateCommunity(project.id, {
+          communityWalletId: wallet.id,
+        });
+
+        await this.communityService.addMember(project.id, userId);
+        await this.userService.addCommunityMembership(userId, project.id);
+        await this.userCommunityRoleService.setRole(userId, project.id, 'lead');
+
+        this.logger.log(`Personal project created: ${project.id} by user ${userId}`);
+        const updated = await this.communityService.getCommunity(project.id);
+        if (!updated) throw new NotFoundException('Project not found after create');
+        return updated;
+      }
+
       let parentCommunityId: string | undefined = dto.parentCommunityId;
 
       if (dto.newCommunity) {
@@ -112,7 +156,9 @@ export class ProjectService {
       }
 
       if (!parentCommunityId) {
-        throw new BadRequestException('parentCommunityId or newCommunity is required');
+        throw new BadRequestException(
+          'parentCommunityId, newCommunity, or personalProject is required',
+        );
       }
 
       const parentExists = await this.communityService.getCommunity(parentCommunityId);

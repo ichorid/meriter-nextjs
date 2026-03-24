@@ -119,6 +119,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
             futureVisionCover: project.futureVisionCover,
           }}
           parentCommunity={parentCommunity ? { id: parentCommunity.id, name: parentCommunity.name } : null}
+          isPersonalProject={project.isPersonalProject === true}
           statusLabel={statusLabel}
           status={heroStatus}
           showModerationLinks={canModerateCover}

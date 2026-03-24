@@ -108,6 +108,9 @@ export function ProjectCard({
             {statusLabel}
           </Badge>
         </div>
+        {project.isPersonalProject === true && (
+          <p className="text-xs font-medium uppercase tracking-wide text-base-content/50 mb-2">{t('personalProject')}</p>
+        )}
         {project.description && (
           <p className="text-sm text-base-content/70 mb-2 line-clamp-2">{project.description}</p>
         )}

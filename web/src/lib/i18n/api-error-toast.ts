@@ -52,6 +52,11 @@ export const KNOWN_API_ERROR_KEYS: Record<string, string> = {
   'Amount must be a positive integer': 'amountPositiveInteger',
   'Parent community not found': 'parentCommunityNotFound',
   'parentCommunityId or newCommunity is required': 'parentOrNewCommunityRequired',
+  'parentCommunityId, newCommunity, or personalProject is required': 'parentOrNewCommunityOrPersonalRequired',
+  'Specify exactly one of: parentCommunityId, newCommunity, or personalProject true':
+    'projectCreateExactlyOneMode',
+  'personalProject cannot be combined with parentCommunityId or newCommunity':
+    'personalProjectConflictWithParent',
   'Team has no lead': 'teamHasNoLead',
   'Request is not pending': 'requestNotPending',
   'Invitation is not pending': 'invitationNotPending',

@@ -365,6 +365,7 @@ export const CommunitySchema = IdentifiableSchema.merge(
   investorSharePercent: z.number().int().min(0).max(100).optional(),
   founderUserId: z.string().optional(),
   parentCommunityId: z.string().optional(),
+  isPersonalProject: z.boolean().optional().default(false),
   projectStatus: ProjectStatusSchema.optional(),
   communityWalletId: z.string().optional(),
   rejectionMessage: z.string().optional(),
