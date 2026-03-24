@@ -493,7 +493,7 @@ export class PlatformDemoSeedService {
         'demo_seed',
         uid,
         DEFAULT_CURRENCY,
-        'Стартовый демо-баланс (глобальные мериты)',
+        'Стартовый демо-баланс (глобальные заслуги)',
       );
     }
 
@@ -524,7 +524,7 @@ export class PlatformDemoSeedService {
           'demo_seed',
           team.id,
           cur,
-          'Мериты команды (демо)',
+          'Заслуги команды (демо)',
         );
       }
     }
