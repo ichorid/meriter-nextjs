@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
-import { Label } from '@/components/ui/shadcn/label';
 import { Separator } from '@/components/ui/shadcn/separator';
+import { CollapsibleSection } from '@/components/ui/taxonomy/CollapsibleSection';
 import { VALUE_TAGS_MAX_PER_POST } from '@meriter/shared-types/value-rubricator';
 
 export interface ValuesFormPickerFieldsProps {
@@ -24,6 +24,7 @@ export function ValuesFormPickerFields({
   disabled,
 }: ValuesFormPickerFieldsProps) {
   const t = useTranslations('valuesRubricator');
+  const [sectionOpen, setSectionOpen] = useState(true);
   const [custom, setCustom] = useState('');
 
   const toggle = (tag: string) => {
@@ -81,72 +82,77 @@ export function ValuesFormPickerFields({
   };
 
   return (
-    <div className="space-y-4 rounded-xl border border-base-300 p-4">
-      <Label className="text-base">{t('formSectionTitle')}</Label>
-      <p className="text-xs text-base-content/60">{t('formSectionHelp')}</p>
-      {renderGroup(t('decree809Section'), decree809Tags)}
-      {decree809Tags.length > 0 && adminExtrasTags.length > 0 && (
+    <CollapsibleSection
+      title={t('formSectionTitle')}
+      summary={t('formSectionHelp')}
+      open={sectionOpen}
+      setOpen={setSectionOpen}
+    >
+      <div className="space-y-4 border-t border-base-300 pt-4">
+        {renderGroup(t('decree809Section'), decree809Tags)}
+        {decree809Tags.length > 0 && adminExtrasTags.length > 0 && (
+          <Separator />
+        )}
+        {renderGroup(t('adminExtrasSection'), adminExtrasTags)}
         <Separator />
-      )}
-      {renderGroup(t('adminExtrasSection'), adminExtrasTags)}
-      <Separator />
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
-          {t('customLabel')}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {valueTags
-            .filter(
-              (vt) =>
-                !decree809Tags.some(
-                  (d) => d.toLowerCase() === vt.toLowerCase(),
-                ) &&
-                !adminExtrasTags.some(
-                  (a) => a.toLowerCase() === vt.toLowerCase(),
-                ),
-            )
-            .map((vt) => (
-              <Button
-                key={vt}
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={disabled}
-                onClick={() =>
-                  onChange(valueTags.filter((x) => x !== vt))
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
+            {t('customLabel')}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {valueTags
+              .filter(
+                (vt) =>
+                  !decree809Tags.some(
+                    (d) => d.toLowerCase() === vt.toLowerCase(),
+                  ) &&
+                  !adminExtrasTags.some(
+                    (a) => a.toLowerCase() === vt.toLowerCase(),
+                  ),
+              )
+              .map((vt) => (
+                <Button
+                  key={vt}
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={disabled}
+                  onClick={() =>
+                    onChange(valueTags.filter((x) => x !== vt))
+                  }
+                >
+                  {vt} ×
+                </Button>
+              ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              placeholder={t('customPlaceholder')}
+              disabled={disabled}
+              className="h-10 rounded-xl flex-1"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addCustom();
                 }
-              >
-                {vt} ×
-              </Button>
-            ))}
+              }}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              disabled={disabled || !custom.trim()}
+              onClick={addCustom}
+            >
+              {t('customAdd')}
+            </Button>
+          </div>
+          <p className="text-xs text-base-content/50">
+            {t('maxTags', { max: VALUE_TAGS_MAX_PER_POST })}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Input
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            placeholder={t('customPlaceholder')}
-            disabled={disabled}
-            className="h-10 rounded-xl flex-1"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                addCustom();
-              }
-            }}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled || !custom.trim()}
-            onClick={addCustom}
-          >
-            {t('customAdd')}
-          </Button>
-        </div>
-        <p className="text-xs text-base-content/50">
-          {t('maxTags', { max: VALUE_TAGS_MAX_PER_POST })}
-        </p>
       </div>
-    </div>
+    </CollapsibleSection>
   );
 }
