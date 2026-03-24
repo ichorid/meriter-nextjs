@@ -43,6 +43,9 @@ export default function ProjectsPageClient() {
 
   const debouncedSearch = useDebounce(searchQuery, 350);
 
+  const projectStatus =
+    statusFilter === 'all' ? undefined : (statusFilter as 'active' | 'closed' | 'archived');
+
   const listInput = useMemo(
     () => ({
       page: 1 as const,
@@ -74,9 +77,6 @@ export default function ProjectsPageClient() {
       : [...selectedValueTags, tag];
     setValueTagsInUrl(next);
   };
-
-  const projectStatus =
-    statusFilter === 'all' ? undefined : (statusFilter as 'active' | 'closed' | 'archived');
 
   const items = data?.data ?? [];
 
