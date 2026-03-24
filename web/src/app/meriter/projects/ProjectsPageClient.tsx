@@ -79,8 +79,13 @@ export default function ProjectsPageClient() {
     setShowSearchModal(true);
   };
 
-  const handleCloseSearch = () => {
-    setSearchQuery(localSearchQuery);
+  const dismissSearchModal = () => {
+    setLocalSearchQuery(searchQuery);
+    setShowSearchModal(false);
+  };
+
+  const applyProjectSearch = () => {
+    setSearchQuery(localSearchQuery.trim());
     setShowSearchModal(false);
   };
 
@@ -170,27 +175,54 @@ export default function ProjectsPageClient() {
         </div>
 
         {showSearchModal && (
-          <BottomActionSheet isOpen={showSearchModal} onClose={handleCloseSearch} title={tCommon('search')}>
-            <div className="relative w-full">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-              <Input
-                type="text"
-                placeholder={tCommon('searchPlaceholder')}
-                value={localSearchQuery}
-                onChange={(e) => setLocalSearchQuery(e.target.value)}
-                className="h-11 rounded-xl pl-10 pr-10"
-                autoFocus
-              />
-              {localSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setLocalSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
+          <BottomActionSheet
+            isOpen={showSearchModal}
+            onClose={dismissSearchModal}
+            title={tCommon('search')}
+            footer={
+              <Button
+                type="submit"
+                form="projects-search-form"
+                className="h-11 w-full rounded-xl text-base font-medium"
+              >
+                {tCommon('find')}
+              </Button>
+            }
+          >
+            <form
+              id="projects-search-form"
+              className="space-y-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                applyProjectSearch();
+              }}
+            >
+              <div className="relative w-full">
+                <Search
+                  size={18}
+                  className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input
+                  type="search"
+                  enterKeyHint="search"
+                  placeholder={tCommon('searchPlaceholder')}
+                  value={localSearchQuery}
+                  onChange={(e) => setLocalSearchQuery(e.target.value)}
+                  className="h-11 rounded-xl pl-10 pr-10"
+                  autoFocus
+                />
+                {localSearchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setLocalSearchQuery('')}
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={tCommon('clearSearch')}
+                  >
+                    <X size={18} />
+                  </button>
+                ) : null}
+              </div>
+            </form>
           </BottomActionSheet>
         )}
 

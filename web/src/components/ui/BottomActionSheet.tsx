@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 
@@ -9,6 +9,8 @@ interface BottomActionSheetProps {
     onClose: () => void;
     title?: string;
     children: React.ReactNode;
+    /** Sticky footer below scrollable content (e.g. primary actions) */
+    footer?: React.ReactNode;
 }
 
 export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSheetProps>(({
@@ -16,7 +18,9 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
     onClose,
     title,
     children,
+    footer,
 }, ref) => {
+    const titleHeadingId = useId();
     const [mounted, setMounted] = useState(false);
     const [visible, setVisible] = useState(false);
 
@@ -66,34 +70,46 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
 
             {/* Sheet */}
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={title ? titleHeadingId : undefined}
                 className={`
-                    relative w-full max-w-lg bg-base-100 rounded-xl shadow-2xl
+                    relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-base-200/70 bg-base-100 shadow-2xl
                     transform transition-all duration-300 ease-out
                     ${visible ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}
                 `}
+                onClick={(e) => e.stopPropagation()}
             >
 
                 {/* Header */}
-                <div className="flex items-center justify-between px-5 pt-4 pb-3">
+                <div className="flex items-center gap-3 border-b border-base-200/80 px-5 pt-4 pb-3">
                     {title ? (
-                        <h2 className="text-lg font-semibold text-base-content">
+                        <h2 id={titleHeadingId} className="min-w-0 flex-1 text-lg font-semibold tracking-tight text-base-content">
                             {title}
                         </h2>
                     ) : (
-                        <div />
+                        <div className="flex-1" />
                     )}
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-2 -mr-2 text-base-content/50 hover:text-base-content rounded-full hover:bg-base-content/5 transition-colors"
+                        className="shrink-0 rounded-full p-2 text-base-content/50 transition-colors hover:bg-base-200/80 hover:text-base-content"
+                        aria-label={title ? undefined : 'Close'}
                     >
-                        <X size={20} />
+                        <X size={20} aria-hidden />
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="px-5 pb-8 max-h-[70vh] overflow-y-auto">
+                <div className={`max-h-[min(70vh,28rem)] overflow-y-auto px-5 pt-4 ${footer ? 'pb-4' : 'pb-8'}`}>
                     {children}
                 </div>
+
+                {footer ? (
+                    <div className="border-t border-base-200/80 bg-base-200/20 px-5 py-4">
+                        {footer}
+                    </div>
+                ) : null}
             </div>
         </div>
     );

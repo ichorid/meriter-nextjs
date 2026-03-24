@@ -43,16 +43,18 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         }
     };
 
-    const handleSearch = (value: string) => {
-        setSearchQuery(value);
+    const applySearchFromModal = () => {
+        const q = searchQuery.trim();
         if (onSearch) {
-            onSearch(value);
-        } else {
-            // Default: navigate to search page
-            if (value.trim()) {
-                router.push(`/meriter/search?q=${encodeURIComponent(value.trim())}`);
-            }
+            onSearch(q);
+        } else if (q) {
+            router.push(`/meriter/search?q=${encodeURIComponent(q)}`);
         }
+        setShowSearchModal(false);
+    };
+
+    const dismissSearchModal = () => {
+        setShowSearchModal(false);
     };
 
     const handleSearchClear = () => {
@@ -113,31 +115,50 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             {showSearch && (
                 <BottomActionSheet
                     isOpen={showSearchModal}
-                    onClose={() => setShowSearchModal(false)}
+                    onClose={dismissSearchModal}
                     title={t('search')}
+                    footer={
+                        <Button
+                            type="submit"
+                            form="page-header-search-form"
+                            className="h-11 w-full rounded-xl text-base font-medium"
+                            disabled={!onSearch && !searchQuery.trim()}
+                        >
+                            {t('find')}
+                        </Button>
+                    }
                 >
-                    <div className="space-y-4">
+                    <form
+                        id="page-header-search-form"
+                        className="space-y-4"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            applySearchFromModal();
+                        }}
+                    >
                         <div className="relative w-full">
-                            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+                            <Search size={18} className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground" />
                             <Input
-                                type="text"
+                                type="search"
+                                enterKeyHint="search"
                                 placeholder={t('searchPlaceholder')}
                                 value={searchQuery}
-                                onChange={(e) => handleSearch(e.target.value)}
-                                className={cn('h-11 rounded-xl pl-10 w-full', searchQuery && 'pr-10')}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className={cn('h-11 w-full rounded-xl pl-10', searchQuery && 'pr-10')}
+                                autoFocus
                             />
-                            {searchQuery && (
+                            {searchQuery ? (
                                 <button
                                     type="button"
                                     onClick={handleSearchClear}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
+                                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                                     aria-label={t('clearSearch')}
                                 >
                                     <X size={18} />
                                 </button>
-                            )}
+                            ) : null}
                         </div>
-                    </div>
+                    </form>
                 </BottomActionSheet>
             )}
         </>

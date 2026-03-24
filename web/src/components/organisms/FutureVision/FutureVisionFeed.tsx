@@ -121,8 +121,13 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
     setShowSearchModal(true);
   };
 
-  const handleCloseSearch = () => {
-    setSearchQuery(localSearchQuery);
+  const dismissSearchModal = () => {
+    setLocalSearchQuery(searchQuery);
+    setShowSearchModal(false);
+  };
+
+  const applyFvSearch = () => {
+    setSearchQuery(localSearchQuery.trim());
     setShowSearchModal(false);
   };
 
@@ -242,29 +247,48 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
       {showSearchModal && (
         <BottomActionSheet
           isOpen={showSearchModal}
-          onClose={handleCloseSearch}
+          onClose={dismissSearchModal}
           title={t('search')}
+          footer={
+            <Button type="submit" form="fv-search-form" className="h-11 w-full rounded-xl text-base font-medium">
+              {t('find')}
+            </Button>
+          }
         >
-          <div className="relative w-full">
-            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-            <Input
-              type="text"
-              placeholder={t('searchPlaceholder')}
-              value={localSearchQuery}
-              onChange={(e) => setLocalSearchQuery(e.target.value)}
-              className="h-11 rounded-xl pl-10 pr-10"
-              autoFocus
-            />
-            {localSearchQuery && (
-              <button
-                type="button"
-                onClick={() => setLocalSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-              >
-                <X size={18} />
-              </button>
-            )}
-          </div>
+          <form
+            id="fv-search-form"
+            className="space-y-1"
+            onSubmit={(e) => {
+              e.preventDefault();
+              applyFvSearch();
+            }}
+          >
+            <div className="relative w-full">
+              <Search
+                size={18}
+                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                type="search"
+                enterKeyHint="search"
+                placeholder={t('searchPlaceholder')}
+                value={localSearchQuery}
+                onChange={(e) => setLocalSearchQuery(e.target.value)}
+                className="h-11 rounded-xl pl-10 pr-10"
+                autoFocus
+              />
+              {localSearchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setLocalSearchQuery('')}
+                  className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={t('clearSearch')}
+                >
+                  <X size={18} />
+                </button>
+              ) : null}
+            </div>
+          </form>
         </BottomActionSheet>
       )}
     </div>

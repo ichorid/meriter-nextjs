@@ -128,24 +128,28 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [showTappalkaModal, setShowTappalkaModal] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-    // Handle search query change
-    const handleSearchChange = (value: string) => {
+    const handleSearchDraftChange = (value: string) => {
         setLocalSearchQuery(value);
+    };
+
+    const clearSearchDraft = () => {
+        setLocalSearchQuery('');
+    };
+
+    const applyCommunitySearch = () => {
         const params = new URLSearchParams(searchParams?.toString() ?? '');
-        if (value.trim()) {
-            params.set('q', value.trim());
+        if (localSearchQuery.trim()) {
+            params.set('q', localSearchQuery.trim());
         } else {
             params.delete('q');
         }
         router.push(`?${params.toString()}`);
+        setShowSearchModal(false);
     };
 
-    // Handle search clear
-    const handleSearchClear = () => {
-        setLocalSearchQuery('');
-        const params = new URLSearchParams(searchParams?.toString() ?? '');
-        params.delete('q');
-        router.push(`?${params.toString()}`);
+    const dismissCommunitySearchModal = () => {
+        setLocalSearchQuery(searchQuery);
+        setShowSearchModal(false);
     };
 
     // Sync local search query with URL params
@@ -857,7 +861,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setShowSearchModal(true)}
+                                onClick={() => {
+                                    setLocalSearchQuery(searchQuery);
+                                    setShowSearchModal(true);
+                                }}
                                 className="rounded-xl active:scale-[0.98] px-2"
                                 aria-label={tCommon('search')}
                                 title={tCommon('search')}
@@ -1285,29 +1292,52 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {showSearchModal && (
                 <BottomActionSheet
                     isOpen={showSearchModal}
-                    onClose={() => setShowSearchModal(false)}
+                    onClose={dismissCommunitySearchModal}
                     title={tCommon('search')}
+                    footer={
+                        <Button
+                            type="submit"
+                            form="community-feed-search-form"
+                            className="h-11 w-full rounded-xl text-base font-medium"
+                        >
+                            {tCommon('find')}
+                        </Button>
+                    }
                 >
-                    <div className="relative w-full">
-                        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
-                        <Input
-                            type="text"
-                            placeholder={tCommunities('searchPlaceholder')}
-                            value={localSearchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="h-11 rounded-xl pl-10 pr-10"
-                            autoFocus
-                        />
-                        {localSearchQuery && (
-                            <button
-                                type="button"
-                                onClick={handleSearchClear}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors z-10"
-                            >
-                                <X size={18} />
-                            </button>
-                        )}
-                    </div>
+                    <form
+                        id="community-feed-search-form"
+                        className="space-y-1"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            applyCommunitySearch();
+                        }}
+                    >
+                        <div className="relative w-full">
+                            <Search
+                                size={18}
+                                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
+                            />
+                            <Input
+                                type="search"
+                                enterKeyHint="search"
+                                placeholder={tCommunities('searchPlaceholder')}
+                                value={localSearchQuery}
+                                onChange={(e) => handleSearchDraftChange(e.target.value)}
+                                className="h-11 rounded-xl pl-10 pr-10"
+                                autoFocus
+                            />
+                            {localSearchQuery ? (
+                                <button
+                                    type="button"
+                                    onClick={clearSearchDraft}
+                                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                                    aria-label={tCommon('clearSearch')}
+                                >
+                                    <X size={18} />
+                                </button>
+                            ) : null}
+                        </div>
+                    </form>
                 </BottomActionSheet>
             )}
 
