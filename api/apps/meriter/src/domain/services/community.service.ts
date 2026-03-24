@@ -819,6 +819,11 @@ export class CommunityService {
       if (dto.votingSettings.meritConversion !== undefined) {
         votingSettingsUpdate['votingSettings.meritConversion'] = dto.votingSettings.meritConversion;
       }
+      if ('allowNegativeVoting' in dto.votingSettings) {
+        votingSettingsUpdate['votingSettings.allowNegativeVoting'] = Boolean(
+          dto.votingSettings.allowNegativeVoting,
+        );
+      }
 
       // Merge votingSettings into updateData
       Object.assign(updateData, votingSettingsUpdate);

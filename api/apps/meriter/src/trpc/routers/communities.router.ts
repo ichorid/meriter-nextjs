@@ -505,19 +505,10 @@ export const communitiesRouter = router({
         }
       }
 
-      console.log(`[CommunitiesRouter] Updating community ${input.id}, received data: ${JSON.stringify(input.data)}`);
-      console.log(`[CommunitiesRouter] Settings in received data: ${JSON.stringify(input.data.settings)}`);
-      console.log(`[CommunitiesRouter] VotingSettings in received data: ${JSON.stringify(input.data.votingSettings)}`);
-      console.log(`[CommunitiesRouter] currencySource in votingSettings: ${input.data.votingSettings?.currencySource}`);
-      const settings = input.data.settings as { canPayPostFromQuota?: boolean } | undefined;
-      console.log(`[CommunitiesRouter] canPayPostFromQuota in settings: ${settings?.canPayPostFromQuota}`);
-      
       const community = await ctx.communityService.updateCommunity(
         input.id,
         input.data,
       );
-      
-      console.log(`[CommunitiesRouter] After update, community settings.canPayPostFromQuota: ${community.settings?.canPayPostFromQuota}`);
 
       const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
       const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
