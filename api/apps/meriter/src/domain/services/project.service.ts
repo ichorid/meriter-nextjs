@@ -325,6 +325,8 @@ export class ProjectService {
       project: Community;
       parentCommunityName: string | null;
       parentFutureVisionText: string | null;
+      /** Set for personal projects: founder display label for hub row above the card. */
+      founderDisplayName: string | null;
     }>;
     total: number;
     page: number;
@@ -346,14 +348,39 @@ export class ProjectService {
       }
     }
 
+    const founderIds = [
+      ...new Set(
+        result.data
+          .filter((p) => p.isPersonalProject === true && p.founderUserId)
+          .map((p) => p.founderUserId as string),
+      ),
+    ];
+    const founderDisplayById = new Map<string, string>();
+    for (const fid of founderIds) {
+      const u = await this.userService.getUserById(fid);
+      if (u) {
+        const label =
+          u.displayName?.trim() ||
+          u.username?.trim() ||
+          [u.firstName, u.lastName].filter(Boolean).join(' ').trim() ||
+          u.id;
+        founderDisplayById.set(fid, label);
+      }
+    }
+
     const data = result.data.map((project) => {
       const parent = project.parentCommunityId
         ? parentCommunities.get(project.parentCommunityId)
         : null;
+      const founderDisplayName =
+        project.isPersonalProject === true && project.founderUserId
+          ? founderDisplayById.get(project.founderUserId) ?? null
+          : null;
       return {
         project,
         parentCommunityName: parent?.name ?? null,
         parentFutureVisionText: parent?.futureVisionText ?? null,
+        founderDisplayName,
       };
     });
 
