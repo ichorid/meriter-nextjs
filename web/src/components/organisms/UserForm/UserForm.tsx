@@ -95,7 +95,6 @@ export function UserForm({
             setOtherContacts(initialData.contacts?.other || "");
             setEducationalInstitution(initialData.educationalInstitution || "");
         }
-        console.log(initialData);
     }, [initialData]);
 
     const validate = (): boolean => {
@@ -103,12 +102,6 @@ export function UserForm({
 
         if (!displayName.trim()) {
             newErrors.displayName = t("errors.required");
-        }
-        if (!region.trim()) {
-            newErrors.region = t("errors.required");
-        }
-        if (!city.trim()) {
-            newErrors.city = t("errors.required");
         }
 
         if (bio.length > 1000) {
@@ -153,14 +146,16 @@ export function UserForm({
             return;
         }
 
+        const trimmedRegion = region.trim();
+        const trimmedCity = city.trim();
         const formData: UserFormData = {
             displayName: displayName.trim(),
             avatarUrl: avatarUrl.trim() || undefined,
             bio: bio.trim() || undefined,
-            location: {
-                region: region.trim(),
-                city: city.trim(),
-            },
+            location:
+                trimmedRegion || trimmedCity
+                    ? { region: trimmedRegion, city: trimmedCity }
+                    : undefined,
             website: website.trim() || undefined,
             about: about.trim() || undefined,
             contacts: {
@@ -250,8 +245,7 @@ export function UserForm({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-base-content">
-                                {t("region")}{" "}
-                                <span className="text-error">*</span>
+                                {t("region")}
                             </label>
                             <OSMAutocomplete
                                 value={region}
@@ -263,8 +257,7 @@ export function UserForm({
                         </div>
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-base-content">
-                                {t("city")}{" "}
-                                <span className="text-error">*</span>
+                                {t("city")}
                             </label>
                             <OSMAutocomplete
                                 value={city}

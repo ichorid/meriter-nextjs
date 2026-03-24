@@ -58,8 +58,8 @@ export const PollMetricsSchema = z.object({
 
 // User profile and community settings
 export const UserLocationSchema = z.object({
-  region: z.string().min(1),
-  city: z.string().min(1),
+  region: z.string().max(500).default(''),
+  city: z.string().max(500).default(''),
 });
 
 export const UserContactsSchema = z.object({
