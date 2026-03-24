@@ -43,7 +43,6 @@ import {
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
-import { CategorySelector } from '@/shared/components/category-selector';
 import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
 import { useActingAsStore } from '@/stores/acting-as.store';
 import config from '@/config';
@@ -58,7 +57,6 @@ interface PublicationDraft {
   postType: PublicationPostType;
   hashtags: string[];
   valueTags?: string[];
-  categories?: string[]; // Array of category IDs
   imageUrl?: string; // Legacy support
   images?: string[]; // New multi-image support
   isProject: boolean;
@@ -176,7 +174,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   );
   const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
-  const [categories, setCategories] = useState<string[]>((initialData as any)?.categories || []);
   const [valueTags, setValueTags] = useState<string[]>(
     ((initialData as { valueTags?: string[] })?.valueTags ?? []).filter(Boolean),
   );
@@ -273,7 +270,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
         setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
-        setCategories(draft.categories || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
@@ -305,7 +301,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       postType,
       hashtags,
       valueTags: valueTags.length > 0 ? valueTags : undefined,
-      categories,
       images,
       isProject,
       impactArea: impactArea || undefined,
@@ -318,7 +313,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, valueTags, categories, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, valueTags, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -327,7 +322,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       postType,
       hashtags,
       valueTags: valueTags.length > 0 ? valueTags : undefined,
-      categories,
       images,
       isProject,
       impactArea: impactArea || undefined,
@@ -356,7 +350,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
         setPostType(draftPostType);
         setHashtags(draft.hashtags || []);
-        setCategories(draft.categories || []);
         setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
         setImpactArea((draft.impactArea as ImpactArea) || '');
         setBeneficiaries(draft.beneficiaries || []);
@@ -379,7 +372,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setTitle('');
     setDescription('');
     setHashtags([]);
-    setCategories([]);
     setImages([]);
     setPostType(defaultPostType);
     setImpactArea('');
@@ -439,7 +431,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             description: description.trim(),
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags: ENABLE_HASHTAGS ? hashtags : [],
-            categories: ENABLE_HASHTAGS ? [] : categories,
+            categories: [],
             valueTags: valueTags.length > 0 ? valueTags : undefined,
             images: images.length > 0 ? images : [], // Always send array, even if empty
             // Taxonomy fields (editable)
@@ -472,7 +464,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             (isProjectCommunity && finalPostType === 'discussion') ||
             (ENABLE_PROJECT_POSTS && finalPostType === 'project'),
           hashtags: ENABLE_HASHTAGS ? hashtags : [],
-          categories: ENABLE_HASHTAGS ? [] : categories,
+          categories: [],
           valueTags: valueTags.length > 0 ? valueTags : undefined,
           images: images.length > 0 ? images : undefined, // Always use array
           impactArea: impactArea || undefined,
@@ -607,7 +599,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           )}
 
-          {isGoodDeedsMarathon && (
+          {isGoodDeedsMarathon && ENABLE_HASHTAGS && (
             <ValuesFormPickerFields
               decree809Tags={valueRubricatorSections.decree809}
               adminExtrasTags={valueRubricatorSections.adminExtras}
@@ -997,12 +989,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               helperText={t('fields.hashtagsHelp')}
             />
           ) : (
-            <CategorySelector
-              value={categories}
-              onChange={setCategories}
-              label={t('fields.categories')}
-              helperText={t('fields.categoriesHelp')}
-              maxCategories={2}
+            <ValuesFormPickerFields
+              decree809Tags={valueRubricatorSections.decree809}
+              adminExtrasTags={valueRubricatorSections.adminExtras}
+              valueTags={valueTags}
+              onChange={setValueTags}
+              disabled={isSubmitting}
             />
           )}
 
@@ -1041,7 +1033,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
                     methods: methods.length > 0 ? methods : undefined,
                     helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
-                    categories: ENABLE_HASHTAGS ? [] : categories,
+                    categories: [],
+                    valueTags: valueTags.length > 0 ? valueTags : undefined,
                     meta: {},
                   }}
                 />
