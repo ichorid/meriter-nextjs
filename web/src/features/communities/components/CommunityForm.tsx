@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     useCommunity,
@@ -44,6 +44,7 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const queryClient = useQueryClient();
     const t = useTranslations("pages.communitySettings");
     const tCreate = useTranslations("communities.create");
+    const locale = useLocale();
 
     const { user } = useAuth();
     const { data: userRoles } = useUserRoles(user?.id || "");
@@ -62,9 +63,15 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [description, setDescription] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
     const [coverImageUrl, setCoverImageUrl] = useState("");
-    const [currencySingular, setCurrencySingular] = useState("merit");
-    const [currencyPlural, setCurrencyPlural] = useState("merits");
-    const [currencyGenitive, setCurrencyGenitive] = useState("merits");
+    const [currencySingular, setCurrencySingular] = useState(() =>
+        locale === "ru" ? "заслуга" : "merit"
+    );
+    const [currencyPlural, setCurrencyPlural] = useState(() =>
+        locale === "ru" ? "заслуги" : "merits"
+    );
+    const [currencyGenitive, setCurrencyGenitive] = useState(() =>
+        locale === "ru" ? "заслуг" : "merits"
+    );
     const [isPriority, setIsPriority] = useState(false);
     // Default icon is "thanks" emoji (🙏)
     const defaultIconUrl = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="75" font-size="75">${encodeURIComponent(
@@ -343,59 +350,61 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 </div>
             </div>
 
-            <div className="border-t border-base-300 pt-6">
-                <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                    {t("configuration")}
-                </h2>
+            {isEditMode && (
+                <div className="border-t border-base-300 pt-6">
+                    <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                        {t("configuration")}
+                    </h2>
 
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-base font-semibold text-brand-text-primary mb-3">
-                            {t("currencyNames")}
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <BrandFormControl label={t("singular")}>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-base font-semibold text-brand-text-primary mb-3">
+                                {t("currencyNames")}
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <BrandFormControl label={t("singular")}>
+                                    <Input
+                                        value={currencySingular}
+                                        onChange={(e) =>
+                                            setCurrencySingular(e.target.value)
+                                        }
+                                        className="h-11 rounded-xl w-full"
+                                    />
+                                </BrandFormControl>
+                                <BrandFormControl label={t("plural")}>
+                                    <Input
+                                        value={currencyPlural}
+                                        onChange={(e) =>
+                                            setCurrencyPlural(e.target.value)
+                                        }
+                                        className="h-11 rounded-xl w-full"
+                                    />
+                                </BrandFormControl>
+                            </div>
+                            <BrandFormControl label={t("genitive")}>
                                 <Input
-                                    value={currencySingular}
+                                    value={currencyGenitive}
                                     onChange={(e) =>
-                                        setCurrencySingular(e.target.value)
-                                    }
-                                    className="h-11 rounded-xl w-full"
-                                />
-                            </BrandFormControl>
-                            <BrandFormControl label={t("plural")}>
-                                <Input
-                                    value={currencyPlural}
-                                    onChange={(e) =>
-                                        setCurrencyPlural(e.target.value)
+                                        setCurrencyGenitive(e.target.value)
                                     }
                                     className="h-11 rounded-xl w-full"
                                 />
                             </BrandFormControl>
                         </div>
-                        <BrandFormControl label={t("genitive")}>
-                            <Input
-                                value={currencyGenitive}
-                                onChange={(e) =>
-                                    setCurrencyGenitive(e.target.value)
-                                }
-                                className="h-11 rounded-xl w-full"
+
+                        <BrandFormControl
+                            label={t("currencyIcon")}
+                            helperText={t("selectIcon")}
+                        >
+                            <IconPicker
+                                icon={iconUrl}
+                                cta={t("selectIcon")}
+                                setIcon={setIconUrl}
                             />
                         </BrandFormControl>
                     </div>
-
-                    <BrandFormControl
-                        label={t("currencyIcon")}
-                        helperText={t("selectIcon")}
-                    >
-                        <IconPicker
-                            icon={iconUrl}
-                            cta={t("selectIcon")}
-                            setIcon={setIconUrl}
-                        />
-                    </BrandFormControl>
                 </div>
-            </div>
+            )}
 
             {isSuperadmin && !isEditMode && (
                 <div className="border-t border-gray-200 pt-6">
