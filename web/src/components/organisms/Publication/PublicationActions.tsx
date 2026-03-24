@@ -19,6 +19,10 @@ import { isTestAuthMode } from '@/config';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trpc } from '@/lib/trpc/client';
+import {
+  resolveVoteCtaCommentMode,
+  voteCtaUsesCommentLabel,
+} from '@/lib/utils/vote-cta-label';
 import { PostMetrics } from './PostMetrics';
 import { PostActions } from './PostActions';
 import { ClosePostDialog } from './ClosePostDialog';
@@ -219,6 +223,17 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // D-10: Closed post — show summary, hide financial actions, keep favorite/share/comment
   const publicationStatus = (publication as { status?: string }).status ?? effectivePublication?.status ?? 'active';
   const isClosed = publicationStatus === 'closed';
+
+  const voteCtaMode = resolveVoteCtaCommentMode({
+    publicationStatus,
+    postType: (publication as { postType?: string }).postType,
+    communitySettings: community?.settings as
+      | { commentMode?: 'all' | 'neutralOnly' | 'weightedOnly'; tappalkaOnlyMode?: boolean }
+      | undefined,
+  });
+  const votePrimaryLabel = voteCtaUsesCommentLabel(voteCtaMode)
+    ? tComments('commentButton')
+    : tComments('voteTitle');
   const closingSummary = (publication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } }).closingSummary
     ?? (effectivePublication as { closingSummary?: { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } } | undefined)?.closingSummary;
 
@@ -551,11 +566,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         onDevAddNegativeVote={handleDevAddNegativeVote}
         shareTitle={t('share')}
         commentsTitle={t('comments')}
-        voteLabel={
-          community?.typeTag === 'future-vision'
-            ? tComments('voteTitle')
-            : tComments('commentButton')
-        }
+        voteLabel={votePrimaryLabel}
         withdrawLabel={t('withdraw')}
         closePostTitle={tPostClosing('closePostTitle', { defaultValue: 'Close post' })}
         settingsTitle={tCommon('edit')}

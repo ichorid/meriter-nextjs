@@ -35,6 +35,10 @@ import { TicketOpenNeutralApply } from '@/components/organisms/Project/TicketOpe
 import { TicketActivityLogCollapsible } from '@/components/organisms/Project/TicketActivityLogCollapsible';
 import type { TicketStatus } from '@meriter/shared-types';
 import type { TicketActivityPublicationSlice } from '@/components/organisms/Project/mergeTicketActivity';
+import {
+    resolveVoteCtaCommentMode,
+    voteCtaUsesCommentLabel,
+} from '@/lib/utils/vote-cta-label';
 
 interface PostPageClientProps {
     communityId: string;
@@ -254,6 +258,17 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
     const isProjectDiscussion =
         (publication as { postType?: string }).postType === 'discussion' &&
         Boolean((publication as { isProject?: boolean }).isProject);
+
+    const voteCtaMode = resolveVoteCtaCommentMode({
+        publicationStatus: (publication as { status?: string }).status,
+        postType: (publication as { postType?: string }).postType,
+        communitySettings: votingContextCommunity?.settings as
+            | { commentMode?: 'all' | 'neutralOnly' | 'weightedOnly'; tappalkaOnlyMode?: boolean }
+            | undefined,
+    });
+    const voteCtaPrimaryLabel = voteCtaUsesCommentLabel(voteCtaMode)
+        ? tComments('commentButton')
+        : tComments('voteTitle');
 
     return (
         <AdaptiveLayout
@@ -519,9 +534,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         }}
                                         className="w-full"
                                     >
-                                        {votingContextCommunity?.typeTag === 'future-vision'
-                                            ? tComments('voteTitle')
-                                            : tComments('commentButton')}
+                                        {voteCtaPrimaryLabel}
                                     </Button>
                                 </div>
                             );
