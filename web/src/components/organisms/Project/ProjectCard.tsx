@@ -26,6 +26,8 @@ export interface ProjectCardProps {
   score?: number;
   /** Member/participant count when available. */
   memberCount?: number;
+  /** When set, value tag chips call this (e.g. Birzha / projects list filter). */
+  onValueTagClick?: (tag: string) => void;
 }
 
 function projectGradient(name: string): [string, string] {
@@ -46,6 +48,7 @@ export function ProjectCard({
   publicationId = null,
   score = 0,
   memberCount = 0,
+  onValueTagClick,
 }: ProjectCardProps) {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
@@ -108,6 +111,37 @@ export function ProjectCard({
         {project.description && (
           <p className="text-sm text-base-content/70 mb-2 line-clamp-2">{project.description}</p>
         )}
+        {project.futureVisionTags &&
+          Array.isArray(project.futureVisionTags) &&
+          project.futureVisionTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {project.futureVisionTags.map((tag) =>
+                onValueTagClick ? (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onValueTagClick(tag);
+                    }}
+                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal cursor-pointer hover:opacity-80 transition-opacity"
+                    style={{ backgroundColor: '#E0E0E0' }}
+                  >
+                    {tag}
+                  </button>
+                ) : (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
+                    style={{ backgroundColor: '#E0E0E0' }}
+                  >
+                    {tag}
+                  </span>
+                ),
+              )}
+            </div>
+          )}
         {((project.founderSharePercent ?? 0) > 0 || (project.investorSharePercent ?? 0) > 0) && (
           <div className="mb-3">
             <CooperativeSharesDisplay

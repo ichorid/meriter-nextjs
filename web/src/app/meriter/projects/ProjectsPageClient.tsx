@@ -218,7 +218,7 @@ export default function ProjectsPageClient() {
                     {parentCommunityName}
                   </p>
                 )}
-                <ProjectCard project={project} />
+                <ProjectCard project={project} onValueTagClick={toggleValueTag} />
               </li>
             ))}
           </ul>

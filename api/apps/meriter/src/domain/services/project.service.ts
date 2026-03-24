@@ -42,6 +42,8 @@ export interface CreateProjectDto {
     futureVisionCover?: string;
     typeTag?: 'team' | 'custom';
   };
+  /** Stored on the project community (isProject), same rubric as publications / OB. */
+  futureVisionTags?: string[];
 }
 
 export interface ListProjectsFilters {
@@ -133,6 +135,7 @@ export class ProjectService {
         projectDuration: dto.projectDuration,
         founderSharePercent: dto.founderSharePercent ?? 0,
         investorSharePercent: dto.investorSharePercent ?? 0,
+        futureVisionTags: dto.futureVisionTags,
       });
 
       const wallet = await this.communityWalletService.createWallet(project.id);

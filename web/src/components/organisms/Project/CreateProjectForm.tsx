@@ -72,7 +72,7 @@ export function CreateProjectForm() {
   const [parentChoice, setParentChoice] = useState<string>('');
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
-  const [newCommunitySelectedTags, setNewCommunitySelectedTags] = useState<string[]>([]);
+  const [valueTags, setValueTags] = useState<string[]>([]);
   const [newCommunityCover, setNewCommunityCover] = useState('');
 
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
@@ -84,6 +84,7 @@ export function CreateProjectForm() {
     if (isNewCommunity && !newCommunityName.trim()) return;
     if (isNewCommunity && !newCommunityFutureVision.trim()) return;
 
+    const tagsPayload = valueTags.length > 0 ? valueTags : undefined;
     createProject.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
@@ -92,11 +93,12 @@ export function CreateProjectForm() {
       investorSharePercent: investingEnabled ? (investorSharePercent || 0) : 0,
       investingEnabled,
       parentCommunityId: isNewCommunity ? undefined : parentChoice,
+      futureVisionTags: tagsPayload,
       newCommunity: isNewCommunity
         ? {
             name: newCommunityName.trim(),
             futureVisionText: newCommunityFutureVision.trim(),
-            futureVisionTags: newCommunitySelectedTags.length > 0 ? newCommunitySelectedTags : undefined,
+            futureVisionTags: tagsPayload,
             futureVisionCover: newCommunityCover.trim() || undefined,
             typeTag: 'custom',
           }
@@ -163,6 +165,15 @@ export function CreateProjectForm() {
           </SelectContent>
         </Select>
       </div>
+      {!!parentChoice && (
+        <ValuesFormPickerFields
+          decree809Tags={rubricatorSections.decree809}
+          adminExtrasTags={rubricatorSections.adminExtras}
+          valueTags={valueTags}
+          onChange={setValueTags}
+          disabled={createProject.isPending}
+        />
+      )}
       {isNewCommunity && (
         <>
           <div>
@@ -186,13 +197,6 @@ export function CreateProjectForm() {
               required={isNewCommunity}
             />
           </div>
-          <ValuesFormPickerFields
-            decree809Tags={rubricatorSections.decree809}
-            adminExtrasTags={rubricatorSections.adminExtras}
-            valueTags={newCommunitySelectedTags}
-            onChange={setNewCommunitySelectedTags}
-            disabled={createProject.isPending}
-          />
           <div className="space-y-2">
             <span className="text-sm font-medium">{t('futureVisionCoverLabel')}</span>
             <ImageUploader

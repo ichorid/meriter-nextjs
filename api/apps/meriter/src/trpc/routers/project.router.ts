@@ -15,6 +15,7 @@ const createProjectInputSchema = z.object({
   investorSharePercent: z.number().int().min(0).max(100).optional(),
   investingEnabled: z.boolean().optional(),
   parentCommunityId: z.string().optional(),
+  futureVisionTags: z.array(z.string()).optional(),
   newCommunity: z
     .object({
       name: z.string().min(1).max(200),
@@ -41,6 +42,7 @@ export const projectRouter = router({
         investorSharePercent: input.investorSharePercent,
         investingEnabled: input.investingEnabled,
         parentCommunityId: input.parentCommunityId,
+        futureVisionTags: input.futureVisionTags,
         newCommunity: input.newCommunity,
       });
       return project;
