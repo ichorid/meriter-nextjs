@@ -169,7 +169,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       className={cn(
         'relative flex flex-col bg-base-100 rounded-xl shadow-lg overflow-hidden transition-all duration-300',
         'border-2',
-        // Mobile (post carousel only): cap card height at 1/3 viewport so two cards fit on screen
+        // Mobile (mining / tappalka only): cap card height at 1/3 viewport so two cards fit on screen
         'max-md:max-h-[33.33vh] max-md:min-h-0',
         isSelected
           ? 'border-green-500 shadow-green-500/20'

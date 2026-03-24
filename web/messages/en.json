@@ -138,9 +138,9 @@
         "info": "Info",
         "meritsAndQuota": "Merits & Quota",
         "meritsAndQuotaDescription": "Merits are the currency of Meriter, needed to rate and comment on posts. In each community, merits are separate.\nThere is an exception: Social Investment Exchange merits can be used in Image of the Future (see game rules on the \"About\" page).\nIn this community, you have access to the following types of merits:",
-        "meritsAndQuotaDescriptionWithQuota": "Merits are the currency of Meriter. You use them to rate and comment on posts, create posts, and take part in the post carousel.\n\nIn global communities (e.g. Social Investment Exchange, Image of the Future) one shared merit applies. All platform actions — creating posts, commenting, paying for post shows in the carousel — are paid in shared merits.\n\nIn team communities, merits are specific to that community, but creating posts and other actions are still paid in shared merits.\n\nIn this community you have:",
-        "meritsAndQuotaDescriptionNoQuota": "Merits are the currency of Meriter. You use them to rate and comment on posts, create posts, and take part in the post carousel.\n\nIn global communities (e.g. Social Investment Exchange, Image of the Future) one shared merit applies. All platform actions — creating posts, commenting, paying for post shows in the carousel — are paid in shared merits.\n\nIn team communities, merits are specific to that community, but creating posts and other actions are still paid in shared merits.\n\nIn this community you have access to:",
-        "meritsAndQuotaEarnHint": "You can earn merits in the post carousel:",
+        "meritsAndQuotaDescriptionWithQuota": "Merits are the currency of Meriter. You use them to rate and comment on posts, create posts, and take part in mining.\n\nIn global communities (e.g. Social Investment Exchange, Image of the Future) one shared merit applies. All platform actions — creating posts, commenting, paying for post shows in mining — are paid in shared merits.\n\nIn team communities, merits are specific to that community, but creating posts and other actions are still paid in shared merits.\n\nIn this community you have:",
+        "meritsAndQuotaDescriptionNoQuota": "Merits are the currency of Meriter. You use them to rate and comment on posts, create posts, and take part in mining.\n\nIn global communities (e.g. Social Investment Exchange, Image of the Future) one shared merit applies. All platform actions — creating posts, commenting, paying for post shows in mining — are paid in shared merits.\n\nIn team communities, merits are specific to that community, but creating posts and other actions are still paid in shared merits.\n\nIn this community you have access to:",
+        "meritsAndQuotaEarnHint": "You can earn merits in mining:",
         "quotaExplanation": "Merits you receive daily. If you don't use them by the end of the day, they expire.",
         "permanentMeritsExplanation": "Permanent merits you received from other community members through your posts. They don't expire, you can use them whenever you want.",
         "permanentMeritsWallet": "Permanent merits (wallet)",
@@ -387,7 +387,7 @@
         "yourShare": "When the post closes, you will receive ~{percent}%* of the share allocated to investors (per contract).",
         "yourShareFootnote": "The percentage may change when other investors add funds – on post close, remaining pool and post income are distributed proportionally to investments. You can invest again to increase your share.",
         "irrevocableWarning": "Investment is irrevocable. There is no return of merits to your wallet; distribution happens only when the post is closed.",
-        "irrevocableWarningFull": "Investment is irrevocable. Your merits will fund the post's appearances in the post carousel; if it gets chosen, it will earn rating merits. When the post is closed, remaining investment (after carousel costs) and post income are distributed between investors and the author according to the contract and proportionally to investors' contributions.",
+        "irrevocableWarningFull": "Investment is irrevocable. Your merits will fund the post's appearances in mining; if it gets chosen, it will earn rating merits. When the post is closed, remaining investment (after mining costs) and post income are distributed between investors and the author according to the contract and proportionally to investors' contributions.",
         "poolFromInvestors": "Pool: {amount} merits from {count} investor(s)",
         "poolValueFromInvestors": "{amount} merits from {count} investor(s)",
         "ttlClosesIn": "Closes in {days} days",
@@ -420,8 +420,8 @@
         "totalInvestmentsLabel": "Total investments"
     },
     "postCarousel": {
-        "onboardingTitle": "How does the post carousel work?",
-        "onboardingIntro": "The post carousel lets you compare posts and earn merits!",
+        "onboardingTitle": "How does mining work?",
+        "onboardingIntro": "Mining lets you compare posts and earn merits!",
         "onboardingHowItWorks": "How it works:",
         "onboardingStep1": "Drag the merit icon onto the post you prefer",
         "onboardingStep2": "The winning post receives merits",
@@ -430,7 +430,7 @@
         "onboardingButton": "Get started",
         "closeAria": "Close",
         "openPost": "Open post",
-        "backToCarousel": "Back to carousel",
+        "backToCarousel": "Back to mining",
         "noMorePosts": "No more posts to compare",
         "submitChoiceError": "Failed to submit choice",
         "voteAlreadyDoneAria": "Vote already submitted",
@@ -477,7 +477,7 @@
         "addMeritsToPost": "Add merits to post",
         "addMeritsButton": "Add merits",
         "withdrawHint": "Withdrawing merits from a post reduces its rating. The merits will be added to your wallet and can be used for voting.",
-        "addMeritsHint": "Adding merits to a post increases its rating and lets the post pay for participation in the carousel to earn merits. NOTE: all merits added to the post participate in the investment contract – if you have investors, when you withdraw these merits they will receive their share.",
+        "addMeritsHint": "Adding merits to a post increases its rating and lets the post pay for participation in mining to earn merits. NOTE: all merits added to the post participate in the investment contract – if you have investors, when you withdraw these merits they will receive their share.",
         "available": "Available",
         "availableMore": "Available more",
         "addMerits": "Add {amount} merits",
@@ -1049,7 +1049,7 @@
                 "rules": "Rules",
                 "comments": "Comments",
                 "investing": "Investing",
-                "tappalka": "Post carousel"
+                "tappalka": "Mining"
             },
             "commentsSection": {
                 "title": "Comment mode",
@@ -1292,9 +1292,9 @@
                 "ttlPlaceholder": "Select TTL",
                 "ttlDays": "{n} days",
                 "ttlIndefinite": "Indefinite",
-                "stopLossLabel": "Minimum rating for post carousel (0 = disabled)",
-                "stopLossHelp": "Post exits the carousel if rating drops below this value. Can be changed later.",
-                "noAuthorWalletSpendLabel": "Don't spend from my wallet on post carousel shows",
+                "stopLossLabel": "Minimum rating for mining (0 = disabled)",
+                "stopLossHelp": "Post exits mining if rating drops below this value. Can be changed later.",
+                "noAuthorWalletSpendLabel": "Don't spend from my wallet on mining shows",
                 "noAuthorWalletSpendHelp": "If enabled, shows stop when investment pool and rating are depleted, without touching your wallet. Can be changed later.",
                 "authorPaysShowsFromWalletQuestion": "Author pays for shows from wallet?",
                 "answerYes": "Yes",
@@ -1696,7 +1696,7 @@
                 "inactiveCloseDaysHelp": "Post can be auto-closed after this many days without earning",
                 "distributeAllByContractOnClose": "Distribute all merits by contract on close",
                 "distributeAllByContractOnCloseHelp": "When on: on post close, all merits (invest pool + rating) are split between author and investors by contract. When off: pool is returned to investors proportionally, then rating is split by contract.",
-                "tappalkaOnlyMode": "Post carousel only mode",
+                "tappalkaOnlyMode": "Mining-only mode",
                 "tappalkaOnlyModeHelp": "Separate feature — disables weighted comments. Flag only."
             },
             "validation": {
@@ -1708,15 +1708,15 @@
             }
         },
         "tappalka": {
-            "title": "Post carousel settings",
-            "description": "Configure the post comparison mechanic (post carousel) for this community.",
+            "title": "Mining settings",
+            "description": "Configure the post comparison mechanic (mining) for this community.",
             "fields": {
-                "enabled": "Enable post carousel",
-                "enabledHelp": "Enable the post comparison mechanic for this community",
+                "enabled": "Enable mining",
+                "enabledHelp": "Enable mining (post comparison) for this community",
                 "enabledOn": "Enabled",
                 "enabledOff": "Disabled",
                 "categories": "Categories",
-                "categoriesHelp": "Select categories to include in the post carousel. Leave empty to include all categories.",
+                "categoriesHelp": "Select categories to include in mining. Leave empty to include all categories.",
                 "winReward": "Win Reward",
                 "winRewardHelp": "Merits awarded to the winning post (emission). Default: 1",
                 "userReward": "User Reward",
@@ -1726,9 +1726,9 @@
                 "showCost": "Show Cost",
                 "showCostHelp": "Cost per post show (deducted from both posts). Default: 0.1",
                 "minRating": "Minimum Rating",
-                "minRatingHelp": "Minimum post rating to participate in the post carousel. Default: 1",
+                "minRatingHelp": "Minimum post rating to participate in mining. Default: 1",
                 "onboardingText": "Onboarding Text",
-                "onboardingTextHelp": "Custom text shown to users when they first open the post carousel. Leave empty to use default text.",
+                "onboardingTextHelp": "Custom text shown to users when they first open mining. Leave empty to use default text.",
                 "onboardingTextPlaceholder": "Enter custom onboarding text..."
             },
             "validation": {
@@ -1741,8 +1741,8 @@
             },
             "save": "Save Settings",
             "saving": "Saving...",
-            "saveSuccess": "Post carousel settings saved successfully",
-            "saveError": "Failed to save post carousel settings"
+            "saveSuccess": "Mining settings saved successfully",
+            "saveError": "Failed to save mining settings"
         },
         "rules": {
             "title": "Community Rules",

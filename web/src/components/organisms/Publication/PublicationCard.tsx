@@ -33,9 +33,9 @@ interface PublicationCardProps {
   isSelected?: boolean;
   onCategoryClick?: (categoryId: string) => void;
   onValueTagClick?: (tag: string) => void;
-  /** When set, show carousel preview actions: open post + optional back to carousel */
+  /** When set, show mining preview actions: open post + optional back to mining */
   onOpenPostPage?: () => void;
-  /** When set with onOpenPostPage, show "Back to carousel" button (closes preview) */
+  /** When set with onOpenPostPage, show "Back to mining" button (closes preview) */
   onBackToCarousel?: () => void;
 }
 
@@ -92,7 +92,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const isCommenting = false;
 
   const handleCardClick = (e: React.MouseEvent) => {
-    if (onOpenPostPage) return; // In carousel preview mode, only the button navigates
+    if (onOpenPostPage) return; // In mining preview mode, only the button navigates
     const target = e.target as HTMLElement;
     // Don't navigate when clicking the image gallery — open lightbox only, stay in feed
     if (target.closest('[data-gallery-preview]')) return;

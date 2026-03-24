@@ -878,8 +878,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                     </BrandFormControl>
 
                     <BrandFormControl
-                      label={t('advanced.stopLossLabel', { defaultValue: 'Minimum rating for post carousel (0 = disabled)' })}
-                      helperText={t('advanced.stopLossHelp', { defaultValue: 'Post exits the carousel if rating drops below this value. Can be changed later.' })}
+                      label={t('advanced.stopLossLabel', { defaultValue: 'Minimum rating for mining (0 = disabled)' })}
+                      helperText={t('advanced.stopLossHelp', { defaultValue: 'Post exits mining if rating drops below this value. Can be changed later.' })}
                       error={errors.stopLoss}
                     >
                       <Input
@@ -903,7 +903,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                         disabled={isSubmitting}
                       />
                       <Label htmlFor="noAuthorWalletSpend" className="text-sm font-medium cursor-pointer">
-                        {t('advanced.noAuthorWalletSpendLabel', { defaultValue: "Don't spend from my wallet on post carousel shows" })}
+                        {t('advanced.noAuthorWalletSpendLabel', { defaultValue: "Don't spend from my wallet on mining shows" })}
                       </Label>
                     </div>
                     <p className="text-xs text-muted-foreground pl-6">

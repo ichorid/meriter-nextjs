@@ -40,7 +40,7 @@ export function PostInvestingSettingsReadOnly({
   });
 
   const stopLossLabelKey = tAdvanced('stopLossLabel', {
-    defaultValue: 'Minimum rating for post carousel (0 = disabled)',
+    defaultValue: 'Minimum rating for mining (0 = disabled)',
   });
 
   const authorPaysFromWalletLabel = tAdvanced('authorPaysShowsFromWalletQuestion', {
