@@ -325,9 +325,22 @@ async function createVoteLogic(
         message: 'This community requires comments to have merit weight',
       });
     }
+    // commentMode "all": allow text-only neutral comments (zero quota + zero wallet).
+    if (
+      requestedTotalAmount === 0 &&
+      commentMode === 'all' &&
+      !isTicketPublication &&
+      !input.comment?.trim()
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Comment text is required for neutral comments',
+      });
+    }
     if (
       requestedTotalAmount === 0 &&
       commentMode !== 'neutralOnly' &&
+      commentMode !== 'all' &&
       !isTicketPublication
     ) {
       throw new TRPCError({

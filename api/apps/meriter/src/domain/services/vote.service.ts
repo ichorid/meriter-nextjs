@@ -99,7 +99,7 @@ export class VoteService {
     if (amountQuota < 0 || amountWallet < 0) {
       throw new BadRequestException('Vote amounts cannot be negative');
     }
-    // Allow both zero only for neutral comments (commentMode=neutralOnly is enforced in router)
+    // Allow both zero for neutral comments (commentMode neutralOnly or all; enforced in router)
     if (amountQuota === 0 && amountWallet === 0 && !(comment?.trim?.())) {
       throw new BadRequestException('Neutral comment must include comment text');
     }

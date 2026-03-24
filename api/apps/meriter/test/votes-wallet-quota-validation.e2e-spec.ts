@@ -537,21 +537,58 @@ describe('Votes Wallet and Quota Validation (e2e)', () => {
   });
 
   describe('Vote with Comment Endpoint Validation', () => {
-    it('should reject double-zero votes when voting with comment', async () => {
-      // Set global testUserId for AllowAllGuard to use
+    it('should allow neutral votes with comment when commentMode is all (default)', async () => {
       (global as any).testUserId = testUserId;
-      
+
+      const vote = await trpcMutation(app, 'votes.createWithComment', {
+        targetType: 'publication',
+        targetId: testPublicationId,
+        quotaAmount: 0,
+        walletAmount: 0,
+        comment: 'Neutral comment only',
+      });
+
+      expect(vote).toBeDefined();
+      expect(vote.amountQuota).toBe(0);
+      expect(vote.amountWallet).toBe(0);
+    });
+
+    it('should reject neutral vote without comment text when commentMode is all', async () => {
+      (global as any).testUserId = testUserId;
+
       await withSuppressedErrors(['BAD_REQUEST'], async () => {
         const result = await trpcMutationWithError(app, 'votes.createWithComment', {
           targetType: 'publication',
           targetId: testPublicationId,
           quotaAmount: 0,
           walletAmount: 0,
-          comment: 'Test comment',
+          comment: '   ',
         });
 
         expect(result.error?.code).toBe('BAD_REQUEST');
-        expect(result.error?.message).toContain('At least one of quotaAmount or walletAmount must be greater than zero');
+        // Zod VoteWithCommentDtoSchema rejects before router (trimmed comment empty)
+        expect(result.error?.message).toContain('comment is required');
+      });
+    });
+
+    it('should reject double-zero with comment when commentMode is weightedOnly', async () => {
+      (global as any).testUserId = testUserId;
+      await communityModel.updateOne(
+        { id: testCommunityId },
+        { $set: { 'settings.commentMode': 'weightedOnly' } },
+      );
+
+      await withSuppressedErrors(['BAD_REQUEST'], async () => {
+        const result = await trpcMutationWithError(app, 'votes.createWithComment', {
+          targetType: 'publication',
+          targetId: testPublicationId,
+          quotaAmount: 0,
+          walletAmount: 0,
+          comment: 'Text without merit weight',
+        });
+
+        expect(result.error?.code).toBe('BAD_REQUEST');
+        expect(result.error?.message).toContain('merit weight');
       });
     });
 
