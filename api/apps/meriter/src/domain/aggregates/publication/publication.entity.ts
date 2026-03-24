@@ -61,6 +61,7 @@ export class Publication implements EditableEntity {
     private readonly type: 'text' | 'image' | 'video',
     private hashtags: string[],
     private categories: string[],
+    private valueTags: string[],
     private metrics: Metrics,
     private readonly imageUrl: string | null,
     private readonly images: string[],
@@ -107,6 +108,7 @@ export class Publication implements EditableEntity {
       beneficiaryId?: UserId;
       hashtags?: string[];
       categories?: string[];
+      valueTags?: string[];
       imageUrl?: string;
       images?: string[];
       videoUrl?: string;
@@ -140,6 +142,7 @@ export class Publication implements EditableEntity {
       type,
       options.hashtags || [],
       options.categories || [],
+      options.valueTags || [],
       Metrics.zero(),
       options.imageUrl || null,
       images,
@@ -191,6 +194,7 @@ export class Publication implements EditableEntity {
       snapshot.type,
       snapshot.hashtags || [],
       snapshot.categories || [],
+      snapshot.valueTags || [],
       Metrics.fromSnapshot(snapshot.metrics),
       snapshot.imageUrl || null,
       images,
@@ -268,6 +272,11 @@ export class Publication implements EditableEntity {
     this.updatedAt = new Date();
   }
 
+  updateValueTags(valueTags: string[]): void {
+    this.valueTags = [...valueTags];
+    this.updatedAt = new Date();
+  }
+
   hasBeneficiary(): boolean {
     return this.beneficiaryId !== null;
   }
@@ -310,6 +319,10 @@ export class Publication implements EditableEntity {
 
   get getCategories(): readonly string[] {
     return this.categories;
+  }
+
+  get getValueTags(): readonly string[] {
+    return this.valueTags;
   }
 
   get getMetrics(): Metrics {
@@ -375,6 +388,7 @@ export class Publication implements EditableEntity {
       type: this.type,
       hashtags: [...this.hashtags],
       categories: this.categories.length > 0 ? [...this.categories] : undefined,
+      valueTags: this.valueTags.length > 0 ? [...this.valueTags] : undefined,
       metrics: this.metrics.toSnapshot(),
       imageUrl: this.imageUrl || undefined,
       images: this.images.length > 0 ? this.images : undefined,

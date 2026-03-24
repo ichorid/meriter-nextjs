@@ -33,6 +33,7 @@ export function useGlobalProjectsList(params: {
   projectStatus?: 'active' | 'closed' | 'archived';
   memberId?: string;
   search?: string;
+  valueTags?: string[];
   sort?: 'createdAt' | 'score';
   page?: number;
   pageSize?: number;
@@ -43,6 +44,7 @@ export function useGlobalProjectsList(params: {
       projectStatus: params.projectStatus,
       memberId: params.memberId,
       search: params.search,
+      valueTags: params.valueTags,
       sort: params.sort,
       page: params.page,
       pageSize: params.pageSize,

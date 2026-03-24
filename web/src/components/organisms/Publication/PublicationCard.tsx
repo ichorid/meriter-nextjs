@@ -32,6 +32,7 @@ interface PublicationCardProps {
   className?: string;
   isSelected?: boolean;
   onCategoryClick?: (categoryId: string) => void;
+  onValueTagClick?: (tag: string) => void;
   /** When set, show carousel preview actions: open post + optional back to carousel */
   onOpenPostPage?: () => void;
   /** When set with onOpenPostPage, show "Back to carousel" button (closes preview) */
@@ -45,6 +46,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   className = '',
   isSelected = false,
   onCategoryClick,
+  onValueTagClick,
   onOpenPostPage,
   onBackToCarousel,
 }) => {
@@ -240,6 +242,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           images: (pubItem as any).images, // Pass images array
           hashtags: (pubItem as any).hashtags || [], // Pass hashtags array
           categories: (pubItem as any).categories || [], // Pass categories array
+          valueTags: (pubItem as any).valueTags || [],
           // Taxonomy fields
           impactArea: (pubItem as any).impactArea,
           stage: (pubItem as any).stage,
@@ -250,6 +253,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
         }}
         className="mb-4"
         onCategoryClick={onCategoryClick}
+        onValueTagClick={onValueTagClick}
       />
 
       {onOpenPostPage ? (

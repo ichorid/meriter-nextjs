@@ -21,6 +21,7 @@ interface Publication {
   images?: string[]; // Add images array to interface
   hashtags?: string[]; // Add hashtags array to interface
   categories?: string[]; // Add categories array to interface (category IDs)
+  valueTags?: string[];
   metrics?: {
     score?: number;
   };
@@ -51,6 +52,7 @@ interface PublicationContentProps {
   publication: Publication;
   className?: string;
   onCategoryClick?: (categoryId: string) => void;
+  onValueTagClick?: (tag: string) => void;
   /** When title is rendered elsewhere (e.g. ticket post hero). */
   hideTitle?: boolean;
 }
@@ -59,6 +61,7 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
   publication,
   className = '',
   onCategoryClick,
+  onValueTagClick,
   hideTitle = false,
 }) => {
   const t = useTranslations('publications.create.taxonomy');
@@ -227,6 +230,36 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
           </div>
         )
       )}
+      {publication.valueTags &&
+        Array.isArray(publication.valueTags) &&
+        publication.valueTags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {publication.valueTags.map((tag) =>
+              onValueTagClick ? (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onValueTagClick(tag);
+                  }}
+                  className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal cursor-pointer hover:opacity-80 transition-opacity"
+                  style={{ backgroundColor: '#E0E0E0' }}
+                >
+                  {tag}
+                </button>
+              ) : (
+                <span
+                  key={tag}
+                  className="inline-flex items-center px-2 py-0.5 rounded-sm text-gray-700 dark:text-gray-800 text-xs font-normal"
+                  style={{ backgroundColor: '#E0E0E0' }}
+                >
+                  {tag}
+                </span>
+              ),
+            )}
+          </div>
+        )}
     </div>
   );
 };

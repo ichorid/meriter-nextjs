@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useGlobalProjectsList } from '@/hooks/api/useProjects';
 import { ProjectCard } from '@/components/organisms/Project/ProjectCard';
@@ -13,6 +13,8 @@ import { routes } from '@/lib/constants/routes';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { Plus, FolderKanban, Search, Filter, X } from 'lucide-react';
+import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 
 const createButtonClass =
   'inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2';
@@ -21,15 +23,42 @@ type ProjectStatusFilter = 'active' | 'closed' | 'archived' | 'all';
 
 export default function ProjectsPageClient() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
-  const tCommunities = useTranslations('communities');
+  const tValues = useTranslations('valuesRubricator');
   const [searchQuery, setSearchQuery] = useState('');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [sort, setSort] = useState<'createdAt' | 'score'>('createdAt');
   const [bOpenFilters, setBOpenFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>('all');
+
+  const { sections } = usePlatformValueRubricatorSections();
+
+  const selectedValueTags = useMemo(() => {
+    const raw = searchParams.get('vt');
+    return raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  }, [searchParams]);
+
+  const setValueTagsInUrl = (next: string[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next.length > 0) {
+      params.set('vt', next.join(','));
+    } else {
+      params.delete('vt');
+    }
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  };
+
+  const toggleValueTag = (tag: string) => {
+    const next = selectedValueTags.includes(tag)
+      ? selectedValueTags.filter((x) => x !== tag)
+      : [...selectedValueTags, tag];
+    setValueTagsInUrl(next);
+  };
 
   const projectStatus =
     statusFilter === 'all' ? undefined : (statusFilter as 'active' | 'closed' | 'archived');
@@ -40,6 +69,7 @@ export default function ProjectsPageClient() {
     search: searchQuery.trim() || undefined,
     sort,
     projectStatus,
+    valueTags: selectedValueTags.length > 0 ? selectedValueTags : undefined,
   });
 
   const items = data?.data ?? [];
@@ -98,28 +128,43 @@ export default function ProjectsPageClient() {
                 size="sm"
                 onClick={() => setBOpenFilters((s) => !s)}
                 className="gap-2"
-                aria-label={tCommunities('filters.title')}
+                aria-label={tValues('openButton')}
               >
                 <Filter className="h-4 w-4 shrink-0" />
-                <span className="hidden xl:inline">{tCommunities('filters.title')}</span>
+                <span className="hidden xl:inline">{tValues('openButton')}</span>
               </Button>
             </div>
           </div>
 
           {bOpenFilters && (
-            <div className="pt-1 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium text-base-content/60">{t('status')}:</span>
-              {(['all', 'active', 'closed', 'archived'] as const).map((s) => (
-                <Button
-                  key={s}
-                  variant={statusFilter === s ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={() => setStatusFilter(s)}
-                >
-                  {s === 'all' ? t('filterAll') : t(s)}
-                </Button>
-              ))}
+            <div className="pt-1 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-medium text-base-content/60">{t('status')}:</span>
+                {(['all', 'active', 'closed', 'archived'] as const).map((s) => (
+                  <Button
+                    key={s}
+                    variant={statusFilter === s ? 'secondary' : 'ghost'}
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setStatusFilter(s)}
+                  >
+                    {s === 'all' ? t('filterAll') : t(s)}
+                  </Button>
+                ))}
+              </div>
+              <ValuesRubricatorPanel
+                decree809Tags={sections.decree809}
+                adminExtrasTags={sections.adminExtras}
+                selectedTags={selectedValueTags}
+                onToggleTag={toggleValueTag}
+              />
+            </div>
+          )}
+
+          {!bOpenFilters && selectedValueTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 pt-1 text-xs text-base-content/70">
+              {selectedValueTags.slice(0, 6).join(' · ')}
+              {selectedValueTags.length > 6 ? ` +${selectedValueTags.length - 6}` : ''}
             </div>
           )}
         </div>

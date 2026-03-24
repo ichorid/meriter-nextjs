@@ -47,6 +47,8 @@ import { CategorySelector } from '@/shared/components/category-selector';
 import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
 import { useActingAsStore } from '@/stores/acting-as.store';
 import config from '@/config';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
+import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
 
@@ -55,6 +57,7 @@ interface PublicationDraft {
   description: string;
   postType: PublicationPostType;
   hashtags: string[];
+  valueTags?: string[];
   categories?: string[]; // Array of category IDs
   imageUrl?: string; // Legacy support
   images?: string[]; // New multi-image support
@@ -122,6 +125,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
+  const { sections: valueRubricatorSections } = usePlatformValueRubricatorSections();
   const { actingAsCommunityId } = useActingAsStore();
   // FR-4: Fee is always paid from global wallet (all communities)
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
@@ -173,6 +177,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   const [categories, setCategories] = useState<string[]>((initialData as any)?.categories || []);
+  const [valueTags, setValueTags] = useState<string[]>(
+    ((initialData as { valueTags?: string[] })?.valueTags ?? []).filter(Boolean),
+  );
   const [investingEnabled, setInvestingEnabled] = useState<boolean>((initialData as any)?.investingEnabled ?? false);
   const [investorSharePercent, setInvestorSharePercent] = useState<number>((initialData as any)?.investorSharePercent ?? 30);
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
@@ -273,6 +280,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setMethods(draft.methods || []);
         setStage((draft.stage as Stage) || '');
         setHelpNeeded(draft.helpNeeded || []);
+        setValueTags(draft.valueTags || []);
         setHasDraft(true);
         setShowDraftAlert(true);
       } catch (error) {
@@ -296,6 +304,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
+      valueTags: valueTags.length > 0 ? valueTags : undefined,
       categories,
       images,
       isProject,
@@ -309,7 +318,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
     const draftKey = getDraftKey(communityId);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, categories, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
+  }, [title, description, postType, hashtags, valueTags, categories, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -317,6 +326,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       description,
       postType,
       hashtags,
+      valueTags: valueTags.length > 0 ? valueTags : undefined,
       categories,
       images,
       isProject,
@@ -353,6 +363,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         setMethods(draft.methods || []);
         setStage((draft.stage as Stage) || '');
         setHelpNeeded(draft.helpNeeded || []);
+        setValueTags(draft.valueTags || []);
         addToast(t('draftLoaded'), 'success');
       } catch (error) {
         console.error('Failed to load draft:', error);
@@ -376,6 +387,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     setMethods([]);
     setStage('');
     setHelpNeeded([]);
+    setValueTags([]);
     addToast(t('draftCleared'), 'success');
   };
 
@@ -428,6 +440,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             content: description.trim(), // Оставляем для обратной совместимости
             hashtags: ENABLE_HASHTAGS ? hashtags : [],
             categories: ENABLE_HASHTAGS ? [] : categories,
+            valueTags: valueTags.length > 0 ? valueTags : undefined,
             images: images.length > 0 ? images : [], // Always send array, even if empty
             // Taxonomy fields (editable)
             impactArea: impactArea || undefined,
@@ -460,6 +473,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             (ENABLE_PROJECT_POSTS && finalPostType === 'project'),
           hashtags: ENABLE_HASHTAGS ? hashtags : [],
           categories: ENABLE_HASHTAGS ? [] : categories,
+          valueTags: valueTags.length > 0 ? valueTags : undefined,
           images: images.length > 0 ? images : undefined, // Always use array
           impactArea: impactArea || undefined,
           beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
@@ -589,6 +603,16 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             <BeneficiarySelector
               value={beneficiaryId}
               onChange={setBeneficiaryId}
+              disabled={isSubmitting}
+            />
+          )}
+
+          {isGoodDeedsMarathon && (
+            <ValuesFormPickerFields
+              decree809Tags={valueRubricatorSections.decree809}
+              adminExtrasTags={valueRubricatorSections.adminExtras}
+              valueTags={valueTags}
+              onChange={setValueTags}
               disabled={isSubmitting}
             />
           )}

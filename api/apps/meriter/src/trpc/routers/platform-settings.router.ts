@@ -11,6 +11,10 @@ const UpdateFutureVisionTagsSchema = z.object({
   tags: z.array(z.string()),
 });
 
+const UpdateDecree809Schema = z.object({
+  enabled: z.boolean(),
+});
+
 export const platformSettingsRouter = router({
   get: protectedProcedure.query(async ({ ctx }) => {
     return await ctx.platformSettingsService.get();
@@ -38,5 +42,37 @@ export const platformSettingsRouter = router({
         });
       }
       return await ctx.platformSettingsService.updateFutureVisionTags(input.tags);
+    }),
+
+  updateDecree809Enabled: protectedProcedure
+    .input(UpdateDecree809Schema)
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can update decree 809 setting',
+        });
+      }
+      return await ctx.platformSettingsService.updateDecree809Enabled(
+        input.enabled,
+      );
+    }),
+
+  getSuggestedValueTags: protectedProcedure
+    .input(
+      z
+        .object({
+          threshold: z.number().int().min(1).max(1000).optional(),
+        })
+        .optional(),
+    )
+    .query(async ({ ctx, input }) => {
+      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can load suggested value tags',
+        });
+      }
+      return ctx.valueTagsSuggestionService.getSuggested(input?.threshold);
     }),
 });

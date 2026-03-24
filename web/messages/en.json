@@ -152,6 +152,31 @@
             "voted": "By Rating"
         }
     },
+    "valuesRubricator": {
+        "openButton": "Values",
+        "emptyRubricator": "No official value tags are configured yet.",
+        "panelHelp": "Pick one or more values to filter the feed. Search narrows the list.",
+        "searchPlaceholder": "Search values…",
+        "decree809Section": "Decree 809",
+        "adminExtrasSection": "Additional values",
+        "noMatch": "No values match your search.",
+        "formSectionTitle": "Values",
+        "formSectionHelp": "Select from the list and/or add your own (shown after saving).",
+        "customLabel": "Your own",
+        "customPlaceholder": "Type a value and press Enter",
+        "customAdd": "Add",
+        "maxTags": "At most {max} values per item.",
+        "decree809AdminTitle": "Decree 809",
+        "decree809AdminHelp": "When enabled, the fixed list of 17 values appears first in the rubricator and forms.",
+        "decree809SwitchOn": "On",
+        "decree809SwitchOff": "Off",
+        "decree809PreviewLabel": "Fixed tags (read-only)",
+        "suggestedTitle": "Suggested by usage",
+        "suggestedHelp": "Tags that appear on at least {threshold} entities and are not yet in the official list.",
+        "suggestedEmpty": "No suggestions right now.",
+        "suggestedAdd": "Add to rubricator",
+        "suggestedCount": "{count} entities"
+    },
     "home": {
         "breadcrumb": "Home",
         "hero": {

@@ -50,6 +50,8 @@ export interface ListProjectsFilters {
   /** When set, only projects where this user is a member (has role) are returned. */
   memberId?: string;
   search?: string;
+  /** Filter by futureVisionTags on project community (OR, case-insensitive). */
+  valueTags?: string[];
   /** 'createdAt' = recent first, 'score' = by rating (when available) */
   sort?: 'createdAt' | 'score';
   page?: number;
@@ -237,6 +239,19 @@ export class ProjectService {
         { name: new RegExp(escapeRegex(search), 'i') },
         { description: new RegExp(escapeRegex(search), 'i') },
       ];
+    }
+
+    if (filters.valueTags && filters.valueTags.length > 0) {
+      const tagOr = filters.valueTags.map((t) => {
+        const escaped = escapeRegex(t.trim());
+        return { futureVisionTags: new RegExp(`^${escaped}$`, 'i') };
+      });
+      if (query.$or) {
+        query.$and = [{ $or: query.$or as object[] }, { $or: tagOr }];
+        delete query.$or;
+      } else {
+        query.$or = tagOr;
+      }
     }
 
     const sortOrder: Record<string, 1 | -1> =

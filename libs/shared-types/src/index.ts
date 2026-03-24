@@ -178,6 +178,15 @@ export type {
     UpdateTappalkaSettingsInput,
 } from './tappalka';
 
+export {
+    DECREE_809_TAGS,
+    VALUE_TAG_MAX_LENGTH,
+    VALUE_TAGS_MAX_PER_POST,
+    buildEffectiveRubricatorSections,
+    buildEffectiveRubricatorFlat,
+} from './value-rubricator';
+export type { PlatformValueRubricatorInput } from './value-rubricator';
+
 // Additional utility types
 export interface UpdatesFrequencySettings {
   frequency: string;

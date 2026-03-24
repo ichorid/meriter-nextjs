@@ -36,6 +36,7 @@ export interface CreatePublicationDto {
   isProject?: boolean;
   hashtags?: string[];
   categories?: string[]; // Array of category IDs
+  valueTags?: string[];
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
   beneficiaryId?: string;
@@ -134,6 +135,7 @@ export class PublicationService {
           : undefined,
         hashtags: dto.hashtags || [],
         categories: dto.categories || [],
+        valueTags: dto.valueTags || [],
         images: dto.images,
         videoUrl: dto.videoUrl,
         postType: dto.postType,
@@ -177,6 +179,7 @@ export class PublicationService {
       noAuthorWalletSpend: dto.noAuthorWalletSpend ?? false,
       sourceEntityId: dto.sourceEntityId,
       sourceEntityType: dto.sourceEntityType,
+      valueTags: dto.valueTags ?? [],
     });
 
     // Publish domain event
@@ -386,11 +389,6 @@ export class PublicationService {
     futureVisionCommunityId: string,
     params: { sort: 'score' | 'createdAt' },
   ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number }; createdAt: Date }[]> {
-    const sort: { createdAt?: number; 'metrics.score'?: number } =
-      params.sort === 'createdAt'
-        ? { createdAt: -1 }
-        : { 'metrics.score': -1 };
-
     const docs = await this.publicationModel
       .find({
         communityId: futureVisionCommunityId,
@@ -398,7 +396,11 @@ export class PublicationService {
         deleted: { $ne: true },
       })
       .select('id sourceEntityId metrics.score createdAt')
-      .sort(sort)
+      .sort(
+        params.sort === 'createdAt'
+          ? { createdAt: -1 }
+          : { 'metrics.score': -1 },
+      )
       .lean()
       .exec();
 
@@ -437,23 +439,43 @@ export class PublicationService {
       methods?: string[];
       helpNeeded?: string[];
       categories?: string[]; // Array of category IDs
+      valueTags?: string[];
     },
     search?: string,
   ): Promise<Publication[]> {
-    // Build query - exclude deleted items
-    const query: any = { communityId, deleted: { $ne: true } };
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Apply search filter if provided
-    if (search && search.trim()) {
-      // Escape special regex characters for security
-      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const searchRegex = new RegExp(escapedSearch, 'i');
-      query.$or = [
-        { content: searchRegex },
-        { title: searchRegex },
-        { description: searchRegex },
-        { hashtags: searchRegex },
-      ];
+    // Build query - exclude deleted items
+    const query: Record<string, unknown> = { communityId, deleted: { $ne: true } };
+
+    const searchOr =
+      search && search.trim()
+        ? (() => {
+            const escapedSearch = escapeRe(search.trim());
+            const searchRegex = new RegExp(escapedSearch, 'i');
+            return [
+              { content: searchRegex },
+              { title: searchRegex },
+              { description: searchRegex },
+              { hashtags: searchRegex },
+            ];
+          })()
+        : null;
+
+    const valueTagOr =
+      filters?.valueTags && filters.valueTags.length > 0
+        ? filters.valueTags.map((t) => {
+            const escaped = escapeRe(t.trim());
+            return { valueTags: new RegExp(`^${escaped}$`, 'i') };
+          })
+        : null;
+
+    if (searchOr && valueTagOr) {
+      query.$and = [{ $or: searchOr }, { $or: valueTagOr }];
+    } else if (searchOr) {
+      query.$or = searchOr;
+    } else if (valueTagOr) {
+      query.$or = valueTagOr;
     }
 
     // Apply hashtag filter if provided
@@ -486,7 +508,7 @@ export class PublicationService {
     }
 
     // Build sort object
-    const sort: any = {};
+    const sort: Record<string, 1 | -1> = {};
     if (sortBy === 'score') {
       sort['metrics.score'] = -1;
     } else {
@@ -757,6 +779,9 @@ export class PublicationService {
     if (updateData.categories !== undefined) {
       publication.updateCategories(updateData.categories || []);
     }
+    if (updateData.valueTags !== undefined) {
+      publication.updateValueTags(updateData.valueTags || []);
+    }
 
     // Build combined update object
     // Start with snapshot (contains entity-managed fields: content, hashtags, metrics, etc.)
@@ -796,6 +821,9 @@ export class PublicationService {
     // Categories field
     if (updateData.categories !== undefined) {
       updatePayload.categories = updateData.categories || [];
+    }
+    if (updateData.valueTags !== undefined) {
+      updatePayload.valueTags = updateData.valueTags || [];
     }
 
     // Mutable advanced settings

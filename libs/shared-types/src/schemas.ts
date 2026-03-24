@@ -14,6 +14,14 @@ import {
   HELP_NEEDED,
 } from "./taxonomy";
 import { TappalkaSettingsSchema } from "./tappalka";
+import {
+  VALUE_TAG_MAX_LENGTH,
+  VALUE_TAGS_MAX_PER_POST,
+} from "./value-rubricator";
+
+export const ValueTagsArraySchema = z
+  .array(z.string().trim().min(1).max(VALUE_TAG_MAX_LENGTH))
+  .max(VALUE_TAGS_MAX_PER_POST);
 
 // Project post types (ticket vs discussion inside a project community)
 export const PostTypeSchema = z.enum([
@@ -396,6 +404,8 @@ export const PublicationSchema = IdentifiableSchema.merge(
   content: z.string().min(1).max(10000),
   type: z.enum(["text", "image", "video"]), // Медиа-тип (остается для обратной совместимости)
   hashtags: z.array(z.string()).default([]),
+  /** User-chosen value tags (MD, Projects hub posts, etc.). */
+  valueTags: z.array(z.string()).optional().default([]),
   metrics: PublicationMetricsSchema,
   images: z.array(z.string().url()).optional(), // Array of images for gallery
   videoUrl: z.string().url().optional(),
@@ -567,6 +577,7 @@ export const CreatePublicationDtoSchema = z.object({
   beneficiaryId: z.string().optional(),
   hashtags: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(), // Array of category IDs
+  valueTags: ValueTagsArraySchema.optional(),
   images: z.array(z.string().url()).optional(), // Array of image URLs for multi-image support
   videoUrl: z.string().url().optional(),
   authorDisplay: z.string().optional(),
@@ -772,6 +783,7 @@ export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(), // Array of category IDs
+  valueTags: ValueTagsArraySchema.optional(),
   title: z.string().min(1).max(500).optional(),
   description: z.string().min(1).max(5000).optional(),
   images: z.array(z.string().url()).optional().nullable(), // Array of image URLs - always use array, even for single image
@@ -1022,6 +1034,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   deadline: z.date().optional(),
   hashtags: z.array(z.string()).default([]),
   categories: z.array(z.string()).default([]), // Array of category IDs
+  valueTags: z.array(z.string()).optional().default([]),
   imageUrl: z.string().url().optional(),
   images: z.array(z.string().url()).optional(),
   metrics: PublicationMetricsSchema,

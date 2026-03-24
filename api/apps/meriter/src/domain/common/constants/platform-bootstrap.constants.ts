@@ -1,3 +1,5 @@
+import { DECREE_809_TAGS } from '@meriter/shared-types';
+
 /**
  * Canonical defaults for priority hubs and global community.
  * Used by CommunityService.ensureBaseCommunities and post-wipe reset (must stay in sync).
@@ -80,4 +82,7 @@ export const GLOBAL_COMMUNITY_BOOTSTRAP = {
 export const PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP = {
   welcomeMeritsGlobal: 0,
   availableFutureVisionTags: [] as string[],
+  decree809Enabled: false,
+  decree809Tags: [...DECREE_809_TAGS],
+  popularValueTagsThreshold: 5,
 } as const;

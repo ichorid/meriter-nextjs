@@ -111,6 +111,7 @@ import { MeritResolverService } from './domain/services/merit-resolver.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
 import { PlatformSettingsService } from './domain/services/platform-settings.service';
+import { ValueTagsSuggestionService } from './domain/services/value-tags-suggestion.service';
 import { CommunityWalletService } from './domain/services/community-wallet.service';
 import { ProjectService } from './domain/services/project.service';
 import { TicketService } from './domain/services/ticket.service';
@@ -192,6 +193,7 @@ import { EventBus } from './domain/events/event-bus';
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
+    ValueTagsSuggestionService,
     CommunityWalletService,
     ProjectService,
     TicketService,
@@ -244,6 +246,7 @@ import { EventBus } from './domain/events/event-bus';
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
+    ValueTagsSuggestionService,
     CommunityWalletService,
     ProjectService,
     TicketService,

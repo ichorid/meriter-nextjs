@@ -590,6 +590,7 @@ export const communitiesRouter = router({
         helpNeeded: z.array(z.string()).optional(),
         // Category filters
         categories: z.array(z.string()).optional(),
+        valueTags: z.array(z.string()).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -614,6 +615,7 @@ export const communitiesRouter = router({
           methods: input.methods,
           helpNeeded: input.helpNeeded,
           categories: input.categories,
+          valueTags: input.valueTags,
         },
       );
 

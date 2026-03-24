@@ -392,7 +392,10 @@ export const publicationsRouter = router({
             } else if (typeof entry.at === 'string') {
               atString = entry.at;
             } else {
-              atString = new Date(entry.at as string).toISOString();
+              atString =
+                entry.at != null
+                  ? new Date(entry.at as string | number).toISOString()
+                  : new Date(0).toISOString();
             }
             const actor = usersMap.get(entry.actorId);
             return {

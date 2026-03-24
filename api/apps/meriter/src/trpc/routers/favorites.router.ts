@@ -7,6 +7,10 @@ import type { PublicationSnapshot } from '../../common/interfaces/publication-do
 import type { PollSnapshot } from '../../domain/aggregates/poll/poll.entity';
 import type { FavoriteTargetType } from '../../domain/models/favorite/favorite.schema';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
+import {
+  mapInvestmentsForPublicationFeed,
+  type RawPublicationInvestment,
+} from '../../domain/services/feed-item-investments.mapper';
 
 const FavoriteTargetTypeSchema = z.enum(['publication', 'poll', 'project']);
 
@@ -191,6 +195,7 @@ export const favoritesRouter = router({
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
           categories: snapshot.categories || [],
+          valueTags: snapshot.valueTags ?? [],
           imageUrl: snapshot.imageUrl || undefined,
           images: snapshot.images || undefined,
           impactArea: snapshot.impactArea || undefined,
@@ -239,7 +244,11 @@ export const favoritesRouter = router({
           investorSharePercent: snapshot.investorSharePercent,
           investmentPool: snapshot.investmentPool ?? 0,
           investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
-          investments: snapshot.investments ?? [],
+          investments: mapInvestmentsForPublicationFeed(
+            snapshot.investments as
+              | readonly RawPublicationInvestment[]
+              | undefined,
+          ),
           stopLoss: snapshot.stopLoss ?? 0,
           noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
           sourceEntityId: snapshot.sourceEntityId,

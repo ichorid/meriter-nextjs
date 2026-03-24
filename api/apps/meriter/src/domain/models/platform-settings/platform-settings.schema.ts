@@ -8,6 +8,12 @@ export interface PlatformSettings {
   welcomeMeritsGlobal: number;
   /** Rubricator: allowed tags for OB feed filtering. Superadmin-managed. */
   availableFutureVisionTags?: string[];
+  /** When true, prepend fixed decree 809 tags to the rubricator. */
+  decree809Enabled?: boolean;
+  /** Copy of canonical decree tags (seeded; not edited in UI). */
+  decree809Tags?: string[];
+  /** Minimum entity count to show a tag in suggested list (default 5). */
+  popularValueTagsThreshold?: number;
   /** Set after demo seed; cleared on platform wipe. */
   demoSeedVersion?: number;
   updatedAt: Date;
@@ -23,6 +29,15 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ type: [String], default: [] })
   availableFutureVisionTags?: string[];
+
+  @Prop({ type: Boolean, default: false })
+  decree809Enabled?: boolean;
+
+  @Prop({ type: [String], default: [] })
+  decree809Tags?: string[];
+
+  @Prop({ type: Number, default: 5 })
+  popularValueTagsThreshold?: number;
 
   @Prop({ type: Number, required: false })
   demoSeedVersion?: number;

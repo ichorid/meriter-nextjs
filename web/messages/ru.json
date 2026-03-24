@@ -152,6 +152,31 @@
             "voted": "По рейтингу"
         }
     },
+    "valuesRubricator": {
+        "openButton": "Ценности",
+        "emptyRubricator": "Официальные ценности ещё не заданы.",
+        "panelHelp": "Выберите одну или несколько ценностей для фильтра ленты. Поиск сужает список.",
+        "searchPlaceholder": "Поиск по ценностям…",
+        "decree809Section": "Указ 809",
+        "adminExtrasSection": "Дополнительные ценности",
+        "noMatch": "Нет ценностей, подходящих под поиск.",
+        "formSectionTitle": "Ценности",
+        "formSectionHelp": "Выберите из списка и/или добавьте свой вариант (сохранится при отправке).",
+        "customLabel": "Свой вариант",
+        "customPlaceholder": "Введите ценность и нажмите Enter",
+        "customAdd": "Добавить",
+        "maxTags": "Не более {max} ценностей на объект.",
+        "decree809AdminTitle": "Указ 809",
+        "decree809AdminHelp": "При включении фиксированный список из 17 ценностей показывается первым в рубрикаторе и в формах.",
+        "decree809SwitchOn": "Включено",
+        "decree809SwitchOff": "Выключено",
+        "decree809PreviewLabel": "Фиксированные теги (только просмотр)",
+        "suggestedTitle": "Предложенные пользователями",
+        "suggestedHelp": "Теги, которые встречаются минимум на {threshold} сущностях и ещё не в официальном списке.",
+        "suggestedEmpty": "Сейчас нет предложений.",
+        "suggestedAdd": "В рубрикатор",
+        "suggestedCount": "{count} сущностей"
+    },
     "home": {
         "breadcrumb": "Главная",
         "hero": {

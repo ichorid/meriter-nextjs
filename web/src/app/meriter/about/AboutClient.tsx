@@ -23,6 +23,7 @@ import { useResetAboutToDemoData } from '@/hooks/api/useAbout';
 import { resolveApiErrorToastMessage, toastUiText } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { Switch } from '@/components/ui/shadcn/switch';
 
 function WelcomeMeritsPlatformRow() {
   const t = useTranslations('settings');
@@ -87,18 +88,44 @@ function WelcomeMeritsPlatformRow() {
   );
 }
 
+function mergeTagsDedupe(existing: string[], addition: string): string[] {
+  const lower = new Set(existing.map((x) => x.toLowerCase()));
+  const t = addition.trim();
+  if (!t || lower.has(t.toLowerCase())) return existing;
+  return [...existing, t].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+}
+
 function FutureVisionRubricatorRow() {
   const t = useTranslations('settings');
+  const tRv = useTranslations('valuesRubricator');
   const addToast = useToastStore((s) => s.addToast);
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.platformSettings.get.useQuery(undefined, { retry: false });
+  const threshold = data?.popularValueTagsThreshold ?? 5;
+
+  const { data: suggested = [], isLoading: suggestedLoading } =
+    trpc.platformSettings.getSuggestedValueTags.useQuery(
+      { threshold },
+      { enabled: !isLoading && !!data, retry: false },
+    );
+
   const updateMutation = trpc.platformSettings.updateFutureVisionTags.useMutation({
+    onSuccess: () => {
+      void utils.platformSettings.get.invalidate();
+      void utils.platformSettings.getSuggestedValueTags.invalidate();
+      addToast(toastUiText('aboutSaved'), 'success');
+    },
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
+  });
+
+  const decreeMutation = trpc.platformSettings.updateDecree809Enabled.useMutation({
     onSuccess: () => {
       void utils.platformSettings.get.invalidate();
       addToast(toastUiText('aboutSaved'), 'success');
     },
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
+
   const [localTags, setLocalTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
 
@@ -112,17 +139,23 @@ function FutureVisionRubricatorRow() {
 
   const handleAddTag = () => {
     const trimmed = newTag.trim();
-    if (!trimmed || localTags.includes(trimmed)) return;
-    setLocalTags((prev) => [...prev, trimmed].sort());
+    if (!trimmed) return;
+    setLocalTags((prev) => mergeTagsDedupe(prev, trimmed));
     setNewTag('');
   };
 
   const handleRemoveTag = (tag: string) => {
-    setLocalTags((prev) => prev.filter((t) => t !== tag));
+    setLocalTags((prev) => prev.filter((x) => x !== tag));
   };
 
   const handleSave = () => {
     updateMutation.mutate({ tags: localTags });
+  };
+
+  const handleAddSuggested = (tag: string) => {
+    const merged = mergeTagsDedupe(localTags, tag);
+    if (merged.length === localTags.length) return;
+    updateMutation.mutate({ tags: merged });
   };
 
   if (isLoading) {
@@ -134,48 +167,107 @@ function FutureVisionRubricatorRow() {
     );
   }
 
+  const decreeTags = data?.decree809Tags ?? [];
+
   return (
-    <div className="space-y-2 border-t border-base-300 pt-6">
-      <div className="font-medium text-base-content">{t('futureVisionRubricatorTitle')}</div>
-      <Label htmlFor="future-vision-tags">{t('futureVisionRubricatorLabel')}</Label>
-      <p className="text-xs text-base-content/60">{t('futureVisionRubricatorHelp')}</p>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {localTags.map((tag) => (
-          <span
-            key={tag}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-base-300 text-sm"
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => handleRemoveTag(tag)}
-              className="hover:text-error rounded p-0.5"
-              aria-label={`Remove ${tag}`}
-            >
-              ×
-            </button>
-          </span>
-        ))}
+    <div className="space-y-6 border-t border-base-300 pt-6">
+      <div className="space-y-3">
+        <div className="font-medium text-base-content">{tRv('decree809AdminTitle')}</div>
+        <p className="text-xs text-base-content/60">{tRv('decree809AdminHelp')}</p>
+        <div className="flex items-center gap-3">
+          <Switch
+            id="decree-809-enabled"
+            checked={!!data?.decree809Enabled}
+            disabled={decreeMutation.isPending}
+            onCheckedChange={(enabled) => decreeMutation.mutate({ enabled })}
+          />
+          <Label htmlFor="decree-809-enabled" className="cursor-pointer">
+            {data?.decree809Enabled ? tRv('decree809SwitchOn') : tRv('decree809SwitchOff')}
+          </Label>
+        </div>
+        {decreeTags.length > 0 && (
+          <details className="text-sm">
+            <summary className="cursor-pointer text-base-content/80">{tRv('decree809PreviewLabel')}</summary>
+            <ul className="mt-2 max-h-40 overflow-y-auto list-disc pl-5 text-base-content/70 space-y-0.5">
+              {decreeTags.map((tag) => (
+                <li key={tag}>{tag}</li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <Input
-          id="future-vision-tags"
-          value={newTag}
-          onChange={(e) => setNewTag(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-          placeholder={t('futureVisionRubricatorPlaceholder')}
-          className="w-40"
-        />
-        <Button type="button" size="sm" variant="outline" onClick={handleAddTag} disabled={!newTag.trim()}>
-          {t('futureVisionRubricatorAdd')}
-        </Button>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-        >
-          {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
-        </Button>
+
+      <div className="space-y-2">
+        <div className="font-medium text-base-content">{t('futureVisionRubricatorTitle')}</div>
+        <Label htmlFor="future-vision-tags">{t('futureVisionRubricatorLabel')}</Label>
+        <p className="text-xs text-base-content/60">{t('futureVisionRubricatorHelp')}</p>
+        <div className="flex flex-wrap gap-2 mb-2">
+          {localTags.map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-base-300 text-sm"
+            >
+              {tag}
+              <button
+                type="button"
+                onClick={() => handleRemoveTag(tag)}
+                className="hover:text-error rounded p-0.5"
+                aria-label={`Remove ${tag}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-wrap items-center">
+          <Input
+            id="future-vision-tags"
+            value={newTag}
+            onChange={(e) => setNewTag(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+            placeholder={t('futureVisionRubricatorPlaceholder')}
+            className="w-40"
+          />
+          <Button type="button" size="sm" variant="outline" onClick={handleAddTag} disabled={!newTag.trim()}>
+            {t('futureVisionRubricatorAdd')}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
+            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="font-medium text-base-content">{tRv('suggestedTitle')}</div>
+        <p className="text-xs text-base-content/60">{tRv('suggestedHelp', { threshold })}</p>
+        {suggestedLoading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-base-content/50" />
+        ) : suggested.length === 0 ? (
+          <p className="text-sm text-base-content/60">{tRv('suggestedEmpty')}</p>
+        ) : (
+          <ul className="space-y-2">
+            {suggested.map((row) => (
+              <li
+                key={row.tag}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-base-300 px-3 py-2"
+              >
+                <span className="text-sm">
+                  <span className="font-medium">{row.tag}</span>{' '}
+                  <span className="text-base-content/60">({tRv('suggestedCount', { count: row.count })})</span>
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  disabled={updateMutation.isPending}
+                  onClick={() => handleAddSuggested(row.tag)}
+                >
+                  {tRv('suggestedAdd')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

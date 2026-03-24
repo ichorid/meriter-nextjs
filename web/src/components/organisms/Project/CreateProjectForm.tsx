@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCreateProject } from '@/hooks/api/useProjects';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { useUserRoles } from '@/hooks/api/useProfile';
-import { useFutureVisionTags } from '@/hooks/api/useFutureVisions';
+import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -44,8 +45,7 @@ export function CreateProjectForm() {
   const tCommunities = useTranslations('communities');
   const { user } = useAuth();
   const createProject = useCreateProject();
-  const { data: platformSettings } = useFutureVisionTags();
-  const availableTags = platformSettings?.availableFutureVisionTags ?? [];
+  const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
 
   const { communities: allCommunities } = useUserCommunities();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -76,12 +76,6 @@ export function CreateProjectForm() {
   const [newCommunityCover, setNewCommunityCover] = useState('');
 
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
-
-  const toggleNewCommunityTag = (tag: string) => {
-    setNewCommunitySelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag],
-    );
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,23 +186,13 @@ export function CreateProjectForm() {
               required={isNewCommunity}
             />
           </div>
-          {availableTags.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-sm font-medium">{t('valueTagsLabel')}</span>
-              <div className="flex flex-wrap gap-2">
-                {availableTags.map((tag) => (
-                  <label key={tag} className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                      checked={newCommunitySelectedTags.includes(tag)}
-                      onCheckedChange={() => toggleNewCommunityTag(tag)}
-                      disabled={createProject.isPending}
-                    />
-                    <span className="text-sm">{tag}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          <ValuesFormPickerFields
+            decree809Tags={rubricatorSections.decree809}
+            adminExtrasTags={rubricatorSections.adminExtras}
+            valueTags={newCommunitySelectedTags}
+            onChange={setNewCommunitySelectedTags}
+            disabled={createProject.isPending}
+          />
           <div className="space-y-2">
             <span className="text-sm font-medium">{t('futureVisionCoverLabel')}</span>
             <ImageUploader

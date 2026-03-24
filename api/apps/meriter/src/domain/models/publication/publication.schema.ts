@@ -81,6 +81,7 @@ export interface Publication {
   authorDisplay?: string;
   hashtags: string[];
   categories?: string[]; // Array of category IDs
+  valueTags?: string[];
   metrics: PublicationMetrics;
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
@@ -209,6 +210,9 @@ export class PublicationSchemaClass implements Publication {
   // Categories (predefined tags managed by superadmin)
   @Prop({ type: [String], default: [] })
   categories?: string[]; // Array of category IDs
+
+  @Prop({ type: [String], default: [] })
+  valueTags?: string[];
 
   @Prop({
     type: {
@@ -405,6 +409,7 @@ export const Publication = PublicationSchemaClass;
 PublicationSchema.index({ communityId: 1, createdAt: -1 });
 PublicationSchema.index({ authorId: 1, createdAt: -1 });
 PublicationSchema.index({ hashtags: 1 });
+PublicationSchema.index({ valueTags: 1 });
 PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community

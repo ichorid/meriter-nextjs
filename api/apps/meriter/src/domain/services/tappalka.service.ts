@@ -580,7 +580,7 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject() as typeof progress;
+      progress = newProgress.toObject() as NonNullable<typeof progress>;
     } else {
       // Increment comparison count
       const currentCount = progress.comparisonCount || 0;
@@ -733,7 +733,7 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject() as typeof progress;
+      progress = newProgress.toObject() as NonNullable<typeof progress>;
     }
 
     // Get user's wallet balance (global for priority communities)

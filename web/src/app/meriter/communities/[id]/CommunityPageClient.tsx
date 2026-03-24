@@ -64,6 +64,8 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { TappalkaScreen } from '@/features/tappalka';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
+import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -76,6 +78,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
     const tTaxonomy = useTranslations('publications.create.taxonomy');
+    const tValues = useTranslations('valuesRubricator');
     const {
         translateImpactArea,
         translateStage,
@@ -94,6 +97,31 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [savedSort, setSavedSort] = useLocalStorage<'recent' | 'voted'>(`community-sort-${chatId}`, 'voted');
     const sortBy = urlSort || savedSort;
     const selectedTag = searchParams?.get('tag');
+    const { sections: valueRubricatorSections } = usePlatformValueRubricatorSections();
+    const selectedValueTags = useMemo(() => {
+        const raw = searchParams?.get('vt');
+        return raw ? raw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+    }, [searchParams]);
+
+    const setValueTagsInUrl = (next: string[]) => {
+        const params = new URLSearchParams(searchParams?.toString() ?? '');
+        if (next.length > 0) {
+            params.set('vt', next.join(','));
+        } else {
+            params.delete('vt');
+        }
+        const q = params.toString();
+        const base = pathname ?? '';
+        router.push(q ? `${base}?${q}` : base);
+    };
+
+    const toggleMdValueTag = (tag: string) => {
+        const next = selectedValueTags.includes(tag)
+            ? selectedValueTags.filter((x) => x !== tag)
+            : [...selectedValueTags, tag];
+        setValueTagsInUrl(next);
+    };
+
     const searchQuery = searchParams?.get('q') || '';
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
@@ -351,12 +379,46 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
         search: debouncedSearchQuery.trim() || undefined,
-        impactArea: ENABLE_HASHTAGS && fImpactArea !== 'any' ? fImpactArea : undefined,
-        stage: ENABLE_HASHTAGS && fStage !== 'any' ? fStage : undefined,
-        beneficiaries: ENABLE_HASHTAGS && fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
-        methods: ENABLE_HASHTAGS && fMethods.length > 0 ? fMethods : undefined,
-        helpNeeded: ENABLE_HASHTAGS && fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
-        categories: !ENABLE_HASHTAGS && selectedCategories.length > 0 ? selectedCategories : undefined,
+        impactArea:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fImpactArea !== 'any'
+                ? fImpactArea
+                : undefined,
+        stage:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fStage !== 'any'
+                ? fStage
+                : undefined,
+        beneficiaries:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fBeneficiaries.length > 0
+                ? fBeneficiaries
+                : undefined,
+        methods:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fMethods.length > 0
+                ? fMethods
+                : undefined,
+        helpNeeded:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fHelpNeeded.length > 0
+                ? fHelpNeeded
+                : undefined,
+        categories:
+            comms?.typeTag !== 'marathon-of-good' &&
+            !ENABLE_HASHTAGS &&
+            selectedCategories.length > 0
+                ? selectedCategories
+                : undefined,
+        valueTags:
+            comms?.typeTag === 'marathon-of-good' && selectedValueTags.length > 0
+                ? selectedValueTags
+                : undefined,
     });
 
 
@@ -372,12 +434,43 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         sort: sortBy === 'recent' ? 'recent' : 'score',
         tag: selectedTag || undefined,
         search: debouncedSearchQuery.trim() || undefined,
-        impactArea: ENABLE_HASHTAGS && fImpactArea !== 'any' ? fImpactArea : undefined,
-        stage: ENABLE_HASHTAGS && fStage !== 'any' ? fStage : undefined,
-        beneficiaries: ENABLE_HASHTAGS && fBeneficiaries.length > 0 ? fBeneficiaries : undefined,
-        methods: ENABLE_HASHTAGS && fMethods.length > 0 ? fMethods : undefined,
-        helpNeeded: ENABLE_HASHTAGS && fHelpNeeded.length > 0 ? fHelpNeeded : undefined,
-        categories: !ENABLE_HASHTAGS && selectedCategories.length > 0 ? selectedCategories : undefined,
+        impactArea:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fImpactArea !== 'any'
+                ? fImpactArea
+                : undefined,
+        stage:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fStage !== 'any'
+                ? fStage
+                : undefined,
+        beneficiaries:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fBeneficiaries.length > 0
+                ? fBeneficiaries
+                : undefined,
+        methods:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fMethods.length > 0
+                ? fMethods
+                : undefined,
+        helpNeeded:
+            comms?.typeTag !== 'marathon-of-good' &&
+            ENABLE_HASHTAGS &&
+            fHelpNeeded.length > 0
+                ? fHelpNeeded
+                : undefined,
+        categories:
+            comms?.typeTag !== 'marathon-of-good' &&
+            !ENABLE_HASHTAGS &&
+            selectedCategories.length > 0
+                ? selectedCategories
+                : undefined,
+        valueTags: undefined,
     });
 
     // Fetch deleted publications (will only return data if user is lead)
@@ -783,57 +876,93 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
                         </div>
                         <div className="flex items-center gap-2">
-                            {!ENABLE_HASHTAGS && selectedCategories.length > 0 && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        setSelectedCategories([]);
-                                        setBOpenFilters(false);
-                                        // Update URL
-                                        const params = new URLSearchParams(searchParams?.toString() ?? '');
-                                        params.delete('categories');
-                                        router.push(`${pathname}?${params.toString()}`);
-                                    }}
-                                    className="gap-2"
-                                >
-                                    <X className="h-4 w-4" /> {tCommunities('filters.reset')}
-                                </Button>
+                            {isMarathonOfGood ? (
+                                <>
+                                    {selectedValueTags.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setValueTagsInUrl([]);
+                                                setBOpenFilters(false);
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <X className="h-4 w-4" /> {tCommunities('filters.reset')}
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant={bOpenFilters ? 'secondary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setBOpenFilters((s) => !s)}
+                                        className="gap-2"
+                                        aria-label={tValues('openButton')}
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        {tValues('openButton')}
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    {!ENABLE_HASHTAGS && selectedCategories.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setSelectedCategories([]);
+                                                setBOpenFilters(false);
+                                                // Update URL
+                                                const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                                params.delete('categories');
+                                                router.push(`${pathname}?${params.toString()}`);
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <X className="h-4 w-4" /> {tCommunities('filters.reset')}
+                                        </Button>
+                                    )}
+                                    {ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setFImpactArea('any');
+                                                setFStage('any');
+                                                setFBeneficiaries([]);
+                                                setFMethods([]);
+                                                setFHelpNeeded([]);
+                                                setBOpenFilters(false);
+                                                setBOpenBeneficiaries(false);
+                                                setBOpenMethods(false);
+                                                setBOpenHelp(false);
+                                            }}
+                                            className="gap-2"
+                                        >
+                                            <X className="h-4 w-4" /> {tTaxonomy('reset')}
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant={bOpenFilters ? 'secondary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => setBOpenFilters((s) => !s)}
+                                        className="gap-2"
+                                    >
+                                        <Filter className="h-4 w-4" />
+                                        {tCommunities('filters.title')}
+                                    </Button>
+                                </>
                             )}
-                            {ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => {
-                                        setFImpactArea('any');
-                                        setFStage('any');
-                                        setFBeneficiaries([]);
-                                        setFMethods([]);
-                                        setFHelpNeeded([]);
-                                        setBOpenFilters(false);
-                                        setBOpenBeneficiaries(false);
-                                        setBOpenMethods(false);
-                                        setBOpenHelp(false);
-                                    }}
-                                    className="gap-2"
-                                >
-                                    <X className="h-4 w-4" /> {tTaxonomy('reset')}
-                                </Button>
-                            )}
-                            <Button
-                                variant={bOpenFilters ? 'secondary' : 'outline'}
-                                size="sm"
-                                onClick={() => setBOpenFilters((s) => !s)}
-                                className="gap-2"
-                            >
-                                <Filter className="h-4 w-4" />
-                                {tCommunities('filters.title')}
-                            </Button>
                         </div>
                     </div>
 
                     {/* Compact active filters summary when collapsed */}
-                    {!bOpenFilters && !ENABLE_HASHTAGS && selectedCategories.length > 0 && allCategories && (
+                    {!bOpenFilters && isMarathonOfGood && selectedValueTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-1 text-xs text-base-content/70">
+                            {selectedValueTags.slice(0, 6).join(' · ')}
+                            {selectedValueTags.length > 6 ? ` +${selectedValueTags.length - 6}` : ''}
+                        </div>
+                    )}
+                    {!bOpenFilters && !isMarathonOfGood && !ENABLE_HASHTAGS && selectedCategories.length > 0 && allCategories && (
                         <div className="flex flex-wrap gap-2 pt-1">
                             {selectedCategories.slice(0, 5).map((categoryId) => {
                                 const category = allCategories.find(c => c.id === categoryId);
@@ -846,7 +975,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             )}
                         </div>
                     )}
-                    {!bOpenFilters && ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
+                    {!bOpenFilters && !isMarathonOfGood && ENABLE_HASHTAGS && (fImpactArea !== 'any' || fStage !== 'any' || fBeneficiaries.length > 0 || fMethods.length > 0 || fHelpNeeded.length > 0) && (
                         <div className="flex flex-wrap gap-2 pt-1">
                             {fImpactArea !== 'any' && <Badge variant="secondary">{fImpactArea}</Badge>}
                             {fStage !== 'any' && <Badge variant="secondary">{fStage}</Badge>}
@@ -865,7 +994,18 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         </div>
                     )}
 
-                    {bOpenFilters && (
+                    {bOpenFilters && isMarathonOfGood && (
+                        <div className="pt-1">
+                            <ValuesRubricatorPanel
+                                decree809Tags={valueRubricatorSections.decree809}
+                                adminExtrasTags={valueRubricatorSections.adminExtras}
+                                selectedTags={selectedValueTags}
+                                onToggleTag={toggleMdValueTag}
+                            />
+                        </div>
+                    )}
+
+                    {bOpenFilters && !isMarathonOfGood && (
                         <>
                             {ENABLE_HASHTAGS ? (
                                 // Legacy taxonomy filters (when hashtags are enabled)
@@ -1107,15 +1247,25 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                         wallets={Array.isArray(wallets) ? wallets : []}
                                         showCommunityAvatar={false}
                                         isSelected={isSelected}
-                                        onCategoryClick={(categoryId) => {
-                                            // Set filter to show only this category
-                                            const newCategories = [categoryId];
-                                            setSelectedCategories(newCategories);
-                                            // Update URL
-                                            const params = new URLSearchParams(searchParams?.toString() ?? '');
-                                            params.set('categories', categoryId);
-                                            router.push(`${pathname}?${params.toString()}`);
-                                        }}
+                                        onCategoryClick={
+                                            isMarathonOfGood
+                                                ? undefined
+                                                : (categoryId) => {
+                                                      const newCategories = [categoryId];
+                                                      setSelectedCategories(newCategories);
+                                                      const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                                      params.set('categories', categoryId);
+                                                      router.push(`${pathname}?${params.toString()}`);
+                                                  }
+                                        }
+                                        onValueTagClick={
+                                            isMarathonOfGood
+                                                ? (tag) => {
+                                                      setValueTagsInUrl([tag]);
+                                                      setBOpenFilters(false);
+                                                  }
+                                                : undefined
+                                        }
                                     />
                                 </div>
                             );

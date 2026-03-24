@@ -8,6 +8,7 @@ import {
   PLATFORM_SETTINGS_ID,
 } from '../models/platform-settings/platform-settings.schema';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
+import { DECREE_809_TAGS } from '@meriter/shared-types';
 
 export interface UpdatePlatformSettingsDto {
   welcomeMeritsGlobal?: number;
@@ -26,21 +27,47 @@ export class PlatformSettingsService {
    * Get platform settings. Creates document with defaults if missing.
    */
   async get(): Promise<PlatformSettings> {
-    let doc = await this.platformSettingsModel
+    let doc: PlatformSettings | null = (await this.platformSettingsModel
       .findOne({ id: PLATFORM_SETTINGS_ID })
       .lean()
-      .exec();
+      .exec()) as PlatformSettings | null;
     if (!doc) {
       const created = await this.platformSettingsModel.create({
         id: PLATFORM_SETTINGS_ID,
         welcomeMeritsGlobal: 0,
         availableFutureVisionTags: [],
+        decree809Enabled: false,
+        decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        popularValueTagsThreshold: 5,
       });
-      doc = created.toObject() as typeof doc;
+      doc = created.toObject() as unknown as PlatformSettings;
     }
-    const result = doc as PlatformSettings;
+    const result = doc;
     if (!result.availableFutureVisionTags) {
       result.availableFutureVisionTags = [];
+    }
+    if (!result.decree809Tags || result.decree809Tags.length === 0) {
+      await this.platformSettingsModel
+        .updateOne(
+          { id: PLATFORM_SETTINGS_ID },
+          {
+            $set: {
+              decree809Tags: [...DECREE_809_TAGS],
+              updatedAt: new Date(),
+            },
+          },
+        )
+        .exec();
+      result.decree809Tags = [...DECREE_809_TAGS];
+    }
+    if (result.decree809Enabled == null) {
+      result.decree809Enabled = false;
+    }
+    if (
+      result.popularValueTagsThreshold == null ||
+      result.popularValueTagsThreshold < 1
+    ) {
+      result.popularValueTagsThreshold = 5;
     }
     return result;
   }
@@ -96,6 +123,21 @@ export class PlatformSettingsService {
     return doc as PlatformSettings;
   }
 
+  async updateDecree809Enabled(enabled: boolean): Promise<PlatformSettings> {
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { decree809Enabled: enabled, updatedAt: new Date() } },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
+    if (!doc) {
+      throw new Error('Failed to update platform settings');
+    }
+    return doc as PlatformSettings;
+  }
+
   async getDemoSeedVersion(): Promise<number | undefined> {
     const doc = await this.platformSettingsModel
       .findOne({ id: PLATFORM_SETTINGS_ID })
@@ -118,6 +160,10 @@ export class PlatformSettingsService {
         availableFutureVisionTags: [
           ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
         ],
+        decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+        decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        popularValueTagsThreshold:
+          PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
         demoSeedVersion: version,
       });
     }
@@ -143,6 +189,10 @@ export class PlatformSettingsService {
             availableFutureVisionTags: [
               ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
             ],
+            decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+            decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+            popularValueTagsThreshold:
+              PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
             updatedAt: new Date(),
           },
           $unset: { demoSeedVersion: '' },

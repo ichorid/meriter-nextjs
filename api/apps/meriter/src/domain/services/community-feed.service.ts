@@ -10,6 +10,10 @@ import {
   PublicationFeedItem,
   PollFeedItem,
 } from '../../../../../../libs/shared-types/dist/index';
+import {
+  mapInvestmentsForPublicationFeed,
+  type RawPublicationInvestment,
+} from './feed-item-investments.mapper';
 
 export interface FeedOptions {
   page?: number;
@@ -25,6 +29,7 @@ export interface FeedOptions {
   methods?: string[];
   helpNeeded?: string[];
   categories?: string[]; // Array of category IDs to filter by
+  valueTags?: string[];
 }
 
 @Injectable()
@@ -64,6 +69,7 @@ export class CommunityFeedService {
       methods,
       helpNeeded,
       categories,
+      valueTags,
     } = options;
 
     // Use skip/limit if provided, otherwise calculate from page/pageSize
@@ -81,7 +87,8 @@ export class CommunityFeedService {
       (beneficiaries && beneficiaries.length > 0) ||
       (methods && methods.length > 0) ||
       (helpNeeded && helpNeeded.length > 0) ||
-      (categories && categories.length > 0)
+      (categories && categories.length > 0) ||
+      (valueTags && valueTags.length > 0)
     );
 
     // Fetch both publications and polls in parallel
@@ -103,6 +110,7 @@ export class CommunityFeedService {
           methods,
           helpNeeded,
           categories,
+          valueTags,
         },
         search,
       ),
@@ -202,6 +210,7 @@ export class CommunityFeedService {
           isProject: snapshot.isProject || false,
           hashtags: snapshot.hashtags || [],
           categories: snapshot.categories || [],
+          valueTags: snapshot.valueTags ?? [],
           images: pub.getImages && pub.getImages.length > 0 ? pub.getImages : undefined,
           impactArea: snapshot.impactArea || undefined,
           stage: snapshot.stage || undefined,
@@ -237,7 +246,11 @@ export class CommunityFeedService {
           investorSharePercent: snapshot.investorSharePercent,
           investmentPool: snapshot.investmentPool ?? 0,
           investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
-          investments: snapshot.investments ?? [],
+          investments: mapInvestmentsForPublicationFeed(
+            snapshot.investments as
+              | readonly RawPublicationInvestment[]
+              | undefined,
+          ),
           stopLoss: snapshot.stopLoss ?? 0,
           noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
           sourceEntityId: snapshot.sourceEntityId,

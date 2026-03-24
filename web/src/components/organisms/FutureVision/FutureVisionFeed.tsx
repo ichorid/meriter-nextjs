@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Scale, Filter, Search, X, Users } from 'lucide-react';
-import { useFutureVisions, useFutureVisionTags } from '@/hooks/api/useFutureVisions';
+import { useFutureVisions } from '@/hooks/api/useFutureVisions';
 import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { FutureVisionCard } from './FutureVisionCard';
-import { TagFilter } from './TagFilter';
+import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -24,7 +25,7 @@ const FV_TAG_QUERY = 'fvTag';
 
 export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }: FutureVisionFeedProps) {
   const t = useTranslations('common');
-  const tCommunities = useTranslations('pages.communities');
+  const tValues = useTranslations('valuesRubricator');
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -37,8 +38,7 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
   const [searchQuery, setSearchQuery] = useState('');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
 
-  const { data: platformSettings } = useFutureVisionTags();
-  const rubricatorTags = platformSettings?.availableFutureVisionTags ?? [];
+  const { sections } = usePlatformValueRubricatorSections();
 
   const { data, isLoading } = useFutureVisions({
     page,
@@ -67,7 +67,21 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
     return Array.from(set).sort();
   }, [rawItems]);
 
-  const filterTags = rubricatorTags.length > 0 ? rubricatorTags : tagsFromItems;
+  const decree809ForPanel = sections.decree809;
+  const adminExtrasForPanel = useMemo(() => {
+    if (sections.adminExtras.length > 0) {
+      return sections.adminExtras;
+    }
+    if (decree809ForPanel.length === 0 && tagsFromItems.length > 0) {
+      return tagsFromItems;
+    }
+    return tagsFromItems.filter(
+      (tag) =>
+        !decree809ForPanel.some(
+          (d) => d.toLowerCase() === tag.toLowerCase(),
+        ),
+    );
+  }, [sections.adminExtras, decree809ForPanel, tagsFromItems]);
 
   const fvTagFromUrl = searchParams.get(FV_TAG_QUERY);
 
@@ -165,18 +179,19 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
               size="sm"
               onClick={() => setBOpenFilters((s) => !s)}
               className="gap-2"
-              aria-label={tCommunities('filters.title')}
+              aria-label={tValues('openButton')}
             >
               <Filter className="h-4 w-4 shrink-0" />
-              <span className="hidden xl:inline">{tCommunities('filters.title')}</span>
+              <span className="hidden xl:inline">{tValues('openButton')}</span>
             </Button>
           </div>
         </div>
 
         {bOpenFilters && (
           <div className="pt-1">
-            <TagFilter
-              tags={filterTags}
+            <ValuesRubricatorPanel
+              decree809Tags={decree809ForPanel}
+              adminExtrasTags={adminExtrasForPanel}
               selectedTags={selectedTags}
               onToggleTag={handleToggleTag}
             />

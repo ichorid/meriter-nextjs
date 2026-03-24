@@ -38,6 +38,7 @@ import { MeritResolverService } from '../domain/services/merit-resolver.service'
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
+import { ValueTagsSuggestionService } from '../domain/services/value-tags-suggestion.service';
 import { ProjectService } from '../domain/services/project.service';
 import { TicketService } from '../domain/services/ticket.service';
 import { ProjectDistributionService } from '../domain/services/project-distribution.service';
@@ -81,6 +82,7 @@ export interface CreateContextOptions {
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   platformSettingsService: PlatformSettingsService;
+  valueTagsSuggestionService: ValueTagsSuggestionService;
   projectService: ProjectService;
   ticketService: TicketService;
   projectDistributionService: ProjectDistributionService;
@@ -136,6 +138,7 @@ export async function createContext(opts: CreateContextOptions) {
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
+    valueTagsSuggestionService,
     projectService,
     ticketService,
     projectDistributionService,
@@ -240,6 +243,7 @@ export async function createContext(opts: CreateContextOptions) {
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
+    valueTagsSuggestionService,
     projectService,
     ticketService,
     projectDistributionService,

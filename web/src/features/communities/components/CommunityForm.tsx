@@ -29,6 +29,8 @@ import { Loader2, Sparkles } from "lucide-react";
 import { AvatarUploader } from "@/components/ui/AvatarUploader";
 import { ImageUploader } from "@/components/ui/ImageUploader";
 import { FutureVisionCoverDevPlaceholders } from "@/shared/components/FutureVisionCoverDevPlaceholders";
+import { ValuesFormPickerFields } from "@/shared/components/value-rubricator/ValuesFormPickerFields";
+import { usePlatformValueRubricatorSections } from "@/shared/hooks/usePlatformValueRubricator";
 import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
@@ -73,8 +75,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
     const [futureVisionCover, setFutureVisionCover] = useState("");
 
-    const { data: platformSettings } = useFutureVisionTags();
-    const availableFutureVisionTags = platformSettings?.availableFutureVisionTags ?? [];
+    useFutureVisionTags();
+    const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
 
     useEffect(() => {
         if (community && isEditMode) {
@@ -95,12 +97,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setFutureVisionCover(c.futureVisionCover || "");
         }
     }, [community, isEditMode]);
-
-    const toggleFutureVisionTag = (tag: string) => {
-        setFutureVisionTags((prev) =>
-            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
-        );
-    };
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
@@ -317,23 +313,13 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                             className="rounded-xl w-full"
                         />
                     </BrandFormControl>
-                    {availableFutureVisionTags.length > 0 && (
-                        <div className="space-y-2">
-                            <Label className="text-sm font-medium">{t("futureVisionValueTags")}</Label>
-                            <div className="flex flex-wrap gap-2">
-                                {availableFutureVisionTags.map((tag: string) => (
-                                    <label key={tag} className="flex items-center gap-2 cursor-pointer">
-                                        <Checkbox
-                                            checked={futureVisionTags.includes(tag)}
-                                            onCheckedChange={() => toggleFutureVisionTag(tag)}
-                                            disabled={isPending}
-                                        />
-                                        <span className="text-sm">{tag}</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <ValuesFormPickerFields
+                        decree809Tags={rubricatorSections.decree809}
+                        adminExtrasTags={rubricatorSections.adminExtras}
+                        valueTags={futureVisionTags}
+                        onChange={setFutureVisionTags}
+                        disabled={isPending}
+                    />
                     <BrandFormControl label={t("futureVisionCover")}>
                         <ImageUploader
                             value={futureVisionCover || undefined}

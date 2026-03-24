@@ -10,6 +10,8 @@ export interface PublicationDocument {
   type: 'text' | 'image' | 'video';
   hashtags: string[];
   categories?: string[]; // Array of category IDs
+  /** Value tags (ценности) for MD / Projects hub posts. */
+  valueTags?: string[];
   metrics: {
     upvotes: number;
     downvotes: number;
