@@ -29,12 +29,12 @@ export function CreateNeutralTicketForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() || !title.trim()) return;
     try {
       await createNeutral.mutateAsync({
         projectId,
         content: content.trim(),
-        title: title.trim() || undefined,
+        title: title.trim(),
       });
       setContent('');
       setTitle('');
@@ -47,30 +47,35 @@ export function CreateNeutralTicketForm({
   return (
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
       <div>
-        <Label htmlFor="neutral-ticket-title">{t('title', { defaultValue: 'Title' })} (optional)</Label>
+        <Label htmlFor="neutral-ticket-title">
+          {t('ticketTitleLabel')} <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="neutral-ticket-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={t('shortTitle', { defaultValue: 'Short title' })}
+          placeholder={t('ticketTitlePlaceholder')}
           className="mt-1"
+          required
         />
       </div>
       <div>
-        <Label htmlFor="neutral-ticket-content">{t('taskFieldBody')} *</Label>
+        <Label htmlFor="neutral-ticket-content">
+          {t('taskFieldBody')} <span className="text-destructive">*</span>
+        </Label>
         <Textarea
           id="neutral-ticket-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder={t('taskDescription', { defaultValue: 'Task description' })}
-          rows={3}
+          placeholder={t('taskDescription')}
+          rows={4}
           required
           className="mt-1"
         />
       </div>
       <div className="flex gap-2">
-        <Button type="submit" disabled={createNeutral.isPending || !content.trim()}>
-          {createNeutral.isPending ? '…' : t('createOpenTask', { defaultValue: 'Create open task' })}
+        <Button type="submit" disabled={createNeutral.isPending || !content.trim() || !title.trim()}>
+          {createNeutral.isPending ? t('creating') : t('createOpenTask')}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>

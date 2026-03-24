@@ -22,14 +22,14 @@ import { PublicationCreatedEvent } from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 
 export interface CreateTicketDto {
-  title?: string;
+  title: string;
   description?: string;
   content: string;
   beneficiaryId: string;
 }
 
 export interface CreateNeutralTicketDto {
-  title?: string;
+  title: string;
   description?: string;
   content: string;
 }

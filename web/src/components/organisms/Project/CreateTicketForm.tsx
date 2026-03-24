@@ -37,23 +37,20 @@ export function CreateTicketForm({
 
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [beneficiaryId, setBeneficiaryId] = useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !beneficiaryId) return;
+    if (!content.trim() || !title.trim() || !beneficiaryId) return;
     try {
       await createTicket.mutateAsync({
         projectId,
         content: content.trim(),
-        title: title.trim() || undefined,
-        description: description.trim() || undefined,
+        title: title.trim(),
         beneficiaryId,
       });
       setContent('');
       setTitle('');
-      setDescription('');
       setBeneficiaryId('');
       onSuccess?.();
     } catch {
@@ -87,41 +84,38 @@ export function CreateTicketForm({
         </Select>
       </div>
       <div>
-        <Label htmlFor="ticket-title">{t('ticket')} (optional)</Label>
+        <Label htmlFor="ticket-title">
+          {t('ticketTitleLabel')} <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="ticket-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Short title"
+          placeholder={t('ticketTitlePlaceholder')}
           className="mt-1"
+          required
         />
       </div>
       <div>
-        <Label htmlFor="ticket-description">Description (optional)</Label>
-        <Textarea
-          id="ticket-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Details"
-          rows={2}
-          className="mt-1"
-        />
-      </div>
-      <div>
-        <Label htmlFor="ticket-content">Content *</Label>
+        <Label htmlFor="ticket-content">
+          {t('taskFieldBody')} <span className="text-destructive">*</span>
+        </Label>
         <Textarea
           id="ticket-content"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Task description"
-          rows={3}
+          placeholder={t('taskDescription')}
+          rows={4}
           required
           className="mt-1"
         />
       </div>
       <div className="flex gap-2">
-        <Button type="submit" disabled={createTicket.isPending || !content.trim() || !beneficiaryId}>
-          {createTicket.isPending ? '…' : t('createTicket')}
+        <Button
+          type="submit"
+          disabled={createTicket.isPending || !content.trim() || !title.trim() || !beneficiaryId}
+        >
+          {createTicket.isPending ? t('creating') : t('createTicket')}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>

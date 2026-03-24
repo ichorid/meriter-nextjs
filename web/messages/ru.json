@@ -1481,6 +1481,8 @@
         "taskFieldTitle": "Заголовок",
         "taskFieldBody": "Текст задачи",
         "selectAssignee": "Выберите исполнителя",
+        "ticketTitleLabel": "Название задачи",
+        "ticketTitlePlaceholder": "Краткое название задачи",
         "taskAssigneeLockedOpenNeutral": "Для открытой нейтральной задачи исполнитель назначается только через заявки.",
         "saveTaskEdits": "Сохранить",
         "statusOpen": "Открыта",

@@ -1481,6 +1481,8 @@
         "taskFieldTitle": "Title",
         "taskFieldBody": "Task body",
         "selectAssignee": "Select assignee",
+        "ticketTitleLabel": "Task title",
+        "ticketTitlePlaceholder": "Short name for this task",
         "taskAssigneeLockedOpenNeutral": "Open neutral tasks: assignee is set only via applicant approval.",
         "saveTaskEdits": "Save",
         "statusOpen": "Open",

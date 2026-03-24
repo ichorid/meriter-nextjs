@@ -5,7 +5,7 @@ import { TicketStatusSchema } from '@meriter/shared-types';
 
 const createTicketInputSchema = z.object({
   projectId: z.string(),
-  title: z.string().max(500).optional(),
+  title: z.string().min(1).max(500),
   description: z.string().max(5000).optional(),
   content: z.string().min(1).max(10000),
   beneficiaryId: z.string(),
@@ -13,7 +13,7 @@ const createTicketInputSchema = z.object({
 
 const createNeutralTicketInputSchema = z.object({
   projectId: z.string(),
-  title: z.string().max(500).optional(),
+  title: z.string().min(1).max(500),
   description: z.string().max(5000).optional(),
   content: z.string().min(1).max(10000),
 });
