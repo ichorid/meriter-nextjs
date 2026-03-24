@@ -1,8 +1,10 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCommunity } from '@/hooks/api';
 import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -22,11 +24,27 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
   const tCommon = useTranslations('common');
   const { user } = useAuth();
 
-  const { data, isLoading } = useGlobalProjectsList({
-    parentCommunityId: communityId,
-    page: 1,
-    pageSize: 50,
-  });
+  const { data: community, isLoading: communityLoading } = useCommunity(communityId);
+
+  useEffect(() => {
+    if (communityLoading || !community) return;
+    if (community.typeTag === 'marathon-of-good') {
+      router.replace(routes.community(communityId));
+    }
+  }, [community, communityId, communityLoading, router]);
+
+  const projectsListEnabled = Boolean(
+    community && community.typeTag !== 'marathon-of-good' && !communityLoading,
+  );
+
+  const { data, isLoading } = useGlobalProjectsList(
+    {
+      parentCommunityId: communityId,
+      page: 1,
+      pageSize: 50,
+    },
+    { enabled: projectsListEnabled },
+  );
 
   const items = data?.data ?? [];
 
@@ -39,6 +57,24 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
       showScrollToTop={false}
     />
   );
+
+  const showBootstrapLoading =
+    communityLoading || (!!community && community.typeTag === 'marathon-of-good');
+
+  if (showBootstrapLoading) {
+    return (
+      <AdaptiveLayout
+        className="community-projects"
+        communityId={communityId}
+        myId={user?.id}
+        stickyHeader={pageHeader}
+      >
+        <div className="p-4">
+          <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
+        </div>
+      </AdaptiveLayout>
+    );
+  }
 
   return (
     <AdaptiveLayout

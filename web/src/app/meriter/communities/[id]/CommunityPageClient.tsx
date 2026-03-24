@@ -312,11 +312,17 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
 
-    const { data: communityProjectsSummary, isPending: communityProjectsCountPending } = useGlobalProjectsList({
-        parentCommunityId: chatId,
-        page: 1,
-        pageSize: 1,
-    });
+    const loadCommunityProjectsCount =
+        Boolean(chatId && comms && comms.typeTag !== 'marathon-of-good');
+
+    const { data: communityProjectsSummary, isPending: communityProjectsCountPending } = useGlobalProjectsList(
+        {
+            parentCommunityId: chatId,
+            page: 1,
+            pageSize: 1,
+        },
+        { enabled: loadCommunityProjectsCount },
+    );
 
     // Canonical entrypoint: Future Vision is accessed via /meriter/future-visions (not as a regular community page)
     useEffect(() => {
@@ -728,51 +734,58 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Members and Community projects teaser blocks */}
+            {/* Members and (non–marathon-of-good) community projects teaser */}
             {comms && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <div
+                    className={cn(
+                        'mb-6 grid gap-3',
+                        isMarathonOfGood ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+                    )}
+                >
                     <Link
                         href={routes.communityMembers(chatId)}
-                        className="rounded-xl bg-base-200/60 border border-base-300 p-4 flex items-center justify-between gap-3 hover:bg-base-300/60 transition-colors"
+                        className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
                     >
-                        <div className="flex items-center gap-3 min-w-0">
-                            <Users className="h-5 w-5 flex-shrink-0 text-base-content/70" />
-                            <div className="flex items-baseline gap-2 min-w-0">
-                                <span className="font-medium text-base-content truncate">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <Users className="h-5 w-5 shrink-0 text-base-content/70" />
+                            <div className="flex min-w-0 items-baseline gap-2">
+                                <span className="truncate font-medium text-base-content">
                                     {tCommunities('members.title')}
                                 </span>
-                                <span className="text-sm text-base-content/60 tabular-nums flex-shrink-0">
+                                <span className="shrink-0 tabular-nums text-sm text-base-content/60">
                                     {comms.memberCount ?? 0}
                                 </span>
                             </div>
                         </div>
-                        <span className="text-sm text-primary font-medium flex items-center gap-1 flex-shrink-0">
+                        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
                             {tCommunities('all')}
                             <ChevronRight size={14} />
                         </span>
                     </Link>
-                    <Link
-                        href={routes.communityProjects(chatId)}
-                        className="rounded-xl bg-base-200/60 border border-base-300 p-4 flex items-center justify-between gap-3 hover:bg-base-300/60 transition-colors"
-                    >
-                        <div className="flex items-center gap-3 min-w-0">
-                            <FolderKanban className="h-5 w-5 flex-shrink-0 text-base-content/70" />
-                            <div className="flex items-baseline gap-2 min-w-0">
-                                <span className="font-medium text-base-content truncate">
-                                    {tCommunities('communityProjects')}
-                                </span>
-                                <span className="text-sm text-base-content/60 tabular-nums flex-shrink-0">
-                                    {communityProjectsCountPending
-                                        ? '…'
-                                        : (communityProjectsSummary?.total ?? 0)}
-                                </span>
+                    {!isMarathonOfGood ? (
+                        <Link
+                            href={routes.communityProjects(chatId)}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                        >
+                            <div className="flex min-w-0 items-center gap-3">
+                                <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                                <div className="flex min-w-0 items-baseline gap-2">
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityProjects')}
+                                    </span>
+                                    <span className="shrink-0 tabular-nums text-sm text-base-content/60">
+                                        {communityProjectsCountPending
+                                            ? '…'
+                                            : (communityProjectsSummary?.total ?? 0)}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                        <span className="text-sm text-primary font-medium flex items-center gap-1 flex-shrink-0">
-                            {tCommunities('all')}
-                            <ChevronRight size={14} />
-                        </span>
-                    </Link>
+                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                {tCommunities('all')}
+                                <ChevronRight size={14} />
+                            </span>
+                        </Link>
+                    ) : null}
                 </div>
             )}
 

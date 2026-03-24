@@ -28,16 +28,19 @@ export function useProjects(params: {
   );
 }
 
-export function useGlobalProjectsList(params: {
-  parentCommunityId?: string;
-  projectStatus?: 'active' | 'closed' | 'archived';
-  memberId?: string;
-  search?: string;
-  valueTags?: string[];
-  sort?: 'createdAt' | 'score';
-  page?: number;
-  pageSize?: number;
-}) {
+export function useGlobalProjectsList(
+  params: {
+    parentCommunityId?: string;
+    projectStatus?: 'active' | 'closed' | 'archived';
+    memberId?: string;
+    search?: string;
+    valueTags?: string[];
+    sort?: 'createdAt' | 'score';
+    page?: number;
+    pageSize?: number;
+  },
+  queryOptions?: { enabled?: boolean },
+) {
   return trpc.project.getGlobalList.useQuery(
     {
       parentCommunityId: params.parentCommunityId,
@@ -49,7 +52,7 @@ export function useGlobalProjectsList(params: {
       page: params.page,
       pageSize: params.pageSize,
     },
-    { staleTime: STALE_TIME.SHORT },
+    { staleTime: STALE_TIME.SHORT, enabled: queryOptions?.enabled ?? true },
   );
 }
 
