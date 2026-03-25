@@ -58,8 +58,7 @@ export function UpdateSharesDialog({
           <DialogTitle>{t('updateSharesTitle', { defaultValue: 'Update founder share' })}</DialogTitle>
           <DialogDescription>
             {t('updateSharesDescription', {
-              defaultValue: 'You can only decrease the founder share (increase the team share). Current: {current}%.',
-              values: { current: currentFounderSharePercent },
+              current: currentFounderSharePercent,
             })}
           </DialogDescription>
         </DialogHeader>
