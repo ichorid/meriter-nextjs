@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
 } from '@nestjs/common';
@@ -35,7 +36,11 @@ import {
   PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS,
   GLOBAL_COMMUNITY_BOOTSTRAP,
 } from '../common/constants/platform-bootstrap.constants';
-import { TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE } from '../common/constants/birzha-source-entity.constants';
+import {
+  TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE,
+  isEligibleNonProjectBirzhaSourceCommunity,
+} from '../common/constants/birzha-source-entity.constants';
+import { CommunityWalletService } from './community-wallet.service';
 
 export interface CreateCommunityDto {
   id?: string;
@@ -173,6 +178,12 @@ export interface UpdateCommunityDto {
   };
 }
 
+const DEFAULT_MERIT_CURRENCY = {
+  singular: 'merit',
+  plural: 'merits',
+  genitive: 'merits',
+} as const;
+
 @Injectable()
 export class CommunityService {
   private readonly logger = new Logger(CommunityService.name);
@@ -193,6 +204,7 @@ export class CommunityService {
     private communityDefaultsService: CommunityDefaultsService,
     @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,
+    private communityWalletService: CommunityWalletService,
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
@@ -611,6 +623,9 @@ export class CommunityService {
     if (dto.settings?.investorShareMax !== undefined) {
       settings.investorShareMax = dto.settings.investorShareMax;
     }
+    if (dto.typeTag === 'project') {
+      settings.allowWithdraw = false;
+    }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,
@@ -641,6 +656,16 @@ export class CommunityService {
         community.isPersonalProject = true;
       }
       if (dto.communityWalletId !== undefined) community.communityWalletId = dto.communityWalletId;
+      community.tappalkaSettings = {
+        enabled: false,
+        categories: [],
+        winReward: 1,
+        userReward: 1,
+        comparisonsRequired: 10,
+        showCost: 0.1,
+        minRating: 1,
+      };
+      community.projectInvestments = [];
     }
 
     await this.communityModel.create([community]);
@@ -898,7 +923,14 @@ export class CommunityService {
 
     // Handle tappalkaSettings
     if (dto.tappalkaSettings) {
-      const tappalkaSettingsUpdate: any = {};
+      const existingCommunity = await this.communityModel.findOne({ id: communityId }).lean();
+      if (
+        dto.tappalkaSettings.enabled === true &&
+        (existingCommunity as { isProject?: boolean } | null)?.isProject
+      ) {
+        throw new BadRequestException('Tappalka cannot be enabled for project communities');
+      }
+      const tappalkaSettingsUpdate: Record<string, unknown> = {};
       if (dto.tappalkaSettings.enabled !== undefined) {
         tappalkaSettingsUpdate['tappalkaSettings.enabled'] = Boolean(dto.tappalkaSettings.enabled);
       }
@@ -1634,5 +1666,80 @@ export class CommunityService {
     const items = ordered.slice(skip, skip + pageSize);
 
     return { items, total, page, pageSize };
+  }
+
+  /**
+   * Top-up Birzha source community wallet from the user's global wallet (donation; non-refundable).
+   */
+  async topUpSourceCommunityWallet(
+    userId: string,
+    communityId: string,
+    amount: number,
+  ): Promise<{ balance: number }> {
+    if (amount <= 0 || !Number.isInteger(amount)) {
+      throw new BadRequestException('Amount must be a positive integer');
+    }
+    const community = await this.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    if (community.isProject === true) {
+      throw new BadRequestException('Use project wallet top-up for projects');
+    }
+    if (!isEligibleNonProjectBirzhaSourceCommunity(community)) {
+      throw new BadRequestException(
+        'This community cannot hold a Birzha source wallet',
+      );
+    }
+    const role = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (!role) {
+      throw new ForbiddenException('Only community members can top up the wallet');
+    }
+    await this.walletService.addTransaction(
+      userId,
+      GLOBAL_COMMUNITY_ID,
+      'debit',
+      amount,
+      'personal',
+      'community_wallet_topup',
+      communityId,
+      DEFAULT_MERIT_CURRENCY,
+      'Community wallet top-up',
+    );
+    const wallet = await this.communityWalletService.deposit(communityId, amount, 'topup');
+    return { balance: wallet.balance };
+  }
+
+  async appendProjectInvestment(
+    projectId: string,
+    userId: string,
+    amount: number,
+  ): Promise<void> {
+    if (amount < 1 || !Number.isInteger(amount)) {
+      throw new BadRequestException('Investment amount must be a positive integer');
+    }
+    const project = await this.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    if (project.settings?.investingEnabled !== true) {
+      throw new BadRequestException('Investing is not enabled for this project');
+    }
+    const invs = [...(project.projectInvestments ?? [])];
+    const now = new Date();
+    const idx = invs.findIndex((i) => i.userId === userId);
+    if (idx >= 0) {
+      invs[idx] = {
+        ...invs[idx],
+        amount: invs[idx].amount + amount,
+        updatedAt: now,
+      };
+    } else {
+      invs.push({ userId, amount, createdAt: now, updatedAt: now });
+    }
+    await this.communityModel.updateOne(
+      { id: projectId },
+      { $set: { projectInvestments: invs, updatedAt: now } },
+    );
   }
 }

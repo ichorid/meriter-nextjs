@@ -1139,6 +1139,85 @@ export const communitiesRouter = router({
     }),
 
   /**
+   * Top-up Birzha source community wallet (non-project) from the user's global wallet.
+   */
+  topUpCommunityWallet: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      return ctx.communityService.topUpSourceCommunityWallet(
+        ctx.user.id,
+        input.communityId,
+        input.amount,
+      );
+    }),
+
+  /**
+   * Preview payout from community wallet (same rules as project wallet payout for eligible sources).
+   */
+  communityWalletPayoutPreview: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      const role = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        input.communityId,
+      );
+      if (!role) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only community members can preview payouts',
+        });
+      }
+      return ctx.projectPayoutService.previewPayout(input.communityId, input.amount);
+    }),
+
+  /**
+   * Execute payout from community wallet (lead or superadmin).
+   */
+  communityWalletPayoutExecute: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      return ctx.projectPayoutService.executePayout(
+        input.communityId,
+        input.amount,
+        ctx.user.id,
+        { globalRole: ctx.user.globalRole ?? null },
+      );
+    }),
+
+  /**
    * Birzha (marathon-of-good) community id for publish UI (same settings as exchange create).
    */
   getBirzhaCommunity: protectedProcedure.query(async ({ ctx }) => {

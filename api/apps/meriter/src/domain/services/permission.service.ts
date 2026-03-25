@@ -192,6 +192,17 @@ export class PermissionService {
       return false;
     }
 
+    if (community?.isProject) {
+      const user = await this.userService.getUserById(userId);
+      const isSuperadmin = user?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      if (!isSuperadmin) {
+        const role = await this.userCommunityRoleService.getRole(userId, communityId);
+        if (!role) {
+          return false;
+        }
+      }
+    }
+
     const context = await this.permissionContextService.buildContextForPublication(
       userId,
       publicationId,

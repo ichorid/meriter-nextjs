@@ -7,14 +7,14 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { FavoriteService } from '../src/domain/services/favorite.service';
 
 describe('FavoriteService', () => {
+  jest.setTimeout(30000);
+
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let favoriteService: FavoriteService;
   let connection: Connection;
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
-
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;

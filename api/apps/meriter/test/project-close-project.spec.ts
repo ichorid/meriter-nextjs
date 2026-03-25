@@ -1,6 +1,6 @@
 /**
- * closeProject: find active posts on Birzha (sourceEntityType='project'), call publications.close for each,
- * then set projectStatus='archived'. Close distribution credits CommunityWallet(projectId).
+ * closeProject: close Birzha posts (sourceEntityType='project'), then sweep project CommunityWallet to global wallets,
+ * then set projectStatus='archived'. Birzha close credits the project wallet; auto payout empties it.
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
@@ -97,7 +97,7 @@ describe('Project closeProject', () => {
     await testDb?.stop();
   });
 
-  it('closeProject: closes Birzha posts and archives project; rating share credits project CommunityWallet', async () => {
+  it('closeProject: closes Birzha posts, pays out project wallet to global, archives project', async () => {
     await userModel.create([
       { id: leadId, authProvider: 'telegram', authId: `tg-${leadId}`, displayName: 'Lead', createdAt: new Date(), updatedAt: new Date() },
     ]);
@@ -156,11 +156,11 @@ describe('Project closeProject', () => {
     expect(project?.projectStatus).toBe('archived');
 
     const cw = await communityWalletService.getWallet(projectId);
-    expect(cw?.balance).toBe(15);
+    expect(cw?.balance).toBe(0);
     expect(cw?.totalReceived).toBe(15);
 
     const leadWallet = await walletService.getWallet(leadId, GLOBAL_COMMUNITY_ID);
-    expect(leadWallet?.getBalance() ?? 0).toBe(0);
+    expect(leadWallet?.getBalance() ?? 0).toBe(15);
   });
 
   it('closeProject: only lead can close', async () => {

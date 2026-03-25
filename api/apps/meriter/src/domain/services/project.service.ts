@@ -16,7 +16,8 @@ import { PublicationService } from './publication.service';
 import { TicketService } from './ticket.service';
 import { NotificationService } from './notification.service';
 import { ProjectParentLinkRequestService } from './project-parent-link-request.service';
-import type { Community } from '../models/community/community.schema';
+import { ProjectPayoutService } from './project-payout.service';
+import type { Community, ProjectInvestmentEntry } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
 const DEFAULT_CURRENCY = {
@@ -91,6 +92,7 @@ export class ProjectService {
     private readonly ticketService: TicketService,
     private readonly notificationService: NotificationService,
     private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
+    private readonly projectPayoutService: ProjectPayoutService,
   ) {}
 
   private async createPersonalProjectAndSetup(
@@ -467,7 +469,11 @@ export class ProjectService {
    * Close project: close all active Birzha posts (publications.close), then set projectStatus='archived'.
    * Only lead. Idempotent for already archived.
    */
-  async closeProject(projectId: string, leadUserId: string): Promise<void> {
+  async closeProject(
+    projectId: string,
+    leadUserId: string,
+    globalRole?: string | null,
+  ): Promise<void> {
     const project = await this.communityService.getCommunity(projectId);
     if (!project || !project.isProject) {
       throw new NotFoundException('Project not found');
@@ -493,6 +499,8 @@ export class ProjectService {
     for (const postId of postIds) {
       await this.postClosingService.closePost(postId, 'manual');
     }
+
+    await this.projectPayoutService.executePayoutAll(projectId, leadUserId, { globalRole });
 
     await this.communityService.updateCommunity(projectId, {
       projectStatus: 'archived',
@@ -812,6 +820,68 @@ export class ProjectService {
 
     const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
     return { balance: wallet.balance };
+  }
+
+  async investInProject(userId: string, projectId: string, amount: number): Promise<void> {
+    if (amount < 1 || !Number.isInteger(amount)) {
+      throw new BadRequestException('Amount must be a positive integer');
+    }
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    if (project.projectStatus === 'archived') {
+      throw new BadRequestException('Cannot invest in an archived project');
+    }
+    if (project.settings?.investingEnabled !== true) {
+      throw new BadRequestException('Investing is not enabled for this project');
+    }
+    await this.walletService.addTransaction(
+      userId,
+      GLOBAL_COMMUNITY_ID,
+      'debit',
+      amount,
+      'personal',
+      'project_investment',
+      projectId,
+      DEFAULT_CURRENCY,
+      `Investment in project ${project.name}`,
+    );
+    await this.communityService.appendProjectInvestment(projectId, userId, amount);
+  }
+
+  async listProjectInvestments(
+    projectId: string,
+    viewerUserId: string,
+  ): Promise<ProjectInvestmentEntry[]> {
+    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
+    if (!role) {
+      throw new ForbiddenException('Only project members can view investments');
+    }
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    return project.projectInvestments ?? [];
+  }
+
+  async previewProjectPayout(projectId: string, amount: number, viewerUserId: string) {
+    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
+    if (!role) {
+      throw new ForbiddenException('Only project members can preview payouts');
+    }
+    return this.projectPayoutService.previewPayout(projectId, amount);
+  }
+
+  async executeProjectPayout(
+    projectId: string,
+    amount: number,
+    actorUserId: string,
+    globalRole?: string | null,
+  ) {
+    return this.projectPayoutService.executePayout(projectId, amount, actorUserId, {
+      globalRole,
+    });
   }
 
   listPendingParentLinkRequests(parentCommunityId: string, viewerUserId: string) {

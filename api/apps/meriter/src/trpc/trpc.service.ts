@@ -42,6 +42,7 @@ import { ProjectService } from '../domain/services/project.service';
 import { TicketService } from '../domain/services/ticket.service';
 import { ProjectDistributionService } from '../domain/services/project-distribution.service';
 import { CommunityWalletService } from '../domain/services/community-wallet.service';
+import { ProjectPayoutService } from '../domain/services/project-payout.service';
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { createContext } from './context';
@@ -90,6 +91,7 @@ export class TrpcService {
     private ticketService: TicketService,
     private projectDistributionService: ProjectDistributionService,
     private communityWalletService: CommunityWalletService,
+    private projectPayoutService: ProjectPayoutService,
     private platformWipeService: PlatformWipeService,
     private platformDemoSeedService: PlatformDemoSeedService,
     @InjectConnection() private connection: Connection,
@@ -144,6 +146,7 @@ export class TrpcService {
       ticketService: this.ticketService,
       projectDistributionService: this.projectDistributionService,
       communityWalletService: this.communityWalletService,
+      projectPayoutService: this.projectPayoutService,
       platformWipeService: this.platformWipeService,
       platformDemoSeedService: this.platformDemoSeedService,
       connection: this.connection,

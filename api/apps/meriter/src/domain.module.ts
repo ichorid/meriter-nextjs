@@ -121,6 +121,7 @@ import { ProjectService } from './domain/services/project.service';
 import { ProjectParentLinkRequestService } from './domain/services/project-parent-link-request.service';
 import { TicketService } from './domain/services/ticket.service';
 import { ProjectDistributionService } from './domain/services/project-distribution.service';
+import { ProjectPayoutService } from './domain/services/project-payout.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
 
@@ -205,6 +206,7 @@ import { EventBus } from './domain/events/event-bus';
     ValueTagsSuggestionService,
     CommunityWalletService,
     ProjectParentLinkRequestService,
+    ProjectPayoutService,
     ProjectService,
     TicketService,
     ProjectDistributionService,
@@ -258,6 +260,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformSettingsService,
     ValueTagsSuggestionService,
     CommunityWalletService,
+    ProjectPayoutService,
     ProjectService,
     TicketService,
     ProjectDistributionService,

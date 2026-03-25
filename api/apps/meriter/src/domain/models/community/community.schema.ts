@@ -180,6 +180,13 @@ export interface PermissionContext {
   minutesSinceCreation?: number;
 }
 
+export interface ProjectInvestmentEntry {
+  userId: string;
+  amount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Community {
   id: string;
   name: string;
@@ -218,6 +225,8 @@ export interface Community {
   futureVisionTags?: string[];
   /** Cover image URL for OB card. */
   futureVisionCover?: string;
+  /** Cumulative investments in the project (global merits); used for payout investor pool. */
+  projectInvestments?: ProjectInvestmentEntry[];
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -458,6 +467,19 @@ export class CommunitySchemaClass implements Community {
 
   @Prop({ type: String })
   futureVisionCover?: string;
+
+  @Prop({
+    type: [
+      {
+        userId: { type: String, required: true },
+        amount: { type: Number, required: true },
+        createdAt: { type: Date, required: true },
+        updatedAt: { type: Date, required: true },
+      },
+    ],
+    default: [],
+  })
+  projectInvestments?: ProjectInvestmentEntry[];
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);

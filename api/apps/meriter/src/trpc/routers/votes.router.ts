@@ -176,6 +176,40 @@ async function getWalletBalance(
   return wallet ? wallet.getBalance() : 0;
 }
 
+function ticketHasWorkAccepted(
+  doc: { ticketActivityLog?: Array<{ action?: string }> } | null | undefined,
+): boolean {
+  return (doc?.ticketActivityLog ?? []).some((e) => e.action === 'work_accepted');
+}
+
+function shouldUseProjectInstantAppreciation(
+  community: { isProject?: boolean } | null | undefined,
+  publicationDoc: {
+    postType?: string;
+    ticketStatus?: string;
+    status?: string;
+    beneficiaryId?: string | null;
+    authorId?: string;
+    ticketActivityLog?: Array<{ action?: string }>;
+  } | null | undefined,
+  direction: 'up' | 'down',
+  totalAmount: number,
+): boolean {
+  if (!community?.isProject || direction !== 'up' || totalAmount <= 0 || !publicationDoc) {
+    return false;
+  }
+  const pt = publicationDoc.postType;
+  if (pt === 'discussion') {
+    return (publicationDoc.status ?? 'active') !== 'closed';
+  }
+  if (pt === 'ticket') {
+    return (
+      publicationDoc.ticketStatus === 'closed' && ticketHasWorkAccepted(publicationDoc)
+    );
+  }
+  return false;
+}
+
 /**
  * Helper to get communityId from target
  */
@@ -321,10 +355,16 @@ export async function createVoteLogic(
   }
 
   if (isTicketPublication && requestedTotalAmount > 0) {
-    throw new TRPCError({
-      code: 'BAD_REQUEST',
-      message: 'Task posts only accept free text comments (no merits)',
-    });
+    const allowTicketMerits =
+      community.isProject === true &&
+      publicationDoc?.ticketStatus === 'closed' &&
+      ticketHasWorkAccepted(publicationDoc);
+    if (!allowTicketMerits) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Task posts only accept free text comments (no merits)',
+      });
+    }
   }
 
   // commentMode validation: which comment/vote types are allowed in this community
@@ -517,6 +557,33 @@ export async function createVoteLogic(
     }
   }
 
+  const totalMeritVoteAmount = quotaAmount + walletAmount;
+  const useProjectInstantAppreciation =
+    input.targetType === 'publication' &&
+    shouldUseProjectInstantAppreciation(
+      community,
+      publicationDoc,
+      direction,
+      totalMeritVoteAmount,
+    );
+
+  if (community.isProject === true && totalMeritVoteAmount > 0) {
+    const actor = await ctx.userService.getUserById(ctx.user.id);
+    const isSuperadmin = actor?.globalRole === 'superadmin';
+    if (!isSuperadmin) {
+      const memberRole = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        communityId,
+      );
+      if (!memberRole) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only project members can vote with merits in this project',
+        });
+      }
+    }
+  }
+
   // Create vote
   const vote = await ctx.voteService.createVote(
     ctx.user.id,
@@ -530,15 +597,38 @@ export async function createVoteLogic(
     input.images,
   );
 
-  // Update publication metrics if voting on a publication
+  // Update publication metrics if voting on a publication (project tasks/discussions: credit beneficiary wallet only)
   if (input.targetType === 'publication') {
     const totalAmount = quotaAmount + walletAmount;
-    await ctx.publicationService.voteOnPublication(
-      input.targetId,
-      ctx.user.id,
-      totalAmount,
-      direction,
-    );
+    if (useProjectInstantAppreciation && publicationDoc) {
+      const beneficiaryId =
+        publicationDoc.postType === 'ticket'
+          ? (publicationDoc.beneficiaryId ?? publicationDoc.authorId)
+          : publicationDoc.authorId;
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await ctx.walletService.addTransaction(
+        beneficiaryId,
+        communityId,
+        'credit',
+        totalAmount,
+        'personal',
+        'project_appreciation',
+        input.targetId,
+        currency,
+        `Project appreciation for publication ${input.targetId}`,
+      );
+    } else {
+      await ctx.publicationService.voteOnPublication(
+        input.targetId,
+        ctx.user.id,
+        totalAmount,
+        direction,
+      );
+    }
   }
 
   // Deduct from wallet if wallet amount was used (global for priority, community for local)

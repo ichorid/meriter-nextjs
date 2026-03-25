@@ -151,8 +151,73 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      await ctx.projectService.closeProject(input.projectId, ctx.user.id);
+      await ctx.projectService.closeProject(
+        input.projectId,
+        ctx.user.id,
+        ctx.user.globalRole ?? null,
+      );
       return { success: true };
+    }),
+
+  investInProject: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.projectService.investInProject(ctx.user.id, input.projectId, input.amount);
+      return { success: true as const };
+    }),
+
+  listInvestments: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.listProjectInvestments(input.projectId, ctx.user.id);
+    }),
+
+  payoutPreview: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.previewProjectPayout(
+        input.projectId,
+        input.amount,
+        ctx.user.id,
+      );
+    }),
+
+  payoutExecute: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        amount: z.number().int().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.executeProjectPayout(
+        input.projectId,
+        input.amount,
+        ctx.user.id,
+        ctx.user.globalRole ?? null,
+      );
     }),
 
   updateShares: protectedProcedure
