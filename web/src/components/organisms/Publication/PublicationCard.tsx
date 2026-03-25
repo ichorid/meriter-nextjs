@@ -214,32 +214,38 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       onClick={handleCardClick}
       className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
     >
-      {(sourceEntityType === 'project' || sourceEntityType === 'community') &&
-      sourceEntityId ? (
-        <BirzhaSourcePostBadge sourceEntityType={sourceEntityType} variant="card" />
-      ) : null}
-      <PostHeader
-        publication={{
-          id: pubItem.id,
-          slug: pubItem.slug,
-          createdAt: pubItem.createdAt,
-          meta: pubItem.meta,
-          authorKind: pubItem.authorKind,
-          authoredCommunityId: pubItem.authoredCommunityId,
-          publishedByUserId: pubItem.publishedByUserId,
-          postType: (pubItem as any).postType,
-          isProject: (pubItem as any).isProject,
-          permissions: (pubItem as any).permissions,
-        }}
-        showCommunityAvatar={showCommunityAvatar}
-        className="mb-3"
-        authorId={pubItem.authorId}
-        beneficiaryId={pubItem.beneficiaryId}
-        metrics={pubItem.metrics}
-        publicationId={pubItem.id}
-        communityId={pubItem.communityId}
-        isPoll={false}
-      />
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <PostHeader
+          publication={{
+            id: pubItem.id,
+            slug: pubItem.slug,
+            createdAt: pubItem.createdAt,
+            meta: pubItem.meta,
+            authorKind: pubItem.authorKind,
+            authoredCommunityId: pubItem.authoredCommunityId,
+            publishedByUserId: pubItem.publishedByUserId,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
+            permissions: (pubItem as any).permissions,
+          }}
+          showCommunityAvatar={showCommunityAvatar}
+          className="mb-0 min-w-0 flex-1"
+          authorId={pubItem.authorId}
+          beneficiaryId={pubItem.beneficiaryId}
+          metrics={pubItem.metrics}
+          publicationId={pubItem.id}
+          communityId={pubItem.communityId}
+          isPoll={false}
+        />
+        {(sourceEntityType === 'project' || sourceEntityType === 'community') &&
+        sourceEntityId ? (
+          <BirzhaSourcePostBadge
+            sourceEntityType={sourceEntityType}
+            variant="card"
+            className="shrink-0 self-start"
+          />
+        ) : null}
+      </div>
 
         <PostContent
         publication={{

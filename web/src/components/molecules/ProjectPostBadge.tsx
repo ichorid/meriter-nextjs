@@ -28,7 +28,6 @@ export function BirzhaSourcePostBadge({
       variant="outline"
       className={cn(
         'shrink-0 border-base-300/70 bg-base-200/50 px-2 py-0.5 text-xs font-medium text-base-content/85 dark:border-base-content/20 dark:bg-base-300/35',
-        variant === 'card' && 'mb-2',
         className,
       )}
     >
