@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { TrendingUp } from 'lucide-react';
 import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { useUserProfile } from '@/hooks/api/useUsers';
@@ -30,6 +31,8 @@ import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 import { cn } from '@/lib/utils';
+import { formatMerits } from '@/lib/utils/currency';
+import { useUIStore } from '@/stores/ui.store';
 import type { TicketStatus } from '@meriter/shared-types';
 
 interface TicketCardProps {
@@ -47,7 +50,7 @@ interface TicketCardProps {
     authorId: string;
     isNeutralTicket?: boolean;
     applicants?: string[];
-    metrics?: { score?: number };
+    metrics?: { score?: number; upvotes?: number };
     ticketActivityLog?: Array<{ action?: string }>;
   };
   currentUserId: string;
@@ -69,6 +72,7 @@ export function TicketCard({
   const applyForTicket = useApplyForTicket();
   const takeOpenNeutralAsModerator = useTakeOpenNeutralAsModerator();
   const declineAsAssignee = useDeclineAsAssignee();
+  const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [returnRevisionOpen, setReturnRevisionOpen] = useState(false);
@@ -92,6 +96,19 @@ export function TicketCard({
   const canReopen = canModerateTickets && status === 'closed';
   const showAppreciationVote =
     status === 'closed' && ticketHasWorkAccepted(ticket) && Boolean(currentUserId);
+  const showClosedAppreciationRating =
+    status === 'closed' && ticketHasWorkAccepted(ticket);
+  const appreciationScore = ticket.metrics?.score ?? 0;
+  const appreciationUpvotes = ticket.metrics?.upvotes;
+
+  const handleAppreciationVoteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openVotingPopup(ticket.id, 'publication', 'standard', {
+      publicationIsTask: false,
+      taskAllowWeightedMerits: true,
+    });
+  };
 
   const submitDecline = () => {
     const r = declineReason.trim();
@@ -147,7 +164,44 @@ export function TicketCard({
           <BeneficiaryAvatar userId={beneficiaryId} isOpenNeutral={isOpenNeutral} />
         </div>
       </Link>
-      <div className="flex flex-wrap items-center justify-end gap-2 px-4 pb-4">
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-4',
+          showClosedAppreciationRating ? 'justify-between border-t border-white/10 pt-3' : 'justify-end',
+        )}
+      >
+          {showClosedAppreciationRating ? (
+            <div className="flex min-w-0 flex-shrink-0 items-center gap-1.5 text-sm">
+              <TrendingUp
+                className="h-4 w-4 shrink-0 text-base-content/50"
+                aria-hidden
+              />
+              <span
+                className={cn(
+                  'font-medium tabular-nums',
+                  appreciationScore > 0
+                    ? 'text-success'
+                    : appreciationScore < 0
+                      ? 'text-error'
+                      : 'text-base-content/60',
+                )}
+              >
+                {appreciationScore > 0 ? '+' : ''}
+                {formatMerits(appreciationScore)}
+              </span>
+              {appreciationUpvotes != null &&
+                typeof appreciationUpvotes === 'number' &&
+                !Number.isNaN(appreciationUpvotes) &&
+                !Number.isNaN(appreciationScore) &&
+                appreciationUpvotes > appreciationScore && (
+                  <span className="text-xs tabular-nums text-base-content/40">
+                    ({appreciationUpvotes > 0 ? '+' : ''}
+                    {formatMerits(appreciationUpvotes)})
+                  </span>
+                )}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center justify-end gap-2">
           {canTakeOpenNeutralAsModerator && (
             <Button
               type="button"
@@ -228,10 +282,17 @@ export function TicketCard({
             </Button>
           )}
           {showAppreciationVote && (
-            <Button size="sm" variant="default" className="h-8 px-2 sm:px-4 text-xs" asChild>
-              <Link href={routes.communityPost(projectId, ticket.id)}>{tComments('voteTitle')}</Link>
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              className="h-8 px-2 sm:px-4 text-xs"
+              onClick={handleAppreciationVoteClick}
+            >
+              {tComments('voteTitle')}
             </Button>
           )}
+          </div>
       </div>
       {canModerateTickets && isOpenNeutral && (
         <div className="border-t border-white/10 px-4 pb-4 pt-3">

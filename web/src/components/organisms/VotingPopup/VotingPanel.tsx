@@ -45,6 +45,8 @@ interface VotingPanelProps {
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
     /** Shown under the title when in neutral-only mode (e.g. free task comments) */
     neutralHelperText?: string;
+    /** Extra context under mechanics (e.g. project task appreciation → assignee wallet) */
+    contextHint?: string;
     /** When hideQuota: which hint to show — 'add' (add merits to post) or 'withdraw' (withdraw merits). Default 'withdraw'. */
     hintMode?: 'add' | 'withdraw';
     /** When withdrawing from a Birzha post published on behalf of a project/community, merits credit the source wallet (not personal). */
@@ -79,6 +81,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     onSubmitSimple,
     commentMode,
     neutralHelperText,
+    contextHint,
     hintMode = 'withdraw',
     withdrawMeritsDestination = 'personal',
 }) => {
@@ -574,6 +577,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         {votingMechanicsText}
                     </p>
                 )}
+                {contextHint ? (
+                    <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
+                        {contextHint}
+                    </p>
+                ) : null}
             </div>
 
 

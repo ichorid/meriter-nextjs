@@ -72,6 +72,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   if (isLoading || !data) {
     return (
       <AdaptiveLayout
+        communityId={projectId}
         stickyHeader={
           <SimpleStickyHeader
             title={t('backToProjects')}
@@ -165,7 +166,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   );
 
   return (
-    <AdaptiveLayout stickyHeader={stickyHeader}>
+    <AdaptiveLayout communityId={projectId} stickyHeader={stickyHeader}>
       <div className="flex flex-col gap-6 p-4 max-w-4xl mx-auto w-full">
         <ProjectHero
           project={{

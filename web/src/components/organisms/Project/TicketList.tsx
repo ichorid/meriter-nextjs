@@ -107,7 +107,7 @@ export function TicketList({
           authorId: string;
           isNeutralTicket?: boolean;
           applicants?: string[];
-          metrics?: { score?: number };
+          metrics?: { score?: number; upvotes?: number };
         }) => (
           <li key={ticket.id} id={`project-ticket-${ticket.id}`}>
             <TicketCard

@@ -89,9 +89,20 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     [community?.settings],
   );
 
-  // D-10: Closed posts — force neutral-only (no weighted vote) regardless of community setting
+  /** Closed project task with accepted work: full vote UI (quota + wallet), merits credit assignee project wallet */
+  const ticketWeightedAppreciation = useMemo(
+    () =>
+      votingTargetType === 'publication' &&
+      votingTaskAllowWeightedMerits === true &&
+      (publication as { postType?: string } | undefined)?.postType === 'ticket',
+    [votingTargetType, votingTaskAllowWeightedMerits, publication],
+  );
+
+  // D-10: Closed posts — force neutral-only (no weighted vote) unless project task appreciation voting
   const effectiveCommentMode =
-    (publication as { status?: string })?.status === 'closed' ? 'neutralOnly' : commentMode;
+    (publication as { status?: string })?.status === 'closed' && !ticketWeightedAppreciation
+      ? 'neutralOnly'
+      : commentMode;
 
   const isTicketPost = useMemo(
     () =>
@@ -100,6 +111,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         (publication as { postType?: string } | undefined)?.postType === 'ticket'),
     [votingTargetType, votingPublicationIsTask, publication],
   );
+
+  const ticketFreeCommentOnlyUi = isTicketPost && !votingTaskAllowWeightedMerits;
 
   /** Tasks: free text comments only unless accepted project task with weighted merits */
   const effectiveCommentModeForSubmit = useMemo(
@@ -420,13 +433,20 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           error={formData.error}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
-          commentMode={isTicketPost ? 'neutralOnly' : effectiveCommentMode}
-          hideQuota={isTicketPost || effectiveCommentMode === 'neutralOnly'}
-          submitButtonLabel={
-            isTicketPost || effectiveCommentMode === 'neutralOnly' ? t('commentButton') : undefined
+          commentMode={ticketFreeCommentOnlyUi ? 'neutralOnly' : effectiveCommentMode}
+          hideQuota={
+            ticketFreeCommentOnlyUi ||
+            (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
           }
-          isOwnPost={isTicketPost ? false : isOwnPost}
-          neutralHelperText={isTicketPost ? t('taskCommentFreeHint') : undefined}
+          submitButtonLabel={
+            ticketFreeCommentOnlyUi ||
+            (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
+              ? t('commentButton')
+              : undefined
+          }
+          isOwnPost={ticketFreeCommentOnlyUi ? false : isOwnPost}
+          neutralHelperText={ticketFreeCommentOnlyUi ? t('taskCommentFreeHint') : undefined}
+          contextHint={ticketWeightedAppreciation ? t('ticketAppreciationMeritsHint') : undefined}
         />
         </div>
       </div>

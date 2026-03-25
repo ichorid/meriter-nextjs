@@ -226,6 +226,7 @@ export function useVoteOnPublicationWithComment() {
         await utils.publications.getById.invalidate({ id: vars.targetId });
         await utils.publications.getById.refetch({ id: vars.targetId });
         await invalidateFutureVisionsList(utils);
+        await utils.ticket.getByProject.invalidate();
       }
 
       // Invalidate and refetch communities
