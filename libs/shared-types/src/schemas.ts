@@ -384,8 +384,14 @@ export const PublicationSchema = IdentifiableSchema.merge(
   beneficiaryId: z.string().optional(),
   /** Project/source community id when post is published to Birzha from a project (Sprint 3). */
   sourceEntityId: z.string().optional(),
-  /** 'project' = from project to Birzha; 'community' = reserved (Sprint 6). */
+  /** 'project' = from project to Birzha; 'community' = from local community to Birzha. */
   sourceEntityType: SourceEntityTypeSchema.optional(),
+  /** Logical author: user post vs community/project as author (Birzha source posts). */
+  authorKind: z.enum(["user", "community"]).optional().default("user"),
+  /** When authorKind=community: Community.id of the source (same as sourceEntityId on Birzha). */
+  authoredCommunityId: z.string().optional(),
+  /** User who clicked publish (audit) for community-authored Birzha posts. */
+  publishedByUserId: z.string().optional(),
   // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта (isProject=true)
   postType: PostTypeSchema.optional().default("basic"),
   // Метка проекта (сообщество-проект)
@@ -485,9 +491,19 @@ export const ResourcePermissionsSchema = z.object({
   canEdit: z.boolean(),
   canDelete: z.boolean(),
   canComment: z.boolean(),
+  /** Birzha source post: manager can top up rating from the source CommunityWallet */
+  canTopUpFromSourceEntityWallet: z.boolean().optional(),
   voteDisabledReason: z.string().optional(),
   editDisabledReason: z.string().optional(),
   deleteDisabledReason: z.string().optional(),
+});
+
+/** Top-up publication rating (personal wallet via vote path, or source CommunityWallet). */
+export const TopUpPublicationRatingInputSchema = z.object({
+  publicationId: z.string(),
+  amount: z.number().int().positive(),
+  fundingSource: z.enum(['personal', 'source_entity']),
+  comment: z.string().max(5000).optional(),
 });
 
 export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
@@ -1126,6 +1142,9 @@ export type TelegramAuthData = z.infer<typeof TelegramAuthDataSchema>;
 export type TelegramWebAppData = z.infer<typeof TelegramWebAppDataSchema>;
 export type UpdatesFrequency = z.infer<typeof UpdatesFrequencySchema>;
 export type WithdrawAmountDto = z.infer<typeof WithdrawAmountDtoSchema>;
+export type TopUpPublicationRatingInput = z.infer<
+  typeof TopUpPublicationRatingInputSchema
+>;
 export type VoteWithCommentDto = z.infer<typeof VoteWithCommentDtoSchema>;
 
 export type ApiResponse<T> = z.infer<typeof ApiResponseSchema> & { data: T };
