@@ -232,7 +232,7 @@ export class PublicationService {
     beneficiaryId?: string;
     /** Default: deduct postCost from source CommunityWallet. */
     postCostFunding?: 'source_community_wallet' | 'caller_global_wallet';
-    /** When false (project only), create post without investing. */
+    /** When false, create post without investing (project or community source). */
     investingEnabled?: boolean;
     /** project: share when investing on; community: share when investing on Birzha */
     investorSharePercent?: number;
@@ -286,7 +286,6 @@ export class PublicationService {
 
     const minPct = birzha.settings?.investorShareMin ?? 1;
     const maxPct = birzha.settings?.investorShareMax ?? 99;
-    const birzhaInvestingOn = birzha.settings?.investingEnabled ?? false;
     const requireTTLForInvestPosts =
       birzha.settings?.requireTTLForInvestPosts ?? false;
 
@@ -310,15 +309,21 @@ export class PublicationService {
         }
         investingEnabled = investorSharePercent > 0;
       }
-    } else if (birzhaInvestingOn && params.investingEnabled === true) {
-      const raw = params.investorSharePercent ?? minPct;
-      investorSharePercent = raw;
-      if (investorSharePercent < minPct || investorSharePercent > maxPct) {
-        throw new BadRequestException(
-          `investorSharePercent must be between ${minPct} and ${maxPct}`,
-        );
+    } else {
+      // Local community source: same contract rules as project Birzha posts
+      if (params.investingEnabled === false) {
+        investingEnabled = false;
+        investorSharePercent = 0;
+      } else {
+        const raw = params.investorSharePercent ?? minPct;
+        investorSharePercent = raw;
+        if (investorSharePercent < minPct || investorSharePercent > maxPct) {
+          throw new BadRequestException(
+            `investorSharePercent must be between ${minPct} and ${maxPct}`,
+          );
+        }
+        investingEnabled = investorSharePercent > 0;
       }
-      investingEnabled = true;
     }
 
     if (requireTTLForInvestPosts && investingEnabled) {

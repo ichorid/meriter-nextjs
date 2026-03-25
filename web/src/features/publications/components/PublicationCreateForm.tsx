@@ -174,6 +174,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const isFutureVision = community?.typeTag === 'future-vision';
   const canCreateProjects = ENABLE_PROJECT_POSTS && (isGoodDeedsMarathon || isTeamCommunity);
   const communityInvestingEnabled = community?.settings?.investingEnabled ?? false;
+  /** Birzha publish: show/configure investing like project-sourced posts (rules from МД / Birzha community). */
+  const canConfigureInvesting = Boolean(birzhaSourceEntity) || communityInvestingEnabled;
   const investorShareMin = community?.settings?.investorShareMin ?? 1;
   const investorShareMax = community?.settings?.investorShareMax ?? 99;
   const requireTTLForInvestPosts = community?.settings?.requireTTLForInvestPosts ?? false;
@@ -279,9 +281,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
   useEffect(() => {
     if (initialData || !birzhaSourceEntity) return;
-    if (birzhaSourceEntity.type === 'project') {
-      setInvestingEnabled(true);
-    }
+    setInvestingEnabled(true);
   }, [initialData, birzhaSourceEntity]);
 
   useEffect(() => {
@@ -552,7 +552,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           },
         });
       } else if (birzhaSourceEntity) {
-        const investOn = communityInvestingEnabled && investingEnabled;
+        const investOn = investingEnabled;
         const pubType: 'text' | 'image' = images.length > 0 ? 'image' : 'text';
         const pubResult = await publishBirzha.mutateAsync({
           title: title.trim(),
@@ -563,12 +563,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           hashtags: ENABLE_HASHTAGS ? hashtags : undefined,
           beneficiaryId: beneficiaryId ?? undefined,
           postCostFunding,
-          investingEnabled:
-            birzhaSourceEntity.type === 'project'
-              ? investOn
-              : investOn
-                ? true
-                : undefined,
+          investingEnabled: investOn,
           investorSharePercent: investOn ? investorSharePercent : undefined,
           ttlDays: ttlDays ?? undefined,
           stopLoss,
@@ -988,15 +983,15 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           )}
 
           {/* Advanced Settings - collapsible when community has investing or tappalka (create + edit) */}
-          {(communityInvestingEnabled || tappalkaEnabled) && (
+          {(canConfigureInvesting || tappalkaEnabled) && (
             <CollapsibleSection
               title={t('advanced.title', { defaultValue: 'Advanced settings' })}
               open={openAdvancedSettings}
               setOpen={setOpenAdvancedSettings}
             >
               <div className="space-y-6 pt-1">
-                {/* Investing: only when community allows. In edit mode: read-only with explanation */}
-                {communityInvestingEnabled && (
+                {/* Investing: community create/edit vs Birzha publish (МД rules). In edit mode: read-only with explanation */}
+                {canConfigureInvesting && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <Checkbox
