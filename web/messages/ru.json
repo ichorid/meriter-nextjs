@@ -1608,7 +1608,7 @@
         "parentLinkApprovedToast": "Привязка принята",
         "parentLinkRejectedToast": "Заявка отклонена",
         "parentLinkCancelledToast": "Заявка отозвана",
-        "parentChangeSectionTitle": "Родительское сообщество",
+        "parentChangeSectionTitle": "Изменить привязку к сообществу",
         "parentSettingsVisibleToLeadOnly": "Видно только лиду проекта.",
         "parentCommunitySelectLabel": "Привязка к сообществу",
         "parentChangeMemberWarning": "Если выберете сообщество, где вы только участник, проект станет персональным до одобрения лидом.",

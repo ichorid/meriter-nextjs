@@ -1608,7 +1608,7 @@
         "parentLinkApprovedToast": "Link approved",
         "parentLinkRejectedToast": "Request declined",
         "parentLinkCancelledToast": "Request withdrawn",
-        "parentChangeSectionTitle": "Parent community",
+        "parentChangeSectionTitle": "Change link to community",
         "parentSettingsVisibleToLeadOnly": "Visible only to the project lead.",
         "parentCommunitySelectLabel": "Link to community",
         "parentChangeMemberWarning": "If you pick a community where you are only a member, the project becomes personal until a lead approves.",
