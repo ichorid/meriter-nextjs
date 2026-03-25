@@ -2591,6 +2591,8 @@
         "postsPagePartial": "Показано {shown} из {total} постов.",
         "badgeProject": "Проект",
         "badgeCommunity": "Сообщество",
+        "cardPostFromProject": "Пост проекта",
+        "cardPostFromCommunity": "Пост сообщества",
         "topUpFundingLabel": "Списать с",
         "topUpFromPersonalWallet": "Мой кошелёк",
         "topUpFromSourceWallet": "Кошелёк источника (проект / сообщество)",

@@ -2591,6 +2591,8 @@
         "postsPagePartial": "Showing {shown} of {total} posts.",
         "badgeProject": "Project",
         "badgeCommunity": "Community",
+        "cardPostFromProject": "Project post",
+        "cardPostFromCommunity": "Community post",
         "topUpFundingLabel": "Pay from",
         "topUpFromPersonalWallet": "My wallet",
         "topUpFromSourceWallet": "Source wallet (project / community)",
