@@ -528,6 +528,14 @@
         "confirmLogoutMessage": "Вы уверены, что хотите выйти? Для доступа к аккаунту потребуется войти снова.",
         "cancel": "Отмена",
         "close": "Закрыть",
+        "contextSwitcher": {
+            "ariaLabel": "Кто публикует",
+            "postAsPlaceholder": "Публиковать как…",
+            "asMyself": "От себя",
+            "asEntity": "Как {name}",
+            "projects": "Проекты",
+            "communities": "Сообщества"
+        },
         "submit": "Отправить",
         "removeCommunityPoints": "Снять баллов сообщества: {amount}",
         "addCommunityPoints": "Добавить баллов сообщества: {amount}",

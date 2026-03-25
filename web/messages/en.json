@@ -528,6 +528,14 @@
         "confirmLogoutMessage": "Are you sure you want to log out? You will need to sign in again to access your account.",
         "cancel": "Cancel",
         "close": "Close",
+        "contextSwitcher": {
+            "ariaLabel": "Choose posting identity",
+            "postAsPlaceholder": "Post as…",
+            "asMyself": "As myself",
+            "asEntity": "As {name}",
+            "projects": "Projects",
+            "communities": "Communities"
+        },
         "submit": "Submit",
         "removeCommunityPoints": "Remove community points: {amount}",
         "addCommunityPoints": "Add community points: {amount}",

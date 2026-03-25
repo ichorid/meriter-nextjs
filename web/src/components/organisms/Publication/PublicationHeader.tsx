@@ -40,6 +40,13 @@ interface Publication {
     commentTgEntities?: any[];
     comment?: string;
     author?: {
+      id?: string;
+      name?: string;
+      photoUrl?: string;
+      username?: string;
+    };
+    publishedBy?: {
+      id?: string;
       name?: string;
       photoUrl?: string;
       username?: string;
@@ -123,6 +130,14 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
 
   // Get community and user role for forward button
   const { data: community } = useCommunity(communityId || '');
+  const authorKind = (publication as { authorKind?: 'user' | 'community' }).authorKind;
+  const authoredCommunityId = (publication as { authoredCommunityId?: string })
+    .authoredCommunityId;
+  const isCommunityAuthor =
+    authorKind === 'community' && Boolean(authoredCommunityId);
+  const { data: authoredCommunity } = useCommunity(
+    isCommunityAuthor && authoredCommunityId ? authoredCommunityId : '',
+  );
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
   const effectivePublicationId = publicationId || publication.id;
@@ -177,12 +192,58 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     return (publication as any).forwardStatus === 'pending';
   }, [publication]);
 
-  const author = useMemo(() => ({
-    name: publication.meta?.author?.name || 'Unknown',
-    photoUrl: publication.meta?.author?.photoUrl,
-    username: publication.meta?.author?.username,
-    id: authorId,
-  }), [publication.meta?.author?.name, publication.meta?.author?.photoUrl, publication.meta?.author?.username, authorId]);
+  const metaAuthor = publication.meta?.author;
+  const metaPublishedBy = publication.meta?.publishedBy;
+
+  const displayAuthor = useMemo(() => {
+    if (isCommunityAuthor && authoredCommunityId) {
+      return {
+        kind: 'community' as const,
+        id: authoredCommunityId,
+        name:
+          authoredCommunity?.name ??
+          metaAuthor?.name ??
+          'Community',
+        photoUrl:
+          authoredCommunity?.avatarUrl ?? metaAuthor?.photoUrl,
+      };
+    }
+    return {
+      kind: 'user' as const,
+      id: authorId ?? '',
+      name: metaAuthor?.name || 'Unknown',
+      photoUrl: metaAuthor?.photoUrl,
+      username: metaAuthor?.username,
+    };
+  }, [
+    isCommunityAuthor,
+    authoredCommunityId,
+    authoredCommunity?.name,
+    authoredCommunity?.avatarUrl,
+    metaAuthor?.name,
+    metaAuthor?.photoUrl,
+    metaAuthor?.username,
+    authorId,
+  ]);
+
+  const publisherSubline = useMemo(() => {
+    if (!isCommunityAuthor) return null;
+    if (metaPublishedBy?.id) {
+      return {
+        id: metaPublishedBy.id,
+        username: metaPublishedBy.username,
+        name: metaPublishedBy.name,
+      };
+    }
+    if (authorId) {
+      return {
+        id: authorId,
+        username: undefined as string | undefined,
+        name: undefined as string | undefined,
+      };
+    }
+    return null;
+  }, [isCommunityAuthor, metaPublishedBy, authorId]);
 
   const beneficiary = publication.meta?.beneficiary
     ? {
@@ -206,8 +267,9 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const canEditEnabled = canEdit && !publication.permissions?.editDisabledReason;
   const canDeleteEnabled = canDelete && !publication.permissions?.deleteDisabledReason;
   
-  // Check if current user is the author (for navigation purposes)
-  const isAuthor = author.id && currentUserId && author.id === currentUserId;
+  // Human publisher id (DB authorId is the lead user for community-authored posts)
+  const isAuthor =
+    Boolean(authorId && currentUserId && authorId === currentUserId);
   
   // Show edit button if user can edit, disable if canEdit but not canEditEnabled
   const showEditButton = canEdit && publicationId && communityId;
@@ -285,10 +347,20 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
 
   const handleAvatarClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (author.id) {
-      router.push(routes.userProfile(author.id));
+    if (!displayAuthor.id) return;
+    if (displayAuthor.kind === 'community') {
+      router.push(routes.community(displayAuthor.id));
+      return;
     }
+    router.push(routes.userProfile(displayAuthor.id));
   };
+
+  const primaryProfileHref =
+    displayAuthor.kind === 'community'
+      ? routes.community(displayAuthor.id)
+      : displayAuthor.id
+        ? routes.userProfile(displayAuthor.id)
+        : undefined;
 
   const isTicketPost = (publication as { postType?: string }).postType === 'ticket';
   const showTicketTypeBadge = isTicketPost && !ticketToolbarOnly;
@@ -302,11 +374,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       <div className="flex items-center gap-3 min-w-0">
         <Avatar 
           className="w-12 h-12 cursor-pointer"
-          onClick={author.id ? handleAvatarClick : undefined}
+          onClick={displayAuthor.id ? handleAvatarClick : undefined}
         >
-          <AvatarImage src={author.photoUrl} alt={author.name} />
-          <AvatarFallback userId={author.id} className="font-medium text-sm">
-            {author.name ? author.name.charAt(0).toUpperCase() : '?'}
+          <AvatarImage src={displayAuthor.photoUrl} alt={displayAuthor.name} />
+          <AvatarFallback userId={displayAuthor.id} className="font-medium text-sm">
+            {displayAuthor.name ? displayAuthor.name.charAt(0).toUpperCase() : '?'}
           </AvatarFallback>
         </Avatar>
         <div className="min-w-0">
@@ -315,17 +387,17 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
               className="flex items-center gap-2 flex-wrap cursor-help"
               title={beneficiaryLineHint}
             >
-              {author.id ? (
+              {primaryProfileHref ? (
                 <Link
-                  href={routes.userProfile(author.id)}
+                  href={primaryProfileHref}
                   onClick={(e) => e.stopPropagation()}
                   className="font-medium text-sm text-base-content truncate max-w-[11rem] hover:underline shrink min-w-0"
                 >
-                  {author.name}
+                  {displayAuthor.name}
                 </Link>
               ) : (
                 <span className="font-medium text-sm text-base-content truncate max-w-[11rem] min-w-0">
-                  {author.name}
+                  {displayAuthor.name}
                 </span>
               )}
               <span className="text-xs text-base-content/30 shrink-0" aria-hidden>
@@ -345,15 +417,39 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
                 </span>
               )}
             </div>
+          ) : primaryProfileHref ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link
+                href={primaryProfileHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-sm text-base-content truncate hover:underline"
+              >
+                {displayAuthor.name}
+              </Link>
+            </div>
           ) : (
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm text-base-content truncate">{author.name}</span>
+              <span className="font-medium text-sm text-base-content truncate">
+                {displayAuthor.name}
+              </span>
             </div>
           )}
-          <div className="flex items-center gap-2 mt-0.5">
-            {author.username && (
-              <span className="text-xs text-base-content/40">@{author.username}</span>
-            )}
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {isCommunityAuthor && publisherSubline?.id ? (
+              <Link
+                href={routes.userProfile(publisherSubline.id)}
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs text-base-content/40 hover:underline shrink-0"
+              >
+                {publisherSubline.username
+                  ? `@${publisherSubline.username}`
+                  : (publisherSubline.name ?? publisherSubline.id)}
+              </Link>
+            ) : displayAuthor.kind === 'user' && displayAuthor.username ? (
+              <span className="text-xs text-base-content/40">
+                @{displayAuthor.username}
+              </span>
+            ) : null}
             <span className="text-xs text-base-content/30">·</span>
             <span className="text-xs text-base-content/40">
               {dateVerbose(new Date(publication.createdAt))}
@@ -551,9 +647,16 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
       <PublicationDetailsPopup
         isOpen={showDetailsPopup}
         onClose={() => setShowDetailsPopup(false)}
-        authorName={publicationDetails?.meta?.author?.name ?? author.name}
-        authorId={publicationDetails?.authorId ?? author.id}
-        authorAvatar={publicationDetails?.meta?.author?.photoUrl ?? author.photoUrl}
+        authorName={
+          publicationDetails?.meta?.author?.name ?? displayAuthor.name
+        }
+        authorId={
+          (publicationDetails?.meta?.author as { id?: string } | undefined)?.id ??
+          displayAuthor.id
+        }
+        authorAvatar={
+          publicationDetails?.meta?.author?.photoUrl ?? displayAuthor.photoUrl
+        }
         communityName={community?.name}
         communityId={communityId}
         communityAvatar={community?.avatarUrl}

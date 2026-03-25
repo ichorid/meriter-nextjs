@@ -626,11 +626,18 @@ export const publicationsRouter = router({
       const userIds = new Set<string>();
       const communityIds = new Set<string>();
       publications.forEach((pub) => {
+        const s = pub.toSnapshot();
         userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
         if (pub.getBeneficiaryId) {
           userIds.add(pub.getBeneficiaryId.getValue());
         }
         communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
       });
 
       // Batch fetch all users and communities
@@ -640,13 +647,28 @@ export const publicationsRouter = router({
       ]);
 
       // Convert domain entities to DTOs with enriched user metadata
-      const mappedPublications = publications.map((publication) =>
-        EntityMappers.mapPublicationToApi(
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        return EntityMappers.mapPublicationToApi(
           publication,
           usersMap,
           communitiesMap,
-        ),
-      );
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+      });
 
       // Enrich forward fields from Mongo documents (needed for pending/forwarded badges in UI).
       if (ctx.connection?.db && mappedPublications.length > 0) {
@@ -966,17 +988,47 @@ export const publicationsRouter = router({
       }
 
       // Batch fetch users and communities
-      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      const pubSnapCreate = publication.toSnapshot();
+      const userIdsCreate = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      if (pubSnapCreate.publishedByUserId) {
+        userIdsCreate.push(pubSnapCreate.publishedByUserId);
+      }
+      const communityIdsCreate = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnapCreate.authorKind === 'community' &&
+          pubSnapCreate.authoredCommunityId
+            ? [pubSnapCreate.authoredCommunityId]
+            : []),
+        ]),
+      );
       const [usersMap, communitiesMap] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
-        ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
+        ctx.userEnrichmentService.batchFetchUsers(userIdsCreate),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsCreate),
       ]);
+
+      const logicalAuthorCommunityCreate =
+        pubSnapCreate.authorKind === 'community' &&
+        pubSnapCreate.authoredCommunityId
+          ? communitiesMap.get(pubSnapCreate.authoredCommunityId)
+          : undefined;
 
       // Map domain entity to API format
       const mappedPublication = EntityMappers.mapPublicationToApi(
         publication,
         usersMap,
         communitiesMap,
+        logicalAuthorCommunityCreate
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunityCreate.id as string,
+                name: (logicalAuthorCommunityCreate as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunityCreate as {
+                  avatarUrl?: string;
+                }).avatarUrl,
+              },
+            }
+          : undefined,
       );
 
       return mappedPublication;
@@ -1022,17 +1074,47 @@ export const publicationsRouter = router({
       const communityId = publication.getCommunityId.getValue();
 
       // Batch fetch users and communities
-      const userIds = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      const pubSnapUpdate = publication.toSnapshot();
+      const userIdsUpdate = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      if (pubSnapUpdate.publishedByUserId) {
+        userIdsUpdate.push(pubSnapUpdate.publishedByUserId);
+      }
+      const communityIdsUpdate = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnapUpdate.authorKind === 'community' &&
+          pubSnapUpdate.authoredCommunityId
+            ? [pubSnapUpdate.authoredCommunityId]
+            : []),
+        ]),
+      );
       const [usersMap, communitiesMap] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
-        ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
+        ctx.userEnrichmentService.batchFetchUsers(userIdsUpdate),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsUpdate),
       ]);
+
+      const logicalAuthorCommunityUpdate =
+        pubSnapUpdate.authorKind === 'community' &&
+        pubSnapUpdate.authoredCommunityId
+          ? communitiesMap.get(pubSnapUpdate.authoredCommunityId)
+          : undefined;
 
       // Map domain entity to API format
       const mappedPublication = EntityMappers.mapPublicationToApi(
         publication,
         usersMap,
         communitiesMap,
+        logicalAuthorCommunityUpdate
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunityUpdate.id as string,
+                name: (logicalAuthorCommunityUpdate as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunityUpdate as {
+                  avatarUrl?: string;
+                }).avatarUrl,
+              },
+            }
+          : undefined,
       );
 
       return mappedPublication;
@@ -1220,11 +1302,18 @@ export const publicationsRouter = router({
       const userIds = new Set<string>();
       const communityIds = new Set<string>();
       publications.forEach((pub) => {
+        const s = pub.toSnapshot();
         userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
         if (pub.getBeneficiaryId) {
           userIds.add(pub.getBeneficiaryId.getValue());
         }
         communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
       });
 
       // Batch fetch all users and communities
@@ -1234,13 +1323,28 @@ export const publicationsRouter = router({
       ]);
 
       // Convert domain entities to DTOs with enriched user metadata
-      const mappedPublications = publications.map((publication) =>
-        EntityMappers.mapPublicationToApi(
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        return EntityMappers.mapPublicationToApi(
           publication,
           usersMap,
           communitiesMap,
-        ),
-      );
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+      });
 
       // Batch calculate permissions for all publications
       const publicationIds = mappedPublications.map((pub) => pub.id);

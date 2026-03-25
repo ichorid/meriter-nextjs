@@ -47,6 +47,14 @@ export class EntityMappers {
         : null;
     const authorUser = usersMap.get(authorId);
     const author = authorFromCommunity ?? authorUser;
+    const publisherUserId =
+      snapshot.authorKind === 'community'
+        ? (snapshot.publishedByUserId ?? authorId)
+        : undefined;
+    const publisherUser =
+      snapshot.authorKind === 'community' && authorFromCommunity
+        ? usersMap.get(publisherUserId ?? authorId)
+        : null;
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
     const images = publication.getImages;
@@ -106,6 +114,13 @@ export class EntityMappers {
           author,
           authorFromCommunity ? authorFromCommunity.id : authorId,
         ),
+        ...(authorFromCommunity &&
+          publisherUserId && {
+            publishedBy: UserFormatter.formatUserForApi(
+              publisherUser,
+              publisherUserId,
+            ),
+          }),
         ...(beneficiary && beneficiaryId && {
           beneficiary: UserFormatter.formatUserForApi(
             beneficiary,
