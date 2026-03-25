@@ -33,11 +33,18 @@ export interface ProjectHeroParentCommunity {
   name: string;
 }
 
+export interface ProjectHeroPendingParentLink {
+  targetParentCommunityId: string;
+  parentName: string | null;
+}
+
 export interface ProjectHeroProps {
   project: ProjectHeroProject;
   parentCommunity: ProjectHeroParentCommunity | null;
   /** When true, show personal-project line instead of parent community link. */
   isPersonalProject?: boolean;
+  /** Pending request to link this personal project to a parent community. */
+  pendingParentLink?: ProjectHeroPendingParentLink | null;
   statusLabel: string;
   status: 'active' | 'closed' | 'archived';
   /** Lead or superadmin: project settings shortcut on cover. */
@@ -48,6 +55,7 @@ export function ProjectHero({
   project,
   parentCommunity,
   isPersonalProject = false,
+  pendingParentLink = null,
   statusLabel,
   status,
   showModerationLinks = false,
@@ -140,7 +148,24 @@ export function ProjectHero({
           )}
 
           {isPersonalProject ? (
-            <p className="text-sm text-base-content/60">{t('personalProject')}</p>
+            <div className="space-y-1">
+              <p className="text-sm text-base-content/60">{t('personalProject')}</p>
+              {pendingParentLink && (
+                <p className="text-sm text-amber-600 dark:text-amber-500">
+                  <span>
+                    {t('pendingLinkToParentShort', {
+                      parentName: pendingParentLink.parentName ?? t('unknownCommunity'),
+                    })}{' '}
+                  </span>
+                  <Link
+                    href={`/meriter/communities/${pendingParentLink.targetParentCommunityId}`}
+                    className="text-blue-400 hover:underline font-medium"
+                  >
+                    {t('openParentCommunity')}
+                  </Link>
+                </p>
+              )}
+            </div>
           ) : (
             parentCommunity && (
               <p className="text-sm text-base-content/60">

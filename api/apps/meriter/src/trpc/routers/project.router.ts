@@ -387,4 +387,77 @@ export const projectRouter = router({
 
       return { id: pub.id };
     }),
+
+  listParentLinkRequests: protectedProcedure
+    .input(z.object({ parentCommunityId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.listPendingParentLinkRequests(
+        input.parentCommunityId,
+        ctx.user.id,
+      );
+    }),
+
+  listMyParentLinkRequests: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+    }
+    return ctx.projectService.listMyPendingParentLinkRequests(ctx.user.id);
+  }),
+
+  approveParentLinkRequest: protectedProcedure
+    .input(z.object({ requestId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.approveParentLinkRequest(input.requestId, ctx.user.id);
+    }),
+
+  rejectParentLinkRequest: protectedProcedure
+    .input(
+      z.object({
+        requestId: z.string(),
+        reason: z.string().max(500).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.rejectParentLinkRequest(
+        input.requestId,
+        ctx.user.id,
+        input.reason,
+      );
+    }),
+
+  cancelParentLinkRequest: protectedProcedure
+    .input(z.object({ requestId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.cancelParentLinkRequest(input.requestId, ctx.user.id);
+    }),
+
+  requestParentChange: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        newParentCommunityId: z.union([z.string().min(1), z.null()]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.projectService.requestParentChange(
+        input.projectId,
+        ctx.user.id,
+        input.newParentCommunityId,
+      );
+    }),
 });

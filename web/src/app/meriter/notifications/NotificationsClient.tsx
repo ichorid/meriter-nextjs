@@ -176,6 +176,22 @@ export default function NotificationsPage() {
     }
     if (notification.url) {
       router.push(notification.url);
+      return;
+    }
+    const meta = notification.metadata ?? {};
+    if (
+      notification.type === 'project_parent_link_requested' &&
+      typeof meta.parentCommunityId === 'string'
+    ) {
+      router.push(`/meriter/communities/${meta.parentCommunityId}/projects`);
+      return;
+    }
+    if (
+      (notification.type === 'project_parent_link_approved' ||
+        notification.type === 'project_parent_link_rejected') &&
+      typeof meta.projectId === 'string'
+    ) {
+      router.push(`/meriter/projects/${meta.projectId}`);
     }
   };
 
@@ -216,6 +232,9 @@ export default function NotificationsPage() {
       case 'project_published':
       case 'project_distributed':
       case 'project_closed':
+      case 'project_parent_link_requested':
+      case 'project_parent_link_approved':
+      case 'project_parent_link_rejected':
         return '📁';
       case 'ticket_assigned':
       case 'ticket_done':
@@ -330,6 +349,24 @@ export default function NotificationsPage() {
     if (notification.type === 'project_created') {
       const name = (meta.projectName as string) || '';
       return t('projectCreatedMessage', { name });
+    }
+    if (notification.type === 'project_parent_link_requested') {
+      const projectName = (meta.projectName as string) || '';
+      const parentName = (meta.parentName as string) || '';
+      return t('projectParentLinkRequestedMessage', { projectName, parentName });
+    }
+    if (notification.type === 'project_parent_link_approved') {
+      const projectName = (meta.projectName as string) || '';
+      const parentName = (meta.parentName as string) || '';
+      return t('projectParentLinkApprovedMessage', { projectName, parentName });
+    }
+    if (notification.type === 'project_parent_link_rejected') {
+      const projectName = (meta.projectName as string) || '';
+      const parentName = (meta.parentName as string) || '';
+      const reason = typeof meta.reason === 'string' && meta.reason.trim() ? meta.reason.trim() : '';
+      return reason
+        ? t('projectParentLinkRejectedMessageWithReason', { projectName, parentName, reason })
+        : t('projectParentLinkRejectedMessage', { projectName, parentName });
     }
     if (notification.type === 'project_published') {
       const name = (meta.projectName as string) || '';
@@ -453,6 +490,15 @@ export default function NotificationsPage() {
     if (notification.type === 'forward_proposal') return t('forwardProposal');
     if (notification.type === 'quota') return t('dailyQuotaReset');
     if (notification.type === 'project_created') return t('projectCreatedTitle');
+    if (notification.type === 'project_parent_link_requested') {
+      return t('projectParentLinkRequestedTitle');
+    }
+    if (notification.type === 'project_parent_link_approved') {
+      return t('projectParentLinkApprovedTitle');
+    }
+    if (notification.type === 'project_parent_link_rejected') {
+      return t('projectParentLinkRejectedTitle');
+    }
     if (notification.type === 'project_published') return t('projectPublishedTitle');
     if (notification.type === 'project_distributed') return t('projectDistributedTitle');
     if (notification.type === 'project_closed') return t('projectClosedTitle');
@@ -611,6 +657,9 @@ export default function NotificationsPage() {
                         'publication',
                         'quota',
                         'system',
+                        'project_parent_link_requested',
+                        'project_parent_link_approved',
+                        'project_parent_link_rejected',
                       ].includes(notification.type)
                         ? null
                         : notification.actor?.name,

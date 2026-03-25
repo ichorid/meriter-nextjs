@@ -150,6 +150,10 @@ export interface UpdateCommunityDto {
   futureVisionText?: string;
   futureVisionTags?: string[];
   futureVisionCover?: string;
+  /** Project communities: set parent; pass null to detach (becomes personal when combined with isPersonalProject). */
+  parentCommunityId?: string | null;
+  /** Project communities: personal vs linked to parent. */
+  isPersonalProject?: boolean;
   // Legacy rules fields (for backward compatibility)
   postingRules?: any;
   votingRules?: any;
@@ -693,6 +697,19 @@ export class CommunityService {
     if (dto.futureVisionTags !== undefined) updateData.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) updateData.futureVisionCover = dto.futureVisionCover;
 
+    const unsetData: Record<string, 1> = {};
+    if (dto.parentCommunityId === null) {
+      unsetData.parentCommunityId = 1;
+      if (dto.isPersonalProject === undefined) {
+        updateData.isPersonalProject = true;
+      }
+    } else if (dto.parentCommunityId !== undefined) {
+      updateData.parentCommunityId = dto.parentCommunityId;
+    }
+    if (dto.isPersonalProject !== undefined) {
+      updateData.isPersonalProject = dto.isPersonalProject;
+    }
+
     if (dto.settings) {
       // Only merge nested properties if they exist
       const settingsUpdate: any = {};
@@ -913,10 +930,11 @@ export class CommunityService {
     this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
     
     // Perform the update
-    await this.communityModel.updateOne(
-      { id: communityId },
-      { $set: updateData },
-    );
+    const updatePayload: Record<string, unknown> = { $set: updateData };
+    if (Object.keys(unsetData).length > 0) {
+      updatePayload.$unset = unsetData;
+    }
+    await this.communityModel.updateOne({ id: communityId }, updatePayload);
 
     if (dto.futureVisionText !== undefined) {
       const futureVision = await this.getCommunityByTypeTag('future-vision');

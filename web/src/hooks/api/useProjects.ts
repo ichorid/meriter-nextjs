@@ -78,6 +78,8 @@ export function useCreateProject() {
         utils.communities.getById.invalidate({ id: project.parentCommunityId });
       }
       utils.communities.getById.invalidate({ id: project.id });
+      utils.project.listParentLinkRequests.invalidate();
+      utils.project.listMyParentLinkRequests.invalidate();
       utils.users.getMe.invalidate();
       addToast(t('created'), 'success');
       router.push(`/meriter/projects/${project.id}`);
@@ -220,6 +222,97 @@ export function useOpenTickets(projectId: string | null) {
     { projectId: projectId! },
     { enabled: !!projectId, staleTime: STALE_TIME.SHORT },
   );
+}
+
+export function useParentLinkRequests(parentCommunityId: string | null, enabled: boolean) {
+  return trpc.project.listParentLinkRequests.useQuery(
+    { parentCommunityId: parentCommunityId! },
+    { enabled: Boolean(parentCommunityId) && enabled, staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function useMyParentLinkRequests() {
+  return trpc.project.listMyParentLinkRequests.useQuery(undefined, {
+    staleTime: STALE_TIME.VERY_SHORT,
+  });
+}
+
+export function useApproveParentLinkRequest() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.approveParentLinkRequest.useMutation({
+    onSuccess: () => {
+      utils.project.listParentLinkRequests.invalidate();
+      utils.project.listMyParentLinkRequests.invalidate();
+      utils.project.list.invalidate();
+      utils.project.getGlobalList.invalidate();
+      utils.project.getById.invalidate();
+      utils.communities.getById.invalidate();
+      addToast(t('parentLinkApprovedToast'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
+export function useRejectParentLinkRequest() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.rejectParentLinkRequest.useMutation({
+    onSuccess: () => {
+      utils.project.listParentLinkRequests.invalidate();
+      utils.project.listMyParentLinkRequests.invalidate();
+      utils.project.getById.invalidate();
+      addToast(t('parentLinkRejectedToast'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
+export function useCancelParentLinkRequest() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.cancelParentLinkRequest.useMutation({
+    onSuccess: () => {
+      utils.project.listParentLinkRequests.invalidate();
+      utils.project.listMyParentLinkRequests.invalidate();
+      utils.project.getById.invalidate();
+      addToast(t('parentLinkCancelledToast'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
+export function useRequestParentChange() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.project.requestParentChange.useMutation({
+    onSuccess: () => {
+      utils.project.getById.invalidate();
+      utils.project.list.invalidate();
+      utils.project.getGlobalList.invalidate();
+      utils.project.listParentLinkRequests.invalidate();
+      utils.project.listMyParentLinkRequests.invalidate();
+      utils.communities.getById.invalidate();
+      addToast(t('parentChangeSavedToast'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
 }
 
 export function useTransferAdmin() {

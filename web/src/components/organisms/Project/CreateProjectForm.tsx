@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useAuth } from '@/contexts/AuthContext';
 import { useCreateProject } from '@/hooks/api/useProjects';
-import { useUserCommunities } from '@/hooks/useUserCommunities';
-import { useUserRoles } from '@/hooks/api/useProfile';
+import { useProjectParentCommunityChoices } from '@/hooks/useProjectParentCommunityChoices';
 import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { Button } from '@/components/ui/shadcn/button';
@@ -27,11 +25,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/shadcn/select';
-import { cn } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
 
 const NEW_COMMUNITY_VALUE = '__new__';
-const PRIORITY_TYPE_TAGS = ['future-vision', 'marathon-of-good', 'team-projects', 'support'] as const;
+const PERSONAL_VALUE = '__personal__';
 
 const SECTION_HEADING =
   'text-xs font-semibold uppercase tracking-wide text-base-content/50';
@@ -39,61 +36,48 @@ const SECTION_HEADING =
 export function CreateProjectForm() {
   const t = useTranslations('projects');
   const tCommunities = useTranslations('communities');
-  const { user } = useAuth();
   const createProject = useCreateProject();
   const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
 
-  const { communities: allCommunities } = useUserCommunities();
-  const { data: userRoles = [] } = useUserRoles(user?.id || '');
-
-  const { administeredCommunities, memberCommunities } = useMemo(() => {
-    const privateOnly = allCommunities.filter(
-      (c) => !PRIORITY_TYPE_TAGS.includes(c.typeTag as (typeof PRIORITY_TYPE_TAGS)[number])
-    );
-    const leadIds = new Set(userRoles.filter((r) => r.role === 'lead').map((r) => r.communityId));
-    const administered = privateOnly.filter((c) => leadIds.has(c.id));
-    const member = privateOnly.filter((c) => !leadIds.has(c.id));
-    return { administeredCommunities: administered, memberCommunities: member };
-  }, [allCommunities, userRoles]);
+  const { administeredCommunities, memberCommunities } = useProjectParentCommunityChoices();
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [projectDuration, setProjectDuration] = useState<'finite' | 'ongoing' | undefined>(undefined);
   const [founderSharePercent, setFounderSharePercent] = useState<number>(0);
   const [investorSharePercent, setInvestorSharePercent] = useState<number>(0);
   const [investingEnabled, setInvestingEnabled] = useState(false);
-  const [personalProject, setPersonalProject] = useState(false);
-  const [parentChoice, setParentChoice] = useState<string>('');
+  const [parentChoice, setParentChoice] = useState<string>(PERSONAL_VALUE);
   const [newCommunityName, setNewCommunityName] = useState('');
   const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
   const [valueTags, setValueTags] = useState<string[]>([]);
   const [newCommunityCover, setNewCommunityCover] = useState('');
 
+  const isPersonal = parentChoice === PERSONAL_VALUE;
   const isNewCommunity = parentChoice === NEW_COMMUNITY_VALUE;
 
-  const setPersonalProjectChecked = (checked: boolean) => {
-    setPersonalProject(checked);
-    if (checked) {
-      setParentChoice('');
-      setNewCommunityName('');
-      setNewCommunityFutureVision('');
-      setNewCommunityCover('');
-    }
-  };
+  const leadParentIds = useMemo(
+    () => new Set(administeredCommunities.map((c) => c.id)),
+    [administeredCommunities],
+  );
+  const memberOnlySelected =
+    !isPersonal &&
+    !isNewCommunity &&
+    parentChoice.length > 0 &&
+    !leadParentIds.has(parentChoice);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    if (!personalProject && !parentChoice) return;
-    if (!personalProject && isNewCommunity && !newCommunityName.trim()) return;
-    if (!personalProject && isNewCommunity && !newCommunityFutureVision.trim()) return;
+    if (!isPersonal && !parentChoice) return;
+    if (!isPersonal && isNewCommunity && !newCommunityName.trim()) return;
+    if (!isPersonal && isNewCommunity && !newCommunityFutureVision.trim()) return;
 
     const tagsPayload = valueTags.length > 0 ? valueTags : undefined;
-    if (personalProject) {
+    if (isPersonal) {
       createProject.mutate({
         name: name.trim(),
         description: description.trim() || undefined,
-        projectDuration,
+        projectDuration: 'ongoing',
         founderSharePercent: founderSharePercent || 0,
         investorSharePercent: investingEnabled ? (investorSharePercent || 0) : 0,
         investingEnabled,
@@ -106,7 +90,7 @@ export function CreateProjectForm() {
     createProject.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
-      projectDuration,
+      projectDuration: 'ongoing',
       founderSharePercent: founderSharePercent || 0,
       investorSharePercent: investingEnabled ? (investorSharePercent || 0) : 0,
       investingEnabled,
@@ -127,7 +111,7 @@ export function CreateProjectForm() {
   const pending = createProject.isPending;
   const canSubmit =
     !!name.trim() &&
-    (personalProject ||
+    (isPersonal ||
       (!!parentChoice &&
         (!isNewCommunity || (!!newCommunityName.trim() && !!newCommunityFutureVision.trim()))));
 
@@ -165,96 +149,85 @@ export function CreateProjectForm() {
         </BrandFormControl>
       </section>
 
-      {/* —— Ownership (personal vs parent community) —— */}
+      {/* —— Ownership —— */}
       <section
         aria-labelledby="create-project-ownership-heading"
         className="rounded-2xl border border-base-300/80 bg-base-200/35 dark:bg-base-300/20 p-4 sm:p-6 space-y-5 shadow-sm"
       >
-        <header className="space-y-2">
+        <header className="space-y-3">
           <h2 id="create-project-ownership-heading" className={SECTION_HEADING}>
             {t('formSectionOwnership')}
           </h2>
-          <p className="text-sm text-base-content/65 leading-relaxed max-w-prose">
-            {t('formSectionOwnershipHint')}
-          </p>
+          <div className="text-sm text-base-content/65 leading-relaxed max-w-prose space-y-3">
+            <p>{t('formSectionOwnershipIntro')}</p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>{t('formSectionOwnershipBulletPersonal')}</li>
+              <li>{t('formSectionOwnershipBulletExistingCommunity')}</li>
+              <li>{t('formSectionOwnershipBulletNewCommunity')}</li>
+            </ul>
+          </div>
         </header>
 
-        <div
-          className={cn(
-            'rounded-xl border-2 p-4 sm:p-4 transition-colors',
-            personalProject
-              ? 'border-primary/45 bg-primary/[0.07] dark:bg-primary/[0.09]'
-              : 'border-base-300/80 bg-base-100/55 dark:bg-base-100/10'
-          )}
-        >
-          <div className="flex items-start gap-3.5">
-            <Checkbox
-              id="personalProject"
-              checked={personalProject}
-              onCheckedChange={(c) => setPersonalProjectChecked(c === true)}
-              disabled={pending}
-              className="mt-1 shrink-0"
-            />
-            <div className="space-y-1 min-w-0 flex-1">
-              <Label
-                htmlFor="personalProject"
-                className="text-sm font-semibold cursor-pointer leading-snug text-base-content"
+        <div className="space-y-2.5 pt-1">
+          <Select
+            value={parentChoice}
+            onValueChange={(v) => {
+              setParentChoice(v);
+              if (v !== NEW_COMMUNITY_VALUE) {
+                setNewCommunityName('');
+                setNewCommunityFutureVision('');
+                setNewCommunityCover('');
+              }
+            }}
+            required
+            disabled={pending}
+          >
+            <SelectTrigger
+              id="parent-community-trigger"
+              className="h-11 w-full rounded-xl text-base"
+            >
+              <SelectValue placeholder={t('personalProjectOption')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={PERSONAL_VALUE}>{t('personalProjectOption')}</SelectItem>
+              {administeredCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
+                  {administeredCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              {memberCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
+                  {memberCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              <SelectSeparator className="my-2" />
+              <SelectItem
+                value={NEW_COMMUNITY_VALUE}
+                className="font-semibold border-t border-base-200 pt-2 mt-1 bg-base-200/50 dark:bg-base-300/50"
               >
-                {t('personalProject')}
-              </Label>
-              <p className="text-xs sm:text-sm text-base-content/60 leading-snug">
-                {t('personalProjectHint')}
-              </p>
-            </div>
-          </div>
+                {t('createNewCommunity')}
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
-        {!personalProject && (
-          <div className="space-y-2.5 pt-1 border-t border-base-300/70">
-            <Label htmlFor="parent-community-trigger" className="text-sm font-medium">
-              {t('parentCommunity')} <span className="text-destructive">*</span>
-            </Label>
-            <Select value={parentChoice} onValueChange={setParentChoice} required disabled={pending}>
-              <SelectTrigger
-                id="parent-community-trigger"
-                className="h-11 w-full rounded-xl text-base"
-              >
-                <SelectValue placeholder={t('selectCommunityPlaceholder')} />
-              </SelectTrigger>
-              <SelectContent>
-                {administeredCommunities.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
-                    {administeredCommunities.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-                {memberCommunities.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
-                    {memberCommunities.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-                <SelectSeparator className="my-2" />
-                <SelectItem
-                  value={NEW_COMMUNITY_VALUE}
-                  className="font-semibold border-t border-base-200 pt-2 mt-1 bg-base-200/50 dark:bg-base-300/50"
-                >
-                  {t('createNewCommunity')}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {memberOnlySelected && (
+          <p className="text-sm text-amber-600 dark:text-amber-500 leading-snug">
+            {t('createFormMemberParentHint')}
+          </p>
         )}
 
-        {isNewCommunity && !personalProject && (
+        {isNewCommunity && (
           <div className="rounded-xl border border-dashed border-primary/35 bg-base-100/70 dark:bg-base-100/10 p-4 sm:p-5 space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-base-content">{t('formSectionNewCommunity')}</h3>
@@ -300,7 +273,7 @@ export function CreateProjectForm() {
         )}
       </section>
 
-      {(personalProject || !!parentChoice) && (
+      {(isPersonal || (!!parentChoice && parentChoice !== '')) && (
         <section aria-labelledby="create-project-values-heading" className="space-y-3">
           <h2 id="create-project-values-heading" className={SECTION_HEADING}>
             {t('formSectionValues')}
@@ -315,7 +288,7 @@ export function CreateProjectForm() {
         </section>
       )}
 
-      {/* —— Shares, investing option, duration —— */}
+      {/* —— Shares and investing —— */}
       <section aria-labelledby="create-project-shares-heading" className="space-y-5">
         <h2 id="create-project-shares-heading" className={SECTION_HEADING}>
           {t('formSectionSharesAndTiming')}
@@ -375,22 +348,6 @@ export function CreateProjectForm() {
             </div>
           )}
         </div>
-
-        <BrandFormControl label={t('duration')}>
-          <Select
-            value={projectDuration ?? ''}
-            onValueChange={(v) => setProjectDuration(v === '' ? undefined : (v as 'finite' | 'ongoing'))}
-            disabled={pending}
-          >
-            <SelectTrigger id="project-duration" className="h-11 w-full max-w-md rounded-xl text-base">
-              <SelectValue placeholder={t('durationOptional')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="finite">{t('durationFinite')}</SelectItem>
-              <SelectItem value="ongoing">{t('durationOngoing')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </BrandFormControl>
       </section>
 
       <div className="flex flex-col sm:flex-row sm:justify-end gap-3 pt-2 border-t border-base-300/60">

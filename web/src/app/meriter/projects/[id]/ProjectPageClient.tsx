@@ -7,6 +7,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject, useJoinProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
 import { ProjectHero } from '@/components/organisms/Project/project-hero';
+import { ProjectParentSettingsCard } from '@/components/organisms/Project/ProjectParentSettingsCard';
 import { ProjectDashboard } from '@/components/organisms/Project/project-dashboard';
 import { ProjectWorkArea } from '@/components/organisms/Project/project-work-area';
 import { ProjectActions } from '@/components/organisms/Project/project-actions';
@@ -120,10 +121,35 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           }}
           parentCommunity={parentCommunity ? { id: parentCommunity.id, name: parentCommunity.name } : null}
           isPersonalProject={project.isPersonalProject === true}
+          pendingParentLink={
+            data.pendingParentLink
+              ? {
+                  targetParentCommunityId: data.pendingParentLink.targetParentCommunityId,
+                  parentName: data.pendingParentLink.parentName,
+                }
+              : null
+          }
           statusLabel={statusLabel}
           status={heroStatus}
           showModerationLinks={canModerateCover}
         />
+
+        {isLead && !isArchived && (
+          <ProjectParentSettingsCard
+            projectId={projectId}
+            parentCommunityId={project.parentCommunityId}
+            isPersonalProject={project.isPersonalProject === true}
+            pendingParentLink={
+              data.pendingParentLink
+                ? {
+                    requestId: data.pendingParentLink.requestId,
+                    targetParentCommunityId: data.pendingParentLink.targetParentCommunityId,
+                    parentName: data.pendingParentLink.parentName,
+                  }
+                : null
+            }
+          />
+        )}
 
         <ProjectDashboard
           projectId={projectId}

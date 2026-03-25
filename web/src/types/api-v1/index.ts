@@ -287,7 +287,10 @@ export type NotificationType =
     | "shares_changed"
     | "ticket_apply"
     | "ticket_rejection"
-    | "ob_vote_join_offer";
+    | "ob_vote_join_offer"
+    | "project_parent_link_requested"
+    | "project_parent_link_approved"
+    | "project_parent_link_rejected";
 
 export interface Notification {
     id: string;

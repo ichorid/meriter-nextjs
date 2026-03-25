@@ -15,6 +15,7 @@ import { PostClosingService } from './post-closing.service';
 import { PublicationService } from './publication.service';
 import { TicketService } from './ticket.service';
 import { NotificationService } from './notification.service';
+import { ProjectParentLinkRequestService } from './project-parent-link-request.service';
 import type { Community } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -66,6 +67,12 @@ export interface ProjectWithDetails {
   project: Community;
   walletBalance: number;
   parentCommunity: Community | null;
+  /** Present when the project is personal and has a pending link request to a parent community. */
+  pendingParentLink?: {
+    requestId: string;
+    targetParentCommunityId: string;
+    parentName: string | null;
+  } | null;
 }
 
 @Injectable()
@@ -83,7 +90,44 @@ export class ProjectService {
     private readonly publicationService: PublicationService,
     private readonly ticketService: TicketService,
     private readonly notificationService: NotificationService,
+    private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
   ) {}
+
+  private async createPersonalProjectAndSetup(
+    userId: string,
+    dto: CreateProjectDto,
+  ): Promise<Community> {
+    const project = await this.communityService.createCommunity({
+      name: dto.name,
+      description: dto.description,
+      typeTag: 'project',
+      settings: {
+        postCost: 0,
+        investingEnabled: dto.investingEnabled ?? false,
+      },
+      isProject: true,
+      isPersonalProject: true,
+      founderUserId: userId,
+      projectStatus: 'active',
+      projectDuration: dto.projectDuration,
+      founderSharePercent: dto.founderSharePercent ?? 0,
+      investorSharePercent: dto.investorSharePercent ?? 0,
+      futureVisionTags: dto.futureVisionTags,
+    });
+
+    const wallet = await this.communityWalletService.createWallet(project.id);
+    await this.communityService.updateCommunity(project.id, {
+      communityWalletId: wallet.id,
+    });
+
+    await this.communityService.addMember(project.id, userId);
+    await this.userService.addCommunityMembership(userId, project.id);
+    await this.userCommunityRoleService.setRole(userId, project.id, 'lead');
+
+    const updated = await this.communityService.getCommunity(project.id);
+    if (!updated) throw new NotFoundException('Project not found after create');
+    return updated;
+  }
 
   /**
    * Create a project community with wallet and assign founder as lead.
@@ -102,36 +146,8 @@ export class ProjectService {
 
     try {
       if (dto.personalProject) {
-        const project = await this.communityService.createCommunity({
-          name: dto.name,
-          description: dto.description,
-          typeTag: 'project',
-          settings: {
-            postCost: 0,
-            investingEnabled: dto.investingEnabled ?? false,
-          },
-          isProject: true,
-          isPersonalProject: true,
-          founderUserId: userId,
-          projectStatus: 'active',
-          projectDuration: dto.projectDuration,
-          founderSharePercent: dto.founderSharePercent ?? 0,
-          investorSharePercent: dto.investorSharePercent ?? 0,
-          futureVisionTags: dto.futureVisionTags,
-        });
-
-        const wallet = await this.communityWalletService.createWallet(project.id);
-        await this.communityService.updateCommunity(project.id, {
-          communityWalletId: wallet.id,
-        });
-
-        await this.communityService.addMember(project.id, userId);
-        await this.userService.addCommunityMembership(userId, project.id);
-        await this.userCommunityRoleService.setRole(userId, project.id, 'lead');
-
-        this.logger.log(`Personal project created: ${project.id} by user ${userId}`);
-        const updated = await this.communityService.getCommunity(project.id);
-        if (!updated) throw new NotFoundException('Project not found after create');
+        const updated = await this.createPersonalProjectAndSetup(userId, dto);
+        this.logger.log(`Personal project created: ${updated.id} by user ${userId}`);
         return updated;
       }
 
@@ -164,6 +180,39 @@ export class ProjectService {
       const parentExists = await this.communityService.getCommunity(parentCommunityId);
       if (!parentExists) {
         throw new BadRequestException('Parent community not found');
+      }
+
+      if (!dto.newCommunity) {
+        if (parentExists.isProject) {
+          throw new BadRequestException('Parent cannot be a project community');
+        }
+        if (!this.communityService.isLocalMembershipCommunity(parentExists)) {
+          throw new BadRequestException(
+            'Project can only be linked to a local team-style community',
+          );
+        }
+
+        const canLinkImmediately = await this.communityService.isUserAdmin(
+          parentCommunityId,
+          userId,
+        );
+        if (!canLinkImmediately) {
+          const role = await this.userCommunityRoleService.getRole(userId, parentCommunityId);
+          if (!role) {
+            throw new ForbiddenException('You must be a member of the parent community');
+          }
+
+          const updated = await this.createPersonalProjectAndSetup(userId, dto);
+          await this.projectParentLinkRequestService.createPendingRequest({
+            projectId: updated.id,
+            targetParentCommunityId: parentCommunityId,
+            requesterUserId: userId,
+          });
+          this.logger.log(
+            `Personal project ${updated.id} created with pending parent link to ${parentCommunityId} by user ${userId}`,
+          );
+          return updated;
+        }
       }
 
       const project = await this.communityService.createCommunity({
@@ -247,10 +296,24 @@ export class ProjectService {
       ? await this.communityService.getCommunity(project.parentCommunityId)
       : null;
 
+    let pendingParentLink: ProjectWithDetails['pendingParentLink'] = null;
+    if (project.isPersonalProject === true) {
+      const pending = await this.projectParentLinkRequestService.getPendingForProject(projectId);
+      if (pending) {
+        const p = await this.communityService.getCommunity(pending.targetParentCommunityId);
+        pendingParentLink = {
+          requestId: pending.id,
+          targetParentCommunityId: pending.targetParentCommunityId,
+          parentName: p?.name ?? null,
+        };
+      }
+    }
+
     return {
       project,
       walletBalance,
       parentCommunity: parentCommunity ?? null,
+      pendingParentLink,
     };
   }
 
@@ -622,6 +685,102 @@ export class ProjectService {
   }
 
   /**
+   * Change parent community: personal (null), immediate link (lead of target), or personal + pending request (member only).
+   */
+  async requestParentChange(
+    projectId: string,
+    userId: string,
+    newParentCommunityId: string | null,
+  ): Promise<Community> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project || !project.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    if (project.projectStatus === 'archived') {
+      throw new BadRequestException('Cannot change parent for an archived project');
+    }
+
+    const leadRole = await this.userCommunityRoleService.getRole(userId, projectId);
+    if (leadRole?.role !== 'lead') {
+      throw new ForbiddenException('Only the project lead can change the parent community');
+    }
+
+    if (newParentCommunityId === null) {
+      await this.projectParentLinkRequestService.cancelAllPendingForProject(projectId);
+      await this.communityService.updateCommunity(projectId, {
+        parentCommunityId: null,
+        isPersonalProject: true,
+      });
+      const updated = await this.communityService.getCommunity(projectId);
+      if (!updated) throw new NotFoundException('Project not found');
+      return updated;
+    }
+
+    if (
+      project.parentCommunityId === newParentCommunityId &&
+      project.isPersonalProject !== true
+    ) {
+      const updated = await this.communityService.getCommunity(projectId);
+      if (!updated) throw new NotFoundException('Project not found');
+      return updated;
+    }
+
+    const parent = await this.communityService.getCommunity(newParentCommunityId);
+    if (!parent) {
+      throw new BadRequestException('Parent community not found');
+    }
+    if (parent.isProject) {
+      throw new BadRequestException('Parent cannot be a project community');
+    }
+    if (!this.communityService.isLocalMembershipCommunity(parent)) {
+      throw new BadRequestException(
+        'Project can only be linked to a local team-style community',
+      );
+    }
+
+    const canLinkImmediately = await this.communityService.isUserAdmin(
+      newParentCommunityId,
+      userId,
+    );
+    if (canLinkImmediately) {
+      await this.projectParentLinkRequestService.cancelAllPendingForProject(projectId);
+      await this.communityService.updateCommunity(projectId, {
+        parentCommunityId: newParentCommunityId,
+        isPersonalProject: false,
+      });
+      const updated = await this.communityService.getCommunity(projectId);
+      if (!updated) throw new NotFoundException('Project not found');
+      return updated;
+    }
+
+    const memberRole = await this.userCommunityRoleService.getRole(userId, newParentCommunityId);
+    if (!memberRole) {
+      throw new ForbiddenException('You must be a member of the target parent community');
+    }
+
+    if (project.parentCommunityId) {
+      await this.communityService.updateCommunity(projectId, {
+        parentCommunityId: null,
+        isPersonalProject: true,
+      });
+    } else if (project.isPersonalProject !== true) {
+      await this.communityService.updateCommunity(projectId, {
+        isPersonalProject: true,
+      });
+    }
+
+    await this.projectParentLinkRequestService.createPendingRequest({
+      projectId,
+      targetParentCommunityId: newParentCommunityId,
+      requesterUserId: userId,
+    });
+
+    const updated = await this.communityService.getCommunity(projectId);
+    if (!updated) throw new NotFoundException('Project not found');
+    return updated;
+  }
+
+  /**
    * Top-up project wallet from user's global wallet (donation; non-refundable).
    */
   async topUpWallet(userId: string, projectId: string, amount: number): Promise<{ balance: number }> {
@@ -653,6 +812,29 @@ export class ProjectService {
 
     const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
     return { balance: wallet.balance };
+  }
+
+  listPendingParentLinkRequests(parentCommunityId: string, viewerUserId: string) {
+    return this.projectParentLinkRequestService.listPendingForParent(
+      parentCommunityId,
+      viewerUserId,
+    );
+  }
+
+  listMyPendingParentLinkRequests(viewerUserId: string) {
+    return this.projectParentLinkRequestService.listMyPendingRequests(viewerUserId);
+  }
+
+  approveParentLinkRequest(requestId: string, viewerUserId: string) {
+    return this.projectParentLinkRequestService.approve(requestId, viewerUserId);
+  }
+
+  rejectParentLinkRequest(requestId: string, viewerUserId: string, reason?: string) {
+    return this.projectParentLinkRequestService.reject(requestId, viewerUserId, reason);
+  }
+
+  cancelParentLinkRequest(requestId: string, viewerUserId: string) {
+    return this.projectParentLinkRequestService.cancel(requestId, viewerUserId);
   }
 }
 

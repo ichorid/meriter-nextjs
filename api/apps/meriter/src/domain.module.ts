@@ -65,6 +65,10 @@ import {
   TeamJoinRequestSchema,
 } from './domain/models/team-join-request/team-join-request.schema';
 import {
+  ProjectParentLinkRequestSchemaClass,
+  ProjectParentLinkRequestSchema,
+} from './domain/models/project-parent-link-request/project-parent-link-request.schema';
+import {
   TeamInvitationSchemaClass,
   TeamInvitationSchema,
 } from './domain/models/team-invitation/team-invitation.schema';
@@ -114,6 +118,7 @@ import { PlatformSettingsService } from './domain/services/platform-settings.ser
 import { ValueTagsSuggestionService } from './domain/services/value-tags-suggestion.service';
 import { CommunityWalletService } from './domain/services/community-wallet.service';
 import { ProjectService } from './domain/services/project.service';
+import { ProjectParentLinkRequestService } from './domain/services/project-parent-link-request.service';
 import { TicketService } from './domain/services/ticket.service';
 import { ProjectDistributionService } from './domain/services/project-distribution.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
@@ -153,6 +158,10 @@ import { EventBus } from './domain/events/event-bus';
       { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
       { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
+      {
+        name: ProjectParentLinkRequestSchemaClass.name,
+        schema: ProjectParentLinkRequestSchema,
+      },
       { name: TeamInvitationSchemaClass.name, schema: TeamInvitationSchema },
       { name: PlatformSettingsSchemaClass.name, schema: PlatformSettingsSchema },
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
@@ -195,6 +204,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformSettingsService,
     ValueTagsSuggestionService,
     CommunityWalletService,
+    ProjectParentLinkRequestService,
     ProjectService,
     TicketService,
     ProjectDistributionService,

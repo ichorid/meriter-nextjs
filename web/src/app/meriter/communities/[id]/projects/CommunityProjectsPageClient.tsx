@@ -8,7 +8,13 @@ import { useCommunity } from '@/hooks/api';
 import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { useGlobalProjectsList } from '@/hooks/api/useProjects';
+import {
+  useGlobalProjectsList,
+  useParentLinkRequests,
+  useApproveParentLinkRequest,
+  useRejectParentLinkRequest,
+} from '@/hooks/api/useProjects';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { ProjectCard } from '@/components/organisms/Project/ProjectCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { Plus, FolderKanban } from 'lucide-react';
@@ -36,6 +42,22 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
   const projectsListEnabled = Boolean(
     community && community.typeTag !== 'marathon-of-good' && !communityLoading,
   );
+
+  const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
+  const isParentModerator = Boolean(
+    user &&
+      (user.globalRole === 'superadmin' ||
+        userRoles.some((r) => r.communityId === communityId && r.role === 'lead')),
+  );
+
+  const { data: linkRequestsData, isLoading: linkRequestsLoading } = useParentLinkRequests(
+    communityId,
+    Boolean(projectsListEnabled && isParentModerator),
+  );
+  const linkRequests = linkRequestsData ?? [];
+
+  const approveLink = useApproveParentLinkRequest();
+  const rejectLink = useRejectParentLinkRequest();
 
   const { data, isLoading } = useGlobalProjectsList(
     {
@@ -98,6 +120,48 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
             </Button>
           </div>
         </div>
+
+        {isParentModerator && (linkRequestsLoading || linkRequests.length > 0) && (
+          <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-base-content">{t('parentLinkRequestsSectionTitle')}</h3>
+            {linkRequestsLoading ? (
+              <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
+            ) : (
+              <ul className="flex flex-col gap-3 list-none p-0 m-0">
+                {linkRequests.map((req) => (
+                  <li
+                    key={req.id}
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100/80 dark:bg-base-200/20 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-base-content truncate">{req.projectName}</p>
+                      <p className="text-xs text-base-content/55">{t('parentLinkRequestPendingBadge')}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        className="rounded-lg"
+                        disabled={approveLink.isPending || rejectLink.isPending}
+                        onClick={() => approveLink.mutate({ requestId: req.id })}
+                      >
+                        {t('parentLinkApprove')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-lg"
+                        disabled={approveLink.isPending || rejectLink.isPending}
+                        onClick={() => rejectLink.mutate({ requestId: req.id })}
+                      >
+                        {t('parentLinkReject')}
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
         {isLoading ? (
           <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
