@@ -33,13 +33,19 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value);
 }
 
+/** Round merit amounts for display or persistence (max one decimal place). */
+export function roundMeritsToDisplay(value: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round((n + Number.EPSILON) * 10) / 10;
+}
+
 /**
- * Format merits to 1 decimal place
- * Examples: 10.7, 10.0 -> 10, 0.5 -> 0.5
+ * Format merits to at most 1 decimal place (avoids float artifacts like 56.63000000000001).
+ * Examples: 10.7 → "10.7", 10 → "10", 0.5 → "0.5"
  */
 export function formatMerits(value: number): string {
-  // Round to 1 decimal place
-  const rounded = Math.round(value * 10) / 10;
-  // Format to 1 decimal place, but remove trailing zeros
-  return rounded.toFixed(1).replace(/\.0$/, '');
+  const rounded = roundMeritsToDisplay(value);
+  const s = rounded.toFixed(1);
+  return s.endsWith('.0') ? s.slice(0, -2) : s;
 }

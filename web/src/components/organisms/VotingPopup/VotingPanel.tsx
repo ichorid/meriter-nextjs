@@ -612,7 +612,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 {/* Available text overlay */}
                                 <div className="absolute inset-0 flex items-center justify-center">
                                     <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
-                                        {t("available")} {quotaRemaining}
+                                        {t("available")} {formatMerits(quotaRemaining)}
                                     </span>
                                 </div>
                             </div>
@@ -649,7 +649,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                     {/* Available text overlay */}
                                     <div className="absolute inset-0 flex items-center justify-center">
                                         <span className="text-xs font-medium z-10 text-base-content dark:text-base-content">
-                                            {t("available")} {walletBalance}
+                                            {t("available")} {formatMerits(walletBalance)}
                                         </span>
                                     </div>
                                 </div>

@@ -1343,7 +1343,9 @@
                 "insufficientCommunityWallet": "На кошельке сообщества {balance} заслуг(и), требуется {cost}.",
                 "willChargeCommunityWallet": "С кошелька сообщества будет списано {cost} заслуг(и).",
                 "summaryCommunity": "{cost} засл. · кошелёк сообщества",
-                "summaryPersonal": "{cost} засл. · ваш кошелёк"
+                "summaryPersonal": "{cost} засл. · ваш кошелёк",
+                "summarySourceProject": "{cost} засл. · кошелёк проекта",
+                "summarySourceCommunity": "{cost} засл. · кошелёк сообщества-источника"
             },
             "fields": {
                 "title": "Заголовок",
@@ -2748,13 +2750,18 @@
         "topUpFromPersonalWallet": "Мой кошелёк",
         "topUpFromSourceWallet": "Кошелёк источника (проект / сообщество)",
         "publishCostExplainer": "Публикация на Бирже стоит {cost} заслуг(и) (по настройкам Биржи).",
-        "sourceWalletBalance": "Кошелёк сообщества-источника: доступно {balance} заслуг(и) кошелька.",
+        "sourceProjectWalletBalance": "Кошелёк проекта-источника: доступно {balance} заслуг(и) кошелька.",
+        "sourceCommunityWalletBalance": "Кошелёк сообщества-источника: доступно {balance} заслуг(и) кошелька.",
         "personalWalletBalance": "Ваш глобальный кошелёк: доступно {balance} заслуг(и).",
         "payFromLabel": "Оплатить создание поста с",
+        "payFromProjectWallet": "Кошелька проекта-источника (по умолчанию)",
         "payFromCommunityWallet": "Кошелька сообщества-источника (по умолчанию)",
         "payFromPersonalWallet": "Моего глобального кошелька",
+        "insufficientProjectWalletHint": "На кошельке проекта не хватает заслуг — выберите глобальный кошелёк или пополните кошелёк проекта.",
         "insufficientCommunityWalletHint": "На кошельке сообщества не хватает заслуг — выберите глобальный кошелёк или пополните кошелёк сообщества.",
+        "insufficientProjectWallet": "На кошельке проекта {balance} заслуг(и), требуется {cost}.",
         "insufficientCommunityWallet": "На кошельке сообщества {balance} заслуг(и), требуется {cost}.",
+        "willChargeProjectWallet": "С кошелька проекта-источника будет списано {cost} заслуг(и).",
         "willChargeCommunityWallet": "С кошелька сообщества-источника будет списано {cost} заслуг(и).",
         "birzhaCommunityMissing": "Сообщество Биржи недоступно."
     },

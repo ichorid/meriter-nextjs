@@ -43,6 +43,7 @@ import {
 import { useTaxonomyTranslations } from '@/hooks/useTaxonomyTranslations';
 import { ENABLE_PROJECT_POSTS, ENABLE_HASHTAGS } from '@/lib/constants/features';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { formatMerits } from '@/lib/utils/currency';
 import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
 import { useActingAsStore } from '@/stores/acting-as.store';
 import config from '@/config';
@@ -154,6 +155,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     sourceEntityType: birzhaSourceEntity?.type ?? 'community',
     sourceEntityId: birzhaSourceEntity?.id ?? '',
   });
+  const birzhaSourceIsProject = birzhaSourceEntity?.type === 'project';
 
   const normalizeEntityId = (id: string | undefined): string | null => {
     const trimmed = (id ?? '').trim();
@@ -686,9 +688,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             <CollapsibleSection
               title={t('payment.sectionTitle')}
               summary={
-                postCostFunding === 'source_community_wallet'
-                  ? t('payment.summaryCommunity', { cost: postCost })
-                  : t('payment.summaryPersonal', { cost: postCost })
+                postCostFunding === 'caller_global_wallet'
+                  ? t('payment.summaryPersonal', { cost: formatMerits(postCost) })
+                  : birzhaSourceEntity
+                    ? birzhaSourceIsProject
+                      ? t('payment.summarySourceProject', { cost: formatMerits(postCost) })
+                      : t('payment.summarySourceCommunity', { cost: formatMerits(postCost) })
+                    : t('payment.summaryCommunity', { cost: formatMerits(postCost) })
               }
               open={openPublicationPayment}
               setOpen={setOpenPublicationPayment}
@@ -696,18 +702,23 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               <div className="space-y-3 text-sm">
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
-                    ? tBirzha('publishCostExplainer', { cost: postCost })
-                    : t('payment.costLine', { cost: postCost })}
+                    ? tBirzha('publishCostExplainer', { cost: formatMerits(postCost) })
+                    : t('payment.costLine', { cost: formatMerits(postCost) })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
-                    ? tBirzha('sourceWalletBalance', { balance: communityWalletBalance })
-                    : t('payment.sourceWalletLine', { balance: communityWalletBalance })}
+                    ? tBirzha(
+                        birzhaSourceIsProject
+                          ? 'sourceProjectWalletBalance'
+                          : 'sourceCommunityWalletBalance',
+                        { balance: formatMerits(communityWalletBalance) },
+                      )
+                    : t('payment.sourceWalletLine', { balance: formatMerits(communityWalletBalance) })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
-                    ? tBirzha('personalWalletBalance', { balance: walletBalance })
-                    : t('payment.personalWalletLine', { balance: walletBalance })}
+                    ? tBirzha('personalWalletBalance', { balance: formatMerits(walletBalance) })
+                    : t('payment.personalWalletLine', { balance: formatMerits(walletBalance) })}
                 </p>
                 <BrandFormControl label={tBirzha('payFromLabel')}>
                   <Select
@@ -726,7 +737,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                         disabled={communityWalletBalance < postCost}
                       >
                         {birzhaSourceEntity
-                          ? tBirzha('payFromCommunityWallet')
+                          ? tBirzha(
+                              birzhaSourceIsProject ? 'payFromProjectWallet' : 'payFromCommunityWallet',
+                            )
                           : t('payment.payFromCommunityWallet')}
                       </SelectItem>
                       <SelectItem value="caller_global_wallet">
@@ -740,30 +753,47 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 {communityWalletBalance < postCost &&
                 postCostFunding === 'source_community_wallet' ? (
                   <p className="text-destructive text-sm">
-                    {tBirzha('insufficientCommunityWalletHint')}
+                    {tBirzha(
+                      birzhaSourceIsProject
+                        ? 'insufficientProjectWalletHint'
+                        : 'insufficientCommunityWalletHint',
+                    )}
                   </p>
                 ) : null}
                 {hasInsufficientPayment ? (
                   <p className="text-destructive text-sm">
                     {postCostFunding === 'caller_global_wallet'
-                      ? t('insufficientPayment', { cost: postCost })
+                      ? t('insufficientPayment', { cost: formatMerits(postCost) })
                       : birzhaSourceEntity
-                        ? tBirzha('insufficientCommunityWallet', {
-                            balance: communityWalletBalance,
-                            cost: postCost,
-                          })
+                        ? tBirzha(
+                            birzhaSourceIsProject
+                              ? 'insufficientProjectWallet'
+                              : 'insufficientCommunityWallet',
+                            {
+                              balance: formatMerits(communityWalletBalance),
+                              cost: formatMerits(postCost),
+                            },
+                          )
                         : t('payment.insufficientCommunityWallet', {
-                            balance: communityWalletBalance,
-                            cost: postCost,
+                            balance: formatMerits(communityWalletBalance),
+                            cost: formatMerits(postCost),
                           })}
                   </p>
                 ) : postCost > 0 ? (
                   <p className="text-muted-foreground">
                     {postCostFunding === 'source_community_wallet'
                       ? birzhaSourceEntity
-                        ? tBirzha('willChargeCommunityWallet', { cost: postCost })
-                        : t('payment.willChargeCommunityWallet', { cost: postCost })
-                      : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                        ? tBirzha(
+                            birzhaSourceIsProject
+                              ? 'willChargeProjectWallet'
+                              : 'willChargeCommunityWallet',
+                            { cost: formatMerits(postCost) },
+                          )
+                        : t('payment.willChargeCommunityWallet', { cost: formatMerits(postCost) })
+                      : t('willPayWithWallet', {
+                          balance: formatMerits(walletBalance),
+                          cost: formatMerits(postCost),
+                        })}
                   </p>
                 ) : (
                   <p className="text-muted-foreground">{t('postIsFree')}</p>

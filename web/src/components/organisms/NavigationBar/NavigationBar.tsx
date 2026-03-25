@@ -12,6 +12,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { useWallets } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
+import { formatMerits } from '@/lib/utils/currency';
 
 const NAV_LINKS = [
   { href: routes.profile, label: 'Profile', icon: 'home' },
@@ -117,11 +118,15 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                     <div className="hidden md:flex flex-col items-start text-xs">
                       <div className="flex items-center gap-1">
                         <span className="text-brand-text-secondary">{t('permanentMerits')}:</span>
-                        <span className="font-semibold text-brand-primary">{totalWalletBalance}</span>
+                        <span className="font-semibold text-brand-primary">
+                          {formatMerits(totalWalletBalance)}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-brand-text-secondary">{t('dailyMerits')}:</span>
-                        <span className="font-semibold text-brand-primary">{totalDailyQuota}</span>
+                        <span className="font-semibold text-brand-primary">
+                          {formatMerits(totalDailyQuota)}
+                        </span>
                       </div>
                     </div>
                   </div>

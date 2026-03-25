@@ -1343,7 +1343,9 @@
                 "insufficientCommunityWallet": "The community wallet has {balance} merit(s); {cost} required.",
                 "willChargeCommunityWallet": "{cost} merit(s) will be charged from the community wallet.",
                 "summaryCommunity": "{cost} merit(s) · community wallet",
-                "summaryPersonal": "{cost} merit(s) · your wallet"
+                "summaryPersonal": "{cost} merit(s) · your wallet",
+                "summarySourceProject": "{cost} merit(s) · project wallet",
+                "summarySourceCommunity": "{cost} merit(s) · source community wallet"
             },
             "fields": {
                 "title": "Title",
@@ -2748,13 +2750,18 @@
         "topUpFromPersonalWallet": "My wallet",
         "topUpFromSourceWallet": "Source wallet (project / community)",
         "publishCostExplainer": "Publishing on Birzha costs {cost} merit(s) (per Birzha settings).",
-        "sourceWalletBalance": "Source community wallet: {balance} merit(s) available.",
+        "sourceProjectWalletBalance": "Source project wallet: {balance} merit(s) available.",
+        "sourceCommunityWalletBalance": "Source community wallet: {balance} merit(s) available.",
         "personalWalletBalance": "Your global wallet: {balance} merit(s) available.",
         "payFromLabel": "Pay post cost from",
+        "payFromProjectWallet": "Source project wallet (default)",
         "payFromCommunityWallet": "Source community wallet (default)",
         "payFromPersonalWallet": "My global wallet",
+        "insufficientProjectWalletHint": "Not enough merits on the project wallet — choose your global wallet or top up the project wallet.",
         "insufficientCommunityWalletHint": "Not enough merits on the community wallet — choose your global wallet or top up the community wallet.",
+        "insufficientProjectWallet": "The project wallet has {balance} merit(s); {cost} required.",
         "insufficientCommunityWallet": "The community wallet has {balance} merit(s); {cost} required.",
+        "willChargeProjectWallet": "{cost} merit(s) will be charged from the source project wallet.",
         "willChargeCommunityWallet": "{cost} merit(s) will be charged from the source community wallet.",
         "birzhaCommunityMissing": "Birzha community is not available."
     },
