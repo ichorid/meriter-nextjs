@@ -10,7 +10,6 @@ import {
 import { useFutureVisionTags } from "@/hooks/api/useFutureVisions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
-import { IconPicker } from "@/shared/components/iconpicker";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
@@ -349,62 +348,6 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                     </BrandFormControl>
                 </div>
             </div>
-
-            {isEditMode && (
-                <div className="border-t border-base-300 pt-6">
-                    <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                        {t("configuration")}
-                    </h2>
-
-                    <div className="space-y-6">
-                        <div>
-                            <h3 className="text-base font-semibold text-brand-text-primary mb-3">
-                                {t("currencyNames")}
-                            </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <BrandFormControl label={t("singular")}>
-                                    <Input
-                                        value={currencySingular}
-                                        onChange={(e) =>
-                                            setCurrencySingular(e.target.value)
-                                        }
-                                        className="h-11 rounded-xl w-full"
-                                    />
-                                </BrandFormControl>
-                                <BrandFormControl label={t("plural")}>
-                                    <Input
-                                        value={currencyPlural}
-                                        onChange={(e) =>
-                                            setCurrencyPlural(e.target.value)
-                                        }
-                                        className="h-11 rounded-xl w-full"
-                                    />
-                                </BrandFormControl>
-                            </div>
-                            <BrandFormControl label={t("genitive")}>
-                                <Input
-                                    value={currencyGenitive}
-                                    onChange={(e) =>
-                                        setCurrencyGenitive(e.target.value)
-                                    }
-                                    className="h-11 rounded-xl w-full"
-                                />
-                            </BrandFormControl>
-                        </div>
-
-                        <BrandFormControl
-                            label={t("currencyIcon")}
-                            helperText={t("selectIcon")}
-                        >
-                            <IconPicker
-                                icon={iconUrl}
-                                cta={t("selectIcon")}
-                                setIcon={setIconUrl}
-                            />
-                        </BrandFormControl>
-                    </div>
-                </div>
-            )}
 
             {isSuperadmin && !isEditMode && (
                 <div className="border-t border-gray-200 pt-6">
