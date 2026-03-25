@@ -52,6 +52,20 @@ export const useRemoveCommunityMember = (communityId: string) => {
     });
 };
 
+export function useLeaveCommunity(communityId: string) {
+    const utils = trpc.useUtils();
+
+    return trpc.communities.leaveCommunity.useMutation({
+        onSuccess: () => {
+            void utils.communities.getMembers.invalidate({ id: communityId });
+            void utils.communities.getById.invalidate({ id: communityId });
+            void utils.users.getUserRoles.invalidate();
+            void utils.users.getMe.invalidate();
+            void utils.wallets.getAll.invalidate();
+        },
+    });
+}
+
 function invalidateCommunityLeadCaches(
     utils: ReturnType<typeof trpc.useUtils>,
     communityId: string,

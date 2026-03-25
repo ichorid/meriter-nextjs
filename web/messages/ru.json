@@ -973,6 +973,13 @@
                 "remove": "Удалить участника",
                 "confirmRemove": "Удалить {name} из сообщества?",
                 "addMerits": "Начислить заслуги",
+                "leaveCommunity": "Выйти из сообщества",
+                "leaveCommunityTitle": "Выйти из сообщества?",
+                "leaveCommunityWarning": "Все заслуги, накопленные вами в этом сообществе (кошелёк и связанные операции), будут безвозвратно потеряны. Продолжить?",
+                "leaveCommunityConfirm": "Выйти",
+                "leaveCommunityCancel": "Отмена",
+                "leaveCommunitySuccess": "Вы вышли из сообщества",
+                "leaveCommunitySubmitting": "Выход…",
                 "teamRequests": {
                     "title": "Заявки на вступление",
                     "approve": "Принять",
@@ -2651,7 +2658,12 @@
         "ticketMustBeDoneToReturnForRevision": "Вернуть на доработку можно только задачу в статусе «выполнена»",
         "ticketHasNoAssignee": "У задачи нет исполнителя",
         "sourceWalletTopUpNotApplicable": "Пополнение с кошелька источника доступно только для постов на Бирже от проекта или сообщества",
-        "insufficientCommunityWalletBalance": "Недостаточно средств на кошельке сообщества"
+        "insufficientCommunityWalletBalance": "Недостаточно средств на кошельке сообщества",
+        "cannotLeavePriorityCommunities": "Из приоритетных сообществ нельзя выйти",
+        "leaveCommunityLeadMustPromote": "Администратор не может выйти — сначала назначьте другого администратора",
+        "leaveCommunityUseProjectFlow": "Для выхода из проекта используйте действие «Покинуть проект»",
+        "cannotLeaveThisCommunityType": "Из этого типа сообщества нельзя выйти таким способом",
+        "notMemberOfThisCommunity": "Вы не участник этого сообщества"
     },
     "birzhaSource": {
         "publishTitle": "Опубликовать на Бирже",

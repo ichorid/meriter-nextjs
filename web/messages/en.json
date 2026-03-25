@@ -973,6 +973,13 @@
                 "remove": "Remove member",
                 "confirmRemove": "Remove {name} from community?",
                 "addMerits": "Add merits",
+                "leaveCommunity": "Leave community",
+                "leaveCommunityTitle": "Leave this community?",
+                "leaveCommunityWarning": "All merits you accumulated in this community (wallet and related history) will be permanently lost. Continue?",
+                "leaveCommunityConfirm": "Leave",
+                "leaveCommunityCancel": "Cancel",
+                "leaveCommunitySuccess": "You have left the community",
+                "leaveCommunitySubmitting": "Leaving…",
                 "teamRequests": {
                     "title": "Join requests",
                     "approve": "Approve",
@@ -2651,7 +2658,12 @@
         "ticketMustBeDoneToReturnForRevision": "The task must be marked done before it can be returned for revision",
         "ticketHasNoAssignee": "This task has no assignee",
         "sourceWalletTopUpNotApplicable": "Source wallet top-up is only for Birzha posts from a project or community source",
-        "insufficientCommunityWalletBalance": "Insufficient community wallet balance"
+        "insufficientCommunityWalletBalance": "Insufficient community wallet balance",
+        "cannotLeavePriorityCommunities": "You cannot leave priority communities",
+        "leaveCommunityLeadMustPromote": "A lead cannot leave — promote another lead first",
+        "leaveCommunityUseProjectFlow": "To leave a project, use the leave-project action",
+        "cannotLeaveThisCommunityType": "You cannot leave this community type this way",
+        "notMemberOfThisCommunity": "You are not a member of this community"
     },
     "birzhaSource": {
         "publishTitle": "Publish to Birzha",

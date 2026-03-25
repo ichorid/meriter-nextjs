@@ -936,6 +936,22 @@ export const communitiesRouter = router({
     }),
 
   /**
+   * Leave a non-project local community as a participant (not priority hubs; lead must transfer first).
+   */
+  leaveCommunity: protectedProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      await ctx.communityService.leaveLocalCommunity(ctx.user.id, input.id);
+      return { success: true as const };
+    }),
+
+  /**
    * Get user role in a community
    */
   getUserRole: protectedProcedure

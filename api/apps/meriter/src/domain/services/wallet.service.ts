@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, ClientSession } from 'mongoose';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
@@ -201,6 +201,25 @@ export class WalletService {
 
   async getUserWallet(userId: string, communityId: string): Promise<Wallet | null> {
     return this.getWallet(userId, communityId);
+  }
+
+  /**
+   * Removes the user's wallet for a non-global community and its transaction rows (merits forfeited on leave).
+   */
+  async removeUserWalletAndTransactionsForCommunity(
+    userId: string,
+    communityId: string,
+  ): Promise<void> {
+    if (communityId === GLOBAL_COMMUNITY_ID) {
+      throw new BadRequestException('Cannot remove global wallet');
+    }
+    const wallet = await this.getWallet(userId, communityId);
+    if (!wallet) {
+      return;
+    }
+    const walletId = wallet.getId.getValue();
+    await this.transactionModel.deleteMany({ walletId });
+    await this.walletModel.deleteOne({ id: walletId });
   }
 
   async getUserWallets(userId: string): Promise<Wallet[]> {

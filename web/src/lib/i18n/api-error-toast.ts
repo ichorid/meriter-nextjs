@@ -124,6 +124,11 @@ export const KNOWN_API_ERROR_KEYS: Record<string, string> = {
   'Server response format is invalid. Please check if the backend API is running and accessible.':
     'serverResponseInvalid',
   'Network error - please check your connection': 'networkErrorAlt',
+  'Cannot leave priority communities': 'cannotLeavePriorityCommunities',
+  'Lead cannot leave; promote another lead first': 'leaveCommunityLeadMustPromote',
+  'Use leave project for projects': 'leaveCommunityUseProjectFlow',
+  'Cannot leave this community type': 'cannotLeaveThisCommunityType',
+  'You are not a member of this community': 'notMemberOfThisCommunity',
 };
 
 /** Dot path into loaded messages, e.g. `shared.urlCopiedToBuffer`. */

@@ -8,9 +8,25 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { useCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
+import {
+    useCommunity,
+    useCommunityMembers,
+    useLeaveCommunity,
+    useRemoveCommunityMember,
+} from '@/hooks/api';
 import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
-import { Coins, Copy, Loader2, Shield, ShieldOff, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
+import {
+    Coins,
+    Copy,
+    Loader2,
+    LogOut,
+    Shield,
+    ShieldOff,
+    UserMinus,
+    UserPlus,
+    UserX,
+    Users,
+} from 'lucide-react';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
@@ -47,6 +63,7 @@ import {
 } from '@/components/organisms/Community/CommunityLeadActionDialogs';
 import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import { isPriorityCommunity } from '@/lib/community/is-priority-community';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -85,10 +102,12 @@ export function CommunityMembersPageClient({
         name: string;
         variant: 'self' | 'other';
     } | null>(null);
+    const [leaveCommunityOpen, setLeaveCommunityOpen] = useState(false);
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId, {
         search: debouncedSearchQuery.trim() || undefined,
     });
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
+    const leaveCommunity = useLeaveCommunity(communityId);
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;
 
@@ -96,11 +115,18 @@ export function CommunityMembersPageClient({
     const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
     const isTeam = community?.typeTag === 'team';
     const allowsJoinRequests = community ? isLocalMembershipHubCommunity(community) : false;
-    const isCurrentUserMember = userRoles.some(
-        (r) =>
-            r.communityId === communityId &&
-            (r.role === 'lead' || r.role === 'participant'),
-    );
+    const myRoleInCommunity = userRoles.find((r) => r.communityId === communityId)?.role;
+    const isCurrentUserMember =
+        myRoleInCommunity === 'lead' || myRoleInCommunity === 'participant';
+    const isCurrentUserParticipantOnly = myRoleInCommunity === 'participant';
+
+    const canShowLeaveCommunity =
+        Boolean(user) &&
+        isCurrentUserParticipantOnly &&
+        !isProjectMembersUi &&
+        community != null &&
+        community.isProject !== true &&
+        !isPriorityCommunity(community);
 
     const { data: requestsData } = useTeamRequestsForLead(
         allowsJoinRequests && isAdmin ? communityId : '',
@@ -383,32 +409,43 @@ export function CommunityMembersPageClient({
                             </section>
                         ) : null}
 
-                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                            {canCreateInviteLink && (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="shrink-0 gap-2"
-                                    disabled={createInviteMutation.isPending}
-                                    onClick={() => createInviteMutation.mutate({ communityId })}
-                                >
-                                    {createInviteMutation.isPending ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <UserPlus className="h-4 w-4" />
-                                    )}
-                                    {isProjectMembersUi ? tProjects('inviteToProject') : t('members.invite.button')}
-                                </Button>
-                            )}
-                            <div className={canCreateInviteLink ? 'min-w-0 flex-1' : 'w-full'}>
-                                <SearchInput
-                                    placeholder={tSearch('results.searchMembersPlaceholder')}
-                                    value={searchQuery}
-                                    onSearch={setSearchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full"
-                                />
+                        <div className="mb-4 flex flex-col gap-3">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                {canCreateInviteLink ? (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="shrink-0 gap-2"
+                                        disabled={createInviteMutation.isPending}
+                                        onClick={() => createInviteMutation.mutate({ communityId })}
+                                    >
+                                        {createInviteMutation.isPending ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <UserPlus className="h-4 w-4" />
+                                        )}
+                                        {isProjectMembersUi ? tProjects('inviteToProject') : t('members.invite.button')}
+                                    </Button>
+                                ) : null}
+                                {canShowLeaveCommunity ? (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="shrink-0 gap-2 border-destructive/40 text-destructive hover:bg-destructive/10"
+                                        onClick={() => setLeaveCommunityOpen(true)}
+                                    >
+                                        <LogOut className="h-4 w-4" />
+                                        {t('members.leaveCommunity')}
+                                    </Button>
+                                ) : null}
                             </div>
+                            <SearchInput
+                                placeholder={tSearch('results.searchMembersPlaceholder')}
+                                value={searchQuery}
+                                onSearch={setSearchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full"
+                            />
                         </div>
 
                         {user && allowsJoinRequests && !isCurrentUserMember ? (
@@ -495,6 +532,60 @@ export function CommunityMembersPageClient({
                 targetName={superadminDemote?.name ?? ''}
                 variant={superadminDemote?.variant ?? 'other'}
             />
+
+            <Dialog open={leaveCommunityOpen} onOpenChange={setLeaveCommunityOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>{t('members.leaveCommunityTitle')}</DialogTitle>
+                        <DialogDescription className="text-left text-base text-base-content/90">
+                            {t('members.leaveCommunityWarning')}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2 sm:justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setLeaveCommunityOpen(false)}
+                            disabled={leaveCommunity.isPending}
+                        >
+                            {t('members.leaveCommunityCancel')}
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            className="gap-2"
+                            disabled={leaveCommunity.isPending}
+                            onClick={() => {
+                                leaveCommunity.mutate(
+                                    { id: communityId },
+                                    {
+                                        onSuccess: () => {
+                                            setLeaveCommunityOpen(false);
+                                            addToast(t('members.leaveCommunitySuccess'), 'success');
+                                            router.push(routes.community(communityId));
+                                        },
+                                        onError: (err) => {
+                                            addToast(
+                                                err.message?.trim()
+                                                    ? resolveApiErrorToastMessage(err.message)
+                                                    : t('members.leaveCommunity'),
+                                                'error',
+                                            );
+                                        },
+                                    },
+                                );
+                            }}
+                        >
+                            {leaveCommunity.isPending ? (
+                                <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                            ) : null}
+                            {leaveCommunity.isPending
+                                ? t('members.leaveCommunitySubmitting')
+                                : t('members.leaveCommunityConfirm')}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                 <DialogContent className="sm:max-w-lg">

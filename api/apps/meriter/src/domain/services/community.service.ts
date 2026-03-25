@@ -39,6 +39,7 @@ import {
   TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE,
   isEligibleNonProjectBirzhaSourceCommunity,
 } from '../common/constants/birzha-source-entity.constants';
+import { isPriorityCommunity } from '../common/helpers/community.helper';
 import { CommunityWalletService } from './community-wallet.service';
 
 export interface CreateCommunityDto {
@@ -1043,6 +1044,43 @@ export class CommunityService {
       userId,
       'Community',
     );
+  }
+
+  /**
+   * Participant leaves a non-project local community (team/custom). Not allowed for priority hubs or leads.
+   * Community-scoped wallet and its transactions are removed (merits lost).
+   */
+  async leaveLocalCommunity(userId: string, communityId: string): Promise<void> {
+    const community = await this.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    if (community.isProject === true) {
+      throw new BadRequestException('Use leave project for projects');
+    }
+    if (isPriorityCommunity(community)) {
+      throw new BadRequestException('Cannot leave priority communities');
+    }
+    if (!this.isLocalMembershipCommunity(community)) {
+      throw new BadRequestException('Cannot leave this community type');
+    }
+    const role = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (!role) {
+      throw new BadRequestException('You are not a member of this community');
+    }
+    if (role.role === COMMUNITY_ROLE_LEAD) {
+      throw new BadRequestException(
+        'Lead cannot leave; promote another lead first',
+      );
+    }
+
+    await this.walletService.removeUserWalletAndTransactionsForCommunity(
+      userId,
+      communityId,
+    );
+    await this.removeMember(communityId, userId);
+    await this.userService.removeCommunityMembership(userId, communityId);
+    await this.userCommunityRoleService.removeRole(userId, communityId);
   }
 
   /**
