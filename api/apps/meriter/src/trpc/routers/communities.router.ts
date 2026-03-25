@@ -970,11 +970,48 @@ export const communitiesRouter = router({
         });
       }
 
+      const previous = await ctx.userCommunityRoleService.getRole(
+        input.userId,
+        input.communityId,
+      );
+      const previousRole = previous?.role;
+
       const role = await ctx.userCommunityRoleService.setRole(
         input.userId,
         input.communityId,
         input.role,
       );
+
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      const communityName = community?.name || input.communityId;
+      const isProject = Boolean(community?.isProject);
+      const actorId = ctx.user.id;
+
+      if (
+        input.userId !== actorId &&
+        previousRole === 'participant' &&
+        input.role === 'lead'
+      ) {
+        await ctx.notificationService.notifyCommunityRolePromotedToLead({
+          targetUserId: input.userId,
+          actorUserId: actorId,
+          communityId: input.communityId,
+          communityName,
+          isProject,
+        });
+      } else if (
+        input.userId !== actorId &&
+        previousRole === 'lead' &&
+        input.role === 'participant'
+      ) {
+        await ctx.notificationService.notifyCommunityRoleDemotedFromLead({
+          targetUserId: input.userId,
+          actorUserId: actorId,
+          communityId: input.communityId,
+          communityName,
+          isProject,
+        });
+      }
 
       return role;
     }),
@@ -1064,6 +1101,15 @@ export const communitiesRouter = router({
         input.communityId,
         'lead',
       );
+
+      await ctx.notificationService.notifyCommunityRolePromotedToLead({
+        targetUserId: input.userId,
+        actorUserId: ctx.user.id,
+        communityId: input.communityId,
+        communityName: community.name,
+        isProject: Boolean(community.isProject),
+      });
+
       return { success: true as const };
     }),
 

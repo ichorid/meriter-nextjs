@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
@@ -33,6 +34,43 @@ export const teamsRouter = router({
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: error.message || 'Failed to submit team join request',
+        });
+      }
+    }),
+
+  /**
+   * Withdraw the current user's pending join request for a community
+   */
+  cancelMyTeamJoinRequest: protectedProcedure
+    .input(z.object({ communityId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'You must be logged in',
+        });
+      }
+
+      try {
+        await ctx.teamJoinRequestService.cancelPendingRequestByApplicant(
+          ctx.user.id,
+          input.communityId,
+        );
+        return { success: true as const };
+      } catch (error: unknown) {
+        if (error instanceof TRPCError) {
+          throw error;
+        }
+        if (error instanceof NotFoundException) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: error.message,
+          });
+        }
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message:
+            error instanceof Error ? error.message : 'Failed to cancel join request',
         });
       }
     }),

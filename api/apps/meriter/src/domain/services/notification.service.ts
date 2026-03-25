@@ -358,6 +358,52 @@ export class NotificationService {
     this.logger.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
   }
 
+  async notifyCommunityRolePromotedToLead(params: {
+    targetUserId: string;
+    actorUserId: string;
+    communityId: string;
+    communityName: string;
+    isProject: boolean;
+  }): Promise<void> {
+    await this.createNotification({
+      userId: params.targetUserId,
+      type: 'system',
+      source: 'user',
+      sourceId: params.actorUserId,
+      metadata: {
+        noticeKind: 'community_role_promoted_to_lead',
+        communityId: params.communityId,
+        communityName: params.communityName,
+        inviteTargetIsProject: params.isProject,
+      },
+      title: 'Community administrator role',
+      message: 'You were appointed as an administrator',
+    });
+  }
+
+  async notifyCommunityRoleDemotedFromLead(params: {
+    targetUserId: string;
+    actorUserId: string;
+    communityId: string;
+    communityName: string;
+    isProject: boolean;
+  }): Promise<void> {
+    await this.createNotification({
+      userId: params.targetUserId,
+      type: 'system',
+      source: 'user',
+      sourceId: params.actorUserId,
+      metadata: {
+        noticeKind: 'community_role_demoted_from_lead',
+        communityId: params.communityId,
+        communityName: params.communityName,
+        inviteTargetIsProject: params.isProject,
+      },
+      title: 'Community administrator role removed',
+      message: 'You are no longer an administrator',
+    });
+  }
+
   buildRedirectUrl(notification: Notification): string | undefined {
     const { type, metadata } = notification;
 
@@ -585,14 +631,20 @@ export class NotificationService {
       case 'system': {
         const noticeKind = metadata?.noticeKind as string | undefined;
         const cid = metadata?.communityId as string | undefined;
+        const isProject = metadata?.inviteTargetIsProject === true;
         if (
           cid &&
           (noticeKind === 'team_join_approved' ||
             noticeKind === 'team_join_rejected' ||
             noticeKind === 'team_invitation_accepted' ||
-            noticeKind === 'team_invitation_rejected')
+            noticeKind === 'team_invitation_rejected' ||
+            noticeKind === 'team_join_request_cancelled_by_applicant' ||
+            noticeKind === 'community_role_promoted_to_lead' ||
+            noticeKind === 'community_role_demoted_from_lead')
         ) {
-          return `/meriter/communities/${cid}`;
+          return isProject
+            ? `/meriter/projects/${cid}`
+            : `/meriter/communities/${cid}`;
         }
         return undefined;
       }

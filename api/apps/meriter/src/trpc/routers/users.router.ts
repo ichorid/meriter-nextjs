@@ -598,11 +598,28 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const previous = await ctx.userCommunityRoleService.getRole(
+        input.targetUserId,
+        input.communityId,
+      );
       await ctx.userService.assignLead(
         ctx.user.id,
         input.targetUserId,
         input.communityId,
       );
+      if (previous?.role === 'lead') {
+        return { success: true };
+      }
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (community) {
+        await ctx.notificationService.notifyCommunityRolePromotedToLead({
+          targetUserId: input.targetUserId,
+          actorUserId: ctx.user.id,
+          communityId: input.communityId,
+          communityName: community.name,
+          isProject: Boolean(community.isProject),
+        });
+      }
       return { success: true };
     }),
 

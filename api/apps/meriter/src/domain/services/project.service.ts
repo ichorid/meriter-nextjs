@@ -673,6 +673,25 @@ export class ProjectService {
     await this.userCommunityRoleService.setRole(currentLeadId, projectId, 'participant', true);
     await this.userCommunityRoleService.setRole(newLeadId, projectId, 'lead', true);
 
+    try {
+      await this.notificationService.notifyCommunityRolePromotedToLead({
+        targetUserId: newLeadId,
+        actorUserId: currentLeadId,
+        communityId: projectId,
+        communityName: project.name,
+        isProject: true,
+      });
+      await this.notificationService.notifyCommunityRoleDemotedFromLead({
+        targetUserId: currentLeadId,
+        actorUserId: newLeadId,
+        communityId: projectId,
+        communityName: project.name,
+        isProject: true,
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify users about project admin transfer: ${err}`);
+    }
+
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
     const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);

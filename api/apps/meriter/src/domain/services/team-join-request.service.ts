@@ -206,6 +206,69 @@ export class TeamJoinRequestService {
   }
 
   /**
+   * Applicant withdraws a pending join request. Notifies all current leads.
+   */
+  async cancelPendingRequestByApplicant(
+    userId: string,
+    communityId: string,
+  ): Promise<void> {
+    const request = await this.teamJoinRequestModel
+      .findOne({
+        userId,
+        communityId,
+        status: 'pending',
+      })
+      .exec();
+
+    if (!request) {
+      throw new NotFoundException('No pending join request for this community');
+    }
+
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+
+    await this.teamJoinRequestModel.deleteOne({ _id: request._id }).exec();
+
+    const applicant = await this.userService.getUserById(userId);
+    const applicantName =
+      applicant?.displayName || applicant?.username || 'Someone';
+
+    const leadRoles = await this.userCommunityRoleService.getUsersByRole(
+      communityId,
+      'lead',
+    );
+
+    for (const r of leadRoles) {
+      try {
+        await this.notificationService.createNotification({
+          userId: r.userId,
+          type: 'system',
+          source: 'user',
+          sourceId: userId,
+          metadata: {
+            noticeKind: 'team_join_request_cancelled_by_applicant',
+            communityId,
+            communityName: community.name,
+            inviteTargetIsProject: Boolean(community.isProject),
+          },
+          title: 'Team join request withdrawn',
+          message: `${applicantName} withdrew their request to join "${community.name}"`,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to notify lead ${r.userId} about withdrawn join request: ${err}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `User ${userId} cancelled pending join request for community ${communityId}`,
+    );
+  }
+
+  /**
    * Approve a request
    */
   async approveRequest(
