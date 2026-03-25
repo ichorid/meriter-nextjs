@@ -236,7 +236,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                     <ShieldOff className="h-4 w-4" />
                                 </button>
                             )}
-                        {leadManagementAllowed &&
+                        {(leadManagementAllowed || isSuperadmin) &&
                             member.id !== user?.id &&
                             communityRoleStr === 'participant' && (
                                 <button

@@ -1028,10 +1028,13 @@ export const communitiesRouter = router({
         });
       }
       if (!ctx.communityService.isLocalMembershipCommunity(community)) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Lead management is only available for local membership communities',
-        });
+        const actor = await ctx.userService.getUserById(ctx.user.id);
+        if (actor?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Lead management is only available for local membership communities',
+          });
+        }
       }
       const isAdmin = await ctx.communityService.isUserAdmin(input.communityId, ctx.user.id);
       if (!isAdmin) {

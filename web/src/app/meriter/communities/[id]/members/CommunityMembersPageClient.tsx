@@ -300,7 +300,7 @@ export function CommunityMembersPageClient({
                                 <ShieldOff className="h-4 w-4" />
                             </button>
                         )}
-                    {leadManagementAllowed &&
+                    {(leadManagementAllowed || isPlatformSuperadmin) &&
                         member.id !== user?.id &&
                         member.role === 'participant' && (
                             <button
