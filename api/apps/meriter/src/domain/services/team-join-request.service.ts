@@ -113,31 +113,57 @@ export class TeamJoinRequestService {
       ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
     });
 
-    // 6. Notify all team leads
+    // 6. Notify all members (leads get actionable team_join_request; participants get FYI)
     const user = await this.userService.getUserById(userId);
     const userName = user?.displayName || user?.username || 'Someone';
+    const leadIdSet = new Set(leadRoles.map((r) => r.userId));
+    const memberIds = await this.userCommunityRoleService.getMemberUserIdsInCommunity(
+      communityId,
+    );
 
-    for (const { userId: notifyLeadId } of leadRoles) {
+    for (const notifyUserId of memberIds) {
+      if (notifyUserId === userId) {
+        continue;
+      }
       try {
-        await this.notificationService.createNotification({
-          userId: notifyLeadId,
-          type: 'team_join_request',
-          source: 'user',
-          sourceId: userId,
-          metadata: {
-            requestId: request.id,
-            communityId,
-            userId,
-            communityName: community.name,
-            inviteTargetIsProject: Boolean(community.isProject),
-            ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
-          },
-          title: 'Team join request',
-          message: `${userName} wants to join your team "${community.name}"`,
-        });
+        if (leadIdSet.has(notifyUserId)) {
+          await this.notificationService.createNotification({
+            userId: notifyUserId,
+            type: 'team_join_request',
+            source: 'user',
+            sourceId: userId,
+            metadata: {
+              requestId: request.id,
+              communityId,
+              userId,
+              communityName: community.name,
+              inviteTargetIsProject: Boolean(community.isProject),
+              ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
+            },
+            title: 'Team join request',
+            message: `${userName} wants to join your team "${community.name}"`,
+          });
+        } else {
+          await this.notificationService.createNotification({
+            userId: notifyUserId,
+            type: 'system',
+            source: 'community',
+            sourceId: communityId,
+            metadata: {
+              requestId: request.id,
+              communityId,
+              userId,
+              communityName: community.name,
+              noticeKind: 'team_join_request_member_fyi',
+              inviteTargetIsProject: Boolean(community.isProject),
+            },
+            title: 'Join request',
+            message: `${userName} wants to join "${community.name}".`,
+          });
+        }
       } catch (err) {
         this.logger.warn(
-          `Failed to notify lead ${notifyLeadId} about join request: ${err instanceof Error ? err.message : err}`,
+          `Failed to notify ${notifyUserId} about join request: ${err instanceof Error ? err.message : err}`,
         );
       }
     }

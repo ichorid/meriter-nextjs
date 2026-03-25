@@ -106,7 +106,8 @@ export const communitiesRouter = router({
     }),
 
   /**
-   * Create a signed invite token (lead/superadmin). Client builds URL: /meriter/communities/{id}/join?t=...
+   * Create a signed invite token (any member). Lead/superadmin → direct join on accept; participant → pending request.
+   * Client builds URL: /meriter/communities/{id}/join?t=...
    */
   createCommunityInviteLink: protectedProcedure
     .input(z.object({ communityId: z.string().min(1) }))
@@ -125,8 +126,15 @@ export const communitiesRouter = router({
         input.communityId,
         ctx.user.id,
       );
-      if (!isAdmin) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only leads can create invite links' });
+      const role = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        input.communityId,
+      );
+      if (!isAdmin && role?.role !== 'participant') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only community members can create invite links',
+        });
       }
       const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
       const parentCommunityId =
@@ -135,6 +143,8 @@ export const communitiesRouter = router({
           : undefined;
       const token = signCommunityInviteToken(input.communityId, secret, {
         parentCommunityId,
+        inviterUserId: ctx.user.id,
+        inviterIsAdmin: isAdmin,
       });
       return { token };
     }),
@@ -222,11 +232,27 @@ export const communitiesRouter = router({
         await addToParentIfNeeded();
         return { communityId, alreadyMember: true as const };
       }
-      const leads = await ctx.userCommunityRoleService.getUsersByRole(communityId, 'lead');
-      const inviterId = leads[0]?.userId ?? ctx.user.id;
-      await ctx.userService.addUserToTeam(inviterId, ctx.user.id, communityId);
-      await addToParentIfNeeded();
-      return { communityId, alreadyMember: false as const };
+
+      if (invite.inviterIsAdmin) {
+        const leads = await ctx.userCommunityRoleService.getUsersByRole(communityId, 'lead');
+        const inviterId = leads[0]?.userId ?? ctx.user.id;
+        await ctx.userService.addUserToTeam(inviterId, ctx.user.id, communityId);
+        await addToParentIfNeeded();
+        return {
+          communityId,
+          alreadyMember: false as const,
+          joined: true as const,
+          pendingApproval: false as const,
+        };
+      }
+
+      await ctx.teamJoinRequestService.submitRequest(ctx.user.id, communityId);
+      return {
+        communityId,
+        alreadyMember: false as const,
+        joined: false as const,
+        pendingApproval: true as const,
+      };
     }),
 
   /**
