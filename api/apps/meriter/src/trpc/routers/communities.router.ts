@@ -1139,6 +1139,19 @@ export const communitiesRouter = router({
     }),
 
   /**
+   * Birzha (marathon-of-good) community id for publish UI (same settings as exchange create).
+   */
+  getBirzhaCommunity: protectedProcedure.query(async ({ ctx }) => {
+    const birzha = await ctx.communityService.getCommunityByTypeTag(
+      'marathon-of-good',
+    );
+    if (!birzha) {
+      return null;
+    }
+    return { id: birzha.id as string, name: birzha.name };
+  }),
+
+  /**
    * Publish on Birzha (МД) on behalf of a non-project local community.
    */
   publishToBirzha: protectedProcedure
@@ -1149,7 +1162,27 @@ export const communitiesRouter = router({
         description: z.string().max(5000).optional(),
         content: z.string().min(1).max(10000),
         type: z.enum(['text', 'image', 'video']),
-        images: z.array(z.string().url()).optional(),
+        images: z.array(z.string().min(1)).max(10).optional(),
+        valueTags: z.array(z.string()).max(50).optional(),
+        hashtags: z.array(z.string()).max(30).optional(),
+        beneficiaryId: z.string().optional(),
+        postCostFunding: z
+          .enum(['source_community_wallet', 'caller_global_wallet'])
+          .optional(),
+        investingEnabled: z.boolean().optional(),
+        investorSharePercent: z.number().int().min(0).max(99).optional(),
+        ttlDays: z
+          .union([
+            z.literal(7),
+            z.literal(14),
+            z.literal(30),
+            z.literal(60),
+            z.literal(90),
+          ])
+          .nullable()
+          .optional(),
+        stopLoss: z.number().int().min(0).optional(),
+        noAuthorWalletSpend: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -1162,6 +1195,15 @@ export const communitiesRouter = router({
         content: input.content,
         type: input.type,
         images: input.images,
+        valueTags: input.valueTags,
+        hashtags: input.hashtags,
+        beneficiaryId: input.beneficiaryId,
+        postCostFunding: input.postCostFunding,
+        investingEnabled: input.investingEnabled,
+        investorSharePercent: input.investorSharePercent,
+        ttlDays: input.ttlDays ?? undefined,
+        stopLoss: input.stopLoss,
+        noAuthorWalletSpend: input.noAuthorWalletSpend,
       });
       return { id: pub.id };
     }),

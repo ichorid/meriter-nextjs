@@ -314,8 +314,27 @@ export const projectRouter = router({
         description: z.string().max(5000).optional(),
         content: z.string().min(1).max(10000),
         type: z.enum(['text', 'image', 'video']),
-        images: z.array(z.string().url()).optional(),
-        investorSharePercent: z.number().int().min(1).max(99).optional(),
+        images: z.array(z.string().min(1)).max(10).optional(),
+        valueTags: z.array(z.string()).max(50).optional(),
+        hashtags: z.array(z.string()).max(30).optional(),
+        beneficiaryId: z.string().optional(),
+        postCostFunding: z
+          .enum(['source_community_wallet', 'caller_global_wallet'])
+          .optional(),
+        investingEnabled: z.boolean().optional(),
+        investorSharePercent: z.number().int().min(0).max(99).optional(),
+        ttlDays: z
+          .union([
+            z.literal(7),
+            z.literal(14),
+            z.literal(30),
+            z.literal(60),
+            z.literal(90),
+          ])
+          .nullable()
+          .optional(),
+        stopLoss: z.number().int().min(0).optional(),
+        noAuthorWalletSpend: z.boolean().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -345,7 +364,18 @@ export const projectRouter = router({
         title: input.title,
         description: input.description,
         images: input.images,
-        investorSharePercent: input.investorSharePercent ?? project.investorSharePercent,
+        valueTags: input.valueTags,
+        hashtags: input.hashtags,
+        beneficiaryId: input.beneficiaryId,
+        postCostFunding: input.postCostFunding,
+        investingEnabled: input.investingEnabled,
+        investorSharePercent:
+          input.investingEnabled === false
+            ? undefined
+            : (input.investorSharePercent ?? project.investorSharePercent),
+        ttlDays: input.ttlDays ?? undefined,
+        stopLoss: input.stopLoss,
+        noAuthorWalletSpend: input.noAuthorWalletSpend,
       });
 
       const leads = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'lead');
