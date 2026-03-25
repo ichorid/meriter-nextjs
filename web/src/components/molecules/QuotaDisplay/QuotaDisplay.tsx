@@ -55,6 +55,21 @@ export function QuotaDisplay({
 
   const hasPermanent = showPermanent && balance !== undefined;
   const hasDaily = showDaily && quotaMax > 0;
+  /** Sticky header: global wallet only (not community/project hero QuotaDisplay). */
+  const isGlobalHeaderMeritsOnly =
+    localContext === undefined && hasPermanent && !hasDaily;
+
+  const meritsDialogDescription = hasDaily
+    ? tCommon('meritsAndQuotaDescriptionWithQuota')
+    : isGlobalHeaderMeritsOnly
+      ? tCommon('meritsAndQuotaDescriptionGlobalHeaderOnly')
+      : tCommon('meritsAndQuotaDescriptionNoQuota');
+
+  const permanentMeritsExplanationText = tCommon(
+    isGlobalHeaderMeritsOnly
+      ? 'permanentMeritsExplanationGlobalHeader'
+      : 'permanentMeritsExplanation',
+  );
 
   if (!hasPermanent && !hasDaily) {
     return null;
@@ -153,10 +168,7 @@ export function QuotaDisplay({
                 {tCommon('meritsAndQuota')}
               </DialogDescription>
               <div className="text-left text-base-content/80 pt-2 space-y-3">
-                {(hasDaily
-                  ? tCommon('meritsAndQuotaDescriptionWithQuota')
-                  : tCommon('meritsAndQuotaDescriptionNoQuota')
-                )
+                {meritsDialogDescription
                   .split('\n\n')
                   .filter((p) => p.trim())
                   .map((paragraph, index) => (
@@ -201,7 +213,7 @@ export function QuotaDisplay({
                     <p className="font-medium text-base-content mb-1">
                       {tCommon('permanentMeritsWallet')}
                     </p>
-                    <p className="text-xs">{tCommon('permanentMeritsExplanation')}</p>
+                    <p className="text-xs">{permanentMeritsExplanationText}</p>
                   </div>
                 </div>
               )}
@@ -276,10 +288,7 @@ export function QuotaDisplay({
               {tCommon('meritsAndQuota')}
             </DialogDescription>
             <div className="text-left text-base-content/80 pt-2 space-y-3">
-              {(hasDaily
-                ? tCommon('meritsAndQuotaDescriptionWithQuota')
-                : tCommon('meritsAndQuotaDescriptionNoQuota')
-              )
+              {meritsDialogDescription
                 .split('\n\n')
                 .filter((p) => p.trim())
                 .map((paragraph, index) => (
@@ -324,7 +333,7 @@ export function QuotaDisplay({
                   <p className="font-medium text-base-content mb-1">
                     {tCommon('permanentMeritsWallet')}
                   </p>
-                  <p className="text-xs">{tCommon('permanentMeritsExplanation')}</p>
+                  <p className="text-xs">{permanentMeritsExplanationText}</p>
                 </div>
               </div>
             )}
