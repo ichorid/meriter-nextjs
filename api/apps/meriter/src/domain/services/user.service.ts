@@ -91,6 +91,32 @@ export class UserService implements OnModuleInit {
     return doc;
   }
 
+  /**
+   * Resolve display names for Meriter user ids (batch). Missing users get a short id fallback.
+   */
+  async getDisplayNamesByUserIds(userIds: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(userIds.filter(Boolean))];
+    const result = new Map<string, string>();
+    if (unique.length === 0) {
+      return result;
+    }
+    const docs = await this.userModel
+      .find({ id: { $in: unique } })
+      .select({ id: 1, displayName: 1 })
+      .lean()
+      .exec();
+    for (const d of docs) {
+      const name = (d.displayName ?? '').trim();
+      result.set(d.id, name.length > 0 ? name : d.id);
+    }
+    for (const id of unique) {
+      if (!result.has(id)) {
+        result.set(id, id.length > 8 ? `${id.slice(0, 8)}…` : id);
+      }
+    }
+    return result;
+  }
+
   async getUserByAuthId(
     authProvider: string,
     authId: string,

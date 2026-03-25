@@ -14,6 +14,7 @@ import { CommunityWalletService } from './community-wallet.service';
 import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService } from './notification.service';
+import { UserService } from './user.service';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -22,6 +23,8 @@ const DEFAULT_CURRENCY = {
 } as const;
 
 export type PayoutLine = { userId: string; amount: number; bucket: 'founder' | 'investor' | 'team' };
+
+export type PayoutPreviewLine = PayoutLine & { displayName: string };
 
 function floor2(n: number): number {
   return Math.floor(n * 100) / 100;
@@ -37,9 +40,13 @@ export class ProjectPayoutService {
     private readonly walletService: WalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly notificationService: NotificationService,
+    private readonly userService: UserService,
   ) {}
 
-  async previewPayout(projectId: string, amount: number): Promise<{ lines: PayoutLine[]; totalCredits: number }> {
+  async previewPayout(
+    projectId: string,
+    amount: number,
+  ): Promise<{ lines: PayoutPreviewLine[]; totalCredits: number }> {
     if (!Number.isInteger(amount) || amount < 1) {
       throw new BadRequestException('Amount must be a positive integer');
     }
@@ -50,7 +57,13 @@ export class ProjectPayoutService {
         `Insufficient project wallet balance. Available: ${balance}, requested: ${amount}`,
       );
     }
-    return this.computeDistribution(target, projectId, amount);
+    const { lines, totalCredits } = await this.computeDistribution(target, projectId, amount);
+    const nameById = await this.userService.getDisplayNamesByUserIds(lines.map((l) => l.userId));
+    const linesWithNames: PayoutPreviewLine[] = lines.map((line) => ({
+      ...line,
+      displayName: nameById.get(line.userId) ?? line.userId,
+    }));
+    return { lines: linesWithNames, totalCredits };
   }
 
   async executePayout(

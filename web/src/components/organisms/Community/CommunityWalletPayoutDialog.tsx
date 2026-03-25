@@ -18,6 +18,7 @@ import {
 } from '@/hooks/api/useCommunities';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { WalletPayoutPreviewLines } from '@/components/molecules/WalletPayoutPreviewLines';
 
 export interface CommunityWalletPayoutDialogProps {
   communityId: string;
@@ -72,8 +73,8 @@ export function CommunityWalletPayoutDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t('payoutDialogTitle')}</DialogTitle>
-          <DialogDescription>{t('payoutDialogDescription')}</DialogDescription>
+          <DialogTitle>{t('payoutDialogTitleCommunity')}</DialogTitle>
+          <DialogDescription>{t('payoutDialogDescriptionCommunity')}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-4 py-2">
           <div className="flex items-center justify-center gap-2">
@@ -125,16 +126,10 @@ export function CommunityWalletPayoutDialog({
             </p>
           )}
           {preview?.lines && preview.lines.length > 0 && (
-            <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-base-300 p-2 text-xs dark:border-white/10">
-              {preview.lines.map((line) => (
-                <li key={`${line.userId}-${line.bucket}`} className="flex justify-between gap-2">
-                  <span className="truncate font-mono text-base-content/80">{line.userId.slice(0, 8)}…</span>
-                  <span className="shrink-0 tabular-nums">
-                    +{line.amount} ({line.bucket})
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <WalletPayoutPreviewLines
+              lines={preview.lines}
+              className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-base-300 p-2 text-xs dark:border-white/10"
+            />
           )}
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
