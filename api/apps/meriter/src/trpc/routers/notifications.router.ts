@@ -3,6 +3,7 @@ import { router, protectedProcedure } from '../trpc';
 import { IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 
 export const notificationsRouter = router({
   /**
@@ -40,7 +41,7 @@ export const notificationsRouter = router({
       };
 
       result.data.forEach((notification) => {
-        if (notification.sourceId && notification.source === 'user') {
+        if (notification.sourceId) {
           actorIds.add(notification.sourceId);
         }
         const m = notification.metadata ?? {};
@@ -78,13 +79,13 @@ export const notificationsRouter = router({
           metadata: { ...baseMeta },
         };
 
-        // Add actor if available
-        if (notification.sourceId && notification.source === 'user') {
+        // Add actor if available (any source — e.g. system ticket notices carry sourceId)
+        if (notification.sourceId) {
           const actor = usersMap.get(notification.sourceId);
           if (actor) {
             enriched.actor = {
               id: actor.id,
-              name: actor.displayName || actor.firstName || 'Unknown',
+              name: UserFormatter.formatUserName(actor),
               avatarUrl: actor.avatarUrl,
             };
           }

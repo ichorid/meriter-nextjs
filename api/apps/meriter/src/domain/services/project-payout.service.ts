@@ -127,20 +127,25 @@ export class ProjectPayoutService {
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
     const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
+    const payoutRecipientIds = new Set<string>(memberIds);
+    for (const line of lines) {
+      if (line.amount > 0) {
+        payoutRecipientIds.add(line.userId);
+      }
+    }
     const label = target.isProject === true ? 'project' : 'community';
-    const yourAmountByUser = new Map<string, number>();
+    const lineByUserId = new Map<string, PayoutLine>();
     for (const line of lines) {
       if (line.amount <= 0) continue;
-      yourAmountByUser.set(
-        line.userId,
-        floor2((yourAmountByUser.get(line.userId) ?? 0) + line.amount),
-      );
+      lineByUserId.set(line.userId, line);
     }
-    for (const memberId of memberIds) {
+    for (const recipientId of payoutRecipientIds) {
       try {
-        const yourAmount = yourAmountByUser.get(memberId) ?? 0;
+        const creditLine = lineByUserId.get(recipientId);
+        const yourAmount = creditLine?.amount ?? 0;
+        const payoutBucket = creditLine?.bucket;
         await this.notificationService.createNotification({
-          userId: memberId,
+          userId: recipientId,
           type: 'project_distributed',
           source: 'system',
           metadata: {
@@ -150,6 +155,7 @@ export class ProjectPayoutService {
             totalCredits,
             totalPayout: amount,
             yourAmount,
+            payoutBucket,
             entityLabel: label,
           },
           title: target.isProject === true ? 'Project payout' : 'Community payout',
@@ -159,7 +165,7 @@ export class ProjectPayoutService {
               : `Merits were paid out from community "${target.name}".`,
         });
       } catch (err) {
-        this.logger.warn(`Failed to notify ${memberId} about payout: ${err}`);
+        this.logger.warn(`Failed to notify ${recipientId} about payout: ${err}`);
       }
     }
 

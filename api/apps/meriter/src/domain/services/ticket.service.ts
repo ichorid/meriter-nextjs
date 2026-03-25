@@ -60,23 +60,52 @@ export class TicketService {
       ? (ticket as { title?: string }).title
       : '';
 
-    const rawLead = extra.leadUserId;
     const leadUserId =
-      typeof rawLead === 'string' && rawLead.trim() ? rawLead.trim() : undefined;
-    const { leadUserId: _omitLead, ...restExtra } = extra;
+      typeof extra.leadUserId === 'string' && extra.leadUserId.trim()
+        ? extra.leadUserId.trim()
+        : undefined;
+    const applicantUserId =
+      typeof extra.applicantUserId === 'string' && extra.applicantUserId.trim()
+        ? extra.applicantUserId.trim()
+        : undefined;
+    const beneficiaryId =
+      typeof extra.beneficiaryId === 'string' && extra.beneficiaryId.trim()
+        ? extra.beneficiaryId.trim()
+        : undefined;
+    const assigneeId =
+      typeof extra.assigneeId === 'string' && extra.assigneeId.trim()
+        ? extra.assigneeId.trim()
+        : undefined;
+
+    const idsToResolve = [...new Set([leadUserId, applicantUserId, beneficiaryId, assigneeId].filter(Boolean))] as string[];
+    const names =
+      idsToResolve.length > 0
+        ? await this.userService.getDisplayNamesByUserIds(idsToResolve)
+        : new Map<string, string>();
 
     const out: Record<string, unknown> = {
       ticketId,
       projectId,
       ticketTitle: rawTitle.trim(),
       projectName: project?.name ?? '',
-      ...restExtra,
+      ...extra,
     };
 
     if (leadUserId) {
-      const names = await this.userService.getDisplayNamesByUserIds([leadUserId]);
       out.assignedByUserId = leadUserId;
       out.assignedByDisplayName = names.get(leadUserId) ?? leadUserId;
+    }
+    if (applicantUserId) {
+      const existing = typeof extra.applicantName === 'string' ? extra.applicantName.trim() : '';
+      if (!existing) {
+        out.applicantName = names.get(applicantUserId) ?? applicantUserId;
+      }
+    }
+    if (beneficiaryId) {
+      out.beneficiaryDisplayName = names.get(beneficiaryId) ?? beneficiaryId;
+    }
+    if (assigneeId) {
+      out.assigneeDisplayName = names.get(assigneeId) ?? assigneeId;
     }
 
     return out;
@@ -210,6 +239,7 @@ export class TicketService {
         userId: dto.beneficiaryId,
         type: 'ticket_assigned',
         source: 'system',
+        sourceId: leadUserId,
         metadata: await this.buildTicketNotificationMetadata(id, projectId, { leadUserId }),
         title: 'Ticket assigned',
         message: `You were assigned a ticket in the project.`,
@@ -309,6 +339,7 @@ export class TicketService {
           userId: lead.userId,
           type: 'ticket_apply',
           source: 'system',
+          sourceId: userId,
           metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
             applicantUserId: userId,
             applicantName,
@@ -379,6 +410,7 @@ export class TicketService {
         userId: applicantUserId,
         type: 'ticket_assigned',
         source: 'system',
+        sourceId: leadUserId,
         metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId }),
         title: 'Ticket assigned',
         message: 'You were assigned a ticket in the project.',
@@ -398,6 +430,7 @@ export class TicketService {
           userId: otherUserId,
           type: 'ticket_rejection',
           source: 'system',
+          sourceId: leadUserId,
           metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
             rejectionMessage,
           }),
@@ -459,6 +492,7 @@ export class TicketService {
         userId: assigneeId,
         type: 'ticket_assigned',
         source: 'system',
+        sourceId: userId,
         metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId: userId }),
         title: 'Ticket assigned',
         message: 'You were assigned a ticket in the project.',
@@ -478,6 +512,7 @@ export class TicketService {
           userId: otherUserId,
           type: 'ticket_rejection',
           source: 'system',
+          sourceId: userId,
           metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
             rejectionMessage,
           }),
@@ -535,6 +570,7 @@ export class TicketService {
         userId: applicantUserId,
         type: 'ticket_rejection',
         source: 'system',
+        sourceId: leadUserId,
         metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
           rejectionMessage,
         }),
@@ -637,6 +673,7 @@ export class TicketService {
             userId: lead.userId,
             type: 'ticket_done',
             source: 'system',
+            sourceId: userId,
             metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
               beneficiaryId: userId,
             }),
@@ -753,6 +790,7 @@ export class TicketService {
           userId: lead.userId,
           type: 'ticket_assignee_declined',
           source: 'system',
+          sourceId: userId,
           metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
             assigneeId: userId,
             reason: trimmed,
@@ -802,7 +840,10 @@ export class TicketService {
         userId: beneficiaryId,
         type: 'ticket_accepted',
         source: 'system',
-        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId),
+        sourceId: leadUserId,
+        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
+          leadUserId,
+        }),
         title: 'Work accepted',
         message: 'Your work was accepted by the project lead.',
       });
@@ -887,6 +928,7 @@ export class TicketService {
         userId: assigneeId,
         type: 'ticket_returned_for_revision',
         source: 'system',
+        sourceId: leadUserId,
         metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
           reason: trimmed,
           leadUserId,
