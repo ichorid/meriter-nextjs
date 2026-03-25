@@ -148,6 +148,10 @@
         "andMoreMerits": "и ещё {count} заслуг",
         "youHave": "У вас",
         "youHaveMerits": "У вас {count} заслуг",
+        "meritsInThisCommunityYouHave": "В этом сообществе у вас ",
+        "meritsInThisProjectYouHave": "В этом проекте у вас ",
+        "meritsInThisCommunityYouHaveMerits": "В этом сообществе у вас {count} заслуг",
+        "meritsInThisProjectYouHaveMerits": "В этом проекте у вас {count} заслуг",
         "meritsAmount": "{amount} заслуг",
         "earnMerits": "Заработать заслуги",
         "sort": {

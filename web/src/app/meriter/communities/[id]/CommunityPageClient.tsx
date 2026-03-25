@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { CommunityTopBar } from '@/components/organisms/ContextTopBar';
+import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { PublicationCardComponent as PublicationCard } from "@/components/organisms/Publication";
 import { useTranslations } from 'next-intl';
@@ -712,17 +713,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 <CommunityTopBar
                     communityId={chatId}
                     asStickyHeader={true}
-                    futureVisionCommunityId={futureVisionCommunityId}
-                    showQuotaInHeader={showQuotaInHeader}
-                    quotaData={showQuotaInHeader ? {
-                        balance: canEarnPermanentMerits ? balance : undefined,
-                        quotaRemaining: hasQuota ? quotaRemaining : undefined,
-                        quotaMax: hasQuota ? quotaMax : undefined,
-                        currencyIconUrl,
-                        isMarathonOfGood,
-                        showPermanent: canEarnPermanentMerits,
-                        showDaily: hasQuota,
-                    } : undefined}
                     onTappalkaClick={() => setShowTappalkaModal(true)}
                     tappalkaEnabled={comms?.tappalkaSettings?.enabled ?? false}
                 />
@@ -737,6 +727,27 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             id: comms.id || chatId,
                         }}
                     />
+                    {user && showQuotaInHeader ? (
+                        <div className="mt-3 flex justify-end">
+                            <QuotaDisplay
+                                balance={canEarnPermanentMerits ? balance : undefined}
+                                quotaRemaining={hasQuota ? quotaRemaining : undefined}
+                                quotaMax={hasQuota ? quotaMax : undefined}
+                                currencyIconUrl={currencyIconUrl}
+                                isMarathonOfGood={isMarathonOfGood}
+                                showPermanent={canEarnPermanentMerits}
+                                showDaily={hasQuota}
+                                compact={true}
+                                localContext="community"
+                                className="max-w-full text-right"
+                                onEarnMeritsClick={
+                                    comms.tappalkaSettings?.enabled
+                                        ? () => setShowTappalkaModal(true)
+                                        : undefined
+                                }
+                            />
+                        </div>
+                    ) : null}
                 </div>
             )}
 

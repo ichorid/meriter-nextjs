@@ -2,9 +2,11 @@
 
 import React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useCommunity, useWallets } from '@/hooks/api';
-import { useUserQuota } from '@/hooks/api/useQuota';
+import { useCommunity } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 import { routes } from '@/lib/constants/routes';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
 import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Scale } from 'lucide-react';
@@ -240,28 +242,16 @@ export const SimpleStickyHeader: React.FC<{
 export const CommunityTopBar: React.FC<{
   communityId: string;
   asStickyHeader?: boolean;
-  futureVisionCommunityId?: string | null;
-  showQuotaInHeader?: boolean;
-  quotaData?: {
-    balance?: number;
-    quotaRemaining?: number;
-    quotaMax?: number;
-    currencyIconUrl?: string;
-    isMarathonOfGood?: boolean;
-    showPermanent?: boolean;
-    showDaily?: boolean;
-  };
   onTappalkaClick?: () => void;
   tappalkaEnabled?: boolean;
 }> = ({
   communityId,
   asStickyHeader = false,
-  futureVisionCommunityId = null,
-  showQuotaInHeader = false,
-  quotaData,
   onTappalkaClick,
   tappalkaEnabled = false,
 }) => {
+    const { user } = useAuth();
+    const { data: globalBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -327,7 +317,18 @@ export const CommunityTopBar: React.FC<{
           onBack={handleBack}
           asStickyHeader={asStickyHeader}
           rightAction={
-            <Loader2 className="w-4 h-4 animate-spin text-base-content/70" />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {user ? (
+                <QuotaDisplay
+                  balance={globalBalance}
+                  showPermanent={true}
+                  showDaily={false}
+                  compact={true}
+                  className="mr-2 -ml-[15px] mt-[5px]"
+                />
+              ) : null}
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-base-content/70" />
+            </div>
           }
         />
       );
@@ -352,21 +353,15 @@ export const CommunityTopBar: React.FC<{
         showScrollToTop={true}
         rightAction={
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Quota Display in Header */}
-            {showQuotaInHeader && quotaData && (
+            {user ? (
               <QuotaDisplay
-                balance={quotaData.balance}
-                quotaRemaining={quotaData.quotaRemaining}
-                quotaMax={quotaData.quotaMax}
-                currencyIconUrl={quotaData.currencyIconUrl}
-                isMarathonOfGood={quotaData.isMarathonOfGood}
-                showPermanent={quotaData.showPermanent}
-                showDaily={quotaData.showDaily}
+                balance={globalBalance}
+                showPermanent={true}
+                showDaily={false}
                 compact={true}
                 className="mr-2 -ml-[15px] mt-[5px]"
-                onEarnMeritsClick={tappalkaEnabled && onTappalkaClick ? onTappalkaClick : undefined}
               />
-            )}
+            ) : null}
             {/* Tappalka Button - mobile only (desktop version is in filters row) */}
             {tappalkaEnabled && onTappalkaClick && (
               <Button

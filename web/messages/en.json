@@ -148,6 +148,10 @@
         "andMoreMerits": "and {count} more merits",
         "youHave": "You have",
         "youHaveMerits": "You have {count} merits",
+        "meritsInThisCommunityYouHave": "In this community you have ",
+        "meritsInThisProjectYouHave": "In this project you have ",
+        "meritsInThisCommunityYouHaveMerits": "In this community you have {count} merits",
+        "meritsInThisProjectYouHaveMerits": "In this project you have {count} merits",
         "meritsAmount": "{amount} merits",
         "earnMerits": "Earn merits",
         "sort": {

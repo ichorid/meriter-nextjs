@@ -26,6 +26,8 @@ interface QuotaDisplayProps {
   className?: string;
   /** When provided, shows "Earn merits" button at bottom of hint dialog; called on click (e.g. open tappalka). */
   onEarnMeritsClick?: () => void;
+  /** Compact copy: prefix "In this community/project you have" instead of "You have". */
+  localContext?: 'community' | 'project';
 }
 
 export function QuotaDisplay({
@@ -39,6 +41,7 @@ export function QuotaDisplay({
   compact = false,
   className = '',
   onEarnMeritsClick,
+  localContext,
 }: QuotaDisplayProps) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
@@ -63,6 +66,23 @@ export function QuotaDisplay({
     }
   };
 
+  const compactYouHaveLabel =
+    localContext === 'community'
+      ? tCommon('meritsInThisCommunityYouHave')
+      : localContext === 'project'
+        ? tCommon('meritsInThisProjectYouHave')
+        : tCommon('youHave');
+
+  const meritsOnlyLabel = (count: number) => {
+    if (localContext === 'community') {
+      return tCommon('meritsInThisCommunityYouHaveMerits', { count });
+    }
+    if (localContext === 'project') {
+      return tCommon('meritsInThisProjectYouHaveMerits', { count });
+    }
+    return tCommon('youHaveMerits', { count });
+  };
+
   if (compact) {
     return (
       <>
@@ -72,7 +92,7 @@ export function QuotaDisplay({
         >
           {hasDaily ? (
             <>
-              <span className="text-base-content/70">{tCommon('youHave')}</span>
+              <span className="text-base-content/70">{compactYouHaveLabel}</span>
               <DailyQuotaRing
                 remaining={quotaRemaining}
                 max={quotaMax}
@@ -104,7 +124,7 @@ export function QuotaDisplay({
             hasPermanent && balance !== undefined && (
               <span className="text-base-content/70">
                 {(() => {
-                  const text = tCommon('youHaveMerits', { count: balance });
+                  const text = meritsOnlyLabel(balance);
                   // Replace the number with a bold version
                   const parts = text.split(String(balance));
                     if (parts.length === 2) {

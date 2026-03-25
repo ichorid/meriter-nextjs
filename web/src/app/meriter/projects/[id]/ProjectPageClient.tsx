@@ -42,6 +42,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const leaveProject = useLeaveProject();
 
   const { data: globalBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
+  const { data: projectWalletBalance = 0 } = useWalletBalance(projectId);
   const { data: quotaData } = useUserQuota(projectId);
 
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -136,6 +137,10 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const quotaMax = quotaData?.dailyQuota ?? 0;
 
+  const canEarnProjectMerits = project.meritSettings?.canEarn === true;
+  const showLocalMeritsUnderHero =
+    Boolean(user) && (hasProjectQuota || canEarnProjectMerits);
+
   const stickyHeader = (
     <SimpleStickyHeader
       title={<span className="truncate max-w-[200px] sm:max-w-[280px]" title={project.name}>{project.name}</span>}
@@ -148,10 +153,8 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <div className="flex items-center gap-2 flex-shrink-0">
             <QuotaDisplay
               balance={globalBalance}
-              quotaRemaining={hasProjectQuota ? quotaRemaining : undefined}
-              quotaMax={hasProjectQuota ? quotaMax : undefined}
               showPermanent={true}
-              showDaily={hasProjectQuota}
+              showDaily={false}
               compact={true}
               className="mr-2 -ml-[15px] mt-[5px]"
             />
@@ -188,6 +191,25 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           status={heroStatus}
           showModerationLinks={canModerateCover}
         />
+
+        {showLocalMeritsUnderHero ? (
+          <div className="-mt-2 flex justify-end">
+            <QuotaDisplay
+              localContext="project"
+              balance={canEarnProjectMerits ? projectWalletBalance : undefined}
+              quotaRemaining={hasProjectQuota ? quotaRemaining : undefined}
+              quotaMax={hasProjectQuota ? quotaMax : undefined}
+              currencyIconUrl={
+                (parentCommunity as { settings?: { iconUrl?: string } } | null | undefined)
+                  ?.settings?.iconUrl
+              }
+              showPermanent={canEarnProjectMerits}
+              showDaily={hasProjectQuota}
+              compact={true}
+              className="max-w-full text-right"
+            />
+          </div>
+        ) : null}
 
         {isLead && !isArchived && (
           <ProjectParentSettingsCard
