@@ -446,7 +446,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           }
           isOwnPost={ticketFreeCommentOnlyUi ? false : isOwnPost}
           neutralHelperText={ticketFreeCommentOnlyUi ? t('taskCommentFreeHint') : undefined}
-          contextHint={ticketWeightedAppreciation ? t('ticketAppreciationMeritsHint') : undefined}
         />
         </div>
       </div>

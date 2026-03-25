@@ -290,8 +290,8 @@ export function TicketCard({
             <Button
               type="button"
               size="sm"
-              variant="default"
-              className="h-8 px-2 sm:px-4 text-xs"
+              variant="outline"
+              className="h-8 shrink-0 px-3 text-xs"
               onClick={handleAppreciationVoteClick}
             >
               {tComments('voteTitle')}

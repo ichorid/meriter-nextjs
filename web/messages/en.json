@@ -899,7 +899,6 @@
         "errorCommenting": "Failed to submit",
         "voteSubmittedSuccess": "Vote submitted successfully",
         "taskCommentFreeHint": "Tasks use free text comments only. No merits are spent.",
-        "ticketAppreciationMeritsHint": "Positive merits credit the assignee’s permanent merits in this project (not a balance on the task).",
         "taskCommentPostedSuccess": "Comment posted",
         "insufficientWalletForDownvotes": "You have insufficient wallet balance for downvotes."
     },
