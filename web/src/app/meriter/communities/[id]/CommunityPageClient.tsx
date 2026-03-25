@@ -66,6 +66,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialo
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
+import { canCommunityPublishToBirzhaAsSource } from '@/lib/constants/birzha-source';
+import { CommunityBirzhaSourceCard } from '@/components/organisms/Community/CommunityBirzhaSourceCard';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -788,6 +790,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     ) : null}
                 </div>
             )}
+
+            {comms &&
+            !isMarathonOfGood &&
+            canCommunityPublishToBirzhaAsSource(comms) &&
+            (userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin') ? (
+                <CommunityBirzhaSourceCard
+                    communityId={chatId}
+                    communityName={comms.name ?? ''}
+                />
+            ) : null}
 
             {/* Banners */}
             {error === false &&

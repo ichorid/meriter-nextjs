@@ -7,12 +7,15 @@ import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeShar
 import { ProjectWalletCard } from './ProjectWalletCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
+import { SourceBirzhaPostsList } from '@/components/organisms/Birzha/SourceBirzhaPostsList';
 
 export interface ProjectDashboardProps {
   projectId: string;
   founderSharePercent: number;
   investorSharePercent: number;
   totalMembers: number;
+  /** When true, show Birzha posts list (lead-only query on server). */
+  showBirzhaSourcePosts?: boolean;
 }
 
 function SharesMiniBar({ founder, investor }: { founder: number; investor: number }) {
@@ -49,10 +52,12 @@ export function ProjectDashboard({
   founderSharePercent,
   investorSharePercent,
   totalMembers,
+  showBirzhaSourcePosts = false,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
 
   return (
+    <div className="flex flex-col gap-3">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
       <div className="flex min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
         <ProjectWalletCard
@@ -106,6 +111,17 @@ export function ProjectDashboard({
         <div className="min-h-0 flex-1" aria-hidden />
         <SharesMiniBar founder={founderSharePercent} investor={investorSharePercent} />
       </div>
+    </div>
+    {showBirzhaSourcePosts ? (
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+        <h3 className="mb-2 text-sm font-semibold text-base-content">{t('birzhaPostsSection')}</h3>
+        <SourceBirzhaPostsList
+          sourceEntityType="project"
+          sourceEntityId={projectId}
+          variant="default"
+        />
+      </div>
+    ) : null}
     </div>
   );
 }

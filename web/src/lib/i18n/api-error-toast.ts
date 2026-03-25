@@ -35,6 +35,8 @@ export const KNOWN_API_ERROR_KEYS: Record<string, string> = {
   'At least one field is required': 'atLeastOneFieldRequired',
   'Insufficient balance': 'insufficientBalance',
   'Insufficient merits': 'insufficientMerits',
+  'Source wallet top-up is only for Birzha posts from a project or community source':
+    'sourceWalletTopUpNotApplicable',
   'Only the project lead can publish to Birzha': 'onlyLeadCanPublishToBirzha',
   'Project not found': 'projectNotFound',
   'Only project members can view the wallet': 'onlyMembersCanViewWallet',

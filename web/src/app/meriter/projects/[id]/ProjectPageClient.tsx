@@ -156,6 +156,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           founderSharePercent={project.founderSharePercent ?? 0}
           investorSharePercent={project.investorSharePercent ?? 0}
           totalMembers={totalMembers}
+          showBirzhaSourcePosts={isLead}
         />
 
         {isMember && user && (

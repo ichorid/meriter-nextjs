@@ -19,7 +19,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from 'next-intl';
 import type { Publication as PublicationType } from '@/types/api-v1';
 import { ResourcePermissions } from '@/types/api-v1';
-import { ProjectPostBadge } from '@/components/molecules/ProjectPostBadge';
+import { BirzhaSourcePostBadge } from '@/components/molecules/ProjectPostBadge';
 
 export const Publication = (props: any) => {
     const {
@@ -225,7 +225,11 @@ export const Publication = (props: any) => {
             <CardPublication
                 title={displayTitle}
                 subtitle={dateVerbose(ts)}
-                titleBadge={sourceEntityType === 'project' && sourceEntityId ? <ProjectPostBadge /> : undefined}
+                titleBadge={
+                  (sourceEntityType === 'project' || sourceEntityType === 'community') && sourceEntityId ? (
+                    <BirzhaSourcePostBadge sourceEntityType={sourceEntityType} />
+                  ) : undefined
+                }
                 avatarUrl={avatarUrl}
                 onAvatarUrlNotFound={() => {
                     // Avatar error handling - use meta.author.photoUrl as fallback

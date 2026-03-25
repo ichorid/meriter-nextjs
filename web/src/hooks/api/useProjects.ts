@@ -164,25 +164,6 @@ export function useProjectWallet(projectId: string | null) {
   );
 }
 
-export function usePublishToBirzha() {
-  const utils = trpc.useUtils();
-  const addToast = useToastStore((state) => state.addToast);
-  const t = useTranslations('projects');
-
-  return trpc.project.publishToBirzha.useMutation({
-    onSuccess: () => {
-      utils.project.getById.invalidate();
-      utils.project.getWallet.invalidate();
-      utils.publications.getFeed.invalidate();
-      utils.publications.getAll.invalidate();
-      addToast(t('publishedToBirzhaSuccess'), 'success');
-    },
-    onError: (error) => {
-      addToast(resolveApiErrorToastMessage(error.message), 'error');
-    },
-  });
-}
-
 export function useCloseProject() {
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);

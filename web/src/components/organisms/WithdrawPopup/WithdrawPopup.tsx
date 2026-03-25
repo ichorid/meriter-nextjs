@@ -30,8 +30,11 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   const { data: publication } = trpc.publications.getById.useQuery(
     { id: activeWithdrawTarget ?? '' },
     {
-      enabled: isOpen && withdrawTargetType === 'publication' && !!activeWithdrawTarget,
-    }
+      enabled:
+        isOpen &&
+        (withdrawTargetType === 'publication' || withdrawTargetType === 'publication-topup') &&
+        !!activeWithdrawTarget,
+    },
   );
   const hasInvestments = (publication?.investments?.length ?? 0) > 0;
   const investorSharePercent = publication?.investorSharePercent ?? 0;
@@ -109,9 +112,23 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   }
 
   const maxWithdrawAmount = formData.maxWithdrawAmount || 0;
-  const maxTopUpAmount = formData.maxTopUpAmount || walletBalance;
+  const maxTopUpPersonal = formData.maxTopUpAmount || walletBalance;
   const isWithdrawal = withdrawTargetType === 'publication' || withdrawTargetType === 'comment' || withdrawTargetType === 'vote';
-  const maxPlus = isWithdrawal ? maxWithdrawAmount : maxTopUpAmount;
+  const canTopUpFromSourceWallet =
+    withdrawTargetType === 'publication-topup' &&
+    publication?.permissions?.canTopUpFromSourceEntityWallet === true;
+  const sourceEntityIdForTopUp =
+    canTopUpFromSourceWallet && publication?.sourceEntityId ? publication.sourceEntityId : '';
+
+  const { data: sourceWallet } = trpc.communities.getCommunityWallet.useQuery(
+    { communityId: sourceEntityIdForTopUp },
+    {
+      enabled: isOpen && withdrawTargetType === 'publication-topup' && !!sourceEntityIdForTopUp,
+    },
+  );
+
+  const maxTopUpSource = sourceWallet?.balance ?? 0;
+  const maxPlus = isWithdrawal ? maxWithdrawAmount : maxTopUpPersonal;
 
   return (
     <IntlPortalWrapper>
@@ -123,6 +140,9 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
         onCommentChange={handleCommentChange}
         onUpdateError={(error) => updateWithdrawFormData({ error })}
         maxPlus={maxPlus}
+        maxTopUpPersonal={maxTopUpPersonal}
+        maxTopUpSourceWallet={maxTopUpSource}
+        topUpFromSourceWallet={canTopUpFromSourceWallet}
         error={formData.error}
         isWithdrawal={isWithdrawal}
         hasInvestments={hasInvestments}

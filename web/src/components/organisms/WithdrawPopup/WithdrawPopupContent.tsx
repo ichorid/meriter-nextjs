@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { VotingPanel } from '../VotingPopup/VotingPanel';
 import { useVoteOnPublicationWithComment, useVoteOnVote, useWithdrawFromPublication, useWithdrawFromVote } from '@/hooks/api/useVotes';
+import { useTopUpPublicationRating } from '@/hooks/api/useBirzhaSource';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 
 export interface WithdrawInvestmentSplit {
   investorTotal: number;
@@ -22,6 +24,10 @@ interface WithdrawPopupContentProps {
   onCommentChange: (comment: string) => void;
   onUpdateError: (error: string) => void;
   maxPlus: number;
+  /** When choosing top-up wallet (Birzha source posts) */
+  maxTopUpPersonal?: number;
+  maxTopUpSourceWallet?: number;
+  topUpFromSourceWallet?: boolean;
   error: string;
   isWithdrawal: boolean;
   hasInvestments: boolean;
@@ -40,6 +46,9 @@ export function WithdrawPopupContent({
   onCommentChange,
   onUpdateError,
   maxPlus,
+  maxTopUpPersonal,
+  maxTopUpSourceWallet = 0,
+  topUpFromSourceWallet = false,
   error,
   isWithdrawal,
   hasInvestments,
@@ -51,7 +60,11 @@ export function WithdrawPopupContent({
 }: WithdrawPopupContentProps) {
   const t = useTranslations('shared');
   const tInvesting = useTranslations('investing');
+  const tBirzha = useTranslations('birzhaSource');
   const [distributionDetailsOpen, setDistributionDetailsOpen] = useState(false);
+  const [topUpFundingSource, setTopUpFundingSource] = useState<'personal' | 'source_entity'>(
+    'personal',
+  );
   const popupTitle = isWithdrawal ? t('withdraw') : t('addMeritsToPost');
   const submitButtonLabel = isWithdrawal ? undefined : t('addMeritsButton');
   const addToast = useToastStore((state) => state.addToast);
@@ -59,12 +72,30 @@ export function WithdrawPopupContent({
   const voteOnVoteMutation = useVoteOnVote();
   const withdrawFromPublicationMutation = useWithdrawFromPublication();
   const withdrawFromVoteMutation = useWithdrawFromVote();
+  const topUpPublicationMutation = useTopUpPublicationRating();
+
+  const personalCap = maxTopUpPersonal ?? maxPlus;
+  const effectiveMaxPlus =
+    withdrawTargetType === 'publication-topup' && topUpFromSourceWallet
+      ? topUpFundingSource === 'source_entity'
+        ? maxTopUpSourceWallet
+        : personalCap
+      : maxPlus;
+
+  useEffect(() => {
+    setTopUpFundingSource('personal');
+  }, [activeWithdrawTarget, withdrawTargetType]);
 
   const handleSubmit = async () => {
     if (!activeWithdrawTarget || !withdrawTargetType) return;
 
     if (amount <= 0) {
       onUpdateError(t('pleaseChooseWithdrawAmount'));
+      return;
+    }
+
+    if (amount > effectiveMaxPlus) {
+      onUpdateError(t('pleaseAdjustSlider'));
       return;
     }
 
@@ -86,15 +117,25 @@ export function WithdrawPopupContent({
         });
         addToast(t('withdrewMerits', { amount }), 'success');
       } else if (withdrawTargetType === 'publication-topup') {
-        await voteOnPublicationWithCommentMutation.mutateAsync({
-          publicationId: targetId,
-          data: {
-            quotaAmount: 0,
-            walletAmount: amount,
+        if (topUpFromSourceWallet && topUpFundingSource === 'source_entity') {
+          await topUpPublicationMutation.mutateAsync({
+            publicationId: targetId,
+            amount,
+            fundingSource: 'source_entity',
             comment: comment.trim() || undefined,
-          },
-          communityId: targetCommunityId || '',
-        });
+          });
+        } else {
+          await voteOnPublicationWithCommentMutation.mutateAsync({
+            publicationId: targetId,
+            data: {
+              quotaAmount: 0,
+              walletAmount: amount,
+              comment: comment.trim() || undefined,
+            },
+            communityId: targetCommunityId || '',
+          });
+        }
+        addToast(t('addMerits', { amount }), 'success');
       } else if (withdrawTargetType === 'comment-topup') {
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
@@ -114,7 +155,7 @@ export function WithdrawPopupContent({
       if (message === 'This community only allows neutral comments') {
         message = t('voteDisabled.neutralOnlyError');
       }
-      onUpdateError(message);
+      onUpdateError(resolveApiErrorToastMessage(message));
     }
   };
 
@@ -125,6 +166,37 @@ export function WithdrawPopupContent({
         onClick={onClose}
       />
       <div className="relative z-10 flex flex-col gap-4">
+        {withdrawTargetType === 'publication-topup' && topUpFromSourceWallet ? (
+          <div className="w-full max-w-[400px] rounded-xl border border-base-300/50 bg-base-100 p-4 text-sm shadow-xl">
+            <p className="mb-2 font-medium text-base-content">{tBirzha('topUpFundingLabel')}</p>
+            <label className="flex cursor-pointer items-center gap-2 py-1">
+              <input
+                type="radio"
+                className="radio radio-sm"
+                name="birzha-topup-wallet"
+                checked={topUpFundingSource === 'personal'}
+                onChange={() => {
+                  setTopUpFundingSource('personal');
+                  onAmountChange(0);
+                }}
+              />
+              <span>{tBirzha('topUpFromPersonalWallet')}</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 py-1">
+              <input
+                type="radio"
+                className="radio radio-sm"
+                name="birzha-topup-wallet"
+                checked={topUpFundingSource === 'source_entity'}
+                onChange={() => {
+                  setTopUpFundingSource('source_entity');
+                  onAmountChange(0);
+                }}
+              />
+              <span>{tBirzha('topUpFromSourceWallet')}</span>
+            </label>
+          </div>
+        ) : null}
         <VotingPanel
           onClose={onClose}
           amount={amount}
@@ -133,7 +205,7 @@ export function WithdrawPopupContent({
           setComment={onCommentChange}
           onSubmit={() => {}}
           onSubmitSimple={handleSubmit}
-          maxPlus={maxPlus}
+          maxPlus={effectiveMaxPlus}
           maxMinus={0}
           quotaRemaining={0}
           dailyQuota={0}
