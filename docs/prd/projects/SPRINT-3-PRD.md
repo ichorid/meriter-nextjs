@@ -126,6 +126,10 @@ CommunityWallet.totalDistributed += amount (учёт, не баланс).
 - [ ] AC-9: Обычные посты (sourceEntityType=undefined) → withdraw стандартно
 - [ ] AC-10: CommunityWallet.balance НЕ меняется при distribute (только totalDistributed)
 
+## Sprint 6 — community as Birzha source (cross-ref)
+
+Non-project local communities can publish to Birzha via `communities.publishToBirzha`; shared UI/hooks, `publications.topUpRating` (personal vs source CommunityWallet), withdraw to CommunityWallet for `sourceEntityType === 'community'` on МД. See `docs/prd/PRD-BIRZHA-SOURCE-ENTITY.md` and migration `api/scripts/migrate-birzha-publication-author-fields.ts`.
+
 ## Связанные файлы
 - `api/apps/meriter/src/trpc/routers/publications.router.ts` — withdraw procedure
 - `api/apps/meriter/src/domain/services/wallet.service.ts` — wallet operations
