@@ -674,6 +674,20 @@ export class PublicationService {
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
+  /** Count active Birzha posts for a source entity (same filter as {@link getBirzhaPostsBySourceEntity}). */
+  async countBirzhaPostsBySourceEntity(
+    birzhaCommunityId: string,
+    sourceEntityType: 'project' | 'community',
+    sourceEntityId: string,
+  ): Promise<number> {
+    return this.publicationModel.countDocuments({
+      communityId: birzhaCommunityId,
+      sourceEntityType,
+      sourceEntityId,
+      deleted: { $ne: true },
+    });
+  }
+
   /** Active posts on Birzha (МД) for a given source entity. */
   async getBirzhaPostsBySourceEntity(
     birzhaCommunityId: string,

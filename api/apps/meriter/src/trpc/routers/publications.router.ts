@@ -502,14 +502,21 @@ export const publicationsRouter = router({
       }
       const limit = input.limit ?? 20;
       const skip = input.skip ?? 0;
-      const publications =
-        await ctx.publicationService.getBirzhaPostsBySourceEntity(
-          birzha.id as string,
+      const birzhaId = birzha.id as string;
+      const [total, publications] = await Promise.all([
+        ctx.publicationService.countBirzhaPostsBySourceEntity(
+          birzhaId,
+          input.sourceEntityType,
+          input.sourceEntityId,
+        ),
+        ctx.publicationService.getBirzhaPostsBySourceEntity(
+          birzhaId,
           input.sourceEntityType,
           input.sourceEntityId,
           limit,
           skip,
-        );
+        ),
+      ]);
 
       const userIds = new Set<string>();
       const communityIds = new Set<string>();
@@ -555,7 +562,7 @@ export const publicationsRouter = router({
               : undefined,
           );
         }),
-        total: publications.length,
+        total,
         limit,
         skip,
       };
