@@ -35,6 +35,10 @@ Full monorepo and layer overview: @architecture.mdc.
 - `__tests__/` — tests
 - Route handlers are also used in App Router (`app/**/route.ts`) for auth link flows.
 
+## Notifications list UI
+
+Subtitle typography, stacked lines, and profile/community/post links: @frontend-notifications.mdc (`NotificationsClient`, `InfoCard`).
+
 ## Component Guidelines
 
 ### Component Structure

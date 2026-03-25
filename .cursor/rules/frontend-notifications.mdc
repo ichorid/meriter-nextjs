@@ -1,0 +1,35 @@
+---
+description: Meriter notifications list UI — typography, layout, and clickable entities in InfoCard subtitles.
+globs:
+  - web/src/app/meriter/notifications/**/*
+  - web/src/components/ui/InfoCard.tsx
+alwaysApply: false
+---
+
+# Notifications list (Meriter)
+
+## Base typography
+
+- **Card subtitle container** (`InfoCard`): `text-sm text-brand-text-secondary` on the wrapper around `subtitle` so body copy has one consistent size across notification types.
+- **In-code tokens** (`NOTIFY_SUB` in `NotificationsClient.tsx`): keep subtitle JSX aligned with this rule.
+  - **Stack**: `flex flex-col gap-1.5`
+  - **Body**: `text-brand-text-primary whitespace-pre-wrap break-words`
+  - **Muted / labels**: `text-brand-text-secondary whitespace-pre-wrap break-words`
+  - **Navigable entities** (users, communities, projects, posts, “open post”): `font-medium text-brand-primary hover:underline break-words` on `Link`, with `onClick={(e) => e.stopPropagation()}` so row click still works.
+  - **Entity plain text** (no URL): `font-medium text-brand-text-primary break-words`
+  - **Timestamp**: `text-xs text-base-content/55` (one step smaller than body)
+
+Do not mix arbitrary `text-xs` / `text-sm` inside subtitle rows except the timestamp.
+
+## Content layout
+
+- **One logical unit per line** where it improves scanning: actor name, action line, post/ticket title, community or project name, optional comment/reason, then timestamp.
+- **User names** that identify a profile: own line when paired with action suffixes; use `routes.userProfile(id)` (or existing helpers) when `id` is known.
+- **Community / project / post titles**: separate lines when both title and place matter; link when `communityId`, `projectId`, or post route is available.
+- **Prefer structured JSX branches** in `renderNotificationSubtitle` over a single translation string that concatenates names and titles.
+- **Fallback** (`formatNotificationMessage` + default subtitle): keep lines split by `\n`; actor row uses a profile link when `actor.id` is present.
+
+## Files
+
+- `web/src/app/meriter/notifications/NotificationsClient.tsx` — subtitle rendering and `NOTIFY_SUB`.
+- `web/src/components/ui/InfoCard.tsx` — title `text-sm`, subtitle wrapper size as above.

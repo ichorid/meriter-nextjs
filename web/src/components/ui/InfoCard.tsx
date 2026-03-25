@@ -65,7 +65,7 @@ export const InfoCard: React.FC<InfoCardProps> = ({
                         {title}
                     </h3>
                     {subtitle != null && subtitle !== '' && (
-                        <div className="text-xs text-brand-text-secondary mt-0.5 break-words">
+                        <div className="text-sm text-brand-text-secondary mt-0.5 break-words">
                             {subtitle}
                         </div>
                     )}

@@ -37,6 +37,16 @@ import type { Notification, NotificationType } from '@/types/api-v1';
 import { routes } from '@/lib/constants/routes';
 import { formatMerits } from '@/lib/utils/currency';
 
+/** Notification list card subtitle typography — see `.cursor/rules/frontend-notifications.mdc`. */
+const NOTIFY_SUB = {
+  stack: 'flex flex-col gap-1.5',
+  body: 'text-brand-text-primary whitespace-pre-wrap break-words',
+  bodyMuted: 'text-brand-text-secondary whitespace-pre-wrap break-words',
+  entityLink: 'font-medium text-brand-primary hover:underline break-words',
+  entityText: 'font-medium text-brand-text-primary break-words',
+  stamp: 'text-xs text-base-content/55',
+} as const;
+
 const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team join request approved': 'team_join_approved',
   'Team join request rejected': 'team_join_rejected',
@@ -57,7 +67,6 @@ function contextLabelFromMetadata(n: Notification): string | undefined {
 }
 
 const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
-  'vote',
   'investment_received',
   'investment_distributed',
   'team_join_request',
@@ -426,20 +435,6 @@ export default function NotificationsPage() {
     const actorName = notification.actor?.name || tCommon('someone');
     const meta = notification.metadata ?? {};
 
-    if (notification.type === 'vote' && meta.direction) {
-      const direction = meta.direction as 'up' | 'down';
-      const amount = typeof meta.amount === 'number' ? meta.amount : 0;
-      const targetType = meta.targetType === 'vote' ? 'comment' : 'post';
-      const key = direction === 'up'
-        ? (targetType === 'post' ? 'voteUpPost' : 'voteUpComment')
-        : (targetType === 'post' ? 'voteDownPost' : 'voteDownComment');
-      const base = t(key, { name: actorName });
-      const amountStr = amount ? ` (${direction === 'up' ? '+' : '-'}${Math.abs(amount)})` : '';
-      return base + amountStr;
-    }
-    if (notification.type === 'investment_received' && meta.amount != null) {
-      return t('investedInYourPost', { name: actorName, amount: Number(meta.amount) });
-    }
     if (notification.type === 'investment_distributed' && meta) {
       const withdrawAmount = Number(meta.withdrawAmount ?? 0);
       const share = Number(meta.amount ?? 0);
@@ -909,38 +904,36 @@ export default function NotificationsPage() {
               ? t('systemRolePromotedActorSuffix')
               : t('systemRoleDemotedActorSuffix');
 
-        return (
-          <div className="flex flex-col gap-1">
-            <div>
-              {profileHref ? (
-                <Link
-                  href={profileHref}
-                  onClick={(e) => e.stopPropagation()}
-                  className="font-medium text-brand-primary hover:underline"
-                >
-                  {actorName}
-                </Link>
-              ) : (
-                actorName
-              )}
-              {line1Suffix}
-            </div>
+      return (
+        <div className={NOTIFY_SUB.stack}>
+            {profileHref ? (
+              <Link
+                href={profileHref}
+                onClick={(e) => e.stopPropagation()}
+                className={NOTIFY_SUB.entityLink}
+              >
+                {actorName}
+              </Link>
+            ) : (
+              <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+            )}
+            <div className={NOTIFY_SUB.body}>{line1Suffix.trimStart()}</div>
             {placeName ? (
               <div>
                 {placeHref ? (
                   <Link
                     href={placeHref}
                     onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-brand-primary hover:underline"
+                    className={NOTIFY_SUB.entityLink}
                   >
                     {quotePlaceLabel(placeName, locale)}
                   </Link>
                 ) : (
-                  quotePlaceLabel(placeName, locale)
+                  <span className={NOTIFY_SUB.body}>{quotePlaceLabel(placeName, locale)}</span>
                 )}
               </div>
             ) : null}
-            <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+            <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
           </div>
         );
       }
@@ -967,43 +960,41 @@ export default function NotificationsPage() {
           : undefined;
 
       return (
-        <div className="flex flex-col gap-1">
-          <div>
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {actorName}
-              </Link>
-            ) : (
-              actorName
-            )}
-            {t('teamInvitationInvitedYouSuffix')}
-          </div>
+        <div className={NOTIFY_SUB.stack}>
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.body}>{t('teamInvitationInvitedYouSuffix').trimStart()}</div>
           {placeName ? (
             <div>
               {placeHref ? (
                 <Link
                   href={placeHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="font-medium text-brand-primary hover:underline"
+                  className={NOTIFY_SUB.entityLink}
                 >
                   {quotePlaceLabel(placeName, locale)}
                 </Link>
               ) : (
-                quotePlaceLabel(placeName, locale)
+                <span className={NOTIFY_SUB.body}>{quotePlaceLabel(placeName, locale)}</span>
               )}
             </div>
           ) : null}
           {note ? (
-            <div className="whitespace-pre-wrap break-words">
-              <span className="text-brand-text-secondary">{t('teamInvitationCommentLabel')}</span>{' '}
+            <div className={NOTIFY_SUB.body}>
+              <span className={NOTIFY_SUB.bodyMuted}>{t('teamInvitationCommentLabel')}</span>{' '}
               {note}
             </div>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1026,39 +1017,35 @@ export default function NotificationsPage() {
           : undefined;
 
       return (
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-col gap-0.5">
+        <div className={NOTIFY_SUB.stack}>
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.body}>{t('communityMemberRemovedActorSuffix').trimStart()}</div>
+          {placeName ? (
             <div>
-              {profileHref ? (
+              {placeHref ? (
                 <Link
-                  href={profileHref}
+                  href={placeHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="font-medium text-brand-primary hover:underline"
+                  className={NOTIFY_SUB.entityLink}
                 >
-                  {actorName}
+                  {quotePlaceLabel(placeName, locale)}
                 </Link>
               ) : (
-                actorName
+                <span className={NOTIFY_SUB.body}>{quotePlaceLabel(placeName, locale)}</span>
               )}
-              {t('communityMemberRemovedActorSuffix')}
             </div>
-            {placeName ? (
-              <div>
-                {placeHref ? (
-                  <Link
-                    href={placeHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-brand-primary hover:underline"
-                  >
-                    {quotePlaceLabel(placeName, locale)}
-                  </Link>
-                ) : (
-                  quotePlaceLabel(placeName, locale)
-                )}
-              </div>
-            ) : null}
-          </div>
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          ) : null}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1112,74 +1099,66 @@ export default function NotificationsPage() {
           : undefined;
 
       return (
-        <div className="flex flex-col gap-1">
-          <div>
-            {profileHref ? (
-              <Link
-                href={profileHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {actorName}
-              </Link>
-            ) : (
-              actorName
-            )}
-            {t('teamJoinRequestWantsToJoinSuffix')}
-          </div>
+        <div className={NOTIFY_SUB.stack}>
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.body}>{t('teamJoinRequestWantsToJoinSuffix').trimStart()}</div>
           {teamName ? (
             <div>
               {placeHref ? (
                 <Link
                   href={placeHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="font-medium text-brand-primary hover:underline"
+                  className={NOTIFY_SUB.entityLink}
                 >
                   {quotePlaceLabel(teamName, locale)}
                 </Link>
               ) : (
-                quotePlaceLabel(teamName, locale)
+                <span className={NOTIFY_SUB.body}>{quotePlaceLabel(teamName, locale)}</span>
               )}
             </div>
           ) : null}
           {applicantNote ? (
-            <div className="whitespace-pre-wrap break-words">
-              <span className="text-brand-text-secondary">{t('teamJoinRequestApplicantMessageLabel')}</span>{' '}
+            <div className={NOTIFY_SUB.body}>
+              <span className={NOTIFY_SUB.bodyMuted}>{t('teamJoinRequestApplicantMessageLabel')}</span>{' '}
               {applicantNote}
             </div>
           ) : null}
           {isResolved ? (
             <div className="mt-1 flex flex-col gap-1.5 border-t border-base-200/80 pt-2">
-              <div className="text-sm font-medium text-brand-text-primary">
-                {t('teamJoinRequestResolvedHeading')}
+              <div className={NOTIFY_SUB.entityText}>{t('teamJoinRequestResolvedHeading')}</div>
+              <div className={NOTIFY_SUB.body}>
+                <span className={NOTIFY_SUB.bodyMuted}>{t('teamJoinRequestResolvedByLabel')}</span>
               </div>
-              <div className="text-sm text-brand-text-primary">
-                <span className="text-brand-text-secondary">
-                  {t('teamJoinRequestResolvedByLabel')}
-                </span>{' '}
-                {resolverHref ? (
-                  <Link
-                    href={resolverHref}
-                    onClick={(e) => e.stopPropagation()}
-                    className="font-medium text-brand-primary hover:underline"
-                  >
-                    {resolverName}
-                  </Link>
-                ) : (
-                  resolverName
-                )}
-              </div>
+              {resolverHref ? (
+                <Link
+                  href={resolverHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className={NOTIFY_SUB.entityLink}
+                >
+                  {resolverName}
+                </Link>
+              ) : (
+                <span className={NOTIFY_SUB.entityText}>{resolverName}</span>
+              )}
               {decisionValue ? (
-                <div className="text-sm text-brand-text-primary">
-                  <span className="text-brand-text-secondary">
-                    {t('teamJoinRequestDecisionLabel')}
-                  </span>{' '}
+                <div className={NOTIFY_SUB.body}>
+                  <span className={NOTIFY_SUB.bodyMuted}>{t('teamJoinRequestDecisionLabel')}</span>{' '}
                   {decisionValue}
                 </div>
               ) : null}
             </div>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1212,48 +1191,44 @@ export default function NotificationsPage() {
       const requesterHref = requesterId ? routes.userProfile(requesterId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1">
-          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-            <span>{t('projectParentLinkRequestedProjectLabel')}</span>
-            {projectHref ? (
-              <Link
-                href={projectHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {quotePlaceLabel(projectName, locale)}
-              </Link>
-            ) : (
-              quotePlaceLabel(projectName, locale)
-            )}
-            <span>{t('projectParentLinkRequestedMiddle')}</span>
-            {parentHref ? (
-              <Link
-                href={parentHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {quotePlaceLabel(parentName, locale)}
-              </Link>
-            ) : (
-              quotePlaceLabel(parentName, locale)
-            )}
-          </div>
-          <div className="text-sm text-brand-text-primary">
-            <span className="text-brand-text-secondary">{t('projectParentLinkRequestedByLabel')}</span>{' '}
-            {requesterHref ? (
-              <Link
-                href={requesterHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {requesterDisplayName}
-              </Link>
-            ) : (
-              requesterDisplayName
-            )}
-          </div>
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.bodyMuted}>{t('projectParentLinkRequestedProjectLabel')}</div>
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className={NOTIFY_SUB.bodyMuted}>{t('projectParentLinkRequestedMiddle')}</div>
+          {parentHref ? (
+            <Link
+              href={parentHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {quotePlaceLabel(parentName, locale)}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(parentName, locale)}</span>
+          )}
+          <div className={NOTIFY_SUB.bodyMuted}>{t('projectParentLinkRequestedByLabel')}</div>
+          {requesterHref ? (
+            <Link
+              href={requesterHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {requesterDisplayName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{requesterDisplayName}</span>
+          )}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1273,23 +1248,17 @@ export default function NotificationsPage() {
       const finiteTotal = Number.isFinite(totalPayout);
 
       return (
-        <div className="flex flex-col gap-1.5">
+        <div className={NOTIFY_SUB.stack}>
           {finiteYour && yourAmount > 0 ? (
-            <div className="text-sm text-brand-text-primary">
-              {t('projectDistributedSubtitleYouReceived', { yourAmount })}
-            </div>
+            <div className={NOTIFY_SUB.body}>{t('projectDistributedSubtitleYouReceived', { yourAmount })}</div>
           ) : finiteYour && yourAmount === 0 ? (
-            <div className="text-sm text-brand-text-secondary">
-              {t('projectDistributedSubtitleMemberNoCredits')}
-            </div>
+            <div className={NOTIFY_SUB.bodyMuted}>{t('projectDistributedSubtitleMemberNoCredits')}</div>
           ) : null}
           {finiteTotal && totalPayout > 0 ? (
-            <div className="text-sm text-brand-text-primary">
-              {t('projectDistributedSubtitleTotal', { totalPayout })}
-            </div>
+            <div className={NOTIFY_SUB.body}>{t('projectDistributedSubtitleTotal', { totalPayout })}</div>
           ) : null}
           {payoutBucket ? (
-            <div className="text-xs text-brand-text-secondary">
+            <div className={NOTIFY_SUB.bodyMuted}>
               {t('projectDistributedSubtitleBucket', { bucket: payoutBucket })}
             </div>
           ) : null}
@@ -1297,14 +1266,14 @@ export default function NotificationsPage() {
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1342,48 +1311,48 @@ export default function NotificationsPage() {
         Boolean(notification.actor?.id);
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-col gap-1">
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.stack}>
             {ticketHref ? (
               <Link
                 href={ticketHref}
                 onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline break-words"
+                className={NOTIFY_SUB.entityLink}
               >
                 {quotePlaceLabel(ticketTitle, locale)}
               </Link>
             ) : (
-              <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+              <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
             )}
             {projectHref ? (
               <Link
                 href={projectHref}
                 onClick={(e) => e.stopPropagation()}
-                className="text-sm font-medium text-brand-primary hover:underline break-words"
+                className={NOTIFY_SUB.entityLink}
               >
                 {quotePlaceLabel(projectName, locale)}
               </Link>
             ) : (
-              <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+              <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
             )}
           </div>
           {hasAssigner ? (
-            <div className="text-sm text-brand-text-primary">
-              <span className="text-brand-text-secondary">{t('ticketAssignedByLabel')}</span>{' '}
+            <>
+              <div className={NOTIFY_SUB.bodyMuted}>{t('ticketAssignedByLabel')}</div>
               {assignerHref ? (
                 <Link
                   href={assignerHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="font-medium text-brand-primary hover:underline"
+                  className={NOTIFY_SUB.entityLink}
                 >
                   {assignerName}
                 </Link>
               ) : (
-                assignerName
+                <span className={NOTIFY_SUB.entityText}>{assignerName}</span>
               )}
-            </div>
+            </>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1398,45 +1367,43 @@ export default function NotificationsPage() {
       const actorHref = actorId ? routes.userProfile(actorId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyApplyStatus')}</div>
-          <div className="text-sm text-brand-text-primary">
-            {actorHref ? (
-              <Link
-                href={actorHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {actorName}
-              </Link>
-            ) : (
-              actorName
-            )}{' '}
-            <span className="text-brand-text-secondary">{t('ticketNotifyApplyWording')}</span>
-          </div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyApplyStatus')}</div>
+          {actorHref ? (
+            <Link
+              href={actorHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyApplyWording')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1459,45 +1426,43 @@ export default function NotificationsPage() {
       const actorHref = actorId ? routes.userProfile(actorId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyDoneStatus')}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyDoneStatus')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-sm text-brand-text-primary">
-            <span className="text-brand-text-secondary">{t('ticketNotifyCompletedBy')}</span>{' '}
-            {actorHref ? (
-              <Link
-                href={actorHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {actorName}
-              </Link>
-            ) : (
-              actorName
-            )}
-          </div>
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyCompletedBy')}</div>
+          {actorHref ? (
+            <Link
+              href={actorHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1518,45 +1483,43 @@ export default function NotificationsPage() {
       const leadHref = leadId ? routes.userProfile(leadId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyAcceptedStatus')}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyAcceptedStatus')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-sm text-brand-text-primary">
-            <span className="text-brand-text-secondary">{t('ticketNotifyAcceptedBy')}</span>{' '}
-            {leadHref ? (
-              <Link
-                href={leadHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {leadName}
-              </Link>
-            ) : (
-              leadName
-            )}
-          </div>
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyAcceptedBy')}</div>
+          {leadHref ? (
+            <Link
+              href={leadHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {leadName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{leadName}</span>
+          )}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1578,51 +1541,48 @@ export default function NotificationsPage() {
       const leadHref = leadId ? routes.userProfile(leadId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyRevisionStatus')}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyRevisionStatus')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-sm text-brand-text-primary">
-            <span className="text-brand-text-secondary">{t('ticketNotifyReturnedBy')}</span>{' '}
-            {leadHref ? (
-              <Link
-                href={leadHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {leadName}
-              </Link>
-            ) : (
-              leadName
-            )}
-          </div>
+          <div className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyReturnedBy')}</div>
+          {leadHref ? (
+            <Link
+              href={leadHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {leadName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{leadName}</span>
+          )}
           {reason ? (
-            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
-              <span className="text-brand-text-secondary">{t('ticketNotifyCommentLabel')}</span>:{' '}
-              {reason}
+            <div className={NOTIFY_SUB.body}>
+              <span className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyCommentLabel')}</span>: {reason}
             </div>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1646,51 +1606,48 @@ export default function NotificationsPage() {
       const assigneeHref = assigneeId ? routes.userProfile(assigneeId) : undefined;
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyDeclinedStatus')}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyDeclinedStatus')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          <div className="text-sm text-brand-text-primary">
-            <span className="text-brand-text-secondary">{t('ticketNotifyDeclinedBy')}</span>{' '}
-            {assigneeHref ? (
-              <Link
-                href={assigneeHref}
-                onClick={(e) => e.stopPropagation()}
-                className="font-medium text-brand-primary hover:underline"
-              >
-                {assigneeName}
-              </Link>
-            ) : (
-              assigneeName
-            )}
-          </div>
+          <div className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyDeclinedBy')}</div>
+          {assigneeHref ? (
+            <Link
+              href={assigneeHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {assigneeName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{assigneeName}</span>
+          )}
           {reason ? (
-            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
-              <span className="text-brand-text-secondary">{t('ticketNotifyCommentLabel')}</span>:{' '}
-              {reason}
+            <div className={NOTIFY_SUB.body}>
+              <span className={NOTIFY_SUB.bodyMuted}>{t('ticketNotifyCommentLabel')}</span>: {reason}
             </div>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1706,36 +1663,32 @@ export default function NotificationsPage() {
           : '';
 
       return (
-        <div className="flex flex-col gap-1.5">
-          <div className="text-sm text-brand-text-primary">{t('ticketNotifyRejectionStatus')}</div>
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t('ticketNotifyRejectionStatus')}</div>
           {ticketHref ? (
             <Link
               href={ticketHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(ticketTitle, locale)}
             </Link>
           ) : (
-            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(ticketTitle, locale)}</span>
           )}
           {projectHref ? (
             <Link
               href={projectHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {quotePlaceLabel(projectName, locale)}
             </Link>
           ) : (
-            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(projectName, locale)}</span>
           )}
-          {custom ? (
-            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
-              {custom}
-            </div>
-          ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          {custom ? <div className={NOTIFY_SUB.body}>{custom}</div> : null}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1759,31 +1712,108 @@ export default function NotificationsPage() {
           : '';
 
       return (
-        <div className="flex flex-col gap-1.5">
+        <div className={NOTIFY_SUB.stack}>
           {investorHref ? (
             <Link
               href={investorHref}
               onClick={(e) => e.stopPropagation()}
-              className="font-medium text-brand-primary hover:underline break-words"
+              className={NOTIFY_SUB.entityLink}
             >
               {investorName}
             </Link>
           ) : (
-            <span className="font-medium break-words">{investorName}</span>
+            <span className={NOTIFY_SUB.entityText}>{investorName}</span>
           )}
-          <div className="text-sm text-brand-text-primary whitespace-pre-wrap break-words">
+          <div className={NOTIFY_SUB.body}>
             {t('investmentNotifyBody', { amount: formatMerits(amountFinite) })}
           </div>
           {postHref ? (
             <Link
               href={postHref}
               onClick={(e) => e.stopPropagation()}
-              className="text-sm font-medium text-brand-primary hover:underline"
+              className={NOTIFY_SUB.entityLink}
             >
               {t('investmentNotifyPostLink')}
             </Link>
           ) : null}
-          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'vote') {
+      const direction = m.direction === 'down' ? 'down' : 'up';
+      const targetIsComment = m.targetType === 'vote';
+      const amountNum = typeof m.amount === 'number' ? m.amount : Number(m.amount);
+      const hasAmount = Number.isFinite(amountNum) && amountNum !== 0;
+      const amountSuffix = hasAmount
+        ? ` (${direction === 'up' ? '+' : '-'}${formatMerits(Math.abs(amountNum))})`
+        : '';
+      const bodyKey =
+        direction === 'up'
+          ? targetIsComment
+            ? 'voteNotifyBodyUpComment'
+            : 'voteNotifyBodyUpPost'
+          : targetIsComment
+            ? 'voteNotifyBodyDownComment'
+            : 'voteNotifyBodyDownPost';
+      const actorId =
+        (typeof notification.sourceId === 'string' && notification.sourceId.trim()
+          ? notification.sourceId.trim()
+          : '') || notification.actor?.id || '';
+      const actorName = notification.actor?.name || tCommon('someone');
+      const profileHref = actorId ? routes.userProfile(actorId) : undefined;
+      const publicationId =
+        typeof m.publicationId === 'string' && m.publicationId.trim() ? m.publicationId.trim() : '';
+      const communityId =
+        typeof m.communityId === 'string' && m.communityId.trim() ? m.communityId.trim() : '';
+      const postHref =
+        publicationId && communityId
+          ? routes.communityPost(communityId, publicationId)
+          : publicationId
+            ? routes.publication(publicationId)
+            : '';
+      const contextHref = resolveNotificationContextHref(notification);
+      const contextLabel = contextLabelFromMetadata(notification);
+
+      return (
+        <div className={NOTIFY_SUB.stack}>
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorName}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorName}</span>
+          )}
+          <div className={NOTIFY_SUB.body}>
+            {t(bodyKey)}
+            {amountSuffix}
+          </div>
+          {postHref ? (
+            <Link
+              href={postHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {t('investmentNotifyPostLink')}
+            </Link>
+          ) : null}
+          {contextLabel && contextHref ? (
+            <Link
+              href={contextHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {quotePlaceLabel(contextLabel, locale)}
+            </Link>
+          ) : contextLabel ? (
+            <span className={NOTIFY_SUB.body}>{quotePlaceLabel(contextLabel, locale)}</span>
+          ) : null}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
         </div>
       );
     }
@@ -1803,24 +1833,39 @@ export default function NotificationsPage() {
         <Link
           href={contextHref}
           onClick={(e) => e.stopPropagation()}
-          className="font-medium text-brand-primary hover:underline break-words"
+          className={NOTIFY_SUB.entityLink}
         >
           {quotePlaceLabel(contextLabel, locale)}
         </Link>
       ) : contextLabel ? (
-        <span className="whitespace-pre-wrap break-words">{contextLabel}</span>
+        <span className={NOTIFY_SUB.body}>{quotePlaceLabel(contextLabel, locale)}</span>
       ) : null;
 
+    const actorIdFallback = notification.actor?.id;
+    const actorNameFallback = notification.actor?.name;
+
     return (
-      <div className="flex flex-col gap-1">
+      <div className={NOTIFY_SUB.stack}>
         {lines.map((line, i) => (
-          <div key={`p-${i}`} className="whitespace-pre-wrap break-words">
+          <div key={`p-${i}`} className={NOTIFY_SUB.body}>
             {line}
           </div>
         ))}
-        {showActor ? <div>{notification.actor!.name}</div> : null}
+        {showActor && actorNameFallback ? (
+          actorIdFallback ? (
+            <Link
+              href={routes.userProfile(actorIdFallback)}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {actorNameFallback}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{actorNameFallback}</span>
+          )
+        ) : null}
         {contextNode ? <div>{contextNode}</div> : null}
-        <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
       </div>
     );
   };
