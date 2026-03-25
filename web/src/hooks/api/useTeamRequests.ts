@@ -28,6 +28,25 @@ export const useSubmitTeamRequest = () => {
       utils.communities.getMembers.invalidate();
       utils.project.getById.invalidate({ id: variables.communityId });
       utils.project.list.invalidate();
+      utils.notifications.getAll.invalidate();
+    },
+  });
+};
+
+/**
+ * Withdraw the current user's pending join request
+ */
+export const useCancelMyTeamJoinRequest = () => {
+  const utils = trpc.useUtils();
+
+  return trpc.teams.cancelMyTeamJoinRequest.useMutation({
+    onSuccess: (_data, variables) => {
+      utils.teams.getMyTeamRequests.invalidate();
+      utils.teams.getTeamRequestStatus.invalidate({ communityId: variables.communityId });
+      utils.teams.getTeamRequestsForLead.invalidate({ communityId: variables.communityId });
+      utils.communities.getById.invalidate({ id: variables.communityId });
+      utils.notifications.getAll.invalidate();
+      utils.notifications.getUnreadCount.invalidate();
     },
   });
 };

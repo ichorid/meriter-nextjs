@@ -95,7 +95,10 @@ function resolveSystemNoticeKind(n: Notification): string | undefined {
     raw === 'team_join_approved' ||
     raw === 'team_join_rejected' ||
     raw === 'team_invitation_accepted' ||
-    raw === 'team_invitation_rejected'
+    raw === 'team_invitation_rejected' ||
+    raw === 'team_join_request_cancelled_by_applicant' ||
+    raw === 'community_role_promoted_to_lead' ||
+    raw === 'community_role_demoted_from_lead'
   ) {
     return raw;
   }
@@ -607,6 +610,13 @@ export default function NotificationsPage() {
     }
     if (notification.type === 'system') {
       const kind = resolveSystemNoticeKind(notification);
+      if (
+        kind === 'team_join_request_cancelled_by_applicant' ||
+        kind === 'community_role_promoted_to_lead' ||
+        kind === 'community_role_demoted_from_lead'
+      ) {
+        return '';
+      }
       const teamName =
         (meta.communityName as string) || notification.community?.name || '';
       if (kind === 'team_join_approved') {
@@ -719,6 +729,15 @@ export default function NotificationsPage() {
       const kind = resolveSystemNoticeKind(notification);
       if (kind === 'team_join_approved') return t('systemTeamJoinApprovedTitle');
       if (kind === 'team_join_rejected') return t('systemTeamJoinRejectedTitle');
+      if (kind === 'team_join_request_cancelled_by_applicant') {
+        return t('systemJoinRequestWithdrawnTitle');
+      }
+      if (kind === 'community_role_promoted_to_lead') {
+        return t('systemCommunityRolePromotedTitle');
+      }
+      if (kind === 'community_role_demoted_from_lead') {
+        return t('systemCommunityRoleDemotedTitle');
+      }
       if (kind === 'team_invitation_accepted') {
         return t('teamInvitationAccepted');
       }
@@ -751,6 +770,73 @@ export default function NotificationsPage() {
   const renderNotificationSubtitle = (notification: Notification): React.ReactNode => {
     const m = notification.metadata ?? {};
     const isProject = resolveInviteTargetIsProject(notification);
+
+    if (notification.type === 'system') {
+      const kind = resolveSystemNoticeKind(notification);
+      if (
+        kind === 'team_join_request_cancelled_by_applicant' ||
+        kind === 'community_role_promoted_to_lead' ||
+        kind === 'community_role_demoted_from_lead'
+      ) {
+        const actorName = notification.actor?.name || tCommon('someone');
+        const actorId =
+          (typeof notification.sourceId === 'string' && notification.sourceId) ||
+          notification.actor?.id ||
+          '';
+        const communityId = typeof m.communityId === 'string' ? m.communityId : '';
+        const placeName =
+          (typeof m.communityName === 'string' && m.communityName) ||
+          notification.community?.name ||
+          '';
+        const profileHref = actorId ? `/meriter/users/${actorId}` : undefined;
+        const placeHref =
+          communityId && placeName
+            ? communityOrProjectHref(communityId, isProject)
+            : undefined;
+
+        const line1Suffix =
+          kind === 'team_join_request_cancelled_by_applicant'
+            ? t('systemJoinRequestWithdrawnActorSuffix')
+            : kind === 'community_role_promoted_to_lead'
+              ? t('systemRolePromotedActorSuffix')
+              : t('systemRoleDemotedActorSuffix');
+
+        return (
+          <div className="flex flex-col gap-1">
+            <div>
+              {profileHref ? (
+                <Link
+                  href={profileHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-brand-primary hover:underline"
+                >
+                  {actorName}
+                </Link>
+              ) : (
+                actorName
+              )}
+              {line1Suffix}
+            </div>
+            {placeName ? (
+              <div>
+                {placeHref ? (
+                  <Link
+                    href={placeHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-brand-primary hover:underline"
+                  >
+                    {quotePlaceLabel(placeName, locale)}
+                  </Link>
+                ) : (
+                  quotePlaceLabel(placeName, locale)
+                )}
+              </div>
+            ) : null}
+            <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+          </div>
+        );
+      }
+    }
 
     if (notification.type === 'team_invitation') {
       const actorName = notification.actor?.name || tCommon('someone');

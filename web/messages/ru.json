@@ -1057,7 +1057,9 @@
                 "submit": "Отправить заявку",
                 "cancel": "Отмена",
                 "pending": "Заявка на рассмотрении",
-                "submitting": "Отправка…"
+                "submitting": "Отправка…",
+                "cancelRequest": "Отменить заявку",
+                "cancelling": "Отмена…"
             },
             "unconfigured": {
                 "banner": {
@@ -2167,7 +2169,9 @@
             "requestPending": "На рассмотрении",
             "requestPendingTooltip": "Ваша заявка уже на рассмотрении лидом команды",
             "requestSubmitted": "Вашу заявку рассмотрят",
-            "requestFailed": "Не удалось подать заявку"
+            "requestFailed": "Не удалось подать заявку",
+            "requestCancelled": "Заявка отменена",
+            "requestCancelFailed": "Не удалось отменить заявку"
         },
         "roleTypes": {
             "lead": "Лид",
@@ -2481,6 +2485,12 @@
         "systemTeamJoinApprovedMessage": "{leadName} одобрил ваш запрос на вступление в «{teamName}».",
         "systemTeamJoinRejectedTitle": "Запрос отклонён",
         "systemTeamJoinRejectedMessage": "{leadName} отклонил ваш запрос на вступление в «{teamName}».",
+        "systemJoinRequestWithdrawnTitle": "Заявка отозвана",
+        "systemJoinRequestWithdrawnActorSuffix": " отозвал(а) заявку на вступление",
+        "systemCommunityRolePromotedTitle": "Вы назначены администратором",
+        "systemCommunityRoleDemotedTitle": "Сняты полномочия администратора",
+        "systemRolePromotedActorSuffix": " назначил(а) вас администратором",
+        "systemRoleDemotedActorSuffix": " снял(а) с вас полномочия администратора",
         "preferences": {
             "title": "Настройки уведомлений",
             "mentions": "Упоминания",

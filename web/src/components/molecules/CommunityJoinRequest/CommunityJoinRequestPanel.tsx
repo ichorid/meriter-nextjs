@@ -3,7 +3,11 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/shadcn/button';
 import { useCommunity } from '@/hooks/api';
-import { useTeamRequestStatus, useSubmitTeamRequest } from '@/hooks/api/useTeamRequests';
+import {
+  useTeamRequestStatus,
+  useSubmitTeamRequest,
+  useCancelMyTeamJoinRequest,
+} from '@/hooks/api/useTeamRequests';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useTranslations } from 'next-intl';
@@ -43,6 +47,7 @@ export function CommunityJoinRequestPanel({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: requestStatus } = useTeamRequestStatus(communityId);
   const { mutate: submitRequest, isPending } = useSubmitTeamRequest();
+  const { mutate: cancelRequest, isPending: isCancelling } = useCancelMyTeamJoinRequest();
   const addToast = useToastStore((state) => state.addToast);
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,30 +90,64 @@ export function CommunityJoinRequestPanel({
     );
   };
 
+  const handleCancel = () => {
+    cancelRequest(
+      { communityId },
+      {
+        onSuccess: () => {
+          addToast(tProfile('joinTeam.requestCancelled'), 'success');
+        },
+        onError: (error: unknown) => {
+          const raw = error instanceof Error ? error.message : undefined;
+          addToast(
+            raw?.trim() ? resolveApiErrorToastMessage(raw) : tProfile('joinTeam.requestCancelFailed'),
+            'error',
+          );
+        },
+      },
+    );
+  };
+
   const openDialog = () => {
-    if (hasPendingRequest) return;
     setDialogOpen(true);
   };
 
-  const triggerButton = (
+  const joinButton = (
     <Button
       type="button"
       variant={layout === 'hero' ? 'default' : 'outline'}
       size={layout === 'hero' ? 'default' : 'sm'}
       onClick={openDialog}
-      disabled={hasPendingRequest || isPending}
+      disabled={isPending}
       className={cn(layout === 'hero' && 'w-full sm:w-auto', layout === 'block' && 'w-full')}
-      title={hasPendingRequest ? tProfile('joinTeam.requestPendingTooltip') : undefined}
     >
       {isPending ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           {t('submitting')}
         </>
-      ) : hasPendingRequest ? (
-        t('pending')
       ) : (
         t('ctaOpen')
+      )}
+    </Button>
+  );
+
+  const cancelButton = (
+    <Button
+      type="button"
+      variant={layout === 'hero' ? 'default' : 'outline'}
+      size={layout === 'hero' ? 'default' : 'sm'}
+      onClick={handleCancel}
+      disabled={isCancelling}
+      className={cn(layout === 'hero' && 'w-full sm:w-auto', layout === 'block' && 'w-full')}
+    >
+      {isCancelling ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          {t('cancelling')}
+        </>
+      ) : (
+        t('cancelRequest')
       )}
     </Button>
   );
@@ -116,26 +155,19 @@ export function CommunityJoinRequestPanel({
   return (
     <>
       {layout === 'hero' ? (
-        <div
-          className={cn(
-            'flex w-full min-w-0 flex-col gap-2 rounded-xl border border-base-300 bg-base-200/40 p-3 sm:max-w-md sm:items-end',
-            className,
-          )}
-        >
-          <div className="w-full text-left sm:text-right">
-            <p className="text-sm font-medium text-brand-text-primary">{t('heroTitle')}</p>
-            <p className="mt-0.5 text-xs text-brand-text-secondary">{t('heroSubtitle')}</p>
-          </div>
-          {triggerButton}
+        <div className={cn('flex min-w-0 justify-end', className)}>
+          {hasPendingRequest ? cancelButton : joinButton}
         </div>
       ) : layout === 'block' ? (
         <div className={cn('rounded-xl border border-base-300 bg-base-200/30 p-4', className)}>
           <p className="mb-1 text-sm font-medium text-brand-text-primary">{t('heroTitle')}</p>
           <p className="mb-3 text-xs text-brand-text-secondary">{t('heroSubtitle')}</p>
-          {triggerButton}
+          {hasPendingRequest ? cancelButton : joinButton}
         </div>
       ) : (
-        <div className={cn('flex items-center', className)}>{triggerButton}</div>
+        <div className={cn('flex items-center', className)}>
+          {hasPendingRequest ? cancelButton : joinButton}
+        </div>
       )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

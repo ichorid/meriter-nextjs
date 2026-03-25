@@ -1057,7 +1057,9 @@
                 "submit": "Send request",
                 "cancel": "Cancel",
                 "pending": "Request pending",
-                "submitting": "Sending…"
+                "submitting": "Sending…",
+                "cancelRequest": "Cancel request",
+                "cancelling": "Cancelling…"
             },
             "unconfigured": {
                 "banner": {
@@ -2167,7 +2169,9 @@
             "requestPending": "Pending",
             "requestPendingTooltip": "Your request is already under review by the team lead",
             "requestSubmitted": "Your request will be reviewed",
-            "requestFailed": "Failed to submit request"
+            "requestFailed": "Failed to submit request",
+            "requestCancelled": "Join request cancelled",
+            "requestCancelFailed": "Failed to cancel request"
         },
         "roleTypes": {
             "lead": "Lead",
@@ -2481,6 +2485,12 @@
         "systemTeamJoinApprovedMessage": "{leadName} approved your request to join \"{teamName}\".",
         "systemTeamJoinRejectedTitle": "Join request rejected",
         "systemTeamJoinRejectedMessage": "{leadName} rejected your request to join \"{teamName}\".",
+        "systemJoinRequestWithdrawnTitle": "Join request withdrawn",
+        "systemJoinRequestWithdrawnActorSuffix": " withdrew their join request",
+        "systemCommunityRolePromotedTitle": "You are an administrator",
+        "systemCommunityRoleDemotedTitle": "Administrator role removed",
+        "systemRolePromotedActorSuffix": " made you an administrator",
+        "systemRoleDemotedActorSuffix": " removed your administrator role",
         "preferences": {
             "title": "Notification Preferences",
             "mentions": "Mentions",
