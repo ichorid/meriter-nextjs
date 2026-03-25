@@ -1588,6 +1588,13 @@
         "valueTagsLabel": "Value tags",
         "futureVisionCoverLabel": "Future vision cover (optional)",
         "devCoverPlaceholdersTitle": "Add placeholder cover (dev only)",
+        "formSectionBasics": "Project details",
+        "formSectionOwnership": "Project ownership",
+        "formSectionOwnershipHint": "A personal project is tied to you as founder. Otherwise, link the project to a team community you administer or belong to—or create a new community in one step.",
+        "formSectionNewCommunity": "New team community",
+        "formSectionNewCommunityHint": "Created together with this project as its parent community.",
+        "formSectionValues": "Values",
+        "formSectionSharesAndTiming": "Share split and duration",
         "projectNotFound": "Project not found"
     },
     "teams": {

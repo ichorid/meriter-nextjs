@@ -1588,6 +1588,13 @@
         "valueTagsLabel": "Рубрикатор ценностей",
         "futureVisionCoverLabel": "Обложка образа будущего (необязательно)",
         "devCoverPlaceholdersTitle": "Добавить плейсхолдер обложки (только в dev)",
+        "formSectionBasics": "О проекте",
+        "formSectionOwnership": "Кому принадлежит проект",
+        "formSectionOwnershipHint": "Персональный проект закреплён за вами как за основателем. Иначе привяжите проект к командному сообществу, где вы лид или участник, либо создайте новое сообщество за один шаг.",
+        "formSectionNewCommunity": "Новое командное сообщество",
+        "formSectionNewCommunityHint": "Будет создано вместе с проектом как родительское сообщество.",
+        "formSectionValues": "Ценности",
+        "formSectionSharesAndTiming": "Доли и срок",
         "projectNotFound": "Проект не найден"
     },
     "teams": {
