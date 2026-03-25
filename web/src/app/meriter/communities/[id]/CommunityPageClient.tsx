@@ -726,28 +726,28 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             ...comms,
                             id: comms.id || chatId,
                         }}
+                        avatarRowEndSlot={
+                            user && showQuotaInHeader ? (
+                                <QuotaDisplay
+                                    balance={canEarnPermanentMerits ? balance : undefined}
+                                    quotaRemaining={hasQuota ? quotaRemaining : undefined}
+                                    quotaMax={hasQuota ? quotaMax : undefined}
+                                    currencyIconUrl={currencyIconUrl}
+                                    isMarathonOfGood={isMarathonOfGood}
+                                    showPermanent={canEarnPermanentMerits}
+                                    showDaily={hasQuota}
+                                    compact={true}
+                                    localContext="community"
+                                    className="max-w-full justify-start sm:justify-end"
+                                    onEarnMeritsClick={
+                                        comms.tappalkaSettings?.enabled
+                                            ? () => setShowTappalkaModal(true)
+                                            : undefined
+                                    }
+                                />
+                            ) : undefined
+                        }
                     />
-                    {user && showQuotaInHeader ? (
-                        <div className="mt-3 flex justify-end">
-                            <QuotaDisplay
-                                balance={canEarnPermanentMerits ? balance : undefined}
-                                quotaRemaining={hasQuota ? quotaRemaining : undefined}
-                                quotaMax={hasQuota ? quotaMax : undefined}
-                                currencyIconUrl={currencyIconUrl}
-                                isMarathonOfGood={isMarathonOfGood}
-                                showPermanent={canEarnPermanentMerits}
-                                showDaily={hasQuota}
-                                compact={true}
-                                localContext="community"
-                                className="max-w-full text-right"
-                                onEarnMeritsClick={
-                                    comms.tappalkaSettings?.enabled
-                                        ? () => setShowTappalkaModal(true)
-                                        : undefined
-                                }
-                            />
-                        </div>
-                    ) : null}
                 </div>
             )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Users, Settings, Trash2, TrendingUp, ArrowUp, SquarePen } from 'lucide-react';
@@ -39,6 +39,8 @@ interface CommunityHeroCardProps {
   isCompact?: boolean;
   /** Click handler - if provided, card becomes clickable */
   onClick?: () => void;
+  /** Placed in the avatar row: bottom-right on sm+, stacked under the avatar on narrow screens */
+  avatarRowEndSlot?: ReactNode;
 }
 
 /**
@@ -49,6 +51,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   className = '',
   isCompact = false,
   onClick,
+  avatarRowEndSlot,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -224,8 +227,8 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
 
       {/* Avatar - overlapping cover (px-4 matches member/projects teaser tiles p-4) */}
       <div className="relative px-4">
-        <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
-          <div className="relative inline-block ring-4 ring-base-100 rounded-full bg-base-100">
+        <div className="-mt-12 sm:-mt-14 mb-3 relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="relative inline-block w-fit shrink-0 ring-4 ring-base-100 rounded-full bg-base-100">
             <Avatar className="w-20 h-20 sm:w-24 sm:h-24 text-xl bg-base-200">
               {community.avatarUrl && (
                 <AvatarImage src={community.avatarUrl} alt={community.name} />
@@ -235,6 +238,11 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               </AvatarFallback>
             </Avatar>
           </div>
+          {avatarRowEndSlot ? (
+            <div className="min-w-0 w-full sm:w-auto sm:max-w-[min(100%,28rem)] sm:flex-1 sm:justify-end flex flex-col items-stretch sm:items-end pb-0.5">
+              {avatarRowEndSlot}
+            </div>
+          ) : null}
         </div>
 
         {/* Community Info */}
