@@ -276,8 +276,10 @@ export function TicketCard({
           )}
           {canReopen && (
             <Button
+              type="button"
               size="sm"
               variant="outline"
+              className="h-8 shrink-0 px-3 text-xs"
               onClick={() =>
                 updateStatus.mutate({ ticketId: ticket.id, newStatus: 'in_progress' })
               }

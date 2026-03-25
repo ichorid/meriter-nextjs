@@ -35,6 +35,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { Notification, NotificationType } from '@/types/api-v1';
 import { routes } from '@/lib/constants/routes';
+import { formatMerits } from '@/lib/utils/currency';
 
 const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team join request approved': 'team_join_approved',
@@ -1733,6 +1734,54 @@ export default function NotificationsPage() {
             <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
               {custom}
             </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'investment_received') {
+      const amount = Number(m.amount);
+      const amountFinite = Number.isFinite(amount) ? amount : 0;
+      const investorId =
+        (typeof m.investorId === 'string' && m.investorId.trim() ? m.investorId.trim() : '') ||
+        notification.sourceId ||
+        notification.actor?.id ||
+        '';
+      const investorName = notification.actor?.name || tCommon('someone');
+      const investorHref = investorId ? routes.userProfile(investorId) : undefined;
+      const postId = typeof m.postId === 'string' && m.postId.trim() ? m.postId.trim() : '';
+      const communityId =
+        typeof m.communityId === 'string' && m.communityId.trim() ? m.communityId.trim() : '';
+      const postHref =
+        postId && communityId ? routes.communityPost(communityId, postId) : postId
+          ? routes.publication(postId)
+          : '';
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          {investorHref ? (
+            <Link
+              href={investorHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {investorName}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{investorName}</span>
+          )}
+          <div className="text-sm text-brand-text-primary whitespace-pre-wrap break-words">
+            {t('investmentNotifyBody', { amount: formatMerits(amountFinite) })}
+          </div>
+          {postHref ? (
+            <Link
+              href={postHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline"
+            >
+              {t('investmentNotifyPostLink')}
+            </Link>
           ) : null}
           <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
         </div>

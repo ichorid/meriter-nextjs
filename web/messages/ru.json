@@ -2436,6 +2436,8 @@
         "targetTypeComment": "комментарий",
         "investmentReceived": "Получена инвестиция",
         "investedInYourPost": "{name} инвестировал {amount} заслуг в ваш пост",
+        "investmentNotifyBody": "В ваш пост инвестировано {amount} заслуг.",
+        "investmentNotifyPostLink": "К посту",
         "investmentDistributed": "Инвестиция распределена",
         "authorWithdrewYourShare": "{name} вывел {amount} заслуг с поста. Ваша доля: {share} заслуг",
         "postClosed": "Пост закрыт",

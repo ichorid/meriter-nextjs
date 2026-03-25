@@ -2436,6 +2436,8 @@
         "targetTypeComment": "comment",
         "investmentReceived": "Investment received",
         "investedInYourPost": "{name} invested {amount} merits in your post",
+        "investmentNotifyBody": "Invested {amount} merits in your post.",
+        "investmentNotifyPostLink": "Open post",
         "investmentDistributed": "Investment distributed",
         "authorWithdrewYourShare": "{name} withdrew {amount} merits from post. Your share: {share} merits",
         "postClosed": "Post closed",
