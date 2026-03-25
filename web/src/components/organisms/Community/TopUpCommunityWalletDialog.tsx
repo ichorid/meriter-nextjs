@@ -81,6 +81,8 @@ export function TopUpCommunityWalletDialog({
 
   const clampAmount = (n: number) => Math.max(1, Math.min(maxMerits, Math.floor(n)));
 
+  const effectiveAmount = clampAmount(amount);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = clampAmount(amount);
@@ -124,10 +126,29 @@ export function TopUpCommunityWalletDialog({
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
-              <div className="rounded-lg border-2 border-base-300 bg-base-300/40 px-3 py-2 dark:border-base-400 dark:bg-base-200/30">
-                <p className="text-center text-xs font-medium text-base-content">
-                  {tShared('available')} {globalLoading ? '…' : formatMerits(maxMerits)}
-                </p>
+              <div className="relative h-12 overflow-hidden rounded-lg border-2 border-base-300 bg-base-300 dark:border-base-400 dark:bg-base-200">
+                {(() => {
+                  const availableAfter = Math.max(0, maxMerits - effectiveAmount);
+                  const fillPercent =
+                    maxMerits > 0 ? Math.min(100, (availableAfter / maxMerits) * 100) : 0;
+                  if (availableAfter > 0 && fillPercent > 0 && !globalLoading) {
+                    return (
+                      <div
+                        className="absolute left-0 top-0 bottom-0 transition-all bg-[#153ED0] dark:bg-[#153ED0] opacity-60 dark:opacity-100"
+                        style={{ width: `${fillPercent}%` }}
+                      />
+                    );
+                  }
+                  return null;
+                })()}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="z-10 text-center text-xs font-medium text-base-content dark:text-base-content">
+                    {tShared('available')}{' '}
+                    {globalLoading
+                      ? '…'
+                      : formatMerits(Math.max(0, maxMerits - effectiveAmount))}
+                  </span>
+                </div>
               </div>
               {maxMerits < 1 && !globalLoading ? (
                 <p className="text-sm text-destructive">{tCommunities('walletTopUpInsufficientGlobal')}</p>
