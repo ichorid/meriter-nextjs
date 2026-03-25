@@ -144,8 +144,10 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const quotaMax = quotaData?.dailyQuota ?? 0;
 
   const canEarnProjectMerits = project.meritSettings?.canEarn === true;
-  const showLocalMeritsUnderHero =
-    Boolean(user) && (hasProjectQuota || canEarnProjectMerits);
+  /** Non-members have no project wallet/quota row — avoids "0 merits" noise */
+  const showProjectMeritsUnderHero =
+    Boolean(user && isMember) && (hasProjectQuota || canEarnProjectMerits);
+  const showJoinUnderHero = Boolean(user && !isMember && !isArchived);
 
   const stickyHeader = (
     <SimpleStickyHeader
@@ -198,7 +200,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           showModerationLinks={canModerateCover}
         />
 
-        {showLocalMeritsUnderHero ? (
+        {showProjectMeritsUnderHero ? (
           <div className="-mt-2 flex justify-end">
             <QuotaDisplay
               localContext="project"
@@ -213,6 +215,15 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
               showDaily={hasProjectQuota}
               compact={true}
               className="max-w-full text-right"
+            />
+          </div>
+        ) : showJoinUnderHero ? (
+          <div className="-mt-2 flex justify-end">
+            <CommunityJoinRequestPanel
+              communityId={projectId}
+              layout="inline"
+              className="max-w-full justify-end"
+              entityKind="project"
             />
           </div>
         ) : null}
@@ -271,16 +282,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
 
         {user && !isArchived && (
           <ProjectActions
-            joinBlock={
-              !isMember ? (
-                <CommunityJoinRequestPanel
-                  communityId={projectId}
-                  layout="inline"
-                  className="w-full sm:w-auto"
-                  entityKind="project"
-                />
-              ) : undefined
-            }
             publishBirzha={
               isMember ? (
                 <PublishToBirzhaButton projectId={projectId} isLead={isLead} />
