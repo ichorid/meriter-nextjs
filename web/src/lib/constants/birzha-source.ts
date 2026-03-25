@@ -18,3 +18,14 @@ export function canCommunityPublishToBirzhaAsSource(
   const tag = comm.typeTag ?? '';
   return !INELIGIBLE.has(tag);
 }
+
+/** Matches api CommunityService.isLocalMembershipCommunity — join requests / membership hub. */
+export function isLocalMembershipHubCommunity(
+  comm: { typeTag?: string | null } | null | undefined,
+): boolean {
+  if (!comm) {
+    return false;
+  }
+  const tag = comm.typeTag ?? '';
+  return !INELIGIBLE.has(tag);
+}

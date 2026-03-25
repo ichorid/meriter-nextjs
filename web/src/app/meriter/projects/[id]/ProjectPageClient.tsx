@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useProject, useJoinProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
+import { useProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
 import { ProjectHero } from '@/components/organisms/Project/project-hero';
 import { ProjectParentSettingsCard } from '@/components/organisms/Project/ProjectParentSettingsCard';
 import { ProjectDashboard } from '@/components/organisms/Project/project-dashboard';
@@ -22,6 +22,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { Button } from '@/components/ui/shadcn/button';
+import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 import { cn } from '@/lib/utils';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
@@ -38,7 +39,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const { user } = useAuth();
   const { data, isLoading } = useProject(projectId);
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
-  const joinProject = useJoinProject();
   const leaveProject = useLeaveProject();
 
   const { data: globalBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
@@ -267,14 +267,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <ProjectActions
             joinBlock={
               !isMember ? (
-                <Button
-                  className="w-full sm:w-auto"
-                  size="sm"
-                  onClick={() => joinProject.mutate({ projectId })}
-                  disabled={joinProject.isPending}
-                >
-                  {t('requestToJoin')}
-                </Button>
+                <CommunityJoinRequestPanel communityId={projectId} layout="inline" className="w-full sm:w-auto" />
               ) : undefined
             }
             publishBirzha={

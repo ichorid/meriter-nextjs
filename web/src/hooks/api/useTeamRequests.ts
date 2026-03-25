@@ -10,6 +10,7 @@ export interface TeamJoinRequest {
   updatedAt: string;
   processedAt?: string;
   processedBy?: string;
+  applicantMessage?: string;
 }
 
 /**
@@ -19,10 +20,12 @@ export const useSubmitTeamRequest = () => {
   const utils = trpc.useUtils();
 
   return trpc.teams.submitTeamRequest.useMutation({
-    onSuccess: () => {
-      // Invalidate relevant queries
+    onSuccess: (_data, variables) => {
       utils.teams.getMyTeamRequests.invalidate();
-      utils.teams.getTeamRequestStatus.invalidate();
+      utils.teams.getTeamRequestStatus.invalidate({ communityId: variables.communityId });
+      utils.teams.getTeamRequestsForLead.invalidate({ communityId: variables.communityId });
+      utils.communities.getById.invalidate({ id: variables.communityId });
+      utils.communities.getMembers.invalidate();
     },
   });
 };
@@ -62,7 +65,6 @@ export const useApproveTeamRequest = () => {
 
   return trpc.teams.approveTeamRequest.useMutation({
     onSuccess: () => {
-      // Invalidate relevant queries (getUserCommunities so sidebar updates for users who joined)
       utils.notifications.getAll.invalidate();
       utils.teams.getTeamRequestsForLead.invalidate();
       utils.teams.getMyTeamRequests.invalidate();

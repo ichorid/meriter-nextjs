@@ -91,23 +91,6 @@ export function useCreateProject() {
   });
 }
 
-export function useJoinProject() {
-  const utils = trpc.useUtils();
-  const addToast = useToastStore((state) => state.addToast);
-  const t = useTranslations('projects');
-
-  return trpc.project.join.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      utils.project.getById.invalidate();
-      addToast(t('joinRequestSent'), 'success');
-    },
-    onError: (error) => {
-      addToast(resolveApiErrorToastMessage(error.message), 'error');
-    },
-  });
-}
-
 export function useLeaveProject() {
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);

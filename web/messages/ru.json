@@ -981,7 +981,9 @@
                     "rejected": "Заявка отклонена",
                     "approveFailed": "Не удалось принять заявку",
                     "rejectFailed": "Не удалось отклонить заявку",
-                    "confirmReject": "Вы уверены, что хотите отклонить эту заявку?"
+                    "confirmReject": "Вы уверены, что хотите отклонить эту заявку?",
+                    "openProfile": "Профиль",
+                    "applicantMessageLabel": "Сообщение от заявителя"
                 },
                 "invite": {
                     "button": "Пригласить в сообщество",
@@ -1040,7 +1042,22 @@
                 "rejected": "Заявка отклонена",
                 "approveFailed": "Не удалось принять заявку",
                 "rejectFailed": "Не удалось отклонить заявку",
-                "confirmReject": "Вы уверены, что хотите отклонить эту заявку?"
+                "confirmReject": "Вы уверены, что хотите отклонить эту заявку?",
+                "openProfile": "Профиль",
+                "applicantMessageLabel": "Сообщение от заявителя"
+            },
+            "joinCommunity": {
+                "heroTitle": "Вы ещё не состоите в этом сообществе.",
+                "heroSubtitle": "Отправьте заявку — администратор рассмотрит её.",
+                "ctaOpen": "Вступить в сообщество",
+                "dialogTitle": "Заявка на вступление",
+                "dialogDescription": "Краткий комментарий о себе (по желанию). Администратор увидит его вместе с заявкой.",
+                "messageLabel": "Сообщение администраторам",
+                "messagePlaceholder": "Кто вы и зачем хотите вступить…",
+                "submit": "Отправить заявку",
+                "cancel": "Отмена",
+                "pending": "Заявка на рассмотрении",
+                "submitting": "Отправка…"
             },
             "unconfigured": {
                 "banner": {
@@ -2384,6 +2401,7 @@
         "teamInvitationInvitedYouSuffix": " пригласил(а) вас",
         "teamInvitationCommentLabel": "Комментарий:",
         "teamJoinRequestWantsToJoinSuffix": " хочет вступить в",
+        "teamJoinRequestApplicantMessageLabel": "Комментарий:",
         "teamInvitationAccepted": "Приглашение в команду принято",
         "teamInvitationAcceptedMessage": "{name} принял ваше приглашение в «{teamName}»",
         "teamInvitationRejected": "Приглашение в команду отклонено",

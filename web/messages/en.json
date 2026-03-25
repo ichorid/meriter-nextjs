@@ -972,7 +972,7 @@
                 "confirmRemove": "Remove {name} from community?",
                 "addMerits": "Add merits",
                 "teamRequests": {
-                    "title": "Join Requests",
+                    "title": "Join requests",
                     "approve": "Approve",
                     "reject": "Reject",
                     "approving": "Approving...",
@@ -981,7 +981,9 @@
                     "rejected": "Request rejected",
                     "approveFailed": "Failed to approve request",
                     "rejectFailed": "Failed to reject request",
-                    "confirmReject": "Are you sure you want to reject this request?"
+                    "confirmReject": "Are you sure you want to reject this request?",
+                    "openProfile": "Open profile",
+                    "applicantMessageLabel": "Applicant message"
                 },
                 "invite": {
                     "button": "Invite to community",
@@ -1031,7 +1033,7 @@
                 }
             },
             "teamRequests": {
-                "title": "Join Requests",
+                "title": "Join requests",
                 "approve": "Approve",
                 "reject": "Reject",
                 "approving": "Approving...",
@@ -1040,7 +1042,22 @@
                 "rejected": "Request rejected",
                 "approveFailed": "Failed to approve request",
                 "rejectFailed": "Failed to reject request",
-                "confirmReject": "Are you sure you want to reject this request?"
+                "confirmReject": "Are you sure you want to reject this request?",
+                "openProfile": "Open profile",
+                "applicantMessageLabel": "Applicant message"
+            },
+            "joinCommunity": {
+                "heroTitle": "You are not a member of this community yet.",
+                "heroSubtitle": "Send a request — a community administrator will review it.",
+                "ctaOpen": "Join community",
+                "dialogTitle": "Request to join",
+                "dialogDescription": "Optional short note about yourself. Administrators will see it with your request.",
+                "messageLabel": "Message to administrators",
+                "messagePlaceholder": "Who you are and why you want to join…",
+                "submit": "Send request",
+                "cancel": "Cancel",
+                "pending": "Request pending",
+                "submitting": "Sending…"
             },
             "unconfigured": {
                 "banner": {
@@ -2384,6 +2401,7 @@
         "teamInvitationInvitedYouSuffix": " invited you",
         "teamInvitationCommentLabel": "Message:",
         "teamJoinRequestWantsToJoinSuffix": " wants to join",
+        "teamJoinRequestApplicantMessageLabel": "Message:",
         "teamInvitationAccepted": "Team invitation accepted",
         "teamInvitationAcceptedMessage": "{name} accepted your invitation to join \"{teamName}\"",
         "teamInvitationRejected": "Team invitation rejected",

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -44,6 +45,8 @@ import {
     CommunityPromoteLeadDialog,
     CommunitySuperadminDemoteToParticipantDialog,
 } from '@/components/organisms/Community/CommunityLeadActionDialogs';
+import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
+import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -64,6 +67,7 @@ export function CommunityMembersPageClient({
     const tProjects = useTranslations('projects');
     const tSearch = useTranslations('search');
     const { user } = useAuth();
+    const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
     const [searchQuery, setSearchQuery] = useState('');
@@ -91,10 +95,15 @@ export function CommunityMembersPageClient({
     // Determine if we should show role chip and hide team info
     const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
     const isTeam = community?.typeTag === 'team';
-    
-    // Get team join requests (only for team communities and admins)
+    const allowsJoinRequests = community ? isLocalMembershipHubCommunity(community) : false;
+    const isCurrentUserMember = userRoles.some(
+        (r) =>
+            r.communityId === communityId &&
+            (r.role === 'lead' || r.role === 'participant'),
+    );
+
     const { data: requestsData } = useTeamRequestsForLead(
-        isTeam && isAdmin ? communityId : ''
+        allowsJoinRequests && isAdmin ? communityId : '',
     );
     const { mutate: approveRequest, isPending: isApproving } = useApproveTeamRequest();
     const { mutate: rejectRequest, isPending: isRejecting } = useRejectTeamRequest();
@@ -353,7 +362,28 @@ export function CommunityMembersPageClient({
                     </div>
                 ) : (
                     <>
-                        <div className="flex flex-col sm:flex-row gap-3 mb-4 sm:items-center">
+                        {allowsJoinRequests && isAdmin && requests.length > 0 ? (
+                            <section className="mb-4 space-y-2">
+                                <h3 className="px-1 text-sm font-medium text-base-content/60">
+                                    {t('teamRequests.title')}
+                                </h3>
+                                <div className="space-y-2">
+                                    {requests.map((request) => (
+                                        <TeamRequestCard
+                                            key={request.id}
+                                            request={request as TeamJoinRequest}
+                                            onApprove={handleApproveRequest}
+                                            onReject={handleRejectRequest}
+                                            isApproving={isApproving}
+                                            isRejecting={isRejecting}
+                                        />
+                                    ))}
+                                </div>
+                                <Separator className="my-4" />
+                            </section>
+                        ) : null}
+
+                        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
                             {canCreateInviteLink && (
                                 <Button
                                     type="button"
@@ -370,7 +400,7 @@ export function CommunityMembersPageClient({
                                     {isProjectMembersUi ? tProjects('inviteToProject') : t('members.invite.button')}
                                 </Button>
                             )}
-                            <div className={canCreateInviteLink ? 'flex-1 min-w-0' : 'w-full'}>
+                            <div className={canCreateInviteLink ? 'min-w-0 flex-1' : 'w-full'}>
                                 <SearchInput
                                     placeholder={tSearch('results.searchMembersPlaceholder')}
                                     value={searchQuery}
@@ -380,29 +410,13 @@ export function CommunityMembersPageClient({
                                 />
                             </div>
                         </div>
-                        
-                        {/* Team Join Requests Section (only for team communities and admins) */}
-                        {isTeam && isAdmin && requests.length > 0 && (
+
+                        {user && allowsJoinRequests && !isCurrentUserMember ? (
                             <div className="mb-4">
-                                <h3 className="text-sm font-medium text-base-content/60 mb-2">
-                                    {t('teamRequests.title')}
-                                </h3>
-                                <div className="space-y-2">
-                                    {requests.map((request) => (
-                                        <TeamRequestCard
-                                            key={request.id}
-                                            request={request as TeamJoinRequest}
-                                            onApprove={handleApproveRequest}
-                                            onReject={handleRejectRequest}
-                                            isApproving={isApproving}
-                                            isRejecting={isRejecting}
-                                        />
-                                    ))}
-                                </div>
-                                {members.length > 0 && <Separator className="my-4" />}
+                                <CommunityJoinRequestPanel communityId={communityId} layout="block" />
                             </div>
-                        )}
-                        
+                        ) : null}
+
                         {members.length > 0 ? (
                             <div className="space-y-6">
                                 {adminMembers.length > 0 && (

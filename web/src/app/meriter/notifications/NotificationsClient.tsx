@@ -823,6 +823,8 @@ export default function NotificationsPage() {
         (typeof m.communityName === 'string' && m.communityName) ||
         notification.community?.name ||
         '';
+      const applicantNote =
+        typeof m.applicantMessage === 'string' ? m.applicantMessage.trim() : '';
 
       const profileHref = requesterId ? `/meriter/users/${requesterId}` : undefined;
       const placeHref =
@@ -859,6 +861,12 @@ export default function NotificationsPage() {
               ) : (
                 quotePlaceLabel(teamName, locale)
               )}
+            </div>
+          ) : null}
+          {applicantNote ? (
+            <div className="whitespace-pre-wrap break-words">
+              <span className="text-brand-text-secondary">{t('teamJoinRequestApplicantMessageLabel')}</span>{' '}
+              {applicantNote}
             </div>
           ) : null}
           <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>

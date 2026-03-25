@@ -67,9 +67,13 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/shadcn/dialo
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
-import { canCommunityPublishToBirzhaAsSource } from '@/lib/constants/birzha-source';
+import {
+    canCommunityPublishToBirzhaAsSource,
+    isLocalMembershipHubCommunity,
+} from '@/lib/constants/birzha-source';
 import { CommunityDashboard } from '@/components/organisms/Community/community-dashboard';
 import { BirzhaSourcePostsEntryRow } from '@/components/organisms/Birzha/BirzhaSourcePostsEntryRow';
+import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -625,6 +629,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             ? 'superadmin'
             : (userRoles.find((r) => r.communityId === chatId)?.role ?? null);
 
+    const isCommunityMember = userRoles.some(
+        (r) =>
+            r.communityId === chatId &&
+            (r.role === 'lead' || r.role === 'participant'),
+    );
+
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits =
         comms?.meritSettings?.canEarn === true && balance !== undefined;
@@ -727,7 +737,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             id: comms.id || chatId,
                         }}
                         avatarRowEndSlot={
-                            user && showQuotaInHeader ? (
+                            user && isCommunityMember && showQuotaInHeader ? (
                                 <QuotaDisplay
                                     balance={canEarnPermanentMerits ? balance : undefined}
                                     quotaRemaining={hasQuota ? quotaRemaining : undefined}
@@ -744,6 +754,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                             ? () => setShowTappalkaModal(true)
                                             : undefined
                                     }
+                                />
+                            ) : user && !isCommunityMember && isLocalMembershipHubCommunity(comms) ? (
+                                <CommunityJoinRequestPanel
+                                    communityId={chatId}
+                                    layout="hero"
+                                    className="max-w-full sm:ml-auto"
                                 />
                             ) : undefined
                         }
