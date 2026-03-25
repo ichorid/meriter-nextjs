@@ -13,12 +13,14 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 interface CreatePollPageClientProps {
   communityId: string;
 }
 
 export function CreatePollPageClient({ communityId }: CreatePollPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('polls');
   const tCreate = useTranslations('publications.create');

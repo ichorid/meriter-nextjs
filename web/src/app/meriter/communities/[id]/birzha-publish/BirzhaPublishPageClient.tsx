@@ -10,12 +10,14 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { PublicationCreateForm } from '@/features/publications/components/PublicationCreateForm';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { usePublication } from '@/hooks/api/usePublications';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 interface BirzhaPublishPageClientProps {
   sourceCommunityId: string;
 }
 
 export function BirzhaPublishPageClient({ sourceCommunityId }: BirzhaPublishPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('birzhaSource');
   const { data: birzha, isLoading } = trpc.communities.getBirzhaCommunity.useQuery(undefined, {

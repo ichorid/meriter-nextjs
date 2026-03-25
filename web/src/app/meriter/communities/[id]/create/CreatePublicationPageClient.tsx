@@ -19,12 +19,14 @@ import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
 import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
 import { useActingAsStore } from '@/stores/acting-as.store';
 import { useCommunityWalletForSource } from '@/hooks/api/useBirzhaSource';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 interface CreatePublicationPageClientProps {
   communityId: string;
 }
 
 export function CreatePublicationPageClient({ communityId }: CreatePublicationPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('publications.create');

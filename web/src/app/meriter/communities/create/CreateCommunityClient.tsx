@@ -10,8 +10,10 @@ import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 export default function CreateCommunityPage() {
+    useScrollMeriterMainToTop();
     const router = useRouter();
     const t = useTranslations('communities.create');
     const tHome = useTranslations('home');

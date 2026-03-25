@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePoll } from '@/hooks/api/usePolls';
 import { Loader2 } from 'lucide-react';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 interface EditPollPageClientProps {
   communityId: string;
@@ -17,6 +18,7 @@ interface EditPollPageClientProps {
 }
 
 export function EditPollPageClient({ communityId, pollId }: EditPollPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('polls');
   const { isAuthenticated, isLoading: userLoading } = useAuth();

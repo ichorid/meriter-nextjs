@@ -5,8 +5,10 @@ import { useTranslations } from 'next-intl';
 import { CreateProjectForm } from '@/components/organisms/Project/CreateProjectForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 export default function CreateProjectPage() {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('projects');
 

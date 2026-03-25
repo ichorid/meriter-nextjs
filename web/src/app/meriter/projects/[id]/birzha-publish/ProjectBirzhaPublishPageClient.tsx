@@ -8,12 +8,14 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { PublicationCreateForm } from '@/features/publications/components/PublicationCreateForm';
 import { useProject } from '@/hooks/api/useProjects';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 interface ProjectBirzhaPublishPageClientProps {
   projectId: string;
 }
 
 export function ProjectBirzhaPublishPageClient({ projectId }: ProjectBirzhaPublishPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('birzhaSource');
   const { data: birzha, isLoading } = trpc.communities.getBirzhaCommunity.useQuery(undefined, {

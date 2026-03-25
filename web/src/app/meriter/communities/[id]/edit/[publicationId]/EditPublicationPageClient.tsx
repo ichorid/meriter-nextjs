@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePublication } from '@/hooks/api/usePublications';
 import { Loader2 } from 'lucide-react';
+import { useScrollMeriterMainToTop } from '@/hooks/useScrollMeriterMainToTop';
 
 function normalizeEntityId(id: string | undefined | null): string | null {
   const trimmed = (id ?? '').trim();
@@ -23,6 +24,7 @@ interface EditPublicationPageClientProps {
 }
 
 export function EditPublicationPageClient({ communityId, publicationId: routePublicationId }: EditPublicationPageClientProps) {
+  useScrollMeriterMainToTop();
   const router = useRouter();
   const t = useTranslations('publications.create');
   const { isAuthenticated, isLoading: userLoading } = useAuth();
