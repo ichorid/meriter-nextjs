@@ -345,6 +345,9 @@ export const walletsRouter = router({
             actualUserId,
             community.id,
             community.settings?.currencyNames || DEFAULT_CURRENCY,
+            {
+              startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
+            },
           );
         }
 

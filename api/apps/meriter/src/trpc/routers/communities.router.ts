@@ -402,6 +402,9 @@ export const communitiesRouter = router({
         ctx.user.id,
         community.id,
         currency,
+        {
+          startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
+        },
       );
 
       const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
@@ -767,6 +770,9 @@ export const communitiesRouter = router({
       ctx.user.id,
       testCommunity.id,
       currency,
+      {
+        startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(testCommunity),
+      },
     );
 
     return {
@@ -824,6 +830,9 @@ export const communitiesRouter = router({
           ctx.user.id,
           community.id,
           currency,
+          {
+            startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
+          },
         );
 
         addedCount++;

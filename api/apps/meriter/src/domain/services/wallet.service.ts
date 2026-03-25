@@ -45,20 +45,50 @@ export class WalletService {
   async createOrGetWallet(
     userId: string,
     communityId: string,
-    currency: { singular: string; plural: string; genitive: string }
+    currency: { singular: string; plural: string; genitive: string },
+    options?: { startingMeritsIfNewWallet?: number },
   ): Promise<Wallet> {
     let wallet = await this.getWallet(userId, communityId);
-    
+    const wasNew = !wallet;
+
     if (!wallet) {
       wallet = Wallet.create(
         UserId.fromString(userId),
         CommunityId.fromString(communityId),
-        currency
+        currency,
       );
-      
+
       await this.walletModel.create(wallet.toSnapshot());
     }
-    
+
+    const start =
+      wasNew &&
+      communityId !== GLOBAL_COMMUNITY_ID &&
+      typeof options?.startingMeritsIfNewWallet === 'number'
+        ? options.startingMeritsIfNewWallet
+        : 0;
+
+    if (start > 0) {
+      const walletId = wallet.getId.getValue();
+      const already = await this.transactionModel
+        .findOne({ walletId, referenceType: 'community_starting_merits' })
+        .lean()
+        .exec();
+      if (!already) {
+        return this.addTransaction(
+          userId,
+          communityId,
+          'credit',
+          start,
+          'personal',
+          'community_starting_merits',
+          communityId,
+          currency,
+          'Community starting merits',
+        );
+      }
+    }
+
     return wallet;
   }
 

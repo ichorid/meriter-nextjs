@@ -327,6 +327,23 @@ export class CommunityService {
     };
   }
 
+  /**
+   * Permanent merits to credit when a user's wallet in this community is first created.
+   * Global hub uses welcome merits separately; team-projects hub defaults to 0.
+   */
+  startingMeritsOnJoin(community: Community): number {
+    if (!community?.id || community.id === GLOBAL_COMMUNITY_ID) {
+      return 0;
+    }
+    const effective = this.getEffectiveMeritSettings(community);
+    const raw = effective.startingMerits ?? effective.dailyQuota ?? 0;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      return 0;
+    }
+    return Math.floor(n);
+  }
+
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
     const doc = await this.communityModel.findOne({ typeTag }).lean();
     return doc ? (doc as unknown as Community) : null;
@@ -1112,7 +1129,9 @@ export class CommunityService {
       plural: 'merits',
       genitive: 'merits',
     };
-    await this.walletService.createOrGetWallet(userId, community.id, currency);
+    await this.walletService.createOrGetWallet(userId, community.id, currency, {
+      startingMeritsIfNewWallet: this.startingMeritsOnJoin(community as Community),
+    });
 
     // 4. Add user to community members list
     await this.addMember(community.id, userId);

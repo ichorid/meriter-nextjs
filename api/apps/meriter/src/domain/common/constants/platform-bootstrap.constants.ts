@@ -6,15 +6,16 @@ import { DECREE_809_TAGS } from '@meriter/shared-types';
  */
 export const PRIORITY_HUB_BOOTSTRAP = {
   'future-vision': {
-    name: 'Образ Будущего',
-    description: 'Группа для публикации и обсуждения образов будущего.',
+    name: 'Образы будущего',
+    description:
+      'На этой странице вы видите Образы Будущего, к которым стремятся сообщества нашей платформы. По сути, это список всех сообществ, представляющий их прежде всего через их ценности.',
     settings: {
       currencyNames: {
         singular: 'merit',
         plural: 'merits',
         genitive: 'merits',
       },
-      dailyEmission: 10,
+      dailyEmission: 0,
       allowWithdraw: false,
     },
   },

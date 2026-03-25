@@ -143,9 +143,16 @@ export class TappalkaService {
       ],
     };
 
-    // Filter by categories if specified
+    // Filter by value rubricator tags and/or legacy publication category IDs
     if (categories && categories.length > 0) {
-      query.categories = { $in: categories };
+      query.$and = [
+        {
+          $or: [
+            { valueTags: { $in: categories } },
+            { categories: { $in: categories } },
+          ],
+        },
+      ];
     }
 
     // Execute query

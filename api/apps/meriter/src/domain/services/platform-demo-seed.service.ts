@@ -13,6 +13,7 @@ import {
   PublicationSchemaClass,
   PublicationDocument,
 } from '../models/publication/publication.schema';
+import type { Community } from '../models/community/community.schema';
 import { PublicationId } from '../value-objects';
 import { CommunityWalletService } from './community-wallet.service';
 import { CommunityService } from './community.service';
@@ -383,8 +384,11 @@ export class PlatformDemoSeedService {
       }
 
       const teamCurrency = team.settings?.currencyNames ?? DEFAULT_CURRENCY;
+      const teamStarting = this.communityService.startingMeritsOnJoin(team as Community);
       for (const mid of allTeamMembers) {
-        await this.walletService.createOrGetWallet(mid, team.id, teamCurrency);
+        await this.walletService.createOrGetWallet(mid, team.id, teamCurrency, {
+          startingMeritsIfNewWallet: teamStarting,
+        });
       }
 
       await this.communityService.updateCommunity(team.id, {
@@ -458,7 +462,11 @@ export class PlatformDemoSeedService {
           await this.communityService.addMember(project.id, mid);
           await this.userService.addCommunityMembership(mid, project.id);
           await this.userCommunityRoleService.setRole(mid, project.id, 'participant', true);
-          await this.walletService.createOrGetWallet(mid, project.id, projCur);
+          await this.walletService.createOrGetWallet(mid, project.id, projCur, {
+            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
+              project as Community,
+            ),
+          });
           await this.walletService.addTransaction(
             mid,
             project.id,

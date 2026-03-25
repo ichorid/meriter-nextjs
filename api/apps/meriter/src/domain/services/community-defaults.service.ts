@@ -287,11 +287,11 @@ export class CommunityDefaultsService {
    */
   getDefaultMeritSettings(typeTag?: string): CommunityMeritSettings {
     const baseDefaults: CommunityMeritSettings = {
-      dailyQuota: 100,
+      dailyQuota: 10,
       quotaRecipients: ['superadmin', 'lead', 'participant'],
       canEarn: true,
       canSpend: true,
-      startingMerits: 100,
+      startingMerits: 10,
       quotaEnabled: true,
     };
 
@@ -306,6 +306,7 @@ export class CommunityDefaultsService {
         return {
           ...baseDefaults,
           quotaRecipients: ['superadmin', 'lead', 'participant'],
+          quotaEnabled: false,
         };
 
       case 'support':
@@ -324,6 +325,7 @@ export class CommunityDefaultsService {
         return {
           ...baseDefaults,
           dailyQuota: 10,
+          startingMerits: 0,
           quotaRecipients: ['superadmin', 'lead', 'participant'],
           canEarn: false,
           canSpend: false,
@@ -361,9 +363,8 @@ export class CommunityDefaultsService {
       return { ...baseSettings, allowNegativeVoting: false };
     }
 
-    // Future Vision (OB): support-only by default
     if (typeTag === 'future-vision') {
-      return { ...baseSettings, allowNegativeVoting: false };
+      return { ...baseSettings, allowNegativeVoting: true };
     }
 
     // Team Projects: no merits earned or spent (just commenting/discussion)

@@ -106,6 +106,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -323,6 +324,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -400,6 +402,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: yesterday,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -519,6 +522,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -840,6 +844,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -893,8 +898,8 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
 
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
-      // meritSettings has schema default dailyQuota: 100; getEffectiveMeritSettings uses it when present
-      expect(result.members[0].quota?.dailyQuota).toBe(100);
+      // No meritSettings in DB: effective dailyQuota comes from CommunityDefaultsService (10)
+      expect(result.members[0].quota?.dailyQuota).toBe(10);
     });
   });
 });

@@ -108,7 +108,7 @@ export interface CommunityVotingSettings {
 export interface CommunityTappalkaSettings {
   /** Whether tappalka is enabled for this community */
   enabled: boolean;
-  /** Category IDs to include in tappalka. Empty array = all categories */
+  /** Value rubricator tag strings and/or legacy publication category IDs; post matches if any overlap with valueTags or categories. Empty = no filter */
   categories: string[];
   /** Merits awarded to winning post (emission). Default: 1 */
   winReward: number;
@@ -307,11 +307,11 @@ export class CommunitySchemaClass implements Community {
       quotaEnabled: Boolean,
     },
     default: {
-      dailyQuota: 100,
+      dailyQuota: 10,
       quotaRecipients: ['superadmin', 'lead', 'participant'],
       canEarn: true,
       canSpend: true,
-      startingMerits: 100,
+      startingMerits: 10,
       quotaEnabled: true,
     },
   })

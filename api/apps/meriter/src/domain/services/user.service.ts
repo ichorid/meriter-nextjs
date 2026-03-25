@@ -335,6 +335,11 @@ export class UserService implements OnModuleInit {
           userId,
           futureVision.id,
           currency,
+          {
+            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
+              futureVision as Community,
+            ),
+          },
         );
         this.logger.log(`User ${userId} successfully added to Future Vision`);
       } catch (error) {
@@ -382,6 +387,11 @@ export class UserService implements OnModuleInit {
           userId,
           marathonOfGood.id,
           currency,
+          {
+            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
+              marathonOfGood as Community,
+            ),
+          },
         );
         this.logger.log(
           `User ${userId} successfully added to Marathon of Good`,
@@ -432,6 +442,11 @@ export class UserService implements OnModuleInit {
           userId,
           teamProjects.id,
           currency,
+          {
+            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
+              teamProjects as Community,
+            ),
+          },
         );
         this.logger.log(
           `User ${userId} successfully added to Team Projects`,
@@ -481,6 +496,11 @@ export class UserService implements OnModuleInit {
           userId,
           support.id,
           currency,
+          {
+            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
+              support as Community,
+            ),
+          },
         );
         this.logger.log(`User ${userId} successfully added to Support`);
       } catch (error) {
@@ -584,6 +604,9 @@ export class UserService implements OnModuleInit {
       targetUserId,
       communityId,
       currency,
+      {
+        startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
+      },
     );
 
     // 5. Add to lists
@@ -654,6 +677,9 @@ export class UserService implements OnModuleInit {
       targetUserId,
       communityId,
       currency,
+      {
+        startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
+      },
     );
 
     // 5. Add to lists (if not already added)

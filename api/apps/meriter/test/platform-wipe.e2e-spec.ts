@@ -162,7 +162,7 @@ describe('PlatformWipeService (e2e)', () => {
     expect(pubs).toBe(0);
 
     const fvAfter = await communityModel.findOne({ typeTag: 'future-vision' }).lean();
-    expect(fvAfter?.name).toBe('Образ Будущего');
+    expect(fvAfter?.name).toBe('Образы будущего');
     expect(fvAfter?.votingSettings).toBeUndefined();
   });
 });
