@@ -59,13 +59,27 @@ export class TicketService {
     const rawTitle = ticket && typeof (ticket as { title?: string }).title === 'string'
       ? (ticket as { title?: string }).title
       : '';
-    return {
+
+    const rawLead = extra.leadUserId;
+    const leadUserId =
+      typeof rawLead === 'string' && rawLead.trim() ? rawLead.trim() : undefined;
+    const { leadUserId: _omitLead, ...restExtra } = extra;
+
+    const out: Record<string, unknown> = {
       ticketId,
       projectId,
       ticketTitle: rawTitle.trim(),
       projectName: project?.name ?? '',
-      ...extra,
+      ...restExtra,
     };
+
+    if (leadUserId) {
+      const names = await this.userService.getDisplayNamesByUserIds([leadUserId]);
+      out.assignedByUserId = leadUserId;
+      out.assignedByDisplayName = names.get(leadUserId) ?? leadUserId;
+    }
+
+    return out;
   }
 
   constructor(
