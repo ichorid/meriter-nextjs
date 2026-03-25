@@ -11,9 +11,20 @@ interface CommunityWalletCardProps {
   communityId: string;
   title?: string;
   footer?: ReactNode;
+  /** Lead/superadmin: show payout under top-up when wallet has balance */
+  canPayout?: boolean;
+  readOnly?: boolean;
+  onPayoutClick?: () => void;
 }
 
-export function CommunityWalletCard({ communityId, title, footer }: CommunityWalletCardProps) {
+export function CommunityWalletCard({
+  communityId,
+  title,
+  footer,
+  canPayout = false,
+  readOnly = false,
+  onPayoutClick,
+}: CommunityWalletCardProps) {
   const tProjects = useTranslations('projects');
   const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
@@ -22,6 +33,8 @@ export function CommunityWalletCard({ communityId, title, footer }: CommunityWal
 
   const balance = Math.floor(wallet?.balance ?? 0);
   const heading = title ?? tCommunities('cardWallet');
+  const showPayout =
+    Boolean(onPayoutClick) && canPayout && !readOnly && balance >= 1;
 
   return (
     <>
@@ -38,14 +51,27 @@ export function CommunityWalletCard({ communityId, title, footer }: CommunityWal
           </p>
         )}
         {footer}
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
-          onClick={() => setTopUpOpen(true)}
-        >
-          {tProjects('topUp')}
-        </Button>
+        <div className="mt-auto flex w-full shrink-0 flex-col gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 min-h-9 w-full rounded-xl px-3 sm:w-auto"
+            onClick={() => setTopUpOpen(true)}
+          >
+            {tProjects('topUp')}
+          </Button>
+          {showPayout && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-9 min-h-9 w-full rounded-xl px-3 sm:w-auto"
+              onClick={() => onPayoutClick?.()}
+            >
+              {tProjects('payoutMerits')}
+            </Button>
+          )}
+        </div>
       </div>
       <TopUpCommunityWalletDialog
         communityId={communityId}

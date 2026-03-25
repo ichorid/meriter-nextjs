@@ -757,8 +757,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     <div className="min-w-0">
                         <CommunityDashboard
                             communityId={chatId}
-                            founderSharePercent={comms.founderSharePercent ?? 0}
-                            investorSharePercent={comms.investorSharePercent ?? 0}
                             totalMembers={comms.memberCount ?? 0}
                             canPayout={
                                 userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin'
