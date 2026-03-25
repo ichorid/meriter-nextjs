@@ -741,10 +741,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Birzha-source communities: wallet/team/shares dashboard + projects + Birzha row (desktop: one row) */}
+            {/* Birzha-source: row 1 = wallet + members + shares; row 2 = projects + Birzha + publish */}
             {showBirzhaSourceDashboard && comms ? (
-                <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch">
-                    <div className="min-w-0 lg:col-span-5">
+                <div className="mb-6 flex flex-col gap-4">
+                    <div className="min-w-0">
                         <CommunityDashboard
                             communityId={chatId}
                             founderSharePercent={comms.founderSharePercent ?? 0}
@@ -756,52 +756,56 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             readOnly={false}
                         />
                     </div>
-                    <Link
-                        href={routes.communityProjects(chatId)}
-                        className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60 lg:col-span-2"
-                    >
-                        <div className="flex min-w-0 items-center gap-3">
-                            <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
-                            <div className="flex min-w-0 items-baseline gap-2">
-                                <span className="truncate font-medium text-base-content">
-                                    {tCommunities('communityProjects')}
-                                </span>
-                                <span className="shrink-0 tabular-nums text-sm text-base-content/60">
-                                    {communityProjectsCountPending
-                                        ? '…'
-                                        : (communityProjectsSummary?.total ?? 0)}
-                                </span>
+                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
+                        <Link
+                            href={routes.communityProjects(chatId)}
+                            className="flex min-h-[52px] min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                        >
+                            <div className="flex min-w-0 items-center gap-3">
+                                <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                                <div className="flex min-w-0 items-baseline gap-2">
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityProjects')}
+                                    </span>
+                                    <span className="shrink-0 tabular-nums text-sm text-base-content/60">
+                                        {communityProjectsCountPending
+                                            ? '…'
+                                            : (communityProjectsSummary?.total ?? 0)}
+                                    </span>
+                                </div>
                             </div>
+                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                {tCommunities('all')}
+                                <ChevronRight size={14} />
+                            </span>
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                            <BirzhaSourcePostsEntryRow
+                                variant="community"
+                                sourceEntityType="community"
+                                sourceEntityId={chatId}
+                                listHref={routes.communityBirzhaPosts(chatId)}
+                                className="mb-0"
+                                publishSlot={
+                                    userRoleInCommunity === 'lead' ||
+                                    user?.globalRole === 'superadmin' ? (
+                                        <Button
+                                            type="button"
+                                            className="h-auto min-h-[52px] w-full rounded-xl bg-green-600 px-4 text-white hover:bg-green-600/90 sm:w-auto sm:self-stretch"
+                                            aria-label={`${tBirzhaSource('publishCta')}: ${comms.name ?? ''}`}
+                                            onClick={() =>
+                                                router.push(
+                                                    `/meriter/communities/${chatId}/birzha-publish`,
+                                                )
+                                            }
+                                        >
+                                            <TrendingUp className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                                            {tBirzhaSource('publishCta')}
+                                        </Button>
+                                    ) : null
+                                }
+                            />
                         </div>
-                        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                            {tCommunities('all')}
-                            <ChevronRight size={14} />
-                        </span>
-                    </Link>
-                    <div className="min-w-0 lg:col-span-5">
-                        <BirzhaSourcePostsEntryRow
-                            variant="community"
-                            sourceEntityType="community"
-                            sourceEntityId={chatId}
-                            listHref={routes.communityBirzhaPosts(chatId)}
-                            className="mb-0"
-                            publishSlot={
-                                userRoleInCommunity === 'lead' ||
-                                user?.globalRole === 'superadmin' ? (
-                                    <Button
-                                        type="button"
-                                        className="h-auto min-h-[52px] w-full rounded-xl bg-green-600 px-4 text-white hover:bg-green-600/90 sm:w-auto sm:self-stretch"
-                                        aria-label={`${tBirzhaSource('publishCta')}: ${comms.name ?? ''}`}
-                                        onClick={() =>
-                                            router.push(`/meriter/communities/${chatId}/birzha-publish`)
-                                        }
-                                    >
-                                        <TrendingUp className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-                                        {tBirzhaSource('publishCta')}
-                                    </Button>
-                                ) : null
-                            }
-                        />
                     </div>
                 </div>
             ) : comms ? (

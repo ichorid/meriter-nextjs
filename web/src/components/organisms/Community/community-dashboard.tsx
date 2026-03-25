@@ -81,7 +81,7 @@ export function CommunityDashboard({
           <div className={`${cardShell} gap-3`}>
             <div className="flex items-center gap-2 text-sm font-medium text-base-content">
               <Users className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-              {tCommunities('cardTeam')}
+              {tCommunities('cardMembers')}
             </div>
             <p className="text-3xl font-semibold tabular-nums text-base-content">{totalMembers}</p>
             {totalMembers === 0 && (
