@@ -26,6 +26,8 @@ export const useSubmitTeamRequest = () => {
       utils.teams.getTeamRequestsForLead.invalidate({ communityId: variables.communityId });
       utils.communities.getById.invalidate({ id: variables.communityId });
       utils.communities.getMembers.invalidate();
+      utils.project.getById.invalidate({ id: variables.communityId });
+      utils.project.list.invalidate();
     },
   });
 };
