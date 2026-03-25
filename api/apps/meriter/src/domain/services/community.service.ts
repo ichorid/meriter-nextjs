@@ -3,7 +3,6 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
-  ForbiddenException,
   forwardRef,
   Inject,
 } from '@nestjs/common';
@@ -1694,7 +1693,7 @@ export class CommunityService {
     userId: string,
     communityId: string,
     amount: number,
-  ): Promise<{ balance: number }> {
+  ): Promise<{ balance: number; thankNonMember: boolean }> {
     if (amount <= 0 || !Number.isInteger(amount)) {
       throw new BadRequestException('Amount must be a positive integer');
     }
@@ -1710,10 +1709,11 @@ export class CommunityService {
         'This community cannot hold a Birzha source wallet',
       );
     }
-    const role = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (!role) {
-      throw new ForbiddenException('Only community members can top up the wallet');
-    }
+    const memberRole = await this.userCommunityRoleService.getRole(
+      userId,
+      communityId,
+    );
+    const thankNonMember = !memberRole;
     await this.walletService.addTransaction(
       userId,
       GLOBAL_COMMUNITY_ID,
@@ -1726,7 +1726,7 @@ export class CommunityService {
       'Community wallet top-up',
     );
     const wallet = await this.communityWalletService.deposit(communityId, amount, 'topup');
-    return { balance: wallet.balance };
+    return { balance: wallet.balance, thankNonMember };
   }
 
   async appendProjectInvestment(

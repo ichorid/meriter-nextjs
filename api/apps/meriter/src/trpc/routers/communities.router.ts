@@ -10,6 +10,7 @@ import {
   verifyCommunityInviteToken,
   type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
+import { isEligibleNonProjectBirzhaSourceCommunity } from '../../domain/common/constants/birzha-source-entity.constants';
 
 export const communitiesRouter = router({
   /**
@@ -1200,10 +1201,16 @@ export const communitiesRouter = router({
         input.communityId,
       );
       if (!role) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Only community members can view the wallet',
-        });
+        const community = await ctx.communityService.getCommunity(input.communityId);
+        if (
+          !community ||
+          !isEligibleNonProjectBirzhaSourceCommunity(community)
+        ) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only community members can view the wallet',
+          });
+        }
       }
       const wallet = await ctx.communityWalletService.getWallet(input.communityId);
       return (
