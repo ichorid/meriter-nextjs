@@ -95,11 +95,11 @@ export class Publication implements EditableEntity {
     private readonly lastEarnedAt?: Date | null,
     private readonly ttlWarningNotified?: boolean,
     private readonly inactivityWarningNotified?: boolean,
-    private readonly sourceEntityId?: string,
-    private readonly sourceEntityType?: 'project' | 'community',
-    private readonly authorKind: 'user' | 'community',
+    private readonly authorKind: 'user' | 'community' = 'user',
     private readonly authoredCommunityId?: string,
     private readonly publishedByUserId?: string,
+    private readonly sourceEntityId?: string,
+    private readonly sourceEntityType?: 'project' | 'community',
   ) {}
 
   static create(
@@ -182,11 +182,11 @@ export class Publication implements EditableEntity {
       undefined, // lastEarnedAt
       false, // ttlWarningNotified
       false, // inactivityWarningNotified
-      options.sourceEntityId,
-      options.sourceEntityType,
       options.authorKind ?? 'user',
       options.authoredCommunityId,
       options.publishedByUserId,
+      options.sourceEntityId,
+      options.sourceEntityType,
     );
   }
 
@@ -237,11 +237,11 @@ export class Publication implements EditableEntity {
       snapshot.lastEarnedAt != null ? (snapshot.lastEarnedAt instanceof Date ? snapshot.lastEarnedAt : new Date(snapshot.lastEarnedAt)) : null,
       snapshot.ttlWarningNotified ?? false,
       snapshot.inactivityWarningNotified ?? false,
-      snapshot.sourceEntityId,
-      snapshot.sourceEntityType,
       snapshot.authorKind === 'community' ? 'community' : 'user',
       snapshot.authoredCommunityId,
       snapshot.publishedByUserId,
+      snapshot.sourceEntityId,
+      snapshot.sourceEntityType,
     );
   }
 
