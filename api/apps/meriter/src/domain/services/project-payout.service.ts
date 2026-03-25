@@ -115,8 +115,17 @@ export class ProjectPayoutService {
     const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
     const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
     const label = target.isProject === true ? 'project' : 'community';
+    const yourAmountByUser = new Map<string, number>();
+    for (const line of lines) {
+      if (line.amount <= 0) continue;
+      yourAmountByUser.set(
+        line.userId,
+        floor2((yourAmountByUser.get(line.userId) ?? 0) + line.amount),
+      );
+    }
     for (const memberId of memberIds) {
       try {
+        const yourAmount = yourAmountByUser.get(memberId) ?? 0;
         await this.notificationService.createNotification({
           userId: memberId,
           type: 'project_distributed',
@@ -126,6 +135,8 @@ export class ProjectPayoutService {
             projectName: target.name,
             amount,
             totalCredits,
+            totalPayout: amount,
+            yourAmount,
             entityLabel: label,
           },
           title: target.isProject === true ? 'Project payout' : 'Community payout',

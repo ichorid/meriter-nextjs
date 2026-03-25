@@ -119,6 +119,7 @@ export class TeamJoinRequestService {
         requestId: request.id,
         communityId,
         userId,
+        communityName: community.name,
       },
       title: 'Team join request',
       message: `${userName} wants to join your team "${community.name}"`,
@@ -289,7 +290,12 @@ export class TeamJoinRequestService {
             userId: r.userId,
             type: 'member_joined',
             source: 'system',
-            metadata: { projectId: request.communityId, projectName: community.name, userId: request.userId },
+            metadata: {
+              projectId: request.communityId,
+              projectName: community.name,
+              userId: request.userId,
+              memberName: newMemberName,
+            },
             title: 'Member joined project',
             message: `${newMemberName} joined the project "${community.name}".`,
           });

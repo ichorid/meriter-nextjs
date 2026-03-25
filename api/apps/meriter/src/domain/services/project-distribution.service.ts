@@ -77,6 +77,37 @@ export class ProjectDistributionService {
         'Project distribution (no internal merits)',
       );
       await this.communityWalletService.addTotalDistributed(projectId, authorShare);
+      const leadsEarly = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
+      const participantsEarly = await this.userCommunityRoleService.getUsersByRole(
+        projectId,
+        'participant',
+      );
+      const memberIdsEarly = new Set([
+        ...leadsEarly.map((r) => r.userId),
+        ...participantsEarly.map((r) => r.userId),
+      ]);
+      for (const memberId of memberIdsEarly) {
+        try {
+          const yourAmount = memberId === founderUserId ? authorShare : 0;
+          await this.notificationService.createNotification({
+            userId: memberId,
+            type: 'project_distributed',
+            source: 'system',
+            metadata: {
+              projectId,
+              projectName: project.name,
+              amount: authorShare,
+              totalPayout: authorShare,
+              yourAmount,
+              entityLabel: 'project',
+            },
+            title: 'Project distribution',
+            message: `Merits were distributed for project "${project.name}".`,
+          });
+        } catch (err) {
+          this.logger.warn(`Failed to notify member ${memberId} about distribution: ${err}`);
+        }
+      }
       this.logger.log(
         `Distributed ${authorShare} to founder ${founderUserId} (totalInternalMerits=0)`,
       );
@@ -135,6 +166,13 @@ export class ProjectDistributionService {
 
     await this.communityWalletService.addTotalDistributed(projectId, authorShare);
 
+    const yourAmountByUser = new Map<string, number>();
+    for (const [uid, amt] of roundedShares) {
+      if (amt <= 0 || uid === founderUserId) continue;
+      yourAmountByUser.set(uid, amt);
+    }
+    yourAmountByUser.set(founderUserId, founderTotal);
+
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
     const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
@@ -144,7 +182,14 @@ export class ProjectDistributionService {
           userId: memberId,
           type: 'project_distributed',
           source: 'system',
-          metadata: { projectId, projectName: project.name, amount: authorShare },
+          metadata: {
+            projectId,
+            projectName: project.name,
+            amount: authorShare,
+            totalPayout: authorShare,
+            yourAmount: yourAmountByUser.get(memberId) ?? 0,
+            entityLabel: 'project',
+          },
           title: 'Project distribution',
           message: `Merits were distributed for project "${project.name}".`,
         });

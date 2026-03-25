@@ -234,6 +234,8 @@ export class VoteService {
               metadata: {
                 communityId: pubDoc.sourceEntityId,
                 publicationId: targetId,
+                publicationCommunityId: communityId,
+                sourceCommunityName: communityName,
               },
               title: 'Join the community?',
               message: `You voted for "${communityName}". Would you like to join?`,

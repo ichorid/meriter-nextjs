@@ -46,6 +46,28 @@ export interface ProjectShareRow {
 export class TicketService {
   private readonly logger = new Logger(TicketService.name);
 
+  /** Rich metadata for ticket-related notifications (URLs + client copy). */
+  private async buildTicketNotificationMetadata(
+    ticketId: string,
+    projectId: string,
+    extra: Record<string, unknown> = {},
+  ): Promise<Record<string, unknown>> {
+    const [ticket, project] = await Promise.all([
+      this.publicationModel.findOne({ id: ticketId }).select('title').lean().exec(),
+      this.communityService.getCommunity(projectId),
+    ]);
+    const rawTitle = ticket && typeof (ticket as { title?: string }).title === 'string'
+      ? (ticket as { title?: string }).title
+      : '';
+    return {
+      ticketId,
+      projectId,
+      ticketTitle: rawTitle.trim(),
+      projectName: project?.name ?? '',
+      ...extra,
+    };
+  }
+
   constructor(
     @InjectModel(PublicationSchemaClass.name)
     private publicationModel: Model<PublicationDocument>,
@@ -174,7 +196,7 @@ export class TicketService {
         userId: dto.beneficiaryId,
         type: 'ticket_assigned',
         source: 'system',
-        metadata: { ticketId: id, projectId, leadUserId },
+        metadata: await this.buildTicketNotificationMetadata(id, projectId, { leadUserId }),
         title: 'Ticket assigned',
         message: `You were assigned a ticket in the project.`,
       });
@@ -264,6 +286,8 @@ export class TicketService {
     await doc.save();
 
     const projectId = doc.communityId;
+    const applicant = await this.userService.getUserById(userId);
+    const applicantName = applicant?.displayName || applicant?.username || '';
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     for (const lead of leads) {
       try {
@@ -271,7 +295,10 @@ export class TicketService {
           userId: lead.userId,
           type: 'ticket_apply',
           source: 'system',
-          metadata: { ticketId, projectId, applicantUserId: userId },
+          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+            applicantUserId: userId,
+            applicantName,
+          }),
           title: 'New ticket application',
           message: 'Someone applied for a neutral ticket in your project.',
         });
@@ -338,7 +365,7 @@ export class TicketService {
         userId: applicantUserId,
         type: 'ticket_assigned',
         source: 'system',
-        metadata: { ticketId, projectId, leadUserId },
+        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId }),
         title: 'Ticket assigned',
         message: 'You were assigned a ticket in the project.',
       });
@@ -357,7 +384,9 @@ export class TicketService {
           userId: otherUserId,
           type: 'ticket_rejection',
           source: 'system',
-          metadata: { ticketId, projectId, rejectionMessage },
+          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+            rejectionMessage,
+          }),
           title: 'Application not selected',
           message: rejectionMessage,
         });
@@ -416,7 +445,7 @@ export class TicketService {
         userId: assigneeId,
         type: 'ticket_assigned',
         source: 'system',
-        metadata: { ticketId, projectId, leadUserId: userId },
+        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId: userId }),
         title: 'Ticket assigned',
         message: 'You were assigned a ticket in the project.',
       });
@@ -435,7 +464,9 @@ export class TicketService {
           userId: otherUserId,
           type: 'ticket_rejection',
           source: 'system',
-          metadata: { ticketId, projectId, rejectionMessage },
+          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+            rejectionMessage,
+          }),
           title: 'Application not selected',
           message: rejectionMessage,
         });
@@ -490,7 +521,9 @@ export class TicketService {
         userId: applicantUserId,
         type: 'ticket_rejection',
         source: 'system',
-        metadata: { ticketId, projectId, rejectionMessage },
+        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+          rejectionMessage,
+        }),
         title: 'Application not selected',
         message: rejectionMessage,
       });
@@ -590,7 +623,9 @@ export class TicketService {
             userId: lead.userId,
             type: 'ticket_done',
             source: 'system',
-            metadata: { ticketId, projectId, beneficiaryId: userId },
+            metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+              beneficiaryId: userId,
+            }),
             title: 'Ticket marked done',
             message: 'A ticket was marked as done and is ready for review.',
           });
@@ -704,7 +739,10 @@ export class TicketService {
           userId: lead.userId,
           type: 'ticket_assignee_declined',
           source: 'system',
-          metadata: { ticketId, projectId, assigneeId: userId, reason: trimmed },
+          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+            assigneeId: userId,
+            reason: trimmed,
+          }),
           title: 'Assignee declined task',
           message: `The assignee declined the task: ${trimmed.slice(0, 200)}`,
         });
@@ -750,7 +788,7 @@ export class TicketService {
         userId: beneficiaryId,
         type: 'ticket_accepted',
         source: 'system',
-        metadata: { ticketId, projectId: doc.communityId },
+        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId),
         title: 'Work accepted',
         message: 'Your work was accepted by the project lead.',
       });
@@ -835,12 +873,10 @@ export class TicketService {
         userId: assigneeId,
         type: 'ticket_returned_for_revision',
         source: 'system',
-        metadata: {
-          ticketId,
-          projectId: doc.communityId,
+        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
           reason: trimmed,
           leadUserId,
-        },
+        }),
         title: 'Task returned for revision',
         message: trimmed.slice(0, 200),
       });

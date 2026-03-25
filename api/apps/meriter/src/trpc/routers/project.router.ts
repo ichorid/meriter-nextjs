@@ -443,6 +443,9 @@ export const projectRouter = router({
         noAuthorWalletSpend: input.noAuthorWalletSpend,
       });
 
+      const birzha = await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
+      const birzhaCommunityId = birzha?.id;
+
       const leads = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'lead');
       const participants = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'participant');
       const memberIds = new Set([...leads.map((r) => r.userId), ...participants.map((r) => r.userId)]);
@@ -452,7 +455,13 @@ export const projectRouter = router({
             userId: memberId,
             type: 'project_published',
             source: 'system',
-            metadata: { projectId: input.projectId, publicationId: pub.id, projectName: project.name },
+            metadata: {
+              projectId: input.projectId,
+              publicationId: pub.id,
+              projectName: project.name,
+              publicationTitle: input.title,
+              ...(birzhaCommunityId ? { birzhaCommunityId } : {}),
+            },
             title: 'Project published to Birzha',
             message: `"${project.name}" was published to the exchange.`,
           });

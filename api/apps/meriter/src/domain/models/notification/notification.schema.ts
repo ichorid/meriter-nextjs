@@ -44,6 +44,14 @@ export type NotificationType =
 
 export type NotificationSource = 'user' | 'system' | 'community';
 
+/**
+ * Loose bag for notification payloads. Important keys by type (see `NotificationService.buildRedirectUrl`):
+ * - ticket_*: ticketId, projectId, ticketTitle?, projectName?
+ * - project_published: publicationId, birzhaCommunityId?, projectId, projectName?, publicationTitle?
+ * - project_distributed: projectId, projectName?, amount, totalPayout?, yourAmount?, entityLabel?
+ * - ob_vote_join_offer: publicationId, publicationCommunityId?, communityId (source to join), sourceCommunityName?
+ * - team_join_request: requestId, communityId, communityName?, userId
+ */
 export interface NotificationMetadata {
   [key: string]: any;
 }

@@ -33,13 +33,24 @@ export const notificationsRouter = router({
       const actorIds = new Set<string>();
       const communityIds = new Set<string>();
 
+      const addCommunityId = (id: unknown) => {
+        if (typeof id === 'string' && id.length > 0) {
+          communityIds.add(id);
+        }
+      };
+
       result.data.forEach((notification) => {
         if (notification.sourceId && notification.source === 'user') {
           actorIds.add(notification.sourceId);
         }
-        if (notification.metadata?.communityId) {
-          communityIds.add(notification.metadata.communityId);
-        }
+        const m = notification.metadata ?? {};
+        addCommunityId(m.communityId);
+        addCommunityId(m.projectId);
+        addCommunityId(m.birzhaCommunityId);
+        addCommunityId(m.publicationCommunityId);
+        addCommunityId(m.futureVisionCommunityId);
+        addCommunityId(m.parentCommunityId);
+        addCommunityId(m.sourceCommunityId);
       });
 
       // Batch fetch users and communities
@@ -77,9 +88,19 @@ export const notificationsRouter = router({
           }
         }
 
-        // Add community if available
-        if (notification.metadata?.communityId) {
-          const community = communitiesMap.get(notification.metadata.communityId);
+        // Add community context (hydrate from communityId, projectId, birzha, etc.)
+        const m = notification.metadata ?? {};
+        const communityLookupId = [
+          m.communityId,
+          m.birzhaCommunityId,
+          m.publicationCommunityId,
+          m.futureVisionCommunityId,
+          m.parentCommunityId,
+          m.sourceCommunityId,
+          m.projectId,
+        ].find((id): id is string => typeof id === 'string' && id.length > 0);
+        if (communityLookupId) {
+          const community = communitiesMap.get(communityLookupId);
           if (community) {
             enriched.community = {
               id: community.id,

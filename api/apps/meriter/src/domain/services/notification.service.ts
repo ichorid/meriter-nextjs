@@ -486,13 +486,104 @@ export class NotificationService {
         const projectId = metadata?.projectId as string | undefined;
         const ticketId = metadata?.ticketId as string | undefined;
         if (projectId && ticketId) {
-          return `/meriter/communities/${projectId}?post=${ticketId}`;
+          return `/meriter/projects/${projectId}?highlight=${ticketId}`;
         }
         return undefined;
       }
 
-      case 'mention':
-      case 'system':
+      case 'project_published': {
+        const birzhaCommunityId = metadata?.birzhaCommunityId as string | undefined;
+        const publicationId = metadata?.publicationId as string | undefined;
+        if (birzhaCommunityId && publicationId) {
+          return `/meriter/communities/${birzhaCommunityId}?post=${publicationId}`;
+        }
+        return undefined;
+      }
+
+      case 'project_distributed':
+      case 'project_closed':
+      case 'project_created':
+      case 'member_joined':
+      case 'member_left_project':
+      case 'shares_changed': {
+        const projectId = metadata?.projectId as string | undefined;
+        if (projectId) {
+          return `/meriter/projects/${projectId}`;
+        }
+        return undefined;
+      }
+
+      case 'post_closed': {
+        const communityId = metadata?.communityId as string | undefined;
+        const postId = metadata?.postId as string | undefined;
+        if (communityId && postId) {
+          return `/meriter/communities/${communityId}?post=${postId}`;
+        }
+        return undefined;
+      }
+
+      case 'post_ttl_warning':
+      case 'post_inactivity_warning': {
+        const communityId = metadata?.communityId as string | undefined;
+        const postId = metadata?.postId as string | undefined;
+        if (communityId && postId) {
+          return `/meriter/communities/${communityId}?post=${postId}`;
+        }
+        return undefined;
+      }
+
+      case 'ob_vote_join_offer': {
+        const publicationCommunityId =
+          (metadata?.publicationCommunityId as string | undefined) ||
+          (metadata?.futureVisionCommunityId as string | undefined);
+        const publicationId = metadata?.publicationId as string | undefined;
+        if (publicationCommunityId && publicationId) {
+          return `/meriter/communities/${publicationCommunityId}?post=${publicationId}`;
+        }
+        return undefined;
+      }
+
+      case 'project_parent_link_approved':
+      case 'project_parent_link_rejected': {
+        const projectId = metadata?.projectId as string | undefined;
+        if (projectId) {
+          return `/meriter/projects/${projectId}`;
+        }
+        return undefined;
+      }
+
+      case 'project_parent_link_requested': {
+        const parentCommunityId = metadata?.parentCommunityId as string | undefined;
+        if (parentCommunityId) {
+          return `/meriter/communities/${parentCommunityId}/projects`;
+        }
+        return undefined;
+      }
+
+      case 'mention': {
+        const communityId = metadata?.communityId as string | undefined;
+        const publicationId = metadata?.publicationId as string | undefined;
+        if (communityId && publicationId) {
+          return `/meriter/communities/${communityId}?post=${publicationId}`;
+        }
+        return undefined;
+      }
+
+      case 'system': {
+        const noticeKind = metadata?.noticeKind as string | undefined;
+        const cid = metadata?.communityId as string | undefined;
+        if (
+          cid &&
+          (noticeKind === 'team_join_approved' ||
+            noticeKind === 'team_join_rejected' ||
+            noticeKind === 'team_invitation_accepted' ||
+            noticeKind === 'team_invitation_rejected')
+        ) {
+          return `/meriter/communities/${cid}`;
+        }
+        return undefined;
+      }
+
       default:
         return undefined;
     }
