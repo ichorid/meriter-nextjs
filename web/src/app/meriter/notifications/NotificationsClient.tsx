@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Bell, Check, CheckCheck, Filter, Settings } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { Button } from '@/components/ui/shadcn/button';
@@ -53,6 +54,41 @@ function contextLabelFromMetadata(n: Notification): string | undefined {
   );
 }
 
+const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
+  'vote',
+  'investment_received',
+  'investment_distributed',
+  'team_join_request',
+  'team_invitation',
+  'forward_proposal',
+  'favorite_update',
+  'beneficiary',
+  'publication',
+  'quota',
+  'system',
+  'project_parent_link_requested',
+  'project_parent_link_approved',
+  'project_parent_link_rejected',
+]);
+
+const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
+  'team_invitation',
+  'team_join_request',
+  'ob_vote_join_offer',
+]);
+
+function communityOrProjectHref(communityId: string, isProject: boolean): string {
+  return isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
+}
+
+function quotePlaceLabel(placeName: string, locale: string): string {
+  return locale.startsWith('ru') ? `«${placeName}»` : `"${placeName}"`;
+}
+
+function resolveInviteTargetIsProject(n: Notification): boolean {
+  return n.metadata?.inviteTargetIsProject === true;
+}
+
 function resolveSystemNoticeKind(n: Notification): string | undefined {
   const raw = n.metadata?.noticeKind;
   if (
@@ -68,6 +104,7 @@ function resolveSystemNoticeKind(n: Notification): string | undefined {
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const locale = useLocale();
   const t = useTranslations('notifications');
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'all' | 'unread' | NotificationType>('all');
@@ -170,9 +207,10 @@ export default function NotificationsPage() {
   }, [markAsRead.isSuccess, markAllAsRead.isSuccess, refetch, fetchAllRemainingPages, markAsRead, markAllAsRead]);
 
   // Flatten notifications from all pages
-  const notifications = useMemo(() => {
-    return (notificationsData?.pages ?? [])
-      .flatMap((page) => page.data || []);
+  const notifications = useMemo((): Notification[] => {
+    return (notificationsData?.pages ?? []).flatMap(
+      (page: { data?: Notification[] }) => page.data ?? [],
+    );
   }, [notificationsData?.pages]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -185,7 +223,7 @@ export default function NotificationsPage() {
     threshold: 200,
   });
 
-  const handleNotificationClick = (notification: typeof notifications[0]) => {
+  const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsRead.mutate({ id: notification.id });
     }
@@ -283,7 +321,7 @@ export default function NotificationsPage() {
 
   const tCommon = useTranslations('common');
 
-  const formatNotificationMessage = (notification: typeof notifications[0]): string => {
+  const formatNotificationMessage = (notification: Notification): string => {
     const actorName = notification.actor?.name || tCommon('someone');
     const meta = notification.metadata ?? {};
 
@@ -595,7 +633,7 @@ export default function NotificationsPage() {
     return notification.message || '';
   };
 
-  const getNotificationTitle = (notification: typeof notifications[0]): string => {
+  const getNotificationTitle = (notification: Notification): string => {
     if (notification.type === 'vote') return t('newVote');
     if (notification.type === 'investment_received') return t('investmentReceived');
     if (notification.type === 'investment_distributed') return t('investmentDistributed');
@@ -710,6 +748,146 @@ export default function NotificationsPage() {
     }
   };
 
+  const renderNotificationSubtitle = (notification: Notification): React.ReactNode => {
+    const m = notification.metadata ?? {};
+    const isProject = resolveInviteTargetIsProject(notification);
+
+    if (notification.type === 'team_invitation') {
+      const actorName = notification.actor?.name || tCommon('someone');
+      const inviterId =
+        (typeof m.inviterId === 'string' && m.inviterId) ||
+        notification.actor?.id ||
+        '';
+      const communityId = typeof m.communityId === 'string' ? m.communityId : '';
+      const placeName =
+        (typeof m.communityName === 'string' && m.communityName) ||
+        notification.community?.name ||
+        '';
+      const note =
+        typeof m.inviterMessage === 'string' ? m.inviterMessage.trim() : '';
+
+      const profileHref = inviterId ? `/meriter/users/${inviterId}` : undefined;
+      const placeHref =
+        communityId && placeName
+          ? communityOrProjectHref(communityId, isProject)
+          : undefined;
+
+      return (
+        <div className="flex flex-col gap-1">
+          <div>
+            {profileHref ? (
+              <Link
+                href={profileHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {actorName}
+              </Link>
+            ) : (
+              actorName
+            )}
+            {t('teamInvitationInvitedYouSuffix')}
+          </div>
+          {placeName ? (
+            <div>
+              {placeHref ? (
+                <Link
+                  href={placeHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-brand-primary hover:underline"
+                >
+                  {quotePlaceLabel(placeName, locale)}
+                </Link>
+              ) : (
+                quotePlaceLabel(placeName, locale)
+              )}
+            </div>
+          ) : null}
+          {note ? (
+            <div className="whitespace-pre-wrap break-words">
+              <span className="text-brand-text-secondary">{t('teamInvitationCommentLabel')}</span>{' '}
+              {note}
+            </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'team_join_request') {
+      const actorName = notification.actor?.name || tCommon('someone');
+      const requesterId =
+        (typeof m.userId === 'string' && m.userId) || notification.actor?.id || '';
+      const communityId = typeof m.communityId === 'string' ? m.communityId : '';
+      const teamName =
+        (typeof m.communityName === 'string' && m.communityName) ||
+        notification.community?.name ||
+        '';
+
+      const profileHref = requesterId ? `/meriter/users/${requesterId}` : undefined;
+      const placeHref =
+        communityId && teamName
+          ? communityOrProjectHref(communityId, isProject)
+          : undefined;
+
+      return (
+        <div className="flex flex-col gap-1">
+          <div>
+            {profileHref ? (
+              <Link
+                href={profileHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {actorName}
+              </Link>
+            ) : (
+              actorName
+            )}
+            {t('teamJoinRequestWantsToJoinSuffix')}
+          </div>
+          {teamName ? (
+            <div>
+              {placeHref ? (
+                <Link
+                  href={placeHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-brand-primary hover:underline"
+                >
+                  {quotePlaceLabel(teamName, locale)}
+                </Link>
+              ) : (
+                quotePlaceLabel(teamName, locale)
+              )}
+            </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    const primary = formatNotificationMessage(notification);
+    const lines = primary.split('\n').filter((line) => line.length > 0);
+    const showActor =
+      !NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR.has(notification.type) && notification.actor?.name;
+    const ctxLabel = NOTIFICATION_TYPES_HIDE_CONTEXT.has(notification.type)
+      ? undefined
+      : contextLabelFromMetadata(notification);
+
+    return (
+      <div className="flex flex-col gap-1">
+        {lines.map((line, i) => (
+          <div key={`p-${i}`} className="whitespace-pre-wrap break-words">
+            {line}
+          </div>
+        ))}
+        {showActor ? <div>{notification.actor!.name}</div> : null}
+        {ctxLabel ? <div className="whitespace-pre-wrap break-words">{ctxLabel}</div> : null}
+        <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+      </div>
+    );
+  };
+
   const filterOptions = useMemo(() => [
     { value: 'all', label: t('filters.all') },
     { value: 'unread', label: t('filters.unread') },
@@ -790,33 +968,7 @@ export default function NotificationsPage() {
               >
                 <InfoCard
                   title={getNotificationTitle(notification)}
-                  subtitle={
-                    [
-                      formatNotificationMessage(notification),
-                      [
-                        'vote',
-                        'investment_received',
-                        'investment_distributed',
-                        'team_join_request',
-                        'team_invitation',
-                        'forward_proposal',
-                        'favorite_update',
-                        'beneficiary',
-                        'publication',
-                        'quota',
-                        'system',
-                        'project_parent_link_requested',
-                        'project_parent_link_approved',
-                        'project_parent_link_rejected',
-                      ].includes(notification.type)
-                        ? null
-                        : notification.actor?.name,
-                      contextLabelFromMetadata(notification),
-                      formatDate(notification.createdAt),
-                    ]
-                      .filter(Boolean)
-                      .join(' • ')
-                  }
+                  subtitle={renderNotificationSubtitle(notification)}
                   icon={
                     <div className="text-2xl">
                       {getNotificationIcon(notification.type)}
@@ -844,7 +996,21 @@ export default function NotificationsPage() {
                               e.stopPropagation();
                               const invitationId = notification.metadata?.invitationId;
                               if (invitationId) {
-                                acceptInvitation.mutate({ invitationId });
+                                acceptInvitation.mutate(
+                                  { invitationId },
+                                  {
+                                    onSuccess: (data) => {
+                                      const cid = data.communityId;
+                                      if (cid) {
+                                        router.push(
+                                          data.inviteTargetIsProject
+                                            ? `/meriter/projects/${cid}`
+                                            : `/meriter/communities/${cid}`,
+                                        );
+                                      }
+                                    },
+                                  },
+                                );
                                 markAsRead.mutate({ id: notification.id });
                               }
                             }}

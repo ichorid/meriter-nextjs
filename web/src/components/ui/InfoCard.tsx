@@ -7,7 +7,7 @@ import { CardFooter } from './CardFooter';
 
 interface InfoCardProps {
     title: string;
-    subtitle?: string;
+    subtitle?: React.ReactNode;
     icon?: React.ReactNode;
     rightElement?: React.ReactNode;
     onClick?: () => void;
@@ -64,10 +64,10 @@ export const InfoCard: React.FC<InfoCardProps> = ({
                     <h3 className="text-sm font-semibold text-brand-text-primary break-words">
                         {title}
                     </h3>
-                    {subtitle && (
-                        <p className="text-xs text-brand-text-secondary mt-0.5 break-words">
+                    {subtitle != null && subtitle !== '' && (
+                        <div className="text-xs text-brand-text-secondary mt-0.5 break-words">
                             {subtitle}
-                        </p>
+                        </div>
                     )}
 
                     {/* Badges */}

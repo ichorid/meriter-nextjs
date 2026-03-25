@@ -64,6 +64,7 @@ export const notificationsRouter = router({
         // Build URL from metadata
         const url = ctx.notificationService.buildRedirectUrl(notification);
 
+        const baseMeta = notification.metadata ?? {};
         const enriched: any = {
           id: notification.id,
           type: notification.type,
@@ -73,7 +74,7 @@ export const notificationsRouter = router({
           createdAt: notification.createdAt.toISOString(),
           url,
           relatedId: notification.metadata?.publicationId,
-          metadata: notification.metadata, // Include metadata for action buttons (e.g., invitationId)
+          metadata: { ...baseMeta },
         };
 
         // Add actor if available
@@ -106,6 +107,10 @@ export const notificationsRouter = router({
               id: community.id,
               name: community.name,
               avatarUrl: community.avatarUrl,
+            };
+            enriched.metadata = {
+              ...enriched.metadata,
+              inviteTargetIsProject: Boolean(community.isProject),
             };
           }
         }

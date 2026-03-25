@@ -120,6 +120,7 @@ export class TeamJoinRequestService {
         communityId,
         userId,
         communityName: community.name,
+        inviteTargetIsProject: Boolean(community.isProject),
       },
       title: 'Team join request',
       message: `${userName} wants to join your team "${community.name}"`,

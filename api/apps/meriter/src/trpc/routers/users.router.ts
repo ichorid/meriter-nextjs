@@ -557,11 +557,15 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.teamInvitationService.acceptInvitation(
+      const invitation = await ctx.teamInvitationService.acceptInvitation(
         input.invitationId,
         ctx.user.id,
       );
-      return { success: true };
+      return {
+        success: true,
+        communityId: invitation.communityId,
+        inviteTargetIsProject: invitation.inviteTargetIsProject === true,
+      };
     }),
 
   /**

@@ -96,4 +96,37 @@ describe('NotificationService.buildRedirectUrl', () => {
       ),
     ).toBe('/meriter/communities/team-1/members');
   });
+
+  it('team_join_request uses project path when inviteTargetIsProject', () => {
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'team_join_request',
+          metadata: { communityId: 'proj-1', inviteTargetIsProject: true },
+        }),
+      ),
+    ).toBe('/meriter/projects/proj-1');
+  });
+
+  it('team_invitation uses communities path by default', () => {
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'team_invitation',
+          metadata: { communityId: 'c-1' },
+        }),
+      ),
+    ).toBe('/meriter/communities/c-1');
+  });
+
+  it('team_invitation uses project path when inviteTargetIsProject', () => {
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'team_invitation',
+          metadata: { communityId: 'p-2', inviteTargetIsProject: true },
+        }),
+      ),
+    ).toBe('/meriter/projects/p-2');
+  });
 });

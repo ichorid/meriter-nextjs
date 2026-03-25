@@ -137,6 +137,7 @@ export class TeamInvitationService {
         communityId,
         inviterId,
         communityName: community.name,
+        inviteTargetIsProject: Boolean(community.isProject),
         ...(trimmedMessage ? { inviterMessage: trimmedMessage } : {}),
       },
       title: 'Team invitation',
@@ -156,7 +157,7 @@ export class TeamInvitationService {
   async acceptInvitation(
     invitationId: string,
     userId: string,
-  ): Promise<TeamInvitation> {
+  ): Promise<TeamInvitation & { inviteTargetIsProject: boolean }> {
     this.logger.log(`User ${userId} accepting invitation ${invitationId}`);
 
     // 1. Get invitation
@@ -229,7 +230,11 @@ export class TeamInvitationService {
       `Invitation ${invitationId} accepted, user ${userId} joined team ${invitation.communityId}`,
     );
 
-    return invitation.toObject();
+    const plain = invitation.toObject() as TeamInvitation;
+    return {
+      ...plain,
+      inviteTargetIsProject: Boolean(community?.isProject),
+    };
   }
 
   /**

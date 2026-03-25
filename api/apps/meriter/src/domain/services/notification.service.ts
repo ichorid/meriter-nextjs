@@ -394,18 +394,31 @@ export class NotificationService {
         return undefined;
       }
       case 'beneficiary':
-      case 'publication':
-      case 'team_join_request': {
+      case 'publication': {
         const communityId = notification.metadata?.communityId;
         if (communityId) {
           return `/meriter/communities/${communityId}/members`;
         }
         return undefined;
       }
+      case 'team_join_request': {
+        const communityId = notification.metadata?.communityId;
+        const isProject = notification.metadata?.inviteTargetIsProject === true;
+        if (communityId) {
+          if (isProject) {
+            return `/meriter/projects/${communityId}`;
+          }
+          return `/meriter/communities/${communityId}/members`;
+        }
+        return undefined;
+      }
       case 'team_invitation': {
         const communityId = notification.metadata?.communityId;
+        const isProject = notification.metadata?.inviteTargetIsProject === true;
         if (communityId) {
-          return `/meriter/communities/${communityId}`;
+          return isProject
+            ? `/meriter/projects/${communityId}`
+            : `/meriter/communities/${communityId}`;
         }
         return undefined;
       }
