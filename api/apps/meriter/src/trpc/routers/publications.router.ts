@@ -741,6 +741,7 @@ export const publicationsRouter = router({
     .input(CreatePublicationDtoSchema)
     .mutation(async ({ ctx, input }) => {
       const createDto = { ...input } as typeof input & { sourceEntityId?: string; sourceEntityType?: 'community' };
+      const postCostFundingInput = createDto.postCostFunding;
       if (createDto.actingAsCommunityId) {
         const role = await ctx.userCommunityRoleService.getRole(
           ctx.user.id,
@@ -756,6 +757,16 @@ export const publicationsRouter = router({
         createDto.sourceEntityType = 'community';
       }
       delete (createDto as any).actingAsCommunityId;
+      delete (createDto as any).postCostFunding;
+
+      const actingCommunitySourceId =
+        createDto.sourceEntityType === 'community' && createDto.sourceEntityId
+          ? createDto.sourceEntityId
+          : null;
+      const payPostFromActingCommunityWallet =
+        actingCommunitySourceId != null &&
+        (postCostFundingInput ?? 'source_community_wallet') ===
+          'source_community_wallet';
 
       // Check permissions
       await checkPermissionInHandler(ctx, 'create', 'publication', createDto);
@@ -826,7 +837,21 @@ export const publicationsRouter = router({
       let walletAmount = 0;
 
       if (postCost > 0) {
-        if (canPayFromQuota) {
+        if (payPostFromActingCommunityWallet && actingCommunitySourceId) {
+          await ctx.communityWalletService.createWallet(actingCommunitySourceId);
+          const cw = await ctx.communityWalletService.getWallet(
+            actingCommunitySourceId,
+          );
+          const communityBal = cw?.balance ?? 0;
+          if (communityBal < postCost) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: `Insufficient community wallet merits. Available: ${communityBal}, Required: ${postCost}`,
+            });
+          }
+          quotaAmount = 0;
+          walletAmount = 0;
+        } else if (canPayFromQuota) {
           // Try to pay from quota first, then wallet
           const remainingQuota = await _getRemainingQuota(
             ctx.user.id,
@@ -894,34 +919,46 @@ export const publicationsRouter = router({
             genitive: 'merits',
           };
 
-          // Deduct from quota if needed
-          if (quotaAmount > 0 && ctx.connection?.db) {
-            await ctx.connection.db.collection('quota_usage').insertOne({
-              id: `quota_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              userId: ctx.user.id,
-              communityId,
-              amountQuota: quotaAmount,
-              usageType: 'publication_creation',
-              referenceId: publicationId,
-              createdAt: new Date(),
-            });
-          }
-
-          // Deduct from wallet if needed (fee always from global)
-          if (walletAmount > 0) {
-            const globalCommunity = await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
-            const feeCurrency = globalCommunity?.settings?.currencyNames || _currency;
-            await ctx.walletService.addTransaction(
-              ctx.user.id,
-              GLOBAL_COMMUNITY_ID,
-              'debit',
-              walletAmount,
-              'personal',
-              'publication_creation',
-              publicationId,
-              feeCurrency,
-              'Payment for creating publication',
+          if (
+            payPostFromActingCommunityWallet &&
+            actingCommunitySourceId
+          ) {
+            await ctx.communityWalletService.createWallet(actingCommunitySourceId);
+            await ctx.communityWalletService.deductBalance(
+              actingCommunitySourceId,
+              postCost,
+              'publication_post_cost',
             );
+          } else {
+            // Deduct from quota if needed
+            if (quotaAmount > 0 && ctx.connection?.db) {
+              await ctx.connection.db.collection('quota_usage').insertOne({
+                id: `quota_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                userId: ctx.user.id,
+                communityId,
+                amountQuota: quotaAmount,
+                usageType: 'publication_creation',
+                referenceId: publicationId,
+                createdAt: new Date(),
+              });
+            }
+
+            // Deduct from wallet if needed (fee always from global)
+            if (walletAmount > 0) {
+              const globalCommunity = await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
+              const feeCurrency = globalCommunity?.settings?.currencyNames || _currency;
+              await ctx.walletService.addTransaction(
+                ctx.user.id,
+                GLOBAL_COMMUNITY_ID,
+                'debit',
+                walletAmount,
+                'personal',
+                'publication_creation',
+                publicationId,
+                feeCurrency,
+                'Payment for creating publication',
+              );
+            }
           }
         } catch (_error) {
           // Don't fail the request if payment deduction fails - publication is already created
