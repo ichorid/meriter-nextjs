@@ -29,6 +29,7 @@ import {
   useUpdatePreferences as useUpdatePrefs,
 } from '@/hooks/api/useNotifications';
 import { useAcceptTeamInvitation, useRejectTeamInvitation } from '@/hooks/api/useTeams';
+import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { Notification, NotificationType } from '@/types/api-v1';
@@ -39,6 +40,18 @@ const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team invitation accepted': 'team_invitation_accepted',
   'Team invitation rejected': 'team_invitation_rejected',
 };
+
+function contextLabelFromMetadata(n: Notification): string | undefined {
+  const m = n.metadata ?? {};
+  return (
+    n.community?.name ||
+    (typeof m.communityName === 'string' && m.communityName.trim() ? m.communityName : undefined) ||
+    (typeof m.sourceCommunityName === 'string' && m.sourceCommunityName.trim()
+      ? m.sourceCommunityName
+      : undefined) ||
+    (typeof m.projectName === 'string' && m.projectName.trim() ? m.projectName : undefined)
+  );
+}
 
 function resolveSystemNoticeKind(n: Notification): string | undefined {
   const raw = n.metadata?.noticeKind;
@@ -84,6 +97,8 @@ export default function NotificationsPage() {
   const markAllAsRead = useMarkAllAsRead();
   const acceptInvitation = useAcceptTeamInvitation();
   const rejectInvitation = useRejectTeamInvitation();
+  const approveTeamJoinRequest = useApproveTeamRequest();
+  const rejectTeamJoinRequest = useRejectTeamRequest();
 
   // Helper function to recursively fetch all remaining pages
   const fetchAllRemainingPages = React.useCallback(async () => {
@@ -192,6 +207,15 @@ export default function NotificationsPage() {
       typeof meta.projectId === 'string'
     ) {
       router.push(`/meriter/projects/${meta.projectId}`);
+      return;
+    }
+    if (
+      notification.type.startsWith('ticket_') &&
+      typeof meta.projectId === 'string' &&
+      typeof meta.ticketId === 'string'
+    ) {
+      router.push(`/meriter/projects/${meta.projectId}?highlight=${meta.ticketId}`);
+      return;
     }
   };
 
@@ -371,10 +395,24 @@ export default function NotificationsPage() {
     }
     if (notification.type === 'project_published') {
       const name = (meta.projectName as string) || '';
+      const postTitle =
+        typeof meta.publicationTitle === 'string' ? meta.publicationTitle.trim() : '';
+      if (postTitle) {
+        return t('projectPublishedMessageWithPost', { name, postTitle });
+      }
       return t('projectPublishedMessage', { name });
     }
     if (notification.type === 'project_distributed') {
       const name = (meta.projectName as string) || '';
+      const yourAmount = Number(meta.yourAmount);
+      const totalPayout = Number(meta.totalPayout ?? meta.amount ?? 0);
+      if (Number.isFinite(yourAmount) && Number.isFinite(totalPayout)) {
+        return t('projectDistributedMessagePersonal', {
+          name,
+          yourAmount,
+          totalPayout,
+        });
+      }
       return t('projectDistributedMessage', { name });
     }
     if (notification.type === 'project_closed') {
@@ -399,24 +437,103 @@ export default function NotificationsPage() {
       return t('projectSharesUpdatedMessage', { projectName, percent: pct });
     }
     if (notification.type === 'ticket_assigned') {
-      return t('ticketAssignedBody');
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketAssignedBodyRich', { ticketTitle, projectName })
+        : t('ticketAssignedBody');
     }
     if (notification.type === 'ticket_apply') {
-      return t('ticketApplyBody');
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      const applicantName =
+        typeof meta.applicantName === 'string' && meta.applicantName.trim()
+          ? meta.applicantName
+          : actorName;
+      return projectName
+        ? t('ticketApplyBodyRich', { applicantName, ticketTitle, projectName })
+        : t('ticketApplyBody');
     }
     if (notification.type === 'ticket_done') {
-      return t('ticketDoneBody');
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketDoneBodyRich', { ticketTitle, projectName })
+        : t('ticketDoneBody');
     }
     if (notification.type === 'ticket_accepted') {
-      return t('ticketAcceptedBody');
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketAcceptedBodyRich', { ticketTitle, projectName })
+        : t('ticketAcceptedBody');
+    }
+    if (notification.type === 'ticket_returned_for_revision') {
+      const reason = typeof meta.reason === 'string' ? meta.reason : '';
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketReturnedForRevisionBodyRich', { ticketTitle, projectName, reason })
+        : t('ticketReturnedForRevisionBody', { reason });
     }
     if (notification.type === 'ticket_assignee_declined') {
       const reason = typeof meta.reason === 'string' ? meta.reason : '';
-      return t('ticketAssigneeDeclinedBody', { reason });
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketAssigneeDeclinedBodyRich', { ticketTitle, projectName, reason })
+        : t('ticketAssigneeDeclinedBody', { reason });
     }
     if (notification.type === 'ticket_rejection') {
       const custom = typeof meta.rejectionMessage === 'string' ? meta.rejectionMessage : '';
-      return custom || t('ticketRejectionDefaultBody');
+      if (custom) return custom;
+      const ticketTitle =
+        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
+          ? meta.ticketTitle
+          : t('untitledPost');
+      const projectName =
+        typeof meta.projectName === 'string' && meta.projectName.trim()
+          ? meta.projectName
+          : '';
+      return projectName
+        ? t('ticketRejectionBodyRich', { ticketTitle, projectName })
+        : t('ticketRejectionDefaultBody');
     }
     if (notification.type === 'ticket_evaluated') {
       return notification.message || '';
@@ -442,7 +559,12 @@ export default function NotificationsPage() {
     }
     if (notification.type === 'ob_vote_join_offer') {
       const communityName =
-        notification.community?.name || (meta.communityId as string) || '';
+        (typeof meta.sourceCommunityName === 'string' && meta.sourceCommunityName.trim()
+          ? meta.sourceCommunityName
+          : undefined) ||
+        notification.community?.name ||
+        (typeof meta.communityId === 'string' ? meta.communityId : '') ||
+        '';
       return t('obVoteJoinOfferBody', { communityName });
     }
     if (notification.type === 'system') {
@@ -500,8 +622,30 @@ export default function NotificationsPage() {
     if (notification.type === 'project_parent_link_rejected') {
       return t('projectParentLinkRejectedTitle');
     }
-    if (notification.type === 'project_published') return t('projectPublishedTitle');
-    if (notification.type === 'project_distributed') return t('projectDistributedTitle');
+    if (notification.type === 'project_published') {
+      const postTitle =
+        typeof notification.metadata?.publicationTitle === 'string'
+          ? notification.metadata.publicationTitle.trim()
+          : '';
+      if (postTitle) {
+        const short =
+          postTitle.length > 48 ? `${postTitle.slice(0, 45)}…` : postTitle;
+        return t('projectPublishedTitleWithPost', { postTitle: short });
+      }
+      return t('projectPublishedTitle');
+    }
+    if (notification.type === 'project_distributed') {
+      const projectName =
+        typeof notification.metadata?.projectName === 'string'
+          ? notification.metadata.projectName.trim()
+          : '';
+      if (projectName) {
+        const short =
+          projectName.length > 40 ? `${projectName.slice(0, 37)}…` : projectName;
+        return t('projectDistributedTitleWithProject', { projectName: short });
+      }
+      return t('projectDistributedTitle');
+    }
     if (notification.type === 'project_closed') return t('projectClosedTitle');
     if (notification.type === 'member_joined') return t('memberJoinedTitle');
     if (notification.type === 'member_left_project') return t('memberLeftTitle');
@@ -667,7 +811,7 @@ export default function NotificationsPage() {
                       ].includes(notification.type)
                         ? null
                         : notification.actor?.name,
-                      notification.community?.name,
+                      contextLabelFromMetadata(notification),
                       formatDate(notification.createdAt),
                     ]
                       .filter(Boolean)
@@ -735,7 +879,104 @@ export default function NotificationsPage() {
                           </Button>
                         </div>
                       )}
-                      {!notification.read && notification.type !== 'team_invitation' && (
+                      {notification.type === 'team_join_request' &&
+                        !notification.read &&
+                        typeof notification.metadata?.requestId === 'string' && (
+                        <div
+                          className="flex flex-wrap items-center justify-end gap-2 mr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const requestId = notification.metadata?.requestId;
+                              if (typeof requestId === 'string') {
+                                approveTeamJoinRequest.mutate({ requestId });
+                                markAsRead.mutate({ id: notification.id });
+                              }
+                            }}
+                            disabled={
+                              approveTeamJoinRequest.isPending || rejectTeamJoinRequest.isPending
+                            }
+                            className="h-7 px-3 text-xs rounded-lg"
+                          >
+                            {approveTeamJoinRequest.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              t('accept')
+                            )}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const requestId = notification.metadata?.requestId;
+                              if (typeof requestId === 'string') {
+                                rejectTeamJoinRequest.mutate({ requestId });
+                                markAsRead.mutate({ id: notification.id });
+                              }
+                            }}
+                            disabled={
+                              approveTeamJoinRequest.isPending || rejectTeamJoinRequest.isPending
+                            }
+                            className="h-7 px-3 text-xs rounded-lg"
+                          >
+                            {rejectTeamJoinRequest.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              t('decline')
+                            )}
+                          </Button>
+                        </div>
+                      )}
+                      {notification.type === 'ob_vote_join_offer' && !notification.read && (
+                        <div
+                          className="flex flex-wrap items-center justify-end gap-2 mr-2"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {typeof notification.metadata?.communityId === 'string' && (
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-7 px-3 text-xs rounded-lg"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const cid = notification.metadata?.communityId;
+                                if (typeof cid === 'string') {
+                                  router.push(`/meriter/communities/${cid}/join`);
+                                  markAsRead.mutate({ id: notification.id });
+                                }
+                              }}
+                            >
+                              {t('obVoteJoinCta')}
+                            </Button>
+                          )}
+                          {notification.url && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 px-3 text-xs rounded-lg"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(notification.url as string);
+                                markAsRead.mutate({ id: notification.id });
+                              }}
+                            >
+                              {t('obVoteOpenPost')}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {!notification.read &&
+                        notification.type !== 'team_invitation' &&
+                        !(
+                          notification.type === 'team_join_request' &&
+                          typeof notification.metadata?.requestId === 'string'
+                        ) &&
+                        notification.type !== 'ob_vote_join_offer' && (
                         <div
                           onClick={(e) => {
                             e.stopPropagation();

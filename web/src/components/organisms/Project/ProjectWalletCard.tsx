@@ -17,10 +17,11 @@ interface ProjectWalletCardProps {
 
 export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCardProps) {
   const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const { data: wallet, isLoading } = useProjectWallet(projectId);
   const [topUpOpen, setTopUpOpen] = useState(false);
 
-  const balance = wallet?.balance ?? 0;
+  const balance = Math.floor(wallet?.balance ?? 0);
   const heading = title ?? t('walletBalance', { defaultValue: 'Wallet balance' });
 
   return (
@@ -33,7 +34,9 @@ export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCar
         {isLoading ? (
           <p className="text-sm text-base-content/60">...</p>
         ) : (
-          <p className="text-2xl font-semibold tabular-nums text-base-content">{balance} merits</p>
+          <p className="text-2xl font-semibold tabular-nums text-base-content">
+            {tCommon('meritsAmount', { amount: balance })}
+          </p>
         )}
         {footer}
         <Button

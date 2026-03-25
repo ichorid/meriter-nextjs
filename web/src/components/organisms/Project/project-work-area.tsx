@@ -46,11 +46,19 @@ export function ProjectWorkArea({
   const [createNeutralTicketOpen, setCreateNeutralTicketOpen] = useState(false);
 
   const tabFromUrl = searchParams.get('tab');
+  const highlightTicketId = searchParams.get('highlight');
   useEffect(() => {
     if (tabFromUrl === 'discussions') {
       setActiveTab('discussions');
     }
   }, [tabFromUrl]);
+
+  useEffect(() => {
+    if (highlightTicketId) {
+      setActiveTab('tickets');
+      setStatusFilter('all');
+    }
+  }, [highlightTicketId]);
 
   if (!isMember) {
     return null;
@@ -160,6 +168,7 @@ export function ProjectWorkArea({
           currentUserId={currentUserId}
           canModerateTickets={canModerateTickets}
           statusFilter={statusFilter}
+          highlightTicketId={highlightTicketId}
           onOpenCreateOpenTask={
             canModerateTickets && !readOnly ? () => setCreateNeutralTicketOpen(true) : undefined
           }

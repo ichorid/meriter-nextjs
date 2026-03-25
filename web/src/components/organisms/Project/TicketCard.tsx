@@ -36,6 +36,8 @@ interface TicketCardProps {
   projectId: string;
   /** Lead or superadmin: accept work, reopen closed, manage neutral applicants. */
   canModerateTickets: boolean;
+  /** Deep-link focus (e.g. from notification URL ?highlight=). */
+  highlighted?: boolean;
   ticket: {
     id: string;
     title?: string;
@@ -56,6 +58,7 @@ export function TicketCard({
   ticket,
   currentUserId,
   canModerateTickets,
+  highlighted = false,
 }: TicketCardProps) {
   const t = useTranslations('projects');
   const tComments = useTranslations('comments');
@@ -123,6 +126,7 @@ export function TicketCard({
       className={cn(
         'rounded-xl border border-white/10 bg-white/5 text-card-foreground shadow-none',
         'transition-colors duration-200 hover:bg-white/[0.07]',
+        highlighted && 'ring-2 ring-blue-500/80 ring-offset-2 ring-offset-background',
       )}
     >
       <Link

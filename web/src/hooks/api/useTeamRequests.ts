@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 
 export interface TeamJoinRequest {
@@ -62,8 +61,9 @@ export const useApproveTeamRequest = () => {
   const utils = trpc.useUtils();
 
   return trpc.teams.approveTeamRequest.useMutation({
-    onSuccess: (_, variables) => {
+    onSuccess: () => {
       // Invalidate relevant queries (getUserCommunities so sidebar updates for users who joined)
+      utils.notifications.getAll.invalidate();
       utils.teams.getTeamRequestsForLead.invalidate();
       utils.teams.getMyTeamRequests.invalidate();
       utils.communities.getMembers.invalidate();
@@ -83,6 +83,7 @@ export const useRejectTeamRequest = () => {
   return trpc.teams.rejectTeamRequest.useMutation({
     onSuccess: () => {
       // Invalidate relevant queries
+      utils.notifications.getAll.invalidate();
       utils.teams.getTeamRequestsForLead.invalidate();
       utils.teams.getMyTeamRequests.invalidate();
     },
