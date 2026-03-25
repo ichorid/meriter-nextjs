@@ -40,17 +40,16 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
 
   const [amount, setAmount] = useState(10);
 
-  const isProjectMember = useMemo(
-    () =>
-      Boolean(
-        user &&
-          userRoles.some(
-            (r) =>
-              r.communityId === projectId && (r.role === 'lead' || r.role === 'participant'),
-          ),
-      ),
-    [user, userRoles, projectId],
-  );
+  const isProjectMember = useMemo(() => {
+    if (!user) return false;
+    const inRoles = userRoles.some(
+      (r) =>
+        r.communityId === projectId && (r.role === 'lead' || r.role === 'participant'),
+    );
+    const members = project?.members;
+    const inMembersList = Array.isArray(members) && members.includes(user.id);
+    return inRoles || inMembersList;
+  }, [user, userRoles, projectId, project?.members]);
 
   const investingEnabled = project?.settings?.investingEnabled === true;
   const investorSharePercent = project?.investorSharePercent ?? 0;
