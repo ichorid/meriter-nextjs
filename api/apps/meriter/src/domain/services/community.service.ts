@@ -1831,8 +1831,9 @@ export class CommunityService {
 }
 
 /**
- * Projects are stored as Community documents with isProject; they are not user-facing "groups"
- * and must be excluded from community pickers, search-as-community, and role lists.
+ * Projects are stored as Community documents with isProject. Exclude them from generic community
+ * pickers and search-as-community. Profile membership and `users.getUserRoles` include projects
+ * so admins and participants see them in the UI.
  */
 export function isProjectCommunity(
   community: { isProject?: boolean; typeTag?: string } | null | undefined,
