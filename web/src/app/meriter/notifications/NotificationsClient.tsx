@@ -34,6 +34,7 @@ import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeam
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import type { Notification, NotificationType } from '@/types/api-v1';
+import { routes } from '@/lib/constants/routes';
 
 const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team join request approved': 'team_join_approved',
@@ -76,6 +77,7 @@ const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
   'team_invitation',
   'team_join_request',
   'community_member_removed',
+  'project_parent_link_requested',
   'ob_vote_join_offer',
 ]);
 
@@ -445,7 +447,18 @@ export default function NotificationsPage() {
     if (notification.type === 'project_parent_link_requested') {
       const projectName = (meta.projectName as string) || '';
       const parentName = (meta.parentName as string) || '';
-      return t('projectParentLinkRequestedMessage', { projectName, parentName });
+      const requesterName =
+        (typeof meta.requesterDisplayName === 'string' && meta.requesterDisplayName.trim()
+          ? meta.requesterDisplayName.trim()
+          : '') ||
+        notification.actor?.name ||
+        (typeof meta.requesterId === 'string' && meta.requesterId ? meta.requesterId : '') ||
+        tCommon('someone');
+      return t('projectParentLinkRequestedMessage', {
+        projectName,
+        parentName,
+        requesterName,
+      });
     }
     if (notification.type === 'project_parent_link_approved') {
       const projectName = (meta.projectName as string) || '';
@@ -1100,6 +1113,80 @@ export default function NotificationsPage() {
               ) : null}
             </div>
           ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'project_parent_link_requested') {
+      const projectId = typeof m.projectId === 'string' ? m.projectId : '';
+      const projectName =
+        (typeof m.projectName === 'string' && m.projectName.trim() ? m.projectName.trim() : '') ||
+        projectId;
+      const parentCommunityId =
+        (typeof m.parentCommunityId === 'string' && m.parentCommunityId.trim()
+          ? m.parentCommunityId.trim()
+          : '') || '';
+      const parentName =
+        (typeof m.parentName === 'string' && m.parentName.trim() ? m.parentName.trim() : '') ||
+        parentCommunityId;
+      const requesterId =
+        (typeof m.requesterId === 'string' && m.requesterId.trim() ? m.requesterId.trim() : '') ||
+        '';
+      const requesterDisplayName =
+        (typeof m.requesterDisplayName === 'string' && m.requesterDisplayName.trim()
+          ? m.requesterDisplayName.trim()
+          : '') ||
+        notification.actor?.name ||
+        requesterId ||
+        tCommon('someone');
+
+      const projectHref = projectId ? routes.project(projectId) : undefined;
+      const parentHref = parentCommunityId ? routes.community(parentCommunityId) : undefined;
+      const requesterHref = requesterId ? routes.userProfile(requesterId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+            <span>{t('projectParentLinkRequestedProjectLabel')}</span>
+            {projectHref ? (
+              <Link
+                href={projectHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {quotePlaceLabel(projectName, locale)}
+              </Link>
+            ) : (
+              quotePlaceLabel(projectName, locale)
+            )}
+            <span>{t('projectParentLinkRequestedMiddle')}</span>
+            {parentHref ? (
+              <Link
+                href={parentHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {quotePlaceLabel(parentName, locale)}
+              </Link>
+            ) : (
+              quotePlaceLabel(parentName, locale)
+            )}
+          </div>
+          <div className="text-sm text-brand-text-primary">
+            <span className="text-brand-text-secondary">{t('projectParentLinkRequestedByLabel')}</span>{' '}
+            {requesterHref ? (
+              <Link
+                href={requesterHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {requesterDisplayName}
+              </Link>
+            ) : (
+              requesterDisplayName
+            )}
+          </div>
           <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
         </div>
       );

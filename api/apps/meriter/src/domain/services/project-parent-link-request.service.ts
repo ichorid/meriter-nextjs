@@ -10,6 +10,7 @@ import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
 import {
   ProjectParentLinkRequestSchemaClass,
@@ -21,6 +22,7 @@ import type { Community } from '../models/community/community.schema';
 export interface ProjectParentLinkRequestWithProject extends ProjectParentLinkRequest {
   projectName: string;
   parentCommunityName?: string;
+  requesterDisplayName?: string;
 }
 
 @Injectable()
@@ -32,6 +34,7 @@ export class ProjectParentLinkRequestService {
     private readonly requestModel: Model<ProjectParentLinkRequestDocument>,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -125,6 +128,11 @@ export class ProjectParentLinkRequestService {
     request: ProjectParentLinkRequest,
     projectName: string,
   ): Promise<void> {
+    const nameById = await this.userService.getDisplayNamesByUserIds([
+      request.requesterUserId,
+    ]);
+    const requesterDisplayName =
+      nameById.get(request.requesterUserId) ?? request.requesterUserId;
     const leads = await this.userCommunityRoleService.getUsersByRole(
       request.targetParentCommunityId,
       'lead',
@@ -142,6 +150,7 @@ export class ProjectParentLinkRequestService {
             requestId: request.id,
             parentCommunityId: request.targetParentCommunityId,
             requesterId: request.requesterUserId,
+            requesterDisplayName,
             projectName,
             parentName,
           },
@@ -170,6 +179,15 @@ export class ProjectParentLinkRequestService {
       .sort({ createdAt: -1 })
       .lean();
 
+    const parent = await this.communityService.getCommunity(parentCommunityId);
+    const parentCommunityName = parent?.name ?? parentCommunityId;
+    const requesterIds = [
+      ...new Set(
+        (rows as unknown as ProjectParentLinkRequest[]).map((r) => r.requesterUserId),
+      ),
+    ];
+    const nameById = await this.userService.getDisplayNamesByUserIds(requesterIds);
+
     const out: ProjectParentLinkRequestWithProject[] = [];
     for (const raw of rows) {
       const r = raw as unknown as ProjectParentLinkRequest;
@@ -177,6 +195,9 @@ export class ProjectParentLinkRequestService {
       out.push({
         ...r,
         projectName: p?.name ?? r.projectId,
+        parentCommunityName,
+        requesterDisplayName:
+          nameById.get(r.requesterUserId) ?? r.requesterUserId,
       });
     }
     return out;

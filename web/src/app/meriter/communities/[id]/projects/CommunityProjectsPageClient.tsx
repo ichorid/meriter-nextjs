@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
@@ -133,8 +134,26 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
                     key={req.id}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-base-300/60 bg-base-100/80 dark:bg-base-200/20 p-3"
                   >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-base-content truncate">{req.projectName}</p>
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-medium text-base-content truncate">
+                        <Link
+                          href={routes.project(req.projectId)}
+                          className="text-brand-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {req.projectName}
+                        </Link>
+                      </p>
+                      <p className="text-xs text-base-content/60">
+                        <span className="text-base-content/55">{t('parentLinkRequestedBy')}</span>{' '}
+                        <Link
+                          href={routes.userProfile(req.requesterUserId)}
+                          className="font-medium text-brand-primary hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {req.requesterDisplayName ?? req.requesterUserId}
+                        </Link>
+                      </p>
                       <p className="text-xs text-base-content/55">{t('parentLinkRequestPendingBadge')}</p>
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">
