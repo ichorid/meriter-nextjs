@@ -613,6 +613,10 @@ export const CreatePublicationDtoSchema = z.object({
   noAuthorWalletSpend: z.boolean().optional().default(false),
   /** When set, post is published on behalf of this community (caller must be lead). */
   actingAsCommunityId: z.string().optional(),
+  /** With actingAsCommunityId: pay postCost from that community wallet or caller global wallet. */
+  postCostFunding: z
+    .enum(["source_community_wallet", "caller_global_wallet"])
+    .optional(),
 })
   .refine(
     (data) => {
