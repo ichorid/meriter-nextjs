@@ -10,17 +10,21 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CategorySelectorProps {
-  value: string[]; // Array of category IDs
+  value: string[]; // Legacy category IDs and/or value rubricator tag strings (depending on mode)
   onChange: (categoryIds: string[]) => void;
   label?: string;
   helperText?: string;
   className?: string;
   maxCategories?: number; // Maximum number of categories that can be selected
+  /** Platform value rubricator tags (decree 809 + admin extras). When set, legacy publication categories are not used. */
+  rubricatorTags?: string[];
+  rubricatorTagsLoading?: boolean;
+  /** Shown in rubricator mode when the tag list is empty after load */
+  emptyRubricatorMessage?: string;
 }
 
 /**
- * Category selector component
- * Allows users to select one or more predefined categories
+ * Multi-select chips: either legacy publication categories from API or platform value rubricator tags.
  */
 export const CategorySelector: React.FC<CategorySelectorProps> = ({
   value = [],
@@ -29,9 +33,16 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   helperText,
   className,
   maxCategories,
+  rubricatorTags,
+  rubricatorTagsLoading,
+  emptyRubricatorMessage,
 }) => {
   const t = useTranslations('publications.create');
-  const { data: categories, isLoading } = useCategories();
+  const isRubricatorMode =
+    rubricatorTagsLoading === true || rubricatorTags !== undefined;
+  const { data: categories, isLoading: categoriesLoading } = useCategories({
+    enabled: !isRubricatorMode,
+  });
 
   const handleToggle = (categoryId: string) => {
     if (value.includes(categoryId)) {
@@ -54,7 +65,15 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     });
   }, [categories]);
 
-  if (isLoading) {
+  const rubricatorItems = useMemo(
+    () => (rubricatorTags ?? []).map((tag) => ({ id: tag, name: tag })),
+    [rubricatorTags],
+  );
+
+  const listItems = isRubricatorMode ? rubricatorItems : sortedCategories;
+  const listLoading = isRubricatorMode ? !!rubricatorTagsLoading : categoriesLoading;
+
+  if (listLoading) {
     return (
       <BrandFormControl label={label} helperText={helperText} className={className}>
         <div className="flex items-center justify-center py-8">
@@ -64,11 +83,13 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     );
   }
 
-  if (!categories || categories.length === 0) {
+  if (listItems.length === 0) {
     return (
       <BrandFormControl label={label} helperText={helperText} className={className}>
         <p className="text-sm text-base-content/60">
-          {t('fields.noCategoriesAvailable')}
+          {isRubricatorMode
+            ? emptyRubricatorMessage ?? t('fields.noCategoriesAvailable')
+            : t('fields.noCategoriesAvailable')}
         </p>
       </BrandFormControl>
     );
@@ -79,7 +100,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   return (
     <BrandFormControl label={label} helperText={helperText} className={className}>
       <div className="flex flex-wrap gap-3">
-        {sortedCategories.map((category) => {
+        {listItems.map((category) => {
           const isSelected = value.includes(category.id);
           const isDisabled = !isSelected && isAtMaxLimit;
           return (

@@ -9,6 +9,7 @@ import { BrandFormControl } from '@/components/ui/BrandFormControl';
 import { Switch } from '@/components/ui/shadcn/switch';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { CategorySelector } from '@/shared/components/category-selector';
+import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { Loader2 } from 'lucide-react';
 import { useToastStore } from '@/shared/stores/toast.store';
 import type { TappalkaSettings } from '@meriter/shared-types';
@@ -25,6 +26,7 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
 }) => {
   const t = useTranslations('communities.tappalka');
   const addToast = useToastStore((state) => state.addToast);
+  const { flatTags, isLoading: rubricatorLoading } = usePlatformValueRubricatorSections();
 
   // Get current settings with defaults
   const currentSettings = useMemo(() => {
@@ -170,10 +172,10 @@ export const TappalkaSettingsForm: React.FC<TappalkaSettingsFormProps> = ({
             value={categories}
             onChange={setCategories}
             label={t('fields.categories')}
-            helperText={
-              t('fields.categoriesHelp') ||
-              'Select categories to include in Tappalka. Leave empty to include all categories.'
-            }
+            helperText={t('fields.categoriesHelp')}
+            rubricatorTags={flatTags}
+            rubricatorTagsLoading={rubricatorLoading}
+            emptyRubricatorMessage={t('fields.noRubricatorTags')}
           />
 
           {/* Win Reward */}

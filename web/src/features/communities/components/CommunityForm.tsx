@@ -60,6 +60,9 @@ export const CommunityForm = ({
     const { data: community, isLoading } = useCommunity(
         isEditMode ? communityId : ""
     );
+    const isFutureVisionHub =
+        isEditMode &&
+        (community as { typeTag?: string } | undefined)?.typeTag === "future-vision";
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
 
@@ -116,7 +119,8 @@ export const CommunityForm = ({
             !focusFutureVisionTextOnMount ||
             !isEditMode ||
             isLoading ||
-            didFocusFutureVisionRef.current
+            didFocusFutureVisionRef.current ||
+            isFutureVisionHub
         ) {
             return;
         }
@@ -128,7 +132,7 @@ export const CommunityForm = ({
             el.scrollIntoView({ behavior: "smooth", block: "center" });
         }, 150);
         return () => window.clearTimeout(t);
-    }, [focusFutureVisionTextOnMount, isEditMode, isLoading]);
+    }, [focusFutureVisionTextOnMount, isEditMode, isLoading, isFutureVisionHub]);
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
@@ -159,9 +163,12 @@ export const CommunityForm = ({
                     data: {
                         ...data,
                         ...(isSuperadmin && { isPriority }),
-                        futureVisionText: futureVisionText.trim() || undefined,
-                        futureVisionTags: futureVisionTags.length > 0 ? futureVisionTags : undefined,
-                        futureVisionCover: futureVisionCover.trim() || undefined,
+                        ...(!isFutureVisionHub && {
+                            futureVisionText: futureVisionText.trim() || undefined,
+                            futureVisionTags:
+                                futureVisionTags.length > 0 ? futureVisionTags : undefined,
+                            futureVisionCover: futureVisionCover.trim() || undefined,
+                        }),
                     },
                 });
                 router.push(`/meriter/communities/${communityId}`);
@@ -330,52 +337,54 @@ export const CommunityForm = ({
                 />
             </BrandFormControl>
 
-            <div className="border-t border-base-300 pt-6">
-                <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                    {t("futureVisionSection")}
-                </h2>
-                <div className="space-y-4 mb-6">
-                    <BrandFormControl label={t("futureVisionText")} required={!isEditMode}>
-                        <Textarea
-                            ref={futureVisionTextareaRef}
-                            id="community-future-vision-text"
-                            value={futureVisionText}
-                            onChange={(e) => setFutureVisionText(e.target.value)}
-                            placeholder={t("futureVisionPlaceholder")}
-                            maxLength={10000}
-                            rows={4}
-                            className="rounded-xl w-full"
-                        />
-                    </BrandFormControl>
-                    <ValuesFormPickerFields
-                        decree809Tags={rubricatorSections.decree809}
-                        adminExtrasTags={rubricatorSections.adminExtras}
-                        valueTags={futureVisionTags}
-                        onChange={setFutureVisionTags}
-                        disabled={isPending}
-                    />
-                    <BrandFormControl label={t("futureVisionCover")}>
-                        <ImageUploader
-                            value={futureVisionCover || undefined}
-                            onUpload={setFutureVisionCover}
-                            onRemove={() => setFutureVisionCover("")}
-                            aspectRatio={16 / 9}
-                            compact
-                            disabled={isPending}
-                            allowUrlFallback
-                            labels={{
-                                placeholder: t("coverImagePlaceholder"),
-                                uploading: t("uploading"),
-                                uploadFailed: t("uploadFailed"),
-                            }}
-                        />
-                        <FutureVisionCoverDevPlaceholders
-                            onSelectUrl={setFutureVisionCover}
+            {!isFutureVisionHub && (
+                <div className="border-t border-base-300 pt-6">
+                    <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
+                        {t("futureVisionSection")}
+                    </h2>
+                    <div className="space-y-4 mb-6">
+                        <BrandFormControl label={t("futureVisionText")} required={!isEditMode}>
+                            <Textarea
+                                ref={futureVisionTextareaRef}
+                                id="community-future-vision-text"
+                                value={futureVisionText}
+                                onChange={(e) => setFutureVisionText(e.target.value)}
+                                placeholder={t("futureVisionPlaceholder")}
+                                maxLength={10000}
+                                rows={4}
+                                className="rounded-xl w-full"
+                            />
+                        </BrandFormControl>
+                        <ValuesFormPickerFields
+                            decree809Tags={rubricatorSections.decree809}
+                            adminExtrasTags={rubricatorSections.adminExtras}
+                            valueTags={futureVisionTags}
+                            onChange={setFutureVisionTags}
                             disabled={isPending}
                         />
-                    </BrandFormControl>
+                        <BrandFormControl label={t("futureVisionCover")}>
+                            <ImageUploader
+                                value={futureVisionCover || undefined}
+                                onUpload={setFutureVisionCover}
+                                onRemove={() => setFutureVisionCover("")}
+                                aspectRatio={16 / 9}
+                                compact
+                                disabled={isPending}
+                                allowUrlFallback
+                                labels={{
+                                    placeholder: t("coverImagePlaceholder"),
+                                    uploading: t("uploading"),
+                                    uploadFailed: t("uploadFailed"),
+                                }}
+                            />
+                            <FutureVisionCoverDevPlaceholders
+                                onSelectUrl={setFutureVisionCover}
+                                disabled={isPending}
+                            />
+                        </BrandFormControl>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {isSuperadmin && !isEditMode && (
                 <div className="border-t border-gray-200 pt-6">

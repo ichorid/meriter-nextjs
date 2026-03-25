@@ -181,7 +181,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   
   // Settings state
   const [startingMerits, setStartingMerits] = useState<string>(
-    String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100)
+    String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 10)
   );
   
   const [quotaEnabled, setQuotaEnabled] = useState<boolean>(
@@ -201,7 +201,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
 
   // Additional settings fields
   const [dailyEmission, setDailyEmission] = useState<string>(
-    String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100)
+    String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 10)
   );
   const [postCost, setPostCost] = useState<string>(
     String(community.settings?.postCost ?? 1)
@@ -273,7 +273,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [originalSettings, setOriginalSettings] = useState({
     permissionRules: JSON.parse(JSON.stringify(initialPermissionRules)),
     linkedCurrencies: [...(community.linkedCurrencies || [])],
-    dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100),
+    dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 10),
     postCost: String(community.settings?.postCost ?? 1),
     pollCost: String(community.settings?.pollCost ?? 1),
     forwardCost: String(community.settings?.forwardCost ?? 1),
@@ -290,7 +290,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     })(),
     currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
     allowNegativeVoting: community.votingSettings?.allowNegativeVoting ?? true,
-    startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
+    startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 10),
     quotaRecipients: (() => {
       const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
       return recipients.filter((r): r is Role => r !== 'viewer');
@@ -364,7 +364,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     const initialRules = (community.permissionRules || []).filter(rule => rule.role !== 'viewer');
     setPermissionRules(JSON.parse(JSON.stringify(initialRules)));
     setLinkedCurrencies([...(community.linkedCurrencies || [])]);
-    setDailyEmission(String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100));
+    setDailyEmission(String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 10));
     setPostCost(String(community.settings?.postCost ?? 1));
     setPollCost(String(community.settings?.pollCost ?? 1));
     setForwardCost(String(community.settings?.forwardCost ?? 1));
@@ -380,7 +380,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     }
     setCurrencySource(getDefaultCurrencySource(community.votingSettings, community.typeTag));
     setAllowNegativeVoting(community.votingSettings?.allowNegativeVoting ?? true);
-    setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100));
+    setStartingMerits(String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 10));
     const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
     setQuotaRecipients(recipients.filter((r): r is Role => r !== 'viewer'));
     setQuotaEnabled(community.meritSettings?.quotaEnabled ?? true);
@@ -390,7 +390,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setOriginalSettings({
       permissionRules: JSON.parse(JSON.stringify(initialRules)),
       linkedCurrencies: [...(community.linkedCurrencies || [])],
-      dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 100),
+      dailyEmission: String(community.settings?.dailyEmission || community.meritSettings?.dailyQuota || 10),
       postCost: String(community.settings?.postCost ?? 1),
       pollCost: String(community.settings?.pollCost ?? 1),
       forwardCost: String(community.settings?.forwardCost ?? 1),
@@ -407,7 +407,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     })(),
       currencySource: getDefaultCurrencySource(community.votingSettings, community.typeTag),
       allowNegativeVoting: community.votingSettings?.allowNegativeVoting ?? true,
-      startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 100),
+      startingMerits: String(community.meritSettings?.startingMerits ?? community.meritSettings?.dailyQuota ?? 10),
       quotaRecipients: (() => {
       const recipients = (community.meritSettings?.quotaRecipients as Role[]) || ['superadmin', 'lead', 'participant'];
       return recipients.filter((r): r is Role => r !== 'viewer');
@@ -457,11 +457,11 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       const dataToSave = {
         permissionRules: validPermissionRules,
         meritSettings: {
-          dailyQuota: parseInt(dailyEmission, 10) || 100,
+          dailyQuota: parseInt(dailyEmission, 10) || 10,
           quotaRecipients: validQuotaRecipients,
           canEarn: true, // These are controlled by permissionRules now
           canSpend: true,
-          ...(isGlobalCommunity ? {} : { startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 100 }),
+          ...(isGlobalCommunity ? {} : { startingMerits: parseInt(startingMerits, 10) || parseInt(dailyEmission, 10) || 10 }),
           quotaEnabled: quotaEnabled,
         },
         linkedCurrencies,

@@ -3,8 +3,10 @@ import { trpc } from '@/lib/trpc/client';
 /**
  * Hook to get all categories
  */
-export function useCategories() {
-  return trpc.categories.getAll.useQuery();
+export function useCategories(options?: { enabled?: boolean }) {
+  return trpc.categories.getAll.useQuery(undefined, {
+    enabled: options?.enabled ?? true,
+  });
 }
 
 /**
