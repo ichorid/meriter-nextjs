@@ -1,17 +1,23 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { PieChart, Users, Wallet } from 'lucide-react';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { ProjectWalletCard } from './ProjectWalletCard';
+import { ProjectPayoutDialog } from './ProjectPayoutDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
+import { useProjectWallet } from '@/hooks/api/useProjects';
 export interface ProjectDashboardProps {
   projectId: string;
   founderSharePercent: number;
   investorSharePercent: number;
   totalMembers: number;
+  /** Lead or superadmin: show payout from project wallet */
+  canPayout?: boolean;
+  readOnly?: boolean;
 }
 
 function SharesMiniBar({ founder, investor }: { founder: number; investor: number }) {
@@ -48,10 +54,16 @@ export function ProjectDashboard({
   founderSharePercent,
   investorSharePercent,
   totalMembers,
+  canPayout = false,
+  readOnly = false,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
+  const [payoutOpen, setPayoutOpen] = useState(false);
+  const { data: wallet } = useProjectWallet(projectId);
+  const walletBalance = Math.floor(wallet?.balance ?? 0);
 
   return (
+    <>
     <div className="flex flex-col gap-3">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
       <div className="flex min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
@@ -105,8 +117,28 @@ export function ProjectDashboard({
         )}
         <div className="min-h-0 flex-1" aria-hidden />
         <SharesMiniBar founder={founderSharePercent} investor={investorSharePercent} />
+        {canPayout && !readOnly && walletBalance >= 1 && (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="mt-2 h-9 w-full shrink-0 rounded-xl"
+            onClick={() => setPayoutOpen(true)}
+          >
+            {t('payoutMerits')}
+          </Button>
+        )}
       </div>
     </div>
     </div>
+    {canPayout && !readOnly && (
+      <ProjectPayoutDialog
+        projectId={projectId}
+        open={payoutOpen}
+        onOpenChange={setPayoutOpen}
+        maxAmount={walletBalance}
+      />
+    )}
+    </>
   );
 }

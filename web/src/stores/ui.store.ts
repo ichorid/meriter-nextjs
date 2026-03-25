@@ -31,6 +31,8 @@ interface UIState {
   votingMode?: 'standard' | 'wallet-only' | 'quota-only';
   /** When opening the popup from a task post page, free-comment UI before publication query resolves */
   votingPublicationIsTask?: boolean;
+  /** Accepted project task: allow weighted merits in popup (backend allows project appreciation). */
+  votingTaskAllowWeightedMerits?: boolean;
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -48,7 +50,12 @@ interface UIActions {
   setActiveTab: (tab: string | null) => void;
   resetUI: () => void;
   // Voting popup actions
-  openVotingPopup: (targetId: string, targetType: VotingTargetType, mode?: 'standard' | 'wallet-only' | 'quota-only') => void;
+  openVotingPopup: (
+    targetId: string,
+    targetType: VotingTargetType,
+    mode?: 'standard' | 'wallet-only' | 'quota-only',
+    opts?: { publicationIsTask?: boolean; taskAllowWeightedMerits?: boolean },
+  ) => void;
   closeVotingPopup: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
   // Withdraw popup actions
@@ -67,6 +74,7 @@ const initialState: UIState = {
   votingTargetType: null,
   votingMode: 'standard',
   votingPublicationIsTask: false,
+  votingTaskAllowWeightedMerits: false,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -87,19 +95,23 @@ export const useUIStore = create<UIState & UIActions>()(
         setActiveSlider: (id) => set({ activeSlider: id }),
         setActiveTab: (tab) => set({ activeTab: tab }),
         resetUI: () => set(initialState),
-        openVotingPopup: (targetId, targetType, mode = 'standard', opts) => set({
-          activeVotingTarget: targetId,
-          votingTargetType: targetType,
-          votingMode: mode,
-          votingPublicationIsTask: opts?.publicationIsTask === true,
-          activeVotingFormData: { comment: '', delta: 0, error: '', images: [] }
-        }),
-        closeVotingPopup: () => set({
-          activeVotingTarget: null,
-          votingTargetType: null,
-          votingPublicationIsTask: false,
-          activeVotingFormData: null
-        }),
+        openVotingPopup: (targetId, targetType, mode = 'standard', opts) =>
+          set({
+            activeVotingTarget: targetId,
+            votingTargetType: targetType,
+            votingMode: mode,
+            votingPublicationIsTask: opts?.publicationIsTask === true,
+            votingTaskAllowWeightedMerits: opts?.taskAllowWeightedMerits === true,
+            activeVotingFormData: { comment: '', delta: 0, error: '', images: [] },
+          }),
+        closeVotingPopup: () =>
+          set({
+            activeVotingTarget: null,
+            votingTargetType: null,
+            votingPublicationIsTask: false,
+            votingTaskAllowWeightedMerits: false,
+            activeVotingFormData: null,
+          }),
         updateVotingFormData: (data) => set((state) => ({
           activeVotingFormData: state.activeVotingFormData
             ? { ...state.activeVotingFormData, ...data }

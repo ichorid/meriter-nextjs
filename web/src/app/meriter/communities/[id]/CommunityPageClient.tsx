@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, TrendingUp } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -67,7 +67,8 @@ import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/ValuesRubricatorPanel';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { canCommunityPublishToBirzhaAsSource } from '@/lib/constants/birzha-source';
-import { CommunityBirzhaSourceCard } from '@/components/organisms/Community/CommunityBirzhaSourceCard';
+import { CommunityDashboard } from '@/components/organisms/Community/community-dashboard';
+import { BirzhaSourcePostsEntryRow } from '@/components/organisms/Birzha/BirzhaSourcePostsEntryRow';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -79,6 +80,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const tBirzhaSource = useTranslations('birzhaSource');
     const tTaxonomy = useTranslations('publications.create.taxonomy');
     const tValues = useTranslations('valuesRubricator');
     const {
@@ -372,6 +374,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     // Check if community is special (marathon-of-good or future-vision)
     const isSpecialCommunity = comms?.typeTag === 'marathon-of-good' || comms?.typeTag === 'future-vision';
     const isMarathonOfGood = comms?.typeTag === 'marathon-of-good';
+
+    const showBirzhaSourceDashboard =
+        !!comms && !isMarathonOfGood && canCommunityPublishToBirzhaAsSource(comms);
 
     // Find the future-vision community ID when on marathon-of-good
     // This must be calculated before useCommunityFeed that uses it
@@ -736,8 +741,70 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Members and (non–marathon-of-good) community projects teaser */}
-            {comms && (
+            {/* Birzha-source communities: wallet/team/shares dashboard + projects + Birzha row (desktop: one row) */}
+            {showBirzhaSourceDashboard && comms ? (
+                <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-stretch">
+                    <div className="min-w-0 lg:col-span-5">
+                        <CommunityDashboard
+                            communityId={chatId}
+                            founderSharePercent={comms.founderSharePercent ?? 0}
+                            investorSharePercent={comms.investorSharePercent ?? 0}
+                            totalMembers={comms.memberCount ?? 0}
+                            canPayout={
+                                userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin'
+                            }
+                            readOnly={false}
+                        />
+                    </div>
+                    <Link
+                        href={routes.communityProjects(chatId)}
+                        className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60 lg:col-span-2"
+                    >
+                        <div className="flex min-w-0 items-center gap-3">
+                            <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                            <div className="flex min-w-0 items-baseline gap-2">
+                                <span className="truncate font-medium text-base-content">
+                                    {tCommunities('communityProjects')}
+                                </span>
+                                <span className="shrink-0 tabular-nums text-sm text-base-content/60">
+                                    {communityProjectsCountPending
+                                        ? '…'
+                                        : (communityProjectsSummary?.total ?? 0)}
+                                </span>
+                            </div>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                            {tCommunities('all')}
+                            <ChevronRight size={14} />
+                        </span>
+                    </Link>
+                    <div className="min-w-0 lg:col-span-5">
+                        <BirzhaSourcePostsEntryRow
+                            variant="community"
+                            sourceEntityType="community"
+                            sourceEntityId={chatId}
+                            listHref={routes.communityBirzhaPosts(chatId)}
+                            className="mb-0"
+                            publishSlot={
+                                userRoleInCommunity === 'lead' ||
+                                user?.globalRole === 'superadmin' ? (
+                                    <Button
+                                        type="button"
+                                        className="h-auto min-h-[52px] w-full rounded-xl bg-green-600 px-4 text-white hover:bg-green-600/90 sm:w-auto sm:self-stretch"
+                                        aria-label={`${tBirzhaSource('publishCta')}: ${comms.name ?? ''}`}
+                                        onClick={() =>
+                                            router.push(`/meriter/communities/${chatId}/birzha-publish`)
+                                        }
+                                    >
+                                        <TrendingUp className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                                        {tBirzhaSource('publishCta')}
+                                    </Button>
+                                ) : null
+                            }
+                        />
+                    </div>
+                </div>
+            ) : comms ? (
                 <div
                     className={cn(
                         'mb-6 grid gap-3',
@@ -789,16 +856,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         </Link>
                     ) : null}
                 </div>
-            )}
-
-            {comms &&
-            !isMarathonOfGood &&
-            canCommunityPublishToBirzhaAsSource(comms) &&
-            (userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin') ? (
-                <CommunityBirzhaSourceCard
-                    communityId={chatId}
-                    communityName={comms.name ?? ''}
-                />
             ) : null}
 
             {/* Banners */}

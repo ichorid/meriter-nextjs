@@ -23,6 +23,7 @@ import {
   resolveVoteCtaCommentMode,
   voteCtaUsesCommentLabel,
 } from '@/lib/utils/vote-cta-label';
+import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 import { PostMetrics } from './PostMetrics';
 import { PostActions } from './PostActions';
 import { ClosePostDialog } from './ClosePostDialog';
@@ -98,6 +99,8 @@ interface PublicationActionsProps {
   hideVoteAndScore?: boolean;
   /** Project task post: hide rating, merits, withdraw, investment UI */
   ticketPostMode?: boolean;
+  /** Project appreciation: no withdraw from post rating */
+  hideWithdrawFromProjectAppreciation?: boolean;
 }
 
 export const PublicationActions: React.FC<PublicationActionsProps> = ({
@@ -114,6 +117,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   className = '',
   hideVoteAndScore = false,
   ticketPostMode = false,
+  hideWithdrawFromProjectAppreciation = false,
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -214,7 +218,9 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Check if community allows withdrawals
   const allowWithdraw = community?.settings?.allowWithdraw ?? true;
   const canShowWithdraw =
-    !ticketPostMode && ((isAuthor && !hasBeneficiary && allowWithdraw) || isBeneficiary);
+    !hideWithdrawFromProjectAppreciation &&
+    !ticketPostMode &&
+    ((isAuthor && !hasBeneficiary && allowWithdraw) || isBeneficiary);
 
   // Use API permissions instead of calculating on frontend
   const canVote = publication.permissions?.canVote ?? false;
@@ -240,8 +246,15 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const handleVoteClick = () => {
     if (!publicationId) return;
     if ((publication as { postType?: string }).postType === 'ticket') {
+      const isProjectCommunity = community?.isProject === true || community?.typeTag === 'project';
+      const closed = (publication as { ticketStatus?: string }).ticketStatus === 'closed';
+      const workAccepted = ticketHasWorkAccepted(
+        publication as { ticketActivityLog?: Array<{ action?: string }> },
+      );
+      const allowWeightedMerits = isProjectCommunity && closed && workAccepted;
       useUIStore.getState().openVotingPopup(publicationId, 'publication', 'standard', {
-        publicationIsTask: true,
+        publicationIsTask: !allowWeightedMerits,
+        taskAllowWeightedMerits: allowWeightedMerits,
       });
       return;
     }

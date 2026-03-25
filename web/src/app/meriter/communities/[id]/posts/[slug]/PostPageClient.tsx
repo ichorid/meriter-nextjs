@@ -39,6 +39,7 @@ import {
     resolveVoteCtaCommentMode,
     voteCtaUsesCommentLabel,
 } from '@/lib/utils/vote-cta-label';
+import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 
 interface PostPageClientProps {
     communityId: string;
@@ -254,10 +255,21 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
         );
     }
 
+    const isProjectCommunity = Boolean(
+        (votingContextCommunity as { isProject?: boolean } | undefined)?.isProject,
+    );
     const isTicketPost = (publication as { postType?: string }).postType === 'ticket';
+    const ticketClosedAccepted =
+        isTicketPost &&
+        isProjectCommunity &&
+        (publication as { ticketStatus?: string }).ticketStatus === 'closed' &&
+        ticketHasWorkAccepted(
+            publication as { ticketActivityLog?: Array<{ action?: string }> },
+        );
     const isProjectDiscussion =
-        (publication as { postType?: string }).postType === 'discussion' &&
-        Boolean((publication as { isProject?: boolean }).isProject);
+        (publication as { postType?: string }).postType === 'discussion' && isProjectCommunity;
+    const hideWithdrawFromProjectAppreciation =
+        (isProjectCommunity && isProjectDiscussion) || ticketClosedAccepted;
 
     const voteCtaMode = resolveVoteCtaCommentMode({
         publicationStatus: (publication as { status?: string }).status,
@@ -443,6 +455,10 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 status: (publication as Record<string, unknown>).status as string | undefined,
                                 closingSummary: (publication as Record<string, unknown>).closingSummary as { totalEarned: number; distributedToInvestors: number; authorReceived: number; spentOnShows: number } | undefined,
                                 ttlExpiresAt: (publication as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined,
+                                ticketStatus: (publication as Record<string, unknown>).ticketStatus as string | undefined,
+                                ticketActivityLog: (publication as Record<string, unknown>).ticketActivityLog as
+                                    | Array<{ action?: string }>
+                                    | undefined,
                             }}
                             onVote={() => {}}
                             onComment={() => {}}
@@ -451,7 +467,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             isCommenting={false}
                             maxPlus={currentBalance}
                             wallets={wallets}
-                            ticketPostMode={isTicketPost}
+                            ticketPostMode={isTicketPost && !ticketClosedAccepted}
+                            hideWithdrawFromProjectAppreciation={hideWithdrawFromProjectAppreciation}
                             updateAll={() => {
                                 void utils.publications.getById.invalidate({ id: getPublicationIdentifier(publication) ?? '' });
                             }}
@@ -529,7 +546,8 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                                         ? 'quota-only'
                                                         : 'standard';
                                             useUIStore.getState().openVotingPopup(slug, 'publication', mode, {
-                                                publicationIsTask: isTicketPost,
+                                                publicationIsTask: isTicketPost && !ticketClosedAccepted,
+                                                taskAllowWeightedMerits: ticketClosedAccepted,
                                             });
                                         }}
                                         className="w-full"

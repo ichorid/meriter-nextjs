@@ -107,19 +107,19 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
     updateWithdrawFormData({ comment: '', amount: 0, error: '' });
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   const maxWithdrawAmount = formData.maxWithdrawAmount || 0;
   const maxTopUpPersonal = formData.maxTopUpAmount || walletBalance;
-  const isWithdrawal = withdrawTargetType === 'publication' || withdrawTargetType === 'comment' || withdrawTargetType === 'vote';
+  const isWithdrawal =
+    withdrawTargetType === 'publication' ||
+    withdrawTargetType === 'comment' ||
+    withdrawTargetType === 'vote';
   const canTopUpFromSourceWallet =
     withdrawTargetType === 'publication-topup' &&
     publication?.permissions?.canTopUpFromSourceEntityWallet === true;
   const sourceEntityIdForTopUp =
     canTopUpFromSourceWallet && publication?.sourceEntityId ? publication.sourceEntityId : '';
 
+  // Must run unconditionally (before any early return) — same hook order when popup closed vs open.
   const { data: sourceWallet } = trpc.communities.getCommunityWallet.useQuery(
     { communityId: sourceEntityIdForTopUp },
     {
@@ -129,6 +129,10 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
 
   const maxTopUpSource = sourceWallet?.balance ?? 0;
   const maxPlus = isWithdrawal ? maxWithdrawAmount : maxTopUpPersonal;
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <IntlPortalWrapper>

@@ -38,6 +38,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     votingTargetType,
     votingMode,
     votingPublicationIsTask,
+    votingTaskAllowWeightedMerits,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -100,10 +101,13 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     [votingTargetType, votingPublicationIsTask, publication],
   );
 
-  /** Tasks: free text comments only; submit/validate as neutral-only regardless of community commentMode */
+  /** Tasks: free text comments only unless accepted project task with weighted merits */
   const effectiveCommentModeForSubmit = useMemo(
-    () => (isTicketPost ? 'neutralOnly' : effectiveCommentMode),
-    [isTicketPost, effectiveCommentMode],
+    () =>
+      isTicketPost && !votingTaskAllowWeightedMerits
+        ? 'neutralOnly'
+        : effectiveCommentMode,
+    [isTicketPost, votingTaskAllowWeightedMerits, effectiveCommentMode],
   );
 
   // Use mutation hooks for voting and commenting

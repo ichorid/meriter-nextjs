@@ -2,6 +2,10 @@
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { useTranslations } from 'next-intl';
 import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
 import { useBatchQueries } from "./useBatchQueries";
 
@@ -151,6 +155,58 @@ export function useResetDailyQuota() {
       utils.wallets.getQuota.invalidate({ userId: 'me', communityId: variables.id });
       // Invalidate quota-related queries
       utils.invalidate({ queryKey: [['community-quota']] });
+    },
+  });
+}
+
+export function useCommunitySourceWallet(communityId: string | null) {
+  return trpc.communities.getCommunityWallet.useQuery(
+    { communityId: communityId! },
+    { enabled: !!communityId, staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function useTopUpCommunitySourceWallet() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((s) => s.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.communities.topUpCommunityWallet.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.communities.getCommunityWallet.invalidate({ communityId: variables.communityId });
+      void utils.communities.getById.invalidate({ id: variables.communityId });
+      void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
+      void utils.wallets.getAll.invalidate();
+      addToast(t('topUpSuccess'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
+export function useCommunityWalletPayoutPreview(
+  communityId: string | null,
+  amount: number,
+  enabled: boolean,
+) {
+  return trpc.communities.communityWalletPayoutPreview.useQuery(
+    { communityId: communityId!, amount },
+    {
+      enabled: Boolean(communityId) && enabled && amount >= 1,
+      staleTime: 0,
+    },
+  );
+}
+
+export function useCommunityWalletPayoutExecute() {
+  const utils = trpc.useUtils();
+
+  return trpc.communities.communityWalletPayoutExecute.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.communities.getCommunityWallet.invalidate({ communityId: variables.communityId });
+      void utils.communities.getById.invalidate({ id: variables.communityId });
+      void utils.wallets.getAll.invalidate();
     },
   });
 }

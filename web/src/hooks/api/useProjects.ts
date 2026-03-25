@@ -6,6 +6,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { STALE_TIME } from '@/lib/constants/query-config';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 
 export function useProjects(params: {
   parentCommunityId?: string;
@@ -147,8 +148,11 @@ export function useTopUpWallet() {
   const t = useTranslations('projects');
 
   return trpc.project.topUpWallet.useMutation({
-    onSuccess: () => {
-      utils.project.getById.invalidate();
+    onSuccess: (_data, variables) => {
+      void utils.project.getWallet.invalidate({ projectId: variables.projectId });
+      void utils.project.getById.invalidate({ id: variables.projectId });
+      void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
+      void utils.wallets.getAll.invalidate();
       addToast(t('topUpSuccess'), 'success');
     },
     onError: (error) => {
@@ -162,6 +166,28 @@ export function useProjectWallet(projectId: string | null) {
     { projectId: projectId! },
     { enabled: !!projectId, staleTime: STALE_TIME.VERY_SHORT },
   );
+}
+
+export function useProjectPayoutPreview(projectId: string | null, amount: number, enabled: boolean) {
+  return trpc.project.payoutPreview.useQuery(
+    { projectId: projectId!, amount },
+    {
+      enabled: Boolean(projectId) && enabled && amount >= 1,
+      staleTime: 0,
+    },
+  );
+}
+
+export function useProjectPayoutExecute() {
+  const utils = trpc.useUtils();
+
+  return trpc.project.payoutExecute.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.project.getWallet.invalidate({ projectId: variables.projectId });
+      void utils.project.getById.invalidate({ id: variables.projectId });
+      void utils.wallets.getAll.invalidate();
+    },
+  });
 }
 
 export function useCloseProject() {

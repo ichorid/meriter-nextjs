@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { ApplicantsPanel } from './ApplicantsPanel';
 import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
+import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 import { cn } from '@/lib/utils';
 import type { TicketStatus } from '@meriter/shared-types';
 
@@ -45,6 +46,7 @@ interface TicketCardProps {
     isNeutralTicket?: boolean;
     applicants?: string[];
     metrics?: { score?: number };
+    ticketActivityLog?: Array<{ action?: string }>;
   };
   currentUserId: string;
 }
@@ -56,6 +58,7 @@ export function TicketCard({
   canModerateTickets,
 }: TicketCardProps) {
   const t = useTranslations('projects');
+  const tComments = useTranslations('comments');
   const locale = useLocale();
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
@@ -84,6 +87,8 @@ export function TicketCard({
     status === 'in_progress' && Boolean(ticket.beneficiaryId) && ticket.beneficiaryId === currentUserId;
   const canAccept = canModerateTickets && status === 'done';
   const canReopen = canModerateTickets && status === 'closed';
+  const showAppreciationVote =
+    status === 'closed' && ticketHasWorkAccepted(ticket) && Boolean(currentUserId);
 
   const submitDecline = () => {
     const r = declineReason.trim();
@@ -216,6 +221,11 @@ export function TicketCard({
               disabled={updateStatus.isPending}
             >
               {t('reopenTask')}
+            </Button>
+          )}
+          {showAppreciationVote && (
+            <Button size="sm" variant="default" className="h-8 px-2 sm:px-4 text-xs" asChild>
+              <Link href={routes.communityPost(projectId, ticket.id)}>{tComments('voteTitle')}</Link>
             </Button>
           )}
       </div>

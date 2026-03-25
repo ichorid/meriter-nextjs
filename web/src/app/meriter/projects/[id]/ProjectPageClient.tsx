@@ -20,8 +20,12 @@ import { UpdateSharesDialog } from '@/components/organisms/Project/UpdateSharesD
 import { TransferAdminDialog } from '@/components/organisms/Project/TransferAdminDialog';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
+import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
+import { useWalletBalance } from '@/hooks/api/useWallet';
+import { useUserQuota } from '@/hooks/api/useQuota';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 
 interface ProjectPageClientProps {
   projectId: string;
@@ -36,6 +40,9 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
   const joinProject = useJoinProject();
   const leaveProject = useLeaveProject();
+
+  const { data: globalBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
+  const { data: quotaData } = useUserQuota(projectId);
 
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
@@ -70,6 +77,19 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
             showBack={true}
             onBack={() => router.push('/meriter/projects')}
             asStickyHeader={true}
+            rightAction={
+              user ? (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <QuotaDisplay
+                    balance={globalBalance}
+                    showPermanent={true}
+                    showDaily={false}
+                    compact={true}
+                    className="mr-2 -ml-[15px] mt-[5px]"
+                  />
+                </div>
+              ) : undefined
+            }
           />
         }
       >
@@ -98,6 +118,24 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
 
   const totalMembers = membersData?.pagination?.total ?? membersData?.data?.length ?? 0;
 
+  const userRoleInProject =
+    user?.globalRole === 'superadmin'
+      ? ('superadmin' as const)
+      : (membersData?.data?.find(
+          (m: { id?: string; userId?: string; role?: string }) => (m.id ?? m.userId) === user?.id,
+        )?.role ?? null);
+
+  const hasProjectQuota = Boolean(
+    user &&
+      userRoleInProject &&
+      project.meritSettings?.quotaEnabled !== false &&
+      (project.meritSettings?.dailyQuota ?? 0) > 0 &&
+      (project.meritSettings?.quotaRecipients ?? []).includes(userRoleInProject),
+  );
+
+  const quotaRemaining = quotaData?.remainingToday ?? 0;
+  const quotaMax = quotaData?.dailyQuota ?? 0;
+
   const stickyHeader = (
     <SimpleStickyHeader
       title={<span className="truncate max-w-[200px] sm:max-w-[280px]" title={project.name}>{project.name}</span>}
@@ -105,6 +143,21 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
       onBack={() => router.push('/meriter/projects')}
       asStickyHeader={true}
       showScrollToTop={true}
+      rightAction={
+        user ? (
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <QuotaDisplay
+              balance={globalBalance}
+              quotaRemaining={hasProjectQuota ? quotaRemaining : undefined}
+              quotaMax={hasProjectQuota ? quotaMax : undefined}
+              showPermanent={true}
+              showDaily={hasProjectQuota}
+              compact={true}
+              className="mr-2 -ml-[15px] mt-[5px]"
+            />
+          </div>
+        ) : undefined
+      }
     />
   );
 
@@ -158,6 +211,8 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           founderSharePercent={project.founderSharePercent ?? 0}
           investorSharePercent={project.investorSharePercent ?? 0}
           totalMembers={totalMembers}
+          canPayout={Boolean(user && (isLead || user.globalRole === 'superadmin'))}
+          readOnly={isArchived}
         />
 
         {isLead && !isArchived ? (
