@@ -999,4 +999,106 @@ export const communitiesRouter = router({
 
       return users;
     }),
+
+  /**
+   * Promote a participant to lead (co-admin). Only leads/superadmin; local membership communities only.
+   */
+  promoteMemberToLead: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        userId: z.string(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      if (!ctx.communityService.isLocalMembershipCommunity(community)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Lead management is only available for local membership communities',
+        });
+      }
+      const isAdmin = await ctx.communityService.isUserAdmin(input.communityId, ctx.user.id);
+      if (!isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only community leads can promote members',
+        });
+      }
+      if (input.userId === ctx.user.id) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot promote yourself this way',
+        });
+      }
+      const targetRole = await ctx.userCommunityRoleService.getRole(
+        input.userId,
+        input.communityId,
+      );
+      if (!targetRole || targetRole.role !== 'participant') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Only participants can be promoted to lead',
+        });
+      }
+      await ctx.userCommunityRoleService.setRole(
+        input.userId,
+        input.communityId,
+        'lead',
+      );
+      return { success: true as const };
+    }),
+
+  /**
+   * Current user steps down from lead to participant. Requires at least one other lead.
+   */
+  demoteSelfFromLead: protectedProcedure
+    .input(z.object({ communityId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+      if (!ctx.communityService.isLocalMembershipCommunity(community)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Lead management is only available for local membership communities',
+        });
+      }
+      const selfRole = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        input.communityId,
+      );
+      if (selfRole?.role !== 'lead') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can step down',
+        });
+      }
+      const leads = await ctx.userCommunityRoleService.getUsersByRole(
+        input.communityId,
+        'lead',
+      );
+      if (leads.length <= 1) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Promote another member to lead before stepping down',
+        });
+      }
+      await ctx.userCommunityRoleService.setRole(
+        ctx.user.id,
+        input.communityId,
+        'participant',
+      );
+      return { success: true as const };
+    }),
 });
