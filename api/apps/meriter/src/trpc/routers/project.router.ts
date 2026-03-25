@@ -369,15 +369,22 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, input.projectId);
-      if (!role) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Only project members can view the wallet',
-        });
+      const project = await ctx.communityService.getCommunity(input.projectId);
+      if (!project?.isProject) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
       const wallet = await ctx.communityWalletService.getWallet(input.projectId);
-      return wallet ?? { balance: 0, totalReceived: 0, totalDistributed: 0, id: '', communityId: input.projectId, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      return (
+        wallet ?? {
+          balance: 0,
+          totalReceived: 0,
+          totalDistributed: 0,
+          id: '',
+          communityId: input.projectId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      );
     }),
 
   publishToBirzha: protectedProcedure

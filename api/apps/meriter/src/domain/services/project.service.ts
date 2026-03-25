@@ -817,8 +817,14 @@ export class ProjectService {
 
   /**
    * Top-up project wallet from user's global wallet (donation; non-refundable).
+   * Members: credits pool only (no projectInvestments row).
+   * Non-members: if investing is enabled, same as investInProject (pool + investor entitlement); otherwise gratuitous donation.
    */
-  async topUpWallet(userId: string, projectId: string, amount: number): Promise<{ balance: number }> {
+  async topUpWallet(
+    userId: string,
+    projectId: string,
+    amount: number,
+  ): Promise<{ balance: number; mode: 'member_topup' | 'donation' | 'investment' }> {
     if (amount <= 0 || !Number.isInteger(amount)) {
       throw new BadRequestException('Amount must be a positive integer');
     }
@@ -829,8 +835,28 @@ export class ProjectService {
     }
 
     const role = await this.userCommunityRoleService.getRole(userId, projectId);
+    const investingEnabled = project.settings?.investingEnabled === true;
+
     if (!role) {
-      throw new ForbiddenException('Only project members can top up the wallet');
+      if (investingEnabled) {
+        await this.investInProject(userId, projectId, amount);
+        const balance = await this.communityWalletService.getBalance(projectId);
+        return { balance, mode: 'investment' };
+      }
+      await this.walletService.addTransaction(
+        userId,
+        GLOBAL_COMMUNITY_ID,
+        'debit',
+        amount,
+        'personal',
+        'project_topup',
+        projectId,
+        DEFAULT_CURRENCY,
+        'Project wallet top-up (donation)',
+      );
+      await this.communityWalletService.createWallet(projectId);
+      const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
+      return { balance: wallet.balance, mode: 'donation' };
     }
 
     await this.walletService.addTransaction(
@@ -844,9 +870,9 @@ export class ProjectService {
       DEFAULT_CURRENCY,
       'Project wallet top-up',
     );
-
+    await this.communityWalletService.createWallet(projectId);
     const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
-    return { balance: wallet.balance };
+    return { balance: wallet.balance, mode: 'member_topup' };
   }
 
   async investInProject(userId: string, projectId: string, amount: number): Promise<void> {
@@ -875,6 +901,8 @@ export class ProjectService {
       `Investment in project ${project.name}`,
     );
     await this.communityService.appendProjectInvestment(projectId, userId, amount);
+    await this.communityWalletService.createWallet(projectId);
+    await this.communityWalletService.deposit(projectId, amount, 'investment');
   }
 
   async listProjectInvestments(
