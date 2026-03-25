@@ -11,6 +11,7 @@ import { Loader2, User } from 'lucide-react';
 import { useComments } from "@shared/hooks/use-comments";
 import { useAuth } from '@/contexts/AuthContext';
 import { useUIStore } from '@/stores/ui.store';
+import { useToastStore } from '@/shared/stores/toast.store';
 import { usePublication, useCommunity, useWallets } from '@/hooks/api';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWalletBalance } from '@/hooks/api/useWallet';
@@ -67,6 +68,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
     // Use v1 API hooks
     const { user } = useAuth();
+    const addToast = useToastStore((s) => s.addToast);
     const utils = trpc.useUtils();
     const { data: publication, isLoading: publicationLoading, error: publicationError, isFetched: publicationFetched } = usePublication(slug);
     const publicationCommunityId =
@@ -526,25 +528,53 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                         </div>
 
                         {(() => {
-                            // Check if user has already voted (has a comment/vote)
-                            const hasUserVoted = user?.id && comments?.some((c: any) => 
-                                c.authorId === user.id || c.meta?.author?.id === user.id
+                            const hasUserVoted = Boolean(
+                                user?.id &&
+                                    comments?.some(
+                                        (c: { authorId?: string; meta?: { author?: { id?: string } } }) =>
+                                            c.authorId === user.id || c.meta?.author?.id === user.id,
+                                    ),
                             );
-                            
-                            return !hasUserVoted && (
+                            const postStatus = (publication as { status?: string }).status ?? 'active';
+                            const votePerms = (
+                                publication as {
+                                    permissions?: { canVote?: boolean; voteDisabledReason?: string };
+                                }
+                            ).permissions;
+                            const canVoteOnPost = votePerms?.canVote ?? false;
+
+                            if (hasUserVoted || !canVoteOnPost || postStatus === 'closed') {
+                                return null;
+                            }
+
+                            return (
                                 <div className="mb-6">
                                     <Button
                                         variant="outline"
                                         onClick={() => {
-                                            // Regular and team communities: allow spending daily quota first, then overflow into wallet merits
-                                            // Special groups preserve their restrictions.
+                                            if (!canVoteOnPost) {
+                                                const reason = votePerms?.voteDisabledReason;
+                                                let msg = tShared('voteDisabled.default');
+                                                if (reason) {
+                                                    try {
+                                                        const tr = tShared(reason);
+                                                        if (tr !== reason) {
+                                                            msg = tr;
+                                                        }
+                                                    } catch {
+                                                        /* use default */
+                                                    }
+                                                }
+                                                addToast(msg, 'error');
+                                                return;
+                                            }
                                             const typeTag = votingContextCommunity?.typeTag;
                                             const mode: 'standard' | 'wallet-only' | 'quota-only' =
                                                 typeTag === 'future-vision'
                                                     ? 'wallet-only'
                                                     : typeTag === 'marathon-of-good'
-                                                        ? 'quota-only'
-                                                        : 'standard';
+                                                      ? 'quota-only'
+                                                      : 'standard';
                                             useUIStore.getState().openVotingPopup(slug, 'publication', mode, {
                                                 publicationIsTask: isTicketPost && !ticketClosedAccepted,
                                                 taskAllowWeightedMerits: ticketClosedAccepted,

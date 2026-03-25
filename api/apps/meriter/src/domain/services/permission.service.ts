@@ -193,6 +193,18 @@ export class PermissionService {
     }
 
     if (community?.isProject) {
+      const snap = publication.toSnapshot();
+      if (snap.postType === 'discussion' && publication.getAuthorId.getValue() === userId) {
+        return false;
+      }
+      if (snap.postType === 'ticket') {
+        const beneficiaryVo = publication.getBeneficiaryId;
+        const beneficiary = beneficiaryVo?.getValue();
+        if (beneficiary && beneficiary === userId) {
+          return false;
+        }
+      }
+
       const user = await this.userService.getUserById(userId);
       const isSuperadmin = user?.globalRole === GLOBAL_ROLE_SUPERADMIN;
       if (!isSuperadmin) {

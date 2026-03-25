@@ -520,6 +520,8 @@
             "default": "You do not have permission to vote on this content",
             "notLoggedIn": "You must be logged in to vote",
             "projectPost": "Project posts cannot be voted on",
+            "projectOwnDiscussion": "You cannot vote on a project discussion you created",
+            "projectOwnTicket": "You cannot vote on a project task where you are the assignee",
             "noCommunity": "Cannot determine voting permissions",
             "isBeneficiary": "You cannot vote on content where you are the beneficiary",
             "isAuthor": "You cannot vote on your own content",

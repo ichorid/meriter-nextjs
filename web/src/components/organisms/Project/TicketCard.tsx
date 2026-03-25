@@ -94,8 +94,13 @@ export function TicketCard({
     status === 'in_progress' && Boolean(ticket.beneficiaryId) && ticket.beneficiaryId === currentUserId;
   const canAccept = canModerateTickets && status === 'done';
   const canReopen = canModerateTickets && status === 'closed';
+  const assigneeCannotAppreciateSelf =
+    Boolean(ticket.beneficiaryId) && currentUserId === ticket.beneficiaryId;
   const showAppreciationVote =
-    status === 'closed' && ticketHasWorkAccepted(ticket) && Boolean(currentUserId);
+    status === 'closed' &&
+    ticketHasWorkAccepted(ticket) &&
+    Boolean(currentUserId) &&
+    !assigneeCannotAppreciateSelf;
   const showClosedAppreciationRating =
     status === 'closed' && ticketHasWorkAccepted(ticket);
   const appreciationScore = ticket.metrics?.score ?? 0;

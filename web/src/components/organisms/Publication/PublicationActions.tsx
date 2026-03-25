@@ -245,6 +245,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
 
   const handleVoteClick = () => {
     if (!publicationId) return;
+    if (!canVote) {
+      addToast(getVoteTooltipText() ?? t('voteDisabled.default'), 'error');
+      return;
+    }
     if ((publication as { postType?: string }).postType === 'ticket') {
       const isProjectCommunity = community?.isProject === true || community?.typeTag === 'project';
       const closed = (publication as { ticketStatus?: string }).ticketStatus === 'closed';

@@ -125,8 +125,18 @@ export class PermissionsHelperService {
     // Only determine reason if canVote is false
     let voteDisabledReason: string | undefined;
     if (!canVote) {
-      // Check if canVoteForOwnPosts is the reason (HIGH PRIORITY)
-      if (context.isEffectiveBeneficiary) {
+      const isProjectCommunity = community.isProject === true;
+      const pt = snapshot.postType;
+      if (isProjectCommunity && pt === 'discussion' && authorId === userId) {
+        voteDisabledReason = 'voteDisabled.projectOwnDiscussion';
+      } else if (
+        isProjectCommunity &&
+        pt === 'ticket' &&
+        beneficiaryId &&
+        beneficiaryId === userId
+      ) {
+        voteDisabledReason = 'voteDisabled.projectOwnTicket';
+      } else if (context.isEffectiveBeneficiary) {
         const effectiveRules = this.communityService.getEffectivePermissionRules(community);
         const voteRule = effectiveRules.find(
           rule => rule.role === userRole && rule.action === ActionType.VOTE
