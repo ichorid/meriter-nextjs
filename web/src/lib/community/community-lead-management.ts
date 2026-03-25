@@ -1,4 +1,7 @@
-/** Mirrors API `CommunityService.isLocalMembershipCommunity` typeTag rules. */
+/**
+ * Mirrors API `CommunityService.isLocalMembershipCommunity` typeTag rules:
+ * missing/empty typeTag counts as local (same as API: non–auto-joined hubs).
+ */
 const NON_LOCAL_MEMBERSHIP_TYPE_TAGS = new Set([
   'global',
   'future-vision',
@@ -8,5 +11,9 @@ const NON_LOCAL_MEMBERSHIP_TYPE_TAGS = new Set([
 ]);
 
 export function communityAllowsLeadManagement(typeTag: string | undefined): boolean {
-  return !!typeTag && !NON_LOCAL_MEMBERSHIP_TYPE_TAGS.has(typeTag);
+  const tag = typeTag?.trim();
+  if (!tag) {
+    return true;
+  }
+  return !NON_LOCAL_MEMBERSHIP_TYPE_TAGS.has(tag);
 }
