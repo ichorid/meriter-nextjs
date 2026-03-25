@@ -97,6 +97,9 @@ export class Publication implements EditableEntity {
     private readonly inactivityWarningNotified?: boolean,
     private readonly sourceEntityId?: string,
     private readonly sourceEntityType?: 'project' | 'community',
+    private readonly authorKind: 'user' | 'community',
+    private readonly authoredCommunityId?: string,
+    private readonly publishedByUserId?: string,
   ) {}
 
   static create(
@@ -127,6 +130,9 @@ export class Publication implements EditableEntity {
       noAuthorWalletSpend?: boolean;
       sourceEntityId?: string;
       sourceEntityType?: 'project' | 'community';
+      authorKind?: 'user' | 'community';
+      authoredCommunityId?: string;
+      publishedByUserId?: string;
     } = {},
   ): Publication {
     const publicationContent = PublicationContent.create(content);
@@ -178,6 +184,9 @@ export class Publication implements EditableEntity {
       false, // inactivityWarningNotified
       options.sourceEntityId,
       options.sourceEntityType,
+      options.authorKind ?? 'user',
+      options.authoredCommunityId,
+      options.publishedByUserId,
     );
   }
 
@@ -230,6 +239,9 @@ export class Publication implements EditableEntity {
       snapshot.inactivityWarningNotified ?? false,
       snapshot.sourceEntityId,
       snapshot.sourceEntityType,
+      snapshot.authorKind === 'community' ? 'community' : 'user',
+      snapshot.authoredCommunityId,
+      snapshot.publishedByUserId,
     );
   }
 
@@ -424,6 +436,21 @@ export class Publication implements EditableEntity {
       inactivityWarningNotified: this.inactivityWarningNotified ?? false,
       sourceEntityId: this.sourceEntityId,
       sourceEntityType: this.sourceEntityType,
+      authorKind: this.authorKind,
+      authoredCommunityId: this.authoredCommunityId,
+      publishedByUserId: this.publishedByUserId,
     };
+  }
+
+  get getAuthorKind(): 'user' | 'community' {
+    return this.authorKind;
+  }
+
+  get getAuthoredCommunityId(): string | undefined {
+    return this.authoredCommunityId;
+  }
+
+  get getPublishedByUserId(): string | undefined {
+    return this.publishedByUserId;
   }
 }

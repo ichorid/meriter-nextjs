@@ -45,6 +45,7 @@ export class PermissionsHelperService {
         canEdit: false,
         canDelete: false,
         canComment: false,
+        canTopUpFromSourceEntityWallet: false,
         voteDisabledReason: 'voteDisabled.notLoggedIn',
       };
     }
@@ -56,6 +57,7 @@ export class PermissionsHelperService {
         canEdit: false,
         canDelete: false,
         canComment: false,
+        canTopUpFromSourceEntityWallet: false,
       };
     }
 
@@ -76,6 +78,7 @@ export class PermissionsHelperService {
         canEdit,
         canDelete,
         canComment,
+        canTopUpFromSourceEntityWallet: false,
         voteDisabledReason: 'voteDisabled.projectPost',
         editDisabledReason: canEdit ? undefined : this.getEditDisabledReason(publication, userId, authorId),
         deleteDisabledReason: canDelete ? undefined : this.getDeleteDisabledReason(publication, userId, authorId),
@@ -91,6 +94,7 @@ export class PermissionsHelperService {
         canEdit: false,
         canDelete: false,
         canComment: false,
+        canTopUpFromSourceEntityWallet: false,
         voteDisabledReason: 'voteDisabled.noCommunity',
       };
     }
@@ -114,6 +118,8 @@ export class PermissionsHelperService {
     const canEdit = await this.permissionService.canEditPublication(userId, publicationId);
     const canDelete = await this.permissionService.canDeletePublication(userId, publicationId);
     const canComment = await this.permissionService.canComment(userId, publicationId);
+    const canTopUpFromSourceEntityWallet =
+      await this.permissionService.isUserManagingBirzhaSourcePost(userId, publicationId);
 
     // Determine vote disabled reason
     // Only determine reason if canVote is false
@@ -160,6 +166,7 @@ export class PermissionsHelperService {
       canEdit,
       canDelete,
       canComment,
+      canTopUpFromSourceEntityWallet,
       voteDisabledReason,
       editDisabledReason: canEdit ? undefined : this.getEditDisabledReason(publication, userId, authorId),
       deleteDisabledReason: canDelete ? undefined : this.getDeleteDisabledReason(publication, userId, authorId),

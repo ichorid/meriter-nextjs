@@ -208,9 +208,9 @@ async function getCommunityIdFromTarget(
 }
 
 /**
- * Shared vote creation logic
+ * Shared vote creation logic (exported for publications.topUpRating personal funding path).
  */
-async function createVoteLogic(
+export async function createVoteLogic(
   ctx: any,
   input: {
     targetType: 'publication' | 'vote';
@@ -222,17 +222,39 @@ async function createVoteLogic(
     images?: string[];
   },
 ) {
-  // Check permissions based on target type
+  let publicationDoc: Awaited<
+    ReturnType<typeof ctx.publicationService.getPublicationDocument>
+  > | null = null;
   if (input.targetType === 'publication') {
-    const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
-    if (!canVote) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You do not have permission to vote on this publication',
-      });
+    publicationDoc = await ctx.publicationService.getPublicationDocument(
+      input.targetId,
+    );
+  }
+
+  const requestedQuotaEarly = input.quotaAmount ?? 0;
+  const requestedWalletEarly = input.walletAmount ?? 0;
+  const requestedTotalEarly = requestedQuotaEarly + requestedWalletEarly;
+
+  // Author / Birzha source-manager top-up: not a normal vote; allow without canVote.
+  if (input.targetType === 'publication') {
+    const bypassCanVoteForTopUp =
+      requestedTotalEarly > 0 &&
+      !!publicationDoc &&
+      (publicationDoc.authorId === ctx.user.id ||
+        (await ctx.permissionService.isUserManagingBirzhaSourcePost(
+          ctx.user.id,
+          input.targetId,
+        )));
+    if (!bypassCanVoteForTopUp) {
+      const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
+      if (!canVote) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to vote on this publication',
+        });
+      }
     }
   } else if (input.targetType === 'vote') {
-    // Voting on a vote/comment - use canVoteOnVote
     const canVote = await ctx.permissionService.canVoteOnVote(ctx.user.id, input.targetId);
     if (!canVote) {
       throw new TRPCError({
@@ -259,14 +281,6 @@ async function createVoteLogic(
     });
   }
 
-  let publicationDoc: Awaited<
-    ReturnType<typeof ctx.publicationService.getPublicationDocument>
-  > | null = null;
-  if (input.targetType === 'publication') {
-    publicationDoc = await ctx.publicationService.getPublicationDocument(
-      input.targetId,
-    );
-  }
   const isTicketPublication = publicationDoc?.postType === 'ticket';
 
   // Validate amounts
@@ -279,6 +293,16 @@ async function createVoteLogic(
   let isAuthorTopup = false;
   if (input.targetType === 'publication' && requestedTotalAmount > 0) {
     if (publicationDoc?.authorId === ctx.user.id) {
+      isAuthorTopup = true;
+    }
+    if (
+      !isAuthorTopup &&
+      publicationDoc &&
+      (await ctx.permissionService.isUserManagingBirzhaSourcePost(
+        ctx.user.id,
+        input.targetId,
+      ))
+    ) {
       isAuthorTopup = true;
     }
     if ((publicationDoc?.status ?? 'active') === 'closed') {

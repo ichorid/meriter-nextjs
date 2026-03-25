@@ -35,6 +35,7 @@ import {
   PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS,
   GLOBAL_COMMUNITY_BOOTSTRAP,
 } from '../common/constants/platform-bootstrap.constants';
+import { TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE } from '../common/constants/birzha-source-entity.constants';
 
 export interface CreateCommunityDto {
   id?: string;
@@ -1001,15 +1002,28 @@ export class CommunityService {
    */
   isLocalMembershipCommunity(community: Community): boolean {
     const tag = community.typeTag;
-    if (tag === 'global') return false;
-    const autoJoinedBase: string[] = [
-      'future-vision',
-      'marathon-of-good',
-      'team-projects',
-      'support',
-    ];
-    if (tag && autoJoinedBase.includes(tag)) return false;
-    return true;
+    if (!tag) {
+      return true;
+    }
+    return !(TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE as readonly string[]).includes(
+      tag,
+    );
+  }
+
+  /**
+   * Validates a non-project local community may act as Birzha source (communities.publishToBirzha).
+   */
+  assertEligibleCommunitySourceForBirzhaPublish(community: Community): void {
+    if (community.isProject === true) {
+      throw new BadRequestException(
+        'Projects must use project.publishToBirzha',
+      );
+    }
+    if (!this.isLocalMembershipCommunity(community)) {
+      throw new BadRequestException(
+        'This community type cannot publish to Birzha as a source',
+      );
+    }
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {

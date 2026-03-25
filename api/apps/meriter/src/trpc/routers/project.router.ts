@@ -324,11 +324,10 @@ export const projectRouter = router({
       }
       const userId = ctx.user.id;
 
-      const role = await ctx.userCommunityRoleService.getRole(userId, input.projectId);
-      if (role?.role !== 'lead') {
+      if (!(await ctx.communityService.isUserAdmin(input.projectId, userId))) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Only the project lead can publish to Birzha',
+          message: 'Only a project administrator can publish to Birzha',
         });
       }
 
@@ -337,34 +336,16 @@ export const projectRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
 
-      const birzha = await ctx.communityService.getCommunityByTypeTag('marathon-of-good');
-      if (!birzha) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Birzha community not found' });
-      }
-
-      const minPct = birzha.settings?.investorShareMin ?? 1;
-      const maxPct = birzha.settings?.investorShareMax ?? 99;
-      const investorSharePercent = input.investorSharePercent ?? project.investorSharePercent ?? minPct;
-      if (investorSharePercent < minPct || investorSharePercent > maxPct) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: `investorSharePercent must be between ${minPct} and ${maxPct}`,
-        });
-      }
-
-      const postCost = birzha.settings?.postCost ?? 1;
-      await ctx.communityWalletService.deductBalance(input.projectId, postCost);
-
-      const pub = await ctx.publicationService.createFromProjectToBirzha({
-        birzhaCommunityId: birzha.id,
-        projectId: input.projectId,
-        authorId: userId,
+      const pub = await ctx.publicationService.publishSourceEntityToBirzha({
+        sourceEntityType: 'project',
+        sourceEntityId: input.projectId,
+        callerId: userId,
         content: input.content,
         type: input.type,
         title: input.title,
         description: input.description,
         images: input.images,
-        investorSharePercent,
+        investorSharePercent: input.investorSharePercent ?? project.investorSharePercent,
       });
 
       const leads = await ctx.userCommunityRoleService.getUsersByRole(input.projectId, 'lead');

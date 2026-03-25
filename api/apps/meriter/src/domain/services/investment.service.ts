@@ -197,6 +197,28 @@ export class InvestmentService {
     if (!community) {
       throw new NotFoundException('Community not found');
     }
+    if (
+      community.typeTag === 'marathon-of-good' &&
+      post.sourceEntityType === 'community'
+    ) {
+      throw new BadRequestException(
+        'Investing is not available for community-published Birzha posts',
+      );
+    }
+    if (
+      community.typeTag === 'marathon-of-good' &&
+      (post.sourceEntityType === 'project' ||
+        post.sourceEntityType === 'community') &&
+      post.sourceEntityId &&
+      (await this.communityService.isUserAdmin(
+        post.sourceEntityId as string,
+        investorId,
+      ))
+    ) {
+      throw new BadRequestException(
+        'Cannot invest in a Birzha post published on behalf of a source you administer',
+      );
+    }
     const currency = community.settings?.currencyNames || {
       singular: 'merit',
       plural: 'merits',

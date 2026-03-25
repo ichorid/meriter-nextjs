@@ -459,7 +459,7 @@ export class TappalkaService {
       if (remainingCost <= 0) return;
     }
 
-    // 3. If post has sourceEntityId (project on Birzha), try CommunityWallet before author wallet
+    // 3. If post has sourceEntityId (Birzha project/community source), try CommunityWallet before author wallet
     const sourceEntityId = post.sourceEntityId as string | undefined;
     if (remainingCost > 0 && sourceEntityId) {
       try {

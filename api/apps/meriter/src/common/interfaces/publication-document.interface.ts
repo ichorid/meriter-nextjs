@@ -82,6 +82,12 @@ export interface PublicationDocument {
   /** Sprint 3: project/community source when post is on Birzha (e.g. marathon-of-good) */
   sourceEntityId?: string;
   sourceEntityType?: 'project' | 'community';
+  /** Default semantic: user-authored when omitted (legacy). */
+  authorKind?: 'user' | 'community';
+  /** Community id when authorKind=community (Birzha source). */
+  authoredCommunityId?: string;
+  /** Audit: who published when authorKind=community. */
+  publishedByUserId?: string;
 }
 
 /**

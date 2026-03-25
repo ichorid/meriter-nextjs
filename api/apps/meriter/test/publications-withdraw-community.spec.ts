@@ -1,8 +1,6 @@
 /**
- * Withdraw flow for project posts (sourceEntityType='project') on МД:
- * - Only source administrators can withdraw.
- * - Author share goes to CommunityWallet(sourceEntityId).
- * - Normal posts (no sourceEntityType) unchanged.
+ * Withdraw flow for community-sourced posts (sourceEntityType='community') on МД:
+ * mirror publications-withdraw-project.spec.ts — only source administrators; credits CommunityWallet(sourceEntityId).
  */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
@@ -24,7 +22,7 @@ import { TrpcService } from '../src/trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as cookieParser from 'cookie-parser';
 
-describe('Publications withdraw (project override)', () => {
+describe('Publications withdraw (community source)', () => {
   jest.setTimeout(30000);
 
   let app: INestApplication;
@@ -41,9 +39,9 @@ describe('Publications withdraw (project override)', () => {
 
   let leadId: string;
   let participantId: string;
-  let projectId: string;
+  let teamCommunityId: string;
   let marathonId: string;
-  let projectPubId: string;
+  let communityPubId: string;
   let normalPubId: string;
 
   beforeAll(async () => {
@@ -84,9 +82,9 @@ describe('Publications withdraw (project override)', () => {
 
     leadId = uid();
     participantId = uid();
-    projectId = uid();
+    teamCommunityId = uid();
     marathonId = uid();
-    projectPubId = uid();
+    communityPubId = uid();
     normalPubId = uid();
   });
 
@@ -105,7 +103,7 @@ describe('Publications withdraw (project override)', () => {
     await testDb?.stop();
   });
 
-  it('withdraw from project post: only lead can withdraw', async () => {
+  it('withdraw from community source post: only lead can withdraw; CW receives merits', async () => {
     await userModel.create([
       { id: leadId, authProvider: 'telegram', authId: `tg-${leadId}`, displayName: 'Lead', createdAt: new Date(), updatedAt: new Date() },
       { id: participantId, authProvider: 'telegram', authId: `tg-${participantId}`, displayName: 'Participant', createdAt: new Date(), updatedAt: new Date() },
@@ -113,11 +111,10 @@ describe('Publications withdraw (project override)', () => {
 
     await communityModel.create([
       {
-        id: projectId,
-        name: 'Test Project',
+        id: teamCommunityId,
+        name: 'Team Alpha',
         typeTag: 'team',
-        isProject: true,
-        founderSharePercent: 15,
+        isProject: false,
         settings: { currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' }, allowWithdraw: true },
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -134,19 +131,19 @@ describe('Publications withdraw (project override)', () => {
 
     const now = new Date();
     await userCommunityRoleModel.create([
-      { id: uid(), userId: leadId, communityId: projectId, role: 'lead', createdAt: now, updatedAt: now },
-      { id: uid(), userId: participantId, communityId: projectId, role: 'participant', createdAt: now, updatedAt: now },
+      { id: uid(), userId: leadId, communityId: teamCommunityId, role: 'lead', createdAt: now, updatedAt: now },
+      { id: uid(), userId: participantId, communityId: teamCommunityId, role: 'participant', createdAt: now, updatedAt: now },
     ]);
 
-    await communityWalletService.createWallet(projectId);
+    await communityWalletService.createWallet(teamCommunityId);
 
     await publicationModel.create({
-      id: projectPubId,
+      id: communityPubId,
       communityId: marathonId,
       authorId: leadId,
-      sourceEntityId: projectId,
-      sourceEntityType: 'project',
-      content: 'Project post on Birzha',
+      sourceEntityId: teamCommunityId,
+      sourceEntityType: 'community',
+      content: 'Community post on Birzha',
       type: 'text',
       hashtags: [],
       metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
@@ -155,22 +152,22 @@ describe('Publications withdraw (project override)', () => {
       updatedAt: new Date(),
     });
 
-    (global as any).testUserId = participantId;
+    (global as unknown as { testUserId: string }).testUserId = participantId;
     const asParticipant = await trpcMutationWithError(app, 'publications.withdraw', {
-      publicationId: projectPubId,
+      publicationId: communityPubId,
       amount: 5,
     });
     expect(asParticipant.error?.code).toBe('FORBIDDEN');
     expect(asParticipant.error?.message).toMatch(/administrator|lead/i);
 
-    (global as any).testUserId = leadId;
+    (global as unknown as { testUserId: string }).testUserId = leadId;
     const result = await trpcMutation(app, 'publications.withdraw', {
-      publicationId: projectPubId,
+      publicationId: communityPubId,
       amount: 10,
     });
     expect(result.amount).toBe(10);
 
-    const cw = await communityWalletService.getWallet(projectId);
+    const cw = await communityWalletService.getWallet(teamCommunityId);
     expect(cw?.balance).toBe(10);
     expect(cw?.totalReceived).toBe(10);
   });
@@ -202,7 +199,7 @@ describe('Publications withdraw (project override)', () => {
       updatedAt: new Date(),
     });
 
-    (global as any).testUserId = leadId;
+    (global as unknown as { testUserId: string }).testUserId = leadId;
     const result = await trpcMutation(app, 'publications.withdraw', {
       publicationId: normalPubId,
       amount: 15,
@@ -210,6 +207,6 @@ describe('Publications withdraw (project override)', () => {
     expect(result.amount).toBe(15);
 
     const wallet = await walletService.getWallet(leadId, GLOBAL_COMMUNITY_ID);
-    expect(wallet?.getBalance()).toBe(15);
+    expect(wallet?.getBalance() ?? 0).toBe(15);
   });
 });

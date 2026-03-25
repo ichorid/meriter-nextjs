@@ -1,4 +1,10 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  Inject,
+  forwardRef,
+  ForbiddenException,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommunityService } from './community.service';
 import { PublicationService } from './publication.service';
@@ -36,6 +42,35 @@ export class PermissionService {
     private permissionRuleEngine: PermissionRuleEngine,
     private permissionContextService: PermissionContextService,
   ) { }
+
+  /**
+   * Admin of sourceEntity (lead/superadmin) for Birzha posts with project/community source.
+   */
+  async isUserManagingBirzhaSourcePost(
+    userId: string,
+    publicationId: string,
+  ): Promise<boolean> {
+    const doc =
+      await this.publicationService.getPublicationDocument(publicationId);
+    if (!(await this.publicationService.isBirzhaSourceManagedPost(doc))) {
+      return false;
+    }
+    const sid = doc!.sourceEntityId as string;
+    return this.communityService.isUserAdmin(sid, userId);
+  }
+
+  /** Throws if caller cannot manage a Birzha source-entity publication. */
+  async assertCanManageBirzhaSourcePost(
+    userId: string,
+    publicationId: string,
+  ): Promise<void> {
+    const ok = await this.isUserManagingBirzhaSourcePost(userId, publicationId);
+    if (!ok) {
+      throw new ForbiddenException(
+        'You are not allowed to manage this publication',
+      );
+    }
+  }
 
   /**
    * Get user role in a community
@@ -258,6 +293,10 @@ export class PermissionService {
       return false;
     }
 
+    if (await this.isUserManagingBirzhaSourcePost(userId, publicationId)) {
+      return true;
+    }
+
     const communityId = publication.getCommunityId.getValue();
     
     // Build context for editing
@@ -288,6 +327,10 @@ export class PermissionService {
     const publication =
       await this.publicationService.getPublication(publicationId);
     if (!publication) return false;
+
+    if (await this.isUserManagingBirzhaSourcePost(userId, publicationId)) {
+      return true;
+    }
 
     const communityId = publication.getCommunityId.getValue();
     

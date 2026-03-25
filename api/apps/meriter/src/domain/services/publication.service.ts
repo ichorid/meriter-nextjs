@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ import { PermissionService } from './permission.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
+import { CommunityWalletService } from './community-wallet.service';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -75,6 +77,7 @@ export class PublicationService {
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(forwardRef(() => UserService))
     private userService: UserService,
+    private communityWalletService: CommunityWalletService,
   ) {}
 
   async createPublication(
@@ -198,29 +201,98 @@ export class PublicationService {
   }
 
   /**
-   * Create a publication on Birzha (marathon-of-good) from a project. Bypasses permission rules.
-   * Caller must be project lead; postCost is debited from project CommunityWallet by the caller.
+   * Birzha (МД) post from a project or eligible local community.
+   * postCost from CommunityWallet(sourceEntityId); rights validated here (source admin).
    */
-  async createFromProjectToBirzha(params: {
-    birzhaCommunityId: string;
-    projectId: string;
-    authorId: string;
+  async publishSourceEntityToBirzha(params: {
+    sourceEntityId: string;
+    sourceEntityType: 'project' | 'community';
+    callerId: string;
     content: string;
     type: 'text' | 'image' | 'video';
     title: string;
     description?: string;
     images?: string[];
-    investorSharePercent: number;
+    /** project only; 0 or omitted with no investing — see implementation */
+    investorSharePercent?: number;
   }): Promise<{ id: string }> {
+    const birzha = await this.communityService.getCommunityByTypeTag(
+      'marathon-of-good',
+    );
+    if (!birzha) {
+      throw new NotFoundException(
+        'Birzha community (marathon-of-good) not found',
+      );
+    }
+
+    const source = await this.communityService.getCommunity(params.sourceEntityId);
+    if (!source) {
+      throw new NotFoundException('Source community not found');
+    }
+
+    if (
+      !(await this.communityService.isUserAdmin(
+        params.sourceEntityId,
+        params.callerId,
+      ))
+    ) {
+      throw new ForbiddenException(
+        'You are not allowed to publish on behalf of this source',
+      );
+    }
+
+    if (params.sourceEntityType === 'project') {
+      if (!source.isProject) {
+        throw new BadRequestException('Source is not a project community');
+      }
+    } else {
+      this.communityService.assertEligibleCommunitySourceForBirzhaPublish(
+        source,
+      );
+    }
+
+    const minPct = birzha.settings?.investorShareMin ?? 1;
+    const maxPct = birzha.settings?.investorShareMax ?? 99;
+
+    let investorSharePercent = 0;
+    let investingEnabled = false;
+    if (params.sourceEntityType === 'project') {
+      const raw =
+        params.investorSharePercent ??
+        source.investorSharePercent ??
+        minPct;
+      investorSharePercent = raw;
+      if (investorSharePercent < minPct || investorSharePercent > maxPct) {
+        throw new BadRequestException(
+          `investorSharePercent must be between ${minPct} and ${maxPct}`,
+        );
+      }
+      investingEnabled = investorSharePercent > 0;
+    }
+
+    const postCost = birzha.settings?.postCost ?? 1;
+    await this.communityWalletService.createWallet(params.sourceEntityId);
+    if (postCost > 0) {
+      await this.communityWalletService.deductBalance(
+        params.sourceEntityId,
+        postCost,
+        'birzha_post_cost',
+      );
+    }
+
     const id = PublicationId.generate().getValue();
     const now = new Date();
+    const birzhaId = birzha.id as string;
 
     await this.publicationModel.create({
       id,
-      communityId: params.birzhaCommunityId,
-      authorId: params.authorId,
-      sourceEntityId: params.projectId,
-      sourceEntityType: 'project',
+      communityId: birzhaId,
+      authorId: params.callerId,
+      authorKind: 'community',
+      authoredCommunityId: params.sourceEntityId,
+      publishedByUserId: params.callerId,
+      sourceEntityId: params.sourceEntityId,
+      sourceEntityType: params.sourceEntityType,
       content: params.content,
       type: params.type,
       title: params.title,
@@ -229,8 +301,8 @@ export class PublicationService {
       categories: [],
       images: params.images ?? [],
       metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
-      investingEnabled: params.investorSharePercent > 0,
-      investorSharePercent: params.investorSharePercent,
+      investingEnabled,
+      investorSharePercent: investingEnabled ? investorSharePercent : undefined,
       investmentPool: 0,
       investmentPoolTotal: 0,
       investments: [],
@@ -242,13 +314,87 @@ export class PublicationService {
     });
 
     await this.eventBus.publish(
-      new PublicationCreatedEvent(id, params.authorId, params.birzhaCommunityId),
+      new PublicationCreatedEvent(id, params.callerId, birzhaId),
     );
 
     this.logger.log(
-      `Publication from project ${params.projectId} created on Birzha: ${id}`,
+      `Birzha publication from ${params.sourceEntityType} ${params.sourceEntityId}: ${id}`,
     );
     return { id };
+  }
+
+  /** Thin wrapper; delegates to {@link publishSourceEntityToBirzha}. */
+  async createFromProjectToBirzha(params: {
+    projectId: string;
+    authorId: string;
+    content: string;
+    type: 'text' | 'image' | 'video';
+    title: string;
+    description?: string;
+    images?: string[];
+    investorSharePercent: number;
+  }): Promise<{ id: string }> {
+    return this.publishSourceEntityToBirzha({
+      sourceEntityType: 'project',
+      sourceEntityId: params.projectId,
+      callerId: params.authorId,
+      title: params.title,
+      content: params.content,
+      type: params.type,
+      description: params.description,
+      images: params.images,
+      investorSharePercent: params.investorSharePercent,
+    });
+  }
+
+  /** Post on МД with a Birzha source entity (project or community), managed by source admins. */
+  async isBirzhaSourceManagedPost(
+    doc: IPublicationDocument | null,
+  ): Promise<boolean> {
+    if (!doc?.sourceEntityId) {
+      return false;
+    }
+    if (doc.sourceEntityType !== 'project' && doc.sourceEntityType !== 'community') {
+      return false;
+    }
+    const comm = await this.communityService.getCommunity(doc.communityId);
+    return comm?.typeTag === 'marathon-of-good';
+  }
+
+  /**
+   * Top up Birzha post rating using the source entity CommunityWallet (not caller's personal wallet).
+   */
+  async topUpBirzhaPublicationFromSourceWallet(
+    userId: string,
+    publicationId: string,
+    amount: number,
+  ): Promise<{ amount: number }> {
+    if (!Number.isInteger(amount) || amount <= 0) {
+      throw new BadRequestException('Amount must be a positive integer');
+    }
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc) {
+      throw new NotFoundException('Publication not found');
+    }
+    const p = doc as IPublicationDocument;
+    if ((p.status ?? 'active') === 'closed') {
+      throw new BadRequestException('This post is closed and cannot be modified');
+    }
+    if (!(await this.isBirzhaSourceManagedPost(p))) {
+      throw new BadRequestException(
+        'Source wallet top-up is only for Birzha posts from a project or community source',
+      );
+    }
+    await this.permissionService.assertCanManageBirzhaSourcePost(userId, publicationId);
+    const sourceEntityId = p.sourceEntityId as string;
+    await this.communityWalletService.createWallet(sourceEntityId);
+    await this.communityWalletService.deductBalance(
+      sourceEntityId,
+      amount,
+      'publication_rating_topup',
+    );
+    await this.voteOnPublication(publicationId, userId, amount, 'up');
+    return { amount };
   }
 
   /**
@@ -416,6 +562,31 @@ export class PublicationService {
     // Direct Mongoose query
     const doc = await this.publicationModel.findOne({ id }).lean();
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
+  }
+
+  /** Active posts on Birzha (МД) for a given source entity. */
+  async getBirzhaPostsBySourceEntity(
+    birzhaCommunityId: string,
+    sourceEntityType: 'project' | 'community',
+    sourceEntityId: string,
+    limit: number,
+    skip: number,
+  ): Promise<Publication[]> {
+    const docs = await this.publicationModel
+      .find({
+        communityId: birzhaCommunityId,
+        sourceEntityType,
+        sourceEntityId,
+        deleted: { $ne: true },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean()
+      .exec();
+    return docs.map((d) =>
+      Publication.fromSnapshot(d as IPublicationDocument),
+    );
   }
 
   /** Get raw publication document (for investment checks, etc.) */
@@ -754,14 +925,25 @@ export class PublicationService {
       updateData.noAuthorWalletSpend !== undefined ||
       updateData.ttlDays !== undefined;
     if (hasAdvancedSettingsUpdate && userId !== authorId) {
-      const isElevated = await this.permissionService.isLeadOrSuperadmin(
-        userId,
-        communityId,
-      );
-      if (!isElevated) {
-        throw new BadRequestException(
-          'Only the post author can update advanced settings',
+      const docForSource = await this.getPublicationDocument(publicationId);
+      const canAsSourceAdmin =
+        !!docForSource &&
+        (await this.isBirzhaSourceManagedPost(docForSource)) &&
+        !!docForSource.sourceEntityId &&
+        (await this.communityService.isUserAdmin(
+          docForSource.sourceEntityId,
+          userId,
+        ));
+      if (!canAsSourceAdmin) {
+        const isElevated = await this.permissionService.isLeadOrSuperadmin(
+          userId,
+          communityId,
         );
+        if (!isElevated) {
+          throw new BadRequestException(
+            'Only the post author can update advanced settings',
+          );
+        }
       }
     }
 

@@ -29,14 +29,26 @@ export class EntityMappers {
     publication: Publication,
     usersMap: Map<string, any>,
     communitiesMap: Map<string, any>,
+    opts?: { logicalAuthorCommunity?: { id: string; name?: string; avatarUrl?: string } | null },
   ): any {
     const authorId = publication.getAuthorId.getValue();
     const beneficiaryId = publication.getBeneficiaryId?.getValue();
     const communityId = publication.getCommunityId.getValue();
-    const author = usersMap.get(authorId);
+    const snapshot = publication.toSnapshot();
+    const logicalComm = opts?.logicalAuthorCommunity;
+    const authorFromCommunity =
+      snapshot.authorKind === 'community' && logicalComm
+        ? {
+            id: logicalComm.id,
+            name: logicalComm.name ?? 'Community',
+            username: undefined,
+            photoUrl: logicalComm.avatarUrl,
+          }
+        : null;
+    const authorUser = usersMap.get(authorId);
+    const author = authorFromCommunity ?? authorUser;
     const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
     const community = communitiesMap.get(communityId);
-    const snapshot = publication.toSnapshot();
     const images = publication.getImages;
 
     return {
@@ -84,8 +96,16 @@ export class EntityMappers {
         commentCount: publication.getMetrics.commentCount,
         viewCount: 0, // Not available in current entity
       },
+      sourceEntityId: snapshot.sourceEntityId,
+      sourceEntityType: snapshot.sourceEntityType,
+      authorKind: snapshot.authorKind,
+      authoredCommunityId: snapshot.authoredCommunityId,
+      publishedByUserId: snapshot.publishedByUserId,
       meta: {
-        author: UserFormatter.formatUserForApi(author, authorId),
+        author: UserFormatter.formatUserForApi(
+          author,
+          authorFromCommunity ? authorFromCommunity.id : authorId,
+        ),
         ...(beneficiary && beneficiaryId && {
           beneficiary: UserFormatter.formatUserForApi(
             beneficiary,

@@ -66,8 +66,11 @@ export interface Publication {
   beneficiaryId?: string;
   /** Project community id when post is on Birzha from project (Sprint 3). */
   sourceEntityId?: string;
-  /** 'project' = from project; 'community' = reserved (Sprint 6). */
+  /** 'project' = from project; 'community' = from local community to Birzha. */
   sourceEntityType?: 'project' | 'community';
+  authorKind?: 'user' | 'community';
+  authoredCommunityId?: string;
+  publishedByUserId?: string;
   postType?: PublicationPostType;
   isProject?: boolean;
   ticketStatus?: PublicationTicketStatus;
@@ -156,9 +159,18 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ type: String, default: undefined })
   sourceEntityId?: string;
 
-  /** 'project' = from project; 'community' = reserved (Sprint 6). */
+  /** 'project' = from project; 'community' = from local community to Birzha. */
   @Prop({ type: String, enum: ['project', 'community'], default: undefined })
   sourceEntityType?: 'project' | 'community';
+
+  @Prop({ type: String, enum: ['user', 'community'], default: 'user' })
+  authorKind?: 'user' | 'community';
+
+  @Prop({ type: String, default: undefined })
+  authoredCommunityId?: string;
+
+  @Prop({ type: String, default: undefined })
+  publishedByUserId?: string;
 
   // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта
   @Prop({

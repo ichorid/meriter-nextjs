@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePublicationDtoSchema, UpdatePublicationDtoSchema, WithdrawAmountDtoSchema } from '@meriter/shared-types';
+import {
+  CreatePublicationDtoSchema,
+  TopUpPublicationRatingInputSchema,
+  UpdatePublicationDtoSchema,
+  WithdrawAmountDtoSchema,
+} from '@meriter/shared-types';
+import { createVoteLogic } from './votes.router';
 
 const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
@@ -315,16 +321,40 @@ export const publicationsRouter = router({
         ...uniqueEditorIds,
         ...ticketActorIds,
       ];
+      const pubSnap = publication.toSnapshot();
+      const communityIdsToFetch = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnap.authorKind === 'community' && pubSnap.authoredCommunityId
+            ? [pubSnap.authoredCommunityId]
+            : []),
+        ]),
+      );
       const [usersMap, communitiesMap, permissions] = await Promise.all([
         ctx.userEnrichmentService.batchFetchUsers(userIds as string[]),
-        ctx.communityEnrichmentService.batchFetchCommunities([communityId]),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsToFetch),
         ctx.permissionsHelperService.calculatePublicationPermissions(ctx.user?.id || null, input.id),
       ]);
+
+      const logicalAuthorCommunity =
+        pubSnap.authorKind === 'community' && pubSnap.authoredCommunityId
+          ? communitiesMap.get(pubSnap.authoredCommunityId)
+          : undefined;
 
       const mappedPublication = EntityMappers.mapPublicationToApi(
         publication,
         usersMap,
         communitiesMap,
+        logicalAuthorCommunity
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunity.id as string,
+                name: (logicalAuthorCommunity as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                  .avatarUrl,
+              },
+            }
+          : undefined,
       );
 
       // Forward fields currently live on the persisted document; enrich response from Mongo doc
@@ -435,6 +465,100 @@ export const publicationsRouter = router({
       };
 
       return mappedPublication;
+    }),
+
+  /**
+   * List Birzha posts published on behalf of a project or local community (source admin only).
+   */
+  getBirzhaPostsBySource: protectedProcedure
+    .input(
+      z.object({
+        sourceEntityType: z.enum(['project', 'community']),
+        sourceEntityId: z.string(),
+        limit: z.number().int().min(1).max(100).optional(),
+        skip: z.number().int().min(0).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (
+        !(await ctx.communityService.isUserAdmin(
+          input.sourceEntityId,
+          ctx.user.id,
+        ))
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not allowed to list these publications',
+        });
+      }
+      const birzha = await ctx.communityService.getCommunityByTypeTag(
+        'marathon-of-good',
+      );
+      if (!birzha) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Birzha community not found',
+        });
+      }
+      const limit = input.limit ?? 20;
+      const skip = input.skip ?? 0;
+      const publications =
+        await ctx.publicationService.getBirzhaPostsBySourceEntity(
+          birzha.id as string,
+          input.sourceEntityType,
+          input.sourceEntityId,
+          limit,
+          skip,
+        );
+
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      for (const pub of publications) {
+        const s = pub.toSnapshot();
+        userIds.add(pub.getAuthorId.getValue());
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
+      }
+
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
+      ]);
+
+      return {
+        data: publications.map((publication) => {
+          const s = publication.toSnapshot();
+          const logicalAuthorCommunity =
+            s.authorKind === 'community' && s.authoredCommunityId
+              ? communitiesMap.get(s.authoredCommunityId)
+              : undefined;
+          return EntityMappers.mapPublicationToApi(
+            publication,
+            usersMap,
+            communitiesMap,
+            logicalAuthorCommunity
+              ? {
+                  logicalAuthorCommunity: {
+                    id: logicalAuthorCommunity.id as string,
+                    name: (logicalAuthorCommunity as { name?: string }).name,
+                    avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                      .avatarUrl,
+                  },
+                }
+              : undefined,
+          );
+        }),
+        total: publications.length,
+        limit,
+        skip,
+      };
     }),
 
   /**
@@ -1139,7 +1263,11 @@ export const publicationsRouter = router({
         throw new NotFoundError('Publication', input.id);
       }
       const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
-      if (beneficiaryId !== ctx.user.id) {
+      const canManageSource = await ctx.permissionService.isUserManagingBirzhaSourcePost(
+        ctx.user.id,
+        input.id,
+      );
+      if (beneficiaryId !== ctx.user.id && !canManageSource) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Only the post author can close this post',
@@ -1188,47 +1316,34 @@ export const publicationsRouter = router({
         });
       }
 
-      // Respect community withdrawal setting (single source of truth).
-      {
-        const communityId = publication.getCommunityId.getValue();
-        const community = await ctx.communityService.getCommunity(communityId);
-        if (community?.settings?.allowWithdraw === false) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Withdrawals are disabled in this community',
-          });
-        }
+      const postCommunityId = publication.getCommunityId.getValue();
+      const postCommunity =
+        await ctx.communityService.getCommunity(postCommunityId);
+      if (postCommunity?.settings?.allowWithdraw === false) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Withdrawals are disabled in this community',
+        });
       }
 
       const sourceEntityType = pubDoc?.sourceEntityType;
       const sourceEntityId = pubDoc?.sourceEntityId as string | undefined;
+      const isBirzhaSourcePost =
+        postCommunity?.typeTag === 'marathon-of-good' &&
+        (sourceEntityType === 'project' || sourceEntityType === 'community') &&
+        !!sourceEntityId;
 
-      if (sourceEntityType === 'project') {
+      if (isBirzhaSourcePost) {
         if (!sourceEntityId) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: 'Project post is missing sourceEntityId',
+            message: 'Source post is missing sourceEntityId',
           });
         }
-        const role = await ctx.userCommunityRoleService.getRole(userId, sourceEntityId);
-        if (role?.role !== 'lead') {
+        if (!(await ctx.communityService.isUserAdmin(sourceEntityId, userId))) {
           throw new TRPCError({
             code: 'FORBIDDEN',
-            message: 'Only the project lead can withdraw from this publication',
-          });
-        }
-      } else if (sourceEntityType === 'community') {
-        if (!sourceEntityId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Community post is missing sourceEntityId',
-          });
-        }
-        const role = await ctx.userCommunityRoleService.getRole(userId, sourceEntityId);
-        if (role?.role !== 'lead') {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Only the community lead can withdraw from this publication',
+            message: 'Only a source administrator can withdraw from this publication',
           });
         }
       } else {
@@ -1284,12 +1399,13 @@ export const publicationsRouter = router({
       }
 
       let targetCommunityId: string;
-      if (sourceEntityType === 'project' && sourceEntityId) {
-        await ctx.projectDistributionService.distribute(sourceEntityId, authorShare);
-        targetCommunityId = GLOBAL_COMMUNITY_ID;
-      } else if (sourceEntityType === 'community' && sourceEntityId) {
+      if (isBirzhaSourcePost && sourceEntityId) {
         await ctx.communityWalletService.createWallet(sourceEntityId);
-        await ctx.communityWalletService.deposit(sourceEntityId, authorShare, 'publication_withdrawal');
+        await ctx.communityWalletService.deposit(
+          sourceEntityId,
+          authorShare,
+          'publication_withdrawal',
+        );
         targetCommunityId = GLOBAL_COMMUNITY_ID;
       } else {
         const result = await processWithdrawal(
@@ -1314,6 +1430,39 @@ export const publicationsRouter = router({
         amount,
         balance,
         message: 'Withdrawal successful',
+      };
+    }),
+
+  /**
+   * Top-up publication rating: personal wallet (same as vote up) or source CommunityWallet.
+   */
+  topUpRating: protectedProcedure
+    .input(TopUpPublicationRatingInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      if (input.fundingSource === 'personal') {
+        return createVoteLogic(ctx, {
+          targetType: 'publication',
+          targetId: input.publicationId,
+          quotaAmount: 0,
+          walletAmount: input.amount,
+          comment: input.comment ?? '',
+          direction: 'up',
+        });
+      }
+      await ctx.publicationService.topUpBirzhaPublicationFromSourceWallet(
+        ctx.user.id,
+        input.publicationId,
+        input.amount,
+      );
+      return {
+        fundingSource: 'source_entity' as const,
+        amount: input.amount,
       };
     }),
 

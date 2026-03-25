@@ -1101,4 +1101,68 @@ export const communitiesRouter = router({
       );
       return { success: true as const };
     }),
+
+  /**
+   * CommunityWallet balance for a community (e.g. Birzha source wallet). Any member can view, same as project wallet.
+   */
+  getCommunityWallet: protectedProcedure
+    .input(z.object({ communityId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      const role = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        input.communityId,
+      );
+      if (!role) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only community members can view the wallet',
+        });
+      }
+      const wallet = await ctx.communityWalletService.getWallet(input.communityId);
+      return (
+        wallet ?? {
+          balance: 0,
+          totalReceived: 0,
+          totalDistributed: 0,
+          id: '',
+          communityId: input.communityId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      );
+    }),
+
+  /**
+   * Publish on Birzha (МД) on behalf of a non-project local community.
+   */
+  publishToBirzha: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        title: z.string().min(1).max(500),
+        description: z.string().max(5000).optional(),
+        content: z.string().min(1).max(10000),
+        type: z.enum(['text', 'image', 'video']),
+        images: z.array(z.string().url()).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const pub = await ctx.publicationService.publishSourceEntityToBirzha({
+        sourceEntityType: 'community',
+        sourceEntityId: input.communityId,
+        callerId: ctx.user.id,
+        title: input.title,
+        description: input.description,
+        content: input.content,
+        type: input.type,
+        images: input.images,
+      });
+      return { id: pub.id };
+    }),
 });

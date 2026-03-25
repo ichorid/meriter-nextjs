@@ -17,7 +17,7 @@ import { WalletService } from './wallet.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
-import { ProjectDistributionService } from './project-distribution.service';
+import { CommunityWalletService } from './community-wallet.service';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 
 export type PostCloseReason =
@@ -48,7 +48,7 @@ export class PostClosingService {
     private readonly meritResolverService: MeritResolverService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
-    private readonly projectDistributionService: ProjectDistributionService,
+    private readonly communityWalletService: CommunityWalletService,
   ) {}
 
   /**
@@ -99,10 +99,16 @@ export class PostClosingService {
       if (authorAmount > 0) {
         const sourceEntityType = post.sourceEntityType;
         const sourceEntityId = post.sourceEntityId as string | undefined;
-        if (sourceEntityType === 'project' && sourceEntityId) {
-          await this.projectDistributionService.distribute(
+        if (
+          community.typeTag === 'marathon-of-good' &&
+          (sourceEntityType === 'project' || sourceEntityType === 'community') &&
+          sourceEntityId
+        ) {
+          await this.communityWalletService.createWallet(sourceEntityId);
+          await this.communityWalletService.deposit(
             sourceEntityId,
             authorAmount,
+            'publication_close',
           );
         } else {
           const targetCommunityId = this.meritResolverService.getWalletCommunityId(

@@ -26,6 +26,11 @@ export interface ResourcePermissions {
   canComment: boolean;
 
   /**
+   * Birzha source-entity post: user may top up rating from the source CommunityWallet
+   */
+  canTopUpFromSourceEntityWallet?: boolean;
+
+  /**
    * Reason why voting is disabled (translation key for frontend)
    * Only present if canVote is false
    */
