@@ -101,6 +101,27 @@ export function useAcceptWork() {
   });
 }
 
+export function useReturnWorkForRevision() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('projects');
+
+  return trpc.ticket.returnWorkForRevision.useMutation({
+    onSuccess: async (_data, variables) => {
+      void utils.ticket.getByProject.invalidate();
+      await utils.publications.getById.invalidate({ id: variables.ticketId });
+      void utils.comments.getByPublicationId.invalidate({
+        publicationId: variables.ticketId,
+      });
+      await refetchCommunityFeedForPublication(utils, variables.ticketId);
+      addToast(t('returnForRevisionSuccess'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
 export function useDeclineAsAssignee() {
   const utils = trpc.useUtils();
   const addToast = useToastStore((state) => state.addToast);

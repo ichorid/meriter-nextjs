@@ -55,6 +55,10 @@ export function mergeTicketActivity(
       }
       case 'work_accepted':
         return t('taskActivity_work_accepted');
+      case 'returned_for_revision': {
+        const reason = typeof d.reason === 'string' ? d.reason : '';
+        return t('taskActivity_returned_for_revision', { reason });
+      }
       case 'assignee_set':
         return t('taskActivity_assignee_set');
       case 'ticket_updated':

@@ -239,6 +239,7 @@ export default function NotificationsPage() {
       case 'ticket_assigned':
       case 'ticket_done':
       case 'ticket_accepted':
+      case 'ticket_returned_for_revision':
       case 'ticket_assignee_declined':
       case 'ticket_evaluated':
       case 'ticket_apply':
@@ -513,6 +514,9 @@ export default function NotificationsPage() {
     if (notification.type === 'ticket_apply') return t('ticketApplyTitle');
     if (notification.type === 'ticket_done') return t('ticketDoneTitle');
     if (notification.type === 'ticket_accepted') return t('ticketAcceptedTitle');
+    if (notification.type === 'ticket_returned_for_revision') {
+      return t('ticketReturnedForRevisionTitle');
+    }
     if (notification.type === 'ticket_assignee_declined') {
       return t('ticketAssigneeDeclinedTitle');
     }

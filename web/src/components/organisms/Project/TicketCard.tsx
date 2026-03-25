@@ -11,12 +11,14 @@ import {
   useTakeOpenNeutralAsModerator,
   useUpdateTicketStatus,
   useAcceptWork,
+  useReturnWorkForRevision,
   useDeclineAsAssignee,
 } from '@/hooks/api/useTickets';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -57,11 +59,14 @@ export function TicketCard({
   const locale = useLocale();
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
+  const returnWorkForRevision = useReturnWorkForRevision();
   const applyForTicket = useApplyForTicket();
   const takeOpenNeutralAsModerator = useTakeOpenNeutralAsModerator();
   const declineAsAssignee = useDeclineAsAssignee();
   const [declineOpen, setDeclineOpen] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
+  const [returnRevisionOpen, setReturnRevisionOpen] = useState(false);
+  const [returnRevisionReason, setReturnRevisionReason] = useState('');
 
   const status = (ticket.ticketStatus ?? 'in_progress') as TicketStatus;
   const beneficiaryId = ticket.beneficiaryId ?? ticket.authorId;
@@ -89,6 +94,20 @@ export function TicketCard({
         onSuccess: () => {
           setDeclineOpen(false);
           setDeclineReason('');
+        },
+      },
+    );
+  };
+
+  const submitReturnForRevision = () => {
+    const r = returnRevisionReason.trim();
+    if (!r) return;
+    returnWorkForRevision.mutate(
+      { ticketId: ticket.id, reason: r, locale },
+      {
+        onSuccess: () => {
+          setReturnRevisionOpen(false);
+          setReturnRevisionReason('');
         },
       },
     );
@@ -167,13 +186,25 @@ export function TicketCard({
             </Button>
           )}
           {canAccept && (
-            <Button
-              size="sm"
-              onClick={() => acceptWork.mutate({ ticketId: ticket.id })}
-              disabled={acceptWork.isPending}
-            >
-              {t('acceptWork')}
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                onClick={() => setReturnRevisionOpen(true)}
+                disabled={returnWorkForRevision.isPending || acceptWork.isPending}
+              >
+                {t('returnForRevision')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => acceptWork.mutate({ ticketId: ticket.id })}
+                disabled={acceptWork.isPending || returnWorkForRevision.isPending}
+              >
+                {t('acceptWork')}
+              </Button>
+            </>
           )}
           {canReopen && (
             <Button
@@ -193,6 +224,49 @@ export function TicketCard({
           <ApplicantsPanel ticketId={ticket.id} />
         </div>
       )}
+
+      <Dialog
+        open={returnRevisionOpen}
+        onOpenChange={setReturnRevisionOpen}
+      >
+        <DialogContent
+          className="sm:max-w-md"
+          onCloseAutoFocus={() => setReturnRevisionReason('')}
+        >
+          <DialogHeader>
+            <DialogTitle>{t('returnForRevisionTitle')}</DialogTitle>
+            <DialogDescription className="sr-only">
+              {t('returnForRevisionReasonLabel')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-1">
+            <Label htmlFor={`return-revision-${ticket.id}`}>{t('returnForRevisionReasonLabel')}</Label>
+            <Textarea
+              id={`return-revision-${ticket.id}`}
+              value={returnRevisionReason}
+              onChange={(e) => setReturnRevisionReason(e.target.value)}
+              placeholder={t('returnForRevisionReasonPlaceholder')}
+              className="min-h-[100px] resize-y"
+              maxLength={2000}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setReturnRevisionOpen(false)}>
+              {t('cancel')}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={
+                returnRevisionReason.trim().length === 0 || returnWorkForRevision.isPending
+              }
+              onClick={submitReturnForRevision}
+            >
+              {returnWorkForRevision.isPending ? '…' : t('returnForRevisionConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
         <DialogContent className="sm:max-w-md" onCloseAutoFocus={() => setDeclineReason('')}>

@@ -27,6 +27,8 @@ export const KNOWN_API_ERROR_KEYS: Record<string, string> = {
   'Ticket must belong to a project community': 'ticketMustBelongToProject',
   'Assignee must be a project member': 'assigneeMustBeProjectMember',
   'Ticket must be in done status to accept work': 'ticketMustBeDoneToAccept',
+  'Ticket must be in done status to return for revision': 'ticketMustBeDoneToReturnForRevision',
+  'Ticket has no assignee': 'ticketHasNoAssignee',
   'Only a task in progress can be declined by the assignee': 'onlyInProgressCanDecline',
   'Not authenticated': 'notAuthenticated',
   'Authentication failed': 'authenticationFailed',
