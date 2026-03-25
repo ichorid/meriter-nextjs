@@ -65,6 +65,17 @@ export class TicketService {
     return `Declined: ${reason}`;
   }
 
+  private leadReturnForRevisionPublicationComment(
+    locale: string | undefined,
+    reason: string,
+  ): string {
+    const loc = (locale ?? '').toLowerCase();
+    if (loc === 'ru' || loc.startsWith('ru-')) {
+      return `Возврат на доработку: ${reason}`;
+    }
+    return `Returned for revision: ${reason}`;
+  }
+
   private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {
     const role = await this.userCommunityRoleService.getRole(userId, projectId);
     if (role?.role === 'lead') {
@@ -748,6 +759,96 @@ export class TicketService {
     }
 
     this.logger.log(`Ticket ${ticketId} accepted (closed) by lead`);
+  }
+
+  /**
+   * Lead/superadmin: done → in_progress, same assignee. Mandatory comment + publication note + notify assignee.
+   */
+  async returnWorkForRevision(
+    ticketId: string,
+    leadUserId: string,
+    reason: string,
+    locale?: string,
+  ): Promise<void> {
+    const trimmed = reason.trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException('Comment is required');
+    }
+    if (trimmed.length > 2000) {
+      throw new BadRequestException('Comment is too long');
+    }
+
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Ticket not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Publication is not a ticket');
+    }
+
+    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
+    if (current !== 'done') {
+      throw new BadRequestException(
+        'Ticket must be in done status to return for revision',
+      );
+    }
+
+    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
+
+    const assigneeId = doc.beneficiaryId ?? doc.authorId;
+    if (!assigneeId) {
+      throw new BadRequestException('Ticket has no assignee');
+    }
+
+    doc.ticketStatus = 'in_progress';
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    await this.appendTicketActivity(ticketId, leadUserId, 'returned_for_revision', {
+      reason: trimmed,
+      from: 'done',
+      to: 'in_progress',
+      assigneeId,
+    });
+
+    const commentText = this.leadReturnForRevisionPublicationComment(locale, trimmed);
+    try {
+      await this.voteService.createVote(
+        leadUserId,
+        'publication',
+        ticketId,
+        0,
+        0,
+        'up',
+        commentText,
+        doc.communityId,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Ticket ${ticketId}: return for revision but failed to add publication comment vote: ${err}`,
+      );
+      throw err;
+    }
+
+    try {
+      await this.notificationService.createNotification({
+        userId: assigneeId,
+        type: 'ticket_returned_for_revision',
+        source: 'system',
+        metadata: {
+          ticketId,
+          projectId: doc.communityId,
+          reason: trimmed,
+          leadUserId,
+        },
+        title: 'Task returned for revision',
+        message: trimmed.slice(0, 200),
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify assignee about return for revision: ${err}`);
+    }
+
+    this.logger.log(`Ticket ${ticketId} returned for revision by ${leadUserId}`);
   }
 
   /**

@@ -475,6 +475,22 @@ export class NotificationService {
         return undefined;
       }
 
+      case 'ticket_assigned':
+      case 'ticket_done':
+      case 'ticket_accepted':
+      case 'ticket_assignee_declined':
+      case 'ticket_returned_for_revision':
+      case 'ticket_apply':
+      case 'ticket_rejection':
+      case 'ticket_evaluated': {
+        const projectId = metadata?.projectId as string | undefined;
+        const ticketId = metadata?.ticketId as string | undefined;
+        if (projectId && ticketId) {
+          return `/meriter/communities/${projectId}?post=${ticketId}`;
+        }
+        return undefined;
+      }
+
       case 'mention':
       case 'system':
       default:
