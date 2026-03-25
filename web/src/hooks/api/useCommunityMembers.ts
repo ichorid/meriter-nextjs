@@ -52,3 +52,31 @@ export const useRemoveCommunityMember = (communityId: string) => {
         },
     });
 };
+
+function invalidateCommunityLeadCaches(
+    utils: ReturnType<typeof trpc.useUtils>,
+    communityId: string,
+) {
+    void utils.communities.getMembers.invalidate({ id: communityId });
+    void utils.communities.getById.invalidate({ id: communityId });
+    void utils.users.getUserRoles.invalidate();
+    void utils.users.getMe.invalidate();
+}
+
+export function usePromoteMemberToLead(communityId: string) {
+    const utils = trpc.useUtils();
+    return trpc.communities.promoteMemberToLead.useMutation({
+        onSuccess: () => {
+            invalidateCommunityLeadCaches(utils, communityId);
+        },
+    });
+}
+
+export function useDemoteSelfFromLead(communityId: string) {
+    const utils = trpc.useUtils();
+    return trpc.communities.demoteSelfFromLead.useMutation({
+        onSuccess: () => {
+            invalidateCommunityLeadCaches(utils, communityId);
+        },
+    });
+}

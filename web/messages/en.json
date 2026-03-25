@@ -953,6 +953,8 @@
             "noPermission": "You don't have permission to perform this action",
             "members": {
                 "title": "Members",
+                "sectionAdmins": "Administrators",
+                "sectionParticipants": "Participants",
                 "empty": "No members found",
                 "remove": "Remove member",
                 "confirmRemove": "Remove {name} from community?",
@@ -994,6 +996,19 @@
                     "success": "Successfully added {amount} merit(s) to {name}",
                     "error": "Error adding merits",
                     "invalidAmount": "Enter a valid amount of merits"
+                },
+                "leadActions": {
+                    "promoteToLead": "Make admin",
+                    "demoteSelfFromLead": "Step down as admin",
+                    "promoteDialogTitle": "Promote to community admin",
+                    "promoteDialogBody": "You cannot undo this from your side: this member will get the same level of control over the group as you (members, settings, and more). You will not be able to remove their admin rights — only they can return to the participant role, and only if there is at least one other admin in the group.",
+                    "promoteConfirm": "Make admin",
+                    "promoteSuccess": "Member promoted to admin",
+                    "demoteDialogTitle": "Step down as admin",
+                    "demoteDialogBody": "You will become a regular participant. You can do this only if the community already has another admin.",
+                    "demoteConfirm": "Step down as admin",
+                    "demoteSuccess": "You are no longer an admin of this community",
+                    "cancel": "Cancel"
                 }
             },
             "teamRequests": {
@@ -2502,7 +2517,13 @@
         "amountPositive": "Amount must be positive",
         "debitPositive": "Debit amount must be positive",
         "validationFailed": "Validation failed",
-        "authenticationRequired": "Authentication required"
+        "authenticationRequired": "Authentication required",
+        "leadMgmtLocalOnly": "Lead management is only available for local membership communities",
+        "onlyLeadsCanPromoteMembers": "Only community admins can promote members",
+        "cannotPromoteSelfToLead": "You cannot promote yourself this way",
+        "onlyParticipantsPromotedToLead": "Only participants can be promoted to admin",
+        "onlyLeadsCanStepDown": "Only admins can step down",
+        "promoteAnotherLeadBeforeStepDown": "Promote another member to admin before stepping down"
     },
     "toasts": {
         "forwardPostSuccess": "Post forwarded successfully",

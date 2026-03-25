@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,8 +8,8 @@ import { routes } from '@/lib/constants/routes';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
-import { useUserRoles } from '@/hooks/api/useProfile';
-import { Coins, Copy, Loader2, UserPlus, UserX, Users } from 'lucide-react';
+import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
+import { Coins, Copy, Loader2, Shield, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
@@ -37,6 +37,12 @@ import {
 import { Input } from '@/components/ui/shadcn/input';
 import { trpc } from '@/lib/trpc/client';
 import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
+import { communityAllowsLeadManagement } from '@/lib/community/community-lead-management';
+import { splitMembersByAdminRole } from '@/lib/community/split-members-by-admin-role';
+import {
+    CommunityDemoteSelfLeadDialog,
+    CommunityPromoteLeadDialog,
+} from '@/components/organisms/Community/CommunityLeadActionDialogs';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -53,6 +59,7 @@ export function CommunityMembersPageClient({
 }: CommunityMembersPageClientProps) {
     const router = useRouter();
     const t = useTranslations('pages.communities');
+    const tLeadActions = useTranslations('pages.communities.members.leadActions');
     const tProjects = useTranslations('projects');
     const tSearch = useTranslations('search');
     const { user } = useAuth();
@@ -64,12 +71,14 @@ export function CommunityMembersPageClient({
     const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
     const [inviteUrl, setInviteUrl] = useState('');
+    const [promoteLeadTarget, setPromoteLeadTarget] = useState<{ id: string; name: string } | null>(
+        null,
+    );
+    const [demoteSelfLeadOpen, setDemoteSelfLeadOpen] = useState(false);
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId, {
         search: debouncedSearchQuery.trim() || undefined,
     });
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
-    const { data: _userRoles = [] } = useUserRoles(user?.id || '');
-
     // Check if user is admin (superadmin or lead of this community)
     const isAdmin = community?.isAdmin;
 
@@ -99,6 +108,9 @@ export function CommunityMembersPageClient({
         !!community?.typeTag &&
         !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag);
 
+    const leadManagementAllowed =
+        !!isAdmin && communityAllowsLeadManagement(community?.typeTag);
+
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
         onSuccess: (data) => {
             const path = `${routes.communityJoin(communityId)}?t=${encodeURIComponent(data.token)}`;
@@ -125,6 +137,10 @@ export function CommunityMembersPageClient({
 
     // Get members array (already filtered server-side)
     const members = Array.isArray(membersData?.data) ? membersData.data : [];
+    const { admins: adminMembers, participants: participantMembers } = useMemo(
+        () => splitMembersByAdminRole(members),
+        [members],
+    );
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }))) {
@@ -175,6 +191,94 @@ export function CommunityMembersPageClient({
     };
 
     const backTarget = sanitizeMeriterInternalPath(returnTo) ?? routes.community(communityId);
+
+    const renderMemberRow = (member: CommunityMember) => (
+        <div key={member.id} className="relative group">
+            <MemberCardWithMerits
+                memberId={member.id}
+                displayName={member.displayName || member.username}
+                username={member.username}
+                avatarUrl={member.avatarUrl}
+                role={member.role}
+                communityId={communityId}
+                showRoleChip={showRoleChip}
+                hideTeamInfo={hideTeamInfo}
+                canViewMerits={canViewMerits}
+                onClick={() => router.push(routes.userProfile(member.id))}
+                hideChevron={isAdmin}
+            />
+            {isAdmin && (
+                <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                    {member.id !== user?.id && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveMember(member.id, member.displayName || member.username);
+                            }}
+                            disabled={isRemoving}
+                            className="rounded-full p-2 text-red-500 transition-colors hover:bg-red-50"
+                            title={t('members.remove')}
+                        >
+                            {isRemoving ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <UserX className="h-4 w-4" />
+                            )}
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedMember({
+                                id: member.id,
+                                name: member.displayName || member.username,
+                            });
+                            setAddMeritsDialogOpen(true);
+                        }}
+                        className="rounded-full p-2 text-primary transition-colors hover:bg-primary/10"
+                        title={t('members.addMerits')}
+                    >
+                        <Coins className="h-4 w-4" />
+                    </button>
+                    {leadManagementAllowed &&
+                        member.id === user?.id &&
+                        member.role === 'lead' && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDemoteSelfLeadOpen(true);
+                                }}
+                                className="rounded-full p-2 text-base-content transition-colors hover:bg-base-200"
+                                title={tLeadActions('demoteSelfFromLead')}
+                            >
+                                <UserMinus className="h-4 w-4" />
+                            </button>
+                        )}
+                    {leadManagementAllowed &&
+                        member.id !== user?.id &&
+                        member.role === 'participant' && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPromoteLeadTarget({
+                                        id: member.id,
+                                        name: member.displayName || member.username,
+                                    });
+                                }}
+                                className="rounded-full p-2 text-amber-600 transition-colors hover:bg-amber-500/10 dark:text-amber-400"
+                                title={tLeadActions('promoteToLead')}
+                            >
+                                <Shield className="h-4 w-4" />
+                            </button>
+                        )}
+                </div>
+            )}
+        </div>
+    );
 
     const pageHeader = (
         <SimpleStickyHeader
@@ -266,54 +370,27 @@ export function CommunityMembersPageClient({
                         )}
                         
                         {members.length > 0 ? (
-                            <div className="bg-base-100 rounded-lg shadow-none overflow-hidden">
-                                {members.map((member) => (
-                                    <div key={member.id} className="relative group">
-                                        <MemberCardWithMerits
-                                            memberId={member.id}
-                                            displayName={member.displayName || member.username}
-                                            username={member.username}
-                                            avatarUrl={member.avatarUrl}
-                                            role={member.role}
-                                            communityId={communityId}
-                                            showRoleChip={showRoleChip}
-                                            hideTeamInfo={hideTeamInfo}
-                                            canViewMerits={canViewMerits}
-                                            onClick={() => router.push(routes.userProfile(member.id))}
-                                            hideChevron={isAdmin}
-                                        />
-                                        {isAdmin && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedMember({ id: member.id, name: member.displayName || member.username });
-                                                    setAddMeritsDialogOpen(true);
-                                                }}
-                                                className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-primary hover:bg-primary/10 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                title={t('members.addMerits')}
-                                            >
-                                                <Coins className="w-4 h-4" />
-                                            </button>
-                                        )}
-                                        {isAdmin && member.id !== user?.id && (
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleRemoveMember(member.id, member.displayName || member.username);
-                                                }}
-                                                disabled={isRemoving}
-                                                className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                                                title={t('members.remove')}
-                                            >
-                                                {isRemoving ? (
-                                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                                ) : (
-                                                    <UserX className="w-4 h-4" />
-                                                )}
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
+                            <div className="space-y-6">
+                                {adminMembers.length > 0 && (
+                                    <section className="space-y-2">
+                                        <h3 className="px-1 text-sm font-medium text-base-content/60">
+                                            {t('members.sectionAdmins')}
+                                        </h3>
+                                        <div className="overflow-hidden rounded-lg bg-base-100 shadow-none">
+                                            {adminMembers.map(renderMemberRow)}
+                                        </div>
+                                    </section>
+                                )}
+                                {participantMembers.length > 0 && (
+                                    <section className="space-y-2">
+                                        <h3 className="px-1 text-sm font-medium text-base-content/60">
+                                            {t('members.sectionParticipants')}
+                                        </h3>
+                                        <div className="overflow-hidden rounded-lg bg-base-100 shadow-none">
+                                            {participantMembers.map(renderMemberRow)}
+                                        </div>
+                                    </section>
+                                )}
                             </div>
                         ) : debouncedSearchQuery ? (
                             <div className="text-center py-12 text-brand-text-secondary">
@@ -345,6 +422,21 @@ export function CommunityMembersPageClient({
                     }}
                 />
             )}
+
+            <CommunityPromoteLeadDialog
+                communityId={communityId}
+                open={!!promoteLeadTarget}
+                onOpenChange={(open) => {
+                    if (!open) setPromoteLeadTarget(null);
+                }}
+                targetUserId={promoteLeadTarget?.id ?? null}
+                targetName={promoteLeadTarget?.name ?? ''}
+            />
+            <CommunityDemoteSelfLeadDialog
+                communityId={communityId}
+                open={demoteSelfLeadOpen}
+                onOpenChange={setDemoteSelfLeadOpen}
+            />
 
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
                 <DialogContent className="sm:max-w-lg">
