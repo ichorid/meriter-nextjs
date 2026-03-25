@@ -15,6 +15,27 @@ import {
   type RawPublicationInvestment,
 } from './feed-item-investments.mapper';
 
+function formatFeedPublisherMeta(
+  user: { displayName?: string; firstName?: string; lastName?: string; username?: string; avatarUrl?: string } | null | undefined,
+  userId: string,
+): { id: string; name: string; username?: string; photoUrl?: string } {
+  if (user) {
+    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    const name =
+      user.displayName ||
+      fullName ||
+      user.username ||
+      'Unknown';
+    return {
+      id: userId,
+      name,
+      username: user.username,
+      photoUrl: user.avatarUrl,
+    };
+  }
+  return { id: userId, name: 'Unknown' };
+}
+
 export interface FeedOptions {
   page?: number;
   pageSize?: number;
@@ -165,7 +186,11 @@ export class CommunityFeedService {
     const userIds = new Set<string>();
 
     publications.forEach((pub) => {
+      const s = pub.toSnapshot();
       userIds.add(pub.getAuthorId.getValue());
+      if (s.publishedByUserId) {
+        userIds.add(s.publishedByUserId);
+      }
       const beneficiaryId = pub.getBeneficiaryId?.getValue();
       if (beneficiaryId) {
         userIds.add(beneficiaryId);
@@ -187,6 +212,26 @@ export class CommunityFeedService {
       }),
     );
 
+    const authoredCommunityIds = new Set<string>();
+    publications.forEach((pub) => {
+      const s = pub.toSnapshot();
+      if (s.authorKind === 'community' && s.authoredCommunityId) {
+        authoredCommunityIds.add(s.authoredCommunityId);
+      }
+    });
+    const communitiesMap = new Map<string, { name?: string; avatarUrl?: string }>();
+    await Promise.all(
+      Array.from(authoredCommunityIds).map(async (cid) => {
+        const c = await this.communityService.getCommunity(cid);
+        if (c) {
+          communitiesMap.set(cid, {
+            name: (c as { name?: string }).name,
+            avatarUrl: (c as { avatarUrl?: string }).avatarUrl,
+          });
+        }
+      }),
+    );
+
     // Transform publications to feed items
     const publicationFeedItems: PublicationFeedItem[] = publications.map(
       (pub) => {
@@ -195,6 +240,55 @@ export class CommunityFeedService {
         const author = usersMap.get(authorId);
         const beneficiary = beneficiaryId ? usersMap.get(beneficiaryId) : null;
         const snapshot = pub.toSnapshot();
+        const logicalComm =
+          snapshot.authorKind === 'community' && snapshot.authoredCommunityId
+            ? communitiesMap.get(snapshot.authoredCommunityId)
+            : undefined;
+        const publisherUserId =
+          logicalComm != null
+            ? (snapshot.publishedByUserId ?? authorId)
+            : undefined;
+        const publisherUser =
+          publisherUserId != null ? usersMap.get(publisherUserId) : undefined;
+
+        const meta = logicalComm
+          ? {
+              author: {
+                name: logicalComm.name ?? 'Community',
+                ...(logicalComm.avatarUrl
+                  ? { photoUrl: logicalComm.avatarUrl }
+                  : {}),
+              },
+              ...(publisherUserId != null && {
+                publishedBy: formatFeedPublisherMeta(
+                  publisherUser,
+                  publisherUserId,
+                ),
+              }),
+              ...(beneficiary && {
+                beneficiary: {
+                  name:
+                    beneficiary.displayName || beneficiary.firstName || 'Unknown',
+                  username: beneficiary.username,
+                  photoUrl: beneficiary.avatarUrl,
+                },
+              }),
+            }
+          : {
+              author: {
+                name: author?.displayName || author?.firstName || 'Unknown',
+                username: author?.username,
+                photoUrl: author?.avatarUrl,
+              },
+              ...(beneficiary && {
+                beneficiary: {
+                  name:
+                    beneficiary.displayName || beneficiary.firstName || 'Unknown',
+                  username: beneficiary.username,
+                  photoUrl: beneficiary.avatarUrl,
+                },
+              }),
+            };
 
         return {
           id: snapshot.id,
@@ -223,21 +317,14 @@ export class CommunityFeedService {
             score: snapshot.metrics.upvotes - snapshot.metrics.downvotes,
             commentCount: snapshot.metrics.commentCount,
           },
-          meta: {
-            author: {
-              name: author?.displayName || author?.firstName || 'Unknown',
-              username: author?.username,
-              photoUrl: author?.avatarUrl,
-            },
-            ...(beneficiary && {
-              beneficiary: {
-                name:
-                  beneficiary.displayName || beneficiary.firstName || 'Unknown',
-                username: beneficiary.username,
-                photoUrl: beneficiary.avatarUrl,
-              },
+          meta,
+          ...(snapshot.authorKind === 'community' &&
+            snapshot.authoredCommunityId && {
+              authorKind: 'community' as const,
+              authoredCommunityId: snapshot.authoredCommunityId,
+              publishedByUserId:
+                snapshot.publishedByUserId ?? authorId,
             }),
-          },
           deleted: snapshot.deleted || false,
           deletedAt: snapshot.deletedAt || undefined,
           createdAt: snapshot.createdAt.toISOString(),

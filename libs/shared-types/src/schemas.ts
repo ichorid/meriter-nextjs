@@ -1022,6 +1022,15 @@ export const FeedItemMetaSchema = z.object({
     username: z.string().optional(),
     photoUrl: z.string().url().optional(),
   }),
+  /** Human publisher when the post is authored as a community */
+  publishedBy: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      username: z.string().optional(),
+      photoUrl: z.string().url().optional(),
+    })
+    .optional(),
   beneficiary: z
     .object({
       name: z.string(),
@@ -1082,6 +1091,9 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   noAuthorWalletSpend: z.boolean().optional().default(false),
   sourceEntityId: z.string().optional(),
   sourceEntityType: z.enum(['project', 'community']).optional(),
+  authorKind: z.enum(['user', 'community']).optional(),
+  authoredCommunityId: z.string().optional(),
+  publishedByUserId: z.string().optional(),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
