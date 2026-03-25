@@ -140,14 +140,14 @@ export function usePublishToBirzhaSource(params: {
 export function useBirzhaPostsBySource(
   sourceEntityType: 'project' | 'community',
   sourceEntityId: string | null | undefined,
-  opts?: { enabled?: boolean },
+  opts?: { enabled?: boolean; limit?: number; skip?: number },
 ) {
   return trpc.publications.getBirzhaPostsBySource.useQuery(
     {
       sourceEntityType,
       sourceEntityId: sourceEntityId ?? '',
-      limit: 20,
-      skip: 0,
+      limit: opts?.limit ?? 20,
+      skip: opts?.skip ?? 0,
     },
     {
       enabled: Boolean(sourceEntityId && opts?.enabled !== false),

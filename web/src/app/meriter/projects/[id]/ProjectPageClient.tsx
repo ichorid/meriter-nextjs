@@ -12,6 +12,8 @@ import { ProjectDashboard } from '@/components/organisms/Project/project-dashboa
 import { ProjectWorkArea } from '@/components/organisms/Project/project-work-area';
 import { ProjectActions } from '@/components/organisms/Project/project-actions';
 import { PublishToBirzhaButton } from '@/components/organisms/Project/PublishToBirzhaButton';
+import { BirzhaSourcePostsEntryRow } from '@/components/organisms/Birzha/BirzhaSourcePostsEntryRow';
+import { routes } from '@/lib/constants/routes';
 import { CloseProjectDialog } from '@/components/organisms/Project/CloseProjectDialog';
 import { LeaveProjectDialog } from '@/components/organisms/Project/LeaveProjectDialog';
 import { UpdateSharesDialog } from '@/components/organisms/Project/UpdateSharesDialog';
@@ -156,8 +158,23 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           founderSharePercent={project.founderSharePercent ?? 0}
           investorSharePercent={project.investorSharePercent ?? 0}
           totalMembers={totalMembers}
-          showBirzhaSourcePosts={isLead}
         />
+
+        {isLead && !isArchived ? (
+          <BirzhaSourcePostsEntryRow
+            variant="project"
+            sourceEntityType="project"
+            sourceEntityId={projectId}
+            listHref={routes.projectBirzhaPosts(projectId)}
+            publishSlot={
+              <PublishToBirzhaButton
+                projectId={projectId}
+                isLead
+                className="min-h-[52px] w-full sm:w-auto sm:px-6"
+              />
+            }
+          />
+        ) : null}
 
         {isMember && user && (
           <ProjectWorkArea

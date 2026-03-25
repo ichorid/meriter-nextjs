@@ -13,6 +13,8 @@ export const routes = {
     futureVisions: "/meriter/future-visions",
     projects: "/meriter/projects",
     project: (id: string) => `/meriter/projects/${id}`,
+    /** Birzha posts published on behalf of this project (lead). */
+    projectBirzhaPosts: (id: string) => `/meriter/projects/${id}/birzha-posts`,
     userProfile: (userId: string) => `/meriter/users/${userId}`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
@@ -42,6 +44,8 @@ export const routes = {
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
+    /** Birzha posts published on behalf of this community (lead/admin). */
+    communityBirzhaPosts: (id: string) => `/meriter/communities/${id}/birzha-posts`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
     /** Opens General tab with future vision textarea focused (lead/superadmin settings). */
     communitySettingsEditFutureVision: (id: string) =>

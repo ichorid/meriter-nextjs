@@ -10,15 +10,20 @@ export function SourceBirzhaPostsList({
   sourceEntityId,
   variant = 'default',
   enabled = true,
+  pageSize = 20,
 }: {
   sourceEntityType: 'project' | 'community';
   sourceEntityId: string;
   variant?: 'default' | 'compact';
   enabled?: boolean;
+  /** Page list size (default 20; use 100 on dedicated Birzha posts page). */
+  pageSize?: number;
 }) {
   const t = useTranslations('birzhaSource');
   const { data, isLoading, isError } = useBirzhaPostsBySource(sourceEntityType, sourceEntityId, {
     enabled,
+    limit: pageSize,
+    skip: 0,
   });
 
   if (isLoading) {
@@ -28,7 +33,16 @@ export function SourceBirzhaPostsList({
     return <p className="text-sm text-base-content/50">{t('postsEmpty')}</p>;
   }
 
+  const total = data.total ?? data.data.length;
+  const capped = pageSize < total;
+
   return (
+    <>
+    {capped ? (
+      <p className="mb-3 text-xs text-base-content/50">
+        {t('postsPagePartial', { shown: data.data.length, total })}
+      </p>
+    ) : null}
     <ul className={variant === 'compact' ? 'space-y-2' : 'space-y-3'}>
       {data.data.map((pub) => {
         const href = routes.communityPost(pub.communityId ?? '', pub.slug ?? pub.id);
@@ -50,5 +64,6 @@ export function SourceBirzhaPostsList({
         );
       })}
     </ul>
+    </>
   );
 }
