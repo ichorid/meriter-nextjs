@@ -34,11 +34,14 @@ export class PlatformSettingsService {
     if (!doc) {
       const created = await this.platformSettingsModel.create({
         id: PLATFORM_SETTINGS_ID,
-        welcomeMeritsGlobal: 0,
-        availableFutureVisionTags: [],
-        decree809Enabled: false,
+        welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+        availableFutureVisionTags: [
+          ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
+        ],
+        decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
         decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
-        popularValueTagsThreshold: 5,
+        popularValueTagsThreshold:
+          PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
       });
       doc = created.toObject() as unknown as PlatformSettings;
     }
@@ -73,7 +76,8 @@ export class PlatformSettingsService {
   }
 
   /**
-   * Get welcome merits for new users in global (priority) communities. Default 0.
+   * Get welcome merits for new users in global (priority) communities.
+   * Default: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal.
    */
   async getWelcomeMeritsGlobal(): Promise<number> {
     const settings = await this.get();

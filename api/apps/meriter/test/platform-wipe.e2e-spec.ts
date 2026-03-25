@@ -11,6 +11,7 @@ import {
 } from '../src/domain/models/publication/publication.schema';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { PlatformWipeService } from '../src/domain/services/platform-wipe.service';
+import { PlatformSettingsService } from '../src/domain/services/platform-settings.service';
 import { UserService } from '../src/domain/services/user.service';
 
 describe('PlatformWipeService (e2e)', () => {
@@ -22,6 +23,7 @@ describe('PlatformWipeService (e2e)', () => {
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
   let platformWipeService: PlatformWipeService;
+  let platformSettingsService: PlatformSettingsService;
   let userService: UserService;
 
   beforeAll(async () => {
@@ -32,6 +34,7 @@ describe('PlatformWipeService (e2e)', () => {
     userModel = app.get(getModelToken(UserSchemaClass.name));
     publicationModel = app.get(getModelToken(PublicationSchemaClass.name));
     platformWipeService = app.get(PlatformWipeService);
+    platformSettingsService = app.get(PlatformSettingsService);
     userService = app.get(UserService);
   });
 
@@ -130,8 +133,12 @@ describe('PlatformWipeService (e2e)', () => {
       },
     );
 
+    await platformSettingsService.update({ welcomeMeritsGlobal: 3 });
+
     const result = await platformWipeService.wipeUserContentAndLocalData();
     expect(result.superadminCount).toBeGreaterThanOrEqual(1);
+
+    expect(await platformSettingsService.getWelcomeMeritsGlobal()).toBe(100);
 
     const users = await userModel.find({}).lean();
     expect(users.every((u) => u.globalRole === 'superadmin')).toBe(true);

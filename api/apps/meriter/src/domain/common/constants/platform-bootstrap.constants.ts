@@ -80,7 +80,7 @@ export const GLOBAL_COMMUNITY_BOOTSTRAP = {
 
 /** Fresh platform_settings row (same as PlatformSettingsService.get() defaults). */
 export const PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP = {
-  welcomeMeritsGlobal: 0,
+  welcomeMeritsGlobal: 100,
   availableFutureVisionTags: [] as string[],
   decree809Enabled: false,
   decree809Tags: [...DECREE_809_TAGS],
