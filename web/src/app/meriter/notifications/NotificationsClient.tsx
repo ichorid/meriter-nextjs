@@ -72,6 +72,12 @@ const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
   'project_parent_link_approved',
   'project_parent_link_rejected',
   'ticket_assigned',
+  'ticket_done',
+  'ticket_accepted',
+  'ticket_returned_for_revision',
+  'ticket_assignee_declined',
+  'ticket_apply',
+  'ticket_rejection',
 ]);
 
 const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
@@ -81,10 +87,77 @@ const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
   'project_parent_link_requested',
   'ticket_assigned',
   'ob_vote_join_offer',
+  'project_distributed',
+  'ticket_done',
+  'ticket_accepted',
+  'ticket_returned_for_revision',
+  'ticket_assignee_declined',
+  'ticket_rejection',
+  'ticket_apply',
 ]);
 
 function communityOrProjectHref(communityId: string, isProject: boolean): string {
   return isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
+}
+
+const NOTIFICATION_TYPES_PROJECT_CONTEXT = new Set<NotificationType>([
+  'project_created',
+  'project_published',
+  'project_distributed',
+  'project_closed',
+  'member_joined',
+  'member_left_project',
+  'shares_changed',
+]);
+
+function resolveNotificationContextHref(n: Notification): string | undefined {
+  const m = n.metadata ?? {};
+  const projectId = typeof m.projectId === 'string' && m.projectId.trim() ? m.projectId.trim() : undefined;
+  if (projectId) {
+    return routes.project(projectId);
+  }
+  const communityMetaId =
+    typeof m.communityId === 'string' && m.communityId.trim() ? m.communityId.trim() : undefined;
+  const cid = n.community?.id;
+  const isProjectFlag = m.inviteTargetIsProject === true;
+  const isCommunityFlag = m.inviteTargetIsProject === false;
+
+  if (communityMetaId) {
+    if (isProjectFlag) return routes.project(communityMetaId);
+    if (isCommunityFlag) return routes.community(communityMetaId);
+    if (NOTIFICATION_TYPES_PROJECT_CONTEXT.has(n.type)) return routes.project(communityMetaId);
+    return routes.community(communityMetaId);
+  }
+  if (cid) {
+    if (isProjectFlag) return routes.project(cid);
+    if (isCommunityFlag) return routes.community(cid);
+    if (NOTIFICATION_TYPES_PROJECT_CONTEXT.has(n.type)) return routes.project(cid);
+    return routes.community(cid);
+  }
+  return undefined;
+}
+
+function buildTicketLinkParts(
+  m: Record<string, unknown>,
+  untitledLabel: string,
+): {
+  ticketHref: string;
+  projectHref: string;
+  ticketTitle: string;
+  projectName: string;
+} {
+  const ticketId = typeof m.ticketId === 'string' ? m.ticketId : '';
+  const projectId = typeof m.projectId === 'string' ? m.projectId : '';
+  const ticketTitle =
+    typeof m.ticketTitle === 'string' && m.ticketTitle.trim() ? m.ticketTitle.trim() : untitledLabel;
+  const projectName =
+    typeof m.projectName === 'string' && m.projectName.trim() ? m.projectName.trim() : projectId;
+  const ticketHref =
+    projectId && ticketId
+      ? `${routes.project(projectId)}?highlight=${encodeURIComponent(ticketId)}`
+      : '';
+  const projectHref = projectId ? routes.project(projectId) : '';
+  return { ticketHref, projectHref, ticketTitle, projectName };
 }
 
 function isTeamJoinRequestActionable(notification: Notification): boolean {
@@ -1184,6 +1257,57 @@ export default function NotificationsPage() {
       );
     }
 
+    if (notification.type === 'project_distributed') {
+      const projectId = typeof m.projectId === 'string' ? m.projectId : '';
+      const projectName =
+        (typeof m.projectName === 'string' && m.projectName.trim()
+          ? m.projectName.trim()
+          : '') || projectId;
+      const yourAmount = Number(m.yourAmount);
+      const totalPayout = Number(m.totalPayout ?? m.amount ?? 0);
+      const payoutBucket =
+        typeof m.payoutBucket === 'string' && m.payoutBucket.trim() ? m.payoutBucket.trim() : '';
+      const projectHref = projectId ? routes.project(projectId) : '';
+      const finiteYour = Number.isFinite(yourAmount);
+      const finiteTotal = Number.isFinite(totalPayout);
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          {finiteYour && yourAmount > 0 ? (
+            <div className="text-sm text-brand-text-primary">
+              {t('projectDistributedSubtitleYouReceived', { yourAmount })}
+            </div>
+          ) : finiteYour && yourAmount === 0 ? (
+            <div className="text-sm text-brand-text-secondary">
+              {t('projectDistributedSubtitleMemberNoCredits')}
+            </div>
+          ) : null}
+          {finiteTotal && totalPayout > 0 ? (
+            <div className="text-sm text-brand-text-primary">
+              {t('projectDistributedSubtitleTotal', { totalPayout })}
+            </div>
+          ) : null}
+          {payoutBucket ? (
+            <div className="text-xs text-brand-text-secondary">
+              {t('projectDistributedSubtitleBucket', { bucket: payoutBucket })}
+            </div>
+          ) : null}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
     if (notification.type === 'ticket_assigned') {
       const ticketId = typeof m.ticketId === 'string' ? m.ticketId : '';
       const projectId = typeof m.projectId === 'string' ? m.projectId : '';
@@ -1263,13 +1387,380 @@ export default function NotificationsPage() {
       );
     }
 
+    if (notification.type === 'ticket_apply') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const actorName = notification.actor?.name || tCommon('someone');
+      const actorId = notification.actor?.id ?? '';
+      const actorHref = actorId ? routes.userProfile(actorId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyApplyStatus')}</div>
+          <div className="text-sm text-brand-text-primary">
+            {actorHref ? (
+              <Link
+                href={actorHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {actorName}
+              </Link>
+            ) : (
+              actorName
+            )}{' '}
+            <span className="text-brand-text-secondary">{t('ticketNotifyApplyWording')}</span>
+          </div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_done') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const actorId =
+        (typeof m.beneficiaryId === 'string' && m.beneficiaryId.trim()
+          ? m.beneficiaryId.trim()
+          : '') || notification.sourceId || notification.actor?.id || '';
+      const actorName =
+        (typeof m.beneficiaryDisplayName === 'string' && m.beneficiaryDisplayName.trim()
+          ? m.beneficiaryDisplayName.trim()
+          : '') ||
+        notification.actor?.name ||
+        tCommon('someone');
+      const actorHref = actorId ? routes.userProfile(actorId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyDoneStatus')}</div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-sm text-brand-text-primary">
+            <span className="text-brand-text-secondary">{t('ticketNotifyCompletedBy')}</span>{' '}
+            {actorHref ? (
+              <Link
+                href={actorHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {actorName}
+              </Link>
+            ) : (
+              actorName
+            )}
+          </div>
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_accepted') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const leadId =
+        (typeof m.leadUserId === 'string' && m.leadUserId.trim()
+          ? m.leadUserId.trim()
+          : '') ||
+        notification.sourceId ||
+        notification.actor?.id ||
+        '';
+      const leadName = notification.actor?.name || tCommon('someone');
+      const leadHref = leadId ? routes.userProfile(leadId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyAcceptedStatus')}</div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-sm text-brand-text-primary">
+            <span className="text-brand-text-secondary">{t('ticketNotifyAcceptedBy')}</span>{' '}
+            {leadHref ? (
+              <Link
+                href={leadHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {leadName}
+              </Link>
+            ) : (
+              leadName
+            )}
+          </div>
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_returned_for_revision') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const reason = typeof m.reason === 'string' ? m.reason : '';
+      const leadId =
+        (typeof m.leadUserId === 'string' && m.leadUserId.trim()
+          ? m.leadUserId.trim()
+          : '') ||
+        notification.sourceId ||
+        notification.actor?.id ||
+        '';
+      const leadName = notification.actor?.name || tCommon('someone');
+      const leadHref = leadId ? routes.userProfile(leadId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyRevisionStatus')}</div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-sm text-brand-text-primary">
+            <span className="text-brand-text-secondary">{t('ticketNotifyReturnedBy')}</span>{' '}
+            {leadHref ? (
+              <Link
+                href={leadHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {leadName}
+              </Link>
+            ) : (
+              leadName
+            )}
+          </div>
+          {reason ? (
+            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
+              <span className="text-brand-text-secondary">{t('ticketNotifyCommentLabel')}</span>:{' '}
+              {reason}
+            </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_assignee_declined') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const reason = typeof m.reason === 'string' ? m.reason : '';
+      const assigneeId =
+        (typeof m.assigneeId === 'string' && m.assigneeId.trim()
+          ? m.assigneeId.trim()
+          : '') || notification.sourceId || notification.actor?.id || '';
+      const assigneeName =
+        (typeof m.assigneeDisplayName === 'string' && m.assigneeDisplayName.trim()
+          ? m.assigneeDisplayName.trim()
+          : '') ||
+        notification.actor?.name ||
+        tCommon('someone');
+      const assigneeHref = assigneeId ? routes.userProfile(assigneeId) : undefined;
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyDeclinedStatus')}</div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          <div className="text-sm text-brand-text-primary">
+            <span className="text-brand-text-secondary">{t('ticketNotifyDeclinedBy')}</span>{' '}
+            {assigneeHref ? (
+              <Link
+                href={assigneeHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline"
+              >
+                {assigneeName}
+              </Link>
+            ) : (
+              assigneeName
+            )}
+          </div>
+          {reason ? (
+            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
+              <span className="text-brand-text-secondary">{t('ticketNotifyCommentLabel')}</span>:{' '}
+              {reason}
+            </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_rejection') {
+      const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
+        m,
+        t('untitledPost'),
+      );
+      const custom =
+        typeof m.rejectionMessage === 'string' && m.rejectionMessage.trim()
+          ? m.rejectionMessage.trim()
+          : '';
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="text-sm text-brand-text-primary">{t('ticketNotifyRejectionStatus')}</div>
+          {ticketHref ? (
+            <Link
+              href={ticketHref}
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(ticketTitle, locale)}
+            </Link>
+          ) : (
+            <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+          )}
+          {projectHref ? (
+            <Link
+              href={projectHref}
+              onClick={(e) => e.stopPropagation()}
+              className="text-sm font-medium text-brand-primary hover:underline break-words"
+            >
+              {quotePlaceLabel(projectName, locale)}
+            </Link>
+          ) : (
+            <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+          )}
+          {custom ? (
+            <div className="whitespace-pre-wrap break-words text-sm text-brand-text-primary">
+              {custom}
+            </div>
+          ) : null}
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
     const primary = formatNotificationMessage(notification);
     const lines = primary.split('\n').filter((line) => line.length > 0);
     const showActor =
       !NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR.has(notification.type) && notification.actor?.name;
-    const ctxLabel = NOTIFICATION_TYPES_HIDE_CONTEXT.has(notification.type)
+    const contextHref = NOTIFICATION_TYPES_HIDE_CONTEXT.has(notification.type)
+      ? undefined
+      : resolveNotificationContextHref(notification);
+    const contextLabel = NOTIFICATION_TYPES_HIDE_CONTEXT.has(notification.type)
       ? undefined
       : contextLabelFromMetadata(notification);
+    const contextNode =
+      contextLabel && contextHref ? (
+        <Link
+          href={contextHref}
+          onClick={(e) => e.stopPropagation()}
+          className="font-medium text-brand-primary hover:underline break-words"
+        >
+          {quotePlaceLabel(contextLabel, locale)}
+        </Link>
+      ) : contextLabel ? (
+        <span className="whitespace-pre-wrap break-words">{contextLabel}</span>
+      ) : null;
 
     return (
       <div className="flex flex-col gap-1">
@@ -1279,7 +1770,7 @@ export default function NotificationsPage() {
           </div>
         ))}
         {showActor ? <div>{notification.actor!.name}</div> : null}
-        {ctxLabel ? <div className="whitespace-pre-wrap break-words">{ctxLabel}</div> : null}
+        {contextNode ? <div>{contextNode}</div> : null}
         <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
       </div>
     );

@@ -1,5 +1,6 @@
 'use client';
 
+import { keepPreviousData } from '@tanstack/react-query';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -161,6 +162,7 @@ export function useProjectPayoutPreview(projectId: string | null, amount: number
     {
       enabled: Boolean(projectId) && enabled && amount >= 1,
       staleTime: 0,
+      placeholderData: keepPreviousData,
     },
   );
 }

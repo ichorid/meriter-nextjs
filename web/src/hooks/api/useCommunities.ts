@@ -1,4 +1,5 @@
 // Communities React Query hooks
+import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
@@ -197,6 +198,7 @@ export function useCommunityWalletPayoutPreview(
     {
       enabled: Boolean(communityId) && enabled && amount >= 1,
       staleTime: 0,
+      placeholderData: keepPreviousData,
     },
   );
 }

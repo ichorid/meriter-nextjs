@@ -310,8 +310,6 @@ export interface Notification {
     relatedId?: string; // ID of related content (publication, comment, etc.)
     /** Present when API maps notification source user (e.g. remover, inviter). */
     sourceId?: string;
-    /** Actor / source user id from API (enrichment) */
-    sourceId?: string;
     metadata?: {
         [key: string]: any; // Additional metadata (e.g., invitationId, communityId, etc.)
     };

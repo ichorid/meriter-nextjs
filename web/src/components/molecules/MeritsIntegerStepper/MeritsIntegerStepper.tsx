@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -21,6 +22,7 @@ export interface MeritsIntegerStepperProps {
 
 /**
  * Minus / centered amount / plus — same layout as VotingPanel withdraw amount row.
+ * Uses draft text in the input so users can clear and re-type multi-digit amounts.
  */
 export function MeritsIntegerStepper({
   value,
@@ -35,13 +37,27 @@ export function MeritsIntegerStepper({
 }: MeritsIntegerStepperProps) {
   const clamp = (n: number) => Math.max(min, Math.min(max, Math.floor(n)));
 
-  const setFromInput = (raw: string) => {
-    if (raw === '' || raw === '-') {
+  const [draft, setDraft] = useState(() => String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commitDraft = (raw: string) => {
+    if (raw.trim() === '') {
+      const c = clamp(min);
+      onChange(c);
+      setDraft(String(c));
       return;
     }
     const n = parseInt(raw, 10);
-    if (Number.isNaN(n)) return;
-    onChange(clamp(n));
+    if (Number.isNaN(n)) {
+      setDraft(String(value));
+      return;
+    }
+    const c = clamp(n);
+    onChange(c);
+    setDraft(String(c));
   };
 
   return (
@@ -61,15 +77,26 @@ export function MeritsIntegerStepper({
       <div className="min-w-0 flex-1">
         <Input
           id={id}
-          type="number"
+          type="text"
           inputMode="numeric"
-          value={value}
-          onChange={(e) => setFromInput(e.target.value)}
-          onBlur={() => onChange(clamp(value))}
+          value={draft}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === '') {
+              setDraft('');
+              return;
+            }
+            if (!/^\d+$/.test(raw)) {
+              return;
+            }
+            setDraft(raw);
+            const n = parseInt(raw, 10);
+            if (!Number.isNaN(n) && n >= min && n <= max) {
+              onChange(n);
+            }
+          }}
+          onBlur={() => commitDraft(draft)}
           disabled={disabled}
-          min={min}
-          max={max}
-          step={1}
           className={cn(
             'h-12 text-center text-lg font-semibold rounded-xl border-base-300 focus:border-base-content/50',
             '[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',

@@ -33,22 +33,36 @@ export function ProjectPayoutDialog({
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const addToast = useToastStore((s) => s.addToast);
-  const [amount, setAmount] = useState(1);
   const safeMax = Math.max(0, Math.floor(maxAmount));
-  const clamped = Math.min(safeMax, Math.max(1, amount));
+
+  const [amount, setAmount] = useState(1);
+  const [amountDraft, setAmountDraft] = useState('1');
+
+  const clamp = (n: number) => Math.min(safeMax, Math.max(1, n));
+  const clamped = clamp(amount);
+
+  const setCommittedAmount = (n: number) => {
+    const c = clamp(n);
+    setAmount(c);
+    setAmountDraft(String(c));
+  };
+
+  useEffect(() => {
+    if (open) {
+      setAmount(1);
+      setAmountDraft('1');
+    }
+  }, [open]);
+
   const previewEnabled = open && safeMax >= 1 && clamped >= 1 && clamped <= safeMax;
-  const { data: preview, error: previewError } = useProjectPayoutPreview(
+  const { data: preview, error: previewError, isFetching } = useProjectPayoutPreview(
     projectId,
     clamped,
     previewEnabled,
   );
   const payout = useProjectPayoutExecute();
 
-  useEffect(() => {
-    if (open) {
-      setAmount(1);
-    }
-  }, [open]);
+  const showPreviewError = Boolean(previewError) && !isFetching;
 
   const submit = () => {
     if (clamped < 1 || clamped > safeMax) return;
@@ -81,25 +95,43 @@ export function ProjectPayoutDialog({
               size="sm"
               className="h-9 w-9 p-0"
               disabled={clamped <= 1 || payout.isPending}
-              onClick={() => setAmount((a) => Math.max(1, a - 1))}
+              onClick={() => setCommittedAmount(clamped - 1)}
               aria-label={t('payoutDecrease')}
             >
               <Icon name="remove" size={20} />
             </Button>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               className="input input-bordered input-sm h-9 w-24 text-center tabular-nums"
-              min={1}
-              max={safeMax}
-              value={clamped}
               disabled={payout.isPending || safeMax < 1}
+              value={amountDraft}
               onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                if (Number.isNaN(v)) {
-                  setAmount(1);
+                const raw = e.target.value;
+                if (raw === '') {
+                  setAmountDraft('');
                   return;
                 }
-                setAmount(Math.min(safeMax, Math.max(1, v)));
+                if (!/^\d+$/.test(raw)) {
+                  return;
+                }
+                setAmountDraft(raw);
+                const v = parseInt(raw, 10);
+                if (!Number.isNaN(v) && v >= 1 && v <= safeMax) {
+                  setAmount(v);
+                }
+              }}
+              onBlur={() => {
+                if (amountDraft.trim() === '') {
+                  setCommittedAmount(1);
+                  return;
+                }
+                const v = parseInt(amountDraft, 10);
+                if (Number.isNaN(v)) {
+                  setCommittedAmount(clamped);
+                  return;
+                }
+                setCommittedAmount(v);
               }}
             />
             <Button
@@ -108,7 +140,7 @@ export function ProjectPayoutDialog({
               size="sm"
               className="h-9 w-9 p-0"
               disabled={clamped >= safeMax || payout.isPending || safeMax < 1}
-              onClick={() => setAmount((a) => Math.min(safeMax, a + 1))}
+              onClick={() => setCommittedAmount(clamped + 1)}
               aria-label={t('payoutIncrease')}
             >
               <Icon name="add" size={20} />
@@ -117,7 +149,7 @@ export function ProjectPayoutDialog({
           <p className="text-xs text-base-content/60">
             {t('payoutMaxAvailable', { max: safeMax })}
           </p>
-          {previewError && (
+          {showPreviewError && (
             <p className="text-sm text-destructive">
               {resolveApiErrorToastMessage((previewError as Error).message)}
             </p>
@@ -125,7 +157,7 @@ export function ProjectPayoutDialog({
           {preview?.lines && preview.lines.length > 0 && (
             <WalletPayoutPreviewLines
               lines={preview.lines}
-              className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-white/10 p-2 text-xs"
+              className="max-h-40 min-h-[2.5rem] space-y-1 overflow-y-auto rounded-md border border-white/10 p-2 text-xs"
             />
           )}
         </div>
