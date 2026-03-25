@@ -25,6 +25,8 @@ export interface TeamJoinRequest {
   updatedAt: Date;
   processedAt?: Date; // When request was approved/rejected
   processedBy?: string; // User ID who processed the request
+  /** Short note from applicant (who they are / why join), shown to leads */
+  applicantMessage?: string;
 }
 
 @Schema({ collection: 'team_join_requests', timestamps: true })
@@ -54,6 +56,9 @@ export class TeamJoinRequestSchemaClass implements TeamJoinRequest {
 
   @Prop()
   processedBy?: string;
+
+  @Prop({ maxlength: 500 })
+  applicantMessage?: string;
 
   @Prop({ required: true })
   createdAt!: Date;

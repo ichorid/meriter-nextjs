@@ -9,6 +9,7 @@ export const teamsRouter = router({
   submitTeamRequest: protectedProcedure
     .input(z.object({
       communityId: z.string(),
+      applicantMessage: z.string().max(500).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {
@@ -22,6 +23,7 @@ export const teamsRouter = router({
         const request = await ctx.teamJoinRequestService.submitRequest(
           ctx.user.id,
           input.communityId,
+          input.applicantMessage,
         );
         return request;
       } catch (error: any) {

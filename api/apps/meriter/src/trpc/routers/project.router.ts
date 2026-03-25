@@ -127,12 +127,21 @@ export const projectRouter = router({
     }),
 
   join: protectedProcedure
-    .input(z.object({ projectId: z.string() }))
+    .input(
+      z.object({
+        projectId: z.string(),
+        applicantMessage: z.string().max(500).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      return ctx.projectService.joinProject(ctx.user.id, input.projectId);
+      return ctx.projectService.joinProject(
+        ctx.user.id,
+        input.projectId,
+        input.applicantMessage,
+      );
     }),
 
   leave: protectedProcedure

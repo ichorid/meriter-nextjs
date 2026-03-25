@@ -43,10 +43,16 @@ export class TeamJoinRequestService {
   async submitRequest(
     userId: string,
     communityId: string,
+    applicantMessage?: string,
   ): Promise<TeamJoinRequest> {
     this.logger.log(
       `User ${userId} submitting request to join team ${communityId}`,
     );
+
+    const trimmedNote =
+      typeof applicantMessage === 'string'
+        ? applicantMessage.trim().slice(0, 500)
+        : '';
 
     // 1. Check that community exists and is a team
     const community = await this.communityService.getCommunity(communityId);
@@ -104,6 +110,7 @@ export class TeamJoinRequestService {
       leadId,
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
     });
 
     // 6. Create notification for lead
@@ -121,6 +128,7 @@ export class TeamJoinRequestService {
         userId,
         communityName: community.name,
         inviteTargetIsProject: Boolean(community.isProject),
+        ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
       },
       title: 'Team join request',
       message: `${userName} wants to join your team "${community.name}"`,

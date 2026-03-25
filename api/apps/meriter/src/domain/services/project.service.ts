@@ -460,8 +460,16 @@ export class ProjectService {
   /**
    * Join project: reuse team join-request flow (submit request; lead approves later).
    */
-  async joinProject(userId: string, projectId: string): Promise<{ status: string }> {
-    await this.teamJoinRequestService.submitRequest(userId, projectId);
+  async joinProject(
+    userId: string,
+    projectId: string,
+    applicantMessage?: string,
+  ): Promise<{ status: string }> {
+    await this.teamJoinRequestService.submitRequest(
+      userId,
+      projectId,
+      applicantMessage,
+    );
     return { status: 'pending' };
   }
 
