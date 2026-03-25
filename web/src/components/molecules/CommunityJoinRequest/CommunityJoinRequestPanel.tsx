@@ -112,18 +112,24 @@ export function CommunityJoinRequestPanel({
     setDialogOpen(true);
   };
 
+  const heroBtnClass =
+    'h-8 min-h-8 px-3 text-xs font-medium sm:text-sm [&_svg]:size-3.5 sm:[&_svg]:size-4';
+
   const joinButton = (
     <Button
       type="button"
       variant={layout === 'hero' ? 'default' : 'outline'}
-      size={layout === 'hero' ? 'default' : 'sm'}
+      size="sm"
       onClick={openDialog}
       disabled={isPending}
-      className={cn(layout === 'hero' && 'w-full sm:w-auto', layout === 'block' && 'w-full')}
+      className={cn(
+        layout === 'hero' && cn('w-full sm:w-auto', heroBtnClass),
+        layout === 'block' && 'w-full',
+      )}
     >
       {isPending ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-1.5 shrink-0 animate-spin" />
           {t('submitting')}
         </>
       ) : (
@@ -136,14 +142,17 @@ export function CommunityJoinRequestPanel({
     <Button
       type="button"
       variant={layout === 'hero' ? 'default' : 'outline'}
-      size={layout === 'hero' ? 'default' : 'sm'}
+      size="sm"
       onClick={handleCancel}
       disabled={isCancelling}
-      className={cn(layout === 'hero' && 'w-full sm:w-auto', layout === 'block' && 'w-full')}
+      className={cn(
+        layout === 'hero' && cn('w-full sm:w-auto', heroBtnClass),
+        layout === 'block' && 'w-full',
+      )}
     >
       {isCancelling ? (
         <>
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          <Loader2 className="mr-1.5 shrink-0 animate-spin" />
           {t('cancelling')}
         </>
       ) : (
@@ -155,7 +164,12 @@ export function CommunityJoinRequestPanel({
   return (
     <>
       {layout === 'hero' ? (
-        <div className={cn('flex min-w-0 justify-end', className)}>
+        <div
+          className={cn(
+            'flex min-w-0 justify-end translate-y-1 sm:translate-y-1.5',
+            className,
+          )}
+        >
           {hasPendingRequest ? cancelButton : joinButton}
         </div>
       ) : layout === 'block' ? (

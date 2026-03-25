@@ -94,6 +94,10 @@ export const useApproveTeamRequest = () => {
       utils.users.getUserRoles.invalidate();
       utils.users.getUserProfile.invalidate();
     },
+    onError: () => {
+      utils.notifications.getAll.invalidate();
+      utils.teams.getTeamRequestsForLead.invalidate();
+    },
   });
 };
 
@@ -109,6 +113,10 @@ export const useRejectTeamRequest = () => {
       utils.notifications.getAll.invalidate();
       utils.teams.getTeamRequestsForLead.invalidate();
       utils.teams.getMyTeamRequests.invalidate();
+    },
+    onError: () => {
+      utils.notifications.getAll.invalidate();
+      utils.teams.getTeamRequestsForLead.invalidate();
     },
   });
 };

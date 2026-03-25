@@ -296,7 +296,8 @@ export type NotificationType =
     | "ob_vote_join_offer"
     | "project_parent_link_requested"
     | "project_parent_link_approved"
-    | "project_parent_link_rejected";
+    | "project_parent_link_rejected"
+    | "community_member_removed";
 
 export interface Notification {
     id: string;
@@ -307,6 +308,10 @@ export interface Notification {
     createdAt: string;
     url?: string; // URL to navigate to related content
     relatedId?: string; // ID of related content (publication, comment, etc.)
+    /** Present when API maps notification source user (e.g. remover, inviter). */
+    sourceId?: string;
+    /** Actor / source user id from API (enrichment) */
+    sourceId?: string;
     metadata?: {
         [key: string]: any; // Additional metadata (e.g., invitationId, communityId, etc.)
     };

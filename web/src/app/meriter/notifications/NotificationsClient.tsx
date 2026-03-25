@@ -60,6 +60,7 @@ const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
   'investment_distributed',
   'team_join_request',
   'team_invitation',
+  'community_member_removed',
   'forward_proposal',
   'favorite_update',
   'beneficiary',
@@ -74,11 +75,28 @@ const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
 const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
   'team_invitation',
   'team_join_request',
+  'community_member_removed',
   'ob_vote_join_offer',
 ]);
 
 function communityOrProjectHref(communityId: string, isProject: boolean): string {
   return isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
+}
+
+function isTeamJoinRequestActionable(notification: Notification): boolean {
+  if (notification.type !== 'team_join_request') return false;
+  if (notification.read) return false;
+  if (notification.metadata?.joinRequestResolved === true) return false;
+  const res = notification.metadata?.joinRequestResolution as string | undefined;
+  if (
+    res === 'approved' ||
+    res === 'rejected' ||
+    res === 'withdrawn' ||
+    res === 'joined_via_invite'
+  ) {
+    return false;
+  }
+  return typeof notification.metadata?.requestId === 'string';
 }
 
 function quotePlaceLabel(placeName: string, locale: string): string {
@@ -315,6 +333,8 @@ export default function NotificationsPage() {
       case 'member_joined':
       case 'member_left_project':
         return '👤';
+      case 'community_member_removed':
+        return '⛔';
       case 'shares_changed':
         return '📊';
       default:
@@ -408,9 +428,15 @@ export default function NotificationsPage() {
       return t('dailyQuotaResetMessage', { count });
     }
     if (notification.type === 'team_join_request') {
+      if (meta.joinRequestResolved === true) {
+        return '';
+      }
       const teamName =
         (meta.communityName as string) || notification.community?.name || '';
       return t('teamJoinRequestMessage', { name: actorName, teamName });
+    }
+    if (notification.type === 'community_member_removed') {
+      return '';
     }
     if (notification.type === 'project_created') {
       const name = (meta.projectName as string) || '';
@@ -658,6 +684,9 @@ export default function NotificationsPage() {
     if (notification.type === 'publication') return t('postEdited');
     if (notification.type === 'team_invitation') return t('teamInvitation');
     if (notification.type === 'team_join_request') return t('teamJoinRequestTitle');
+    if (notification.type === 'community_member_removed') {
+      return t('communityMemberRemovedTitle');
+    }
     if (notification.type === 'forward_proposal') return t('forwardProposal');
     if (notification.type === 'quota') return t('dailyQuotaReset');
     if (notification.type === 'project_created') return t('projectCreatedTitle');
@@ -900,6 +929,61 @@ export default function NotificationsPage() {
       );
     }
 
+    if (notification.type === 'community_member_removed') {
+      const actorName = notification.actor?.name || tCommon('someone');
+      const actorId =
+        (typeof notification.sourceId === 'string' && notification.sourceId) ||
+        notification.actor?.id ||
+        '';
+      const communityId = typeof m.communityId === 'string' ? m.communityId : '';
+      const placeName =
+        (typeof m.communityName === 'string' && m.communityName) ||
+        notification.community?.name ||
+        '';
+      const profileHref = actorId ? `/meriter/users/${actorId}` : undefined;
+      const placeHref =
+        communityId && placeName
+          ? communityOrProjectHref(communityId, isProject)
+          : undefined;
+
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5">
+            <div>
+              {profileHref ? (
+                <Link
+                  href={profileHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-brand-primary hover:underline"
+                >
+                  {actorName}
+                </Link>
+              ) : (
+                actorName
+              )}
+              {t('communityMemberRemovedActorSuffix')}
+            </div>
+            {placeName ? (
+              <div>
+                {placeHref ? (
+                  <Link
+                    href={placeHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-brand-primary hover:underline"
+                  >
+                    {quotePlaceLabel(placeName, locale)}
+                  </Link>
+                ) : (
+                  quotePlaceLabel(placeName, locale)
+                )}
+              </div>
+            ) : null}
+          </div>
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
     if (notification.type === 'team_join_request') {
       const actorName = notification.actor?.name || tCommon('someone');
       const requesterId =
@@ -911,6 +995,36 @@ export default function NotificationsPage() {
         '';
       const applicantNote =
         typeof m.applicantMessage === 'string' ? m.applicantMessage.trim() : '';
+      const resolution = m.joinRequestResolution as string | undefined;
+      const isResolved =
+        m.joinRequestResolved === true ||
+        (typeof resolution === 'string' &&
+          ['approved', 'rejected', 'withdrawn', 'joined_via_invite'].includes(resolution));
+      const resolverId =
+        (typeof m.resolvedByUserId === 'string' && m.resolvedByUserId.trim()
+          ? m.resolvedByUserId.trim()
+          : typeof m.joinRequestResolvedByUserId === 'string' &&
+              m.joinRequestResolvedByUserId.trim()
+            ? m.joinRequestResolvedByUserId.trim()
+            : '') || '';
+      const resolverName =
+        (typeof m.resolvedByDisplayName === 'string' && m.resolvedByDisplayName.trim()
+          ? m.resolvedByDisplayName.trim()
+          : typeof m.joinRequestResolvedByName === 'string' &&
+              m.joinRequestResolvedByName.trim()
+            ? m.joinRequestResolvedByName.trim()
+            : '') || tCommon('someone');
+      const resolverHref = resolverId ? `/meriter/users/${resolverId}` : undefined;
+      const decisionValue =
+        resolution === 'approved'
+          ? t('teamJoinRequestResolvedValueApproved')
+          : resolution === 'rejected'
+            ? t('teamJoinRequestResolvedValueRejected')
+            : resolution === 'withdrawn'
+              ? t('teamJoinRequestResolvedValueWithdrawn')
+              : resolution === 'joined_via_invite'
+                ? t('teamJoinRequestResolvedValueJoinedViaInvite')
+                : '';
 
       const profileHref = requesterId ? `/meriter/users/${requesterId}` : undefined;
       const placeHref =
@@ -953,6 +1067,37 @@ export default function NotificationsPage() {
             <div className="whitespace-pre-wrap break-words">
               <span className="text-brand-text-secondary">{t('teamJoinRequestApplicantMessageLabel')}</span>{' '}
               {applicantNote}
+            </div>
+          ) : null}
+          {isResolved ? (
+            <div className="mt-1 flex flex-col gap-1.5 border-t border-base-200/80 pt-2">
+              <div className="text-sm font-medium text-brand-text-primary">
+                {t('teamJoinRequestResolvedHeading')}
+              </div>
+              <div className="text-sm text-brand-text-primary">
+                <span className="text-brand-text-secondary">
+                  {t('teamJoinRequestResolvedByLabel')}
+                </span>{' '}
+                {resolverHref ? (
+                  <Link
+                    href={resolverHref}
+                    onClick={(e) => e.stopPropagation()}
+                    className="font-medium text-brand-primary hover:underline"
+                  >
+                    {resolverName}
+                  </Link>
+                ) : (
+                  resolverName
+                )}
+              </div>
+              {decisionValue ? (
+                <div className="text-sm text-brand-text-primary">
+                  <span className="text-brand-text-secondary">
+                    {t('teamJoinRequestDecisionLabel')}
+                  </span>{' '}
+                  {decisionValue}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
@@ -1139,9 +1284,7 @@ export default function NotificationsPage() {
                           </Button>
                         </div>
                       )}
-                      {notification.type === 'team_join_request' &&
-                        !notification.read &&
-                        typeof notification.metadata?.requestId === 'string' && (
+                      {isTeamJoinRequestActionable(notification) && (
                         <div
                           className="flex flex-wrap items-center justify-end gap-2 mr-2"
                           onClick={(e) => e.stopPropagation()}
@@ -1232,10 +1375,7 @@ export default function NotificationsPage() {
                       )}
                       {!notification.read &&
                         notification.type !== 'team_invitation' &&
-                        !(
-                          notification.type === 'team_join_request' &&
-                          typeof notification.metadata?.requestId === 'string'
-                        ) &&
+                        !isTeamJoinRequestActionable(notification) &&
                         notification.type !== 'ob_vote_join_offer' && (
                         <div
                           onClick={(e) => {
