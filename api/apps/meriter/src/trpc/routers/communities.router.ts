@@ -11,6 +11,7 @@ import {
   type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
 import { isEligibleNonProjectBirzhaSourceCommunity } from '../../domain/common/constants/birzha-source-entity.constants';
+import { isProjectCommunity } from '../../domain/services/community.service';
 
 export const communitiesRouter = router({
   /**
@@ -288,7 +289,10 @@ export const communitiesRouter = router({
 
       // Superadmins can see all communities
       if (ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-        const result = await ctx.communityService.getAllCommunities(limit, skip);
+        const [result, total] = await Promise.all([
+          ctx.communityService.getAllCommunities(limit, skip, { excludeProjects: true }),
+          ctx.communityService.countAllCommunities({ excludeProjects: true }),
+        ]);
         const communitiesWithEffectiveRules = result.map((community) => ({
           ...community,
           permissionRules: ctx.communityService.getEffectivePermissionRules(community),
@@ -297,7 +301,7 @@ export const communitiesRouter = router({
         }));
         return {
           data: communitiesWithEffectiveRules,
-          total: result.length,
+          total,
           skip,
           limit,
         };
@@ -323,7 +327,7 @@ export const communitiesRouter = router({
       );
 
       const validCommunities = allUserCommunities.filter(
-        (community) => community !== null,
+        (community) => community !== null && !isProjectCommunity(community),
       );
 
       validCommunities.sort((a, b) => {

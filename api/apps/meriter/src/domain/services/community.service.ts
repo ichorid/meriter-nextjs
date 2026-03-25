@@ -1193,13 +1193,30 @@ export class CommunityService {
   async getAllCommunities(
     limit: number = 50,
     skip: number = 0,
+    options?: { excludeProjects?: boolean },
   ): Promise<Community[]> {
+    const filter: Record<string, unknown> = {
+      typeTag: { $ne: 'global' }, // Exclude Global community — internal, not user-facing
+    };
+    if (options?.excludeProjects) {
+      filter.isProject = { $ne: true };
+    }
     return this.communityModel
-      .find({ typeTag: { $ne: 'global' } }) // Exclude Global community — internal, not user-facing
+      .find(filter)
       .limit(limit)
       .skip(skip)
       .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
       .lean() as unknown as Community[];
+  }
+
+  async countAllCommunities(options?: { excludeProjects?: boolean }): Promise<number> {
+    const filter: Record<string, unknown> = {
+      typeTag: { $ne: 'global' },
+    };
+    if (options?.excludeProjects) {
+      filter.isProject = { $ne: true };
+    }
+    return this.communityModel.countDocuments(filter);
   }
 
   /**
@@ -1696,6 +1713,7 @@ export class CommunityService {
     for (const post of obPosts) {
       const community = communityMap.get(post.sourceEntityId) as any;
       if (!community) continue;
+      if (community.isProject === true || community.typeTag === 'project') continue;
       if (tagsFilter && community.futureVisionTags?.length) {
         const hasTag = community.futureVisionTags.some((t: string) =>
           tagsFilter.has(t),
@@ -1801,4 +1819,24 @@ export class CommunityService {
       { $set: { projectInvestments: invs, updatedAt: now } },
     );
   }
+
+  async listCommunitiesByIds(ids: string[]): Promise<Community[]> {
+    if (ids.length === 0) return [];
+    const rows = await this.communityModel
+      .find({ id: { $in: ids } })
+      .lean()
+      .exec();
+    return rows as unknown as Community[];
+  }
+}
+
+/**
+ * Projects are stored as Community documents with isProject; they are not user-facing "groups"
+ * and must be excluded from community pickers, search-as-community, and role lists.
+ */
+export function isProjectCommunity(
+  community: { isProject?: boolean; typeTag?: string } | null | undefined,
+): boolean {
+  if (!community) return false;
+  return community.isProject === true || community.typeTag === 'project';
 }

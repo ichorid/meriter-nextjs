@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { isProjectCommunity } from '../../domain/services/community.service';
 
 export const searchRouter = router({
   /**
@@ -148,9 +149,12 @@ export const searchRouter = router({
       // Search communities
       if (contentType === 'all' || contentType === 'communities') {
         try {
-          const allCommunities = await ctx.communityService.getAllCommunities(100, 0);
+          const allCommunities = await ctx.communityService.getAllCommunities(100, 0, {
+            excludeProjects: true,
+          });
 
           allCommunities.forEach((comm) => {
+            if (isProjectCommunity(comm)) return;
             if (query) {
               const searchText = `${comm.name || ''} ${comm.description || ''}`.toLowerCase();
               if (!searchText.includes(query.toLowerCase())) {

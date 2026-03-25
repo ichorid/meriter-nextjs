@@ -1747,8 +1747,10 @@ export const publicationsRouter = router({
           });
         }
       } else {
-        // Get or create a test community
-        const communities = await ctx.communityService.getAllCommunities(1, 0);
+        // Get or create a test community (exclude project workspaces)
+        const communities = await ctx.communityService.getAllCommunities(50, 0, {
+          excludeProjects: true,
+        });
         if (communities.length === 0) {
           const testCommunity = await ctx.communityService.createCommunity({
             name: 'Test Community',

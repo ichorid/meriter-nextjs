@@ -5,6 +5,7 @@ import { TRPCError } from '@trpc/server';
 import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
 import { UpdateUserProfileSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { isProjectCommunity } from '../../domain/services/community.service';
 
 export const usersRouter = router({
   /**
@@ -81,12 +82,14 @@ export const usersRouter = router({
       }
 
       const communityIds = await ctx.userService.getUserCommunities(actualUserId);
-      // TODO: Convert community IDs to full community objects
-      return communityIds.map((id) => ({
-        id,
-        name: 'Community',
-        description: '',
-      }));
+      const communities = await ctx.communityService.listCommunitiesByIds(communityIds);
+      return communities
+        .filter((c) => !isProjectCommunity(c))
+        .map((c) => ({
+          id: c.id,
+          name: c.name ?? 'Community',
+          description: c.description ?? '',
+        }));
     }),
 
   /**
@@ -147,32 +150,35 @@ export const usersRouter = router({
       const missingRoleCommunityIds = userCommunityIds.filter(id => !roleCommunityIds.has(id));
       
       // Get community names and typeTags for each role
-      const rolesWithCommunities = await Promise.all(
-        roles.map(async (role) => {
-          const community = await ctx.communityService.getCommunity(role.communityId);
-          return {
-            id: role.id,
-            userId: role.userId,
-            communityId: role.communityId,
-            communityName: community?.name || role.communityId,
-            communityTypeTag: community?.typeTag,
-            role: role.role,
-            createdAt: role.createdAt,
-            updatedAt: role.updatedAt,
-          };
-        }),
-      );
+      const rolesWithCommunities = (
+        await Promise.all(
+          roles.map(async (role) => {
+            const community = await ctx.communityService.getCommunity(role.communityId);
+            if (isProjectCommunity(community)) return null;
+            return {
+              id: role.id,
+              userId: role.userId,
+              communityId: role.communityId,
+              communityName: community?.name || role.communityId,
+              communityTypeTag: community?.typeTag,
+              role: role.role,
+              createdAt: role.createdAt,
+              updatedAt: role.updatedAt,
+            };
+          }),
+        )
+      ).filter((r): r is NonNullable<typeof r> => r !== null);
       
       // Add virtual roles for communities where user is a member but doesn't have a role
       // Default to 'participant' role for all communities (viewer role removed)
       const virtualRoles = await Promise.all(
         missingRoleCommunityIds.map(async (communityId) => {
           const community = await ctx.communityService.getCommunity(communityId);
-          if (!community) return null;
-          
+          if (!community || isProjectCommunity(community)) return null;
+
           // All users default to 'participant' role (viewer role removed)
           const defaultRole = 'participant';
-          
+
           return {
             id: `virtual-${communityId}`, // Virtual ID
             userId: actualUserId,
