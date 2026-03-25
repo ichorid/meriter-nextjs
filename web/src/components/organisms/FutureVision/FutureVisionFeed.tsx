@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Scale, Filter, Search, X, Users } from 'lucide-react';
+import { Scale, Filter, Search, X, UserPlus } from 'lucide-react';
 import { useFutureVisions } from '@/hooks/api/useFutureVisions';
 import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { FutureVisionCard } from './FutureVisionCard';
@@ -141,11 +141,12 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
                 onClick={() => router.push('/meriter/communities/create')}
                 variant="outline"
                 size="sm"
-                className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                className="inline-flex items-center justify-center text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-2 sm:px-3 gap-2 min-w-9"
                 aria-label={t('createCommunity')}
+                title={t('createCommunity')}
               >
-                <Users size={16} />
-                {t('createCommunity')}
+                <UserPlus size={16} className="shrink-0" />
+                <span className="hidden sm:inline whitespace-nowrap">{t('createCommunity')}</span>
               </Button>
             )}
             {tappalkaEnabled && onEarnMeritsClick && (
