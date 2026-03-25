@@ -28,7 +28,8 @@ export function BirzhaSourcePostsEntryRow({
   sourceEntityType: 'project' | 'community';
   sourceEntityId: string;
   listHref: string;
-  publishSlot: ReactNode;
+  /** Optional CTA beside the list link (e.g. publish). Omit when entry exists on the list page. */
+  publishSlot?: ReactNode;
   /** Merges with root row wrapper (default includes mb-6). */
   className?: string;
 }) {

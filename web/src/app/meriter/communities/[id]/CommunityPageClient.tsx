@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, TrendingUp } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -80,7 +80,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
-    const tBirzhaSource = useTranslations('birzhaSource');
     const tTaxonomy = useTranslations('publications.create.taxonomy');
     const tValues = useTranslations('valuesRubricator');
     const {
@@ -786,24 +785,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 sourceEntityId={chatId}
                                 listHref={routes.communityBirzhaPosts(chatId)}
                                 className="mb-0"
-                                publishSlot={
-                                    userRoleInCommunity === 'lead' ||
-                                    user?.globalRole === 'superadmin' ? (
-                                        <Button
-                                            type="button"
-                                            className="h-auto min-h-[52px] w-full rounded-xl bg-green-600 px-4 text-white hover:bg-green-600/90 sm:w-auto sm:self-stretch"
-                                            aria-label={`${tBirzhaSource('publishCta')}: ${comms.name ?? ''}`}
-                                            onClick={() =>
-                                                router.push(
-                                                    `/meriter/communities/${chatId}/birzha-publish`,
-                                                )
-                                            }
-                                        >
-                                            <TrendingUp className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-                                            {tBirzhaSource('publishCta')}
-                                        </Button>
-                                    ) : null
-                                }
                             />
                         </div>
                     </div>
