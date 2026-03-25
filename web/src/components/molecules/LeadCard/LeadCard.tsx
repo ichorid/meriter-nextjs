@@ -51,9 +51,6 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     // Get first team name or empty string
     const teamName = leadCommunities.length > 0 ? leadCommunities[0] : '';
     
-    // Format merits display
-    const meritsDisplay = totalMerits !== undefined ? formatMerits(totalMerits) : '0';
-
     // Get role label and variant for badge
     const getRoleBadge = () => {
         if (!role) return null;
@@ -117,7 +114,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
                 {/* Merits info */}
                 {totalMerits !== undefined && (
                     <div className="text-xs leading-[120%] text-base-content/60 text-left">
-                        {tCommon('meritsAmount', { amount: meritsDisplay })}
+                        {tCommon('meritsAmount', { amount: Math.floor(totalMerits) })}
                     </div>
                 )}
                 

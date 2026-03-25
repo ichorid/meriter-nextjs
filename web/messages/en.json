@@ -152,7 +152,7 @@
         "meritsInThisProjectYouHave": "In this project you have ",
         "meritsInThisCommunityYouHaveMerits": "In this community you have {count} merits",
         "meritsInThisProjectYouHaveMerits": "In this project you have {count} merits",
-        "meritsAmount": "{amount} merits",
+        "meritsAmount": "{amount, plural, one {# merit} other {# merits}}",
         "earnMerits": "Earn merits",
         "sort": {
             "recent": "By Date",

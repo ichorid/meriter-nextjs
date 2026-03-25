@@ -152,7 +152,7 @@
         "meritsInThisProjectYouHave": "В этом проекте у вас ",
         "meritsInThisCommunityYouHaveMerits": "В этом сообществе у вас {count} заслуг",
         "meritsInThisProjectYouHaveMerits": "В этом проекте у вас {count} заслуг",
-        "meritsAmount": "{amount} заслуг",
+        "meritsAmount": "{amount, plural, one {# заслуга} few {# заслуги} many {# заслуг} other {# заслуг}}",
         "earnMerits": "Заработать заслуги",
         "sort": {
             "recent": "По дате",

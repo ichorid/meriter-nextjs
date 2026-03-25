@@ -16,10 +16,11 @@ interface CommunityWalletCardProps {
 export function CommunityWalletCard({ communityId, title, footer }: CommunityWalletCardProps) {
   const tProjects = useTranslations('projects');
   const tCommunities = useTranslations('pages.communities');
+  const tCommon = useTranslations('common');
   const { data: wallet, isLoading } = useCommunitySourceWallet(communityId);
   const [topUpOpen, setTopUpOpen] = useState(false);
 
-  const balance = wallet?.balance ?? 0;
+  const balance = Math.floor(wallet?.balance ?? 0);
   const heading = title ?? tCommunities('cardWallet');
 
   return (
@@ -32,7 +33,9 @@ export function CommunityWalletCard({ communityId, title, footer }: CommunityWal
         {isLoading ? (
           <p className="text-sm text-base-content/60">...</p>
         ) : (
-          <p className="text-2xl font-semibold tabular-nums text-base-content">{balance} merits</p>
+          <p className="text-2xl font-semibold tabular-nums text-base-content">
+            {tCommon('meritsAmount', { amount: balance })}
+          </p>
         )}
         {footer}
         <Button
