@@ -119,6 +119,7 @@ export function CommunityMembersPageClient({
     const isCurrentUserMember =
         myRoleInCommunity === 'lead' || myRoleInCommunity === 'participant';
     const isCurrentUserParticipantOnly = myRoleInCommunity === 'participant';
+    const isProjectMembersUi = membersContext === 'project';
 
     const canShowLeaveCommunity =
         Boolean(user) &&
@@ -135,8 +136,6 @@ export function CommunityMembersPageClient({
     const { mutate: rejectRequest, isPending: isRejecting } = useRejectTeamRequest();
     const addToast = useToastStore((state) => state.addToast);
 
-    const isProjectMembersUi = membersContext === 'project';
-
     const INVITE_BLOCKED_TYPE_TAGS = new Set([
         'future-vision',
         'marathon-of-good',
@@ -145,9 +144,9 @@ export function CommunityMembersPageClient({
         'global',
     ]);
     const canCreateInviteLink =
-        !!isAdmin &&
-        !!community?.typeTag &&
-        !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag);
+        isCurrentUserMember &&
+        community != null &&
+        (!community.typeTag || !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag));
 
     const leadManagementAllowed =
         !!isAdmin && communityAllowsLeadManagement(community?.typeTag);
