@@ -2568,7 +2568,17 @@
         "badgeCommunity": "Community",
         "topUpFundingLabel": "Pay from",
         "topUpFromPersonalWallet": "My wallet",
-        "topUpFromSourceWallet": "Source wallet (project / community)"
+        "topUpFromSourceWallet": "Source wallet (project / community)",
+        "publishCostExplainer": "Publishing on Birzha costs {cost} merit(s) (per Birzha settings).",
+        "sourceWalletBalance": "Source community wallet: {balance} merit(s) available.",
+        "personalWalletBalance": "Your global wallet: {balance} merit(s) available.",
+        "payFromLabel": "Pay post cost from",
+        "payFromCommunityWallet": "Source community wallet (default)",
+        "payFromPersonalWallet": "My global wallet",
+        "insufficientCommunityWalletHint": "Not enough merits on the community wallet — choose your global wallet or top up the community wallet.",
+        "insufficientCommunityWallet": "The community wallet has {balance} merit(s); {cost} required.",
+        "willChargeCommunityWallet": "{cost} merit(s) will be charged from the source community wallet.",
+        "birzhaCommunityMissing": "Birzha community is not available."
     },
     "toasts": {
         "forwardPostSuccess": "Post forwarded successfully",

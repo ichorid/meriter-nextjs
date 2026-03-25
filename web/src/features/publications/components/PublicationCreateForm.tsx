@@ -48,6 +48,10 @@ import { useActingAsStore } from '@/stores/acting-as.store';
 import config from '@/config';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
+import {
+  usePublishToBirzhaSource,
+  useCommunityWalletForSource,
+} from '@/hooks/api/useBirzhaSource';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
 
@@ -78,9 +82,16 @@ interface PublicationCreateFormProps {
   isProjectCommunity?: boolean;
   publicationId?: string;
   initialData?: Publication;
+  /** `communityId` must be marathon-of-good (Birzha); post is attributed to this source. */
+  birzhaSourceEntity?: { type: 'community' | 'project'; id: string };
+  /** Pre-fill value tags (e.g. from linked OB publication). */
+  seedValueTags?: string[];
 }
 
-const getDraftKey = (communityId: string) => `publication_draft_${communityId}`;
+const getDraftKey = (communityId: string, birzha?: { type: string; id: string }) =>
+  birzha
+    ? `publication_draft_birzha_${birzha.type}_${birzha.id}`
+    : `publication_draft_${communityId}`;
 
 /** Generate placeholder image URLs (dev only). Uses picsum.photos with seed for unique images. */
 function getPlaceholderUrls(width: number, height: number, count: number): string[] {
@@ -110,8 +121,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   isProjectCommunity = false,
   publicationId,
   initialData,
+  birzhaSourceEntity,
+  seedValueTags,
 }) => {
   const t = useTranslations('publications.create');
+  const tBirzha = useTranslations('birzhaSource');
   const {
     translateImpactArea,
     translateStage,
@@ -123,10 +137,19 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
+  const { data: sourceCommunity } = useCommunity(birzhaSourceEntity?.id ?? '');
   const { sections: valueRubricatorSections } = usePlatformValueRubricatorSections();
   const { actingAsCommunityId } = useActingAsStore();
   // FR-4: Fee is always paid from global wallet (all communities)
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
+  const { data: sourceWallet, isFetched: sourceWalletFetched } = useCommunityWalletForSource(
+    birzhaSourceEntity?.id,
+    Boolean(birzhaSourceEntity),
+  );
+  const publishBirzha = usePublishToBirzhaSource({
+    sourceEntityType: birzhaSourceEntity?.type ?? 'community',
+    sourceEntityId: birzhaSourceEntity?.id ?? '',
+  });
 
   const normalizeEntityId = (id: string | undefined): string | null => {
     const trimmed = (id ?? '').trim();
@@ -157,9 +180,32 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   // Check if payment is required (cost > 0)
   const requiresPayment = postCost > 0;
   const walletBalance = feeWallet?.balance ?? 0;
+  const communityWalletBalance = sourceWallet?.balance ?? 0;
 
-  // Fee always paid from global wallet (FR-4)
-  const hasInsufficientPayment = requiresPayment && walletBalance < postCost;
+  const [postCostFunding, setPostCostFunding] = useState<
+    'source_community_wallet' | 'caller_global_wallet'
+  >('source_community_wallet');
+
+  useEffect(() => {
+    if (!birzhaSourceEntity || !requiresPayment || !sourceWalletFetched) return;
+    if (communityWalletBalance < postCost) {
+      setPostCostFunding('caller_global_wallet');
+    }
+  }, [
+    birzhaSourceEntity,
+    requiresPayment,
+    sourceWalletFetched,
+    communityWalletBalance,
+    postCost,
+  ]);
+
+  const hasInsufficientPayment =
+    birzhaSourceEntity != null
+      ? requiresPayment &&
+        (postCostFunding === 'source_community_wallet'
+          ? communityWalletBalance < postCost
+          : walletBalance < postCost)
+      : requiresPayment && walletBalance < postCost;
 
   // If project type is requested but projects are disabled, fallback to basic
   const requestedPostType = initialData?.postType === 'project' || initialData?.isProject
@@ -177,7 +223,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [valueTags, setValueTags] = useState<string[]>(
     ((initialData as { valueTags?: string[] })?.valueTags ?? []).filter(Boolean),
   );
-  const [investingEnabled, setInvestingEnabled] = useState<boolean>((initialData as any)?.investingEnabled ?? false);
+  const [investingEnabled, setInvestingEnabled] = useState<boolean>(() => {
+    if (initialData) {
+      return Boolean((initialData as { investingEnabled?: boolean }).investingEnabled);
+    }
+    return false;
+  });
   const [investorSharePercent, setInvestorSharePercent] = useState<number>((initialData as any)?.investorSharePercent ?? 30);
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
   const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
@@ -215,6 +266,35 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [showDraftAlert, setShowDraftAlert] = useState(false);
   const addToast = useToastStore((state) => state.addToast);
   const isSubmittingRef = useRef(false);
+  const seedValueTagsApplied = useRef(false);
+
+  useEffect(() => {
+    if (initialData || !birzhaSourceEntity) return;
+    if (birzhaSourceEntity.type === 'project') {
+      setInvestingEnabled(true);
+    }
+  }, [initialData, birzhaSourceEntity]);
+
+  useEffect(() => {
+    if (!birzhaSourceEntity || birzhaSourceEntity.type !== 'project' || initialData) return;
+    const pct = (sourceCommunity as { investorSharePercent?: number } | undefined)
+      ?.investorSharePercent;
+    if (pct != null && pct >= 1) {
+      setInvestorSharePercent(pct);
+    }
+  }, [birzhaSourceEntity, sourceCommunity, initialData]);
+
+  useEffect(() => {
+    if (
+      seedValueTagsApplied.current ||
+      !seedValueTags?.length ||
+      ((initialData as { valueTags?: string[] })?.valueTags ?? []).length > 0
+    ) {
+      return;
+    }
+    seedValueTagsApplied.current = true;
+    setValueTags(seedValueTags);
+  }, [seedValueTags, initialData]);
 
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -259,7 +339,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     if (isEditMode) {
       return; // Don't load draft when editing
     }
-    const draftKey = getDraftKey(communityId);
+    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -283,7 +363,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         console.error('Failed to load draft:', error);
       }
     }
-  }, [communityId, defaultPostType, isEditMode]);
+  }, [communityId, birzhaSourceEntity, defaultPostType, isEditMode]);
 
   // Auto-save draft (skip if editing)
   useEffect(() => {
@@ -311,9 +391,25 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       savedAt: new Date().toISOString(),
     };
 
-    const draftKey = getDraftKey(communityId);
+    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [title, description, postType, hashtags, valueTags, images, isProject, impactArea, beneficiaries, methods, stage, helpNeeded, communityId, isEditMode]);
+  }, [
+    title,
+    description,
+    postType,
+    hashtags,
+    valueTags,
+    images,
+    isProject,
+    impactArea,
+    beneficiaries,
+    methods,
+    stage,
+    helpNeeded,
+    communityId,
+    birzhaSourceEntity,
+    isEditMode,
+  ]);
 
   const saveDraft = () => {
     const draft: PublicationDraft = {
@@ -332,14 +428,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       savedAt: new Date().toISOString(),
     };
 
-    const draftKey = getDraftKey(communityId);
+    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
     localStorage.setItem(draftKey, JSON.stringify(draft));
     setHasDraft(true);
     addToast(t('draftSaved'), 'success');
   };
 
   const loadDraft = () => {
-    const draftKey = getDraftKey(communityId);
+    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -366,7 +462,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   };
 
   const clearDraft = () => {
-    const draftKey = getDraftKey(communityId);
+    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
     localStorage.removeItem(draftKey);
     setHasDraft(false);
     setTitle('');
@@ -385,7 +481,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
 
   const handleSubmit = async () => {
     // Prevent double submission using ref for immediate check
-    if (isSubmittingRef.current || isSubmitting) {
+    if (isSubmittingRef.current || isSubmitting || publishBirzha.isPending) {
       console.warn('Prevented double submission');
       return;
     }
@@ -446,6 +542,33 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             ttlDays: ttlDays ?? undefined,
           },
         });
+      } else if (birzhaSourceEntity) {
+        const investOn = communityInvestingEnabled && investingEnabled;
+        const pubType: 'text' | 'image' = images.length > 0 ? 'image' : 'text';
+        const pubResult = await publishBirzha.mutateAsync({
+          title: title.trim(),
+          content: description.trim(),
+          type: pubType,
+          images: images.length > 0 ? images : undefined,
+          valueTags: valueTags.length > 0 ? valueTags : undefined,
+          hashtags: ENABLE_HASHTAGS ? hashtags : undefined,
+          beneficiaryId: beneficiaryId ?? undefined,
+          postCostFunding,
+          investingEnabled:
+            birzhaSourceEntity.type === 'project'
+              ? investOn
+              : investOn
+                ? true
+                : undefined,
+          investorSharePercent: investOn ? investorSharePercent : undefined,
+          ttlDays: ttlDays ?? undefined,
+          stopLoss,
+          noAuthorWalletSpend: noAuthorWalletSpend || undefined,
+        });
+        publication = { id: pubResult.id, slug: undefined };
+        const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+        localStorage.removeItem(draftKey);
+        setHasDraft(false);
       } else {
         // Create new publication with wallet payment
         publication = await createPublication.mutateAsync({
@@ -482,7 +605,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
-        const draftKey = getDraftKey(communityId);
+        const draftKey = getDraftKey(communityId, birzhaSourceEntity);
         localStorage.removeItem(draftKey);
         setHasDraft(false);
       }
@@ -540,7 +663,71 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             </div>
           )}
 
-          {!isEditMode && requiresPayment && (
+          {!isEditMode && requiresPayment && birzhaSourceEntity && (
+            <div
+              className={`p-3 rounded-lg border space-y-3 ${hasInsufficientPayment
+                ? 'bg-red-50 border-red-200'
+                : 'bg-blue-50 border-blue-200'
+                }`}
+            >
+              <p className="text-blue-800 text-sm font-medium">
+                {tBirzha('publishCostExplainer', { cost: postCost })}
+              </p>
+              <p className="text-blue-700 text-sm">
+                {tBirzha('sourceWalletBalance', { balance: communityWalletBalance })}
+              </p>
+              <p className="text-blue-700 text-sm">
+                {tBirzha('personalWalletBalance', { balance: walletBalance })}
+              </p>
+              <BrandFormControl label={tBirzha('payFromLabel')}>
+                <Select
+                  value={postCostFunding}
+                  onValueChange={(v) =>
+                    setPostCostFunding(v as 'source_community_wallet' | 'caller_global_wallet')
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className="h-11 rounded-xl w-full max-w-md bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="source_community_wallet"
+                      disabled={communityWalletBalance < postCost}
+                    >
+                      {tBirzha('payFromCommunityWallet')}
+                    </SelectItem>
+                    <SelectItem value="caller_global_wallet">
+                      {tBirzha('payFromPersonalWallet')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </BrandFormControl>
+              {communityWalletBalance < postCost && postCostFunding === 'source_community_wallet' ? (
+                <p className="text-red-700 text-sm">{tBirzha('insufficientCommunityWalletHint')}</p>
+              ) : null}
+              {hasInsufficientPayment ? (
+                <p className="text-red-700 text-sm">
+                  {postCostFunding === 'caller_global_wallet'
+                    ? t('insufficientPayment', { cost: postCost })
+                    : tBirzha('insufficientCommunityWallet', {
+                        balance: communityWalletBalance,
+                        cost: postCost,
+                      })}
+                </p>
+              ) : postCost > 0 ? (
+                <p className="text-blue-700 text-sm">
+                  {postCostFunding === 'source_community_wallet'
+                    ? tBirzha('willChargeCommunityWallet', { cost: postCost })
+                    : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                </p>
+              ) : (
+                <p className="text-blue-700 text-sm">{t('postIsFree')}</p>
+              )}
+            </div>
+          )}
+
+          {!isEditMode && requiresPayment && !birzhaSourceEntity && (
             <div className={`p-3 rounded-lg border ${hasInsufficientPayment
               ? 'bg-red-50 border-red-200'
               : 'bg-blue-50 border-blue-200'
@@ -1073,14 +1260,17 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                   !description.trim() ||
                   isSubmitting ||
                   isSubmittingRef.current ||
+                  publishBirzha.isPending ||
                   hasInsufficientPayment ||
                   (isEditMode && !normalizedPublicationId) ||
                   (postType === 'project' && (!impactArea || !stage))
                 }
                 className="rounded-xl active:scale-[0.98]"
               >
-                {(isSubmitting || isSubmittingRef.current) && <Loader2 className="h-4 w-4 animate-spin" />}
-                {isEditMode ? t('update') : t('create')}
+                {(isSubmitting || isSubmittingRef.current || publishBirzha.isPending) && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {isEditMode ? t('update') : birzhaSourceEntity ? tBirzha('publishCta') : t('create')}
               </Button>
             </div>
           </div>

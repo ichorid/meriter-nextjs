@@ -185,11 +185,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
             }
             publishBirzha={
               isMember ? (
-                <PublishToBirzhaButton
-                  projectId={projectId}
-                  investorSharePercent={project.investorSharePercent}
-                  isLead={isLead}
-                />
+                <PublishToBirzhaButton projectId={projectId} isLead={isLead} />
               ) : undefined
             }
             managementSlot={

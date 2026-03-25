@@ -6,14 +6,12 @@ interface PublishToBirzhaDialogProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultInvestorSharePercent?: number;
 }
 
 export function PublishToBirzhaDialog({
   projectId,
   open,
   onOpenChange,
-  defaultInvestorSharePercent = 20,
 }: PublishToBirzhaDialogProps) {
   return (
     <BirzhaPublishDialog
@@ -21,8 +19,6 @@ export function PublishToBirzhaDialog({
       sourceEntityId={projectId}
       open={open}
       onOpenChange={onOpenChange}
-      showInvestorShareSlider
-      defaultInvestorSharePercent={defaultInvestorSharePercent}
     />
   );
 }

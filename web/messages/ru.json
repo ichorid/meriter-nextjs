@@ -2568,7 +2568,17 @@
         "badgeCommunity": "Сообщество",
         "topUpFundingLabel": "Списать с",
         "topUpFromPersonalWallet": "Мой кошелёк",
-        "topUpFromSourceWallet": "Кошелёк источника (проект / сообщество)"
+        "topUpFromSourceWallet": "Кошелёк источника (проект / сообщество)",
+        "publishCostExplainer": "Публикация на Бирже стоит {cost} заслуг(и) (по настройкам Биржи).",
+        "sourceWalletBalance": "Кошелёк сообщества-источника: доступно {balance} заслуг(и) кошелька.",
+        "personalWalletBalance": "Ваш глобальный кошелёк: доступно {balance} заслуг(и).",
+        "payFromLabel": "Оплатить создание поста с",
+        "payFromCommunityWallet": "Кошелька сообщества-источника (по умолчанию)",
+        "payFromPersonalWallet": "Моего глобального кошелька",
+        "insufficientCommunityWalletHint": "На кошельке сообщества не хватает заслуг — выберите глобальный кошелёк или пополните кошелёк сообщества.",
+        "insufficientCommunityWallet": "На кошельке сообщества {balance} заслуг(и), требуется {cost}.",
+        "willChargeCommunityWallet": "С кошелька сообщества-источника будет списано {cost} заслуг(и).",
+        "birzhaCommunityMissing": "Сообщество Биржи недоступно."
     },
     "toasts": {
         "forwardPostSuccess": "Пост переслан",

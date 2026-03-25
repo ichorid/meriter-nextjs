@@ -43,15 +43,25 @@ export function usePublishToBirzhaSource(params: {
 
   const isPending = projectMut.isPending || communityMut.isPending;
 
+  type BirzhaPublishPayload = {
+    title: string;
+    content: string;
+    type: 'text' | 'image' | 'video';
+    images?: string[];
+    valueTags?: string[];
+    hashtags?: string[];
+    beneficiaryId?: string;
+    postCostFunding?: 'source_community_wallet' | 'caller_global_wallet';
+    investingEnabled?: boolean;
+    investorSharePercent?: number;
+    ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
+    stopLoss?: number;
+    noAuthorWalletSpend?: boolean;
+  };
+
   return {
     isPending,
-    mutate: (input: {
-      title: string;
-      content: string;
-      type: 'text' | 'image' | 'video';
-      images?: string[];
-      investorSharePercent?: number;
-    }) => {
+    mutate: (input: BirzhaPublishPayload) => {
       if (params.sourceEntityType === 'project') {
         projectMut.mutate({
           projectId: params.sourceEntityId,
@@ -59,7 +69,15 @@ export function usePublishToBirzhaSource(params: {
           content: input.content,
           type: input.type,
           images: input.images,
-          investorSharePercent: input.investorSharePercent ?? 20,
+          valueTags: input.valueTags,
+          hashtags: input.hashtags,
+          beneficiaryId: input.beneficiaryId,
+          postCostFunding: input.postCostFunding,
+          investingEnabled: input.investingEnabled,
+          investorSharePercent: input.investorSharePercent,
+          ttlDays: input.ttlDays ?? undefined,
+          stopLoss: input.stopLoss,
+          noAuthorWalletSpend: input.noAuthorWalletSpend,
         });
       } else {
         communityMut.mutate({
@@ -68,8 +86,53 @@ export function usePublishToBirzhaSource(params: {
           content: input.content,
           type: input.type,
           images: input.images,
+          valueTags: input.valueTags,
+          hashtags: input.hashtags,
+          beneficiaryId: input.beneficiaryId,
+          postCostFunding: input.postCostFunding,
+          investingEnabled: input.investingEnabled,
+          investorSharePercent: input.investorSharePercent,
+          ttlDays: input.ttlDays ?? undefined,
+          stopLoss: input.stopLoss,
+          noAuthorWalletSpend: input.noAuthorWalletSpend,
         });
       }
+    },
+    mutateAsync: (input: BirzhaPublishPayload) => {
+      if (params.sourceEntityType === 'project') {
+        return projectMut.mutateAsync({
+          projectId: params.sourceEntityId,
+          title: input.title,
+          content: input.content,
+          type: input.type,
+          images: input.images,
+          valueTags: input.valueTags,
+          hashtags: input.hashtags,
+          beneficiaryId: input.beneficiaryId,
+          postCostFunding: input.postCostFunding,
+          investingEnabled: input.investingEnabled,
+          investorSharePercent: input.investorSharePercent,
+          ttlDays: input.ttlDays ?? undefined,
+          stopLoss: input.stopLoss,
+          noAuthorWalletSpend: input.noAuthorWalletSpend,
+        });
+      }
+      return communityMut.mutateAsync({
+        communityId: params.sourceEntityId,
+        title: input.title,
+        content: input.content,
+        type: input.type,
+        images: input.images,
+        valueTags: input.valueTags,
+        hashtags: input.hashtags,
+        beneficiaryId: input.beneficiaryId,
+        postCostFunding: input.postCostFunding,
+        investingEnabled: input.investingEnabled,
+        investorSharePercent: input.investorSharePercent,
+        ttlDays: input.ttlDays ?? undefined,
+        stopLoss: input.stopLoss,
+        noAuthorWalletSpend: input.noAuthorWalletSpend,
+      });
     },
   };
 }

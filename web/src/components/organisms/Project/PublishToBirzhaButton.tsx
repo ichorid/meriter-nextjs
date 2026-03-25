@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 
 interface PublishToBirzhaButtonProps {
   projectId: string;
-  investorSharePercent?: number;
   /** Only render when true (lead). Caller is responsible for passing isLead. */
   isLead: boolean;
   className?: string;
@@ -17,7 +16,6 @@ interface PublishToBirzhaButtonProps {
 
 export function PublishToBirzhaButton({
   projectId,
-  investorSharePercent = 20,
   isLead,
   className,
 }: PublishToBirzhaButtonProps) {
@@ -40,12 +38,7 @@ export function PublishToBirzhaButton({
         <TrendingUp className="mr-2 h-4 w-4 shrink-0" />
         {t('publishToBirzha', { defaultValue: 'Publish to Birzha' })}
       </Button>
-      <PublishToBirzhaDialog
-        projectId={projectId}
-        open={open}
-        onOpenChange={setOpen}
-        defaultInvestorSharePercent={investorSharePercent}
-      />
+      <PublishToBirzhaDialog projectId={projectId} open={open} onOpenChange={setOpen} />
     </>
   );
 }
