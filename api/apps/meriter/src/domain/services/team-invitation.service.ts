@@ -20,6 +20,7 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
+import { TeamJoinRequestService } from './team-join-request.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 
 @Injectable()
@@ -33,6 +34,7 @@ export class TeamInvitationService {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
+    private readonly teamJoinRequestService: TeamJoinRequestService,
   ) {}
 
   /**
@@ -196,6 +198,12 @@ export class TeamInvitationService {
       invitation.inviterId,
       userId,
       invitation.communityId,
+    );
+
+    await this.teamJoinRequestService.resolvePendingJoinAfterUserAddedByInvite(
+      userId,
+      invitation.communityId,
+      invitation.inviterId,
     );
 
     // 5. Update invitation status

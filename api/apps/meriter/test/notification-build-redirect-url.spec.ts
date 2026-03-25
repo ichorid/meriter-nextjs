@@ -129,4 +129,23 @@ describe('NotificationService.buildRedirectUrl', () => {
       ),
     ).toBe('/meriter/projects/p-2');
   });
+
+  it('community_member_removed uses community or project path', () => {
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'community_member_removed',
+          metadata: { communityId: 'c-9' },
+        }),
+      ),
+    ).toBe('/meriter/communities/c-9');
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'community_member_removed',
+          metadata: { communityId: 'p-9', inviteTargetIsProject: true },
+        }),
+      ),
+    ).toBe('/meriter/projects/p-9');
+  });
 });

@@ -358,6 +358,34 @@ export class NotificationService {
     this.logger.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
   }
 
+  /**
+   * Mark all team_join_request notifications for this request so clients hide Yes/No and show outcome.
+   */
+  async markTeamJoinRequestNotificationsResolved(params: {
+    requestId: string;
+    resolution: 'approved' | 'rejected' | 'withdrawn' | 'joined_via_invite';
+    resolvedByUserId: string;
+    resolvedByDisplayName: string;
+  }): Promise<void> {
+    const result = await this.notificationModel.updateMany(
+      { type: 'team_join_request', 'metadata.requestId': params.requestId },
+      {
+        $set: {
+          'metadata.joinRequestResolved': true,
+          'metadata.joinRequestResolution': params.resolution,
+          'metadata.resolvedByUserId': params.resolvedByUserId,
+          'metadata.resolvedByDisplayName': params.resolvedByDisplayName,
+          'metadata.joinRequestResolvedByUserId': params.resolvedByUserId,
+          'metadata.joinRequestResolvedByName': params.resolvedByDisplayName,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    this.logger.log(
+      `Marked ${result.modifiedCount} join-request notifications resolved (${params.requestId}, ${params.resolution})`,
+    );
+  }
+
   async notifyCommunityRolePromotedToLead(params: {
     targetUserId: string;
     actorUserId: string;
@@ -455,6 +483,16 @@ export class NotificationService {
             return `/meriter/projects/${communityId}`;
           }
           return `/meriter/communities/${communityId}/members`;
+        }
+        return undefined;
+      }
+      case 'community_member_removed': {
+        const communityId = notification.metadata?.communityId as string | undefined;
+        const isProject = notification.metadata?.inviteTargetIsProject === true;
+        if (communityId) {
+          return isProject
+            ? `/meriter/projects/${communityId}`
+            : `/meriter/communities/${communityId}`;
         }
         return undefined;
       }
@@ -615,6 +653,17 @@ export class NotificationService {
         const parentCommunityId = metadata?.parentCommunityId as string | undefined;
         if (parentCommunityId) {
           return `/meriter/communities/${parentCommunityId}/projects`;
+        }
+        return undefined;
+      }
+
+      case 'community_member_removed': {
+        const communityId = metadata?.communityId as string | undefined;
+        const isProject = metadata?.inviteTargetIsProject === true;
+        if (communityId) {
+          return isProject
+            ? `/meriter/projects/${communityId}`
+            : `/meriter/communities/${communityId}`;
         }
         return undefined;
       }

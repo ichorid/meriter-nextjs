@@ -74,6 +74,7 @@ export const notificationsRouter = router({
           createdAt: notification.createdAt.toISOString(),
           url,
           relatedId: notification.metadata?.publicationId,
+          ...(notification.sourceId ? { sourceId: notification.sourceId } : {}),
           metadata: { ...baseMeta },
         };
 

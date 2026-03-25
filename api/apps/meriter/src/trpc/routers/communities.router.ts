@@ -908,6 +908,29 @@ export const communitiesRouter = router({
       // Remove user's role (lead/participant) so profile no longer shows this team
       await ctx.userCommunityRoleService.removeRole(input.userId, input.id);
 
+      const community = await ctx.communityService.getCommunity(input.id);
+      const remover = await ctx.userService.getUserById(ctx.user.id);
+      const removerName =
+        remover?.displayName || remover?.username || 'Administrator';
+      const placeName = community?.name ?? input.id;
+      try {
+        await ctx.notificationService.createNotification({
+          userId: input.userId,
+          type: 'community_member_removed',
+          source: 'user',
+          sourceId: ctx.user.id,
+          metadata: {
+            communityId: input.id,
+            communityName: placeName,
+            inviteTargetIsProject: Boolean(community?.isProject),
+          },
+          title: 'Removed from community',
+          message: `${removerName} removed you from "${placeName}"`,
+        });
+      } catch {
+        // Member is already removed; do not fail the mutation if notification storage fails
+      }
+
       return { success: true, message: 'Member removed successfully' };
     }),
 

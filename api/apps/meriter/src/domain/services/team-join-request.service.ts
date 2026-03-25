@@ -113,26 +113,34 @@ export class TeamJoinRequestService {
       ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
     });
 
-    // 6. Create notification for lead
+    // 6. Notify all team leads
     const user = await this.userService.getUserById(userId);
     const userName = user?.displayName || user?.username || 'Someone';
 
-    await this.notificationService.createNotification({
-      userId: leadId,
-      type: 'team_join_request',
-      source: 'user',
-      sourceId: userId,
-      metadata: {
-        requestId: request.id,
-        communityId,
-        userId,
-        communityName: community.name,
-        inviteTargetIsProject: Boolean(community.isProject),
-        ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
-      },
-      title: 'Team join request',
-      message: `${userName} wants to join your team "${community.name}"`,
-    });
+    for (const { userId: notifyLeadId } of leadRoles) {
+      try {
+        await this.notificationService.createNotification({
+          userId: notifyLeadId,
+          type: 'team_join_request',
+          source: 'user',
+          sourceId: userId,
+          metadata: {
+            requestId: request.id,
+            communityId,
+            userId,
+            communityName: community.name,
+            inviteTargetIsProject: Boolean(community.isProject),
+            ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
+          },
+          title: 'Team join request',
+          message: `${userName} wants to join your team "${community.name}"`,
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Failed to notify lead ${notifyLeadId} about join request: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
 
     this.logger.log(
       `Request ${request.id} created for user ${userId} to join team ${communityId}`,
@@ -206,7 +214,7 @@ export class TeamJoinRequestService {
   }
 
   /**
-   * Applicant withdraws a pending join request. Notifies all current leads.
+   * Applicant withdraws a pending join request. Updates admin join-request notifications in place.
    */
   async cancelPendingRequestByApplicant(
     userId: string,
@@ -229,11 +237,18 @@ export class TeamJoinRequestService {
       throw new NotFoundException('Community not found');
     }
 
-    await this.teamJoinRequestModel.deleteOne({ _id: request._id }).exec();
-
     const applicant = await this.userService.getUserById(userId);
     const applicantName =
       applicant?.displayName || applicant?.username || 'Someone';
+
+    await this.notificationService.markTeamJoinRequestNotificationsResolved({
+      requestId: request.id,
+      resolution: 'withdrawn',
+      resolvedByUserId: userId,
+      resolvedByDisplayName: applicantName,
+    });
+
+    await this.teamJoinRequestModel.deleteOne({ _id: request._id }).exec();
 
     const leadRoles = await this.userCommunityRoleService.getUsersByRole(
       communityId,
@@ -266,6 +281,41 @@ export class TeamJoinRequestService {
     this.logger.log(
       `User ${userId} cancelled pending join request for community ${communityId}`,
     );
+  }
+
+  /**
+   * When a user joins via invite, drop any pending join request and resolve admin notifications.
+   */
+  async resolvePendingJoinAfterUserAddedByInvite(
+    userId: string,
+    communityId: string,
+    inviterUserId: string,
+  ): Promise<void> {
+    const pending = await this.teamJoinRequestModel
+      .findOne({
+        userId,
+        communityId,
+        status: 'pending',
+      })
+      .exec();
+
+    if (!pending) {
+      return;
+    }
+
+    const requestId = pending.id;
+    await this.teamJoinRequestModel.deleteOne({ _id: pending._id }).exec();
+
+    const inviter = await this.userService.getUserById(inviterUserId);
+    const inviterName =
+      inviter?.displayName || inviter?.username || 'Someone';
+
+    await this.notificationService.markTeamJoinRequestNotificationsResolved({
+      requestId,
+      resolution: 'joined_via_invite',
+      resolvedByUserId: inviterUserId,
+      resolvedByDisplayName: inviterName,
+    });
   }
 
   /**
@@ -329,7 +379,6 @@ export class TeamJoinRequestService {
     request.updatedAt = new Date();
     await request.save();
 
-    // 6. Create notification for requester
     const community = await this.communityService.getCommunity(
       request.communityId,
     );
@@ -351,6 +400,13 @@ export class TeamJoinRequestService {
       },
       title: 'Team join request approved',
       message: `${leadName} approved your request to join "${community?.name || request.communityId}"`,
+    });
+
+    await this.notificationService.markTeamJoinRequestNotificationsResolved({
+      requestId: request.id,
+      resolution: 'approved',
+      resolvedByUserId: leadId,
+      resolvedByDisplayName: leadName,
     });
 
     if (community?.isProject) {
@@ -428,7 +484,6 @@ export class TeamJoinRequestService {
     request.updatedAt = new Date();
     await request.save();
 
-    // 4. Create notification for requester
     const community = await this.communityService.getCommunity(
       request.communityId,
     );
@@ -450,6 +505,13 @@ export class TeamJoinRequestService {
       },
       title: 'Team join request rejected',
       message: `${leadName} rejected your request to join "${community?.name || request.communityId}"`,
+    });
+
+    await this.notificationService.markTeamJoinRequestNotificationsResolved({
+      requestId: request.id,
+      resolution: 'rejected',
+      resolvedByUserId: leadId,
+      resolvedByDisplayName: leadName,
     });
 
     this.logger.log(`Request ${requestId} rejected`);
