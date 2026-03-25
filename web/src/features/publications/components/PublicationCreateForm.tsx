@@ -259,6 +259,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   // Derive isProject from postType instead of separate checkbox
   // Feature flag: projects are currently disabled
   const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
+  /** Project communities: discussions are text-only; no investing or tappalka mining UI */
+  const isProjectDiscussion = isProjectCommunity && postType === 'discussion';
   // Taxonomy fields
   const [impactArea, setImpactArea] = useState<ImpactArea | ''>((initialData as any)?.impactArea || '');
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>((initialData as any)?.beneficiaries || []);
@@ -283,6 +285,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     if (initialData || !birzhaSourceEntity) return;
     setInvestingEnabled(true);
   }, [initialData, birzhaSourceEntity]);
+
+  useEffect(() => {
+    if (!isProjectDiscussion) return;
+    setInvestingEnabled(false);
+  }, [isProjectDiscussion]);
 
   useEffect(() => {
     if (!birzhaSourceEntity || birzhaSourceEntity.type !== 'project' || initialData) return;
@@ -332,7 +339,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     }
 
     // Advanced: TTL required when community requires it for invest posts
-    if (requireTTLForInvestPosts && investingEnabled && (ttlDays == null || ttlDays === undefined)) {
+    if (
+      !isProjectDiscussion &&
+      requireTTLForInvestPosts &&
+      investingEnabled &&
+      (ttlDays == null || ttlDays === undefined)
+    ) {
       newErrors.ttlDays = t('advanced.ttlRequiredForInvest', { defaultValue: 'TTL is required for posts with investing in this community' });
     }
     if (stopLoss < 0) {
@@ -599,11 +611,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           methods: methods.length > 0 ? methods : undefined,
           stage: stage || undefined,
           helpNeeded: helpNeeded.length > 0 ? helpNeeded : undefined,
-          investingEnabled: investingEnabled || undefined,
-          investorSharePercent: investingEnabled ? investorSharePercent : undefined,
-          ttlDays: ttlDays ?? undefined,
-          stopLoss: stopLoss ?? 0,
-          noAuthorWalletSpend: noAuthorWalletSpend || undefined,
+          investingEnabled: isProjectDiscussion ? undefined : investingEnabled || undefined,
+          investorSharePercent:
+            isProjectDiscussion || !investingEnabled ? undefined : investorSharePercent,
+          ttlDays: isProjectDiscussion ? undefined : (ttlDays ?? undefined),
+          stopLoss: isProjectDiscussion ? 0 : (stopLoss ?? 0),
+          noAuthorWalletSpend: isProjectDiscussion ? undefined : noAuthorWalletSpend || undefined,
           beneficiaryId: beneficiaryId ?? undefined,
           actingAsCommunityId: actingAsCommunityId ?? undefined,
           postCostFunding:
@@ -982,8 +995,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             </>
           )}
 
-          {/* Advanced Settings - collapsible when community has investing or tappalka (create + edit) */}
-          {(canConfigureInvesting || tappalkaEnabled) && (
+          {/* Advanced Settings - not for project discussions (discussions only; no investing / mining) */}
+          {(canConfigureInvesting || tappalkaEnabled) && !isProjectDiscussion && (
             <CollapsibleSection
               title={t('advanced.title', { defaultValue: 'Advanced settings' })}
               open={openAdvancedSettings}
