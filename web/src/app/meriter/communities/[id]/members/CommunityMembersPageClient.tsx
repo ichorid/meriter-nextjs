@@ -178,6 +178,7 @@ export function CommunityMembersPageClient({
 
     // Get members array (already filtered server-side)
     const members = Array.isArray(membersData?.data) ? membersData.data : [];
+    const isListedInMemberDirectory = Boolean(user && members.some((m) => m.id === user.id));
     const { admins: adminMembers, participants: participantMembers } = useMemo(
         () => splitMembersByAdminRole(members),
         [members],
@@ -447,9 +448,17 @@ export function CommunityMembersPageClient({
                             />
                         </div>
 
-                        {user && allowsJoinRequests && !isCurrentUserMember ? (
+                        {user &&
+                        allowsJoinRequests &&
+                        !isCurrentUserMember &&
+                        !isListedInMemberDirectory &&
+                        !isAdmin ? (
                             <div className="mb-4">
-                                <CommunityJoinRequestPanel communityId={communityId} layout="block" />
+                                <CommunityJoinRequestPanel
+                                    communityId={communityId}
+                                    layout="block"
+                                    entityKind={isProjectMembersUi ? 'project' : 'community'}
+                                />
                             </div>
                         ) : null}
 

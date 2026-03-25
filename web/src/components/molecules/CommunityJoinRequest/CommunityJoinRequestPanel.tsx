@@ -33,12 +33,15 @@ interface CommunityJoinRequestPanelProps {
   communityId: string;
   layout: CommunityJoinRequestLayout;
   className?: string;
+  /** Project pages: copy says "project"; membership also uses community.members / isAdmin. */
+  entityKind?: 'community' | 'project';
 }
 
 export function CommunityJoinRequestPanel({
   communityId,
   layout,
   className,
+  entityKind = 'community',
 }: CommunityJoinRequestPanelProps) {
   const { user } = useAuth();
   const t = useTranslations('pages.communities.joinCommunity');
@@ -54,11 +57,14 @@ export function CommunityJoinRequestPanel({
   const [note, setNote] = useState('');
 
   const allowsJoin = community ? isLocalMembershipHubCommunity(community) : false;
-  const isMember = userRoles.some(
+  const isRoleMember = userRoles.some(
     (role) =>
       role.communityId === communityId &&
       (role.role === 'lead' || role.role === 'participant'),
   );
+  const isOnMembersList = Boolean(user && community?.members?.includes(user.id));
+  const isCommunityAdmin = community?.isAdmin === true;
+  const isMember = isRoleMember || isOnMembersList || isCommunityAdmin;
 
   if (!allowsJoin || isMember || !user) {
     return null;
@@ -112,6 +118,13 @@ export function CommunityJoinRequestPanel({
     setDialogOpen(true);
   };
 
+  const isProject = entityKind === 'project';
+  const heroTitle = isProject ? t('heroTitleProject') : t('heroTitle');
+  const heroSubtitle = isProject ? t('heroSubtitleProject') : t('heroSubtitle');
+  const ctaOpen = isProject ? t('ctaOpenProject') : t('ctaOpen');
+  const dialogTitle = isProject ? t('dialogTitleProject') : t('dialogTitle');
+  const dialogDescription = isProject ? t('dialogDescriptionProject') : t('dialogDescription');
+
   const heroBtnClass =
     'h-8 min-h-8 px-3 text-xs font-medium sm:text-sm [&_svg]:size-3.5 sm:[&_svg]:size-4';
 
@@ -133,7 +146,7 @@ export function CommunityJoinRequestPanel({
           {t('submitting')}
         </>
       ) : (
-        t('ctaOpen')
+        ctaOpen
       )}
     </Button>
   );
@@ -174,8 +187,8 @@ export function CommunityJoinRequestPanel({
         </div>
       ) : layout === 'block' ? (
         <div className={cn('rounded-xl border border-base-300 bg-base-200/30 p-4', className)}>
-          <p className="mb-1 text-sm font-medium text-brand-text-primary">{t('heroTitle')}</p>
-          <p className="mb-3 text-xs text-brand-text-secondary">{t('heroSubtitle')}</p>
+          <p className="mb-1 text-sm font-medium text-brand-text-primary">{heroTitle}</p>
+          <p className="mb-3 text-xs text-brand-text-secondary">{heroSubtitle}</p>
           {hasPendingRequest ? cancelButton : joinButton}
         </div>
       ) : (
@@ -187,8 +200,8 @@ export function CommunityJoinRequestPanel({
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t('dialogTitle')}</DialogTitle>
-            <DialogDescription>{t('dialogDescription')}</DialogDescription>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogDescription}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="join-request-note">{t('messageLabel')}</Label>

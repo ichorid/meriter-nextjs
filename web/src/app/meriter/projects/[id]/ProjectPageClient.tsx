@@ -50,23 +50,24 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const [updateSharesDialogOpen, setUpdateSharesDialogOpen] = useState(false);
   const [transferAdminDialogOpen, setTransferAdminDialogOpen] = useState(false);
 
-  const isLead = useMemo(() => {
-    if (!user || !membersData?.data) return false;
-    const me = membersData.data.find(
-      (m: { id?: string; userId?: string; role?: string }) =>
-        (m.id ?? m.userId) === user.id,
+  const meInProjectMembers = useMemo(() => {
+    if (!user?.id || !membersData?.data) return null;
+    return (
+      membersData.data.find(
+        (m: { id?: string; userId?: string; role?: string }) =>
+          (m.id ?? m.userId) === user.id,
+      ) ?? null
     );
-    return me?.role === 'lead';
-  }, [user, membersData?.data]);
+  }, [user?.id, membersData?.data]);
 
   const canModerateCover = useMemo(() => {
     if (!user) return false;
     if (user.globalRole === 'superadmin') return true;
-    return isLead;
-  }, [user, isLead]);
+    return meInProjectMembers?.role === 'lead';
+  }, [user, meInProjectMembers?.role]);
 
   const canModerateTickets = Boolean(
-    user && (isLead || user.globalRole === 'superadmin'),
+    user && (meInProjectMembers?.role === 'lead' || user.globalRole === 'superadmin'),
   );
 
   if (isLoading || !data) {
@@ -112,7 +113,13 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const { project, parentCommunity } = data;
   const status = project.projectStatus ?? 'active';
   const statusLabel = status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
-  const isMember = Boolean(user && project.members?.includes(user.id));
+  const isLead = meInProjectMembers?.role === 'lead';
+  const isMember = Boolean(
+    user &&
+      (project.members?.includes(user.id) ||
+        meInProjectMembers?.role === 'lead' ||
+        meInProjectMembers?.role === 'participant'),
+  );
   const isArchived = status === 'archived';
 
   const heroStatus: 'active' | 'closed' | 'archived' =
@@ -123,9 +130,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const userRoleInProject =
     user?.globalRole === 'superadmin'
       ? ('superadmin' as const)
-      : (membersData?.data?.find(
-          (m: { id?: string; userId?: string; role?: string }) => (m.id ?? m.userId) === user?.id,
-        )?.role ?? null);
+      : (meInProjectMembers?.role ?? null);
 
   const hasProjectQuota = Boolean(
     user &&
@@ -268,7 +273,12 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <ProjectActions
             joinBlock={
               !isMember ? (
-                <CommunityJoinRequestPanel communityId={projectId} layout="inline" className="w-full sm:w-auto" />
+                <CommunityJoinRequestPanel
+                  communityId={projectId}
+                  layout="inline"
+                  className="w-full sm:w-auto"
+                  entityKind="project"
+                />
               ) : undefined
             }
             publishBirzha={
