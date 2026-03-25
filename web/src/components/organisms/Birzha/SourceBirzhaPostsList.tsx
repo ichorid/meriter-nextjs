@@ -1,9 +1,12 @@
 'use client';
 
-import Link from 'next/link';
+import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { PublicationCardComponent as PublicationCard } from '@/components/organisms/Publication';
 import { useBirzhaPostsBySource } from '@/hooks/api/useBirzhaSource';
-import { routes } from '@/lib/constants/routes';
+import { useWallets } from '@/hooks/api/useWallet';
+import type { FeedItem } from '@meriter/shared-types';
 
 export function SourceBirzhaPostsList({
   sourceEntityType,
@@ -20,11 +23,24 @@ export function SourceBirzhaPostsList({
   pageSize?: number;
 }) {
   const t = useTranslations('birzhaSource');
+  const router = useRouter();
+  const { data: wallets = [] } = useWallets();
   const { data, isLoading, isError } = useBirzhaPostsBySource(sourceEntityType, sourceEntityId, {
     enabled,
     limit: pageSize,
     skip: 0,
   });
+
+  const birzhaCommunityId = data?.data?.[0]?.communityId;
+
+  const onValueTagClick = useMemo(() => {
+    if (!birzhaCommunityId) return undefined;
+    return (tag: string) => {
+      const params = new URLSearchParams();
+      params.set('vt', tag);
+      router.push(`/meriter/communities/${birzhaCommunityId}?${params.toString()}`);
+    };
+  }, [birzhaCommunityId, router]);
 
   if (isLoading) {
     return <p className="text-sm text-base-content/60">{t('postsLoading')}</p>;
@@ -35,35 +51,34 @@ export function SourceBirzhaPostsList({
 
   const total = data.total ?? data.data.length;
   const capped = pageSize < total;
+  const walletList = Array.isArray(wallets) ? wallets : [];
+  const gapClass = variant === 'compact' ? 'space-y-3' : 'space-y-4';
 
   return (
     <>
-    {capped ? (
-      <p className="mb-3 text-xs text-base-content/50">
-        {t('postsPagePartial', { shown: data.data.length, total })}
-      </p>
-    ) : null}
-    <ul className={variant === 'compact' ? 'space-y-2' : 'space-y-3'}>
-      {data.data.map((pub) => {
-        const href = routes.communityPost(pub.communityId ?? '', pub.slug ?? pub.id);
-        const title = pub.title?.trim() ? pub.title : t('untitledPost');
-        return (
-          <li key={pub.id}>
-            <Link
-              href={href}
-              className="block text-sm font-medium text-primary hover:underline"
-            >
-              {title}
-            </Link>
-            {variant === 'default' && pub.metrics?.score != null ? (
-              <span className="mt-0.5 block text-xs tabular-nums text-base-content/50">
-                {t('scoreLabel', { score: pub.metrics.score })}
-              </span>
-            ) : null}
-          </li>
-        );
-      })}
-    </ul>
+      {capped ? (
+        <p className="mb-3 text-xs text-base-content/50">
+          {t('postsPagePartial', { shown: data.data.length, total })}
+        </p>
+      ) : null}
+      <div className={gapClass}>
+        {data.data.map((pub) => (
+          <div
+            key={pub.id}
+            id={`post-${pub.id}`}
+            className="rounded-xl transition-all duration-200 hover:shadow-md"
+          >
+            <PublicationCard
+              publication={pub as unknown as FeedItem}
+              wallets={walletList}
+              showCommunityAvatar={false}
+              isSelected={false}
+              onCategoryClick={undefined}
+              onValueTagClick={onValueTagClick}
+            />
+          </div>
+        ))}
+      </div>
     </>
   );
 }

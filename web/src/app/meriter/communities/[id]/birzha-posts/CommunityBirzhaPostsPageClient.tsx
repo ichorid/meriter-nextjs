@@ -13,7 +13,7 @@ export function CommunityBirzhaPostsPageClient({ communityId }: { communityId: s
   const t = useTranslations('birzhaSource');
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4 py-6">
+    <div className="mx-auto w-full max-w-3xl px-4 py-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" asChild className="-ml-2 gap-2 rounded-xl">
           <Link href={routes.community(communityId)}>

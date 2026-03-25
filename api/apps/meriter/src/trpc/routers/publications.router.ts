@@ -11,6 +11,7 @@ import { createVoteLogic } from './votes.router';
 
 const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
+import { mapInvestmentsForPublicationFeed } from '../../domain/services/feed-item-investments.mapper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
@@ -523,6 +524,9 @@ export const publicationsRouter = router({
       for (const pub of publications) {
         const s = pub.toSnapshot();
         userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
         if (pub.getBeneficiaryId) {
           userIds.add(pub.getBeneficiaryId.getValue());
         }
@@ -539,29 +543,124 @@ export const publicationsRouter = router({
         ),
       ]);
 
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        const mapped = EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+        mapped.investingEnabled = s.investingEnabled ?? false;
+        mapped.investorSharePercent = s.investorSharePercent;
+        mapped.investmentPool = s.investmentPool ?? 0;
+        mapped.investmentPoolTotal = s.investmentPoolTotal ?? 0;
+        mapped.investments = mapInvestmentsForPublicationFeed(s.investments);
+        mapped.status = s.status ?? 'active';
+        mapped.closedAt = s.closedAt ?? undefined;
+        mapped.closeReason = s.closeReason ?? undefined;
+        mapped.closingSummary = s.closingSummary ?? undefined;
+        mapped.ttlExpiresAt = s.ttlExpiresAt ?? undefined;
+        mapped.ttlDays = s.ttlDays;
+        mapped.lastEarnedAt = s.lastEarnedAt ?? undefined;
+        mapped.stopLoss = s.stopLoss ?? 0;
+        mapped.noAuthorWalletSpend = s.noAuthorWalletSpend ?? false;
+        mapped.ttlWarningNotified = s.ttlWarningNotified ?? false;
+        return mapped;
+      });
+
+      if (ctx.connection?.db && mappedPublications.length > 0) {
+        const ids = mappedPublications.map((p) => p.id);
+        const docs = await ctx.connection.db
+          .collection('publications')
+          .find(
+            { id: { $in: ids } },
+            {
+              projection: {
+                id: 1,
+                forwardStatus: 1,
+                forwardTargetCommunityId: 1,
+                forwardProposedBy: 1,
+                forwardProposedAt: 1,
+                status: 1,
+                closedAt: 1,
+                closeReason: 1,
+                closingSummary: 1,
+                lastEarnedAt: 1,
+                ttlWarningNotified: 1,
+              },
+            },
+          )
+          .toArray();
+        const forwardMap = new Map<string, unknown>(docs.map((d: { id: string }) => [d.id, d]));
+        mappedPublications.forEach((pub) => {
+          const d = forwardMap.get(pub.id) as Record<string, unknown> | undefined;
+          if (!d) return;
+          pub.forwardStatus = (d.forwardStatus as typeof pub.forwardStatus) ?? null;
+          pub.forwardTargetCommunityId = (d.forwardTargetCommunityId as string) || undefined;
+          pub.forwardProposedBy = (d.forwardProposedBy as string) || undefined;
+          pub.forwardProposedAt = (d.forwardProposedAt as string) || undefined;
+          pub.status = (d.status as string) ?? 'active';
+          pub.closedAt = d.closedAt ?? undefined;
+          pub.closeReason = d.closeReason ?? undefined;
+          pub.closingSummary = d.closingSummary ?? undefined;
+          pub.lastEarnedAt = d.lastEarnedAt ?? undefined;
+          pub.ttlWarningNotified = (d.ttlWarningNotified as boolean) ?? false;
+        });
+      }
+
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap =
+        await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+          ctx.user?.id || null,
+          publicationIds,
+        );
+
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn =
+                await ctx.walletService.getTotalWithdrawnByReference(
+                  'publication_withdrawal',
+                  id,
+                );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // ignore
+      }
+
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
       return {
-        data: publications.map((publication) => {
-          const s = publication.toSnapshot();
-          const logicalAuthorCommunity =
-            s.authorKind === 'community' && s.authoredCommunityId
-              ? communitiesMap.get(s.authoredCommunityId)
-              : undefined;
-          return EntityMappers.mapPublicationToApi(
-            publication,
-            usersMap,
-            communitiesMap,
-            logicalAuthorCommunity
-              ? {
-                  logicalAuthorCommunity: {
-                    id: logicalAuthorCommunity.id as string,
-                    name: (logicalAuthorCommunity as { name?: string }).name,
-                    avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
-                      .avatarUrl,
-                  },
-                }
-              : undefined,
-          );
-        }),
+        data: mappedPublications,
         total,
         limit,
         skip,
