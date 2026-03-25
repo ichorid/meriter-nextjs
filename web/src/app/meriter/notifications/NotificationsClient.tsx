@@ -71,6 +71,7 @@ const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationType>([
   'project_parent_link_requested',
   'project_parent_link_approved',
   'project_parent_link_rejected',
+  'ticket_assigned',
 ]);
 
 const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
@@ -78,6 +79,7 @@ const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
   'team_join_request',
   'community_member_removed',
   'project_parent_link_requested',
+  'ticket_assigned',
   'ob_vote_join_offer',
 ]);
 
@@ -517,17 +519,7 @@ export default function NotificationsPage() {
       return t('projectSharesUpdatedMessage', { projectName, percent: pct });
     }
     if (notification.type === 'ticket_assigned') {
-      const ticketTitle =
-        typeof meta.ticketTitle === 'string' && meta.ticketTitle.trim()
-          ? meta.ticketTitle
-          : t('untitledPost');
-      const projectName =
-        typeof meta.projectName === 'string' && meta.projectName.trim()
-          ? meta.projectName
-          : '';
-      return projectName
-        ? t('ticketAssignedBodyRich', { ticketTitle, projectName })
-        : t('ticketAssignedBody');
+      return '';
     }
     if (notification.type === 'ticket_apply') {
       const ticketTitle =
@@ -1187,6 +1179,85 @@ export default function NotificationsPage() {
               requesterDisplayName
             )}
           </div>
+          <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
+    if (notification.type === 'ticket_assigned') {
+      const ticketId = typeof m.ticketId === 'string' ? m.ticketId : '';
+      const projectId = typeof m.projectId === 'string' ? m.projectId : '';
+      const ticketTitle =
+        typeof m.ticketTitle === 'string' && m.ticketTitle.trim()
+          ? m.ticketTitle.trim()
+          : t('untitledPost');
+      const projectName =
+        (typeof m.projectName === 'string' && m.projectName.trim()
+          ? m.projectName.trim()
+          : '') || projectId;
+      const assignerId =
+        (typeof m.assignedByUserId === 'string' && m.assignedByUserId.trim()) ||
+        (typeof m.leadUserId === 'string' && m.leadUserId.trim()) ||
+        '';
+      const assignerName =
+        (typeof m.assignedByDisplayName === 'string' && m.assignedByDisplayName.trim()) ||
+        notification.actor?.name ||
+        (assignerId ? assignerId : tCommon('someone'));
+
+      const ticketHref =
+        projectId && ticketId
+          ? `${routes.project(projectId)}?highlight=${encodeURIComponent(ticketId)}`
+          : '';
+      const projectHref = projectId ? routes.project(projectId) : '';
+      const assignerHref = assignerId ? routes.userProfile(assignerId) : undefined;
+      const hasAssigner =
+        Boolean(assignerId) ||
+        (typeof m.assignedByDisplayName === 'string' &&
+          m.assignedByDisplayName.trim().length > 0) ||
+        Boolean(notification.actor?.id);
+
+      return (
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
+            {ticketHref ? (
+              <Link
+                href={ticketHref}
+                onClick={(e) => e.stopPropagation()}
+                className="font-medium text-brand-primary hover:underline break-words"
+              >
+                {quotePlaceLabel(ticketTitle, locale)}
+              </Link>
+            ) : (
+              <span className="font-medium break-words">{quotePlaceLabel(ticketTitle, locale)}</span>
+            )}
+            {projectHref ? (
+              <Link
+                href={projectHref}
+                onClick={(e) => e.stopPropagation()}
+                className="text-sm font-medium text-brand-primary hover:underline break-words"
+              >
+                {quotePlaceLabel(projectName, locale)}
+              </Link>
+            ) : (
+              <span className="text-sm break-words">{quotePlaceLabel(projectName, locale)}</span>
+            )}
+          </div>
+          {hasAssigner ? (
+            <div className="text-sm text-brand-text-primary">
+              <span className="text-brand-text-secondary">{t('ticketAssignedByLabel')}</span>{' '}
+              {assignerHref ? (
+                <Link
+                  href={assignerHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="font-medium text-brand-primary hover:underline"
+                >
+                  {assignerName}
+                </Link>
+              ) : (
+                assignerName
+              )}
+            </div>
+          ) : null}
           <div className="text-base-content/55">{formatDate(notification.createdAt)}</div>
         </div>
       );

@@ -13,6 +13,8 @@ export const routes = {
     futureVisions: "/meriter/future-visions",
     projects: "/meriter/projects",
     project: (id: string) => `/meriter/projects/${id}`,
+    /** Project team list (wraps member management in project URL space). */
+    projectMembers: (projectId: string) => `/meriter/projects/${projectId}/members`,
     /** Birzha posts published on behalf of this project (lead). */
     projectBirzhaPosts: (id: string) => `/meriter/projects/${id}/birzha-posts`,
     userProfile: (userId: string) => `/meriter/users/${userId}`,
@@ -24,14 +26,9 @@ export const routes = {
     communities: "/meriter/communities",
     community: (id: string) => `/meriter/communities/${id}`,
     communityMembers: (id: string) => `/meriter/communities/${id}/members`,
-    /** Project team list: same members route with query so back/invite UX stays on the project. */
-    projectMembersManage: (projectCommunityId: string) => {
-      const q = new URLSearchParams({
-        context: 'project',
-        returnTo: `/meriter/projects/${projectCommunityId}`,
-      });
-      return `/meriter/communities/${projectCommunityId}/members?${q.toString()}`;
-    },
+    /** @deprecated Use projectMembers — canonical URL is under /meriter/projects/:id/members */
+    projectMembersManage: (projectCommunityId: string) =>
+      `/meriter/projects/${projectCommunityId}/members`,
     /** Create discussion in project community; after publish, return to project discussions tab. */
     projectDiscussionCreate: (projectCommunityId: string) => {
       const q = new URLSearchParams({

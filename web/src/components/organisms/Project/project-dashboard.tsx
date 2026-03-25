@@ -98,7 +98,7 @@ export function ProjectDashboard({
           className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
           asChild
         >
-          <Link href={routes.projectMembersManage(projectId)}>{t('viewTeamMembers')}</Link>
+          <Link href={routes.projectMembers(projectId)}>{t('viewTeamMembers')}</Link>
         </Button>
       </div>
 

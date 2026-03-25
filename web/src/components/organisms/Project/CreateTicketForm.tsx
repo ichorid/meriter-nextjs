@@ -68,7 +68,7 @@ export function CreateTicketForm({
           required
         >
           <SelectTrigger id="ticket-beneficiary" className="mt-1">
-            <SelectValue placeholder="Select assignee" />
+            <SelectValue placeholder={t('ticketSelectAssigneePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
             {members.map((m: { id?: string; userId?: string; displayName?: string }) => {
