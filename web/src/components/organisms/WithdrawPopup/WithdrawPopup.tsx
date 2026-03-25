@@ -8,6 +8,7 @@ import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { IntlPortalWrapper } from '@/components/providers/IntlPortalWrapper';
 import { WithdrawPopupContent } from './WithdrawPopupContent';
 import { trpc } from '@/lib/trpc/client';
+import { useCommunity } from '@/hooks/api/useCommunities';
 
 interface WithdrawPopupProps {
   communityId?: string;
@@ -130,6 +131,20 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
   const maxTopUpSource = sourceWallet?.balance ?? 0;
   const maxPlus = isWithdrawal ? maxWithdrawAmount : maxTopUpPersonal;
 
+  const withdrawPublicationCommunityId =
+    isOpen && withdrawTargetType === 'publication' && publication?.communityId
+      ? publication.communityId
+      : '';
+  const { data: withdrawPostHostCommunity } = useCommunity(withdrawPublicationCommunityId);
+
+  const withdrawMeritsDestination = useMemo((): 'personal' | 'sourceProject' | 'sourceCommunity' => {
+    if (withdrawTargetType !== 'publication' || !publication) return 'personal';
+    if (withdrawPostHostCommunity?.typeTag !== 'marathon-of-good') return 'personal';
+    if (publication.sourceEntityType === 'project') return 'sourceProject';
+    if (publication.sourceEntityType === 'community') return 'sourceCommunity';
+    return 'personal';
+  }, [withdrawTargetType, publication, withdrawPostHostCommunity?.typeTag]);
+
   if (!isOpen) {
     return null;
   }
@@ -155,6 +170,7 @@ export const WithdrawPopup: React.FC<WithdrawPopupProps> = ({
         activeWithdrawTarget={activeWithdrawTarget ?? ''}
         withdrawTargetType={withdrawTargetType ?? ''}
         targetCommunityId={targetCommunityId ?? ''}
+        withdrawMeritsDestination={withdrawMeritsDestination}
       />
     </IntlPortalWrapper>
   );

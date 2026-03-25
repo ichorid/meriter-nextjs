@@ -36,6 +36,8 @@ interface WithdrawPopupContentProps {
   activeWithdrawTarget: string;
   withdrawTargetType: string;
   targetCommunityId: string;
+  /** Birzha post from project/community source: withdraw credits source wallet, not personal */
+  withdrawMeritsDestination?: 'personal' | 'sourceProject' | 'sourceCommunity';
 }
 
 export function WithdrawPopupContent({
@@ -57,6 +59,7 @@ export function WithdrawPopupContent({
   activeWithdrawTarget,
   withdrawTargetType,
   targetCommunityId,
+  withdrawMeritsDestination = 'personal',
 }: WithdrawPopupContentProps) {
   const t = useTranslations('shared');
   const tInvesting = useTranslations('investing');
@@ -218,6 +221,7 @@ export function WithdrawPopupContent({
           title={popupTitle}
           submitButtonLabel={submitButtonLabel}
           hintMode={isWithdrawal ? 'withdraw' : 'add'}
+          withdrawMeritsDestination={isWithdrawal ? withdrawMeritsDestination : 'personal'}
         />
         {isWithdrawal && hasInvestments && investmentSplit && amount > 0 && (
           <div className="w-full max-w-[400px] rounded-xl border border-base-300/50 bg-base-100 shadow-xl p-4 space-y-3 text-sm">

@@ -484,6 +484,8 @@
         "addMeritsToPost": "Add merits to post",
         "addMeritsButton": "Add merits",
         "withdrawHint": "Withdrawing merits from a post reduces its rating. The merits will be added to your wallet and can be used for voting.",
+        "withdrawHintSourceProject": "Withdrawing merits from a post reduces its rating. Merits are credited to the parent project wallet; you can use them for voting and other actions in that project context.",
+        "withdrawHintSourceCommunity": "Withdrawing merits from a post reduces its rating. Merits are credited to the parent community wallet; you can use them for voting and other actions in that community context.",
         "addMeritsHint": "Adding merits to a post increases its rating and lets the post pay for participation in mining to earn merits. NOTE: all merits added to the post participate in the investment contract – if you have investors, when you withdraw these merits they will receive their share.",
         "available": "Available",
         "availableMore": "Available more",

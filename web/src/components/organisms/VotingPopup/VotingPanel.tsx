@@ -47,6 +47,8 @@ interface VotingPanelProps {
     neutralHelperText?: string;
     /** When hideQuota: which hint to show — 'add' (add merits to post) or 'withdraw' (withdraw merits). Default 'withdraw'. */
     hintMode?: 'add' | 'withdraw';
+    /** When withdrawing from a Birzha post published on behalf of a project/community, merits credit the source wallet (not personal). */
+    withdrawMeritsDestination?: 'personal' | 'sourceProject' | 'sourceCommunity';
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -78,6 +80,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     commentMode,
     neutralHelperText,
     hintMode = 'withdraw',
+    withdrawMeritsDestination = 'personal',
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
@@ -711,7 +714,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 <div className="flex flex-col gap-4">
                     {/* Hint text: different for "add merits" vs "withdraw" */}
                     <p className="text-xs text-base-content/60 leading-relaxed">
-                        {hintMode === 'add' ? tShared('addMeritsHint') : tShared('withdrawHint')}
+                        {hintMode === 'add'
+                            ? tShared('addMeritsHint')
+                            : withdrawMeritsDestination === 'sourceProject'
+                              ? tShared('withdrawHintSourceProject')
+                              : withdrawMeritsDestination === 'sourceCommunity'
+                                ? tShared('withdrawHintSourceCommunity')
+                                : tShared('withdrawHint')}
                     </p>
 
                     {/* Available Progress Bar - above amount input */}
