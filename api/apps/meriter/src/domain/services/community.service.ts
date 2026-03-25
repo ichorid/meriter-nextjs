@@ -1714,6 +1714,8 @@ export class CommunityService {
       communityId,
     );
     const thankNonMember = !memberRole;
+    // Ensure wallet row exists before debit+deposit (projects get this on create; local sources may not).
+    await this.communityWalletService.createWallet(communityId);
     await this.walletService.addTransaction(
       userId,
       GLOBAL_COMMUNITY_ID,

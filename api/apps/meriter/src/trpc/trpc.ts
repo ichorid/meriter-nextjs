@@ -164,6 +164,15 @@ const httpExceptionToTrpcMiddleware = t.middleware(async ({ next }) => {
       throw err;
     }
 
+    // 4) Wallet aggregate throws plain Error('Insufficient balance') on debit
+    if (err instanceof Error && err.message === 'Insufficient balance') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: err.message,
+        cause: err,
+      });
+    }
+
     throw err;
   }
 });
