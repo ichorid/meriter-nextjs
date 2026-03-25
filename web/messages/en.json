@@ -1262,6 +1262,18 @@
             "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a post.",
             "insufficientMeritsPopup": "You don't have enough merits to pay for publication – you need at least {cost} merits.",
             "postIsFree": "Posts are free to create in this community.",
+            "payment": {
+                "sectionTitle": "Publication payment",
+                "costLine": "Creating this post costs {cost} merit(s) (per community settings).",
+                "sourceWalletLine": "Community wallet (posting as): {balance} merit(s) available.",
+                "personalWalletLine": "Your global wallet: {balance} merit(s) available.",
+                "payFromCommunityWallet": "Community wallet (default)",
+                "payFromPersonalWallet": "My global wallet",
+                "insufficientCommunityWallet": "The community wallet has {balance} merit(s); {cost} required.",
+                "willChargeCommunityWallet": "{cost} merit(s) will be charged from the community wallet.",
+                "summaryCommunity": "{cost} merit(s) · community wallet",
+                "summaryPersonal": "{cost} merit(s) · your wallet"
+            },
             "fields": {
                 "title": "Title",
                 "titlePlaceholder": "Enter title",

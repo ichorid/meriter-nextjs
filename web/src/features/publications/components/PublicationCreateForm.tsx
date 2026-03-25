@@ -140,11 +140,15 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const { data: sourceCommunity } = useCommunity(birzhaSourceEntity?.id ?? '');
   const { sections: valueRubricatorSections } = usePlatformValueRubricatorSections();
   const { actingAsCommunityId } = useActingAsStore();
+  const sourceWalletCommunityId =
+    birzhaSourceEntity?.id ?? actingAsCommunityId ?? '';
+  const showDualPaymentUI =
+    Boolean(birzhaSourceEntity) || Boolean(actingAsCommunityId);
   // FR-4: Fee is always paid from global wallet (all communities)
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
   const { data: sourceWallet, isFetched: sourceWalletFetched } = useCommunityWalletForSource(
-    birzhaSourceEntity?.id,
-    Boolean(birzhaSourceEntity),
+    sourceWalletCommunityId,
+    showDualPaymentUI && Boolean(sourceWalletCommunityId),
   );
   const publishBirzha = usePublishToBirzhaSource({
     sourceEntityType: birzhaSourceEntity?.type ?? 'community',
@@ -185,14 +189,19 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [postCostFunding, setPostCostFunding] = useState<
     'source_community_wallet' | 'caller_global_wallet'
   >('source_community_wallet');
+  const [openPublicationPayment, setOpenPublicationPayment] = useState(true);
 
   useEffect(() => {
-    if (!birzhaSourceEntity || !requiresPayment || !sourceWalletFetched) return;
+    setPostCostFunding('source_community_wallet');
+  }, [sourceWalletCommunityId]);
+
+  useEffect(() => {
+    if (!showDualPaymentUI || !requiresPayment || !sourceWalletFetched) return;
     if (communityWalletBalance < postCost) {
       setPostCostFunding('caller_global_wallet');
     }
   }, [
-    birzhaSourceEntity,
+    showDualPaymentUI,
     requiresPayment,
     sourceWalletFetched,
     communityWalletBalance,
@@ -200,7 +209,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   ]);
 
   const hasInsufficientPayment =
-    birzhaSourceEntity != null
+    showDualPaymentUI
       ? requiresPayment &&
         (postCostFunding === 'source_community_wallet'
           ? communityWalletBalance < postCost
@@ -602,6 +611,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           noAuthorWalletSpend: noAuthorWalletSpend || undefined,
           beneficiaryId: beneficiaryId ?? undefined,
           actingAsCommunityId: actingAsCommunityId ?? undefined,
+          postCostFunding:
+            actingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -663,71 +674,97 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             </div>
           )}
 
-          {!isEditMode && requiresPayment && birzhaSourceEntity && (
-            <div
-              className={`p-3 rounded-lg border space-y-3 ${hasInsufficientPayment
-                ? 'bg-red-50 border-red-200'
-                : 'bg-blue-50 border-blue-200'
-                }`}
+          {!isEditMode && requiresPayment && showDualPaymentUI && (
+            <CollapsibleSection
+              title={t('payment.sectionTitle')}
+              summary={
+                postCostFunding === 'source_community_wallet'
+                  ? t('payment.summaryCommunity', { cost: postCost })
+                  : t('payment.summaryPersonal', { cost: postCost })
+              }
+              open={openPublicationPayment}
+              setOpen={setOpenPublicationPayment}
             >
-              <p className="text-blue-800 text-sm font-medium">
-                {tBirzha('publishCostExplainer', { cost: postCost })}
-              </p>
-              <p className="text-blue-700 text-sm">
-                {tBirzha('sourceWalletBalance', { balance: communityWalletBalance })}
-              </p>
-              <p className="text-blue-700 text-sm">
-                {tBirzha('personalWalletBalance', { balance: walletBalance })}
-              </p>
-              <BrandFormControl label={tBirzha('payFromLabel')}>
-                <Select
-                  value={postCostFunding}
-                  onValueChange={(v) =>
-                    setPostCostFunding(v as 'source_community_wallet' | 'caller_global_wallet')
-                  }
-                  disabled={isSubmitting}
-                >
-                  <SelectTrigger className="h-11 rounded-xl w-full max-w-md bg-background">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      value="source_community_wallet"
-                      disabled={communityWalletBalance < postCost}
-                    >
-                      {tBirzha('payFromCommunityWallet')}
-                    </SelectItem>
-                    <SelectItem value="caller_global_wallet">
-                      {tBirzha('payFromPersonalWallet')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </BrandFormControl>
-              {communityWalletBalance < postCost && postCostFunding === 'source_community_wallet' ? (
-                <p className="text-red-700 text-sm">{tBirzha('insufficientCommunityWalletHint')}</p>
-              ) : null}
-              {hasInsufficientPayment ? (
-                <p className="text-red-700 text-sm">
-                  {postCostFunding === 'caller_global_wallet'
-                    ? t('insufficientPayment', { cost: postCost })
-                    : tBirzha('insufficientCommunityWallet', {
-                        balance: communityWalletBalance,
-                        cost: postCost,
-                      })}
+              <div className="space-y-3 text-sm">
+                <p className="text-muted-foreground">
+                  {birzhaSourceEntity
+                    ? tBirzha('publishCostExplainer', { cost: postCost })
+                    : t('payment.costLine', { cost: postCost })}
                 </p>
-              ) : postCost > 0 ? (
-                <p className="text-blue-700 text-sm">
-                  {postCostFunding === 'source_community_wallet'
-                    ? tBirzha('willChargeCommunityWallet', { cost: postCost })
-                    : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                <p className="text-muted-foreground">
+                  {birzhaSourceEntity
+                    ? tBirzha('sourceWalletBalance', { balance: communityWalletBalance })
+                    : t('payment.sourceWalletLine', { balance: communityWalletBalance })}
                 </p>
-              ) : (
-                <p className="text-blue-700 text-sm">{t('postIsFree')}</p>
-              )}
-            </div>
+                <p className="text-muted-foreground">
+                  {birzhaSourceEntity
+                    ? tBirzha('personalWalletBalance', { balance: walletBalance })
+                    : t('payment.personalWalletLine', { balance: walletBalance })}
+                </p>
+                <BrandFormControl label={tBirzha('payFromLabel')}>
+                  <Select
+                    value={postCostFunding}
+                    onValueChange={(v) =>
+                      setPostCostFunding(v as 'source_community_wallet' | 'caller_global_wallet')
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl w-full max-w-md bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        value="source_community_wallet"
+                        disabled={communityWalletBalance < postCost}
+                      >
+                        {birzhaSourceEntity
+                          ? tBirzha('payFromCommunityWallet')
+                          : t('payment.payFromCommunityWallet')}
+                      </SelectItem>
+                      <SelectItem value="caller_global_wallet">
+                        {birzhaSourceEntity
+                          ? tBirzha('payFromPersonalWallet')
+                          : t('payment.payFromPersonalWallet')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </BrandFormControl>
+                {communityWalletBalance < postCost &&
+                postCostFunding === 'source_community_wallet' ? (
+                  <p className="text-destructive text-sm">
+                    {tBirzha('insufficientCommunityWalletHint')}
+                  </p>
+                ) : null}
+                {hasInsufficientPayment ? (
+                  <p className="text-destructive text-sm">
+                    {postCostFunding === 'caller_global_wallet'
+                      ? t('insufficientPayment', { cost: postCost })
+                      : birzhaSourceEntity
+                        ? tBirzha('insufficientCommunityWallet', {
+                            balance: communityWalletBalance,
+                            cost: postCost,
+                          })
+                        : t('payment.insufficientCommunityWallet', {
+                            balance: communityWalletBalance,
+                            cost: postCost,
+                          })}
+                  </p>
+                ) : postCost > 0 ? (
+                  <p className="text-muted-foreground">
+                    {postCostFunding === 'source_community_wallet'
+                      ? birzhaSourceEntity
+                        ? tBirzha('willChargeCommunityWallet', { cost: postCost })
+                        : t('payment.willChargeCommunityWallet', { cost: postCost })
+                      : t('willPayWithWallet', { balance: walletBalance, cost: postCost })}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">{t('postIsFree')}</p>
+                )}
+              </div>
+            </CollapsibleSection>
           )}
 
-          {!isEditMode && requiresPayment && !birzhaSourceEntity && (
+          {!isEditMode && requiresPayment && !showDualPaymentUI && (
             <div className={`p-3 rounded-lg border ${hasInsufficientPayment
               ? 'bg-red-50 border-red-200'
               : 'bg-blue-50 border-blue-200'

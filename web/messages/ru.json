@@ -1262,6 +1262,18 @@
             "insufficientPayment": "Недостаточно заслуг кошелька. Вам нужно хотя бы {cost} заслуг кошелька для создания публикации.",
             "insufficientMeritsPopup": "У вас недостаточно заслуг для оплаты публикации – вам нужно хотя бы {cost} заслуг.",
             "postIsFree": "Посты можно создавать бесплатно в этом сообществе.",
+            "payment": {
+                "sectionTitle": "Оплата публикации",
+                "costLine": "Создание этого поста стоит {cost} заслуг(и) (по настройкам сообщества).",
+                "sourceWalletLine": "Кошелёк сообщества (публикация от имени): доступно {balance} заслуг(и).",
+                "personalWalletLine": "Ваш глобальный кошелёк: доступно {balance} заслуг(и).",
+                "payFromCommunityWallet": "Кошелёк сообщества (по умолчанию)",
+                "payFromPersonalWallet": "Мой глобальный кошелёк",
+                "insufficientCommunityWallet": "На кошельке сообщества {balance} заслуг(и), требуется {cost}.",
+                "willChargeCommunityWallet": "С кошелька сообщества будет списано {cost} заслуг(и).",
+                "summaryCommunity": "{cost} засл. · кошелёк сообщества",
+                "summaryPersonal": "{cost} засл. · ваш кошелёк"
+            },
             "fields": {
                 "title": "Заголовок",
                 "titlePlaceholder": "Введите заголовок",

@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/shadcn/button';
-import { PublishToBirzhaDialog } from './PublishToBirzhaDialog';
 import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -20,25 +19,22 @@ export function PublishToBirzhaButton({
   className,
 }: PublishToBirzhaButtonProps) {
   const t = useTranslations('projects');
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   if (!isLead) return null;
 
   return (
-    <>
-      <Button
-        size="sm"
-        variant="default"
-        className={cn(
-          'w-full rounded-xl px-3 py-3 h-auto font-medium bg-green-600 text-white hover:bg-green-600/90',
-          className,
-        )}
-        onClick={() => setOpen(true)}
-      >
-        <TrendingUp className="mr-2 h-4 w-4 shrink-0" />
-        {t('publishToBirzha', { defaultValue: 'Publish to Birzha' })}
-      </Button>
-      <PublishToBirzhaDialog projectId={projectId} open={open} onOpenChange={setOpen} />
-    </>
+    <Button
+      size="sm"
+      variant="default"
+      className={cn(
+        'w-full rounded-xl px-3 py-3 h-auto font-medium bg-green-600 text-white hover:bg-green-600/90',
+        className,
+      )}
+      onClick={() => router.push(`/meriter/projects/${projectId}/birzha-publish`)}
+    >
+      <TrendingUp className="mr-2 h-4 w-4 shrink-0" />
+      {t('publishToBirzha', { defaultValue: 'Publish to Birzha' })}
+    </Button>
   );
 }
