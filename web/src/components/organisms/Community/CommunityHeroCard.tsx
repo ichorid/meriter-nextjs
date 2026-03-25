@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User, ChevronDown, ChevronUp } from 'lucide-react';
-import { Users, Settings, Trash2, TrendingUp, ArrowUp } from 'lucide-react';
+import { Users, Settings, Trash2, TrendingUp, ArrowUp, SquarePen } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
@@ -263,10 +263,27 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           {/* Future vision: single inset card (members count is on the cover toolbar) */}
           {showFutureVisionSubsection && (
             <div className="mt-4">
-              <div className="rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 py-4 sm:px-5 sm:py-4 space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
-                  {tCommunities('futureVisionSectionTitle')}
-                </h2>
+              <div className="rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 py-4 sm:px-5 sm:py-4 space-y-3 relative">
+                <div className="flex items-start justify-between gap-2 pr-0">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 min-w-0 flex-1">
+                    {tCommunities('futureVisionSectionTitle')}
+                  </h2>
+                  {community.isAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.push(routes.communitySettingsEditFutureVision(community.id));
+                      }}
+                      className="shrink-0 -mt-0.5 -mr-0.5 p-2 rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-300/60 dark:hover:bg-base-300/40 transition-colors"
+                      title={tCommon('edit')}
+                      aria-label={tCommon('edit')}
+                    >
+                      <SquarePen className="h-5 w-5" aria-hidden />
+                    </button>
+                  )}
+                </div>
 
                 {obCover && !obCoverUsedInHeader && (
                   <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300/80">

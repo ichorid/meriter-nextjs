@@ -43,6 +43,9 @@ export const routes = {
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
+    /** Opens General tab with future vision textarea focused (lead/superadmin settings). */
+    communitySettingsEditFutureVision: (id: string) =>
+        `/meriter/communities/${id}/settings?edit=futureVision`,
     setupCommunity: "/meriter/setup-community",
     /** Community post detail (publication id as slug). */
     communityPost: (communityId: string, postId: string) =>

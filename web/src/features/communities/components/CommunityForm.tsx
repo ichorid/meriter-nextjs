@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -36,9 +36,14 @@ import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
 
 interface CommunityFormProps {
     communityId?: string; // Если нет - создание, если есть - редактирование
+    /** When true (e.g. ?edit=futureVision on settings URL), focus future vision textarea after load */
+    focusFutureVisionTextOnMount?: boolean;
 }
 
-export const CommunityForm = ({ communityId }: CommunityFormProps) => {
+export const CommunityForm = ({
+    communityId,
+    focusFutureVisionTextOnMount = false,
+}: CommunityFormProps) => {
     const router = useRouter();
     const queryClient = useQueryClient();
     const t = useTranslations("pages.communitySettings");
@@ -80,6 +85,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
     const [futureVisionText, setFutureVisionText] = useState("");
     const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
     const [futureVisionCover, setFutureVisionCover] = useState("");
+    const futureVisionTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const didFocusFutureVisionRef = useRef(false);
 
     useFutureVisionTags();
     const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
@@ -103,6 +110,25 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
             setFutureVisionCover(c.futureVisionCover || "");
         }
     }, [community, isEditMode]);
+
+    useEffect(() => {
+        if (
+            !focusFutureVisionTextOnMount ||
+            !isEditMode ||
+            isLoading ||
+            didFocusFutureVisionRef.current
+        ) {
+            return;
+        }
+        didFocusFutureVisionRef.current = true;
+        const t = window.setTimeout(() => {
+            const el = futureVisionTextareaRef.current;
+            if (!el) return;
+            el.focus();
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 150);
+        return () => window.clearTimeout(t);
+    }, [focusFutureVisionTextOnMount, isEditMode, isLoading]);
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
@@ -311,6 +337,8 @@ export const CommunityForm = ({ communityId }: CommunityFormProps) => {
                 <div className="space-y-4 mb-6">
                     <BrandFormControl label={t("futureVisionText")} required={!isEditMode}>
                         <Textarea
+                            ref={futureVisionTextareaRef}
+                            id="community-future-vision-text"
                             value={futureVisionText}
                             onChange={(e) => setFutureVisionText(e.target.value)}
                             placeholder={t("futureVisionPlaceholder")}

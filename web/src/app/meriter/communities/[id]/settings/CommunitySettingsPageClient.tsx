@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
@@ -22,6 +22,8 @@ interface CommunitySettingsPageClientProps {
 
 export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPageClientProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const focusFutureVisionText = searchParams.get('edit') === 'futureVision';
     const t = useTranslations('pages.communitySettings');
     const tRules = useTranslations('communities.rules');
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
@@ -29,6 +31,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
     const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(user?.id || '');
     const updateCommunity = useUpdateCommunity();
     const [activeTab, setActiveTab] = useState('general');
+
+    useEffect(() => {
+        if (focusFutureVisionText) {
+            setActiveTab('general');
+        }
+    }, [focusFutureVisionText]);
 
     // Check if user is superadmin
     const isSuperadmin = user?.globalRole === 'superadmin';
@@ -228,7 +236,10 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className="mt-6">
-                        <CommunityForm communityId={communityId} />
+                        <CommunityForm
+                            communityId={communityId}
+                            focusFutureVisionTextOnMount={focusFutureVisionText}
+                        />
                     </TabsContent>
                     <TabsContent value="rules" className="mt-6">
                         <CommunityRulesEditor
