@@ -13,6 +13,10 @@ export interface MeritsIntegerStepperProps {
   disabled?: boolean;
   id?: string;
   'aria-label'?: string;
+  /** Overrides default "{ariaLabel} decrease" when aria-label is set */
+  decreaseAriaLabel?: string;
+  /** Overrides default "{ariaLabel} increase" when aria-label is set */
+  increaseAriaLabel?: string;
 }
 
 /**
@@ -26,6 +30,8 @@ export function MeritsIntegerStepper({
   disabled = false,
   id,
   'aria-label': ariaLabel,
+  decreaseAriaLabel,
+  increaseAriaLabel,
 }: MeritsIntegerStepperProps) {
   const clamp = (n: number) => Math.max(min, Math.min(max, Math.floor(n)));
 
@@ -47,7 +53,7 @@ export function MeritsIntegerStepper({
         variant="outline"
         size="icon"
         className="h-12 w-12 shrink-0 border-base-300 hover:bg-base-200 hover:border-base-400 disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label={ariaLabel ? `${ariaLabel} decrease` : undefined}
+        aria-label={decreaseAriaLabel ?? (ariaLabel ? `${ariaLabel} decrease` : undefined)}
       >
         <Minus className="h-5 w-5" />
       </Button>
@@ -79,7 +85,7 @@ export function MeritsIntegerStepper({
         variant="outline"
         size="icon"
         className="h-12 w-12 shrink-0 border-base-300 hover:bg-base-200 hover:border-base-400 disabled:opacity-50 disabled:cursor-not-allowed"
-        aria-label={ariaLabel ? `${ariaLabel} increase` : undefined}
+        aria-label={increaseAriaLabel ?? (ariaLabel ? `${ariaLabel} increase` : undefined)}
       >
         <Plus className="h-5 w-5" />
       </Button>

@@ -131,12 +131,16 @@ export function useTopUpWallet() {
   const t = useTranslations('projects');
 
   return trpc.project.topUpWallet.useMutation({
-    onSuccess: (_data, variables) => {
+    onSuccess: (data, variables) => {
       void utils.project.getWallet.invalidate({ projectId: variables.projectId });
       void utils.project.getById.invalidate({ id: variables.projectId });
       void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
       void utils.wallets.getAll.invalidate();
-      addToast(t('topUpSuccess'), 'success');
+      if (data.mode === 'investment') {
+        addToast(t('topUpSuccessInvestment'), 'success');
+      } else {
+        addToast(t('topUpSuccess'), 'success');
+      }
     },
     onError: (error) => {
       addToast(resolveApiErrorToastMessage(error.message), 'error');
