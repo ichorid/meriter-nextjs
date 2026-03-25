@@ -14,6 +14,7 @@ import { Loader2 } from 'lucide-react';
 import {
   usePromoteMemberToLead,
   useDemoteSelfFromLead,
+  useUpdateCommunityUserRoleAsSuperadmin,
 } from '@/hooks/api/useCommunityMembers';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -56,7 +57,7 @@ export function CommunityPromoteLeadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('promoteDialogTitle')}</DialogTitle>
           <DialogDescription className="text-left space-y-3 pt-1">
@@ -87,6 +88,85 @@ interface DemoteSelfLeadDialogProps {
   communityId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface SuperadminDemoteToParticipantDialogProps {
+  communityId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  targetUserId: string | null;
+  targetName: string;
+  variant: 'self' | 'other';
+}
+
+export function CommunitySuperadminDemoteToParticipantDialog({
+  communityId,
+  open,
+  onOpenChange,
+  targetUserId,
+  targetName,
+  variant,
+}: SuperadminDemoteToParticipantDialogProps) {
+  const t = useTranslations('pages.communities.members.leadActions');
+  const addToast = useToastStore((s) => s.addToast);
+  const updateRole = useUpdateCommunityUserRoleAsSuperadmin(communityId);
+
+  const handleConfirm = () => {
+    if (!targetUserId) return;
+    updateRole.mutate(
+      { communityId, userId: targetUserId, role: 'participant' },
+      {
+        onSuccess: () => {
+          addToast(t('superadminDemoteSuccess'), 'success');
+          onOpenChange(false);
+        },
+        onError: (e: unknown) => {
+          const raw = e instanceof Error ? e.message : String(e);
+          addToast(resolveApiErrorToastMessage(raw), 'error');
+        },
+      },
+    );
+  };
+
+  const title =
+    variant === 'self' ? t('superadminDemoteSelfLeadTitle') : t('superadminRemoveLeadTitle');
+  const description =
+    variant === 'self'
+      ? t('superadminDemoteSelfLeadBody')
+      : t('superadminRemoveLeadBody', { name: targetName });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="pt-1 text-left text-sm leading-relaxed">
+            {description}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={updateRole.isPending}
+          >
+            {t('cancel')}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="gap-2"
+            onClick={handleConfirm}
+            disabled={updateRole.isPending || !targetUserId}
+          >
+            {updateRole.isPending ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : null}
+            {t('superadminDemoteConfirm')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function CommunityDemoteSelfLeadDialog({

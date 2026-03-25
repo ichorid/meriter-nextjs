@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 
 export interface CommunityMember {
@@ -77,6 +76,17 @@ export function useDemoteSelfFromLead(communityId: string) {
     return trpc.communities.demoteSelfFromLead.useMutation({
         onSuccess: () => {
             invalidateCommunityLeadCaches(utils, communityId);
+        },
+    });
+}
+
+/** `communities.updateUserRole` — platform superadmin only; can demote any lead, including the last one. */
+export function useUpdateCommunityUserRoleAsSuperadmin(communityId: string) {
+    const utils = trpc.useUtils();
+    return trpc.communities.updateUserRole.useMutation({
+        onSuccess: (_data, variables) => {
+            invalidateCommunityLeadCaches(utils, communityId);
+            void utils.users.getUserRoles.invalidate({ userId: variables.userId });
         },
     });
 }

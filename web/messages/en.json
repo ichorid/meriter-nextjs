@@ -1001,13 +1001,20 @@
                     "promoteToLead": "Make admin",
                     "demoteSelfFromLead": "Step down as admin",
                     "promoteDialogTitle": "Promote to community admin",
-                    "promoteDialogBody": "You cannot undo this from your side: this member will get the same level of control over the group as you (members, settings, and more). You will not be able to remove their admin rights — only they can return to the participant role, and only if there is at least one other admin in the group.",
+                    "promoteDialogBody": "You cannot undo this from your side: this member will get the same level of control over the group as you (members, settings, and more). You cannot remove another person's admin rights yourself — only they can switch back to the participant role if there is at least one other admin in the group. You can also contact platform administrators for help.",
                     "promoteConfirm": "Make admin",
                     "promoteSuccess": "Member promoted to admin",
                     "demoteDialogTitle": "Step down as admin",
                     "demoteDialogBody": "You will become a regular participant. You can do this only if the community already has another admin.",
                     "demoteConfirm": "Step down as admin",
                     "demoteSuccess": "You are no longer an admin of this community",
+                    "superadminRemoveLeadTitle": "Remove community admin (platform)",
+                    "superadminRemoveLeadBody": "You are acting as a platform superadmin and removing the community admin role from {name}. The group may be left with no local admins; only platform superadmins can manage members until someone is promoted to admin again.",
+                    "superadminDemoteSelfLeadTitle": "Step down as admin (platform)",
+                    "superadminDemoteSelfLeadBody": "You are removing your own community admin role as a platform superadmin. This applies even if you are the only admin; platform superadmins can manage the community until a new community admin is assigned.",
+                    "superadminDemoteConfirm": "Remove admin role",
+                    "superadminDemoteSuccess": "Admin role removed",
+                    "superadminRemoveLeadShort": "Remove admin (platform)",
                     "cancel": "Cancel"
                 }
             },
@@ -2523,7 +2530,8 @@
         "cannotPromoteSelfToLead": "You cannot promote yourself this way",
         "onlyParticipantsPromotedToLead": "Only participants can be promoted to admin",
         "onlyLeadsCanStepDown": "Only admins can step down",
-        "promoteAnotherLeadBeforeStepDown": "Promote another member to admin before stepping down"
+        "promoteAnotherLeadBeforeStepDown": "Promote another member to admin before stepping down",
+        "onlySuperadminCanUpdateRoles": "Only platform superadmins can change member roles this way"
     },
     "toasts": {
         "forwardPostSuccess": "Post forwarded successfully",

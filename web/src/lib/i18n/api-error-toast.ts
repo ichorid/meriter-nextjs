@@ -75,6 +75,7 @@ export const KNOWN_API_ERROR_KEYS: Record<string, string> = {
   'Only participants can be promoted to lead': 'onlyParticipantsPromotedToLead',
   'Only leads can step down': 'onlyLeadsCanStepDown',
   'Promote another member to lead before stepping down': 'promoteAnotherLeadBeforeStepDown',
+  'Only superadmin can update roles': 'onlySuperadminCanUpdateRoles',
   'You are already a member of this team': 'youAlreadyMemberThisTeam',
   'User is already a member of this team': 'userAlreadyMemberThisTeam',
   'User is already a member of this community': 'userAlreadyMemberCommunity',

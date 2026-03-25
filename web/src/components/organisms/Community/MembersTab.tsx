@@ -9,7 +9,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { User } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { SearchInput } from '@/components/molecules/SearchInput';
-import { Loader2, Shield, UserMinus, Users, UserX, Coins } from 'lucide-react';
+import { Loader2, Shield, ShieldOff, UserMinus, Users, UserX, Coins } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { MemberInfoCard } from './MemberInfoCard';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
@@ -21,6 +21,7 @@ import { splitMembersByAdminRole } from '@/lib/community/split-members-by-admin-
 import {
     CommunityDemoteSelfLeadDialog,
     CommunityPromoteLeadDialog,
+    CommunitySuperadminDemoteToParticipantDialog,
 } from '@/components/organisms/Community/CommunityLeadActionDialogs';
 
 interface MembersTabProps {
@@ -42,6 +43,11 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
         null,
     );
     const [demoteSelfLeadOpen, setDemoteSelfLeadOpen] = useState(false);
+    const [superadminDemote, setSuperadminDemote] = useState<{
+        userId: string;
+        name: string;
+        variant: 'self' | 'other';
+    } | null>(null);
     const { canView: canViewMerits } = useCanViewUserMerits(communityId);
     const { user } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -182,19 +188,52 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                         >
                             <Coins className="h-4 w-4" />
                         </button>
-                        {leadManagementAllowed &&
+                        {(leadManagementAllowed || isSuperadmin) &&
                             member.id === user?.id &&
                             communityRoleStr === 'lead' && (
                                 <button
                                     type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
-                                        setDemoteSelfLeadOpen(true);
+                                        if (isSuperadmin) {
+                                            setSuperadminDemote({
+                                                userId: member.id,
+                                                name:
+                                                    member.displayName ||
+                                                    member.username ||
+                                                    tCommon('unknownUser'),
+                                                variant: 'self',
+                                            });
+                                        } else {
+                                            setDemoteSelfLeadOpen(true);
+                                        }
                                     }}
                                     className="rounded-full p-2 text-base-content transition-colors hover:bg-base-200"
                                     title={tLeadActions('demoteSelfFromLead')}
                                 >
                                     <UserMinus className="h-4 w-4" />
+                                </button>
+                            )}
+                        {isSuperadmin &&
+                            member.id !== user?.id &&
+                            communityRoleStr === 'lead' && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSuperadminDemote({
+                                            userId: member.id,
+                                            name:
+                                                member.displayName ||
+                                                member.username ||
+                                                tCommon('unknownUser'),
+                                            variant: 'other',
+                                        });
+                                    }}
+                                    className="rounded-full p-2 text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400"
+                                    title={tLeadActions('superadminRemoveLeadShort')}
+                                >
+                                    <ShieldOff className="h-4 w-4" />
                                 </button>
                             )}
                         {leadManagementAllowed &&
@@ -314,6 +353,16 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                 communityId={communityId}
                 open={demoteSelfLeadOpen}
                 onOpenChange={setDemoteSelfLeadOpen}
+            />
+            <CommunitySuperadminDemoteToParticipantDialog
+                communityId={communityId}
+                open={!!superadminDemote}
+                onOpenChange={(open) => {
+                    if (!open) setSuperadminDemote(null);
+                }}
+                targetUserId={superadminDemote?.userId ?? null}
+                targetName={superadminDemote?.name ?? ''}
+                variant={superadminDemote?.variant ?? 'other'}
             />
         </div>
     );

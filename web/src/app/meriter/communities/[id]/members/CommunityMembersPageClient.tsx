@@ -9,7 +9,7 @@ import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useCommunity, useCommunityMembers, useRemoveCommunityMember } from '@/hooks/api';
 import type { CommunityMember } from '@/hooks/api/useCommunityMembers';
-import { Coins, Copy, Loader2, Shield, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
+import { Coins, Copy, Loader2, Shield, ShieldOff, UserMinus, UserPlus, UserX, Users } from 'lucide-react';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
@@ -42,6 +42,7 @@ import { splitMembersByAdminRole } from '@/lib/community/split-members-by-admin-
 import {
     CommunityDemoteSelfLeadDialog,
     CommunityPromoteLeadDialog,
+    CommunitySuperadminDemoteToParticipantDialog,
 } from '@/components/organisms/Community/CommunityLeadActionDialogs';
 
 interface CommunityMembersPageClientProps {
@@ -75,6 +76,11 @@ export function CommunityMembersPageClient({
         null,
     );
     const [demoteSelfLeadOpen, setDemoteSelfLeadOpen] = useState(false);
+    const [superadminDemote, setSuperadminDemote] = useState<{
+        userId: string;
+        name: string;
+        variant: 'self' | 'other';
+    } | null>(null);
     const { data: membersData, isLoading: membersLoading } = useCommunityMembers(communityId, {
         search: debouncedSearchQuery.trim() || undefined,
     });
@@ -110,6 +116,7 @@ export function CommunityMembersPageClient({
 
     const leadManagementAllowed =
         !!isAdmin && communityAllowsLeadManagement(community?.typeTag);
+    const isPlatformSuperadmin = user?.globalRole === 'superadmin';
 
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
         onSuccess: (data) => {
@@ -242,19 +249,46 @@ export function CommunityMembersPageClient({
                     >
                         <Coins className="h-4 w-4" />
                     </button>
-                    {leadManagementAllowed &&
+                    {(leadManagementAllowed || isPlatformSuperadmin) &&
                         member.id === user?.id &&
                         member.role === 'lead' && (
                             <button
                                 type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setDemoteSelfLeadOpen(true);
+                                    if (isPlatformSuperadmin) {
+                                        setSuperadminDemote({
+                                            userId: member.id,
+                                            name: member.displayName || member.username,
+                                            variant: 'self',
+                                        });
+                                    } else {
+                                        setDemoteSelfLeadOpen(true);
+                                    }
                                 }}
                                 className="rounded-full p-2 text-base-content transition-colors hover:bg-base-200"
                                 title={tLeadActions('demoteSelfFromLead')}
                             >
                                 <UserMinus className="h-4 w-4" />
+                            </button>
+                        )}
+                    {isPlatformSuperadmin &&
+                        member.id !== user?.id &&
+                        member.role === 'lead' && (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSuperadminDemote({
+                                        userId: member.id,
+                                        name: member.displayName || member.username,
+                                        variant: 'other',
+                                    });
+                                }}
+                                className="rounded-full p-2 text-violet-600 transition-colors hover:bg-violet-500/10 dark:text-violet-400"
+                                title={tLeadActions('superadminRemoveLeadShort')}
+                            >
+                                <ShieldOff className="h-4 w-4" />
                             </button>
                         )}
                     {leadManagementAllowed &&
@@ -436,6 +470,16 @@ export function CommunityMembersPageClient({
                 communityId={communityId}
                 open={demoteSelfLeadOpen}
                 onOpenChange={setDemoteSelfLeadOpen}
+            />
+            <CommunitySuperadminDemoteToParticipantDialog
+                communityId={communityId}
+                open={!!superadminDemote}
+                onOpenChange={(open) => {
+                    if (!open) setSuperadminDemote(null);
+                }}
+                targetUserId={superadminDemote?.userId ?? null}
+                targetName={superadminDemote?.name ?? ''}
+                variant={superadminDemote?.variant ?? 'other'}
             />
 
             <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
