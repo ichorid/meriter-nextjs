@@ -187,19 +187,26 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const sourceEntityId = (pubItem as { sourceEntityId?: string }).sourceEntityId;
   const sourceEntityType = (pubItem as { sourceEntityType?: 'project' | 'community' }).sourceEntityType;
 
-  // Transform meta to include id fields expected by child components
-  const transformedMeta = {
+  const isCommunityAuthorFeed =
+    pubItem.authorKind === 'community' && !!pubItem.authoredCommunityId;
+
+  /** meta + stable author id for content/actions (community id when posting as community, else human authorId) */
+  const contentMeta = {
     ...pubItem.meta,
     author: {
       ...pubItem.meta.author,
-      id: pubItem.authorId,
+      id:
+        isCommunityAuthorFeed && pubItem.authoredCommunityId
+          ? pubItem.authoredCommunityId
+          : pubItem.authorId,
     },
-    beneficiary: pubItem.meta.beneficiary && pubItem.beneficiaryId
-      ? {
-        ...pubItem.meta.beneficiary,
-        id: pubItem.beneficiaryId,
-      }
-      : undefined,
+    beneficiary:
+      pubItem.meta.beneficiary && pubItem.beneficiaryId
+        ? {
+            ...pubItem.meta.beneficiary,
+            id: pubItem.beneficiaryId,
+          }
+        : undefined,
   };
 
   return (
@@ -216,6 +223,9 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           slug: pubItem.slug,
           createdAt: pubItem.createdAt,
           meta: pubItem.meta,
+          authorKind: pubItem.authorKind,
+          authoredCommunityId: pubItem.authoredCommunityId,
+          publishedByUserId: pubItem.publishedByUserId,
           postType: (pubItem as any).postType,
           isProject: (pubItem as any).isProject,
           permissions: (pubItem as any).permissions,
@@ -249,7 +259,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           beneficiaries: (pubItem as any).beneficiaries,
           methods: (pubItem as any).methods,
           helpNeeded: (pubItem as any).helpNeeded,
-          meta: transformedMeta,
+          meta: contentMeta,
         }}
         className="mb-4"
         onCategoryClick={onCategoryClick}
@@ -318,7 +328,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             permissions: (pubItem as Record<string, unknown>).permissions,
             type: pubItem.type,
             metrics: pubItem.metrics,
-            meta: transformedMeta,
+            meta: contentMeta,
             postType: (pubItem as Record<string, unknown>).postType,
             isProject: (pubItem as Record<string, unknown>).isProject,
             withdrawals: ((pubItem as Record<string, unknown>).withdrawals as Record<string, unknown>) || { totalWithdrawn: 0 },

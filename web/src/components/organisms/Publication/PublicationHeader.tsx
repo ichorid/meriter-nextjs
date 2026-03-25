@@ -64,6 +64,9 @@ interface Publication {
   permissions?: ResourcePermissions;
   deleted?: boolean;
   deletedAt?: string;
+  authorKind?: 'user' | 'community';
+  authoredCommunityId?: string;
+  publishedByUserId?: string;
   editHistory?: Array<{
     editedBy: string;
     editedAt: string;

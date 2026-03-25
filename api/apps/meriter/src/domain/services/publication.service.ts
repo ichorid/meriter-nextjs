@@ -130,6 +130,9 @@ export class PublicationService {
       throw new BadRequestException('helpNeeded array cannot exceed 3 items');
     }
 
+    const postingAsCommunity =
+      dto.sourceEntityType === 'community' && !!dto.sourceEntityId;
+
     // Create publication aggregate
     const publication = Publication.create(
       UserId.fromString(String(authorId)),
@@ -156,6 +159,13 @@ export class PublicationService {
         helpNeeded: dto.helpNeeded,
         sourceEntityId: dto.sourceEntityId,
         sourceEntityType: dto.sourceEntityType,
+        ...(postingAsCommunity
+          ? {
+              authorKind: 'community' as const,
+              authoredCommunityId: dto.sourceEntityId,
+              publishedByUserId: userId,
+            }
+          : {}),
       },
     );
 
