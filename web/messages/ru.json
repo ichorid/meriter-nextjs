@@ -1710,6 +1710,7 @@
     },
     "communities": {
         "title": "Сообщества",
+        "all": "Все",
         "publicCommunities": "Публичные сообщества",
         "privateCommunities": "Приватные сообщества",
         "administeredCommunities": "Администратор сообществ:",

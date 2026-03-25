@@ -1710,6 +1710,7 @@
     },
     "communities": {
         "title": "Communities",
+        "all": "All",
         "publicCommunities": "Public Communities",
         "privateCommunities": "Private Communities",
         "administeredCommunities": "Administrator of communities:",
