@@ -10,7 +10,6 @@ import {
 } from '@/hooks/api/useProjects';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
-import { Label } from '@/components/ui/shadcn/label';
 import {
   Select,
   SelectContent,
@@ -154,43 +153,42 @@ export function ProjectParentSettingsCard({
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="project-parent-select" className="text-sm font-medium">
-              {t('parentCommunitySelectLabel')}
-            </Label>
-            <Select
-              value={choice}
-              onValueChange={setChoice}
-              disabled={readOnly || pending}
+          <Select
+            value={choice}
+            onValueChange={setChoice}
+            disabled={readOnly || pending}
+          >
+            <SelectTrigger
+              id="project-parent-select"
+              aria-label={t('parentCommunitySelectLabel')}
+              className="h-11 w-full rounded-xl text-base"
             >
-              <SelectTrigger id="project-parent-select" className="h-11 w-full rounded-xl text-base">
-                <SelectValue placeholder={t('personalProjectOption')} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={PERSONAL_VALUE}>{t('personalProjectOption')}</SelectItem>
-                {administeredCommunities.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
-                    {administeredCommunities.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-                {memberCommunities.length > 0 && (
-                  <SelectGroup>
-                    <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
-                    {memberCommunities.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+              <SelectValue placeholder={t('personalProjectOption')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={PERSONAL_VALUE}>{t('personalProjectOption')}</SelectItem>
+              {administeredCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('administeredCommunities')}</SelectLabel>
+                  {administeredCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              {memberCommunities.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>{tCommunities('communitiesIMemberOf')}</SelectLabel>
+                  {memberCommunities.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+            </SelectContent>
+          </Select>
 
           {memberOnlySelected && (
             <p className={cn('text-sm text-amber-600 dark:text-amber-500 leading-snug')}>
