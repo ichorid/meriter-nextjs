@@ -269,17 +269,12 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
             {investingEnabled && !isProjectMember && effectiveAmount > 0 && showInvestStyleBlock ? (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-primary">
-                  {tInvesting('yourShare', {
+                  {tInvesting('yourShareProject', {
                     percent: mySharePercentAmongInvestors.toFixed(1),
-                    defaultValue:
-                      'Your share will be ~{percent}% of each withdrawal (to investors)',
                   })}
                 </p>
                 <p className="text-xs text-base-content/60 italic">
-                  {tInvesting('yourShareFootnote', {
-                    defaultValue:
-                      'The percentage may change when other investors add funds — income is shared proportionally.',
-                  })}
+                  {tInvesting('yourShareFootnoteProject')}
                 </p>
               </div>
             ) : null}

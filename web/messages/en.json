@@ -393,6 +393,8 @@
         "balance": "Balance: {balance} merits",
         "yourShare": "When the post closes, you will receive ~{percent}%* of the share allocated to investors (per contract).",
         "yourShareFootnote": "The percentage may change when other investors add funds – on post close, remaining pool and post income are distributed proportionally to investments. You can invest again to increase your share.",
+        "yourShareProject": "On any payout in the project, you will receive ~{percent}%* of the share allocated to investors (per contract).",
+        "yourShareFootnoteProject": "The percentage may change when other investors add funds — on each payout from the project wallet, the amount reserved for investors is distributed proportionally to investments. You can invest again to increase your share.",
         "irrevocableWarning": "Investment is irrevocable. There is no return of merits to your wallet; distribution happens only when the post is closed.",
         "irrevocableWarningFull": "Investment is irrevocable. Your merits will fund the post's appearances in mining; if it gets chosen, it will earn rating merits. When the post is closed, remaining investment (after mining costs) and post income are distributed between investors and the author according to the contract and proportionally to investors' contributions.",
         "poolFromInvestors": "Pool: {amount} merits from {count} investor(s)",
