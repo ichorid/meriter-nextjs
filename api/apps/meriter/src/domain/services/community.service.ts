@@ -7,7 +7,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection } from 'mongoose';
+import { Model, Connection, ClientSession } from 'mongoose';
 import {
   CommunitySchemaClass,
   CommunityDocument,
@@ -1812,11 +1812,47 @@ export class CommunityService {
         updatedAt: now,
       };
     } else {
-      invs.push({ userId, amount, createdAt: now, updatedAt: now });
+      invs.push({ userId, amount, totalEarnings: 0, createdAt: now, updatedAt: now });
     }
     await this.communityModel.updateOne(
       { id: projectId },
       { $set: { projectInvestments: invs, updatedAt: now } },
+    );
+  }
+
+  /**
+   * After a project wallet payout, add investor-bucket merits to each registry row (portfolio totalEarned).
+   */
+  async addProjectInvestorEarningsFromPayout(
+    projectId: string,
+    investorCreditsByUserId: Map<string, number>,
+    session?: ClientSession,
+  ): Promise<void> {
+    if (investorCreditsByUserId.size === 0) return;
+    const project = await this.getCommunity(projectId);
+    if (!project?.isProject) return;
+    const floor2 = (n: number) => Math.floor(n * 100) / 100;
+    const now = new Date();
+    const invs = [...(project.projectInvestments ?? [])];
+    let changed = false;
+    for (const [uid, delta] of investorCreditsByUserId) {
+      if (delta <= 0) continue;
+      const idx = invs.findIndex((i) => i.userId === uid);
+      if (idx < 0) continue;
+      const prev = invs[idx].totalEarnings ?? 0;
+      invs[idx] = {
+        ...invs[idx],
+        totalEarnings: floor2(prev + delta),
+        updatedAt: now,
+      };
+      changed = true;
+    }
+    if (!changed) return;
+    const opts = session ? { session } : {};
+    await this.communityModel.updateOne(
+      { id: projectId },
+      { $set: { projectInvestments: invs, updatedAt: now } },
+      opts,
     );
   }
 

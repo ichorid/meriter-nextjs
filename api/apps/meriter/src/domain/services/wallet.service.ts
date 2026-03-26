@@ -338,4 +338,39 @@ export class WalletService {
     ]).exec();
     return (result && result[0] && result[0].total) || 0;
   }
+
+  /**
+   * Sum investor-bucket project payout credits to the user's global wallet, per project (for portfolio backfill).
+   */
+  async sumProjectInvestorPayoutCreditsByProjects(
+    userId: string,
+    projectIds: string[],
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (projectIds.length === 0) return result;
+    const wallet = await this.walletModel
+      .findOne({ userId, communityId: GLOBAL_COMMUNITY_ID })
+      .select('id')
+      .lean()
+      .exec();
+    if (!wallet?.id) return result;
+    const rows = await this.transactionModel
+      .aggregate<{ _id: string; sum: number }>([
+        {
+          $match: {
+            walletId: wallet.id,
+            type: 'deposit',
+            referenceType: 'project_payout',
+            referenceId: { $in: projectIds },
+            description: { $regex: /\(investor\)\s*$/ },
+          },
+        },
+        { $group: { _id: '$referenceId', sum: { $sum: '$amount' } } },
+      ])
+      .exec();
+    for (const r of rows) {
+      if (r._id) result.set(r._id, r.sum);
+    }
+    return result;
+  }
 }

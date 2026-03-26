@@ -183,6 +183,8 @@ export interface PermissionContext {
 export interface ProjectInvestmentEntry {
   userId: string;
   amount: number;
+  /** Merits credited to this investor from project wallet payouts (investor bucket). */
+  totalEarnings?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -473,6 +475,7 @@ export class CommunitySchemaClass implements Community {
       {
         userId: { type: String, required: true },
         amount: { type: Number, required: true },
+        totalEarnings: { type: Number, default: 0 },
         createdAt: { type: Date, required: true },
         updatedAt: { type: Date, required: true },
       },

@@ -592,6 +592,19 @@ export class InvestmentService {
       });
     }
 
+    const ledgerByProject =
+      await this.walletService.sumProjectInvestorPayoutCreditsByProjects(
+        userId,
+        projectRows
+          .filter((r) => (r.myEntry.totalEarnings ?? 0) === 0)
+          .map((r) => r.project.id),
+      );
+    for (const row of projectRows) {
+      const dbEarn = row.myEntry.totalEarnings ?? 0;
+      const ledgerEarn = ledgerByProject.get(row.project.id) ?? 0;
+      row.sortEarnings = Math.max(dbEarn, ledgerEarn);
+    }
+
     type Unified = PostRow | ProjectRow;
     const unified: Unified[] = [...postRows, ...projectRows];
 
@@ -609,7 +622,10 @@ export class InvestmentService {
     const totalInvested = unified.reduce((s, r) => s + r.sortAmount, 0);
     const totalEarned = unified.reduce(
       (s, r) =>
-        s + (r.kind === 'post' ? r.postData.myInv.totalEarnings ?? 0 : 0),
+        s +
+        (r.kind === 'post'
+          ? r.postData.myInv.totalEarnings ?? 0
+          : r.sortEarnings),
       0,
     );
     const activeCount = unified.filter((r) => r.status === 'active').length;
@@ -710,7 +726,7 @@ export class InvestmentService {
         communityName: parentName ?? proj.name,
         investedAmount: myEntry.amount,
         sharePercent,
-        totalEarnings: 0,
+        totalEarnings: row.sortEarnings,
         postStatus: row.status,
         postRating: 0,
         investmentPool: 0,

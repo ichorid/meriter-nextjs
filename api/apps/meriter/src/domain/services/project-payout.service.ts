@@ -98,7 +98,8 @@ export class ProjectPayoutService {
       );
     }
 
-    const { lines, totalCredits } = await this.computeDistribution(target, projectId, amount);
+    const { lines, totalCredits, investorCreditsByUserId } =
+      await this.computeDistribution(target, projectId, amount);
     const session = options?.session;
 
     const debitReason =
@@ -120,6 +121,14 @@ export class ProjectPayoutService {
         projectId,
         currency,
         `Project payout (${line.bucket})`,
+        session,
+      );
+    }
+
+    if (target.isProject === true && investorCreditsByUserId.size > 0) {
+      await this.communityService.addProjectInvestorEarningsFromPayout(
+        projectId,
+        investorCreditsByUserId,
         session,
       );
     }
@@ -217,8 +226,13 @@ export class ProjectPayoutService {
     project: Community,
     projectId: string,
     T: number,
-  ): Promise<{ lines: PayoutLine[]; totalCredits: number }> {
+  ): Promise<{
+    lines: PayoutLine[];
+    totalCredits: number;
+    investorCreditsByUserId: Map<string, number>;
+  }> {
     const lines: PayoutLine[] = [];
+    const investorCreditsByUserId = new Map<string, number>();
 
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     const participants = await this.userCommunityRoleService.getUsersByRole(projectId, 'participant');
@@ -253,6 +267,8 @@ export class ProjectPayoutService {
         if (share > 0) {
           lines.push({ userId: inv.userId, amount: share, bucket: 'investor' });
           investorPaid += share;
+          const prev = investorCreditsByUserId.get(inv.userId) ?? 0;
+          investorCreditsByUserId.set(inv.userId, floor2(prev + share));
         }
       }
     }
@@ -305,6 +321,6 @@ export class ProjectPayoutService {
       .filter((l) => l.amount > 0);
 
     const totalCredits = merged.reduce((s, l) => s + l.amount, 0);
-    return { lines: merged, totalCredits };
+    return { lines: merged, totalCredits, investorCreditsByUserId };
   }
 }
