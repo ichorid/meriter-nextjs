@@ -47,6 +47,18 @@ const NOTIFY_SUB = {
   stamp: 'text-xs text-base-content/55',
 } as const;
 
+/** Maps API `payoutBucket` (project payout line) to localized role label for notifications. */
+function labelForProjectPayoutBucket(
+  bucket: string,
+  t: (key: string) => string,
+): string {
+  const b = bucket.trim().toLowerCase();
+  if (b === 'founder') return t('projectDistributedPayoutRoleFounder');
+  if (b === 'investor') return t('projectDistributedPayoutRoleInvestor');
+  if (b === 'team') return t('projectDistributedPayoutRoleTeam');
+  return bucket.trim();
+}
+
 const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team join request approved': 'team_join_approved',
   'Team join request rejected': 'team_join_rejected',
@@ -1259,7 +1271,9 @@ export default function NotificationsPage() {
           ) : null}
           {payoutBucket ? (
             <div className={NOTIFY_SUB.bodyMuted}>
-              {t('projectDistributedSubtitleBucket', { bucket: payoutBucket })}
+              {t('projectDistributedSubtitleRole', {
+                role: labelForProjectPayoutBucket(payoutBucket, t),
+              })}
             </div>
           ) : null}
           {projectHref ? (
