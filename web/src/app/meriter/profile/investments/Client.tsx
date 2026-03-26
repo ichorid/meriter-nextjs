@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
@@ -21,6 +22,7 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { useWallets } from '@/hooks/api';
 import type { Wallet } from '@/types/api-v1';
+import { routes } from '@/lib/constants/routes';
 
 const SORT_OPTIONS: { value: MyInvestmentsSort; labelKey: string }[] = [
   { value: 'date', labelKey: 'sortRecent' },
@@ -36,6 +38,7 @@ const FILTER_OPTIONS: { value: MyInvestmentsFilter; labelKey: string }[] = [
 
 export default function ProfileInvestmentsPage() {
   const t = useTranslations('profile.investments');
+  const router = useRouter();
   const { user, isLoading: userLoading, isAuthenticated } = useAuth();
   const [sort, setSort] = useState<MyInvestmentsSort>('date');
   const [filter, setFilter] = useState<MyInvestmentsFilter>('all');
@@ -162,9 +165,19 @@ export default function ProfileInvestmentsPage() {
               <div className="space-y-3">
                 {items.map((item) => (
                   <InvestmentCard
-                    key={item.postId}
+                    key={
+                      item.targetKind === 'project' && item.projectId
+                        ? `proj-${item.projectId}`
+                        : item.postId
+                    }
                     item={item}
-                    onClick={() => setSelectedPostId(item.postId)}
+                    onClick={() => {
+                      if (item.targetKind === 'project' && item.projectId) {
+                        router.push(routes.project(item.projectId));
+                        return;
+                      }
+                      setSelectedPostId(item.postId);
+                    }}
                   />
                 ))}
                 <div ref={observerTarget} className="h-4" />

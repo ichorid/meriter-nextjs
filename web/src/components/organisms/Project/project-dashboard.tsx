@@ -7,6 +7,7 @@ import { PieChart, Users, Wallet } from 'lucide-react';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { ProjectWalletCard } from './ProjectWalletCard';
 import { ProjectPayoutDialog } from './ProjectPayoutDialog';
+import { ProjectInvestorsDialog } from './ProjectInvestorsDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { useProjectWallet } from '@/hooks/api/useProjects';
@@ -15,6 +16,8 @@ export interface ProjectDashboardProps {
   founderSharePercent: number;
   investorSharePercent: number;
   totalMembers: number;
+  /** When true, show investor list control on the Shares card */
+  investingEnabled?: boolean;
   /** Lead or superadmin: show payout from project wallet */
   canPayout?: boolean;
   readOnly?: boolean;
@@ -54,11 +57,13 @@ export function ProjectDashboard({
   founderSharePercent,
   investorSharePercent,
   totalMembers,
+  investingEnabled = false,
   canPayout = false,
   readOnly = false,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
   const [payoutOpen, setPayoutOpen] = useState(false);
+  const [investorsOpen, setInvestorsOpen] = useState(false);
   const { data: wallet } = useProjectWallet(projectId);
   const walletBalance = Math.floor(wallet?.balance ?? 0);
 
@@ -117,6 +122,17 @@ export function ProjectDashboard({
         )}
         <div className="min-h-0 flex-1" aria-hidden />
         <SharesMiniBar founder={founderSharePercent} investor={investorSharePercent} />
+        {investingEnabled && !readOnly && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2 h-9 w-full shrink-0 rounded-xl"
+            onClick={() => setInvestorsOpen(true)}
+          >
+            {t('viewInvestorsButton')}
+          </Button>
+        )}
         {canPayout && !readOnly && walletBalance >= 1 && (
           <Button
             type="button"
@@ -139,6 +155,11 @@ export function ProjectDashboard({
         maxAmount={walletBalance}
       />
     )}
+    <ProjectInvestorsDialog
+      projectId={projectId}
+      open={investorsOpen}
+      onOpenChange={setInvestorsOpen}
+    />
     </>
   );
 }

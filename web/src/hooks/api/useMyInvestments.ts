@@ -13,7 +13,9 @@ export function useMyInvestments(
   const [page, setPage] = useState(1);
   const [accumulatedItems, setAccumulatedItems] = useState<
     Array<{
+      targetKind: 'post' | 'project';
       postId: string;
+      projectId?: string;
       postTitle: string;
       postAuthor: { name: string; avatarUrl?: string };
       authorId: string;

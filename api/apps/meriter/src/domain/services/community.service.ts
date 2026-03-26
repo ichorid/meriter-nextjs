@@ -1828,6 +1828,18 @@ export class CommunityService {
       .exec();
     return rows as unknown as Community[];
   }
+
+  /** Projects (isProject) where the user has at least one projectInvestments row. */
+  async findProjectsWhereUserInvested(userId: string): Promise<Community[]> {
+    const rows = await this.communityModel
+      .find({
+        isProject: true,
+        projectInvestments: { $elemMatch: { userId } },
+      })
+      .lean()
+      .exec();
+    return rows as unknown as Community[];
+  }
 }
 
 /**

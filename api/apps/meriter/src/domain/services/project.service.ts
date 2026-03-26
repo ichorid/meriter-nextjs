@@ -908,16 +908,39 @@ export class ProjectService {
   async listProjectInvestments(
     projectId: string,
     viewerUserId: string,
-  ): Promise<ProjectInvestmentEntry[]> {
-    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
-    if (!role) {
-      throw new ForbiddenException('Only project members can view investments');
-    }
+  ): Promise<
+    Array<
+      ProjectInvestmentEntry & {
+        displayName: string;
+        avatarUrl?: string;
+        sharePercent: number;
+      }
+    >
+  > {
     const project = await this.communityService.getCommunity(projectId);
     if (!project?.isProject) {
       throw new NotFoundException('Project not found');
     }
-    return project.projectInvestments ?? [];
+    const investingEnabled = project.settings?.investingEnabled === true;
+    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
+    if (!investingEnabled && !role) {
+      throw new ForbiddenException('Only project members can view investments');
+    }
+    const raw = project.projectInvestments ?? [];
+    const total = raw.reduce((s, i) => s + (i.amount ?? 0), 0);
+    const enriched = await Promise.all(
+      raw.map(async (inv) => {
+        const u = await this.userService.getUserById(inv.userId);
+        return {
+          ...inv,
+          displayName: u?.displayName ?? 'Unknown',
+          avatarUrl: u?.avatarUrl,
+          sharePercent: total > 0 ? (inv.amount / total) * 100 : 0,
+        };
+      }),
+    );
+    enriched.sort((a, b) => b.amount - a.amount);
+    return enriched;
   }
 
   async previewProjectPayout(projectId: string, amount: number, viewerUserId: string) {

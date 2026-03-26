@@ -11,6 +11,10 @@ import {
   PublicationDocument,
   type PublicationInvestment,
 } from '../models/publication/publication.schema';
+import type {
+  Community,
+  ProjectInvestmentEntry,
+} from '../models/community/community.schema';
 import { WalletService } from './wallet.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
@@ -70,13 +74,18 @@ export interface InvestmentBreakdownResult {
   noAuthorWalletSpend: boolean;
 }
 
-/** F-2: Portfolio list item (one post where user is investor). */
+/** F-2: Portfolio list item (post investment or project wallet investment). */
 export interface MyPortfolioItem {
+  /** `post` — publication investment; `project` — project cooperative pool investment */
+  targetKind: 'post' | 'project';
+  /** Publication id when targetKind === 'post' */
   postId: string;
+  /** Project community id when targetKind === 'project' */
+  projectId?: string;
   postTitle: string;
-  /** Post author (for display) */
+  /** Post author or project founder (for display) */
   postAuthor: { name: string; avatarUrl?: string };
-  /** Post author ID (for profile link) */
+  /** Author / founder user id */
   authorId: string;
   communityId: string;
   communityName: string;
@@ -459,7 +468,7 @@ export class InvestmentService {
 
   /**
    * F-2: Get current user's investment portfolio with stats and paginated list.
-   * Uses aggregation for efficiency; enriches with author and community names.
+   * Merges publication investments and project cooperative-pool investments.
    */
   async getMyPortfolio(
     userId: string,
@@ -468,14 +477,8 @@ export class InvestmentService {
     const filterMatch =
       options.filter === 'all' ? {} : { status: options.filter };
     const skip = (options.page - 1) * options.limit;
-    const sortKey =
-      options.sort === 'date'
-        ? 'myInv.createdAt'
-        : options.sort === 'amount'
-          ? 'myInv.amount'
-          : 'myInv.totalEarnings';
 
-    const pipeline: PipelineStage[] = [
+    const postPipeline: PipelineStage[] = [
       {
         $match: {
           'investments.investorId': userId,
@@ -501,131 +504,218 @@ export class InvestmentService {
       },
       { $match: { myInv: { $ne: null } } },
       {
-        $facet: {
-          stats: [
-            {
-              $group: {
-                _id: null,
-                totalInvested: { $sum: '$myInv.amount' },
-                totalEarned: { $sum: { $ifNull: ['$myInv.totalEarnings', 0] } },
-                activeCount: {
-                  $sum: {
-                    $cond: [{ $eq: ['$status', 'active'] }, 1, 0],
-                  },
-                },
-                closedCount: {
-                  $sum: {
-                    $cond: [{ $eq: ['$status', 'closed'] }, 1, 0],
-                  },
-                },
-              },
-            },
-          ],
-          totalCount: [{ $count: 'total' }],
-          items: [
-            { $sort: { [sortKey]: -1 } },
-            { $skip: skip },
-            { $limit: options.limit },
-            {
-              $project: {
-                id: 1,
-                title: 1,
-                authorId: 1,
-                communityId: 1,
-                status: 1,
-                'metrics.score': 1,
-                investmentPool: 1,
-                investmentPoolTotal: 1,
-                ttlExpiresAt: 1,
-                closingSummary: 1,
-                myInv: 1,
-              },
-            },
-          ],
+        $project: {
+          id: 1,
+          title: 1,
+          authorId: 1,
+          communityId: 1,
+          status: 1,
+          'metrics.score': 1,
+          investmentPool: 1,
+          investmentPoolTotal: 1,
+          ttlExpiresAt: 1,
+          closingSummary: 1,
+          myInv: 1,
         },
       },
     ];
 
-    const result = await this.publicationModel
+    const postRaw = await this.publicationModel
       .aggregate<{
-        stats: Array<{
-          totalInvested: number;
-          totalEarned: number;
-          activeCount: number;
-          closedCount: number;
-        }>;
-        totalCount: Array<{ total: number }>;
-        items: Array<{
-          id: string;
-          title?: string;
-          authorId: string;
-          communityId: string;
-          status?: 'active' | 'closed';
-          metrics?: { score?: number };
-          investmentPool?: number;
-          investmentPoolTotal?: number;
-          ttlExpiresAt?: Date | null;
-          closingSummary?: unknown;
-          myInv: PublicationInvestment;
-        }>;
-      }>(pipeline)
+        id: string;
+        title?: string;
+        authorId: string;
+        communityId: string;
+        status?: 'active' | 'closed';
+        metrics?: { score?: number };
+        investmentPool?: number;
+        investmentPoolTotal?: number;
+        ttlExpiresAt?: Date | null;
+        closingSummary?: unknown;
+        myInv: PublicationInvestment;
+      }>(postPipeline)
       .exec();
 
-    const facet = result[0];
-    const statsRow = facet?.stats?.[0];
-    const totalInvested = statsRow?.totalInvested ?? 0;
-    const totalEarned = statsRow?.totalEarned ?? 0;
-    const activeCount = statsRow?.activeCount ?? 0;
-    const closedCount = statsRow?.closedCount ?? 0;
+    type PostRow = {
+      kind: 'post';
+      sortDate: Date;
+      sortAmount: number;
+      sortEarnings: number;
+      status: 'active' | 'closed';
+      postData: (typeof postRaw)[number];
+    };
+
+    const postRows: PostRow[] = postRaw.map((d) => ({
+      kind: 'post',
+      sortDate: new Date(d.myInv.updatedAt),
+      sortAmount: d.myInv.amount,
+      sortEarnings: d.myInv.totalEarnings ?? 0,
+      status: (d.status ?? 'active') === 'closed' ? 'closed' : 'active',
+      postData: d,
+    }));
+
+    const projectCommunities =
+      await this.communityService.findProjectsWhereUserInvested(userId);
+
+    type ProjectRow = {
+      kind: 'project';
+      sortDate: Date;
+      sortAmount: number;
+      sortEarnings: number;
+      status: 'active' | 'closed';
+      project: Community;
+      myEntry: ProjectInvestmentEntry;
+      totalInv: number;
+    };
+
+    const projectRows: ProjectRow[] = [];
+    for (const proj of projectCommunities) {
+      const myEntry = proj.projectInvestments?.find((i) => i.userId === userId);
+      if (!myEntry) continue;
+      const ps = proj.projectStatus ?? 'active';
+      const st: 'active' | 'closed' = ps === 'active' ? 'active' : 'closed';
+      if (options.filter === 'active' && st !== 'active') continue;
+      if (options.filter === 'closed' && st !== 'closed') continue;
+      const totalInv = (proj.projectInvestments ?? []).reduce(
+        (s, i) => s + (i.amount ?? 0),
+        0,
+      );
+      projectRows.push({
+        kind: 'project',
+        sortDate: new Date(myEntry.updatedAt),
+        sortAmount: myEntry.amount,
+        sortEarnings: 0,
+        status: st,
+        project: proj,
+        myEntry,
+        totalInv,
+      });
+    }
+
+    type Unified = PostRow | ProjectRow;
+    const unified: Unified[] = [...postRows, ...projectRows];
+
+    const cmp = (a: Unified, b: Unified) => {
+      if (options.sort === 'date') {
+        return b.sortDate.getTime() - a.sortDate.getTime();
+      }
+      if (options.sort === 'amount') {
+        return b.sortAmount - a.sortAmount;
+      }
+      return b.sortEarnings - a.sortEarnings;
+    };
+    unified.sort(cmp);
+
+    const totalInvested = unified.reduce((s, r) => s + r.sortAmount, 0);
+    const totalEarned = unified.reduce(
+      (s, r) =>
+        s + (r.kind === 'post' ? r.postData.myInv.totalEarnings ?? 0 : 0),
+      0,
+    );
+    const activeCount = unified.filter((r) => r.status === 'active').length;
+    const closedCount = unified.filter((r) => r.status === 'closed').length;
     const sroi =
       totalInvested > 0
         ? ((totalEarned - totalInvested) / totalInvested) * 100
         : 0;
-    const totalCount = facet?.totalCount?.[0]?.total ?? 0;
-    const rawItems = facet?.items ?? [];
+    const totalCount = unified.length;
 
-    const authorIds = [...new Set(rawItems.map((d) => d.authorId))];
-    const communityIds = [...new Set(rawItems.map((d) => d.communityId))];
+    const pageSlice = unified.slice(skip, skip + options.limit);
+
+    const authorIds = new Set<string>();
+    const communityIds = new Set<string>();
+    for (const row of pageSlice) {
+      if (row.kind === 'post') {
+        authorIds.add(row.postData.authorId);
+        communityIds.add(row.postData.communityId);
+      } else {
+        const fid = row.project.founderUserId;
+        if (fid) authorIds.add(fid);
+        if (row.project.parentCommunityId) {
+          communityIds.add(row.project.parentCommunityId);
+        }
+      }
+    }
+
+    const authorIdList = [...authorIds];
+    const communityIdList = [...communityIds];
     const [authors, communities] = await Promise.all([
-      Promise.all(authorIds.map((id) => this.userService.getUserById(id))),
+      Promise.all(authorIdList.map((id) => this.userService.getUserById(id))),
       Promise.all(
-        communityIds.map((id) => this.communityService.getCommunity(id)),
+        communityIdList.map((id) => this.communityService.getCommunity(id)),
       ),
     ]);
     const authorMap = new Map(
-      authorIds.map((id, i) => [id, authors[i] ?? null]),
+      authorIdList.map((id, i) => [id, authors[i] ?? null]),
     );
     const communityMap = new Map(
-      communityIds.map((id, i) => [id, communities[i] ?? null]),
+      communityIdList.map((id, i) => [id, communities[i] ?? null]),
     );
 
-    const items: MyPortfolioItem[] = rawItems.map((d) => {
-      const myInv = d.myInv;
-      const poolTotal = d.investmentPoolTotal ?? 0;
+    const items: MyPortfolioItem[] = pageSlice.map((row) => {
+      if (row.kind === 'post') {
+        const d = row.postData;
+        const myInv = d.myInv;
+        const poolTotal = d.investmentPoolTotal ?? 0;
+        const sharePercent =
+          poolTotal > 0 ? (myInv.amount / poolTotal) * 100 : 0;
+        const lastWithdrawal =
+          myInv.earningsHistory?.filter((e) => e.reason === 'withdrawal').pop();
+        const author = authorMap.get(d.authorId);
+        const community = communityMap.get(d.communityId);
+        return {
+          targetKind: 'post' as const,
+          postId: d.id,
+          projectId: undefined,
+          postTitle: d.title ?? '',
+          postAuthor: {
+            name: author?.displayName ?? 'Unknown',
+            avatarUrl: author?.avatarUrl,
+          },
+          authorId: d.authorId,
+          communityId: d.communityId,
+          communityName: community?.name ?? 'Community',
+          investedAmount: myInv.amount,
+          sharePercent,
+          totalEarnings: myInv.totalEarnings ?? 0,
+          postStatus: d.status ?? 'active',
+          postRating: d.metrics?.score ?? 0,
+          investmentPool: d.investmentPool ?? 0,
+          ttlExpiresAt: d.ttlExpiresAt ?? null,
+          lastWithdrawalDate: lastWithdrawal?.date ?? null,
+        };
+      }
+      const proj = row.project;
+      const myEntry = row.myEntry;
+      const totalInv = row.totalInv;
       const sharePercent =
-        poolTotal > 0 ? (myInv.amount / poolTotal) * 100 : 0;
-      const lastWithdrawal =
-        myInv.earningsHistory?.filter((e) => e.reason === 'withdrawal').pop();
-      const author = authorMap.get(d.authorId);
-      const community = communityMap.get(d.communityId);
+        totalInv > 0 ? (myEntry.amount / totalInv) * 100 : 0;
+      const founderId = proj.founderUserId ?? '';
+      const founder = founderId ? authorMap.get(founderId) : null;
+      const parentId = proj.parentCommunityId;
+      const parentName = parentId
+        ? communityMap.get(parentId)?.name
+        : undefined;
       return {
-        postId: d.id,
-        postTitle: d.title ?? '',
+        targetKind: 'project' as const,
+        postId: '',
+        projectId: proj.id,
+        postTitle: proj.name,
         postAuthor: {
-          name: author?.displayName ?? 'Unknown',
-          avatarUrl: author?.avatarUrl,
+          name: founder?.displayName ?? 'Unknown',
+          avatarUrl: founder?.avatarUrl,
         },
-        authorId: d.authorId,
-        communityId: d.communityId,
-        communityName: community?.name ?? 'Community',
-        investedAmount: myInv.amount,
+        authorId: founderId,
+        communityId: parentId ?? proj.id,
+        communityName: parentName ?? proj.name,
+        investedAmount: myEntry.amount,
         sharePercent,
-        totalEarnings: myInv.totalEarnings ?? 0,
-        postStatus: d.status ?? 'active',
-        postRating: d.metrics?.score ?? 0,
-        investmentPool: d.investmentPool ?? 0,
-        ttlExpiresAt: d.ttlExpiresAt ?? null,
-        lastWithdrawalDate: lastWithdrawal?.date ?? null,
+        totalEarnings: 0,
+        postStatus: row.status,
+        postRating: 0,
+        investmentPool: 0,
+        ttlExpiresAt: null,
+        lastWithdrawalDate: null,
       };
     });
 

@@ -135,6 +135,8 @@ export function useTopUpWallet() {
     onSuccess: (data, variables) => {
       void utils.project.getWallet.invalidate({ projectId: variables.projectId });
       void utils.project.getById.invalidate({ id: variables.projectId });
+      void utils.project.listInvestments.invalidate({ projectId: variables.projectId });
+      void utils.users.myInvestments.invalidate();
       void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
       void utils.wallets.getAll.invalidate();
       if (data.mode === 'investment') {
@@ -153,6 +155,19 @@ export function useProjectWallet(projectId: string | null) {
   return trpc.project.getWallet.useQuery(
     { projectId: projectId! },
     { enabled: !!projectId, staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function useProjectInvestmentsList(
+  projectId: string | null,
+  opts?: { enabled?: boolean },
+) {
+  return trpc.project.listInvestments.useQuery(
+    { projectId: projectId! },
+    {
+      enabled: !!projectId && (opts?.enabled ?? true),
+      staleTime: STALE_TIME.SHORT,
+    },
   );
 }
 

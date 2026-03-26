@@ -7,7 +7,9 @@ import { cn } from '@/lib/utils';
 import { routes } from '@/lib/constants/routes';
 
 export interface InvestmentCardItem {
+  targetKind: 'post' | 'project';
   postId: string;
+  projectId?: string;
   postTitle: string;
   postAuthor: { name: string; avatarUrl?: string };
   authorId: string;
@@ -35,7 +37,11 @@ function postLink(communityId: string, postId: string): string {
 export function InvestmentCard({ item, onClick }: InvestmentCardProps) {
   const t = useTranslations('profile.investments');
 
-  const link = postLink(item.communityId, item.postId);
+  const kind = item.targetKind ?? 'post';
+  const isProject = kind === 'project' && item.projectId;
+  const link = isProject
+    ? routes.project(item.projectId as string)
+    : postLink(item.communityId, item.postId);
 
   return (
     <div
@@ -56,15 +62,19 @@ export function InvestmentCard({ item, onClick }: InvestmentCardProps) {
             {item.postTitle || t('untitledPost')}
           </Link>
           <p className="text-sm text-base-content/60 mt-0.5">
-            <Link
-              href={routes.userProfile(item.authorId)}
-              onClick={(e) => e.stopPropagation()}
-              className="hover:underline"
-            >
-              {item.postAuthor.name}
-            </Link>
+            {item.authorId ? (
+              <Link
+                href={routes.userProfile(item.authorId)}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:underline"
+              >
+                {item.postAuthor.name}
+              </Link>
+            ) : (
+              <span>{item.postAuthor.name}</span>
+            )}
             {' · '}
-            {item.communityName}
+            {isProject ? t('projectInvestmentContext', { name: item.communityName }) : item.communityName}
           </p>
         </div>
         <span
