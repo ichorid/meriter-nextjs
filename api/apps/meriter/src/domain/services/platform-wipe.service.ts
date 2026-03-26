@@ -5,6 +5,7 @@ import { UserService } from './user.service';
 import { PlatformSettingsService } from './platform-settings.service';
 import { CommunityService } from './community.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import { PLATFORM_WIPE_SUPERADMIN } from '../common/constants/platform-bootstrap.constants';
 
 const PRIORITY_HUB_TAGS = [
   'future-vision',
@@ -14,8 +15,9 @@ const PRIORITY_HUB_TAGS = [
 ] as const;
 
 /**
- * Superadmin-only destructive reset: removes all users except superadmins, all communities
- * except the global merit hub and the four priority hubs, and all related domain data.
+ * Superadmin-only destructive reset: deletes **all** users, recreates one bootstrap superadmin
+ * (email in PLATFORM_WIPE_SUPERADMIN), removes all communities except the global merit hub and the
+ * four priority hubs, and clears all related domain data.
  *
  * Preserves: categories, about_* collections. Resets platform_settings and priority hubs to code bootstrap.
  *
@@ -103,46 +105,30 @@ export class PlatformWipeService {
     });
     this.logger.log(`Deleted non-protected communities: ${commDelete.deletedCount}`);
 
-    const userDelete = await db.collection('users').deleteMany({
-      globalRole: { $ne: 'superadmin' },
+    const userDeleteAll = await db.collection('users').deleteMany({});
+    this.logger.log(`Deleted all users: ${userDeleteAll.deletedCount}`);
+
+    const bootstrapUser = await this.userService.createOrUpdateUser({
+      authProvider: 'email',
+      authId: PLATFORM_WIPE_SUPERADMIN.email,
+      username: PLATFORM_WIPE_SUPERADMIN.username,
+      firstName: PLATFORM_WIPE_SUPERADMIN.firstName,
+      lastName: PLATFORM_WIPE_SUPERADMIN.lastName,
+      displayName: PLATFORM_WIPE_SUPERADMIN.displayName,
+      globalRole: 'superadmin',
     });
-    this.logger.log(`Deleted non-superadmin users: ${userDelete.deletedCount}`);
 
-    const superadmins = await db
-      .collection('users')
-      .find({ globalRole: 'superadmin' })
-      .project({ id: 1 })
-      .toArray();
-    const superadminIds = superadmins
-      .map((u) => (u as { id?: string }).id)
-      .filter((id): id is string => typeof id === 'string');
-
-    if (superadminIds.length === 0) {
-      this.logger.error('Platform wipe finished with zero superadmin users left');
-    }
+    const superadminIds = [bootstrapUser.id];
 
     await db.collection('communities').updateMany(
       { id: { $in: [...protectedIds] } },
       { $set: { members: superadminIds, updatedAt: new Date() } },
     );
 
-    await db.collection('users').updateMany(
-      { globalRole: 'superadmin' },
-      {
-        $set: {
-          communityMemberships: [],
-          communityTags: [],
-          updatedAt: new Date(),
-        },
-      },
-    );
-
     await this.communityService.resetPriorityCommunitiesAfterPlatformWipe();
     await this.platformSettingsService.resetAfterPlatformWipe();
 
-    for (const id of superadminIds) {
-      await this.userService.ensureUserInBaseCommunities(id);
-    }
+    await this.userService.ensureUserInBaseCommunities(bootstrapUser.id);
 
     this.logger.warn('Platform wipe completed');
     return { superadminCount: superadminIds.length };

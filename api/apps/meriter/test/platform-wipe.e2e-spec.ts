@@ -10,9 +10,9 @@ import {
   PublicationDocument,
 } from '../src/domain/models/publication/publication.schema';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
+import { PLATFORM_WIPE_SUPERADMIN } from '../src/domain/common/constants/platform-bootstrap.constants';
 import { PlatformWipeService } from '../src/domain/services/platform-wipe.service';
 import { PlatformSettingsService } from '../src/domain/services/platform-settings.service';
-import { UserService } from '../src/domain/services/user.service';
 
 describe('PlatformWipeService (e2e)', () => {
   jest.setTimeout(90000);
@@ -24,7 +24,6 @@ describe('PlatformWipeService (e2e)', () => {
   let publicationModel: Model<PublicationDocument>;
   let platformWipeService: PlatformWipeService;
   let platformSettingsService: PlatformSettingsService;
-  let userService: UserService;
 
   beforeAll(async () => {
     const ctx = await TestSetupHelper.createTestApp();
@@ -35,33 +34,14 @@ describe('PlatformWipeService (e2e)', () => {
     publicationModel = app.get(getModelToken(PublicationSchemaClass.name));
     platformWipeService = app.get(PlatformWipeService);
     platformSettingsService = app.get(PlatformSettingsService);
-    userService = app.get(UserService);
   });
 
   afterAll(async () => {
     await TestSetupHelper.cleanup({ app, testDb });
   });
 
-  it('removes non-superadmin users, local communities, and content; keeps hubs and superadmin', async () => {
+  it('removes all users and content; recreates bootstrap superadmin; keeps hubs', async () => {
     const now = new Date();
-
-    const superId = uid();
-    await userModel.create({
-      id: superId,
-      authProvider: 'fake',
-      authId: `wipe_super_${superId}`,
-      displayName: 'Wipe Superadmin',
-      username: `wipe_super_${superId}`,
-      firstName: 'Super',
-      lastName: 'Admin',
-      globalRole: 'superadmin',
-      communityMemberships: [],
-      communityTags: [],
-      profile: {},
-      createdAt: now,
-      updatedAt: now,
-    });
-    await userService.ensureUserInBaseCommunities(superId);
 
     const regularId = uid();
     await userModel.create({
@@ -136,13 +116,16 @@ describe('PlatformWipeService (e2e)', () => {
     await platformSettingsService.update({ welcomeMeritsGlobal: 3 });
 
     const result = await platformWipeService.wipeUserContentAndLocalData();
-    expect(result.superadminCount).toBeGreaterThanOrEqual(1);
+    expect(result.superadminCount).toBe(1);
 
     expect(await platformSettingsService.getWelcomeMeritsGlobal()).toBe(100);
 
     const users = await userModel.find({}).lean();
-    expect(users.every((u) => u.globalRole === 'superadmin')).toBe(true);
-    expect(users.some((u) => u.id === superId)).toBe(true);
+    expect(users).toHaveLength(1);
+    expect(users[0].globalRole).toBe('superadmin');
+    expect(users[0].authProvider).toBe('email');
+    expect(users[0].authId).toBe(PLATFORM_WIPE_SUPERADMIN.email);
+    expect(users[0].displayName).toBe(PLATFORM_WIPE_SUPERADMIN.displayName);
 
     const extraTeam = await communityModel.findOne({ id: extraTeamId }).lean();
     expect(extraTeam).toBeNull();
@@ -164,5 +147,12 @@ describe('PlatformWipeService (e2e)', () => {
     const fvAfter = await communityModel.findOne({ typeTag: 'future-vision' }).lean();
     expect(fvAfter?.name).toBe('Образы будущего');
     expect(fvAfter?.votingSettings).toBeUndefined();
+
+    const marathonAfter = await communityModel.findOne({ typeTag: 'marathon-of-good' }).lean();
+    expect(marathonAfter?.name).toBe('Биржа');
+    expect(marathonAfter?.settings?.investingEnabled).toBe(true);
+
+    const teamProjectsAfter = await communityModel.findOne({ typeTag: 'team-projects' }).lean();
+    expect(teamProjectsAfter?.name).toBe('Проекты');
   });
 });

@@ -201,19 +201,21 @@ export function EmailAuthDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="relative">
+                    <DialogTitle className="flex items-center gap-2 pr-8 text-left">
                         {step === "otp" && (
                             <Button
+                                type="button"
                                 variant="ghost"
-                                size="sm"
+                                size="icon"
                                 onClick={handleBack}
                                 disabled={isLoading}
-                                className="absolute left-0 top-0 p-0 h-auto hover:bg-transparent"
+                                className="h-9 w-9 shrink-0 -ml-1"
+                                aria-label={tCommon("ariaLabels.back")}
                             >
                                 <ArrowLeft className="h-5 w-5" />
                             </Button>
                         )}
-                        {t("title")}
+                        <span className="min-w-0 flex-1 leading-tight">{t("title")}</span>
                     </DialogTitle>
                     <DialogDescription>
                         {step === "email" ? t("description") : t("otpDescription")}

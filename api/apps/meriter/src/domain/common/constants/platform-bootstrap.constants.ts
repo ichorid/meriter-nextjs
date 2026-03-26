@@ -1,6 +1,19 @@
 import { DECREE_809_TAGS } from '@meriter/shared-types';
 
 /**
+ * Single superadmin recreated after platform wipe (all other users deleted).
+ * Sign in via email OTP using this address.
+ */
+export const PLATFORM_WIPE_SUPERADMIN = {
+  email: 'dmitrsosnin@gmail.com',
+  displayName: 'Дмитрий',
+  firstName: 'Дмитрий',
+  lastName: '',
+  /** Stable username for the bootstrap account (email auth). */
+  username: 'dmitrsosnin',
+} as const;
+
+/**
  * Canonical defaults for priority hubs and global community.
  * Used by CommunityService.ensureBaseCommunities and post-wipe reset (must stay in sync).
  */
@@ -20,8 +33,9 @@ export const PRIORITY_HUB_BOOTSTRAP = {
     },
   },
   'marathon-of-good': {
-    name: 'Марафон Добра',
-    description: 'Группа для отчетов о добрых делах.',
+    name: 'Биржа',
+    description:
+      'Биржа социальных инвестиций: посты, обсуждения и инвестиции в идеи (Марафон добра).',
     settings: {
       currencyNames: {
         singular: 'merit',
@@ -29,11 +43,13 @@ export const PRIORITY_HUB_BOOTSTRAP = {
         genitive: 'merits',
       },
       dailyEmission: 10,
+      allowWithdraw: true,
+      investingEnabled: true,
     },
   },
   'team-projects': {
-    name: 'Проекты команд',
-    description: 'Группа для публикации проектов команд.',
+    name: 'Проекты',
+    description: 'Хаб командных проектов и публикаций проектов.',
     settings: {
       currencyNames: {
         singular: 'merit',
