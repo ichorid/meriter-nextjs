@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Community } from '@meriter/shared-types';
@@ -10,7 +9,7 @@ import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeShar
 import { Badge } from '@/components/ui/shadcn/badge';
 import { useOpenTickets } from '@/hooks/api/useProjects';
 import { useApplyForTicket } from '@/hooks/api/useTickets';
-import { useUIStore } from '@/stores/ui.store';
+import { TopUpWalletDialog } from './TopUpWalletDialog';
 import { shareUrl } from '@shared/lib/share-utils';
 import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
@@ -20,8 +19,6 @@ import { NeutralTicketPublicCard } from './NeutralTicketPublicCard';
 
 export interface ProjectCardProps {
   project: Community;
-  /** When project has an associated publication (e.g. on Birzha), pass its id for Support voting. */
-  publicationId?: string | null;
   /** Score from API when available (e.g. from publication). */
   score?: number;
   /** Member/participant count when available. */
@@ -45,7 +42,6 @@ function projectGradient(name: string): [string, string] {
 
 export function ProjectCard({
   project,
-  publicationId = null,
   score = 0,
   memberCount = 0,
   onValueTagClick,
@@ -53,12 +49,11 @@ export function ProjectCard({
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const tShared = useTranslations('shared');
-  const router = useRouter();
   const { user } = useAuth();
-  const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const { data: openTickets = [] } = useOpenTickets(project.id);
   const applyForTicket = useApplyForTicket();
   const [openTasksExpanded, setOpenTasksExpanded] = useState(false);
+  const [topUpOpen, setTopUpOpen] = useState(false);
   const status = project.projectStatus ?? 'active';
   const statusLabel =
     status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
@@ -79,11 +74,7 @@ export function ProjectCard({
   const handleSupportClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (publicationId) {
-      openVotingPopup(publicationId, 'publication', 'wallet-only');
-    } else {
-      router.push(projectUrl);
-    }
+    setTopUpOpen(true);
   };
 
   return (
@@ -248,6 +239,7 @@ export function ProjectCard({
           ) : null}
         </div>
       )}
+      <TopUpWalletDialog projectId={project.id} open={topUpOpen} onOpenChange={setTopUpOpen} />
     </div>
   );
 }
