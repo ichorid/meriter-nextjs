@@ -226,6 +226,7 @@ export function useVoteOnPublicationWithComment() {
         await utils.publications.getById.invalidate({ id: vars.targetId });
         await utils.publications.getById.refetch({ id: vars.targetId });
         await invalidateFutureVisionsList(utils);
+        // All variants (postType, ticketStatus filters) share the procedure; invalidate entire cache.
         await utils.ticket.getByProject.invalidate();
       }
 

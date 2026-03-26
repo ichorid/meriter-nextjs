@@ -78,15 +78,19 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     return isAuthor || isBeneficiary;
   }, [user?.id, publication, votingTargetType]);
   
-  // Project communities: backend ContextCurrencyModeFactor requires wallet-only (no daily quota on posts/tasks).
   const isProjectCommunity = community?.isProject === true;
 
-  // Force wallet-only mode for own posts and for any vote in a project space
+  /** Match API: project defaults to quota-and-wallet unless community explicitly sets another source. */
   const effectiveVotingMode = useMemo(() => {
     if (isOwnPost) return 'wallet-only';
-    if (isProjectCommunity) return 'wallet-only';
+    if (isProjectCommunity) {
+      const src = community?.votingSettings?.currencySource;
+      if (src === 'quota-only') return 'quota-only';
+      if (src === 'wallet-only') return 'wallet-only';
+      return votingMode ?? 'standard';
+    }
     return votingMode ?? 'standard';
-  }, [isOwnPost, isProjectCommunity, votingMode]);
+  }, [isOwnPost, isProjectCommunity, community?.votingSettings?.currencySource, votingMode]);
 
   // Comment mode from community (neutralOnly = only text; weightedOnly = weight required; all = both allowed)
   const commentMode = useMemo(

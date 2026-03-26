@@ -117,13 +117,14 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             // Own posts always use wallet-only
             return 'wallet-only';
         }
-        if (community?.isProject === true) {
-            // Matches API ContextCurrencyModeFactor: project posts/tasks are wallet-only
-            return 'wallet-only';
-        }
-        return community?.votingSettings?.currencySource || 
-            (community?.typeTag === 'marathon-of-good' ? 'quota-only' : 
-             community?.typeTag === 'future-vision' ? 'wallet-only' : 'quota-and-wallet');
+        return (
+            community?.votingSettings?.currencySource ||
+            (community?.typeTag === 'marathon-of-good'
+                ? 'quota-only'
+                : community?.typeTag === 'future-vision'
+                  ? 'wallet-only'
+                  : 'quota-and-wallet')
+        );
     }, [community, isOwnPost]);
     
     // Determine which hint text to show

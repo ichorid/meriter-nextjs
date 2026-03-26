@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { MessagesSquare } from 'lucide-react';
+import { MessagesSquare, TrendingUp } from 'lucide-react';
 import { useTickets } from '@/hooks/api/useTickets';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { useCommunity } from '@/hooks/api';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
+import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 
@@ -68,45 +69,81 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
 
   return (
     <ul className="space-y-3">
-      {list.map((post: { id: string; title?: string; content: string; authorId: string }) => {
-        const showVote = Boolean(user?.id && post.authorId !== user.id);
-        return (
-          <li key={post.id}>
-            <div
-              className={cn(
-                'relative flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-card-foreground shadow-none transition-colors duration-200 hover:bg-white/[0.07]',
-                showVote && 'pb-12 sm:pb-4',
-              )}
-            >
-              <Link
-                href={routes.communityPost(projectId, post.id)}
-                className={cn('min-w-0 flex-1 block', showVote && 'sm:pr-28')}
-              >
-                {post.title && <div className="font-medium">{post.title}</div>}
-                <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                  {plainTextExcerpt(post.content)}
-                </div>
-                <AuthorLabel userId={post.authorId} />
-              </Link>
-              {showVote ? (
-                <div className="absolute bottom-3 right-4">
-                  <Button
+      {list.map(
+        (post: {
+          id: string;
+          title?: string;
+          content: string;
+          authorId: string;
+          metrics?: { score?: number; upvotes?: number };
+        }) => {
+          const showVote = Boolean(user?.id && post.authorId !== user.id);
+          const score = post.metrics?.score ?? 0;
+          return (
+            <li key={post.id}>
+              <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-card-foreground shadow-none transition-colors duration-200 hover:bg-white/[0.07]">
+                <Link href={routes.communityPost(projectId, post.id)} className="min-w-0 flex-1 block">
+                  {post.title && <div className="font-medium">{post.title}</div>}
+                  <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {plainTextExcerpt(post.content)}
+                  </div>
+                  <AuthorLabel userId={post.authorId} />
+                </Link>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                  <button
                     type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 shrink-0 px-3 text-xs"
-                    onClick={() =>
-                      openVotingPopup(post.id, 'publication', resolvePublicationVotingMode(community))
-                    }
+                    className="flex min-w-0 items-center gap-1.5 text-sm hover:bg-white/10 rounded-lg px-2 py-1.5 transition-colors"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openVotingPopup(
+                        post.id,
+                        'publication',
+                        resolvePublicationVotingMode(community),
+                      );
+                    }}
                   >
-                    {tComments('voteTitle')}
-                  </Button>
+                    <TrendingUp
+                      className="h-4 w-4 shrink-0 text-base-content/50"
+                      aria-hidden
+                    />
+                    <span
+                      className={cn(
+                        'font-medium tabular-nums',
+                        score > 0
+                          ? 'text-success'
+                          : score < 0
+                            ? 'text-error'
+                            : 'text-base-content/60',
+                      )}
+                    >
+                      {score > 0 ? '+' : ''}
+                      {formatMerits(score)}
+                    </span>
+                  </button>
+                  {showVote ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shrink-0 px-3 text-xs"
+                      onClick={() =>
+                        openVotingPopup(
+                          post.id,
+                          'publication',
+                          resolvePublicationVotingMode(community),
+                        )
+                      }
+                    >
+                      {tComments('voteTitle')}
+                    </Button>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-          </li>
-        );
-      })}
+              </div>
+            </li>
+          );
+        },
+      )}
     </ul>
   );
 }
