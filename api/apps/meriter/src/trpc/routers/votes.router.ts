@@ -575,7 +575,13 @@ export async function createVoteLogic(
         ctx.user.id,
         communityId,
       );
-      if (!memberRole) {
+      const allowNonMemberMerit =
+        publicationDoc &&
+        (publicationDoc.postType === 'discussion' ||
+          (publicationDoc.postType === 'ticket' &&
+            publicationDoc.ticketStatus === 'closed' &&
+            ticketHasWorkAccepted(publicationDoc)));
+      if (!memberRole && !allowNonMemberMerit) {
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'Only project members can vote with merits in this project',

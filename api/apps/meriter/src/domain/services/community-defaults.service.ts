@@ -360,7 +360,11 @@ export class CommunityDefaultsService {
     };
 
     if (typeTag === 'project') {
-      return { ...baseSettings, allowNegativeVoting: false };
+      return {
+        ...baseSettings,
+        allowNegativeVoting: false,
+        currencySource: 'quota-and-wallet',
+      };
     }
 
     if (typeTag === 'future-vision') {

@@ -13,6 +13,8 @@ export interface CommunityForMeritResolver {
   id: string;
   typeTag?: string;
   isPriority?: boolean;
+  /** Project communities use global merits for voting (same as hubs); local id is not a user wallet. */
+  isProject?: boolean;
 }
 
 /**
@@ -37,6 +39,11 @@ export class MeritResolverService {
 
     if (!community) {
       throw new Error('Community is required for non-fee merit operations');
+    }
+
+    // Project: merits for voting/spending come from the user's global wallet (MVP), not a per-project wallet.
+    if (operationType === 'voting' && community.isProject === true) {
+      return GLOBAL_COMMUNITY_ID;
     }
 
     return isPriorityCommunity(community) ? GLOBAL_COMMUNITY_ID : community.id;

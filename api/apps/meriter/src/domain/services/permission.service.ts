@@ -210,7 +210,15 @@ export class PermissionService {
       if (!isSuperadmin) {
         const role = await this.userCommunityRoleService.getRole(userId, communityId);
         if (!role) {
-          return false;
+          const pt = snap.postType;
+          const ticketLog = snap.ticketActivityLog;
+          const workAccepted = (ticketLog ?? []).some((e) => e.action === 'work_accepted');
+          const allowNonMemberMeritVote =
+            pt === 'discussion' ||
+            (pt === 'ticket' && snap.ticketStatus === 'closed' && workAccepted);
+          if (!allowNonMemberMeritVote) {
+            return false;
+          }
         }
       }
     }
