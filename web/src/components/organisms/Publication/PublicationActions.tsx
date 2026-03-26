@@ -278,23 +278,22 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       return;
     }
     
-    // Determine currencySource from community settings
-    const currencySource = community?.votingSettings?.currencySource || 
-      (community?.typeTag === 'marathon-of-good' ? 'quota-only' : 
-       community?.typeTag === 'future-vision' ? 'wallet-only' : 'quota-and-wallet');
-    
-    // Determine voting mode based on currencySource
+    // Determine currencySource from community settings (projects default to quota-and-wallet via backend defaults)
+    const currencySource =
+      community?.votingSettings?.currencySource ||
+      (community?.typeTag === 'marathon-of-good'
+        ? 'quota-only'
+        : community?.typeTag === 'future-vision'
+          ? 'wallet-only'
+          : 'quota-and-wallet');
+
     let mode: 'standard' | 'wallet-only' | 'quota-only' = 'standard';
-    if (isProject) {
+    if (currencySource === 'quota-only') {
+      mode = 'quota-only';
+    } else if (currencySource === 'wallet-only') {
       mode = 'wallet-only';
     } else {
-      if (currencySource === 'quota-only') {
-        mode = 'quota-only';
-      } else if (currencySource === 'wallet-only') {
-        mode = 'wallet-only';
-      } else if (currencySource === 'quota-and-wallet') {
-        mode = 'standard';
-      }
+      mode = 'standard';
     }
     
     // Check balances before opening dialog
