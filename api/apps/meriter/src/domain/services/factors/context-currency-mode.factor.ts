@@ -26,8 +26,7 @@ export class ContextCurrencyModeFactor {
    * 1. currencySource from votingSettings (if set) → quota-only / wallet-only / quota-and-wallet
    * 2. Marathon of Good + post/comment → quota-only (backward compatibility)
    * 3. Future Vision + post/comment → wallet-only (backward compatibility)
-   * 4. Project → wallet-only
-   * 5. Poll → wallet-only
+ * 4. Poll → wallet-only
    * 6. Downvote → wallet-only
    * 7. Viewer role → quota-only (if role in quotaRecipients)
    * 8. Default → both-allowed (quota preferred)
@@ -36,21 +35,32 @@ export class ContextCurrencyModeFactor {
    * @returns Context currency mode result
    */
   async evaluate(context: VoteFactorContext): Promise<ContextCurrencyModeResult> {
-    const { community, targetType, postType, isProject, direction, userRole } = context;
+    const { community, targetType, direction, userRole } = context;
 
     if (!community) {
       throw new Error('Community is required for context currency mode evaluation');
     }
 
-    const isProjectContent = postType === 'project' || isProject === true;
+    const effectiveVoting = this.communityService.getEffectiveVotingSettings(community);
     // Note: Polls are handled separately via polls router, not through vote service
     // The vote service only handles targetType 'publication' | 'vote' (where 'vote' means comment)
     const isPoll = false;
     const isDownvote = direction === 'down';
     // Note: viewer role removed - all users are now participants
 
-    // Priority 1: currencySource from votingSettings (if set)
-    const currencySource = community.votingSettings?.currencySource;
+    // Downvotes always use wallet (before votingSettings / quota-and-wallet)
+    if (isDownvote && (targetType === 'publication' || targetType === 'vote')) {
+      this.logger.debug(`[evaluate] Downvote → wallet-only (early): community=${community.id}`);
+      return {
+        allowedQuota: false,
+        allowedWallet: true,
+        requiredCurrency: 'wallet',
+        reason: 'Downvotes can only be made with wallet merits',
+      };
+    }
+
+    // Priority 1: currencySource from effective voting settings (DB + typeTag defaults, e.g. project → quota-and-wallet)
+    const currencySource = effectiveVoting.currencySource;
     if (currencySource && (targetType === 'publication' || targetType === 'vote')) {
       if (currencySource === 'quota-only') {
         this.logger.debug(
@@ -73,15 +83,24 @@ export class ContextCurrencyModeFactor {
           reason: 'Community voting settings allow wallet-only voting',
         };
       } else if (currencySource === 'quota-and-wallet') {
-        // Continue to check other priorities
-        // But allow both quota and wallet
+        const effectiveMeritSettings = this.communityService.getEffectiveMeritSettings(community);
+        const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
+        const canUseQuota = userRole ? quotaRecipients.includes(userRole) : true;
+        this.logger.debug(
+          `[evaluate] currencySource=quota-and-wallet: community=${community.id} canUseQuota=${canUseQuota}`,
+        );
+        return {
+          allowedQuota: canUseQuota,
+          allowedWallet: true,
+          reason: 'Community voting settings allow quota and wallet',
+        };
       }
     }
 
     // Priority 2: Marathon of Good — with global merit, quota disabled in MVP; wallet (global) is used.
     // No quota-only restriction.
 
-    // Priority 3: Future Vision + post/comment → wallet-only (backward compatibility)
+    // Priority 2: Future Vision + post/comment → wallet-only (backward compatibility)
     const isFutureVision = community.typeTag === 'future-vision';
     if (isFutureVision && (targetType === 'publication' || targetType === 'vote') && !currencySource) {
       this.logger.debug(
@@ -95,20 +114,7 @@ export class ContextCurrencyModeFactor {
       };
     }
 
-    // Priority 3: Project → wallet-only
-    if (isProjectContent) {
-      this.logger.debug(
-        `[evaluate] Project → wallet-only: postType=${postType}, isProject=${isProject}`,
-      );
-      return {
-        allowedQuota: false,
-        allowedWallet: true,
-        requiredCurrency: 'wallet',
-        reason: 'Projects can only be voted on with Merits (Wallet), not Daily Quota',
-      };
-    }
-
-    // Priority 4: Poll → wallet-only
+    // Priority 3: Poll → wallet-only
     // Note: Polls are not handled through vote service, so this should never be true
     if (isPoll) {
       this.logger.debug(
@@ -119,19 +125,6 @@ export class ContextCurrencyModeFactor {
         allowedWallet: true,
         requiredCurrency: 'wallet',
         reason: 'Polls can only be voted on with wallet merits',
-      };
-    }
-
-    // Priority 5: Downvote → wallet-only
-    if (isDownvote) {
-      this.logger.debug(
-        `[evaluate] Downvote → wallet-only: direction=${direction}`,
-      );
-      return {
-        allowedQuota: false,
-        allowedWallet: true,
-        requiredCurrency: 'wallet',
-        reason: 'Downvotes can only be made with wallet merits',
       };
     }
 

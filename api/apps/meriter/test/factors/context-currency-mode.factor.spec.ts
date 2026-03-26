@@ -9,6 +9,9 @@ describe('ContextCurrencyModeFactor', () => {
   beforeEach(async () => {
     const mockCommunityService = {
       getEffectiveMeritSettings: jest.fn(),
+      getEffectiveVotingSettings: jest.fn().mockReturnValue({
+        currencySource: undefined,
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -71,11 +74,19 @@ describe('ContextCurrencyModeFactor', () => {
   });
 
   describe('Projects', () => {
-    it('should return wallet-only for projects', async () => {
+    it('should allow quota and wallet when effective voting is quota-and-wallet (e.g. team project hub)', async () => {
       const community = {
         id: 'community1',
         typeTag: 'custom',
       };
+
+      communityService.getEffectiveVotingSettings.mockReturnValue({
+        currencySource: 'quota-and-wallet',
+      } as any);
+      communityService.getEffectiveMeritSettings.mockReturnValue({
+        quotaRecipients: ['participant', 'lead'],
+        dailyQuota: 10,
+      } as any);
 
       const result = await factor.evaluate({
         userId: 'user1',
@@ -87,18 +98,22 @@ describe('ContextCurrencyModeFactor', () => {
         userRole: 'participant',
       });
 
-      expect(result.allowedQuota).toBe(false);
+      expect(result.allowedQuota).toBe(true);
       expect(result.allowedWallet).toBe(true);
-      expect(result.requiredCurrency).toBe('wallet');
+      expect(result.requiredCurrency).toBeUndefined();
     });
   });
 
   describe('Downvotes', () => {
-    it('should return wallet-only for downvotes', async () => {
+    it('should return wallet-only for downvotes even when community allows quota-and-wallet', async () => {
       const community = {
         id: 'community1',
         typeTag: 'custom',
       };
+
+      communityService.getEffectiveVotingSettings.mockReturnValue({
+        currencySource: 'quota-and-wallet',
+      } as any);
 
       const result = await factor.evaluate({
         userId: 'user1',

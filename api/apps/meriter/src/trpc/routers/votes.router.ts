@@ -449,8 +449,9 @@ export async function createVoteLogic(
     communityId,
   );
 
-  // Check currencySource from votingSettings first (highest priority)
-  const currencySource = community?.votingSettings?.currencySource;
+  // Effective currencySource (DB + typeTag defaults, e.g. project quota-and-wallet)
+  const currencySource = ctx.communityService.getEffectiveVotingSettings(community)
+    .currencySource;
 
   // Note: viewer role removed - all users are now participants
   // With global merit, Marathon uses global wallet (quota disabled in MVP). No quota-only restriction.
@@ -603,7 +604,8 @@ export async function createVoteLogic(
     input.images,
   );
 
-  // Update publication metrics if voting on a publication (project tasks/discussions: credit beneficiary wallet only)
+  // Update publication metrics if voting on a publication.
+  // Project instant appreciation: credit beneficiary wallet AND update publication metrics (rating UI / lists).
   if (input.targetType === 'publication') {
     const totalAmount = quotaAmount + walletAmount;
     if (useProjectInstantAppreciation && publicationDoc) {
@@ -626,6 +628,12 @@ export async function createVoteLogic(
         input.targetId,
         currency,
         `Project appreciation for publication ${input.targetId}`,
+      );
+      await ctx.publicationService.voteOnPublication(
+        input.targetId,
+        ctx.user.id,
+        totalAmount,
+        direction,
       );
     } else {
       await ctx.publicationService.voteOnPublication(
