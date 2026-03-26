@@ -299,19 +299,38 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
             <div className="space-y-4 pb-24">
                 {/* Publication Card - same style as feed */}
                 {publication && (() => {
-                    // Transform meta to include id fields expected by child components
+                    const pub = publication as Record<string, unknown> & {
+                        authorId?: string;
+                        authorKind?: 'user' | 'community';
+                        authoredCommunityId?: string;
+                        publishedByUserId?: string;
+                        beneficiaryId?: string;
+                        meta?: {
+                            author?: { id?: string; name?: string; photoUrl?: string; username?: string };
+                            beneficiary?: { id?: string; name?: string; photoUrl?: string; username?: string };
+                            publishedBy?: { id?: string; name?: string; photoUrl?: string; username?: string };
+                        };
+                    };
+                    const isCommunityAuthorDetail =
+                        pub.authorKind === 'community' && Boolean(pub.authoredCommunityId);
+
+                    // Align with PublicationCard: stable author id for content + header (community id when posting as community)
                     const transformedMeta = {
-                        ...(publication as any).meta,
+                        ...pub.meta,
                         author: {
-                            ...(publication as any).meta?.author,
-                            id: (publication as any).authorId,
+                            ...pub.meta?.author,
+                            id:
+                                isCommunityAuthorDetail && pub.authoredCommunityId
+                                    ? pub.authoredCommunityId
+                                    : pub.authorId,
                         },
-                        beneficiary: (publication as any).beneficiaryId && (publication as any).meta?.beneficiary
-                            ? {
-                                ...(publication as any).meta.beneficiary,
-                                id: (publication as any).beneficiaryId,
-                            }
-                            : undefined,
+                        beneficiary:
+                            pub.beneficiaryId && pub.meta?.beneficiary
+                                ? {
+                                      ...pub.meta.beneficiary,
+                                      id: pub.beneficiaryId,
+                                  }
+                                : undefined,
                     };
 
                     return (
@@ -319,13 +338,16 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
 
                         <PublicationHeader
                             publication={{
-                                id: (publication as any).id,
-                                slug: (publication as any).slug || (publication as any).id,
-                                createdAt: (publication as any).createdAt,
+                                id: pub.id as string,
+                                slug: (pub.slug as string | undefined) || (pub.id as string),
+                                createdAt: pub.createdAt as string,
                                 meta: transformedMeta,
-                                postType: (publication as any).postType,
-                                isProject: (publication as any).isProject,
-                                permissions: (publication as any).permissions,
+                                postType: pub.postType as string | undefined,
+                                isProject: pub.isProject as boolean | undefined,
+                                permissions: pub.permissions as Record<string, unknown> | undefined,
+                                authorKind: pub.authorKind,
+                                authoredCommunityId: pub.authoredCommunityId,
+                                publishedByUserId: pub.publishedByUserId,
                             }}
                             showCommunityAvatar={false}
                             className="mb-3"
