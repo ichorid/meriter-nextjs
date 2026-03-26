@@ -13,7 +13,7 @@ import { TopUpWalletDialog } from './TopUpWalletDialog';
 import { shareUrl } from '@shared/lib/share-utils';
 import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
-import { ArrowUp, ChevronDown, Share2, TrendingUp, Users } from 'lucide-react';
+import { ArrowUp, ChevronDown, PiggyBank, Share2, TrendingUp, Users } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { NeutralTicketPublicCard } from './NeutralTicketPublicCard';
 
@@ -47,7 +47,7 @@ export function ProjectCard({
   onValueTagClick,
 }: ProjectCardProps) {
   const t = useTranslations('projects');
-  const tCommon = useTranslations('common');
+  const tInvesting = useTranslations('investing');
   const tShared = useTranslations('shared');
   const { user } = useAuth();
   const { data: openTickets = [] } = useOpenTickets(project.id);
@@ -63,6 +63,10 @@ export function ProjectCard({
   const hasCover = !!coverImageUrl;
 
   const projectUrl = `/meriter/projects/${project.id}`;
+  const investingEnabled = project.settings?.investingEnabled === true;
+  const primaryActionLabel = investingEnabled
+    ? tInvesting('invest', { defaultValue: 'Invest' })
+    : t('projectCardSupportVerb', { defaultValue: 'Support' });
 
   const handleShareClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -186,10 +190,14 @@ export function ProjectCard({
               size="sm"
               className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
               onClick={handleSupportClick}
-              aria-label={tCommon('support', { defaultValue: 'Support' })}
+              aria-label={primaryActionLabel}
             >
-              <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="whitespace-nowrap">{tCommon('support', { defaultValue: 'Support' })}</span>
+              {investingEnabled ? (
+                <PiggyBank className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+              ) : (
+                <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+              )}
+              <span className="whitespace-nowrap">{primaryActionLabel}</span>
             </Button>
           </div>
         </div>
