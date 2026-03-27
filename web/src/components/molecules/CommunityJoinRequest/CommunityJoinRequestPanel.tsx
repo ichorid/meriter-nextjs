@@ -73,6 +73,10 @@ export function CommunityJoinRequestPanel({
 
   const hasPendingRequest = requestStatus?.status === 'pending';
 
+  if (layout === 'compact' && !hasPendingRequest) {
+    return null;
+  }
+
   const handleSubmit = () => {
     const trimmed = note.trim().slice(0, 500);
     submitRequest(
@@ -155,26 +159,6 @@ export function CommunityJoinRequestPanel({
     </Button>
   );
 
-  const joinButtonCompact = (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={openDialog}
-      disabled={isPending}
-      className={compactBtnClass}
-    >
-      {isPending ? (
-        <>
-          <Loader2 className="mr-1.5 shrink-0 animate-spin" />
-          {t('submitting')}
-        </>
-      ) : (
-        t('ctaShort')
-      )}
-    </Button>
-  );
-
   const cancelButtonCompact = (
     <Button
       type="button"
@@ -221,9 +205,7 @@ export function CommunityJoinRequestPanel({
   return (
     <>
       {layout === 'compact' ? (
-        <div className={cn('w-full', className)}>
-          {hasPendingRequest ? cancelButtonCompact : joinButtonCompact}
-        </div>
+        <div className={cn('w-full', className)}>{cancelButtonCompact}</div>
       ) : layout === 'hero' ? (
         <div
           className={cn(
