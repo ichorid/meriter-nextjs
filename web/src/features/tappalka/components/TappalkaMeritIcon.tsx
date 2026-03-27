@@ -219,12 +219,6 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
   // Combine internal and external dragging state
   const isActuallyDragging = isDragging || externalDragging;
 
-  const sizeClasses = {
-    sm: 'w-12 h-12',
-    md: 'w-16 h-16', // 64px
-    lg: 'w-20 h-20',
-  };
-
   // Hitbox is larger than visual size (80px minimum)
   const hitboxSize = size === 'lg' ? 'w-20 h-20' : size === 'md' ? 'w-20 h-20' : 'w-16 h-16';
 
@@ -273,10 +267,10 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
       aria-label={disabled ? t('voteAlreadyDoneAria') : t('dragHintAria')}
       tabIndex={disabled ? -1 : 0}
     >
-      {/* Visual container - rounded square 64x64px with 16px radius */}
+      {/* Visual token: 64×64 circle, centered in hitbox (not top-left aligned) */}
       <div
         className={cn(
-          'absolute inset-0 rounded-2xl', // 16px radius
+          'absolute left-1/2 top-1/2 w-16 h-16 -translate-x-1/2 -translate-y-1/2 rounded-full',
           'bg-gradient-to-b from-[#1C2430] to-[#131A22]',
           'border border-white/8',
           'transition-all duration-[120ms] ease-out',
@@ -289,8 +283,6 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
           isActuallyDragging && 'brightness-110',
         )}
         style={{
-          width: '64px',
-          height: '64px',
           // Subtle noise texture (simulated with multiple gradients)
           backgroundImage: `
             linear-gradient(180deg, #1C2430 0%, #131A22 100%),
@@ -301,11 +293,12 @@ export const TappalkaMeritIcon: React.FC<TappalkaMeritIconProps> = ({
       />
 
       {/* Merit icon - inline SVG avoids Chrome filter bugs on img+SVG */}
-      <div className="relative z-10 w-10 h-10 flex items-center justify-center">
+      <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center">
         <svg
           viewBox="0 0 120 189"
+          preserveAspectRatio="xMidYMid meet"
           className={cn(
-            'w-full h-full object-contain select-none transition-all duration-180',
+            'max-h-full max-w-full object-contain select-none transition-all duration-180',
             isActuallyDragging ? 'drop-shadow-[0_0_13.5px_rgba(230,184,92,0.5625)]' : 'drop-shadow-[0_0_6px_rgba(230,184,92,0.25)]',
           )}
           fill="#E6B85C"
