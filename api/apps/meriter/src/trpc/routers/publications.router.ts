@@ -605,7 +605,13 @@ export const publicationsRouter = router({
             },
           )
           .toArray();
-        const forwardMap = new Map<string, unknown>(docs.map((d: { id: string }) => [d.id, d]));
+        const forwardMap = new Map<string, unknown>();
+        for (const d of docs) {
+          const id = (d as Record<string, unknown>)['id'];
+          if (typeof id === 'string') {
+            forwardMap.set(id, d);
+          }
+        }
         mappedPublications.forEach((pub) => {
           const d = forwardMap.get(pub.id) as Record<string, unknown> | undefined;
           if (!d) return;
