@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { CommunityAvatar } from '@/shared/components/community-avatar';
-import { Badge } from '@/components/atoms';
 import { useCommunity } from '@/hooks/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -33,7 +32,6 @@ export interface CommunityCardProps {
  * Layout (expanded):
  * - Flex row layout with avatar (46px), content section, and chevron icon
  * - Content section contains: title, merits/quota indicators (conditional), and description
- * - Participant role badge below avatar (expanded); lead has no badge
  * Used in both the left sidebar and the communities page
  */
 export const CommunityCard: React.FC<CommunityCardProps> = ({
@@ -53,26 +51,6 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const isActive = community?.isProject
     ? pathname === `/meriter/projects/${communityId}` || pathname?.startsWith(`/meriter/projects/${communityId}/`)
     : pathname?.includes(`/communities/${communityId}`);
-
-  // Determine user's role per community for badge display
-  const userRoleBadge = React.useMemo(() => {
-    // Don't show role badge for special communities (marathon-of-good, future-vision, support)
-    if (community?.typeTag === 'marathon-of-good' || 
-        community?.typeTag === 'future-vision' || 
-        community?.typeTag === 'support') {
-      return null;
-    }
-
-    // Find role in userRoles array matching the communityId
-    const role = userRoles.find(r => r.communityId === communityId);
-
-    // Lead: no badge (obvious from context). Participant still gets a label.
-    if (role?.role === 'participant') {
-      return { role: 'participant', label: t('participant'), variant: 'secondary' as const };
-    }
-
-    return null;
-  }, [community?.typeTag, userRoles, communityId, t]);
 
   // Community-scoped role only — global superadmin is not a member unless they have lead/participant here
   const userRole = React.useMemo(() => {
@@ -145,7 +123,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={href}>
         <div
-          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 pb-6 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
+          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
             ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
             : ''
             } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
@@ -157,7 +135,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
         >
           {/* Left section: Avatar + Content */}
           <div className="flex flex-row items-start gap-3 flex-1 min-w-0 relative">
-            {/* Avatar section with badge below and quota on top-right */}
+            {/* Avatar + quota on top-right */}
             <div className={`flex flex-col items-start gap-2 flex-shrink-0 relative ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
               <div className="relative">
                 <CommunityAvatar
@@ -181,16 +159,6 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                   </div>
                 )}
               </div>
-              {userRoleBadge && (
-                <div className="absolute bottom-[-28px] left-0 right-0 flex items-center justify-center">
-                  <Badge
-                    variant={userRoleBadge.variant}
-                    size="xs"
-                  >
-                    {userRoleBadge.label}
-                  </Badge>
-                </div>
-              )}
             </div>
 
             {/* Content section */}
@@ -268,12 +236,6 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             needsSetup={community.needsSetup}
           />
         </div>
-        {userRoleBadge && (
-          <div
-            className="absolute top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-base-100 bg-base-content/40"
-            title={userRoleBadge.label}
-          />
-        )}
         {(showMerits || showQuota) && (
           <div className="mt-2 px-1.5 py-1 rounded-lg bg-base-200/50 flex items-center justify-center gap-2">
             {showMerits && (
