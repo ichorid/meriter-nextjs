@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
-import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
+import { useCommunitiesBatch } from '@/hooks/api/useCommunities';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { trpc } from '@/lib/trpc/client';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
@@ -10,9 +10,9 @@ import type { Community } from '@/types/api-v1';
 /**
  * Hook to get user's communities with wallets and quotas
  *
- * For regular users: Gets communities from membership (users.getUserCommunities) + roles, not from wallets.
+ * Resolves communities from membership (users.getUserCommunities) + roles via communities.getById batch.
  * __global__ is wallet-only and must never be shown as a community.
- * For superadmin: Same membership/role filter applied to the full community list (not every community in DB).
+ * Do not use communities.getAll for this: the API excludes project communities, so superadmins would miss projects in sidebar/profile.
  *
  * @returns Object containing:
  *   - communities: array of Community objects
@@ -24,7 +24,6 @@ import type { Community } from '@/types/api-v1';
  */
 export function useUserCommunities() {
   const { user } = useAuth();
-  const isSuperadmin = user?.globalRole === 'superadmin';
 
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
 
@@ -48,24 +47,14 @@ export function useUserCommunities() {
     return Array.from(merged);
   }, [membershipData, userRoles]);
 
-  // For superadmin: fetch all communities
-  const { data: allCommunitiesData, isLoading: allCommunitiesLoading } = useCommunities();
-
-  // For regular users: batch fetch communities from membership IDs (not wallet IDs)
   const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(membershipCommunityIds);
 
-  // Determine which communities to use (superadmin: filter full list to actual membership / roles only)
   const communities = useMemo(() => {
-    if (isSuperadmin) {
-      const all = allCommunitiesData?.data || [];
-      if (membershipCommunityIds.length === 0) {
-        return [];
-      }
-      const allowed = new Set(membershipCommunityIds);
-      return all.filter((c) => allowed.has(c.id));
+    if (membershipCommunityIds.length === 0) {
+      return [];
     }
     return memberCommunities;
-  }, [isSuperadmin, allCommunitiesData, memberCommunities, membershipCommunityIds]);
+  }, [memberCommunities, membershipCommunityIds]);
 
   // Get community IDs from the communities array, sorted with special communities first
   const communityIds = useMemo(() => {
@@ -95,11 +84,7 @@ export function useUserCommunities() {
   }, [wallets]);
 
   // Combined loading state
-  const isLoading =
-    walletsLoading ||
-    (isSuperadmin
-      ? allCommunitiesLoading || membershipLoading
-      : membershipLoading || memberCommunitiesLoading);
+  const isLoading = walletsLoading || membershipLoading || memberCommunitiesLoading;
 
   return {
     communities,
