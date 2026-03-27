@@ -27,9 +27,8 @@ export const TappalkaPostSchema = z.object({
   title: z.string(),
   description: z.string(),
   imageUrl: z.string().optional(),
-  authorName: z.string(),
-  authorAvatarUrl: z.string().optional(),
-  rating: z.number(),
+  /** Plain text for mining card footer (HTML stripped; may be truncated server-side) */
+  summaryPlainText: z.string(),
   categoryId: z.string().optional(),
 });
 
