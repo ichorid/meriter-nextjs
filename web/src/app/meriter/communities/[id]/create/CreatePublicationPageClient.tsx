@@ -15,7 +15,6 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { Dialog, DialogContent } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Loader2 } from 'lucide-react';
-import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
 import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
 import { useActingAsStore } from '@/stores/acting-as.store';
 import { useCommunityWalletForSource } from '@/hooks/api/useBirzhaSource';
@@ -35,22 +34,6 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   const { data: community } = useCommunity(communityId);
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
   const { actingAsCommunityId } = useActingAsStore();
-  const { data: actingCommunityWallet, isFetched: actingWalletFetched } =
-    useCommunityWalletForSource(actingAsCommunityId, Boolean(actingAsCommunityId));
-
-  const postCost = community?.settings?.postCost ?? 1;
-  const requiresPayment = postCost > 0;
-  const walletBalance = feeWallet?.balance ?? 0;
-  const actingCommunityBalance = actingCommunityWallet?.balance ?? 0;
-  const canPayWhenActingAsCommunity =
-    !requiresPayment ||
-    actingCommunityBalance >= postCost ||
-    walletBalance >= postCost;
-  const hasInsufficientPayment = requiresPayment
-    ? actingAsCommunityId
-      ? !canPayWhenActingAsCommunity
-      : walletBalance < postCost
-    : false;
 
   // Get postType from URL params (e.g., ?postType=project, ?postType=discussion)
   const postTypeParam = searchParams?.get('postType');
@@ -64,6 +47,26 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   }
   const defaultPostType = requestedPostType;
   const isProjectCommunity = !!community?.isProject;
+  /** Project discussions are always personal; ignore acting-as for gate + wallet fetch */
+  const actingAsForCreatePage =
+    isProjectCommunity && defaultPostType === 'discussion' ? null : actingAsCommunityId;
+
+  const { data: actingCommunityWallet, isFetched: actingWalletFetched } =
+    useCommunityWalletForSource(actingAsForCreatePage, Boolean(actingAsForCreatePage));
+
+  const postCost = community?.settings?.postCost ?? 1;
+  const requiresPayment = postCost > 0;
+  const walletBalance = feeWallet?.balance ?? 0;
+  const actingCommunityBalance = actingCommunityWallet?.balance ?? 0;
+  const canPayWhenActingAsCommunity =
+    !requiresPayment ||
+    actingCommunityBalance >= postCost ||
+    walletBalance >= postCost;
+  const hasInsufficientPayment = requiresPayment
+    ? actingAsForCreatePage
+      ? !canPayWhenActingAsCommunity
+      : walletBalance < postCost
+    : false;
   const afterCreatePath = sanitizeMeriterInternalPath(searchParams?.get('returnTo') ?? undefined);
   const fallbackCommunityPath = `/meriter/communities/${communityId}`;
   const cancelOrBackPath = afterCreatePath ?? fallbackCommunityPath;
@@ -81,7 +84,7 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
   const dataReady =
     community !== undefined &&
     feeWallet !== undefined &&
-    (!actingAsCommunityId || actingWalletFetched);
+    (!actingAsForCreatePage || actingWalletFetched);
   if (!dataReady) {
     return (
       <AdaptiveLayout communityId={communityId}>
@@ -147,10 +150,8 @@ export function CreatePublicationPageClient({ communityId }: CreatePublicationPa
       }
     >
       <div className="space-y-6">
-        <div className="flex justify-end">
-          <ContextSwitcher />
-        </div>
         <PublicationCreateForm
+          showContextSwitcher
           communityId={communityId}
           defaultPostType={defaultPostType}
           isProjectCommunity={isProjectCommunity}

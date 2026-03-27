@@ -46,6 +46,7 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { formatMerits } from '@/lib/utils/currency';
 import { BeneficiarySelector } from '@/components/molecules/BeneficiarySelector';
 import { useActingAsStore } from '@/stores/acting-as.store';
+import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
 import config from '@/config';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
@@ -87,6 +88,8 @@ interface PublicationCreateFormProps {
   birzhaSourceEntity?: { type: 'community' | 'project'; id: string };
   /** Pre-fill value tags (e.g. from linked OB publication). */
   seedValueTags?: string[];
+  /** Create page only: show "post as self / community" switcher (hidden for project discussions). */
+  showContextSwitcher?: boolean;
 }
 
 const getDraftKey = (communityId: string, birzha?: { type: string; id: string }) =>
@@ -124,6 +127,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   initialData,
   birzhaSourceEntity,
   seedValueTags,
+  showContextSwitcher = false,
 }) => {
   const t = useTranslations('publications.create');
   const tBirzha = useTranslations('birzhaSource');
@@ -140,11 +144,27 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const { data: community } = useCommunity(communityId);
   const { data: sourceCommunity } = useCommunity(birzhaSourceEntity?.id ?? '');
   const { sections: valueRubricatorSections } = usePlatformValueRubricatorSections();
-  const { actingAsCommunityId } = useActingAsStore();
+  const { actingAsCommunityId, setActingAs } = useActingAsStore();
+
+  const requestedPostTypeForInit = initialData?.postType === 'project' || initialData?.isProject
+    ? 'project'
+    : (initialData?.postType || defaultPostType);
+  const initialPostTypeResolved: PublicationPostType =
+    (requestedPostTypeForInit === 'project' && !ENABLE_PROJECT_POSTS) ? 'basic' : requestedPostTypeForInit;
+
+  const [postType, setPostType] = useState<PublicationPostType>(initialPostTypeResolved);
+  const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
+  const isProjectDiscussion = isProjectCommunity && postType === 'discussion';
+  const effectiveActingAsCommunityId = isProjectDiscussion ? null : actingAsCommunityId;
+
+  useEffect(() => {
+    if (isProjectDiscussion) setActingAs(null);
+  }, [isProjectDiscussion, setActingAs]);
+
   const sourceWalletCommunityId =
-    birzhaSourceEntity?.id ?? actingAsCommunityId ?? '';
+    birzhaSourceEntity?.id ?? effectiveActingAsCommunityId ?? '';
   const showDualPaymentUI =
-    Boolean(birzhaSourceEntity) || Boolean(actingAsCommunityId);
+    Boolean(birzhaSourceEntity) || Boolean(effectiveActingAsCommunityId);
   /** Personal post only; hidden when posting as a community/project (acting-as or Birzha source). */
   const showBeneficiarySelector = !isProjectCommunity && !showDualPaymentUI;
   // FR-4: Fee is always paid from global wallet (all communities)
@@ -222,18 +242,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           : walletBalance < postCost)
       : requiresPayment && walletBalance < postCost;
 
-  // If project type is requested but projects are disabled, fallback to basic
-  const requestedPostType = initialData?.postType === 'project' || initialData?.isProject
-    ? 'project'
-    : (initialData?.postType || defaultPostType);
-  const initialPostType: PublicationPostType =
-    (requestedPostType === 'project' && !ENABLE_PROJECT_POSTS) ? 'basic' : requestedPostType;
-
   const [title, setTitle] = useState(initialData?.title || '');
   const [description, setDescription] = useState(
     initialData?.description || initialData?.content || '',
   );
-  const [postType, setPostType] = useState<PublicationPostType>(initialPostType);
   const [hashtags, setHashtags] = useState<string[]>(initialData?.hashtags || []);
   const [valueTags, setValueTags] = useState<string[]>(
     ((initialData as { valueTags?: string[] })?.valueTags ?? []).filter(Boolean),
@@ -260,11 +272,6 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     '1200x400': 0,
     '400x1200': 0,
   });
-  // Derive isProject from postType instead of separate checkbox
-  // Feature flag: projects are currently disabled
-  const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
-  /** Project communities: discussions are text-only; no investing or tappalka mining UI */
-  const isProjectDiscussion = isProjectCommunity && postType === 'discussion';
   // Taxonomy fields
   const [impactArea, setImpactArea] = useState<ImpactArea | ''>((initialData as any)?.impactArea || '');
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>((initialData as any)?.beneficiaries || []);
@@ -627,9 +634,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           stopLoss: isProjectDiscussion ? 0 : (stopLoss ?? 0),
           noAuthorWalletSpend: isProjectDiscussion ? undefined : noAuthorWalletSpend || undefined,
           beneficiaryId: showBeneficiarySelector ? (beneficiaryId ?? undefined) : undefined,
-          actingAsCommunityId: actingAsCommunityId ?? undefined,
+          actingAsCommunityId: effectiveActingAsCommunityId ?? undefined,
           postCostFunding:
-            actingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
+            effectiveActingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -669,6 +676,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       {/* Scrollable form content */}
       <div className="flex-1 overflow-x-visible overflow-y-auto pb-24 min-h-0">
         <div className="space-y-6">
+          {showContextSwitcher && !isProjectDiscussion && (
+            <div className="flex justify-end">
+              <ContextSwitcher />
+            </div>
+          )}
+
           {/* Draft restore button */}
           {hasDraft && (
             <div className="flex justify-end">
