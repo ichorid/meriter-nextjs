@@ -124,6 +124,7 @@ import { ProjectDistributionService } from './domain/services/project-distributi
 import { ProjectPayoutService } from './domain/services/project-payout.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
+import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -212,6 +213,7 @@ import { EventBus } from './domain/events/event-bus';
     ProjectDistributionService,
     PlatformWipeService,
     PlatformDemoSeedService,
+    PlatformDatabaseDumpService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -266,6 +268,7 @@ import { EventBus } from './domain/events/event-bus';
     ProjectDistributionService,
     PlatformWipeService,
     PlatformDemoSeedService,
+    PlatformDatabaseDumpService,
 
     // Export vote factor services
     RoleHierarchyFactor,

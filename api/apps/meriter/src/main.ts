@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MeriterModule } from './meriter.module';
 import * as cookieParser from 'cookie-parser';
+import * as express from 'express';
 import { ConfigService } from '@nestjs/config';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { ApiResponseInterceptor } from './common/interceptors/api-response.interceptor';
@@ -132,6 +133,11 @@ async function bootstrap() {
     // This ensures cookies are parsed and available in req.cookies for tRPC context
     expressApp.use(cookieParser());
     logger.log('✅ Cookie parser middleware mounted (before tRPC)');
+    expressApp.use(express.json({ limit: '512mb' }));
+    expressApp.use(
+      express.urlencoded({ extended: true, limit: '512mb' }),
+    );
+    logger.log('✅ Large JSON body limit for tRPC (database restore)');
 
     const trpcService = app.get(TrpcService);
     const trpcMiddleware = createExpressMiddleware({

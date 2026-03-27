@@ -35,7 +35,7 @@ export const PRIORITY_HUB_BOOTSTRAP = {
     },
   },
   'marathon-of-good': {
-    name: 'Биржа',
+    name: 'Биржа социальных инвестиций',
     description:
       'Биржа социальных инвестиций: посты, обсуждения и инвестиции в идеи (Марафон добра).',
     settings: {

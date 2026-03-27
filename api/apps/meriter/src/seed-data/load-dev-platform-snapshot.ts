@@ -7,6 +7,10 @@ import {
   PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP,
   type PriorityHubBootstrapTag,
 } from '../domain/common/constants/platform-bootstrap.constants';
+import {
+  MARATHON_HUB_DEFAULT_MERIT,
+  MARATHON_HUB_DEFAULT_TAPPAKLA,
+} from '../domain/common/constants/marathon-hub-defaults.constants';
 import type { DevPlatformSnapshotV1 } from './dev-platform-snapshot.schema';
 import { resolveMeriterSeedDataDir } from './resolve-seed-data-path';
 
@@ -72,22 +76,53 @@ export function loadDevPlatformSnapshot(): DevPlatformSnapshotV1 {
   }
 }
 
+export type PriorityHubSnapshotResolved = {
+  name: string;
+  description: string;
+  settings: Record<string, unknown>;
+  meritSettings?: Record<string, unknown>;
+  tappalkaSettings?: Record<string, unknown>;
+};
+
 export function getPriorityHubSnapshotForTag(
   tag: PriorityHubBootstrapTag,
   snapshot: DevPlatformSnapshotV1,
-): { name: string; description: string; settings: Record<string, unknown> } {
+): PriorityHubSnapshotResolved {
   const fromFile = snapshot.priorityHubs[tag];
-  if (fromFile?.name && fromFile.settings) {
+  const base =
+    fromFile?.name && fromFile.settings
+      ? {
+          name: fromFile.name,
+          description: fromFile.description ?? '',
+          settings: { ...fromFile.settings } as Record<string, unknown>,
+        }
+      : (() => {
+          const b = PRIORITY_HUB_BOOTSTRAP[tag];
+          return {
+            name: b.name,
+            description: b.description,
+            settings: { ...b.settings } as Record<string, unknown>,
+          };
+        })();
+
+  if (tag === 'marathon-of-good') {
+    const tappalkaMerged = {
+      ...MARATHON_HUB_DEFAULT_TAPPAKLA,
+      ...(fromFile?.tappalkaSettings ?? {}),
+    };
+    if (!tappalkaMerged.categories?.length) {
+      tappalkaMerged.categories = [...MARATHON_HUB_DEFAULT_TAPPAKLA.categories];
+    }
+    const meritMerged = {
+      ...MARATHON_HUB_DEFAULT_MERIT,
+      ...(fromFile?.meritSettings ?? {}),
+    };
     return {
-      name: fromFile.name,
-      description: fromFile.description,
-      settings: fromFile.settings,
+      ...base,
+      meritSettings: meritMerged as Record<string, unknown>,
+      tappalkaSettings: tappalkaMerged as unknown as Record<string, unknown>,
     };
   }
-  const b = PRIORITY_HUB_BOOTSTRAP[tag];
-  return {
-    name: b.name,
-    description: b.description,
-    settings: { ...b.settings } as Record<string, unknown>,
-  };
+
+  return base;
 }

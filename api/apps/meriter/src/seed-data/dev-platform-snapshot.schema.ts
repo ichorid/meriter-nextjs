@@ -14,7 +14,13 @@ export interface DevPlatformSnapshotV1 {
   };
   priorityHubs: Record<
     PriorityHubBootstrapTag,
-    { name: string; description: string; settings: Record<string, unknown> }
+    {
+      name: string;
+      description: string;
+      settings: Record<string, unknown>;
+      meritSettings?: Record<string, unknown>;
+      tappalkaSettings?: Record<string, unknown>;
+    }
   >;
   globalCommunity: {
     name: string;

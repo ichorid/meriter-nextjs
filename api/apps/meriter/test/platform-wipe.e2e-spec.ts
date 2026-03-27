@@ -150,8 +150,11 @@ describe('PlatformWipeService (e2e)', () => {
     expect(fvAfter?.votingSettings).toBeUndefined();
 
     const marathonAfter = await communityModel.findOne({ typeTag: 'marathon-of-good' }).lean();
-    expect(marathonAfter?.name).toBe('Биржа');
+    expect(marathonAfter?.name).toBe('Биржа социальных инвестиций');
     expect(marathonAfter?.settings?.investingEnabled).toBe(true);
+    expect(marathonAfter?.tappalkaSettings?.enabled).toBe(true);
+    expect(marathonAfter?.tappalkaSettings?.categories?.length).toBe(17);
+    expect(marathonAfter?.meritSettings?.quotaEnabled).toBe(true);
 
     const teamProjectsAfter = await communityModel.findOne({ typeTag: 'team-projects' }).lean();
     expect(teamProjectsAfter?.name).toBe('Проекты');

@@ -521,20 +521,34 @@ export class CommunityService {
         continue;
       }
       const b = getPriorityHubSnapshotForTag(typeTag, snap);
+      const setDoc: Record<string, unknown> = {
+        name: b.name,
+        description: b.description,
+        isPriority: true,
+        isActive: true,
+        settings: { ...b.settings } as unknown as Community['settings'],
+        hashtags: [],
+        hashtagDescriptions: {},
+        updatedAt: now,
+      };
+      if (b.meritSettings) {
+        setDoc.meritSettings = b.meritSettings;
+      }
+      if (b.tappalkaSettings) {
+        setDoc.tappalkaSettings = b.tappalkaSettings;
+      }
+      const unsetForHub = { ...unsetStoredOverrides } as Record<string, ''>;
+      if (b.tappalkaSettings) {
+        delete unsetForHub.tappalkaSettings;
+      }
+      if (b.meritSettings) {
+        delete unsetForHub.meritSettings;
+      }
       await this.communityModel.updateOne(
         { id: doc.id },
         {
-          $set: {
-            name: b.name,
-            description: b.description,
-            isPriority: true,
-            isActive: true,
-            settings: { ...b.settings } as unknown as Community['settings'],
-            hashtags: [],
-            hashtagDescriptions: {},
-            updatedAt: now,
-          },
-          $unset: unsetStoredOverrides,
+          $set: setDoc as never,
+          $unset: unsetForHub,
         },
       );
     }

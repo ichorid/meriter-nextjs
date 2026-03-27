@@ -45,6 +45,7 @@ import { CommunityWalletService } from '../domain/services/community-wallet.serv
 import { ProjectPayoutService } from '../domain/services/project-payout.service';
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
+import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -94,6 +95,7 @@ export class TrpcService {
     private projectPayoutService: ProjectPayoutService,
     private platformWipeService: PlatformWipeService,
     private platformDemoSeedService: PlatformDemoSeedService,
+    private platformDatabaseDumpService: PlatformDatabaseDumpService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -149,6 +151,7 @@ export class TrpcService {
       projectPayoutService: this.projectPayoutService,
       platformWipeService: this.platformWipeService,
       platformDemoSeedService: this.platformDemoSeedService,
+      platformDatabaseDumpService: this.platformDatabaseDumpService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,
