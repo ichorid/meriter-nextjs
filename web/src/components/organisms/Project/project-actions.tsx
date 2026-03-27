@@ -5,14 +5,12 @@ import { useTranslations } from 'next-intl';
 
 export interface ProjectActionsProps {
   joinBlock?: ReactNode;
-  publishBirzha?: ReactNode;
   managementSlot?: ReactNode;
   closeProjectSlot?: ReactNode;
 }
 
 export function ProjectActions({
   joinBlock,
-  publishBirzha,
   managementSlot,
   closeProjectSlot,
 }: ProjectActionsProps) {
@@ -21,7 +19,6 @@ export function ProjectActions({
   return (
     <section className="space-y-4" aria-label={t('actionsSection')}>
       {joinBlock}
-      {publishBirzha}
       {managementSlot && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50">

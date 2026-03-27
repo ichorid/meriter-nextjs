@@ -285,11 +285,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
 
         {user && !isArchived && (
           <ProjectActions
-            publishBirzha={
-              isMember ? (
-                <PublishToBirzhaButton projectId={projectId} isLead={isLead} />
-              ) : undefined
-            }
             managementSlot={
               isMember ? (
                 <>
