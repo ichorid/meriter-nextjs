@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { Loader2, FlaskConical, Skull, Database, Upload } from 'lucide-react';
+import { Loader2, FlaskConical, Skull, Database, Upload, Tags } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
@@ -24,6 +24,7 @@ const PLATFORM_WIPE_EXTRA_PASSWORD = '1243';
 const WIPE_COUNTDOWN_SEC = 12;
 const SEED_COUNTDOWN_SEC = 3;
 const DUMP_COUNTDOWN_SEC = 5;
+const RESET809_COUNTDOWN_SEC = 5;
 const RESTORE_COUNTDOWN_SEC = 12;
 /** Must match `DATABASE_RESTORE_CONFIRM_TOKEN` in API. */
 const RESTORE_CONFIRM_TOKEN = 'RESTORE';
@@ -41,6 +42,10 @@ export function PlatformDevDangerSection() {
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedSeconds, setSeedSeconds] = useState(SEED_COUNTDOWN_SEC);
   const [seedAckWipe, setSeedAckWipe] = useState(false);
+
+  const [reset809Open, setReset809Open] = useState(false);
+  const [reset809Seconds, setReset809Seconds] = useState(RESET809_COUNTDOWN_SEC);
+  const [reset809Password, setReset809Password] = useState('');
 
   const [dumpOpen, setDumpOpen] = useState(false);
   const [dumpSeconds, setDumpSeconds] = useState(DUMP_COUNTDOWN_SEC);
@@ -79,6 +84,19 @@ export function PlatformDevDangerSection() {
     }, 1000);
     return () => window.clearInterval(tmr);
   }, [seedOpen]);
+
+  useEffect(() => {
+    if (!reset809Open) {
+      setReset809Seconds(RESET809_COUNTDOWN_SEC);
+      setReset809Password('');
+      return;
+    }
+    setReset809Seconds(RESET809_COUNTDOWN_SEC);
+    const tmr = window.setInterval(() => {
+      setReset809Seconds((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(tmr);
+  }, [reset809Open]);
 
   useEffect(() => {
     if (!dumpOpen) {
@@ -142,6 +160,18 @@ export function PlatformDevDangerSection() {
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
 
+  const reset809Mutation = trpc.platformDev.resetDecree809Rubricator.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.platformSettings.get.invalidate(),
+        utils.platformSettings.getSuggestedValueTags.invalidate(),
+      ]);
+      addToast(t('platformDevReset809Success'), 'success');
+      setReset809Open(false);
+    },
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
+  });
+
   const exportDumpMutation = trpc.platformDev.exportDatabaseDump.useMutation({
     onSuccess: (data) => {
       const blob = new Blob([data.json], {
@@ -188,6 +218,11 @@ export function PlatformDevDangerSection() {
     wipePassword === PLATFORM_WIPE_EXTRA_PASSWORD &&
     !wipeMutation.isPending;
 
+  const reset809Enabled =
+    reset809Seconds === 0 &&
+    reset809Password === PLATFORM_WIPE_EXTRA_PASSWORD &&
+    !reset809Mutation.isPending;
+
   const dumpEnabled =
     dumpSeconds === 0 &&
     dumpPassword === PLATFORM_WIPE_EXTRA_PASSWORD &&
@@ -227,6 +262,16 @@ export function PlatformDevDangerSection() {
           >
             <FlaskConical className="w-4 h-4 mr-1" />
             {t('platformDevSeedOpen')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setReset809Open(true)}
+            className="border-base-300"
+          >
+            <Tags className="w-4 h-4 mr-1" />
+            {t('platformDevReset809Open')}
           </Button>
           <Button
             type="button"
@@ -343,6 +388,51 @@ export function PlatformDevDangerSection() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 t('platformDevSeedConfirm')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={reset809Open} onOpenChange={setReset809Open}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('platformDevReset809DialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-base-content/80">
+            <p>{t('platformDevReset809Intro')}</p>
+            <div>
+              <Label htmlFor="reset809-password">{t('platformDevWipePasswordLabel')}</Label>
+              <Input
+                id="reset809-password"
+                type="password"
+                inputMode="numeric"
+                value={reset809Password}
+                onChange={(e) => setReset809Password(e.target.value)}
+                autoComplete="new-password"
+                className="mt-1"
+              />
+              <p className="text-xs text-base-content/60 mt-1">{t('platformDevWipePasswordHelp')}</p>
+            </div>
+            <p className="text-xs text-base-content/60">
+              {t('platformDevReset809Timer', { seconds: reset809Seconds })}
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setReset809Open(false)}>
+              {t('platformDevCancel')}
+            </Button>
+            <Button
+              type="button"
+              disabled={!reset809Enabled}
+              onClick={() =>
+                reset809Mutation.mutate({ wipePassword: reset809Password })
+              }
+            >
+              {reset809Mutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                t('platformDevReset809Confirm')
               )}
             </Button>
           </DialogFooter>

@@ -173,18 +173,21 @@ export function TopUpWalletDialog({
       return null;
     }
     if (effectiveMemberTopUp) {
+      const memberInvestingContextReady = investingEnabled && showInvestStyleBlock;
       return (
         <div className="space-y-3">
           <p className="text-sm text-brand-text-primary whitespace-pre-line">
             {t('projectMemberInvestContextWarning')}
           </p>
-          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
-            <p className="whitespace-pre-line text-sm text-base-content/80">
-              {t('projectMemberTopUpDonationWarning')}
-            </p>
-          </div>
-          {investingEnabled && showInvestStyleBlock ? (
+          {!memberInvestingContextReady ? (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+              <p className="whitespace-pre-line text-sm text-base-content/80">
+                {t('projectMemberTopUpDonationWarning')}
+              </p>
+            </div>
+          ) : null}
+          {memberInvestingContextReady ? (
             <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
               <p className="whitespace-pre-line text-sm text-base-content/80">

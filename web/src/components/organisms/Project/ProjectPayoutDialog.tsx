@@ -154,10 +154,11 @@ export function ProjectPayoutDialog({
               {resolveApiErrorToastMessage((previewError as Error).message)}
             </p>
           )}
-          {preview?.lines && preview.lines.length > 0 && (
+          {preview?.lines && preview.lines.length > 0 && preview.payoutAmount != null && (
             <WalletPayoutPreviewLines
               lines={preview.lines}
-              className="max-h-40 min-h-[2.5rem] space-y-1 overflow-y-auto rounded-md border border-white/10 p-2 text-xs"
+              payoutAmount={preview.payoutAmount}
+              className="max-h-[min(70vh,28rem)] min-h-[2.5rem] space-y-3 overflow-y-auto rounded-md border border-white/10 p-2 text-xs"
             />
           )}
         </div>
