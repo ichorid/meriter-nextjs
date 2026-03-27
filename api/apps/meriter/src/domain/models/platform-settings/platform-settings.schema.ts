@@ -12,6 +12,8 @@ export interface PlatformSettings {
   decree809Enabled?: boolean;
   /** Copy of canonical decree tags (seeded; not edited in UI). */
   decree809Tags?: string[];
+  /** Bumped by migration when canonical list / legacy mappings change; see `DECREE_809_TAGS_REVISION`. */
+  decree809TagsRevision?: number;
   /** Minimum entity count to show a tag in suggested list (default 5). */
   popularValueTagsThreshold?: number;
   /** Set after demo seed; cleared on platform wipe. */
@@ -35,6 +37,9 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ type: [String], default: [] })
   decree809Tags?: string[];
+
+  @Prop({ type: Number, required: false })
+  decree809TagsRevision?: number;
 
   @Prop({ type: Number, default: 5 })
   popularValueTagsThreshold?: number;

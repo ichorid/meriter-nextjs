@@ -8,7 +8,7 @@ import {
   PLATFORM_SETTINGS_ID,
 } from '../models/platform-settings/platform-settings.schema';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
-import { DECREE_809_TAGS } from '@meriter/shared-types';
+import { DECREE_809_TAGS, DECREE_809_TAGS_REVISION } from '@meriter/shared-types';
 import { loadDevPlatformSnapshot } from '../../seed-data/load-dev-platform-snapshot';
 
 export interface UpdatePlatformSettingsDto {
@@ -41,6 +41,7 @@ export class PlatformSettingsService {
         ],
         decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
         decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        decree809TagsRevision: DECREE_809_TAGS_REVISION,
         popularValueTagsThreshold:
           PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
       });
@@ -57,12 +58,14 @@ export class PlatformSettingsService {
           {
             $set: {
               decree809Tags: [...DECREE_809_TAGS],
+              decree809TagsRevision: DECREE_809_TAGS_REVISION,
               updatedAt: new Date(),
             },
           },
         )
         .exec();
       result.decree809Tags = [...DECREE_809_TAGS];
+      result.decree809TagsRevision = DECREE_809_TAGS_REVISION;
     }
     if (result.decree809Enabled == null) {
       result.decree809Enabled = false;
@@ -143,6 +146,42 @@ export class PlatformSettingsService {
     return doc as PlatformSettings;
   }
 
+  /**
+   * Superadmin dev tool: clear admin-added rubricator extras and reset persisted decree 809
+   * list to the canonical in-repo `DECREE_809_TAGS`. Does not change `decree809Enabled`.
+   */
+  async resetDecree809RubricatorToCanonical(): Promise<PlatformSettings> {
+    this.logger.log(
+      'Reset decree 809 tags to canonical list; clearing availableFutureVisionTags',
+    );
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        {
+          $set: {
+            availableFutureVisionTags: [],
+            decree809Tags: [...DECREE_809_TAGS],
+            decree809TagsRevision: DECREE_809_TAGS_REVISION,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            id: PLATFORM_SETTINGS_ID,
+            welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+            decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+            popularValueTagsThreshold:
+              PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
+          },
+        },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
+    if (!doc) {
+      throw new Error('Failed to reset decree 809 rubricator');
+    }
+    return doc as PlatformSettings;
+  }
+
   async getDemoSeedVersion(): Promise<number | undefined> {
     const doc = await this.platformSettingsModel
       .findOne({ id: PLATFORM_SETTINGS_ID })
@@ -167,6 +206,7 @@ export class PlatformSettingsService {
         ],
         decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
         decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        decree809TagsRevision: DECREE_809_TAGS_REVISION,
         popularValueTagsThreshold:
           PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
         demoSeedVersion: version,
@@ -196,6 +236,7 @@ export class PlatformSettingsService {
             availableFutureVisionTags: [...(ps.availableFutureVisionTags ?? [])],
             decree809Enabled: ps.decree809Enabled ?? false,
             decree809Tags: [...(ps.decree809Tags ?? DECREE_809_TAGS)],
+            decree809TagsRevision: DECREE_809_TAGS_REVISION,
             popularValueTagsThreshold: ps.popularValueTagsThreshold ?? 5,
             updatedAt: new Date(),
           },

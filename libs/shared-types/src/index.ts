@@ -189,6 +189,12 @@ export {
 } from './value-rubricator';
 export type { PlatformValueRubricatorInput } from './value-rubricator';
 
+export {
+    DECREE_809_TAGS_REVISION,
+    normalizeDecreeTagKey,
+    remapDecree809ValueTags,
+} from './decree809-tag-remap';
+
 // Additional utility types
 export interface UpdatesFrequencySettings {
   frequency: string;

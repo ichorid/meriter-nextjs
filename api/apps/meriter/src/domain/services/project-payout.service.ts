@@ -24,7 +24,11 @@ const DEFAULT_CURRENCY = {
 
 export type PayoutLine = { userId: string; amount: number; bucket: 'founder' | 'investor' | 'team' };
 
-export type PayoutPreviewLine = PayoutLine & { displayName: string };
+export type PayoutPreviewLine = PayoutLine & {
+  displayName: string;
+  /** Share of this payout amount (0–100, two decimals). */
+  percentOfPayout: number;
+};
 
 function floor2(n: number): number {
   return Math.floor(n * 100) / 100;
@@ -46,7 +50,11 @@ export class ProjectPayoutService {
   async previewPayout(
     projectId: string,
     amount: number,
-  ): Promise<{ lines: PayoutPreviewLine[]; totalCredits: number }> {
+  ): Promise<{
+    lines: PayoutPreviewLine[];
+    totalCredits: number;
+    payoutAmount: number;
+  }> {
     if (!Number.isInteger(amount) || amount < 1) {
       throw new BadRequestException('Amount must be a positive integer');
     }
@@ -57,13 +65,17 @@ export class ProjectPayoutService {
         `Insufficient project wallet balance. Available: ${balance}, requested: ${amount}`,
       );
     }
-    const { lines, totalCredits } = await this.computeDistribution(target, projectId, amount);
-    const nameById = await this.userService.getDisplayNamesByUserIds(lines.map((l) => l.userId));
-    const linesWithNames: PayoutPreviewLine[] = lines.map((line) => ({
+    const { detailLines, totalCredits } = await this.computeDistribution(target, projectId, amount);
+    const T = amount;
+    const nameById = await this.userService.getDisplayNamesByUserIds(
+      [...new Set(detailLines.map((l) => l.userId))],
+    );
+    const linesWithNames: PayoutPreviewLine[] = detailLines.map((line) => ({
       ...line,
       displayName: nameById.get(line.userId) ?? line.userId,
+      percentOfPayout: T > 0 ? floor2((line.amount / T) * 100) : 0,
     }));
-    return { lines: linesWithNames, totalCredits };
+    return { lines: linesWithNames, totalCredits, payoutAmount: T };
   }
 
   async executePayout(
@@ -98,8 +110,9 @@ export class ProjectPayoutService {
       );
     }
 
-    const { lines, totalCredits, investorCreditsByUserId } =
+    const { mergedLines, totalCredits, investorCreditsByUserId } =
       await this.computeDistribution(target, projectId, amount);
+    const lines = mergedLines;
     const session = options?.session;
 
     const debitReason =
@@ -227,7 +240,10 @@ export class ProjectPayoutService {
     projectId: string,
     T: number,
   ): Promise<{
-    lines: PayoutLine[];
+    /** One row per user after merge (used for execute). */
+    mergedLines: PayoutLine[];
+    /** All slices before merge: same user may appear multiple times (founder / investor / team). */
+    detailLines: PayoutLine[];
     totalCredits: number;
     investorCreditsByUserId: Map<string, number>;
   }> {
@@ -321,6 +337,12 @@ export class ProjectPayoutService {
       .filter((l) => l.amount > 0);
 
     const totalCredits = merged.reduce((s, l) => s + l.amount, 0);
-    return { lines: merged, totalCredits, investorCreditsByUserId };
+    const detailLines = lines.filter((l) => l.amount > 0);
+    return {
+      mergedLines: merged,
+      detailLines,
+      totalCredits,
+      investorCreditsByUserId,
+    };
   }
 }

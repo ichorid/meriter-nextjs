@@ -113,4 +113,23 @@ export const platformDevRouter = router({
         checked.data as MeriterDatabaseDumpV1,
       );
     }),
+
+  /** Clear admin rubricator extras; reset persisted decree 809 list to canonical code list. */
+  resetDecree809Rubricator: protectedProcedure
+    .input(z.object({ wipePassword: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can reset decree 809 rubricator',
+        });
+      }
+      if (input.wipePassword !== PLATFORM_WIPE_EXTRA_PASSWORD) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Invalid wipe password',
+        });
+      }
+      return ctx.platformSettingsService.resetDecree809RubricatorToCanonical();
+    }),
 });
