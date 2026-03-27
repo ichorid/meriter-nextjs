@@ -74,6 +74,8 @@ import {
 import { CommunityDashboard } from '@/components/organisms/Community/community-dashboard';
 import { BirzhaSourcePostsEntryRow } from '@/components/organisms/Birzha/BirzhaSourcePostsEntryRow';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
+import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -134,6 +136,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [showTappalkaModal, setShowTappalkaModal] = useState(false);
+    const [showBirzhaEarnModal, setShowBirzhaEarnModal] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     const handleSearchDraftChange = (value: string) => {
@@ -316,6 +319,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const { user, isLoading: userLoading, isAuthenticated } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
+    const birzhaCommunityId = useBirzhaCommunityId();
 
     // Use v1 API hook
     const { data: comms, error: communityError, isLoading: communityLoading, isFetched: communityFetched } = useCommunity(chatId);
@@ -726,12 +730,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             activeWithdrawPost={activeWithdrawPost}
             setActiveWithdrawPost={setActiveWithdrawPost}
             stickyHeader={
-                <CommunityTopBar
-                    communityId={chatId}
-                    asStickyHeader={true}
-                    onTappalkaClick={() => setShowTappalkaModal(true)}
-                    tappalkaEnabled={comms?.tappalkaSettings?.enabled ?? false}
-                />
+                <CommunityTopBar communityId={chatId} asStickyHeader={true} />
             }
         >
             {/* Community header: hero with integrated future vision subsection */}
@@ -743,7 +742,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             id: comms.id || chatId,
                         }}
                         avatarRowEndSlot={
-                            user && isCommunityMember && showQuotaInHeader ? (
+                            user &&
+                            isCommunityMember &&
+                            showQuotaInHeader &&
+                            !isMarathonOfGood ? (
                                 <QuotaDisplay
                                     balance={canEarnPermanentMerits ? balance : undefined}
                                     quotaRemaining={hasQuota ? quotaRemaining : undefined}
@@ -756,8 +758,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     localContext="community"
                                     className="max-w-full justify-start sm:justify-end"
                                     onEarnMeritsClick={
-                                        comms.tappalkaSettings?.enabled
-                                            ? () => setShowTappalkaModal(true)
+                                        birzhaCommunityId
+                                            ? () => setShowBirzhaEarnModal(true)
                                             : undefined
                                     }
                                 />
@@ -980,8 +982,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     />
                                 </div>
                             )}
-                            {/* Tappalka Button - show only if enabled */}
-                            {comms?.tappalkaSettings?.enabled && (
+                            {/* Tappalka on desktop: feed row for most communities; Birzha uses sticky header only (global wallet) */}
+                            {comms?.tappalkaSettings?.enabled && !isMarathonOfGood && (
                                 <Button
                                     onClick={() => setShowTappalkaModal(true)}
                                     variant="outline"
@@ -1477,6 +1479,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </form>
                 </BottomActionSheet>
             )}
+
+            <BirzhaTappalkaModal
+                open={showBirzhaEarnModal}
+                onOpenChange={setShowBirzhaEarnModal}
+                communityId={birzhaCommunityId}
+            />
 
             {/* Tappalka Modal */}
             <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Scale, Filter, Search, X, UserPlus } from 'lucide-react';
+import { Filter, Search, X, UserPlus } from 'lucide-react';
 import { useFutureVisions } from '@/hooks/api/useFutureVisions';
 import { useCanCreateCommunity } from '@/hooks/api/useProfile';
 import { FutureVisionCard } from './FutureVisionCard';
@@ -11,19 +11,15 @@ import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/Valu
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { Button } from '@/components/ui/shadcn/button';
+import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { routes } from '@/lib/constants/routes';
 import type { FutureVisionItem } from './FutureVisionCard';
 
-export interface FutureVisionFeedProps {
-  onEarnMeritsClick?: () => void;
-  tappalkaEnabled?: boolean;
-}
-
 const FV_TAG_QUERY = 'fvTag';
 
-export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }: FutureVisionFeedProps) {
+export function FutureVisionFeed() {
   const t = useTranslations('common');
   const tValues = useTranslations('valuesRubricator');
   const router = useRouter();
@@ -149,18 +145,7 @@ export function FutureVisionFeed({ onEarnMeritsClick, tappalkaEnabled = false }:
                 <span className="hidden sm:inline whitespace-nowrap">{t('createCommunity')}</span>
               </Button>
             )}
-            {tappalkaEnabled && onEarnMeritsClick && (
-              <Button
-                onClick={onEarnMeritsClick}
-                variant="outline"
-                size="sm"
-                className="inline-flex items-center justify-center text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2 min-w-9"
-                aria-label={t('earnMerits')}
-              >
-                <Scale size={16} className="shrink-0" />
-                <span className="hidden sm:inline whitespace-nowrap">{t('earnMerits')}</span>
-              </Button>
-            )}
+            <EarnMeritsBirzhaButton className="min-w-9" />
             <Button
               variant="ghost"
               size="sm"

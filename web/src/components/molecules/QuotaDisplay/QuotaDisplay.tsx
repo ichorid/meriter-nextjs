@@ -224,9 +224,9 @@ export function QuotaDisplay({
                   </p>
                   <Button
                     onClick={handleEarnMeritsClick}
-                    variant="outline"
+                    variant="default"
                     size="sm"
-                    className="mt-2 w-full sm:w-auto inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                    className="mt-2 w-full sm:w-auto h-9 rounded-xl px-3 gap-2 font-semibold shadow-sm"
                     aria-label={earnMeritsLabel}
                   >
                     <Scale size={16} />
@@ -344,9 +344,9 @@ export function QuotaDisplay({
                 </p>
                 <Button
                   onClick={handleEarnMeritsClick}
-                  variant="outline"
+                  variant="default"
                   size="sm"
-                  className="mt-2 w-full sm:w-auto inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                  className="mt-2 w-full sm:w-auto h-9 rounded-xl px-3 gap-2 font-semibold shadow-sm"
                   aria-label={earnMeritsLabel}
                 >
                   <Scale size={16} />

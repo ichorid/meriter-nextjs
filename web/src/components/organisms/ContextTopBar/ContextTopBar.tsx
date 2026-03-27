@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCommunity } from '@/hooks/api';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { routes } from '@/lib/constants/routes';
@@ -9,11 +9,12 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
-import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp, Scale } from 'lucide-react';
+import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
+import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -242,67 +243,17 @@ export const SimpleStickyHeader: React.FC<{
 export const CommunityTopBar: React.FC<{
   communityId: string;
   asStickyHeader?: boolean;
-  onTappalkaClick?: () => void;
-  tappalkaEnabled?: boolean;
 }> = ({
   communityId,
   asStickyHeader = false,
-  onTappalkaClick,
-  tappalkaEnabled = false,
 }) => {
     const { user } = useAuth();
     const { data: globalBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
     const { data: community, isLoading: communityLoading } = useCommunity(communityId);
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const t = useTranslations('pages.communities');
-    const tCommon = useTranslations('common');
 
-    // Safe translation helper to prevent MISSING_MESSAGE errors
-    const safeTranslate = (key: string, fallback: string): string => {
-      try {
-        return tCommon(key);
-      } catch {
-        return fallback;
-      }
-    };
-    const [showTagDropdown, setShowTagDropdown] = React.useState(false);
-    const [showSnack, setShowSnack] = React.useState(false);
-
-    const selectedTag = searchParams?.get('tag');
-
-    // Handle tag filter
-    const handleTagClick = (tag: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      if (selectedTag === tag) {
-        params.delete('tag');
-      } else {
-        params.set('tag', tag);
-      }
-      router.push(`?${params.toString()}`);
-      setShowTagDropdown(false);
-    };
-
-    // Handle clear tag filter (show all)
-    const handleShowAll = () => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '');
-      params.delete('tag');
-      router.push(`?${params.toString()}`);
-      setShowTagDropdown(false);
-    };
-
-
-    const isMobile = !useMediaQuery('(min-width: 768px)');
     // Left nav is hidden below lg breakpoint (1024px), so show back button when nav is hidden
     const isLeftNavHidden = !useMediaQuery('(min-width: 1024px)');
-
-    // Show mobile snack bar with community title when arriving/switching
-    React.useEffect(() => {
-      if (!isMobile) return;
-      setShowSnack(true);
-      const timeout = setTimeout(() => setShowSnack(false), 2000);
-      return () => clearTimeout(timeout);
-    }, [communityId, isMobile]);
 
     // Show loading state instead of returning null
     if (communityLoading) {
@@ -319,13 +270,16 @@ export const CommunityTopBar: React.FC<{
           rightAction={
             <div className="flex items-center gap-2 flex-shrink-0">
               {user ? (
-                <QuotaDisplay
-                  balance={globalBalance}
-                  showPermanent={true}
-                  showDaily={false}
-                  compact={true}
-                  className="mr-2 -ml-[15px] mt-[5px]"
-                />
+                <>
+                  <QuotaDisplay
+                    balance={globalBalance}
+                    showPermanent={true}
+                    showDaily={false}
+                    compact={true}
+                    className="mr-2 -ml-[15px] mt-[5px]"
+                  />
+                  <EarnMeritsBirzhaButton />
+                </>
               ) : null}
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-base-content/70" />
             </div>
@@ -337,8 +291,6 @@ export const CommunityTopBar: React.FC<{
     if (!community) {
       return null;
     }
-
-    const hashtags = community.hashtags || [];
 
     const handleBack = () => {
       router.push('/meriter/communities');
@@ -354,27 +306,17 @@ export const CommunityTopBar: React.FC<{
         rightAction={
           <div className="flex items-center gap-2 flex-shrink-0">
             {user ? (
-              <QuotaDisplay
-                balance={globalBalance}
-                showPermanent={true}
-                showDaily={false}
-                compact={true}
-                className="mr-2 -ml-[15px] mt-[5px]"
-              />
+              <>
+                <QuotaDisplay
+                  balance={globalBalance}
+                  showPermanent={true}
+                  showDaily={false}
+                  compact={true}
+                  className="mr-2 -ml-[15px] mt-[5px]"
+                />
+                <EarnMeritsBirzhaButton />
+              </>
             ) : null}
-            {/* Tappalka Button - mobile only (desktop version is in filters row) */}
-            {tappalkaEnabled && onTappalkaClick && (
-              <Button
-                onClick={onTappalkaClick}
-                variant="outline"
-                size="sm"
-                className="lg:hidden rounded-xl active:scale-[0.98] px-3 h-9 text-sm font-medium border border-input bg-base-200 hover:bg-base-300 text-base-content whitespace-nowrap inline-flex items-center justify-center gap-2"
-                aria-label={t('tappalka')}
-              >
-                <Scale size={16} />
-                {t('tappalka')}
-              </Button>
-            )}
           </div>
         }
       />

@@ -2,14 +2,13 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { PiggyBank, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { useUIStore } from '@/stores/ui.store';
-import { useCommunity } from '@/hooks/api/useCommunities';
-import { routes } from '@/lib/constants/routes';
 import { InvestDialog } from '@/components/organisms/InvestDialog';
+import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
+import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 
 interface InvestButtonProps {
   postId: string;
@@ -45,12 +44,11 @@ export function InvestButton({
 }: InvestButtonProps) {
   const t = useTranslations('investing');
   const tCommon = useTranslations('common');
-  const router = useRouter();
-  const { data: community } = useCommunity(communityId);
+  const birzhaCommunityId = useBirzhaCommunityId();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [noMeritsDialogOpen, setNoMeritsDialogOpen] = useState(false);
+  const [birzhaTappalkaOpen, setBirzhaTappalkaOpen] = useState(false);
   const openWithdrawPopup = useUIStore((state) => state.openWithdrawPopup);
-  const tappalkaEnabled = community?.tappalkaSettings?.enabled ?? false;
 
   if (!investingEnabled) return null;
 
@@ -67,7 +65,9 @@ export function InvestButton({
 
   const handleEarnMerits = () => {
     setNoMeritsDialogOpen(false);
-    router.push(`${routes.community(communityId)}?tappalka=1`);
+    if (birzhaCommunityId) {
+      setBirzhaTappalkaOpen(true);
+    }
   };
 
   return (
@@ -127,7 +127,7 @@ export function InvestButton({
                 })}
               </p>
               <DialogFooter>
-                {tappalkaEnabled && (
+                {birzhaCommunityId && (
                   <Button onClick={handleEarnMerits}>
                     {t('earnMeritsButton', { defaultValue: 'Earn merits' })}
                   </Button>
@@ -138,6 +138,11 @@ export function InvestButton({
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          <BirzhaTappalkaModal
+            open={birzhaTappalkaOpen}
+            onOpenChange={setBirzhaTappalkaOpen}
+            communityId={birzhaCommunityId}
+          />
         </>
       )}
     </>

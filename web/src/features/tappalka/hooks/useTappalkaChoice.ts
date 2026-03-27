@@ -1,11 +1,11 @@
 import { trpc } from '@/lib/trpc/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/constants/queryKeys';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import {
   invalidateFutureVisionsList,
   refetchCommunityFeed,
 } from '@/hooks/api/invalidate-community-session-caches';
-import type { SubmitTappalkaChoiceInput } from '../types';
 
 /**
  * Hook to submit user's choice in tappalka comparison
@@ -57,6 +57,11 @@ export function useTappalkaChoice() {
       }
 
       await invalidateFutureVisionsList(utils);
+
+      await utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
+      await utils.wallets.getBalance.refetch({ communityId: GLOBAL_COMMUNITY_ID });
+      queryClient.invalidateQueries({ queryKey: ['quota'], exact: false });
+      await queryClient.refetchQueries({ queryKey: ['quota'], exact: false });
     },
   });
 }

@@ -21,6 +21,7 @@ import { TransferAdminDialog } from '@/components/organisms/Project/TransferAdmi
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
+import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 import { cn } from '@/lib/utils';
@@ -166,6 +167,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
               compact={true}
               className="mr-2 -ml-[15px] mt-[5px]"
             />
+            <EarnMeritsBirzhaButton />
           </div>
         ) : undefined
       }
@@ -253,7 +255,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           totalMembers={totalMembers}
           investingEnabled={project.settings?.investingEnabled === true}
           isProjectMember={isMember}
-          canPayout={Boolean(user && (isLead || user.globalRole === 'superadmin'))}
+          canPayout={Boolean(user && isLead)}
           readOnly={isArchived}
         />
 
