@@ -14,7 +14,10 @@ import { InvestDialog } from '@/components/organisms/InvestDialog';
 interface InvestButtonProps {
   postId: string;
   communityId: string;
-  isAuthor: boolean;
+  /** Publisher can add merits to the post pool (always true for personal author; also for community posts). */
+  canTopUp: boolean;
+  /** Show investor flow (own personal invest posts: false; community-sourced: true alongside canTopUp). */
+  canInvest: boolean;
   investingEnabled: boolean;
   investorSharePercent: number;
   investmentPool: number;
@@ -29,7 +32,8 @@ interface InvestButtonProps {
 export function InvestButton({
   postId,
   communityId,
-  isAuthor,
+  canTopUp,
+  canInvest,
   investingEnabled,
   investorSharePercent,
   investmentPool,
@@ -50,26 +54,7 @@ export function InvestButton({
 
   if (!investingEnabled) return null;
 
-  if (isAuthor) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        className="rounded-xl gap-2 px-2 sm:px-3"
-        onClick={(e) => {
-          e.stopPropagation();
-          openWithdrawPopup(postId, 'publication-topup', 0, walletBalance);
-        }}
-      >
-        <Plus className="w-4 h-4 shrink-0" />
-        {iconOnlyOnMobile ? (
-          <span className="hidden sm:inline">{t('topUp', { defaultValue: 'Top up' })}</span>
-        ) : (
-          t('topUp', { defaultValue: 'Top up' })
-        )}
-      </Button>
-    );
-  }
+  if (!canTopUp && !canInvest) return null;
 
   const handleInvestClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -87,52 +72,74 @@ export function InvestButton({
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        className="rounded-xl gap-2 px-2 sm:px-3"
-        onClick={handleInvestClick}
-      >
-        <PiggyBank className="w-4 h-4 shrink-0" />
-        {iconOnlyOnMobile ? (
-          <span className="hidden sm:inline">{t('invest', { defaultValue: 'Invest' })}</span>
-        ) : (
-          t('invest', { defaultValue: 'Invest' })
-        )}
-      </Button>
-      <InvestDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        postId={postId}
-        communityId={communityId}
-        investorSharePercent={investorSharePercent}
-        investmentPool={investmentPool}
-        investmentPoolTotal={investmentPoolTotal}
-        investorCount={investorCount}
-        onSuccess={onSuccess}
-      />
-      <Dialog open={noMeritsDialogOpen} onOpenChange={setNoMeritsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t('invest', { defaultValue: 'Invest' })}</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-base-content/90">
-            {t('noMeritsMessage', {
-              defaultValue: 'You have no merits to invest. Earn some first.',
-            })}
-          </p>
-          <DialogFooter>
-            {tappalkaEnabled && (
-              <Button onClick={handleEarnMerits}>
-                {t('earnMeritsButton', { defaultValue: 'Earn merits' })}
-              </Button>
+      {canTopUp && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-xl gap-2 px-2 sm:px-3"
+          onClick={(e) => {
+            e.stopPropagation();
+            openWithdrawPopup(postId, 'publication-topup', 0, walletBalance);
+          }}
+        >
+          <Plus className="w-4 h-4 shrink-0" />
+          {iconOnlyOnMobile ? (
+            <span className="hidden sm:inline">{t('topUp', { defaultValue: 'Top up' })}</span>
+          ) : (
+            t('topUp', { defaultValue: 'Top up' })
+          )}
+        </Button>
+      )}
+      {canInvest && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-xl gap-2 px-2 sm:px-3"
+            onClick={handleInvestClick}
+          >
+            <PiggyBank className="w-4 h-4 shrink-0" />
+            {iconOnlyOnMobile ? (
+              <span className="hidden sm:inline">{t('invest', { defaultValue: 'Invest' })}</span>
+            ) : (
+              t('invest', { defaultValue: 'Invest' })
             )}
-            <Button variant="outline" onClick={() => setNoMeritsDialogOpen(false)}>
-              {tCommon('close', { defaultValue: 'Close' })}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </Button>
+          <InvestDialog
+            open={dialogOpen}
+            onOpenChange={setDialogOpen}
+            postId={postId}
+            communityId={communityId}
+            investorSharePercent={investorSharePercent}
+            investmentPool={investmentPool}
+            investmentPoolTotal={investmentPoolTotal}
+            investorCount={investorCount}
+            onSuccess={onSuccess}
+          />
+          <Dialog open={noMeritsDialogOpen} onOpenChange={setNoMeritsDialogOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{t('invest', { defaultValue: 'Invest' })}</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-base-content/90">
+                {t('noMeritsMessage', {
+                  defaultValue: 'You have no merits to invest. Earn some first.',
+                })}
+              </p>
+              <DialogFooter>
+                {tappalkaEnabled && (
+                  <Button onClick={handleEarnMerits}>
+                    {t('earnMeritsButton', { defaultValue: 'Earn merits' })}
+                  </Button>
+                )}
+                <Button variant="outline" onClick={() => setNoMeritsDialogOpen(false)}>
+                  {tCommon('close', { defaultValue: 'Close' })}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
     </>
   );
 }

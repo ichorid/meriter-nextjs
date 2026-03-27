@@ -5,13 +5,19 @@
 export type PublicationSourceFields = {
   authorKind?: 'user' | 'community';
   sourceEntityType?: 'project' | 'community';
+  authoredCommunityId?: string;
 };
 
 export function isPublicationEntitySourced(
   post: PublicationSourceFields,
 ): boolean {
   if (post.authorKind === 'community') return true;
-  return (
-    post.sourceEntityType === 'project' || post.sourceEntityType === 'community'
-  );
+  if (
+    post.sourceEntityType === 'project' ||
+    post.sourceEntityType === 'community'
+  ) {
+    return true;
+  }
+  if (post.authoredCommunityId) return true;
+  return false;
 }

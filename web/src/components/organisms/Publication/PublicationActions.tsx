@@ -154,14 +154,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
   const isAuthor = !!(myId && authorId && myId === authorId);
   const isBeneficiary = !!(hasBeneficiary && myId && beneficiaryId && myId === beneficiaryId);
-  const entitySourced = isPublicationEntitySourced(
-    publication as {
-      authorKind?: 'user' | 'community';
-      sourceEntityType?: 'project' | 'community';
-    },
-  );
-  /** Personal user-authored post (not project/community Birzha source) — for invest / self-vote UX */
-  const isPersonalAuthor = isAuthor && !entitySourced;
 
   // Get fresh publication data from cache if available (to get updated score after tappalka)
   const publicationId = getPublicationIdentifier(publication);
@@ -174,9 +166,18 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       refetchOnWindowFocus: false,
     },
   );
-  
-  // Use fresh data if available, otherwise fall back to prop data
+
+  // Use fresh data if available, otherwise fall back to prop data (feed may omit authorKind/sourceEntityType)
   const effectivePublication = freshPublication || publication;
+  const entitySourced = isPublicationEntitySourced(
+    effectivePublication as {
+      authorKind?: 'user' | 'community';
+      sourceEntityType?: 'project' | 'community';
+      authoredCommunityId?: string;
+    },
+  );
+  /** Personal user-authored post (not project/community Birzha source) — for invest / self-vote UX */
+  const isPersonalAuthor = isAuthor && !entitySourced;
   const currentScore = effectivePublication.metrics?.score || 0;
 
   const totalWithdrawn = effectivePublication.withdrawals?.totalWithdrawn || 0;
@@ -555,11 +556,11 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         hasShareUrl={!!(publication.slug || (publication.type === 'poll' && publication.id))}
         onShareClick={handleShareClick}
         onCommentOnlyClick={handleCommentOnlyClick}
-        showAddMerits={isAuthor && investingEnabled && !!myId}
         investButtonProps={{
           postId: publicationId,
           communityId: communityId || '',
-          isAuthor: isPersonalAuthor,
+          canTopUp: isAuthor && investingEnabled && !!myId,
+          canInvest: !isPersonalAuthor && investingEnabled && !!myId,
           investingEnabled,
           investorSharePercent,
           investmentPool,
@@ -579,7 +580,6 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         showSettingsInMore={canEdit}
         onClosePostClick={handleClosePostClick}
         onSettingsClick={handleSettingsClick}
-        showInvestButton={!isPersonalAuthor && investingEnabled && !!myId}
         showVoteButton={!hideVoteAndScore && !isClosed && ((!isAuthor && !isBeneficiary) || (isAuthor && canVote))}
         canVote={canVote}
         onVoteClick={handleVoteClick}

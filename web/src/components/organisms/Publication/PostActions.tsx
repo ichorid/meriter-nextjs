@@ -1,5 +1,5 @@
 // PostActions: context-aware action buttons by role and post status (E-3)
-// Author + Active: [★ Fav] [↗ Share] [+ Add merits] [↓ Withdraw] [⋯ More]
+// Author + Active: [★ Fav] [↗ Share] [+ Top up] [+ Invest when entity-sourced] [↓ Withdraw] [⋯ More]
 // User + Active: [★ Fav] [↗ Share] [💰 Invest (if enabled)] [💬 Vote]
 // Any + Closed: [★ Fav] [↗ Share] [💬 Comment]
 // Admin +/-: in ⋯ More menu
@@ -30,11 +30,11 @@ interface PostActionsProps {
   onCommentOnlyClick: () => void;
 
   // Active: Author — Add merits, Withdraw, More (Close, Settings, admin +/-)
-  showAddMerits: boolean;
   investButtonProps: {
     postId: string | undefined;
     communityId: string;
-    isAuthor: boolean;
+    canTopUp: boolean;
+    canInvest: boolean;
     investingEnabled: boolean;
     investorSharePercent: number;
     investmentPool: number;
@@ -57,7 +57,6 @@ interface PostActionsProps {
   onSettingsClick: () => void;
 
   // Active: User — Invest, Vote
-  showInvestButton: boolean;
   showVoteButton: boolean;
   canVote: boolean;
   onVoteClick: () => void;
@@ -90,7 +89,6 @@ export const PostActions: React.FC<PostActionsProps> = ({
   hasShareUrl,
   onShareClick,
   onCommentOnlyClick,
-  showAddMerits,
   investButtonProps,
   showWithdrawButton,
   onWithdrawClick,
@@ -103,7 +101,6 @@ export const PostActions: React.FC<PostActionsProps> = ({
   showSettingsInMore,
   onClosePostClick,
   onSettingsClick,
-  showInvestButton,
   showVoteButton,
   canVote,
   onVoteClick,
@@ -254,11 +251,13 @@ export const PostActions: React.FC<PostActionsProps> = ({
               )}
             </div>
           )}
-          {showAddMerits && (
+          {(investButtonProps.canTopUp || investButtonProps.canInvest) &&
+            investButtonProps.postId && (
             <InvestButton
               postId={investButtonProps.postId}
               communityId={investButtonProps.communityId}
-              isAuthor={investButtonProps.isAuthor}
+              canTopUp={investButtonProps.canTopUp}
+              canInvest={investButtonProps.canInvest}
               investingEnabled={investButtonProps.investingEnabled}
               investorSharePercent={investButtonProps.investorSharePercent}
               investmentPool={investButtonProps.investmentPool}
@@ -380,21 +379,23 @@ export const PostActions: React.FC<PostActionsProps> = ({
             )}
           </div>
         )}
-        {showInvestButton && (
-          <InvestButton
-            postId={investButtonProps.postId}
-            communityId={investButtonProps.communityId}
-            isAuthor={investButtonProps.isAuthor}
-            investingEnabled={investButtonProps.investingEnabled}
-            investorSharePercent={investButtonProps.investorSharePercent}
-            investmentPool={investButtonProps.investmentPool}
-            investmentPoolTotal={investButtonProps.investmentPoolTotal}
-            investorCount={investButtonProps.investorCount}
-            walletBalance={investButtonProps.walletBalance}
-            onSuccess={investButtonProps.onSuccess}
-            iconOnlyOnMobile
-          />
-        )}
+        {(investButtonProps.canTopUp || investButtonProps.canInvest) &&
+          investButtonProps.postId && (
+            <InvestButton
+              postId={investButtonProps.postId}
+              communityId={investButtonProps.communityId}
+              canTopUp={investButtonProps.canTopUp}
+              canInvest={investButtonProps.canInvest}
+              investingEnabled={investButtonProps.investingEnabled}
+              investorSharePercent={investButtonProps.investorSharePercent}
+              investmentPool={investButtonProps.investmentPool}
+              investmentPoolTotal={investButtonProps.investmentPoolTotal}
+              investorCount={investButtonProps.investorCount}
+              walletBalance={investButtonProps.walletBalance}
+              onSuccess={investButtonProps.onSuccess}
+              iconOnlyOnMobile
+            />
+          )}
         {showVoteButton && (
           <button
             onClick={onVoteClick}
