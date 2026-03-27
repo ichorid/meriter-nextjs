@@ -22,6 +22,7 @@ export function BirzhaSourcePostsEntryRow({
   sourceEntityId,
   listHref,
   publishSlot,
+  footerSlot,
   className,
 }: {
   variant: 'community' | 'project';
@@ -30,6 +31,8 @@ export function BirzhaSourcePostsEntryRow({
   listHref: string;
   /** Optional CTA beside the list link (e.g. publish). Omit when entry exists on the list page. */
   publishSlot?: ReactNode;
+  /** Renders below the link row (e.g. secondary action on community dashboard). */
+  footerSlot?: ReactNode;
   /** Merges with root row wrapper (default includes mb-6). */
   className?: string;
 }) {
@@ -47,25 +50,26 @@ export function BirzhaSourcePostsEntryRow({
   const linkClass = variant === 'project' ? linkClassProject : linkClassCommunity;
 
   return (
-    <div
-      className={cn('mb-6 flex flex-col gap-3 sm:flex-row sm:items-stretch', className)}
-    >
-      <Link href={listHref} className={linkClass}>
-        <div className="flex min-w-0 items-center gap-3">
-          <TrendingUp className="h-5 w-5 shrink-0 opacity-70" aria-hidden />
-          <div className="flex min-w-0 items-baseline gap-2">
-            <span className="truncate font-medium">{t('sectionTitle')}</span>
-            <span className="shrink-0 tabular-nums text-sm opacity-60">{countLabel}</span>
+    <div className={cn('mb-6 flex flex-col gap-2', className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <Link href={listHref} className={linkClass}>
+          <div className="flex min-w-0 items-center gap-3">
+            <TrendingUp className="h-5 w-5 shrink-0 opacity-70" aria-hidden />
+            <div className="flex min-w-0 items-baseline gap-2">
+              <span className="truncate font-medium">{t('sectionTitle')}</span>
+              <span className="shrink-0 tabular-nums text-sm opacity-60">{countLabel}</span>
+            </div>
           </div>
-        </div>
-        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-          {tCommunities('all')}
-          <ChevronRight size={14} aria-hidden />
-        </span>
-      </Link>
-      {publishSlot ? (
-        <div className="flex shrink-0 flex-col justify-stretch sm:justify-center">{publishSlot}</div>
-      ) : null}
+          <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+            {tCommunities('all')}
+            <ChevronRight size={14} aria-hidden />
+          </span>
+        </Link>
+        {publishSlot ? (
+          <div className="flex shrink-0 flex-col justify-stretch sm:justify-center">{publishSlot}</div>
+        ) : null}
+      </div>
+      {footerSlot ?? null}
     </div>
   );
 }

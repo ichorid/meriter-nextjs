@@ -653,6 +653,12 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
 
+    const canPublishBirzhaFromCommunity =
+        Boolean(user) &&
+        (userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin');
+
+    const dashboardOutlineBtnClass =
+        'inline-flex w-full items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2 sm:w-auto';
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const _userTeamCommunityId = null;
@@ -781,28 +787,49 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         />
                     </div>
                     <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
-                        <Link
-                            href={routes.communityProjects(chatId)}
-                            className="flex min-h-[52px] min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
-                                <div className="flex min-w-0 items-baseline gap-2">
-                                    <span className="truncate font-medium text-base-content">
-                                        {tCommunities('communityProjects')}
-                                    </span>
-                                    <span className="shrink-0 tabular-nums text-sm text-base-content/60">
-                                        {communityProjectsCountPending
-                                            ? '…'
-                                            : (communityProjectsSummary?.total ?? 0)}
-                                    </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                            <Link
+                                href={routes.communityProjects(chatId)}
+                                className="flex min-h-[52px] min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                                    <div className="flex min-w-0 items-baseline gap-2">
+                                        <span className="truncate font-medium text-base-content">
+                                            {tCommunities('communityProjects')}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-sm text-base-content/60">
+                                            {communityProjectsCountPending
+                                                ? '…'
+                                                : (communityProjectsSummary?.total ?? 0)}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                {tCommunities('all')}
-                                <ChevronRight size={14} />
-                            </span>
-                        </Link>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
+                                </span>
+                            </Link>
+                            {user ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className={dashboardOutlineBtnClass}
+                                    onClick={() =>
+                                        router.push(
+                                            `/meriter/projects/create?returnTo=${encodeURIComponent(
+                                                routes.community(chatId),
+                                            )}`,
+                                        )
+                                    }
+                                    aria-label={tCommunities('dashboardCreateProject')}
+                                >
+                                    <Plus size={16} aria-hidden />
+                                    {tCommunities('dashboardCreateProject')}
+                                </Button>
+                            ) : null}
+                        </div>
                         <div className="min-w-0 flex-1">
                             <BirzhaSourcePostsEntryRow
                                 variant="community"
@@ -810,6 +837,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 sourceEntityId={chatId}
                                 listHref={routes.communityBirzhaPosts(chatId)}
                                 className="mb-0"
+                                footerSlot={
+                                    canPublishBirzhaFromCommunity ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            className={dashboardOutlineBtnClass}
+                                            onClick={() =>
+                                                router.push(routes.communityBirzhaPublish(chatId))
+                                            }
+                                            aria-label={tCommunities('dashboardCreateBirzhaPost')}
+                                        >
+                                            <Plus size={16} aria-hidden />
+                                            {tCommunities('dashboardCreateBirzhaPost')}
+                                        </Button>
+                                    ) : null
+                                }
                             />
                         </div>
                     </div>

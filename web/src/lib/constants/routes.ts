@@ -43,6 +43,8 @@ export const routes = {
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     /** Birzha posts published on behalf of this community (lead/admin). */
     communityBirzhaPosts: (id: string) => `/meriter/communities/${id}/birzha-posts`,
+    /** Create a Birzha publication on behalf of this source community (lead). */
+    communityBirzhaPublish: (id: string) => `/meriter/communities/${id}/birzha-publish`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
     /** Opens General tab with future vision textarea focused (lead/superadmin settings). */
     communitySettingsEditFutureVision: (id: string) =>
