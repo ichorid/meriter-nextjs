@@ -17,7 +17,6 @@ interface TicketListProps {
   /** Publication id of the ticket to scroll to / highlight (from ?highlight=). */
   highlightTicketId?: string | null;
   onOpenCreateTask?: () => void;
-  onOpenCreateOpenTask?: () => void;
 }
 
 export function TicketList({
@@ -27,7 +26,6 @@ export function TicketList({
   statusFilter,
   highlightTicketId,
   onOpenCreateTask,
-  onOpenCreateOpenTask,
 }: TicketListProps) {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
@@ -46,7 +44,7 @@ export function TicketList({
   });
 
   const list = tickets ?? [];
-  const showLeadCtas = canModerateTickets && (onOpenCreateTask || onOpenCreateOpenTask);
+  const showLeadCtas = canModerateTickets && onOpenCreateTask;
 
   useEffect(() => {
     if (!highlightTicketId || isLoading || list.length === 0) {
@@ -79,16 +77,9 @@ export function TicketList({
         <p className="max-w-md text-sm text-base-content/70">{t('emptyTasksHint')}</p>
         {showLeadCtas && (
           <div className="flex w-full max-w-sm flex-col gap-2 sm:flex-row sm:justify-center">
-            {onOpenCreateOpenTask && (
-              <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onOpenCreateOpenTask}>
-                {t('createOpenTask')}
-              </Button>
-            )}
-            {onOpenCreateTask && (
-              <Button type="button" className="w-full sm:w-auto" onClick={onOpenCreateTask}>
-                {t('createTicket')}
-              </Button>
-            )}
+            <Button type="button" className="w-full sm:w-auto" onClick={onOpenCreateTask}>
+              {t('createTicket')}
+            </Button>
           </div>
         )}
       </div>

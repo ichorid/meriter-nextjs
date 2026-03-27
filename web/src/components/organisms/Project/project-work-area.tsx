@@ -9,7 +9,6 @@ import { routes } from '@/lib/constants/routes';
 import { TicketList } from './TicketList';
 import { DiscussionList } from './DiscussionList';
 import { CreateTicketForm } from './CreateTicketForm';
-import { CreateNeutralTicketForm } from './CreateNeutralTicketForm';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Dialog,
@@ -43,7 +42,6 @@ export function ProjectWorkArea({
   const [activeTab, setActiveTab] = useState<TabId>('tickets');
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [createTicketOpen, setCreateTicketOpen] = useState(false);
-  const [createNeutralTicketOpen, setCreateNeutralTicketOpen] = useState(false);
 
   const tabFromUrl = searchParams.get('tab');
   const highlightTicketId = searchParams.get('highlight');
@@ -114,42 +112,23 @@ export function ProjectWorkArea({
             </select>
           </div>
           {canModerateTickets && !readOnly && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Dialog open={createNeutralTicketOpen} onOpenChange={setCreateNeutralTicketOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" variant="outline" className="w-full sm:w-auto">
-                    {t('createOpenTask')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{t('createOpenTask')}</DialogTitle>
-                  </DialogHeader>
-                  <CreateNeutralTicketForm
-                    projectId={projectId}
-                    onSuccess={() => setCreateNeutralTicketOpen(false)}
-                    onCancel={() => setCreateNeutralTicketOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-              <Dialog open={createTicketOpen} onOpenChange={setCreateTicketOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="w-full sm:w-auto">
-                    {t('createTicket')}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{t('createTicket')}</DialogTitle>
-                  </DialogHeader>
-                  <CreateTicketForm
-                    projectId={projectId}
-                    onSuccess={() => setCreateTicketOpen(false)}
-                    onCancel={() => setCreateTicketOpen(false)}
-                  />
-                </DialogContent>
-              </Dialog>
-            </div>
+            <Dialog open={createTicketOpen} onOpenChange={setCreateTicketOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="w-full sm:w-auto">
+                  {t('createTicket')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{t('createTicket')}</DialogTitle>
+                </DialogHeader>
+                <CreateTicketForm
+                  projectId={projectId}
+                  onSuccess={() => setCreateTicketOpen(false)}
+                  onCancel={() => setCreateTicketOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           )}
         </div>
       )}
@@ -169,9 +148,6 @@ export function ProjectWorkArea({
           canModerateTickets={canModerateTickets}
           statusFilter={statusFilter}
           highlightTicketId={highlightTicketId}
-          onOpenCreateOpenTask={
-            canModerateTickets && !readOnly ? () => setCreateNeutralTicketOpen(true) : undefined
-          }
           onOpenCreateTask={
             canModerateTickets && !readOnly ? () => setCreateTicketOpen(true) : undefined
           }

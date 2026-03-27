@@ -19,6 +19,7 @@ import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { canUseWalletForVoting } from './voting-utils';
+import { isPublicationEntitySourced } from '@/lib/publication-source';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -67,15 +68,18 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: community } = useCommunity(targetCommunityId || '');
   
-  // Check if user is voting for own post (author or beneficiary)
+  // Personal author or beneficiary: wallet-only / own-post helpers (entity-sourced posts are not "own personal post")
   const isOwnPost = useMemo(() => {
     if (!user?.id || !publication || votingTargetType !== 'publication') return false;
     const authorId = publication.authorId;
     const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
-    const isAuthor = !!(authorId && user.id === authorId);
+    const entitySourced = isPublicationEntitySourced(
+      publication as { authorKind?: 'user' | 'community'; sourceEntityType?: 'project' | 'community' },
+    );
+    const isPersonalAuthor = !!(authorId && user.id === authorId && !entitySourced);
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = !!(hasBeneficiary && beneficiaryId && user.id === beneficiaryId);
-    return isAuthor || isBeneficiary;
+    return isPersonalAuthor || isBeneficiary;
   }, [user?.id, publication, votingTargetType]);
   
   const isProjectCommunity = community?.isProject === true;

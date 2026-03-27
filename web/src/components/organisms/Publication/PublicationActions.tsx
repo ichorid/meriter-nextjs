@@ -24,6 +24,7 @@ import {
   voteCtaUsesCommentLabel,
 } from '@/lib/utils/vote-cta-label';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
+import { isPublicationEntitySourced } from '@/lib/publication-source';
 import { PostMetrics } from './PostMetrics';
 import { PostActions } from './PostActions';
 import { ClosePostDialog } from './ClosePostDialog';
@@ -153,7 +154,15 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
   const isAuthor = !!(myId && authorId && myId === authorId);
   const isBeneficiary = !!(hasBeneficiary && myId && beneficiaryId && myId === beneficiaryId);
-  
+  const entitySourced = isPublicationEntitySourced(
+    publication as {
+      authorKind?: 'user' | 'community';
+      sourceEntityType?: 'project' | 'community';
+    },
+  );
+  /** Personal user-authored post (not project/community Birzha source) — for invest / self-vote UX */
+  const isPersonalAuthor = isAuthor && !entitySourced;
+
   // Get fresh publication data from cache if available (to get updated score after tappalka)
   const publicationId = getPublicationIdentifier(publication);
   const { data: freshPublication } = trpc.publications.getById.useQuery(
@@ -263,8 +272,8 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
       return;
     }
 
-    // Check if user is voting for own post (author or beneficiary)
-    const isEffectiveBeneficiary = isAuthor || isBeneficiary;
+    // Check if user is voting for own post (personal author or beneficiary)
+    const isEffectiveBeneficiary = isPersonalAuthor || isBeneficiary;
     
     // If voting for own post, must use wallet only
     if (isEffectiveBeneficiary) {
@@ -550,7 +559,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         investButtonProps={{
           postId: publicationId,
           communityId: communityId || '',
-          isAuthor,
+          isAuthor: isPersonalAuthor,
           investingEnabled,
           investorSharePercent,
           investmentPool,
@@ -570,7 +579,7 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
         showSettingsInMore={canEdit}
         onClosePostClick={handleClosePostClick}
         onSettingsClick={handleSettingsClick}
-        showInvestButton={!isAuthor && investingEnabled && !!myId}
+        showInvestButton={!isPersonalAuthor && investingEnabled && !!myId}
         showVoteButton={!hideVoteAndScore && !isClosed && ((!isAuthor && !isBeneficiary) || (isAuthor && canVote))}
         canVote={canVote}
         onVoteClick={handleVoteClick}

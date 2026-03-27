@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useCreateTicket } from '@/hooks/api/useTickets';
+import { useCreateTicket, useCreateNeutralTicket } from '@/hooks/api/useTickets';
 import { useProjectMembers } from '@/hooks/api/useProjects';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
@@ -16,6 +16,9 @@ import {
   SelectValue,
 } from '@/components/ui/shadcn/select';
 import { cn } from '@/lib/utils';
+
+/** Select value: assignee not fixed — anyone can claim (neutral ticket). */
+const OPEN_ASSIGNMENT_VALUE = '__open__';
 
 interface CreateTicketFormProps {
   projectId: string;
@@ -32,26 +35,35 @@ export function CreateTicketForm({
 }: CreateTicketFormProps) {
   const t = useTranslations('projects');
   const createTicket = useCreateTicket();
+  const createNeutral = useCreateNeutralTicket();
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
   const members = membersData?.data ?? [];
 
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
-  const [beneficiaryId, setBeneficiaryId] = useState<string>('');
+  const [beneficiaryId, setBeneficiaryId] = useState<string>(OPEN_ASSIGNMENT_VALUE);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim() || !title.trim() || !beneficiaryId) return;
+    if (!content.trim() || !title.trim()) return;
     try {
-      await createTicket.mutateAsync({
-        projectId,
-        content: content.trim(),
-        title: title.trim(),
-        beneficiaryId,
-      });
+      if (beneficiaryId === OPEN_ASSIGNMENT_VALUE) {
+        await createNeutral.mutateAsync({
+          projectId,
+          content: content.trim(),
+          title: title.trim(),
+        });
+      } else {
+        await createTicket.mutateAsync({
+          projectId,
+          content: content.trim(),
+          title: title.trim(),
+          beneficiaryId,
+        });
+      }
       setContent('');
       setTitle('');
-      setBeneficiaryId('');
+      setBeneficiaryId(OPEN_ASSIGNMENT_VALUE);
       onSuccess?.();
     } catch {
       // Toast handled in hook
@@ -62,15 +74,14 @@ export function CreateTicketForm({
     <form onSubmit={handleSubmit} className={cn('space-y-4', className)}>
       <div>
         <Label htmlFor="ticket-beneficiary">{t('beneficiary')}</Label>
-        <Select
-          value={beneficiaryId}
-          onValueChange={setBeneficiaryId}
-          required
-        >
+        <Select value={beneficiaryId} onValueChange={setBeneficiaryId}>
           <SelectTrigger id="ticket-beneficiary" className="mt-1">
             <SelectValue placeholder={t('ticketSelectAssigneePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={OPEN_ASSIGNMENT_VALUE}>
+              {t('ticketAssigneeOpenAnyone')}
+            </SelectItem>
             {members.map((m: { id?: string; userId?: string; displayName?: string }) => {
               const id = m.id ?? m.userId ?? '';
               const label = m.displayName ?? id.slice(0, 8);
@@ -113,9 +124,14 @@ export function CreateTicketForm({
       <div className="flex gap-2">
         <Button
           type="submit"
-          disabled={createTicket.isPending || !content.trim() || !title.trim() || !beneficiaryId}
+          disabled={
+            createTicket.isPending ||
+            createNeutral.isPending ||
+            !content.trim() ||
+            !title.trim()
+          }
         >
-          {createTicket.isPending ? t('creating') : t('createTicket')}
+          {createTicket.isPending || createNeutral.isPending ? t('creating') : t('createTicket')}
         </Button>
         {onCancel && (
           <Button type="button" variant="outline" onClick={onCancel}>
