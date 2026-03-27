@@ -8,6 +8,7 @@ import { VoteService } from './vote.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { PermissionService } from './permission.service';
+import { isPublicationEntitySourced } from '../common/helpers/publication-source.helper';
 
 /**
  * PermissionContextService
@@ -61,8 +62,18 @@ export class PermissionContextService {
       : String(effectiveBeneficiaryId);
     const userIdStr = (userId as any) instanceof Object ? userId.toString() : String(userId);
     
-    const isAuthor = authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
-    const isEffectiveBeneficiary = effectiveBeneficiaryIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+    const snapshot = publication.toSnapshot();
+    const entitySourced = isPublicationEntitySourced(snapshot);
+    const authorMatchesUser =
+      authorIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+    const effectiveMatchesUser =
+      effectiveBeneficiaryIdStr.trim().toLowerCase() === userIdStr.trim().toLowerCase();
+
+    // Personal post only: "author" / self-beneficiary for voting rules. Entity-sourced posts
+    // (project/community) use authorId for the publishing user but are not "your personal post".
+    const isAuthor = !entitySourced && authorMatchesUser;
+    const isEffectiveBeneficiary =
+      effectiveMatchesUser && !(entitySourced && authorMatchesUser);
 
     this.logger.debug(`[buildContextForPublication] pubId=${publicationId} isAuthor=${isAuthor} isEffectiveBeneficiary=${isEffectiveBeneficiary} (${authorIdStr} vs ${userIdStr}, effective=${effectiveBeneficiaryIdStr})`);
 
@@ -76,7 +87,6 @@ export class PermissionContextService {
     const hasComments = (metricsSnapshot.commentCount || 0) > 0;
 
     // Calculate days since creation
-    const snapshot = publication.toSnapshot();
     const createdAt = snapshot.createdAt instanceof Date
       ? snapshot.createdAt
       : new Date(snapshot.createdAt);

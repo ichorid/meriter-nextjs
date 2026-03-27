@@ -21,6 +21,7 @@ import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
+import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -168,7 +169,7 @@ export class InvestmentService {
   /**
    * Process investment: deduct from investor wallet, add to post's investment pool.
    * Accumulates if investor already has a record.
-   * C-2: Validates post exists, investingEnabled, not deleted, not author, wallet balance; wallet-only.
+   * C-2: Validates post exists, investingEnabled, not deleted, not personal author (wallet-only).
    */
   async processInvestment(
     postId: string,
@@ -198,7 +199,10 @@ export class InvestmentService {
       throw new BadRequestException('Cannot invest in a deleted post');
     }
 
-    if (post.authorId === investorId) {
+    if (
+      post.authorId === investorId &&
+      !isPublicationEntitySourced(post)
+    ) {
       throw new BadRequestException('Cannot invest in your own post');
     }
 
@@ -212,20 +216,6 @@ export class InvestmentService {
     ) {
       throw new BadRequestException(
         'Investing is not available for community-published Birzha posts',
-      );
-    }
-    if (
-      community.typeTag === 'marathon-of-good' &&
-      (post.sourceEntityType === 'project' ||
-        post.sourceEntityType === 'community') &&
-      post.sourceEntityId &&
-      (await this.communityService.isUserAdmin(
-        post.sourceEntityId as string,
-        investorId,
-      ))
-    ) {
-      throw new BadRequestException(
-        'Cannot invest in a Birzha post published on behalf of a source you administer',
       );
     }
     const currency = community.settings?.currencyNames || {

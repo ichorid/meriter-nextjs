@@ -6,6 +6,7 @@ import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -269,12 +270,16 @@ export async function createVoteLogic(
   const requestedWalletEarly = input.walletAmount ?? 0;
   const requestedTotalEarly = requestedQuotaEarly + requestedWalletEarly;
 
-  // Author / Birzha source-manager top-up: not a normal vote; allow without canVote.
+  // Personal author / Birzha source-manager top-up: not a normal vote; allow without canVote.
   if (input.targetType === 'publication') {
+    const isPersonalAuthorTopUp =
+      !!publicationDoc &&
+      publicationDoc.authorId === ctx.user.id &&
+      !isPublicationEntitySourced(publicationDoc);
     const bypassCanVoteForTopUp =
       requestedTotalEarly > 0 &&
       !!publicationDoc &&
-      (publicationDoc.authorId === ctx.user.id ||
+      (isPersonalAuthorTopUp ||
         (await ctx.permissionService.isUserManagingBirzhaSourcePost(
           ctx.user.id,
           input.targetId,
@@ -326,7 +331,11 @@ export async function createVoteLogic(
   // this bypasses commentMode — it is not a vote/comment, just a transfer.
   let isAuthorTopup = false;
   if (input.targetType === 'publication' && requestedTotalAmount > 0) {
-    if (publicationDoc?.authorId === ctx.user.id) {
+    if (
+      publicationDoc &&
+      publicationDoc.authorId === ctx.user.id &&
+      !isPublicationEntitySourced(publicationDoc)
+    ) {
       isAuthorTopup = true;
     }
     if (

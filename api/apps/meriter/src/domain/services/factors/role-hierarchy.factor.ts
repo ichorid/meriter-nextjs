@@ -66,6 +66,25 @@ export class RoleHierarchyFactor {
     );
 
     if (!matchingRule) {
+      // Without this branch, superadmin was denied before STEP 6 bypass (no row for role superadmin).
+      const isSuperadminNoRule = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      if (isSuperadminNoRule) {
+        if (action === ActionType.VOTE && context.isEffectiveBeneficiary) {
+          const fallbackVoteRule = effectiveRules.find(
+            r => r.role === 'participant' && r.action === action,
+          );
+          if (fallbackVoteRule?.conditions?.canVoteForOwnPosts === false) {
+            return {
+              allowed: false,
+              reason: 'Cannot vote for own posts (canVoteForOwnPosts=false)',
+            };
+          }
+        }
+        this.logger.debug(
+          `[evaluate] Superadmin allow without explicit rule: userId=${userId}, action=${action}`,
+        );
+        return { allowed: true };
+      }
       return { allowed: false, reason: `No matching rule found for role=${userRole}, action=${action}` };
     }
 
