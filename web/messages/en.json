@@ -808,7 +808,7 @@
         "cancel": "Cancel",
         "voteTitle": "Vote",
         "futureVisionSupportTitle": "Support",
-        "futureVisionVotingHint": "Vote for or against: merits are taken from your wallet (quota is not used).",
+        "futureVisionVotingHint": "When you vote for an image of the future, you support it without compensation — it is not an investment. This action uses merits from your global wallet.",
         "futureVisionCommentHelper": "Please explain your decision.",
         "futureVisionCommentRequired": "A comment is required to vote for a future vision",
         "voteInstruction": "Choose the number of votes you want to give.",
