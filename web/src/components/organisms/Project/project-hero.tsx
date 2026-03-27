@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -49,6 +49,8 @@ export interface ProjectHeroProps {
   status: 'active' | 'closed' | 'archived';
   /** Lead or superadmin: project settings shortcut on cover. */
   showModerationLinks?: boolean;
+  /** Placed in the avatar row (e.g. join CTA), aligned with community hero. */
+  avatarRowEndSlot?: ReactNode;
 }
 
 export function ProjectHero({
@@ -59,6 +61,7 @@ export function ProjectHero({
   statusLabel,
   status,
   showModerationLinks = false,
+  avatarRowEndSlot,
 }: ProjectHeroProps) {
   const router = useRouter();
   const t = useTranslations('projects');
@@ -103,9 +106,9 @@ export function ProjectHero({
         )}
       </div>
 
-      <div className="relative px-4">
-        <div className="-mt-12 sm:-mt-14 mb-3 relative z-10">
-          <div className="relative inline-block ring-4 ring-base-100 rounded-2xl bg-base-100">
+      <div className={cn('relative px-4', avatarRowEndSlot && 'pt-2 sm:pt-3')}>
+        <div className="-mt-12 sm:-mt-14 mb-3 relative z-10 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="relative inline-block w-fit shrink-0 ring-4 ring-base-100 rounded-2xl bg-base-100">
             <Avatar className="w-[72px] h-[72px] sm:w-20 sm:h-20 text-xl rounded-2xl bg-base-200">
               {project.avatarUrl && (
                 <AvatarImage src={project.avatarUrl} alt="" className="rounded-2xl object-cover" />
@@ -115,6 +118,11 @@ export function ProjectHero({
               </AvatarFallback>
             </Avatar>
           </div>
+          {avatarRowEndSlot ? (
+            <div className="min-w-0 w-full sm:w-auto sm:max-w-[min(100%,28rem)] sm:flex-1 sm:justify-end flex flex-col items-stretch sm:items-end pb-0.5">
+              {avatarRowEndSlot}
+            </div>
+          ) : null}
         </div>
 
         <div className="pb-4 space-y-2">

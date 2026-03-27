@@ -409,12 +409,6 @@ export function CommunityMembersPageClient({
                         ) : null}
 
                         <div className="mb-4 flex flex-col gap-3">
-                            <CommunityJoinRequestPanel
-                                communityId={communityId}
-                                layout="compact"
-                                entityKind={isProjectMembersUi ? 'project' : 'community'}
-                                className="max-w-md sm:max-w-none"
-                            />
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                 {canCreateInviteLink ? (
                                     <Button
@@ -444,6 +438,12 @@ export function CommunityMembersPageClient({
                                     </Button>
                                 ) : null}
                             </div>
+                            <CommunityJoinRequestPanel
+                                communityId={communityId}
+                                layout="hero"
+                                entityKind={isProjectMembersUi ? 'project' : 'community'}
+                                className="max-w-full justify-start mb-2"
+                            />
                             <SearchInput
                                 placeholder={tSearch('results.searchMembersPlaceholder')}
                                 value={searchQuery}

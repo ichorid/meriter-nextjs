@@ -198,6 +198,16 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           statusLabel={statusLabel}
           status={heroStatus}
           showModerationLinks={canModerateCover}
+          avatarRowEndSlot={
+            showJoinUnderHero ? (
+              <CommunityJoinRequestPanel
+                communityId={projectId}
+                layout="hero"
+                className="max-w-full sm:ml-auto"
+                entityKind="project"
+              />
+            ) : undefined
+          }
         />
 
         {showProjectMeritsUnderHero ? (
@@ -215,15 +225,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
               showDaily={hasProjectQuota}
               compact={true}
               className="max-w-full text-right"
-            />
-          </div>
-        ) : showJoinUnderHero ? (
-          <div className="-mt-2 flex justify-end">
-            <CommunityJoinRequestPanel
-              communityId={projectId}
-              layout="inline"
-              className="max-w-full justify-end"
-              entityKind="project"
             />
           </div>
         ) : null}
