@@ -36,6 +36,10 @@ import {
   GLOBAL_COMMUNITY_BOOTSTRAP,
 } from '../common/constants/platform-bootstrap.constants';
 import {
+  loadDevPlatformSnapshot,
+  getPriorityHubSnapshotForTag,
+} from '../../seed-data/load-dev-platform-snapshot';
+import {
   TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE,
   isEligibleNonProjectBirzhaSourceCommunity,
 } from '../common/constants/birzha-source-entity.constants';
@@ -490,11 +494,12 @@ export class CommunityService {
   }
 
   /**
-   * After platform wipe: restore priority hubs + global to bootstrap names/settings and drop
-   * stored overrides so CommunityDefaultsService rules apply again.
+   * After platform wipe: restore priority hubs + global from dev snapshot JSON (fallback: PRIORITY_HUB_BOOTSTRAP)
+   * and drop stored overrides so CommunityDefaultsService rules apply again.
    */
   async resetPriorityCommunitiesAfterPlatformWipe(): Promise<void> {
     const now = new Date();
+    const snap = loadDevPlatformSnapshot();
     const unsetStoredOverrides: Record<string, string> = {
       votingSettings: '',
       meritSettings: '',
@@ -515,7 +520,7 @@ export class CommunityService {
       if (!doc?.id) {
         continue;
       }
-      const b = PRIORITY_HUB_BOOTSTRAP[typeTag];
+      const b = getPriorityHubSnapshotForTag(typeTag, snap);
       await this.communityModel.updateOne(
         { id: doc.id },
         {
@@ -524,7 +529,7 @@ export class CommunityService {
             description: b.description,
             isPriority: true,
             isActive: true,
-            settings: { ...b.settings },
+            settings: { ...b.settings } as unknown as Community['settings'],
             hashtags: [],
             hashtagDescriptions: {},
             updatedAt: now,
@@ -536,15 +541,16 @@ export class CommunityService {
 
     const g = await this.communityModel.findOne({ id: GLOBAL_COMMUNITY_ID }).lean();
     if (g?.id) {
+      const gc = snap.globalCommunity;
       await this.communityModel.updateOne(
         { id: GLOBAL_COMMUNITY_ID },
         {
           $set: {
-            name: GLOBAL_COMMUNITY_BOOTSTRAP.name,
-            description: GLOBAL_COMMUNITY_BOOTSTRAP.description,
+            name: gc.name,
+            description: gc.description,
             typeTag: 'global',
             isActive: true,
-            settings: { ...GLOBAL_COMMUNITY_BOOTSTRAP.settings },
+            settings: { ...gc.settings } as unknown as Community['settings'],
             hashtags: [],
             hashtagDescriptions: {},
             updatedAt: now,
@@ -554,7 +560,7 @@ export class CommunityService {
       );
     }
 
-    this.logger.log('Priority communities and global hub reset to bootstrap defaults');
+    this.logger.log('Priority communities and global hub reset from dev snapshot (fallback: bootstrap)');
   }
 
   /**

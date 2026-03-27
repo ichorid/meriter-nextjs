@@ -327,7 +327,8 @@ export const communitiesRouter = router({
       );
 
       const validCommunities = allUserCommunities.filter(
-        (community) => community !== null && !isProjectCommunity(community),
+        (community): community is NonNullable<(typeof allUserCommunities)[number]> =>
+          community !== null && !isProjectCommunity(community),
       );
 
       validCommunities.sort((a, b) => {

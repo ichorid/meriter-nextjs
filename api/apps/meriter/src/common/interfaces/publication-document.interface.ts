@@ -45,6 +45,12 @@ export interface PublicationDocument {
     editedBy: string;
     editedAt: Date;
   }>;
+  ticketActivityLog?: Array<{
+    at: Date;
+    actorId: string;
+    action: string;
+    detail?: Record<string, unknown>;
+  }>;
   createdAt: Date;
   updatedAt: Date;
   // Investment fields

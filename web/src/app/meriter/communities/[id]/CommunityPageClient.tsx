@@ -1297,8 +1297,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     filteredPublications
                         .filter((p: FeedItem) => {
                             if (p.type === 'publication') {
-                                // Filter out project posts (feature flag: projects are disabled)
-                                const isProject = (p as any).postType === 'project' || (p as any).isProject === true;
+                                const isProject =
+                                    (p as PublicationFeedItem).postType === 'project' ||
+                                    (p as PublicationFeedItem).isProject === true;
                                 return !!p.content && !isProject;
                             } else if (p.type === 'poll') {
                                 // Hide polls in future-vision communities

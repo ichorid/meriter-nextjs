@@ -126,6 +126,7 @@ describe('PlatformWipeService (e2e)', () => {
     expect(users[0].authProvider).toBe('email');
     expect(users[0].authId).toBe(PLATFORM_WIPE_SUPERADMIN.email);
     expect(users[0].displayName).toBe(PLATFORM_WIPE_SUPERADMIN.displayName);
+    expect(users[0].profile?.bio).toBe(PLATFORM_WIPE_SUPERADMIN.bio);
 
     const extraTeam = await communityModel.findOne({ id: extraTeamId }).lean();
     expect(extraTeam).toBeNull();

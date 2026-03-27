@@ -115,6 +115,7 @@ export class PlatformWipeService {
       firstName: PLATFORM_WIPE_SUPERADMIN.firstName,
       lastName: PLATFORM_WIPE_SUPERADMIN.lastName,
       displayName: PLATFORM_WIPE_SUPERADMIN.displayName,
+      bio: PLATFORM_WIPE_SUPERADMIN.bio,
       globalRole: 'superadmin',
     });
 

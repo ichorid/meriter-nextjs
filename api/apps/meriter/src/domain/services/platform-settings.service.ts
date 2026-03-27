@@ -9,6 +9,7 @@ import {
 } from '../models/platform-settings/platform-settings.schema';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
 import { DECREE_809_TAGS } from '@meriter/shared-types';
+import { loadDevPlatformSnapshot } from '../../seed-data/load-dev-platform-snapshot';
 
 export interface UpdatePlatformSettingsDto {
   welcomeMeritsGlobal?: number;
@@ -181,22 +182,21 @@ export class PlatformSettingsService {
   }
 
   /**
-   * Full platform_settings row to code bootstrap (welcome merits, empty FV rubric, no demo marker).
+   * Full platform_settings row from dev snapshot JSON (fallback: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP).
    */
   async resetAfterPlatformWipe(): Promise<void> {
+    const snap = loadDevPlatformSnapshot();
+    const ps = snap.platformSettings;
     await this.platformSettingsModel
       .updateOne(
         { id: PLATFORM_SETTINGS_ID },
         {
           $set: {
-            welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
-            availableFutureVisionTags: [
-              ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
-            ],
-            decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
-            decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
-            popularValueTagsThreshold:
-              PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
+            welcomeMeritsGlobal: ps.welcomeMeritsGlobal,
+            availableFutureVisionTags: [...(ps.availableFutureVisionTags ?? [])],
+            decree809Enabled: ps.decree809Enabled ?? false,
+            decree809Tags: [...(ps.decree809Tags ?? DECREE_809_TAGS)],
+            popularValueTagsThreshold: ps.popularValueTagsThreshold ?? 5,
             updatedAt: new Date(),
           },
           $unset: { demoSeedVersion: '' },

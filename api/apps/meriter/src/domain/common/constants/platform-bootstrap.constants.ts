@@ -6,11 +6,13 @@ import { DECREE_809_TAGS } from '@meriter/shared-types';
  */
 export const PLATFORM_WIPE_SUPERADMIN = {
   email: 'dmitrsosnin@gmail.com',
-  displayName: 'Дмитрий',
+  displayName: 'Дмитрий Соснин',
   firstName: 'Дмитрий',
-  lastName: '',
+  lastName: 'Соснин',
   /** Stable username for the bootstrap account (email auth). */
   username: 'dmitrsosnin',
+  /** profile.bio after wipe */
+  bio: 'Команда Меритер: технический администратор',
 } as const;
 
 /**

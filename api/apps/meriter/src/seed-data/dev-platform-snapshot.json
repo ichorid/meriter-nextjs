@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "platformSettings": {
+    "welcomeMeritsGlobal": 100,
+    "availableFutureVisionTags": [],
+    "decree809Enabled": false,
+    "decree809Tags": [],
+    "popularValueTagsThreshold": 5
+  },
+  "priorityHubs": {
+    "future-vision": {
+      "name": "Образы будущего",
+      "description": "На этой странице вы видите Образы Будущего, к которым стремятся сообщества нашей платформы. По сути, это список всех сообществ, представляющий их прежде всего через их ценности.",
+      "settings": {
+        "currencyNames": { "singular": "merit", "plural": "merits", "genitive": "merits" },
+        "dailyEmission": 0,
+        "allowWithdraw": false,
+        "postCost": 1,
+        "pollCost": 1,
+        "forwardCost": 1,
+        "commentMode": "all"
+      }
+    },
+    "marathon-of-good": {
+      "name": "Биржа",
+      "description": "Биржа социальных инвестиций: посты, обсуждения и инвестиции в идеи (Марафон добра).",
+      "settings": {
+        "currencyNames": { "singular": "merit", "plural": "merits", "genitive": "merits" },
+        "dailyEmission": 10,
+        "allowWithdraw": true,
+        "investingEnabled": true,
+        "investorShareMin": 1,
+        "investorShareMax": 99,
+        "postCost": 1,
+        "pollCost": 1,
+        "forwardCost": 1,
+        "commentMode": "all",
+        "requireTTLForInvestPosts": false
+      }
+    },
+    "team-projects": {
+      "name": "Проекты",
+      "description": "Хаб командных проектов и публикаций проектов.",
+      "settings": {
+        "currencyNames": { "singular": "merit", "plural": "merits", "genitive": "merits" },
+        "dailyEmission": 10,
+        "postCost": 1,
+        "pollCost": 1,
+        "forwardCost": 1,
+        "forwardRule": "project",
+        "commentMode": "all"
+      }
+    },
+    "support": {
+      "name": "Поддержка",
+      "description": "Группа поддержки.",
+      "settings": {
+        "currencyNames": { "singular": "merit", "plural": "merits", "genitive": "merits" },
+        "dailyEmission": 10,
+        "postCost": 0,
+        "pollCost": 0,
+        "forwardCost": 1,
+        "commentMode": "neutralOnly"
+      }
+    }
+  },
+  "globalCommunity": {
+    "name": "Global",
+    "description": "Platform-wide merit storage for fees and priority communities.",
+    "settings": {
+      "currencyNames": { "singular": "merit", "plural": "merits", "genitive": "merits" },
+      "dailyEmission": 0
+    }
+  }
+}

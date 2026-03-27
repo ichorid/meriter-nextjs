@@ -1,32 +1,19 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
 import { readFileSync } from 'fs';
-import { Model } from 'mongoose';
+import { mapDemoProjectValuesToDecree809 } from '../../seed-data/map-demo-project-values-to-decree809';
+import { parseMeriterDemoProjectsTsv } from '../../seed-data/parse-meriter-demo-projects-tsv';
+import { resolveMeriterDemoProjectsTsvPath } from '../../seed-data/resolve-seed-data-path';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
-import {
-  parseFutureVisionsMarketingTsv,
-  type FutureVisionMarketingRow,
-} from '../../seed-data/parse-future-visions-marketing-tsv';
-import { resolveFutureVisionsMarketingTsvPath } from '../../seed-data/resolve-seed-data-path';
-import { PublicationCreatedEvent } from '../events';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
-import type { Community } from '../models/community/community.schema';
-import { PublicationId } from '../value-objects';
-import { CommunityWalletService } from './community-wallet.service';
+import { PLATFORM_WIPE_SUPERADMIN } from '../common/constants/platform-bootstrap.constants';
 import { CommunityService } from './community.service';
-import { EventBus } from '../events/event-bus';
+import { InvestmentService } from './investment.service';
 import { PlatformSettingsService } from './platform-settings.service';
-import { ProjectService } from './project.service';
 import { PublicationService } from './publication.service';
-import { TicketService } from './ticket.service';
-import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
+import { VoteService } from './vote.service';
 import { WalletService } from './wallet.service';
 
-const DEMO_SEED_VERSION = 4;
+const DEMO_SEED_VERSION = 6;
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -34,778 +21,482 @@ const DEFAULT_CURRENCY = {
   genitive: 'merits',
 } as const;
 
-/**
- * Вымышленные названия команд — в TSV могут быть реальные школы; в продукте показываем только эти имена.
- */
-const DEMO_FICTIONAL_TEAM_NAMES = [
-  'Лицей «Северный луч»',
-  'Школа «Речной вокзал»',
-  'Гимназия «Зелёный мыс»',
-  'Образовательный центр «Кедровая аллея»',
-  'Школа «Ясная поляна»',
+/** Four superadmins (TSV authors). Dmitry exists after wipe — not in this list. */
+const DEMO_EMAIL_USERS = [
+  {
+    authorKey: 'владислав',
+    email: 'vldslvaia0@gmail.com',
+    displayName: 'Владислав',
+    firstName: 'Владислав',
+    lastName: '-',
+    bio: 'Публикации о корпоративных социальных проектах.',
+  },
+  {
+    authorKey: 'руслан',
+    email: 'rarusland@gmail.com',
+    displayName: 'Руслан',
+    firstName: 'Руслан',
+    lastName: '-',
+    bio: 'Публикации о корпоративных социальных проектах.',
+  },
+  {
+    authorKey: 'ольга',
+    email: 'cholgaa@rambler.ru',
+    displayName: 'Ольга',
+    firstName: 'Ольга',
+    lastName: '-',
+    bio: 'Публикации о корпоративных социальных проектах.',
+  },
+  {
+    authorKey: 'софья',
+    email: 'partner@merit.fund',
+    displayName: 'Софья',
+    firstName: 'Софья',
+    lastName: '-',
+    bio: 'Публикации о корпоративных социальных проектах.',
+  },
 ] as const;
 
-/** Рубрикатор социальных ценностей (Образ будущего / категории постов). */
-const DEMO_SOCIAL_RUBRIC = [
-  'Забота об окружающей среде',
-  'Справедливость и равенство',
-  'Образование и развитие',
-  'Здоровье и спорт',
-  'Культура и творчество',
-  'Солидарность и взаимопомощь',
-  'Открытость и доверие',
-  'Ответственность за будущее',
-  'Мир и ненасилие',
-  'Гражданская активность',
+/** Final global-wallet targets (merits), distinct and ≥ 100. */
+const TARGET_BALANCE_BY_EMAIL: Record<string, number> = {
+  [PLATFORM_WIPE_SUPERADMIN.email]: 120,
+  'vldslvaia0@gmail.com': 205,
+  'rarusland@gmail.com': 340,
+  'cholgaa@rambler.ru': 487,
+  'partner@merit.fund': 650,
+};
+
+/** Row indices (0-based TSV rows) with investing + TTL — 10 posts. */
+const INVESTING_ROW_INDICES = new Set([0, 4, 8, 12, 16, 20, 24, 28, 32, 36]);
+
+const COMMENT_SNIPPETS = [
+  'Сильный социальный акцент, поддерживаю.',
+  'Важно для образования и людей рядом.',
+  'Зрелая подача, видно системность.',
+  'Интересный масштаб и измеримый эффект.',
+  'Согласен с приоритетами проекта.',
+  'Хорошая связка ценностей и практики.',
+  'Это как раз про устойчивое развитие.',
+  'Поддерживаю идею и прозрачность описания.',
+  'Вижу пользу для сообщества.',
+  'Актуально и по делу.',
+  'Масштаб впечатляет, держу курс.',
+  'Согласен: это усиливает доверие.',
+  'Важный вклад в экологию и людей.',
+  'Полезная инициатива для регионов.',
+  'Сильный культурный и образовательный вектор.',
 ] as const;
 
-const DEMO_DISPLAY_NAMES = [
-  'Анна Иванова',
-  'Борис Смирнов',
-  'Вера Кузнецова',
-  'Глеб Попов',
-  'Дарья Соколова',
-  'Егор Лебедев',
-  'Жанна Новикова',
-  'Илья Морозов',
-  'Ксения Волкова',
-  'Лев Соловьёв',
-  'Мария Орлова',
-  'Никита Зайцев',
-  'Ольга Павлова',
-  'Павел Семёнов',
-  'Роман Егоров',
-] as const;
+function normalizeAuthorKey(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/ё/g, 'е')
+    .toLowerCase();
+}
 
-const DEMO_USER_BIOS = [
-  'Учусь в старших классах, веду школьный волонтёрский чат.',
-  'Люблю экологию и спорт; помогаю организовывать субботники.',
-  'Читаю много, участвую в проектах про культуру и дружбу.',
-  'Интересуюсь STEM и тем, как технологии помогают людям.',
-  'Вожатый в лагере, верю в силу командной работы.',
-  'Играю в баскетбол, собираю инициативы про здоровый образ жизни.',
-  'Рисую и делаю оформление школьных мероприятий.',
-  'Участвую в дебатах, хочу честного диалога в школе.',
-  'Волонтёр в приюте для животных по выходным.',
-  'Организую кинопоказы и обсуждения после фильмов.',
-  'Помогаю младшим с домашкой и проектами.',
-  'Увлекаюсь историей и краеведением города.',
-  'Веду блог о школьной жизни без токсичности.',
-  'Занимаюсь музыкой, собираю концерты в поддержку благотворительности.',
-  'Куратор школьного медиацентра и подкаста о добрых делах.',
-] as const;
+function targetScoreForRow(sheetIndex: number, rowIndex: number): number {
+  const x = sheetIndex * 7919 + rowIndex * 17 + 13;
+  return 10 + (x % 991);
+}
 
-const TEAM_POST_SNIPPETS: readonly { title: string; content: string }[] = [
-  {
-    title: 'Субботник у школы',
-    content:
-      'В субботу вышли классом: убрали сквер рядом со школой, разобрали мусор, посадили два куста сирени. Было холодно, но настроение отличное — видно сразу, что стало чище.',
-  },
-  {
-    title: 'Сбор книг для библиотеки',
-    content:
-      'Собрали коробки с книгами дома и у соседей: часть ушла в школьную библиотеку, часть — в пункт обмена. Спасибо всем, кто принёс хотя бы одну книгу.',
-  },
-  {
-    title: 'Как мы договорились без ссор',
-    content:
-      'На классном часе обсудили правила общения в чате: без насмешек, если спор — пишем аргументы, а не «ты дурак». Пока держимся, модераторы — по очереди.',
-  },
-  {
-    title: 'Идея: эко-стенд в коридоре',
-    content:
-      'Предлагаем повесить стенд «Сдай батарейку / крышку» с понятными инструкциями. Нужны добровольцы на оформление и график выноса на переработку раз в месяц.',
-  },
-  {
-    title: 'Поддержка новеньких',
-    content:
-      'Трое ребят пришли после переезда. Закрепили за каждым «наставника» на неделю: показать столовую, расписание, к кому с вопросами. Пишите, если хотите в пару.',
-  },
-  {
-    title: 'Марафон добра: мини-план',
-    content:
-      'На месяц берём три простых действия: один акт помощи вне школы, один внутри класса, один для семьи. В конце недели коротко делимся в чате — без давления, кто может.',
-  },
-  {
-    title: 'Честный разговор о буллинге',
-    content:
-      'Пригласили психолога на открытый круг: что делать, если стало неловко, куда писать, как поддержать друга. Записали короткие тезисы — повесим на доску.',
-  },
-  {
-    title: 'Спортивный уголок',
-    content:
-      'Договорились приносить скакалки и мячи на перемену в «тихий» дворик — кто хочет, присоединяется. Главное — не мешать тем, кто отдыхает на лавке.',
-  },
-];
+function splitIntoFiveParts(total: number): number[] {
+  if (total < 5) {
+    throw new Error(`splitIntoFiveParts: total ${total} < 5`);
+  }
+  const base = Math.floor(total / 5);
+  const rem = total % 5;
+  const out: number[] = [];
+  for (let i = 0; i < 5; i++) {
+    out.push(base + (i < rem ? 1 : 0));
+  }
+  return out;
+}
 
-const PROJECT_BLUEPRINTS: readonly {
-  name: string;
-  description: string;
-  investing: boolean;
-}[] = [
-  {
-    name: 'Эко-субботники у школы',
-    description:
-      'Регулярные выезды на уборку прилегающей территории, раздельный сбор и договорённости с администрацией. Бюджет — на перчатки и мешки; часть работ — силами волонтёров.',
-    investing: true,
-  },
-  {
-    name: 'Школьная библиотека обмена',
-    description:
-      'Полка «принёс — забери», учёт простой таблицей, раз в месяц пополнение из домашних запасов. Цель — доступ к книгам без лишних трат.',
-    investing: false,
-  },
-  {
-    name: 'Наставничество для новичков',
-    description:
-      'Пара «старший — новенький» на две недели: экскурсия по школе, чат-поддержка, совместный обед. Собираем обратную связь и улучшаем гайд.',
-    investing: false,
-  },
-  {
-    name: 'Стенд раздельного сбора',
-    description:
-      'Оформление, инструкции, график выноса батареек и крышек. Работа с классными руководителями и родительским комитетом.',
-    investing: true,
-  },
-  {
-    name: 'Добрые перемены',
-    description:
-      'Короткие активности на перемене: настольные игры без телефонов, чтение вслух, мини-волонтёрские объявления. Без принуждения — только желающие.',
-    investing: false,
-  },
-  {
-    name: 'Медиа о добрых делах',
-    description:
-      'Стенгазета и короткие ролики про инициативы класса и города. Этический код: согласие на съёмку, без токсичных комментариев.',
-    investing: true,
-  },
-  {
-    name: 'Спорт без давления',
-    description:
-      'Совместные пробежки/зарядка раз в неделю, уровень «как получится». Фокус на здоровье и команде, а не на результатах.',
-    investing: false,
-  },
-  {
-    name: 'Культура уважительного диалога',
-    description:
-      'Серия встреч в формате круга: темы — границы, различия, как спорить по делу. Итог — памятка для классного чата.',
-    investing: false,
-  },
-  {
-    name: 'Помощь приюту',
-    description:
-      'Сбор корма и поводков, волонтёрские выходные по записи, просвещение об ответственном содержании животных.',
-    investing: true,
-  },
-];
+const SEED_SPREAD_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-const DISCUSSION_SNIPPETS: readonly string[] = [
-  'Предлагаю на следующей неделе зафиксировать ответственного за вынос вторсырья — кто готов раз в две недели?',
-  'Можем ли мы сдвинуть дедлайн макета стенда на три дня? У кого завал по контрольным — отпишитесь.',
-  'Идея: короткий опрос в чате — какие темы для «добрых перемен» интереснее всего?',
-  'Давайте уточним у куратора, можно ли использовать аудиторию 214 после уроков на репетицию чтения.',
-  'Нужен ли нам отдельный чек-лист перед субботником (перчатки, вода, первая помощь)?',
-  'Согласны, что в описании проекта добавим ссылку на правила фото/видео с людьми?',
-];
+/** Spread posts across the past week ending near "now" (deterministic jitter, monotonic order). */
+function seedPublicationCreatedAt(index: number, total: number): Date {
+  const now = Date.now();
+  if (total <= 1) {
+    return new Date(now - SEED_SPREAD_WEEK_MS / 2);
+  }
+  const oldest = now - SEED_SPREAD_WEEK_MS;
+  const frac = index / (total - 1);
+  const linear = oldest + frac * SEED_SPREAD_WEEK_MS;
+  const jitter =
+    ((index * 7919 + total * 13) % 23) * 60 * 1000 - 11 * 60 * 1000;
+  return new Date(linear + jitter);
+}
 
-const TICKET_NEUTRAL: readonly { title: string; content: string }[] = [
-  {
-    title: 'Согласовать дату субботника',
-    content: 'Связаться с администрацией, забронировать инвентарь и вывести дату в общий календарь.',
-  },
-  {
-    title: 'Закупить расходники',
-    content: 'Мешки, перчатки, маркеры для стенда; сохранить чеки и короткий отчёт в обсуждении.',
-  },
-  {
-    title: 'Обновить гайд для наставников',
-    content: 'Дописать типовые вопросы новичков и контакты психолога; выложить в закреп.',
-  },
-  {
-    title: 'Проверить график выноса вторсырья',
-    content: 'Сверить с пунктом приёма часы работы и назначить ответственного на месяц.',
-  },
-];
-
-/**
- * Idempotent marker: run after wipe, or call once per environment.
- * Uses domain services so wallets, roles, and invariants stay consistent.
- */
 @Injectable()
 export class PlatformDemoSeedService {
   private readonly logger = new Logger(PlatformDemoSeedService.name);
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private readonly publicationModel: Model<PublicationDocument>,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-    private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly walletService: WalletService,
-    private readonly communityWalletService: CommunityWalletService,
     private readonly publicationService: PublicationService,
-    private readonly projectService: ProjectService,
-    private readonly ticketService: TicketService,
+    private readonly voteService: VoteService,
+    private readonly investmentService: InvestmentService,
     private readonly platformSettingsService: PlatformSettingsService,
-    private readonly eventBus: EventBus,
   ) {}
 
   async seedDemoWorld(options: { force?: boolean } = {}): Promise<{
     usersCreated: number;
-    teamsCreated: number;
-    futureVisionPosts: number;
-    projectsCreated: number;
-    ticketsCreated: number;
     marathonPosts: number;
-    teamWallPosts: number;
-    projectDiscussions: number;
+    votesCreated: number;
+    investmentPosts: number;
   }> {
     const existing = await this.platformSettingsService.getDemoSeedVersion();
     if (existing !== undefined && existing >= DEMO_SEED_VERSION && !options.force) {
       throw new BadRequestException(
-        'Демо-данные уже созданы. Сначала выполните вайп платформы либо используйте force (не рекомендуется на проде).',
+        'Базовые данные уже загружены. Сначала выполните вайп платформы либо используйте force (не рекомендуется на проде).',
       );
     }
 
-    const tsvPath = resolveFutureVisionsMarketingTsvPath();
+    const tsvPath = resolveMeriterDemoProjectsTsvPath();
     const raw = readFileSync(tsvPath, 'utf-8');
-    const rows = parseFutureVisionsMarketingTsv(raw);
-    if (rows.length === 0) {
-      throw new BadRequestException('В файле маркетингового TSV нет строк с данными.');
-    }
-
-    await this.platformSettingsService.updateFutureVisionTags([...DEMO_SOCIAL_RUBRIC]);
-    const settings = await this.platformSettingsService.get();
-    const rubric = settings.availableFutureVisionTags ?? [...DEMO_SOCIAL_RUBRIC];
-
-    const fvHub = await this.communityService.getCommunityByTypeTag('future-vision');
-    const mdHub = await this.communityService.getCommunityByTypeTag('marathon-of-good');
-    if (!fvHub || !mdHub) {
+    const rows = parseMeriterDemoProjectsTsv(raw);
+    if (rows.length !== 41) {
       throw new BadRequestException(
-        'Не найдены обязательные хабы: «Образ будущего» и «Марафон добра».',
+        `Ожидается 41 строка в TSV (лист «проекты»), получено ${rows.length}.`,
       );
     }
 
-    const demoUsers: string[] = [];
-    for (let i = 0; i < DEMO_DISPLAY_NAMES.length; i++) {
-      const authId = `demo_seed_u${String(i + 1).padStart(2, '0')}`;
-      const displayName = DEMO_DISPLAY_NAMES[i] ?? `Демо пользователь ${i + 1}`;
+    await this.platformSettingsService.updateDecree809Enabled(true);
+    await this.platformSettingsService.updateFutureVisionTags([]);
+
+    const mdHub = await this.communityService.getCommunityByTypeTag('marathon-of-good');
+    if (!mdHub?.id) {
+      throw new BadRequestException('Не найден хаб «Биржа» (marathon-of-good).');
+    }
+
+    const dmitry = await this.userService.getUserByAuthId(
+      'email',
+      PLATFORM_WIPE_SUPERADMIN.email,
+    );
+    if (!dmitry?.id) {
+      throw new BadRequestException(
+        'Не найден суперадмин после вайпа (dmitrsosnin@gmail.com). Сначала выполните вайп.',
+      );
+    }
+
+    const authorKeyToUserId = new Map<string, string>();
+    let usersCreated = 0;
+    for (const spec of DEMO_EMAIL_USERS) {
+      const existed = await this.userService.getUserByAuthId('email', spec.email);
       const u = await this.userService.createOrUpdateUser({
-        authProvider: 'fake',
-        authId,
-        username: `demo_${authId}`,
-        firstName: displayName.split(' ')[0] ?? 'Демо',
-        lastName: displayName.split(' ')[1] ?? 'Пользователь',
-        displayName,
+        authProvider: 'email',
+        authId: spec.email,
+        username: spec.email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_'),
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        displayName: spec.displayName,
+        globalRole: 'superadmin',
       });
-      demoUsers.push(u.id);
+      authorKeyToUserId.set(spec.authorKey, u.id);
+      if (!existed) {
+        usersCreated += 1;
+      }
       await this.userService.ensureUserInBaseCommunities(u.id);
-      const seed = encodeURIComponent(displayName);
-      await this.userService.updateProfile(u.id, {
-        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${seed}`,
-        bio: DEMO_USER_BIOS[i % DEMO_USER_BIOS.length],
-      });
+      await this.userService.updateProfile(u.id, { bio: spec.bio });
     }
 
-    const schoolToRows = new Map<string, FutureVisionMarketingRow[]>();
-    for (const r of rows) {
-      const list = schoolToRows.get(r.school) ?? [];
-      list.push(r);
-      schoolToRows.set(r.school, list);
+    authorKeyToUserId.set('дмитрий', dmitry.id);
+    const dmitryId = dmitry.id;
+
+    const voterIds: string[] = [
+      authorKeyToUserId.get('владислав') ?? '',
+      authorKeyToUserId.get('руслан') ?? '',
+      authorKeyToUserId.get('ольга') ?? '',
+      authorKeyToUserId.get('софья') ?? '',
+      dmitryId,
+    ].filter((id) => id.length > 0);
+
+    if (voterIds.length !== 5) {
+      throw new BadRequestException('Не удалось сопоставить пять пользователей для голосов.');
     }
 
-    const uniqueSchools: string[] = [];
-    const seenSchool = new Set<string>();
-    for (const r of rows) {
-      if (!seenSchool.has(r.school)) {
-        seenSchool.add(r.school);
-        uniqueSchools.push(r.school);
-        if (uniqueSchools.length >= 5) {
-          break;
-        }
-      }
-    }
-
-    let teamsCreated = 0;
-    let fvCount = 0;
-    let teamWallPosts = 0;
-    const teamIds: string[] = [];
-    const projectRecords: {
-      id: string;
-      leadId: string;
-      participantIds: string[];
-    }[] = [];
-
-    for (let s = 0; s < uniqueSchools.length; s++) {
-      const tsvSchoolKey = uniqueSchools[s];
-      const teamDisplayName =
-        DEMO_FICTIONAL_TEAM_NAMES[s] ?? `Демо-школа «Команда ${s + 1}»`;
-      const rowsForSchool = schoolToRows.get(tsvSchoolKey) ?? [];
-      const leadId = demoUsers[s % demoUsers.length];
-
-      const restMembers: string[] = [];
-      for (let k = 1; restMembers.length < 4; k++) {
-        const uid = demoUsers[(s + k) % demoUsers.length];
-        if (uid !== leadId && !restMembers.includes(uid)) {
-          restMembers.push(uid);
-        }
-      }
-      const allTeamMembers = [leadId, ...restMembers];
-
-      const uniqueVisionRows = this.collectDistinctVisionRows(rowsForSchool);
-      const primaryRow = uniqueVisionRows[0];
-      const visionSource = primaryRow?.visionText?.trim();
-      const fvText = this.shortenVision(
-        visionSource && visionSource.length > 24
-          ? visionSource
-          : `Мы видим школу, где каждый чувствует себя частью сообщества: доверие, забота и совместные дела — опора нашей учёбы в «${this.shortSchoolLabel(teamDisplayName)}».`,
-      );
-      const fvTags = this.pickFvCategories(rubric, fvText);
-      const coverLabel = this.shortSchoolLabel(teamDisplayName);
-      const futureVisionCover = `https://placehold.co/1200x400/0d9488/fcfbf9/png?text=${encodeURIComponent(coverLabel)}`;
-
-      const team = await this.communityService.createCommunity({
-        name: teamDisplayName,
-        typeTag: 'team',
-        creatorUserId: leadId,
-        futureVisionText: fvText,
-        futureVisionTags: fvTags,
-        futureVisionCover,
-      });
-      teamIds.push(team.id);
-
-      for (const mid of allTeamMembers) {
-        await this.communityService.addMember(team.id, mid);
-        await this.userService.addCommunityMembership(mid, team.id);
-      }
-      await this.userCommunityRoleService.setRole(leadId, team.id, 'lead', true);
-      for (const mid of restMembers) {
-        await this.userCommunityRoleService.setRole(mid, team.id, 'participant', true);
-      }
-
-      const teamCurrency = team.settings?.currencyNames ?? DEFAULT_CURRENCY;
-      const teamStarting = this.communityService.startingMeritsOnJoin(team as Community);
-      for (const mid of allTeamMembers) {
-        await this.walletService.createOrGetWallet(mid, team.id, teamCurrency, {
-          startingMeritsIfNewWallet: teamStarting,
-        });
-      }
-
-      await this.communityService.updateCommunity(team.id, {
-        hashtags: fvTags,
-        description: `Команда «${teamDisplayName}» — участники Марафона добра. Совместные проекты и образ будущего школы.`,
-      });
-
-      await this.patchPrimaryFutureVisionPost(fvHub.id, team.id, {
-        categories: fvTags,
-        images: [futureVisionCover],
-        description: primaryRow?.publicationUrl
-          ? `Материал: ${primaryRow.publicationUrl}`
-          : `Образ будущего команды «${this.shortSchoolLabel(teamDisplayName)}».`,
-      });
-      fvCount += 1;
-
-      teamsCreated += 1;
-
-      const numTeamPosts = 2 + (s % 3);
-      for (let pi = 0; pi < numTeamPosts; pi++) {
-        const authorId = allTeamMembers[(pi + 1) % allTeamMembers.length];
-        const snip = TEAM_POST_SNIPPETS[(s + pi) % TEAM_POST_SNIPPETS.length];
-        const postTags = this.pickFvCategories(rubric, `${snip.title} ${snip.content}`);
-        await this.publicationService.createPublication(authorId, {
-          communityId: team.id,
-          content: snip.content,
-          type: 'text',
-          title: snip.title,
-          categories: postTags,
-          postType: 'basic',
-        });
-        teamWallPosts += 1;
-      }
-
-      const numProjects = 1 + (s % 3);
-      for (let pi = 0; pi < numProjects; pi++) {
-        const bp = PROJECT_BLUEPRINTS[(s + pi * 2) % PROJECT_BLUEPRINTS.length];
-        const investing = bp.investing;
-        const project = await this.projectService.createProject(leadId, {
-          name: bp.name,
-          description: bp.description,
-          parentCommunityId: team.id,
-          projectDuration: (s + pi) % 2 === 0 ? 'ongoing' : 'finite',
-          investingEnabled: investing,
-          founderSharePercent: investing ? 70 : 100,
-          investorSharePercent: investing ? 30 : 0,
-        });
-
-        const projTags = this.pickFvCategories(rubric, `${bp.name} ${bp.description}`);
-        await this.communityService.updateCommunity(project.id, {
-          hashtags: projTags,
-        });
-
-        await this.communityWalletService.deposit(project.id, 45 + pi * 22 + s * 6);
-
-        const pool = restMembers.slice(0, 2);
-        const participantIds: string[] = [];
-        const projCur = project.settings?.currencyNames ?? DEFAULT_CURRENCY;
-        await this.walletService.addTransaction(
-          leadId,
-          project.id,
-          'credit',
-          18 + pi * 4,
-          'personal',
-          'demo_seed',
-          project.id,
-          projCur,
-          'Вклад в проект (демо)',
-        );
-        for (const mid of pool) {
-          await this.communityService.addMember(project.id, mid);
-          await this.userService.addCommunityMembership(mid, project.id);
-          await this.userCommunityRoleService.setRole(mid, project.id, 'participant', true);
-          await this.walletService.createOrGetWallet(mid, project.id, projCur, {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              project as Community,
-            ),
-          });
-          await this.walletService.addTransaction(
-            mid,
-            project.id,
-            'credit',
-            12 + pi * 3,
-            'personal',
-            'demo_seed',
-            project.id,
-            projCur,
-            'Вклад в проект (демо)',
-          );
-          participantIds.push(mid);
-        }
-
-        if (s === 2 && pi === numProjects - 1 && numProjects >= 2) {
-          await this.communityService.updateCommunity(project.id, { projectStatus: 'archived' });
-        }
-
-        projectRecords.push({ id: project.id, leadId, participantIds });
-      }
-    }
-
-    for (let i = 0; i < demoUsers.length; i++) {
-      const uid = demoUsers[i];
-      const amount = 95 + (i * 17) % 55;
+    const SEED_CREDIT = 250_000;
+    for (const uid of [...new Set([...voterIds, ...authorKeyToUserId.values()])]) {
       await this.walletService.addTransaction(
         uid,
         GLOBAL_COMMUNITY_ID,
         'credit',
-        amount,
+        SEED_CREDIT,
         'personal',
         'demo_seed',
         uid,
         DEFAULT_CURRENCY,
-        'Стартовый демо-баланс (глобальные заслуги)',
+        'Стартовый запас глобальных заслуг',
       );
     }
 
-    for (let s = 0; s < teamIds.length; s++) {
-      const teamId = teamIds[s];
-      const team = await this.communityService.getCommunity(teamId);
-      if (!team || team.typeTag !== 'team') {
-        continue;
+    const postCost = mdHub.settings?.postCost ?? 1;
+    let votesCreated = 0;
+    let investmentPosts = 0;
+
+    const publicationIds: string[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const key = normalizeAuthorKey(row.author);
+      const authorId = authorKeyToUserId.get(key);
+      if (!authorId) {
+        throw new BadRequestException(
+          `Неизвестный автор «${row.author}» в строке ${row.sheetIndex}.`,
+        );
       }
-      const leadId = demoUsers[s % demoUsers.length];
-      const restMembers: string[] = [];
-      for (let k = 1; restMembers.length < 4; k++) {
-        const uid = demoUsers[(s + k) % demoUsers.length];
-        if (uid !== leadId && !restMembers.includes(uid)) {
-          restMembers.push(uid);
+
+      const valueTags = mapDemoProjectValuesToDecree809(row.valuesRaw);
+      const title = `«${row.company}»: ${row.title}`;
+      let body = row.body;
+      if (row.projectUrl) {
+        body = `${body}\n\n${row.projectUrl}`;
+      }
+      const images = row.imageUrl ? [row.imageUrl] : [];
+
+      const investing = INVESTING_ROW_INDICES.has(i);
+      const pub = await this.publicationService.createPublication(authorId, {
+        communityId: mdHub.id,
+        content: body,
+        type: 'text',
+        title,
+        postType: 'basic',
+        images,
+        valueTags,
+        investingEnabled: investing,
+        investorSharePercent: investing ? 30 : undefined,
+        ...(investing ? { ttlDays: 30 as const } : {}),
+      });
+      const publicationId = pub.getId.getValue();
+      publicationIds.push(publicationId);
+
+      await this.publicationService.setPublicationTimestampsForSeed(
+        publicationId,
+        seedPublicationCreatedAt(i, rows.length),
+      );
+
+      if (postCost > 0) {
+        await this.walletService.addTransaction(
+          authorId,
+          GLOBAL_COMMUNITY_ID,
+          'debit',
+          postCost,
+          'personal',
+          'publication_post_cost',
+          publicationId,
+          DEFAULT_CURRENCY,
+          'Оплата публикации',
+        );
+      }
+
+      if (investing) {
+        investmentPosts += 1;
+        const amounts = [28, 32, 40, 24];
+        let ai = 0;
+        for (const vid of voterIds) {
+          if (vid === authorId) continue;
+          const amt = amounts[ai % amounts.length] + (i % 7);
+          ai += 1;
+          await this.investmentService.processInvestment(publicationId, vid, amt);
         }
       }
-      const allTeamMembers = [leadId, ...restMembers];
-      const cur = team.settings?.currencyNames ?? DEFAULT_CURRENCY;
-      for (const mid of allTeamMembers) {
-        const credit = 22 + (s + mid.length) % 18;
-        await this.walletService.addTransaction(
-          mid,
-          team.id,
-          'credit',
-          credit,
-          'personal',
-          'demo_seed',
-          team.id,
-          cur,
-          'Заслуги команды (демо)',
-        );
-      }
     }
 
-    let ticketsCreated = 0;
-    let projectDiscussions = 0;
-    let projIdx = 0;
-    for (const pr of projectRecords) {
-      const { id: projId, leadId, participantIds } = pr;
-      const rubricOffset = projIdx * 13;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const key = normalizeAuthorKey(row.author);
+      const authorId = authorKeyToUserId.get(key);
+      if (!authorId) continue;
 
-      const n1 = TICKET_NEUTRAL[projIdx % TICKET_NEUTRAL.length];
-      const t0 = await this.ticketService.createNeutralTicket(projId, leadId, {
-        title: n1.title,
-        content: n1.content,
-      });
-      ticketsCreated += 1;
-      await this.patchPublicationCategories(
-        t0.id,
-        this.pickFvCategories(rubric, `${n1.title} ${n1.content}`),
-      );
+      const publicationId = publicationIds[i];
+      const targetScore = targetScoreForRow(row.sheetIndex, i);
+      const parts = splitIntoFiveParts(targetScore);
 
-      const n2 = TICKET_NEUTRAL[(projIdx + 1) % TICKET_NEUTRAL.length];
-      const t1 = await this.ticketService.createNeutralTicket(projId, leadId, {
-        title: n2.title,
-        content: n2.content,
-      });
-      ticketsCreated += 1;
-      await this.patchPublicationCategories(
-        t1.id,
-        this.pickFvCategories(rubric, `${n2.title} ${n2.content}`),
-      );
-
-      const ben = participantIds[0];
-      if (ben) {
-        const t2 = await this.ticketService.createTicket(projId, leadId, {
-          title: 'Задача с исполнителем',
-          content: 'Короткая задача на согласование с ответственным участником.',
-          beneficiaryId: ben,
+      for (let k = 0; k < 5; k++) {
+        const voterId = voterIds[k];
+        const w = parts[k] ?? 0;
+        if (w <= 0) continue;
+        const comment =
+          COMMENT_SNIPPETS[(i * 5 + k) % COMMENT_SNIPPETS.length] ?? 'Поддерживаю.';
+        await this.ensureWalletAndVote({
+          voterId,
+          publicationId,
+          communityId: mdHub.id,
+          walletAmount: w,
+          comment,
         });
-        ticketsCreated += 1;
-        await this.patchPublicationCategories(
-          t2.id,
-          this.pickFvCategoriesByIndex(rubric, rubricOffset + 2),
-        );
-        await this.ticketService.updateStatus(t2.id, ben, 'done');
+        votesCreated += 1;
       }
 
-      const discussAuthor = participantIds[0] ?? leadId;
-      const d1 = DISCUSSION_SNIPPETS[projIdx % DISCUSSION_SNIPPETS.length];
-      await this.publicationService.createPublication(discussAuthor, {
-        communityId: projId,
-        content: d1,
-        type: 'text',
-        title: 'Обсуждение плана',
-        postType: 'discussion',
-        categories: this.pickFvCategories(rubric, d1),
-      });
-      projectDiscussions += 1;
-
-      const d2Author = participantIds[1] ?? leadId;
-      if (d2Author !== discussAuthor || participantIds.length >= 2) {
-        const d2 = DISCUSSION_SNIPPETS[(projIdx + 2) % DISCUSSION_SNIPPETS.length];
-        await this.publicationService.createPublication(d2Author, {
-          communityId: projId,
-          content: d2,
-          type: 'text',
-          title: 'Вопросы по проекту',
-          postType: 'discussion',
-          categories: this.pickFvCategories(rubric, d2),
-        });
-        projectDiscussions += 1;
+      const pubDoc = await this.publicationService.getPublicationDocument(publicationId);
+      const score =
+        (pubDoc?.metrics as { score?: number } | undefined)?.score ?? 0;
+      const withdrawAmt = Math.min(40, Math.max(0, Math.floor(score * 0.12)));
+      if (withdrawAmt > 0 && pubDoc) {
+        await this.seedWithdrawPublication(publicationId, withdrawAmt, mdHub.id);
       }
-
-      projIdx += 1;
     }
 
-    let marathonPosts = 0;
-    if (demoUsers[0]) {
-      await this.seedMarathonBasicPost(
-        demoUsers[0],
-        mdHub.id,
-        'Сегодня помогли убрать мусор во дворе школы — вместе быстрее и веселее.',
-        'Субботник во дворе',
-        this.pickFvCategories(
-          rubric,
-          'Субботник во дворе помогли убрать мусор экология',
-        ),
-      );
-      marathonPosts += 1;
-    }
-    if (demoUsers[1]) {
-      await this.seedMarathonBasicPost(
-        demoUsers[1],
-        mdHub.id,
-        'Передали ненужные книги в школьную библиотеку — пусть читают другие классы.',
-        'Книги для библиотеки',
-        this.pickFvCategories(rubric, 'Книги библиотека образование развитие'),
-      );
-      marathonPosts += 1;
+    const emails = [
+      PLATFORM_WIPE_SUPERADMIN.email,
+      ...DEMO_EMAIL_USERS.map((u) => u.email),
+    ];
+    for (const email of emails) {
+      const target = TARGET_BALANCE_BY_EMAIL[email];
+      if (target == null) continue;
+      const u = await this.userService.getUserByAuthId('email', email);
+      if (!u?.id) continue;
+      await this.adjustGlobalBalanceTo(u.id, target);
     }
 
     await this.platformSettingsService.setDemoSeedVersion(DEMO_SEED_VERSION);
 
-    this.logger.log('Demo seed completed');
+    this.logger.log(
+      `Platform baseline seed v${DEMO_SEED_VERSION}: posts=${publicationIds.length}, votes=${votesCreated}, investPosts=${investmentPosts}`,
+    );
 
     return {
-      usersCreated: demoUsers.length,
-      teamsCreated,
-      futureVisionPosts: fvCount,
-      projectsCreated: projectRecords.length,
-      ticketsCreated,
-      marathonPosts,
-      teamWallPosts,
-      projectDiscussions,
+      usersCreated,
+      marathonPosts: publicationIds.length,
+      votesCreated,
+      investmentPosts,
     };
   }
 
-  /**
-   * Уникальные по смыслу строки ОБ (в TSV часто дублируют один и тот же текст в нескольких строках).
-   */
-  private collectDistinctVisionRows(rows: FutureVisionMarketingRow[]): FutureVisionMarketingRow[] {
-    const seen = new Set<string>();
-    const out: FutureVisionMarketingRow[] = [];
-    for (const r of rows) {
-      const t = r.visionText?.trim();
-      if (!t || t.length < 8) {
-        continue;
-      }
-      const fp = this.visionFingerprint(t);
-      if (seen.has(fp)) {
-        continue;
-      }
-      seen.add(fp);
-      out.push(r);
+  private async adjustGlobalBalanceTo(userId: string, target: number): Promise<void> {
+    const w = await this.walletService.getWallet(userId, GLOBAL_COMMUNITY_ID);
+    const cur = w ? w.getBalance() : 0;
+    const delta = Math.round((target - cur) * 100) / 100;
+    if (Math.abs(delta) < 0.01) return;
+    if (delta > 0) {
+      await this.walletService.addTransaction(
+        userId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        delta,
+        'personal',
+        'demo_seed_balance',
+        userId,
+        DEFAULT_CURRENCY,
+        'Выравнивание баланса',
+      );
+    } else {
+      await this.walletService.addTransaction(
+        userId,
+        GLOBAL_COMMUNITY_ID,
+        'debit',
+        -delta,
+        'personal',
+        'demo_seed_balance',
+        userId,
+        DEFAULT_CURRENCY,
+        'Выравнивание баланса',
+      );
     }
-    return out;
   }
 
-  private visionFingerprint(text: string): string {
-    return text
-      .toLowerCase()
-      .normalize('NFKC')
-      .replace(/\s+/g, ' ')
-      .replace(/[.,!?«»"""''\-–—:;]/g, '')
-      .trim();
-  }
+  private async ensureWalletAndVote(params: {
+    voterId: string;
+    publicationId: string;
+    communityId: string;
+    walletAmount: number;
+    comment: string;
+  }): Promise<void> {
+    const { voterId, publicationId, communityId, walletAmount, comment } = params;
+    if (walletAmount <= 0) return;
+    let w = await this.walletService.getWallet(voterId, GLOBAL_COMMUNITY_ID);
+    let bal = w ? w.getBalance() : 0;
+    if (bal < walletAmount) {
+      await this.walletService.addTransaction(
+        voterId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        walletAmount - bal + 50_000,
+        'personal',
+        'demo_seed',
+        voterId,
+        DEFAULT_CURRENCY,
+        'Пополнение для голоса',
+      );
+      w = await this.walletService.getWallet(voterId, GLOBAL_COMMUNITY_ID);
+      bal = w ? w.getBalance() : 0;
+    }
+    if (bal < walletAmount) {
+      throw new BadRequestException(
+        'Недостаточно заслуг для голоса при заполнении базовых данных.',
+      );
+    }
 
-  private pickFvCategories(rubric: string[], visionText: string): string[] {
-    const lower = visionText.toLowerCase();
-    const matched = rubric.filter((t) => lower.includes(t.toLowerCase()));
-    if (matched.length >= 2) {
-      return matched.slice(0, 2);
-    }
-    if (matched.length === 1) {
-      const second = rubric.find((t) => t !== matched[0]);
-      return second ? [matched[0], second] : [matched[0]];
-    }
-    return this.pickFvCategoriesByIndex(rubric, Math.abs(this.hashString(visionText)));
-  }
-
-  private pickFvCategoriesByIndex(rubric: string[], seed: number): string[] {
-    if (rubric.length === 0) {
-      return [];
-    }
-    if (rubric.length === 1) {
-      return [rubric[0]];
-    }
-    const i = Math.abs(seed) % rubric.length;
-    let j = (i + 3 + (Math.abs(seed) % 5)) % rubric.length;
-    if (j === i) {
-      j = (j + 1) % rubric.length;
-    }
-    return [rubric[i], rubric[j]];
-  }
-
-  private hashString(s: string): number {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) {
-      h = (h * 31 + s.charCodeAt(i)) | 0;
-    }
-    return h;
-  }
-
-  private shortenVision(text: string, max = 520): string {
-    const t = text.replace(/\s+/g, ' ').trim();
-    if (t.length <= max) {
-      return t;
-    }
-    return `${t.slice(0, max - 1)}…`;
-  }
-
-  private shortSchoolLabel(schoolName: string): string {
-    const t = schoolName.trim();
-    if (t.length <= 28) {
-      return t;
-    }
-    return `${t.slice(0, 27)}…`;
-  }
-
-  /** Самый ранний OB-пост по команде (созданный при createCommunity). */
-  private async patchPrimaryFutureVisionPost(
-    fvCommunityId: string,
-    sourceCommunityId: string,
-    patch: {
-      categories: string[];
-      images: string[];
-      description?: string;
-    },
-  ): Promise<void> {
-    const doc = await this.publicationModel
-      .findOne({
-        communityId: fvCommunityId,
-        sourceEntityType: 'community',
-        sourceEntityId: sourceCommunityId,
-        deleted: { $ne: true },
-      })
-      .sort({ createdAt: 1 })
-      .lean();
-    if (!doc) {
-      return;
-    }
-    const update: Record<string, unknown> = {
-      categories: patch.categories,
-      images: patch.images,
-      updatedAt: new Date(),
-    };
-    if (patch.description !== undefined) {
-      update.description = patch.description;
-    }
-    await this.publicationModel.updateOne({ id: doc.id }, { $set: update });
-  }
-
-  private async patchPublicationCategories(
-    publicationId: string,
-    categories: string[],
-  ): Promise<void> {
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      { $set: { categories, updatedAt: new Date() } },
+    await this.voteService.createVote(
+      voterId,
+      'publication',
+      publicationId,
+      0,
+      walletAmount,
+      'up',
+      comment,
+      communityId,
+    );
+    await this.publicationService.voteOnPublication(
+      publicationId,
+      voterId,
+      walletAmount,
+      'up',
+    );
+    await this.walletService.addTransaction(
+      voterId,
+      GLOBAL_COMMUNITY_ID,
+      'debit',
+      walletAmount,
+      'personal',
+      'publication_vote',
+      publicationId,
+      DEFAULT_CURRENCY,
+      'Голос за пост',
     );
   }
 
-  private async seedMarathonBasicPost(
-    authorId: string,
-    marathonCommunityId: string,
-    content: string,
-    title: string,
-    categories: string[],
+  private async seedWithdrawPublication(
+    publicationId: string,
+    amount: number,
+    mdCommunityId: string,
   ): Promise<void> {
-    const id = PublicationId.generate().getValue();
-    const now = new Date();
-    await this.publicationModel.create({
-      id,
-      communityId: marathonCommunityId,
-      authorId,
-      content,
-      type: 'text',
-      title,
-      hashtags: [],
-      categories,
-      images: [],
-      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
-      investingEnabled: false,
-      investmentPool: 0,
-      investmentPoolTotal: 0,
-      investments: [],
-      status: 'active',
-      postType: 'basic',
-      isProject: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-    await this.eventBus.publish(new PublicationCreatedEvent(id, authorId, marathonCommunityId));
+    const pub = await this.publicationService.getPublication(publicationId);
+    if (!pub) return;
+    const score = pub.getMetrics.score;
+    if (amount > score || amount <= 0) return;
+
+    const pubDoc = await this.publicationService.getPublicationDocument(publicationId);
+    const community = await this.communityService.getCommunity(mdCommunityId);
+    if (!community) return;
+
+    const beneficiaryId = pub.getEffectiveBeneficiary().getValue();
+    const currency = community.settings?.currencyNames ?? DEFAULT_CURRENCY;
+
+    let authorCredit = amount;
+    if (pubDoc?.investments?.length && pubDoc.investorSharePercent != null) {
+      const dist = await this.investmentService.distributeOnWithdrawal(
+        publicationId,
+        amount,
+      );
+      authorCredit = dist.authorAmount;
+    }
+
+    await this.walletService.addTransaction(
+      beneficiaryId,
+      GLOBAL_COMMUNITY_ID,
+      'credit',
+      authorCredit,
+      'personal',
+      'publication_withdrawal',
+      publicationId,
+      currency,
+      'Вывод с поста',
+    );
+    await this.publicationService.reduceScore(publicationId, amount);
   }
 }

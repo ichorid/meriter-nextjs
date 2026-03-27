@@ -215,6 +215,27 @@ export class PublicationService {
   }
 
   /**
+   * Backdates publication timestamps for platform baseline seed so posts appear spread over time.
+   * Recalculates ttlExpiresAt from ttlDays when set (investing posts).
+   */
+  async setPublicationTimestampsForSeed(
+    publicationId: string,
+    createdAt: Date,
+  ): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc) return;
+    const ttlDays = doc.ttlDays;
+    const ttlExpiresAt =
+      ttlDays != null && ttlDays > 0
+        ? new Date(createdAt.getTime() + ttlDays * 24 * 60 * 60 * 1000)
+        : doc.ttlExpiresAt ?? null;
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      { $set: { createdAt, updatedAt: createdAt, ttlExpiresAt } },
+    );
+  }
+
+  /**
    * Birzha (МД) post from a project or eligible local community.
    * postCost from CommunityWallet(sourceEntityId); rights validated here (source admin).
    */

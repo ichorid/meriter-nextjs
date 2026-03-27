@@ -86,7 +86,7 @@ export class TicketService {
     const out: Record<string, unknown> = {
       ticketId,
       projectId,
-      ticketTitle: rawTitle.trim(),
+      ticketTitle: (rawTitle ?? '').trim(),
       projectName: project?.name ?? '',
       ...extra,
     };
