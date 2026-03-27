@@ -566,7 +566,7 @@ export class ProjectService {
     const shares = await this.ticketService.getProjectShares(projectId);
     const row = shares.find((r) => r.userId === userId);
     const frozen = row?.internalMerits ?? 0;
-    await this.userCommunityRoleService.setFrozenInternalMerits(userId, projectId, frozen);
+    await this.userCommunityRoleService.markLeftProject(userId, projectId, frozen);
 
     await this.communityService.removeMember(projectId, userId);
     await this.userService.removeCommunityMembership(userId, projectId);

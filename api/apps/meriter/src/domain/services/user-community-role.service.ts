@@ -27,6 +27,9 @@ export class UserCommunityRoleService {
     private communityService: CommunityService,
   ) {}
 
+  /** Active membership: `leftAt` null or absent (MongoDB `{ leftAt: null }`). */
+  private static readonly activeMembershipFilter = { leftAt: null } as const;
+
   /**
    * Get user role in a specific community
    */
@@ -38,6 +41,7 @@ export class UserCommunityRoleService {
       .findOne({
         userId,
         communityId,
+        ...UserCommunityRoleService.activeMembershipFilter,
       })
       .exec();
     return doc;
@@ -47,7 +51,12 @@ export class UserCommunityRoleService {
    * Get all roles for a user across all communities
    */
   async getUserRoles(userId: string): Promise<UserCommunityRole[]> {
-    return this.userCommunityRoleModel.find({ userId }).exec();
+    return this.userCommunityRoleModel
+      .find({
+        userId,
+        ...UserCommunityRoleService.activeMembershipFilter,
+      })
+      .exec();
   }
 
   /**
@@ -61,18 +70,29 @@ export class UserCommunityRoleService {
       .find({
         communityId,
         role,
+        ...UserCommunityRoleService.activeMembershipFilter,
       })
       .exec();
   }
 
   /** Count users with any role in the community (source of truth for membership UI). */
   async countMembersInCommunity(communityId: string): Promise<number> {
-    return this.userCommunityRoleModel.countDocuments({ communityId }).exec();
+    return this.userCommunityRoleModel
+      .countDocuments({
+        communityId,
+        ...UserCommunityRoleService.activeMembershipFilter,
+      })
+      .exec();
   }
 
   /** Distinct user IDs that have a role in the community. */
   async getMemberUserIdsInCommunity(communityId: string): Promise<string[]> {
-    return this.userCommunityRoleModel.distinct('userId', { communityId }).exec();
+    return this.userCommunityRoleModel
+      .distinct('userId', {
+        communityId,
+        ...UserCommunityRoleService.activeMembershipFilter,
+      })
+      .exec();
   }
 
   /**
@@ -118,6 +138,7 @@ export class UserCommunityRoleService {
           role,
           updatedAt: new Date(),
         },
+        $unset: { leftAt: 1 },
         $setOnInsert: {
           id: existingDoc?.id || uid(32),
           userId,
@@ -197,18 +218,24 @@ export class UserCommunityRoleService {
   }
 
   /**
-   * Set frozenInternalMerits on the role record (e.g. when user leaves project).
-   * Does not remove the record so getTotalFrozenInternalMerits can include it.
+   * Mark user as left project: freeze internal merits, set leftAt.
+   * Row is kept so getTotalFrozenInternalMerits can include it.
    */
-  async setFrozenInternalMerits(
+  async markLeftProject(
     userId: string,
     communityId: string,
-    amount: number,
+    frozenInternalMerits: number,
   ): Promise<void> {
     await this.userCommunityRoleModel
       .updateOne(
         { userId, communityId },
-        { $set: { frozenInternalMerits: Math.max(0, amount), updatedAt: new Date() } },
+        {
+          $set: {
+            frozenInternalMerits: Math.max(0, frozenInternalMerits),
+            leftAt: new Date(),
+            updatedAt: new Date(),
+          },
+        },
       )
       .exec();
   }
@@ -248,6 +275,7 @@ export class UserCommunityRoleService {
       .find({
         userId,
         role,
+        ...UserCommunityRoleService.activeMembershipFilter,
       })
       .exec();
 
@@ -264,6 +292,7 @@ export class UserCommunityRoleService {
     const userIds = await this.userCommunityRoleModel
       .distinct('userId', {
         role,
+        ...UserCommunityRoleService.activeMembershipFilter,
       })
       .exec();
 
