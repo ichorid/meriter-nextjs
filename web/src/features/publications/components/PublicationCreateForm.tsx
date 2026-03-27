@@ -145,6 +145,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     birzhaSourceEntity?.id ?? actingAsCommunityId ?? '';
   const showDualPaymentUI =
     Boolean(birzhaSourceEntity) || Boolean(actingAsCommunityId);
+  /** Personal post only; hidden when posting as a community/project (acting-as or Birzha source). */
+  const showBeneficiarySelector = !isProjectCommunity && !showDualPaymentUI;
   // FR-4: Fee is always paid from global wallet (all communities)
   const { data: feeWallet } = useWallet(GLOBAL_COMMUNITY_ID);
   const { data: sourceWallet, isFetched: sourceWalletFetched } = useCommunityWalletForSource(
@@ -270,6 +272,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [stage, setStage] = useState<Stage | ''>((initialData as any)?.stage || '');
   const [helpNeeded, setHelpNeeded] = useState<HelpNeeded[]>((initialData as any)?.helpNeeded || []);
   const [beneficiaryId, setBeneficiaryId] = useState<string | null>((initialData as any)?.beneficiaryId ?? null);
+
+  useEffect(() => {
+    if (showDualPaymentUI) setBeneficiaryId(null);
+  }, [showDualPaymentUI]);
+
   // Collapsible sections state (folded by default)
   const [openBeneficiaries, setOpenBeneficiaries] = useState(false);
   const [openMethods, setOpenMethods] = useState(false);
@@ -575,7 +582,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           images: images.length > 0 ? images : undefined,
           valueTags: valueTags.length > 0 ? valueTags : undefined,
           hashtags: ENABLE_HASHTAGS ? hashtags : undefined,
-          beneficiaryId: beneficiaryId ?? undefined,
+          beneficiaryId: showBeneficiarySelector ? (beneficiaryId ?? undefined) : undefined,
           postCostFunding,
           investingEnabled: investOn,
           investorSharePercent: investOn ? investorSharePercent : undefined,
@@ -619,7 +626,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           ttlDays: isProjectDiscussion ? undefined : (ttlDays ?? undefined),
           stopLoss: isProjectDiscussion ? 0 : (stopLoss ?? 0),
           noAuthorWalletSpend: isProjectDiscussion ? undefined : noAuthorWalletSpend || undefined,
-          beneficiaryId: beneficiaryId ?? undefined,
+          beneficiaryId: showBeneficiarySelector ? (beneficiaryId ?? undefined) : undefined,
           actingAsCommunityId: actingAsCommunityId ?? undefined,
           postCostFunding:
             actingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
@@ -853,13 +860,13 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           </BrandFormControl>
 
-          {!isProjectCommunity && (
+          {showBeneficiarySelector ? (
             <BeneficiarySelector
               value={beneficiaryId}
               onChange={setBeneficiaryId}
               disabled={isSubmitting}
             />
-          )}
+          ) : null}
 
           {isGoodDeedsMarathon && ENABLE_HASHTAGS && (
             <ValuesFormPickerFields
