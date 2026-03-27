@@ -36,6 +36,8 @@ export default function FutureVisionsPageClient() {
   }, [communitiesData?.data]);
   const { data: futureVisionCommunity } = useCommunity(futureVisionCommunityId ?? '');
 
+  const tappalkaEnabled = futureVisionCommunity?.tappalkaSettings?.enabled ?? false;
+
   const canManageFutureVision = useMemo(() => {
     if (!futureVisionCommunityId || !user) return false;
     if (user.globalRole === 'superadmin') return true;
@@ -82,7 +84,9 @@ export default function FutureVisionsPageClient() {
                   showDaily={hasQuota}
                   compact={true}
                   className="mr-2 -ml-[15px] mt-[5px]"
-                  onEarnMeritsClick={() => setShowTappalkaModal(true)}
+                  onEarnMeritsClick={
+                    tappalkaEnabled ? () => setShowTappalkaModal(true) : undefined
+                  }
                 />
               </div>
             }
@@ -110,13 +114,15 @@ export default function FutureVisionsPageClient() {
           />
         )}
         <FutureVisionFeed
-          onEarnMeritsClick={() => setShowTappalkaModal(true)}
-          tappalkaEnabled={!!futureVisionCommunityId}
+          onEarnMeritsClick={
+            tappalkaEnabled ? () => setShowTappalkaModal(true) : undefined
+          }
+          tappalkaEnabled={tappalkaEnabled}
         />
       </div>
 
       {/* Tappalka Modal */}
-      {futureVisionCommunityId && (
+      {futureVisionCommunityId && tappalkaEnabled && (
         <>
           <Dialog open={showTappalkaModal} onOpenChange={setShowTappalkaModal}>
             <DialogContent
