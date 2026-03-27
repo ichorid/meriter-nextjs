@@ -1,6 +1,7 @@
 'use client';
 
 import { keepPreviousData } from '@tanstack/react-query';
+import type { Community } from '@meriter/shared-types';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -8,6 +9,18 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+
+/** Matches API project.getById payload shape for placeholderData when list already has Community */
+export type ProjectGetByIdPlaceholder = {
+  project: Community;
+  walletBalance: number;
+  parentCommunity: Community | null;
+  pendingParentLink?: {
+    requestId: string;
+    targetParentCommunityId: string;
+    parentName: string | null;
+  } | null;
+};
 
 export function useProjects(params: {
   parentCommunityId?: string;
@@ -58,10 +71,18 @@ export function useGlobalProjectsList(
   );
 }
 
-export function useProject(projectId: string | null) {
+export function useProject(
+  projectId: string | null,
+  options?: { placeholderProjectPayload?: ProjectGetByIdPlaceholder },
+) {
   return trpc.project.getById.useQuery(
     { id: projectId! },
-    { enabled: !!projectId, staleTime: STALE_TIME.SHORT },
+    {
+      enabled: !!projectId,
+      staleTime: STALE_TIME.SHORT,
+      /** List/detail views often already have `project`; avoids modal stuck on loading if batch is slow */
+      placeholderData: options?.placeholderProjectPayload,
+    },
   );
 }
 
@@ -230,10 +251,14 @@ export function useUpdateShares() {
   });
 }
 
-export function useOpenTickets(projectId: string | null) {
+export function useOpenTickets(
+  projectId: string | null,
+  opts?: { enabled?: boolean },
+) {
+  const allow = opts?.enabled ?? true;
   return trpc.project.getOpenTickets.useQuery(
     { projectId: projectId! },
-    { enabled: !!projectId, staleTime: STALE_TIME.SHORT },
+    { enabled: !!projectId && allow, staleTime: STALE_TIME.SHORT },
   );
 }
 

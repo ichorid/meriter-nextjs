@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import type { Community } from '@meriter/shared-types';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { Badge } from '@/components/ui/shadcn/badge';
@@ -11,17 +12,14 @@ import { useOpenTickets } from '@/hooks/api/useProjects';
 import { useApplyForTicket } from '@/hooks/api/useTickets';
 import { TopUpWalletDialog } from './TopUpWalletDialog';
 import { shareUrl } from '@shared/lib/share-utils';
-import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
-import { ArrowUp, ChevronDown, PiggyBank, Share2, TrendingUp, Users } from 'lucide-react';
+import { ArrowUp, ChevronDown, PiggyBank, Share2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { NeutralTicketPublicCard } from './NeutralTicketPublicCard';
 
 export interface ProjectCardProps {
   project: Community;
-  /** Score from API when available (e.g. from publication). */
-  score?: number;
-  /** Member/participant count when available. */
+  /** Active members from API (e.g. project.getGlobalList `memberCount`). */
   memberCount?: number;
   /** When set, value tag chips call this (e.g. Birzha / projects list filter). */
   onValueTagClick?: (tag: string) => void;
@@ -42,19 +40,44 @@ function projectGradient(name: string): [string, string] {
 
 export function ProjectCard({
   project,
-  score = 0,
-  memberCount = 0,
+  memberCount,
   onValueTagClick,
 }: ProjectCardProps) {
   const t = useTranslations('projects');
   const tInvesting = useTranslations('investing');
   const tShared = useTranslations('shared');
   const { user } = useAuth();
-  const { data: openTickets = [] } = useOpenTickets(project.id);
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const isProjectMember = useMemo(() => {
+    if (!user) return false;
+    const inRoles = userRoles.some(
+      (r) =>
+        r.communityId === project.id && (r.role === 'lead' || r.role === 'participant'),
+    );
+    const inMembersList = Array.isArray(project.members) && project.members.includes(user.id);
+    return inRoles || inMembersList;
+  }, [user, userRoles, project.id, project.members]);
+
+  /** Defer N× getOpenTickets until after first paint / idle so list + invest modal do not saturate one tRPC batch / DB pool */
+  const [openTicketsFetchEnabled, setOpenTicketsFetchEnabled] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = window;
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(() => setOpenTicketsFetchEnabled(true), { timeout: 800 });
+      return () => w.cancelIdleCallback(id);
+    }
+    const t = w.setTimeout(() => setOpenTicketsFetchEnabled(true), 400);
+    return () => w.clearTimeout(t);
+  }, []);
+  const status = project.projectStatus ?? 'active';
+  const { data: openTickets = [] } = useOpenTickets(project.id, {
+    enabled: openTicketsFetchEnabled && status === 'active',
+  });
   const applyForTicket = useApplyForTicket();
   const [openTasksExpanded, setOpenTasksExpanded] = useState(false);
   const [topUpOpen, setTopUpOpen] = useState(false);
-  const status = project.projectStatus ?? 'active';
+  const [investorFlow, setInvestorFlow] = useState(false);
   const statusLabel =
     status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
   const showOpenTickets = status === 'active' && openTickets.length > 0;
@@ -64,9 +87,7 @@ export function ProjectCard({
 
   const projectUrl = `/meriter/projects/${project.id}`;
   const investingEnabled = project.settings?.investingEnabled === true;
-  const primaryActionLabel = investingEnabled
-    ? tInvesting('invest', { defaultValue: 'Invest' })
-    : t('projectCardSupportVerb', { defaultValue: 'Support' });
+  const memberWithInvesting = investingEnabled && isProjectMember;
 
   const handleShareClick = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -75,10 +96,25 @@ export function ProjectCard({
     await shareUrl(fullUrl, tShared('urlCopiedToBuffer'));
   };
 
-  const handleSupportClick = (e: React.MouseEvent) => {
+  const openMemberTopUp = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setInvestorFlow(false);
     setTopUpOpen(true);
+  };
+
+  const openInvestorFlowClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setInvestorFlow(true);
+    setTopUpOpen(true);
+  };
+
+  const handleTopUpDialogOpenChange = (open: boolean) => {
+    setTopUpOpen(open);
+    if (!open) {
+      setInvestorFlow(false);
+    }
   };
 
   return (
@@ -146,34 +182,23 @@ export function ProjectCard({
       </Link>
 
       <div className="pt-3 border-t border-base-300">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 min-w-0">
-          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 min-w-0">
-            <span
-              className="flex items-center gap-1.5 text-sm hover:bg-base-200 rounded-lg px-2 py-1.5 transition-colors group flex-shrink-0"
-              title={tShared('totalVotesTooltip', { defaultValue: 'Total votes including withdrawn' })}
-            >
-              <TrendingUp className="w-4 h-4 text-base-content/50 group-hover:text-base-content/70 flex-shrink-0" />
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0',
+            typeof memberCount === 'number' ? 'justify-between' : 'justify-end',
+          )}
+        >
+          {typeof memberCount === 'number' ? (
+            <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0 min-w-0">
               <span
-                className={`font-medium tabular-nums ${
-                  score > 0
-                    ? 'text-success'
-                    : score < 0
-                      ? 'text-error'
-                      : 'text-base-content/60'
-                }`}
+                className="flex items-center gap-1.5 text-sm text-base-content/60 flex-shrink-0"
+                aria-label={t('members')}
               >
-                {score > 0 ? '+' : ''}
-                {formatMerits(score)}
+                <Users className="w-4 h-4 flex-shrink-0" aria-hidden />
+                <span className="tabular-nums">{memberCount}</span>
               </span>
-            </span>
-            <span
-              className="flex items-center gap-1.5 text-sm text-base-content/60 flex-shrink-0"
-              aria-label={t('members')}
-            >
-              <Users className="w-4 h-4 flex-shrink-0" aria-hidden />
-              {memberCount}
-            </span>
-          </div>
+            </div>
+          ) : null}
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
               type="button"
@@ -184,21 +209,56 @@ export function ProjectCard({
             >
               <Share2 className="w-4 h-4" />
             </button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
-              onClick={handleSupportClick}
-              aria-label={primaryActionLabel}
-            >
-              {investingEnabled ? (
-                <PiggyBank className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
-              ) : (
-                <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
-              )}
-              <span className="whitespace-nowrap">{primaryActionLabel}</span>
-            </Button>
+            {memberWithInvesting ? (
+              <div className="flex flex-row flex-wrap gap-1.5 items-center justify-end shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+                  onClick={openMemberTopUp}
+                  aria-label={t('projectWalletTopUpSubmit')}
+                >
+                  <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                  <span className="whitespace-nowrap">{t('projectWalletTopUpSubmit')}</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+                  onClick={openInvestorFlowClick}
+                  aria-label={t('projectInvestSubmit')}
+                >
+                  <PiggyBank className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                  <span className="whitespace-nowrap">{t('projectInvestSubmit')}</span>
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 rounded-lg px-2.5 text-xs shrink-0"
+                onClick={investingEnabled ? openInvestorFlowClick : openMemberTopUp}
+                aria-label={
+                  investingEnabled
+                    ? tInvesting('invest', { defaultValue: 'Invest' })
+                    : t('projectWalletTopUpSubmit')
+                }
+              >
+                {investingEnabled ? (
+                  <PiggyBank className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                ) : (
+                  <ArrowUp className="h-3.5 w-3.5 flex-shrink-0" aria-hidden />
+                )}
+                <span className="whitespace-nowrap">
+                  {investingEnabled
+                    ? tInvesting('invest', { defaultValue: 'Invest' })
+                    : t('projectWalletTopUpSubmit')}
+                </span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -247,7 +307,13 @@ export function ProjectCard({
           ) : null}
         </div>
       )}
-      <TopUpWalletDialog projectId={project.id} open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <TopUpWalletDialog
+        projectId={project.id}
+        placeholderProject={project}
+        open={topUpOpen}
+        onOpenChange={handleTopUpDialogOpenChange}
+        investorFlow={investorFlow}
+      />
     </div>
   );
 }

@@ -235,7 +235,7 @@ export default function ProjectsPageClient() {
           </div>
         ) : (
           <ul className="flex flex-col gap-4 list-none p-0 m-0">
-            {items.map(({ project, parentCommunityName, founderDisplayName }) => (
+            {items.map(({ project, parentCommunityName, founderDisplayName, memberCount }) => (
               <li key={project.id}>
                 {project.isPersonalProject === true && project.founderUserId ? (
                   <Link
@@ -252,7 +252,7 @@ export default function ProjectsPageClient() {
                     {parentCommunityName}
                   </Link>
                 ) : null}
-                <ProjectCard project={project} onValueTagClick={toggleValueTag} />
+                <ProjectCard project={project} memberCount={memberCount} onValueTagClick={toggleValueTag} />
               </li>
             ))}
           </ul>

@@ -85,6 +85,37 @@ export class UserCommunityRoleService {
       .exec();
   }
 
+  /**
+   * Batch count active members per community (one aggregation vs N queries).
+   */
+  async countMembersInCommunities(communityIds: string[]): Promise<Map<string, number>> {
+    const unique = [...new Set(communityIds.filter(Boolean))];
+    const map = new Map<string, number>();
+    if (unique.length === 0) {
+      return map;
+    }
+    const rows = await this.userCommunityRoleModel
+      .aggregate<{ _id: string; count: number }>([
+        {
+          $match: {
+            communityId: { $in: unique },
+            ...UserCommunityRoleService.activeMembershipFilter,
+          },
+        },
+        { $group: { _id: '$communityId', count: { $sum: 1 } } },
+      ])
+      .exec();
+    for (const r of rows) {
+      map.set(r._id, r.count);
+    }
+    for (const id of unique) {
+      if (!map.has(id)) {
+        map.set(id, 0);
+      }
+    }
+    return map;
+  }
+
   /** Distinct user IDs that have a role in the community. */
   async getMemberUserIdsInCommunity(communityId: string): Promise<string[]> {
     return this.userCommunityRoleModel

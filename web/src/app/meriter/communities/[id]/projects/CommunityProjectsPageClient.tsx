@@ -197,9 +197,9 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
           </div>
         ) : (
           <ul className="flex flex-col gap-4 list-none p-0 m-0">
-            {items.map(({ project }) => (
+            {items.map(({ project, memberCount }) => (
               <li key={project.id}>
-                <ProjectCard project={project} />
+                <ProjectCard project={project} memberCount={memberCount} />
               </li>
             ))}
           </ul>

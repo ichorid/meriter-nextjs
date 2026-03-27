@@ -92,6 +92,33 @@ export class UserService implements OnModuleInit {
   }
 
   /**
+   * Batch load users for enrichment (display name + avatar). Prefer this over N× getUserById
+   * to avoid connection-pool pressure and slow serial/parallel fan-out.
+   */
+  async getUsersByIdsForEnrichment(
+    ids: string[],
+  ): Promise<Map<string, Pick<User, 'id' | 'displayName' | 'avatarUrl'>>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    const result = new Map<string, Pick<User, 'id' | 'displayName' | 'avatarUrl'>>();
+    if (unique.length === 0) {
+      return result;
+    }
+    const docs = await this.userModel
+      .find({ id: { $in: unique } })
+      .select({ id: 1, displayName: 1, avatarUrl: 1 })
+      .lean()
+      .exec();
+    for (const d of docs) {
+      result.set(d.id, {
+        id: d.id,
+        displayName: d.displayName,
+        avatarUrl: d.avatarUrl,
+      });
+    }
+    return result;
+  }
+
+  /**
    * Resolve display names for Meriter user ids (batch). Missing users get a short id fallback.
    */
   async getDisplayNamesByUserIds(userIds: string[]): Promise<Map<string, string>> {

@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle, Info, Loader2 } from 'lucide-react';
-import { useTopUpWallet, useProject, useProjectInvestmentsList } from '@/hooks/api/useProjects';
+import {
+  useTopUpWallet,
+  useProject,
+  useProjectInvestmentsList,
+  type ProjectGetByIdPlaceholder,
+} from '@/hooks/api/useProjects';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useWalletBalance } from '@/hooks/api/useWallet';
@@ -20,11 +25,17 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Label } from '@/components/ui/shadcn/label';
+import type { Community } from '@meriter/shared-types';
 
 interface TopUpWalletDialogProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When opening from a list/card that already fetched Community, pass it so the modal
+   * is not blocked on project.getById while the tRPC batch is saturated.
+   */
+  placeholderProject?: Community;
   /**
    * Member opens the investor ledger flow (same UI as non-member investors).
    * Member wallet top-up uses the default (false).
@@ -36,6 +47,7 @@ export function TopUpWalletDialog({
   projectId,
   open,
   onOpenChange,
+  placeholderProject,
   investorFlow = false,
 }: TopUpWalletDialogProps) {
   const t = useTranslations('projects');
@@ -45,8 +57,21 @@ export function TopUpWalletDialog({
   const tShared = useTranslations('shared');
   const { user } = useAuth();
   const myId = user?.id ?? null;
-  const { data: projectPayload, isLoading: projectLoading } = useProject(open ? projectId : null);
+  const placeholderProjectPayload = useMemo((): ProjectGetByIdPlaceholder | undefined => {
+    if (!placeholderProject) return undefined;
+    return {
+      project: placeholderProject,
+      walletBalance: 0,
+      parentCommunity: null,
+      pendingParentLink: null,
+    };
+  }, [placeholderProject]);
+  const { data: projectPayload, isLoading: projectQueryLoading } = useProject(open ? projectId : null, {
+    placeholderProjectPayload,
+  });
   const project = projectPayload?.project;
+  /** No project shape yet and query still loading (placeholderData counts as data — avoids infinite "Loading") */
+  const projectLoading = !project?.id && projectQueryLoading;
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { data: globalBalRaw, isLoading: globalLoading } = useWalletBalance(GLOBAL_COMMUNITY_ID);
   const { data: investments, isLoading: investmentsLoading } = useProjectInvestmentsList(
@@ -153,6 +178,12 @@ export function TopUpWalletDialog({
           <p className="text-sm text-brand-text-primary whitespace-pre-line">
             {t('projectMemberInvestContextWarning')}
           </p>
+          <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+            <p className="whitespace-pre-line text-sm text-base-content/80">
+              {t('projectMemberTopUpDonationWarning')}
+            </p>
+          </div>
           {investingEnabled && showInvestStyleBlock ? (
             <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />

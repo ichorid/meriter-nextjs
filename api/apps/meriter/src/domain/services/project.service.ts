@@ -392,12 +392,17 @@ export class ProjectService {
       parentFutureVisionText: string | null;
       /** Set for personal projects: founder display label for hub row above the card. */
       founderDisplayName: string | null;
+      /** Active members (UserCommunityRole), not legacy `community.members`. */
+      memberCount: number;
     }>;
     total: number;
     page: number;
     pageSize: number;
   }> {
     const result = await this.listProjects(filters);
+    const memberCountById = await this.userCommunityRoleService.countMembersInCommunities(
+      result.data.map((p) => p.id),
+    );
     const parentIds = [
       ...new Set(
         result.data
@@ -446,6 +451,7 @@ export class ProjectService {
         parentCommunityName: parent?.name ?? null,
         parentFutureVisionText: parent?.futureVisionText ?? null,
         founderDisplayName,
+        memberCount: memberCountById.get(project.id) ?? 0,
       };
     });
 
@@ -928,17 +934,17 @@ export class ProjectService {
     }
     const raw = project.projectInvestments ?? [];
     const total = raw.reduce((s, i) => s + (i.amount ?? 0), 0);
-    const enriched = await Promise.all(
-      raw.map(async (inv) => {
-        const u = await this.userService.getUserById(inv.userId);
-        return {
-          ...inv,
-          displayName: u?.displayName ?? 'Unknown',
-          avatarUrl: u?.avatarUrl,
-          sharePercent: total > 0 ? (inv.amount / total) * 100 : 0,
-        };
-      }),
-    );
+    const userIds = raw.map((i) => i.userId);
+    const usersMap = await this.userService.getUsersByIdsForEnrichment(userIds);
+    const enriched = raw.map((inv) => {
+      const u = usersMap.get(inv.userId);
+      return {
+        ...inv,
+        displayName: u?.displayName ?? 'Unknown',
+        avatarUrl: u?.avatarUrl,
+        sharePercent: total > 0 ? (inv.amount / total) * 100 : 0,
+      };
+    });
     enriched.sort((a, b) => b.amount - a.amount);
     return enriched;
   }
