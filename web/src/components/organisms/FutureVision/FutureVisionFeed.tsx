@@ -11,7 +11,6 @@ import { ValuesRubricatorPanel } from '@/shared/components/value-rubricator/Valu
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { SortToggle } from '@/components/ui/SortToggle';
 import { Button } from '@/components/ui/shadcn/button';
-import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
 import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { routes } from '@/lib/constants/routes';
@@ -145,7 +144,6 @@ export function FutureVisionFeed() {
                 <span className="hidden sm:inline whitespace-nowrap">{t('createCommunity')}</span>
               </Button>
             )}
-            <EarnMeritsBirzhaButton className="min-w-9" />
             <Button
               variant="ghost"
               size="sm"
