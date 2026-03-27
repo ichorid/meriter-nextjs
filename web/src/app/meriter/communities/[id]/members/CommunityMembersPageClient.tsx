@@ -178,7 +178,6 @@ export function CommunityMembersPageClient({
 
     // Get members array (already filtered server-side)
     const members = Array.isArray(membersData?.data) ? membersData.data : [];
-    const isListedInMemberDirectory = Boolean(user && members.some((m) => m.id === user.id));
     const { admins: adminMembers, participants: participantMembers } = useMemo(
         () => splitMembersByAdminRole(members),
         [members],
@@ -410,6 +409,12 @@ export function CommunityMembersPageClient({
                         ) : null}
 
                         <div className="mb-4 flex flex-col gap-3">
+                            <CommunityJoinRequestPanel
+                                communityId={communityId}
+                                layout="compact"
+                                entityKind={isProjectMembersUi ? 'project' : 'community'}
+                                className="max-w-md sm:max-w-none"
+                            />
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                 {canCreateInviteLink ? (
                                     <Button
@@ -447,20 +452,6 @@ export function CommunityMembersPageClient({
                                 className="w-full"
                             />
                         </div>
-
-                        {user &&
-                        allowsJoinRequests &&
-                        !isCurrentUserMember &&
-                        !isListedInMemberDirectory &&
-                        !isAdmin ? (
-                            <div className="mb-4">
-                                <CommunityJoinRequestPanel
-                                    communityId={communityId}
-                                    layout="block"
-                                    entityKind={isProjectMembersUi ? 'project' : 'community'}
-                                />
-                            </div>
-                        ) : null}
 
                         {members.length > 0 ? (
                             <div className="space-y-6">

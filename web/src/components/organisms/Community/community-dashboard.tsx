@@ -9,6 +9,7 @@ import { CommunityWalletPayoutDialog } from './CommunityWalletPayoutDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { useCommunitySourceWallet } from '@/hooks/api/useCommunities';
+import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 
 const cardShell =
   'flex min-h-0 flex-col rounded-xl border border-base-300 bg-base-200/60 p-4 dark:border-base-content/10 dark:bg-base-200/40 md:h-full';
@@ -54,14 +55,17 @@ export function CommunityDashboard({
             {totalMembers === 0 && (
               <p className="text-sm text-base-content/50">{tCommunities('teamNoMembersPreview')}</p>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
-              asChild
-            >
-              <Link href={routes.communityMembers(communityId)}>{tCommunities('viewTeamMembers')}</Link>
-            </Button>
+            <div className="mt-auto flex w-full flex-col gap-2">
+              <CommunityJoinRequestPanel communityId={communityId} layout="compact" />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+                asChild
+              >
+                <Link href={routes.communityMembers(communityId)}>{tCommunities('viewTeamMembers')}</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
