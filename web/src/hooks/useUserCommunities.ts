@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserMeritsBalance } from '@/hooks/useUserMeritsBalance';
 import { useCommunitiesBatch, useCommunities } from '@/hooks/api/useCommunities';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { trpc } from '@/lib/trpc/client';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import type { Community } from '@/types/api-v1';
@@ -9,9 +10,9 @@ import type { Community } from '@/types/api-v1';
 /**
  * Hook to get user's communities with wallets and quotas
  *
- * For regular users: Gets communities from membership (users.getUserCommunities), not from wallets.
+ * For regular users: Gets communities from membership (users.getUserCommunities) + roles, not from wallets.
  * __global__ is wallet-only and must never be shown as a community.
- * For superadmin: Gets all communities
+ * For superadmin: Same membership/role filter applied to the full community list (not every community in DB).
  *
  * @returns Object containing:
  *   - communities: array of Community objects
@@ -25,18 +26,27 @@ export function useUserCommunities() {
   const { user } = useAuth();
   const isSuperadmin = user?.globalRole === 'superadmin';
 
+  const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
+
   // Wallets and quotas (used for balance display; may include global wallet)
   const { quotasMap, wallets, walletsLoading } = useUserMeritsBalance();
 
-  // Membership-based community IDs for regular users (backend excludes __global__)
+  // Membership + community roles (backend excludes __global__ from membership payload)
   const { data: membershipData, isLoading: membershipLoading } = trpc.users.getUserCommunities.useQuery(
     { userId: 'me' },
-    { enabled: !!user && !isSuperadmin }
+    { enabled: !!user },
   );
   const membershipCommunityIds = useMemo(() => {
-    const ids = membershipData?.map((c) => c.id) ?? [];
-    return ids.filter((id) => id !== GLOBAL_COMMUNITY_ID);
-  }, [membershipData]);
+    const fromApi = membershipData?.map((c) => c.id) ?? [];
+    const fromRoles = userRoles
+      .filter((r) => r.role === 'lead' || r.role === 'participant')
+      .map((r) => r.communityId);
+    const merged = new Set<string>();
+    fromApi.forEach((id) => merged.add(id));
+    fromRoles.forEach((id) => merged.add(id));
+    merged.delete(GLOBAL_COMMUNITY_ID);
+    return Array.from(merged);
+  }, [membershipData, userRoles]);
 
   // For superadmin: fetch all communities
   const { data: allCommunitiesData, isLoading: allCommunitiesLoading } = useCommunities();
@@ -44,13 +54,18 @@ export function useUserCommunities() {
   // For regular users: batch fetch communities from membership IDs (not wallet IDs)
   const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(membershipCommunityIds);
 
-  // Determine which communities to use
+  // Determine which communities to use (superadmin: filter full list to actual membership / roles only)
   const communities = useMemo(() => {
     if (isSuperadmin) {
-      return allCommunitiesData?.data || [];
+      const all = allCommunitiesData?.data || [];
+      if (membershipCommunityIds.length === 0) {
+        return [];
+      }
+      const allowed = new Set(membershipCommunityIds);
+      return all.filter((c) => allowed.has(c.id));
     }
     return memberCommunities;
-  }, [isSuperadmin, allCommunitiesData, memberCommunities]);
+  }, [isSuperadmin, allCommunitiesData, memberCommunities, membershipCommunityIds]);
 
   // Get community IDs from the communities array, sorted with special communities first
   const communityIds = useMemo(() => {
@@ -82,7 +97,9 @@ export function useUserCommunities() {
   // Combined loading state
   const isLoading =
     walletsLoading ||
-    (isSuperadmin ? allCommunitiesLoading : membershipLoading || memberCommunitiesLoading);
+    (isSuperadmin
+      ? allCommunitiesLoading || membershipLoading
+      : membershipLoading || memberCommunitiesLoading);
 
   return {
     communities,

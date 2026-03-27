@@ -27,7 +27,7 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Label } from '@/components/ui/shadcn/label';
 import { cn } from '@/lib/utils';
 
-export type CommunityJoinRequestLayout = 'hero' | 'inline' | 'block';
+export type CommunityJoinRequestLayout = 'hero' | 'inline' | 'block' | 'compact';
 
 interface CommunityJoinRequestPanelProps {
   communityId: string;
@@ -63,8 +63,9 @@ export function CommunityJoinRequestPanel({
       (role.role === 'lead' || role.role === 'participant'),
   );
   const isOnMembersList = Boolean(user && community?.members?.includes(user.id));
-  const isCommunityAdmin = community?.isAdmin === true;
-  const isMember = isRoleMember || isOnMembersList || isCommunityAdmin;
+  // Do not treat platform/community admin flag as membership — superadmin may manage settings
+  // without being a member; they should still be able to submit a join request.
+  const isMember = isRoleMember || isOnMembersList;
 
   if (!allowsJoin || isMember || !user) {
     return null;
@@ -128,6 +129,9 @@ export function CommunityJoinRequestPanel({
   const heroBtnClass =
     'h-8 min-h-8 px-3 text-xs font-medium sm:text-sm [&_svg]:size-3.5 sm:[&_svg]:size-4';
 
+  const compactBtnClass =
+    'h-9 min-h-9 w-full shrink-0 rounded-xl px-3 text-sm font-medium';
+
   const joinButton = (
     <Button
       type="button"
@@ -147,6 +151,46 @@ export function CommunityJoinRequestPanel({
         </>
       ) : (
         ctaOpen
+      )}
+    </Button>
+  );
+
+  const joinButtonCompact = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={openDialog}
+      disabled={isPending}
+      className={compactBtnClass}
+    >
+      {isPending ? (
+        <>
+          <Loader2 className="mr-1.5 shrink-0 animate-spin" />
+          {t('submitting')}
+        </>
+      ) : (
+        t('ctaShort')
+      )}
+    </Button>
+  );
+
+  const cancelButtonCompact = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={handleCancel}
+      disabled={isCancelling}
+      className={compactBtnClass}
+    >
+      {isCancelling ? (
+        <>
+          <Loader2 className="mr-1.5 shrink-0 animate-spin" />
+          {t('cancelling')}
+        </>
+      ) : (
+        t('cancelRequest')
       )}
     </Button>
   );
@@ -176,7 +220,11 @@ export function CommunityJoinRequestPanel({
 
   return (
     <>
-      {layout === 'hero' ? (
+      {layout === 'compact' ? (
+        <div className={cn('w-full', className)}>
+          {hasPendingRequest ? cancelButtonCompact : joinButtonCompact}
+        </div>
+      ) : layout === 'hero' ? (
         <div
           className={cn(
             'flex min-w-0 justify-end translate-y-1 sm:translate-y-1.5',

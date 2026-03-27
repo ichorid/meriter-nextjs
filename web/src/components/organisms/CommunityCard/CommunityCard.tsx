@@ -74,14 +74,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return null;
   }, [community?.typeTag, userRoles, communityId, t]);
 
-  // Get user's role for this community to check merit rules
+  // Community-scoped role only — global superadmin is not a member unless they have lead/participant here
   const userRole = React.useMemo(() => {
-    if (user?.globalRole === 'superadmin') {
-      return 'superadmin';
-    }
-    const role = userRoles.find(r => r.communityId === communityId);
-    return role?.role || null;
-  }, [user?.globalRole, userRoles, communityId]);
+    const role = userRoles.find((r) => r.communityId === communityId);
+    return role?.role ?? null;
+  }, [userRoles, communityId]);
 
   // Check if user can earn permanent merits based on community rules
   const canEarnPermanentMerits = React.useMemo(() => {
@@ -109,9 +106,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
   const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
 
-  // Determine what to show in the subtitle
-  const showMerits = canEarnPermanentMerits && wallet;
-  const showQuota = hasQuota && dailyQuota > 0;
+  const hasMembershipRole = userRole === 'lead' || userRole === 'participant';
+
+  // Determine what to show in the subtitle (wallet rows only for real members)
+  const showMerits = canEarnPermanentMerits && wallet && hasMembershipRole;
+  const showQuota = hasQuota && dailyQuota > 0 && hasMembershipRole;
   const showIndicators = showMerits || showQuota;
 
   // Show a placeholder while loading or if community fetch fails
