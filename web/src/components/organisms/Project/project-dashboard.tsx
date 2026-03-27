@@ -20,7 +20,7 @@ export interface ProjectDashboardProps {
   investingEnabled?: boolean;
   /** Current user is lead or participant — drives wallet CTA labels */
   isProjectMember?: boolean;
-  /** Lead or superadmin: show payout from project wallet */
+  /** Project lead only: payout from project wallet (matches server: lead executes payout) */
   canPayout?: boolean;
   readOnly?: boolean;
 }

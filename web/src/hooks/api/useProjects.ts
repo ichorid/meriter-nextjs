@@ -98,10 +98,12 @@ export function useLeaveProject() {
   const t = useTranslations('projects');
 
   return trpc.project.leave.useMutation({
-    onSuccess: () => {
-      utils.project.list.invalidate();
-      utils.project.getById.invalidate();
-      utils.users.getMe.invalidate();
+    onSuccess: (_data, variables) => {
+      void utils.project.list.invalidate();
+      void utils.project.getById.invalidate({ id: variables.projectId });
+      void utils.project.getMembers.invalidate({ projectId: variables.projectId });
+      void utils.users.getMe.invalidate();
+      void utils.communities.getById.invalidate({ id: variables.projectId });
       addToast(t('left'), 'success');
     },
     onError: (error) => {
