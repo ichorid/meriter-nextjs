@@ -37,6 +37,8 @@ interface PublicationCardProps {
   onOpenPostPage?: () => void;
   /** When set with onOpenPostPage, show "Back to mining" button (closes preview) */
   onBackToCarousel?: () => void;
+  /** Mining modal: hide author header, metrics, and open-post CTA; content + back only */
+  contentOnlyPreview?: boolean;
 }
 
 export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
@@ -49,6 +51,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   onValueTagClick,
   onOpenPostPage,
   onBackToCarousel,
+  contentOnlyPreview = false,
 }) => {
   const router = useRouter();
   const tCarousel = useTranslations('postCarousel');
@@ -214,33 +217,38 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       ? { type: sourceEntityType }
       : null;
 
+  const showMiningHeader =
+    !(onOpenPostPage && contentOnlyPreview);
+
   return (
     <article
       onClick={handleCardClick}
       className="bg-[#F5F5F5] dark:bg-[#2a3239] rounded-xl p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300"
     >
-      <PostHeader
-        publication={{
-          id: pubItem.id,
-          slug: pubItem.slug,
-          createdAt: pubItem.createdAt,
-          meta: pubItem.meta,
-          authorKind: pubItem.authorKind,
-          authoredCommunityId: pubItem.authoredCommunityId,
-          publishedByUserId: pubItem.publishedByUserId,
-          postType: (pubItem as any).postType,
-          isProject: (pubItem as any).isProject,
-          permissions: (pubItem as any).permissions,
-        }}
-        showCommunityAvatar={showCommunityAvatar}
-        className={birzhaSourceForBadge ? 'mb-0' : 'mb-3'}
-        authorId={pubItem.authorId}
-        beneficiaryId={pubItem.beneficiaryId}
-        metrics={pubItem.metrics}
-        publicationId={pubItem.id}
-        communityId={pubItem.communityId}
-        isPoll={false}
-      />
+      {showMiningHeader ? (
+        <PostHeader
+          publication={{
+            id: pubItem.id,
+            slug: pubItem.slug,
+            createdAt: pubItem.createdAt,
+            meta: pubItem.meta,
+            authorKind: pubItem.authorKind,
+            authoredCommunityId: pubItem.authoredCommunityId,
+            publishedByUserId: pubItem.publishedByUserId,
+            postType: (pubItem as any).postType,
+            isProject: (pubItem as any).isProject,
+            permissions: (pubItem as any).permissions,
+          }}
+          showCommunityAvatar={showCommunityAvatar}
+          className={birzhaSourceForBadge ? 'mb-0' : 'mb-3'}
+          authorId={pubItem.authorId}
+          beneficiaryId={pubItem.beneficiaryId}
+          metrics={pubItem.metrics}
+          publicationId={pubItem.id}
+          communityId={pubItem.communityId}
+          isPoll={false}
+        />
+      ) : null}
       {birzhaSourceForBadge ? (
         <div className="mb-3 mt-1 flex w-full justify-end">
           <BirzhaSourcePostBadge
@@ -277,54 +285,73 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
       />
 
       {onOpenPostPage ? (
-        <div className="pt-3 border-t border-base-300">
-          <PostMetrics
-            isClosed={(pubItem as Record<string, unknown>).status === 'closed'}
-            hideVoteAndScore={false}
-            currentScore={pubItem.metrics?.score ?? 0}
-            totalVotes={undefined}
-            onRatingClick={(e) => {
-              e.stopPropagation();
-              onOpenPostPage();
-            }}
-            investingEnabled={!!(pubItem as Record<string, unknown>).investingEnabled}
-            investmentPool={((pubItem as Record<string, unknown>).investmentPool as number) ?? 0}
-            investorCount={((pubItem as Record<string, unknown>).investments as { length?: number }[])?.length ?? 0}
-            publicationId={pubItem.id}
-            breakdownPostId={null}
-            onBreakdownClick={() => {}}
-            onBreakdownOpenChange={() => {}}
-            investorsLabel={tInvesting('investorsCompact', { count: ((pubItem as Record<string, unknown>).investments as unknown[])?.length ?? 0 })}
-            viewBreakdownTitle={tInvesting('viewBreakdown')}
-            ttlExpiresAt={(pubItem as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
-            closingSummary={(pubItem as Record<string, unknown>).closingSummary as ClosingSummary | undefined}
-          />
-          <div className="flex flex-wrap items-center justify-end gap-3 min-w-0">
-            <button
-              type="button"
-              onClick={(e) => {
+        contentOnlyPreview ? (
+          onBackToCarousel ? (
+            <div className="pt-3 border-t border-base-300">
+              <div className="flex flex-wrap items-center justify-end gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBackToCarousel();
+                  }}
+                  className="h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-200 text-base-content hover:bg-base-300 active:scale-95 border border-base-300"
+                >
+                  {tCarousel('backToCarousel')}
+                </button>
+              </div>
+            </div>
+          ) : null
+        ) : (
+          <div className="pt-3 border-t border-base-300">
+            <PostMetrics
+              isClosed={(pubItem as Record<string, unknown>).status === 'closed'}
+              hideVoteAndScore={false}
+              currentScore={pubItem.metrics?.score ?? 0}
+              totalVotes={undefined}
+              onRatingClick={(e) => {
                 e.stopPropagation();
                 onOpenPostPage();
               }}
-              className="h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
-            >
-              <ExternalLink className="w-4 h-4 shrink-0" />
-              {tCarousel('openPost')}
-            </button>
-            {onBackToCarousel && (
+              investingEnabled={!!(pubItem as Record<string, unknown>).investingEnabled}
+              investmentPool={((pubItem as Record<string, unknown>).investmentPool as number) ?? 0}
+              investorCount={((pubItem as Record<string, unknown>).investments as { length?: number }[])?.length ?? 0}
+              publicationId={pubItem.id}
+              breakdownPostId={null}
+              onBreakdownClick={() => {}}
+              onBreakdownOpenChange={() => {}}
+              investorsLabel={tInvesting('investorsCompact', { count: ((pubItem as Record<string, unknown>).investments as unknown[])?.length ?? 0 })}
+              viewBreakdownTitle={tInvesting('viewBreakdown')}
+              ttlExpiresAt={(pubItem as Record<string, unknown>).ttlExpiresAt as Date | string | null | undefined}
+              closingSummary={(pubItem as Record<string, unknown>).closingSummary as ClosingSummary | undefined}
+            />
+            <div className="flex flex-wrap items-center justify-end gap-3 min-w-0">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onBackToCarousel();
+                  onOpenPostPage();
                 }}
-                className="h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-200 text-base-content hover:bg-base-300 active:scale-95 border border-base-300"
+                className="h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-content text-base-100 hover:bg-base-content/90 active:scale-95"
               >
-                {tCarousel('backToCarousel')}
+                <ExternalLink className="w-4 h-4 shrink-0" />
+                {tCarousel('openPost')}
               </button>
-            )}
+              {onBackToCarousel && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onBackToCarousel();
+                  }}
+                  className="h-8 px-4 text-xs font-medium rounded-lg transition-all flex items-center gap-2 bg-base-200 text-base-content hover:bg-base-300 active:scale-95 border border-base-300"
+                >
+                  {tCarousel('backToCarousel')}
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        )
       ) : (
         <PublicationActions
           publication={{

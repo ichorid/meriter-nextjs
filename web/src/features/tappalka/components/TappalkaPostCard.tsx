@@ -2,13 +2,15 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { TappalkaPost } from '../types';
 import { cn } from '@/lib/utils';
-import { formatMerits } from '@/lib/utils/currency';
 import DOMPurify from 'dompurify';
+import { firstWordsPreview, htmlOrTextToPlain } from '@/lib/utils/plain-text-excerpt';
+
+/** Word count shown on the card before "read more" (full text opens in modal) */
+const SUMMARY_PREVIEW_WORDS = 22;
 
 interface TappalkaPostCardProps {
   post: TappalkaPost;
@@ -71,7 +73,7 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX;
       const y = e.clientY;
-      
+
       if (
         x < rect.left ||
         x > rect.right ||
@@ -83,15 +85,6 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     },
     [onDragLeave],
   );
-
-  // Get author initials for avatar fallback
-  const getAuthorInitials = (name: string): string => {
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
 
   // Check if content contains HTML tags
   const isHtmlContent = useCallback((text: string): boolean => {
@@ -109,7 +102,6 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
 
   const isMobileCarousel = useMediaQuery('(max-width: 767px)');
   const titleIsHtml = useMemo(() => isHtmlContent(post.title || ''), [post.title, isHtmlContent]);
-  const descriptionIsHtml = useMemo(() => isHtmlContent(post.description || ''), [post.description, isHtmlContent]);
 
   const sanitizedTitle = useMemo(() => {
     if (titleIsHtml && post.title) {
@@ -118,12 +110,25 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     return post.title;
   }, [post.title, titleIsHtml, sanitizeHtml]);
 
-  const sanitizedDescription = useMemo(() => {
-    if (descriptionIsHtml && post.description) {
-      return sanitizeHtml(post.description);
-    }
-    return post.description;
-  }, [post.description, descriptionIsHtml, sanitizeHtml]);
+  /** Prefer API summary; if empty, strip post description (body often lives here when API summary missed cache). */
+  const fullPlain = useMemo(() => {
+    const fromApi = (post.summaryPlainText ?? '').trim();
+    if (fromApi) return fromApi;
+    return htmlOrTextToPlain(post.description ?? '');
+  }, [post.summaryPlainText, post.description]);
+
+  const { preview: summaryPreview, hasMore: showReadMore } = useMemo(
+    () => firstWordsPreview(fullPlain, SUMMARY_PREVIEW_WORDS),
+    [fullPlain],
+  );
+
+  const handleReadMoreClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
+      if (!disabled) onPostClick?.();
+    },
+    [onPostClick, disabled],
+  );
 
   const handleCardClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -229,41 +234,23 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
           )
         )}
 
-        {/* Description */}
-        {post.description && (
-          descriptionIsHtml ? (
-            <div
-              className="text-xs md:text-sm text-base-content/70 line-clamp-2 md:line-clamp-3 flex-1 min-h-0 prose prose-sm dark:prose-invert max-w-none [&>*]:!my-0 [&>p]:!mb-0 min-w-0"
-              dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
-            />
-          ) : (
-            <p className="text-xs md:text-sm text-base-content/70 line-clamp-2 md:line-clamp-3 flex-1 min-w-0">
-              {post.description}
+        {/* Anonymous summary + read more (opens same modal as card) */}
+        {fullPlain ? (
+          <div className="flex flex-col gap-1 pt-1 md:pt-2 mt-auto border-t border-base-300 dark:border-base-700 shrink-0 min-w-0">
+            <p className="text-xs md:text-sm text-base-content/80 line-clamp-5 min-w-0 whitespace-pre-wrap break-words">
+              {summaryPreview}
             </p>
-          )
-        )}
-
-        {/* Author */}
-        <div className="flex items-center gap-2 pt-1 md:pt-2 border-t border-base-300 dark:border-base-700 shrink-0">
-          <Avatar className="h-8 w-8">
-            {post.authorAvatarUrl ? (
-              <AvatarImage src={post.authorAvatarUrl} alt={post.authorName} />
+            {showReadMore ? (
+              <button
+                type="button"
+                onClick={handleReadMoreClick}
+                className="text-xs md:text-sm text-brand-primary hover:underline self-start font-medium text-left"
+              >
+                {t('readMore')}
+              </button>
             ) : null}
-            <AvatarFallback className="text-xs">
-              {getAuthorInitials(post.authorName)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-sm font-medium text-base-content truncate">
-              {post.authorName}
-            </span>
-            {post.rating !== undefined && (
-              <span className="text-xs text-base-content/60">
-                {post.rating > 0 ? `+${formatMerits(post.rating)}` : formatMerits(post.rating)} {t('meritsSuffix')}
-              </span>
-            )}
           </div>
-        </div>
+        ) : null}
       </div>
 
       {/* Selection indicator */}
@@ -299,4 +286,3 @@ export const TappalkaPostCard: React.FC<TappalkaPostCardProps> = ({
     </div>
   );
 };
-

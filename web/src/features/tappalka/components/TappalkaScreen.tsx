@@ -522,6 +522,7 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
               publication={viewingPublication as any}
               wallets={wallets}
               showCommunityAvatar={false}
+              contentOnlyPreview
               onOpenPostPage={() => {
                 const slug = getPublicationIdentifier(viewingPublication);
                 const cid = viewingPublication.communityId;

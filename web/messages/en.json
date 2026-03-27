@@ -473,7 +473,8 @@
         "noPostsToCompare": "No projects to compare",
         "noPostsInCommunityMessage": "There are not enough projects to compare in this community yet. Try again later!",
         "loadingPosts": "Loading projects...",
-        "viewPost": "View project"
+        "viewPost": "View project",
+        "readMore": "Read more"
     },
     "postClosing": {
         "closePostTitle": "Close post",

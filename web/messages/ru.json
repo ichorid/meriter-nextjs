@@ -473,7 +473,8 @@
         "noPostsToCompare": "Нет проектов для сравнения",
         "noPostsInCommunityMessage": "В этом сообществе пока нет достаточно проектов для сравнения. Попробуйте позже!",
         "loadingPosts": "Загрузка проектов...",
-        "viewPost": "Просмотр проекта"
+        "viewPost": "Просмотр проекта",
+        "readMore": "Читать дальше"
     },
     "postClosing": {
         "closePostTitle": "Закрыть пост",
