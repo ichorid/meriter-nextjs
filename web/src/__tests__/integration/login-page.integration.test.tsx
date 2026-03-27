@@ -446,6 +446,25 @@ describe('Login Page Integration', () => {
       // Component uses translation key login.noAuthenticationProviders
       expect(screen.getByText(/login\.noAuthenticationProviders/i)).toBeInTheDocument();
     });
+
+    it('when no OAuth providers but SMS/email/call enabled shows phone methods and not the empty-providers warning', () => {
+      render(
+        <TestWrapper>
+          <LoginForm
+            enabledProviders={[]}
+            smsEnabled={true}
+            emailEnabled={true}
+            phoneEnabled={true}
+            authnEnabled={false}
+          />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText(/login\.signInWithSms/i)).toBeInTheDocument();
+      expect(screen.getByText(/login\.signInWithEmail/i)).toBeInTheDocument();
+      expect(screen.getByText(/login\.signInWithCall/i)).toBeInTheDocument();
+      expect(screen.queryByText(/login\.noAuthenticationProviders/i)).not.toBeInTheDocument();
+    });
   });
 
   describe('URL Parameters', () => {

@@ -99,6 +99,18 @@ export function LoginForm({
         ? OAUTH_PROVIDERS.filter((p) => enabledProviders.includes(p.id))
         : OAUTH_PROVIDERS;
 
+    const hasPrimaryAuthColumn =
+        displayedProviders.length > 0 ||
+        smsEnabled ||
+        phoneEnabled ||
+        emailEnabled;
+    const showNoAuthProvidersWarning =
+        displayedProviders.length === 0 &&
+        !authnEnabled &&
+        !smsEnabled &&
+        !phoneEnabled &&
+        !emailEnabled;
+
     // Show auth error toast when error changes
     useEffect(() => {
         if (authError) {
@@ -296,8 +308,8 @@ export function LoginForm({
                                     </>
                                 ) : (
                                     <>
-                                    {/* OAuth Providers */}
-                                    {displayedProviders.length > 0 && (
+                                    {/* OAuth + phone/email (phone/email independent of OAuth) */}
+                                    {hasPrimaryAuthColumn && (
                                         <div className="space-y-2">
                                             {displayedProviders.map((provider) => (
                                                 <OAuthButton
@@ -349,8 +361,8 @@ export function LoginForm({
                                         </div>
                                     )}
 
-                                    {/* Separator between OAuth and Passkey */}
-                                    {displayedProviders.length > 0 && authnEnabled && (
+                                    {/* Separator between primary methods and Passkey */}
+                                    {hasPrimaryAuthColumn && authnEnabled && (
                                         <div className="relative">
                                             <div className="absolute inset-0 flex items-center">
                                                 <Separator />
@@ -385,7 +397,7 @@ export function LoginForm({
                                     )}
 
                                         {/* No Auth Providers Warning */}
-                                        {displayedProviders.length === 0 && !authnEnabled && (
+                                        {showNoAuthProvidersWarning && (
                                             <div className="bg-destructive/10 shadow-none rounded-lg p-4">
                                                 <p className="text-sm text-destructive text-center">
                                                     {t("noAuthenticationProviders")}
