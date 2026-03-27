@@ -1558,7 +1558,7 @@
         "projectInvestWarningFull": "Investment is irrevocable. Merits are credited to the project wallet and, on payouts, distributed per the cooperative contract (founder / investors / team). You receive a share of the investor slice in proportion to your contributions.",
         "projectMemberInvestContextWarning": "You are topping up the project wallet with merits from your global wallet.",
         "projectMemberTopUpDonationWarning": "ATTENTION! You are donating merits to this project — this is not an investment. You are giving them gratuitously, as a gift.",
-        "projectWalletTopUpTitle": "Top up project wallet",
+        "projectWalletTopUpTitle": "Support the project",
         "projectWalletTopUpDescMember": "ATTENTION! You are donating merits to the project as a participant — this is not an investment. You will still receive your share according to your contribution on any payouts from the project as a participant.",
         "projectWalletTopUpDescInvestmentP1": "You are not joining the project. Merits are debited from your global wallet and credited to the project wallet.",
         "projectWalletTopUpDescInvestmentP2": "Investments are enabled: on each payout from the project wallet, {percent}% is reserved for investors and split in proportion to each person's total contributed amount. You receive a share of that slice in proportion to your share of all investor contributions.",

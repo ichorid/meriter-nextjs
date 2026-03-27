@@ -244,7 +244,7 @@ export function ProjectCard({
                 aria-label={
                   investingEnabled
                     ? tInvesting('invest', { defaultValue: 'Invest' })
-                    : t('projectWalletTopUpSubmit')
+                    : t('projectCardSupportVerb', { defaultValue: 'Support' })
                 }
               >
                 {investingEnabled ? (
@@ -255,7 +255,7 @@ export function ProjectCard({
                 <span className="whitespace-nowrap">
                   {investingEnabled
                     ? tInvesting('invest', { defaultValue: 'Invest' })
-                    : t('projectWalletTopUpSubmit')}
+                    : t('projectCardSupportVerb', { defaultValue: 'Support' })}
                 </span>
               </Button>
             )}
