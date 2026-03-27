@@ -19,7 +19,6 @@ import {
 import { MeritService } from './merit.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { WalletService } from './wallet.service';
-import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
 import { CommunityWalletService } from './community-wallet.service';
 import type {
@@ -28,6 +27,10 @@ import type {
   TappalkaProgress,
   TappalkaChoiceResult,
 } from '@meriter/shared-types';
+import {
+  stripHtmlToPlainText,
+  truncatePlainText,
+} from '../../common/helpers/html-plain-text';
 
 /**
  * TappalkaService
@@ -54,7 +57,6 @@ export class TappalkaService {
     private meritResolverService: MeritResolverService,
     private walletService: WalletService,
     private communityWalletService: CommunityWalletService,
-    private userService: UserService,
     private notificationService: NotificationService,
   ) {}
 
@@ -235,16 +237,51 @@ export class TappalkaService {
     };
   }
 
+  private static readonly TAPPALKA_SUMMARY_MAX_CHARS = 500;
+
+  /**
+   * Plain text for mining cards: project/community fields when linked, else publication description.
+   */
+  private async buildSummaryPlainText(post: PublicationDocument): Promise<string> {
+    let raw = '';
+
+    if (post.sourceEntityType === 'project' && post.sourceEntityId) {
+      const proj = await this.communityModel
+        .findOne({ id: post.sourceEntityId, isProject: true })
+        .lean()
+        .exec();
+      if (proj) {
+        const parts = [proj.description, proj.futureVisionText].filter(
+          (p): p is string => typeof p === 'string' && p.trim().length > 0,
+        );
+        raw = parts.join('\n\n');
+      }
+    } else if (post.sourceEntityType === 'community' && post.sourceEntityId) {
+      const comm = await this.communityModel.findOne({ id: post.sourceEntityId }).lean().exec();
+      if (comm) {
+        const parts = [comm.description, comm.futureVisionText].filter(
+          (p): p is string => typeof p === 'string' && p.trim().length > 0,
+        );
+        raw = parts.join('\n\n');
+      }
+    }
+
+    if (!raw) {
+      const fromDescription = stripHtmlToPlainText(String(post.description || ''));
+      const fromContent = stripHtmlToPlainText(String(post.content || ''));
+      raw = fromDescription || fromContent;
+    }
+
+    return truncatePlainText(raw, TappalkaService.TAPPALKA_SUMMARY_MAX_CHARS);
+  }
+
   /**
    * Map PublicationDocument to TappalkaPost
    */
   private async mapPostToTappalkaPost(
     post: PublicationDocument,
   ): Promise<TappalkaPost> {
-    // Get author information
-    const author = await this.userService.getUserById(post.authorId);
-    const authorName = author?.displayName || post.authorDisplay || 'Unknown';
-    const authorAvatarUrl = author?.avatarUrl;
+    const summaryPlainText = await this.buildSummaryPlainText(post);
 
     // Get first image if available - ensure it's a string or undefined
     let imageUrl: string | undefined = undefined;
@@ -266,9 +303,7 @@ export class TappalkaService {
       title: String(post.title || ''),
       description: String(post.description || ''),
       imageUrl, // string | undefined
-      authorName: String(authorName),
-      authorAvatarUrl: authorAvatarUrl ? String(authorAvatarUrl) : undefined,
-      rating: Number(post.metrics?.score || 0), // Ensure it's a number
+      summaryPlainText,
       categoryId, // string | undefined
     };
   }

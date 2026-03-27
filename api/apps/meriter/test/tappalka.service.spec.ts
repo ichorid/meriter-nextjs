@@ -372,15 +372,33 @@ describe('TappalkaService', () => {
       if (postA?.id === post1.id) {
         expect(postA.title).toBe('Post 1');
         expect(postA.description).toBe('Description 1');
-        expect(postA.rating).toBe(5);
+        expect(postA.summaryPlainText).toBe('Description 1');
       } else {
         expect(postA?.title).toBe('Post 2');
         expect(postA?.description).toBe('Description 2');
-        expect(postA?.rating).toBe(10);
+        expect(postA?.summaryPlainText).toBe('Description 2');
       }
-      
-      expect(pair?.postA.authorName).toBe('User 2');
-      expect(pair?.postB.authorName).toBe('User 2');
+    });
+
+    it('should build summary from publication content when description is empty', async () => {
+      await createTestCommunityWithTappalka();
+      await createTestUserDoc({ id: testUserId2 });
+
+      await createTestPublication(testUserId2, {
+        description: '',
+        content: '<p>Only body text here</p>',
+        'metrics.score': 5,
+      });
+      await createTestPublication(testUserId2, {
+        description: '',
+        content: 'Second post body',
+        'metrics.score': 5,
+      });
+
+      const pair = await tappalkaService.getPair(testCommunityId, testUserId);
+      expect(pair).not.toBeNull();
+      const summaries = [pair!.postA.summaryPlainText, pair!.postB.summaryPlainText].sort();
+      expect(summaries).toEqual(['Only body text here', 'Second post body'].sort());
     });
   });
 
