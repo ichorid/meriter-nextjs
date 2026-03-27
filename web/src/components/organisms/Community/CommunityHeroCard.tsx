@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { Button } from '@/components/ui/shadcn/button';
 import { formatMerits } from '@/lib/utils/currency';
+import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 
 interface CommunityHeroCardProps {
@@ -92,6 +93,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     !!community.futureVisionText?.trim() ||
     (community.futureVisionTags && community.futureVisionTags.length > 0);
   const [obExpanded, setObExpanded] = useState(false);
+  const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(true);
 
   const obPublicationId = community.futureVisionPublicationId;
   const obScore = community.futureVisionPublicationScore ?? 0;
@@ -271,11 +273,39 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
           {/* Future vision: single inset card (members count is on the cover toolbar) */}
           {showFutureVisionSubsection && (
             <div className="mt-4">
-              <div className="rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 py-4 sm:px-5 sm:py-4 space-y-3 relative">
-                <div className="flex items-start justify-between gap-2 pr-0">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-base-content/50 min-w-0 flex-1">
-                    {tCommunities('futureVisionSectionTitle')}
-                  </h2>
+              <div
+                className={cn(
+                  'rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 sm:px-5 relative',
+                  isFutureVisionSectionOpen ? 'py-4 sm:py-4 space-y-3' : 'py-3 sm:py-3',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2 pr-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsFutureVisionSectionOpen((v) => !v);
+                    }}
+                    className="flex min-w-0 min-h-9 flex-1 items-center gap-3 rounded-lg text-left -m-1 p-1 hover:bg-base-300/50 dark:hover:bg-base-300/35 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    aria-expanded={isFutureVisionSectionOpen}
+                    aria-label={
+                      isFutureVisionSectionOpen
+                        ? tCommunities('futureVisionSectionCollapseAria')
+                        : tCommunities('futureVisionSectionExpandAria')
+                    }
+                  >
+                    <h2 className="min-w-0 flex-1 text-xs font-semibold uppercase tracking-wide text-base-content/50 leading-snug">
+                      {tCommunities('futureVisionSectionTitle')}
+                    </h2>
+                    <ChevronDown
+                      className={cn(
+                        'h-5 w-5 shrink-0 text-base-content/50 transition-transform duration-200',
+                        isFutureVisionSectionOpen ? 'rotate-180' : 'rotate-0',
+                      )}
+                      aria-hidden
+                    />
+                  </button>
                   {community.isAdmin && (
                     <button
                       type="button"
@@ -284,7 +314,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                         e.stopPropagation();
                         router.push(routes.communitySettingsEditFutureVision(community.id));
                       }}
-                      className="shrink-0 -mt-0.5 -mr-0.5 p-2 rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-300/60 dark:hover:bg-base-300/40 transition-colors"
+                      className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-300/60 dark:hover:bg-base-300/40 transition-colors"
                       title={tCommon('edit')}
                       aria-label={tCommon('edit')}
                     >
@@ -293,7 +323,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                   )}
                 </div>
 
-                {obCover && !obCoverUsedInHeader && (
+                {isFutureVisionSectionOpen && obCover && !obCoverUsedInHeader && (
                   <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300/80">
                     <img
                       src={obCover}
@@ -302,7 +332,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     />
                   </div>
                 )}
-                {community.futureVisionText?.trim() && (
+                {isFutureVisionSectionOpen && community.futureVisionText?.trim() && (
                   <>
                     <p
                       className={`text-sm text-base-content/90 whitespace-pre-wrap ${obExpanded ? '' : 'line-clamp-3'}`}
@@ -333,7 +363,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     )}
                   </>
                 )}
-                {community.futureVisionTags && community.futureVisionTags.length > 0 && (
+                {isFutureVisionSectionOpen && community.futureVisionTags && community.futureVisionTags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {community.futureVisionTags.map((tag: string) => (
                       <span
@@ -346,7 +376,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                   </div>
                 )}
 
-                {obPublicationId && (
+                {isFutureVisionSectionOpen && obPublicationId && (
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-0.5">
                     <button
                       type="button"
