@@ -252,6 +252,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           investorSharePercent={project.investorSharePercent ?? 0}
           totalMembers={totalMembers}
           investingEnabled={project.settings?.investingEnabled === true}
+          isProjectMember={isMember}
           canPayout={Boolean(user && (isLead || user.globalRole === 'superadmin'))}
           readOnly={isArchived}
         />

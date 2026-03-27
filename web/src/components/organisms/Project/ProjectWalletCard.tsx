@@ -6,6 +6,7 @@ import { useProjectWallet } from '@/hooks/api/useProjects';
 import { TopUpWalletDialog } from './TopUpWalletDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { Wallet } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ProjectWalletCardProps {
   projectId: string;
@@ -13,16 +14,49 @@ interface ProjectWalletCardProps {
   title?: string;
   /** Extra content below balance (e.g. cooperative share breakdown). */
   footer?: ReactNode;
+  investingEnabled?: boolean;
+  isProjectMember?: boolean;
+  readOnly?: boolean;
 }
 
-export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCardProps) {
+export function ProjectWalletCard({
+  projectId,
+  title,
+  footer,
+  investingEnabled = false,
+  isProjectMember = false,
+  readOnly = false,
+}: ProjectWalletCardProps) {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
+  const { user } = useAuth();
   const { data: wallet, isLoading } = useProjectWallet(projectId);
   const [topUpOpen, setTopUpOpen] = useState(false);
+  const [investorFlow, setInvestorFlow] = useState(false);
 
   const balance = Math.floor(wallet?.balance ?? 0);
   const heading = title ?? t('walletBalance', { defaultValue: 'Wallet balance' });
+
+  const showWalletActions = Boolean(user) && !readOnly;
+  const investorOnly = investingEnabled && !isProjectMember;
+  const memberWithInvesting = investingEnabled && isProjectMember;
+
+  const openMemberTopUp = () => {
+    setInvestorFlow(false);
+    setTopUpOpen(true);
+  };
+
+  const openInvestorFlow = () => {
+    setInvestorFlow(true);
+    setTopUpOpen(true);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setTopUpOpen(open);
+    if (!open) {
+      setInvestorFlow(false);
+    }
+  };
 
   return (
     <>
@@ -39,16 +73,53 @@ export function ProjectWalletCard({ projectId, title, footer }: ProjectWalletCar
           </p>
         )}
         {footer}
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
-          onClick={() => setTopUpOpen(true)}
-        >
-          {t('topUp', { defaultValue: 'Top up' })}
-        </Button>
+        {showWalletActions ? (
+          investorOnly ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+              onClick={openInvestorFlow}
+            >
+              {t('projectInvestSubmit')}
+            </Button>
+          ) : memberWithInvesting ? (
+            <div className="mt-auto flex w-full flex-col gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+                onClick={openMemberTopUp}
+              >
+                {t('projectWalletTopUpSubmit')}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+                onClick={openInvestorFlow}
+              >
+                {t('projectInvestSubmit')}
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+              onClick={openMemberTopUp}
+            >
+              {t('projectWalletTopUpSubmit')}
+            </Button>
+          )
+        ) : null}
       </div>
-      <TopUpWalletDialog projectId={projectId} open={topUpOpen} onOpenChange={setTopUpOpen} />
+      <TopUpWalletDialog
+        projectId={projectId}
+        open={topUpOpen}
+        onOpenChange={handleDialogOpenChange}
+        investorFlow={investorFlow}
+      />
     </>
   );
 }

@@ -25,9 +25,19 @@ interface TopUpWalletDialogProps {
   projectId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Member opens the investor ledger flow (same UI as non-member investors).
+   * Member wallet top-up uses the default (false).
+   */
+  investorFlow?: boolean;
 }
 
-export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWalletDialogProps) {
+export function TopUpWalletDialog({
+  projectId,
+  open,
+  onOpenChange,
+  investorFlow = false,
+}: TopUpWalletDialogProps) {
   const t = useTranslations('projects');
   const tInvesting = useTranslations('investing');
   const tCommunities = useTranslations('pages.communities');
@@ -59,6 +69,8 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
   }, [user, userRoles, projectId, project?.members]);
 
   const investingEnabled = project?.settings?.investingEnabled === true;
+  const effectiveMemberTopUp = isProjectMember && !investorFlow;
+  const effectiveInvestorUi = investingEnabled && (!isProjectMember || investorFlow);
   const investorSharePercent = project?.investorSharePercent ?? 0;
 
   const globalFloor = Math.max(0, Math.floor(globalBalRaw ?? 0));
@@ -117,9 +129,12 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
     );
   };
 
+  const loadingInvestContext = projectLoading || (investingEnabled && investmentsLoading);
+  const showInvestStyleBlock = investingEnabled && !loadingInvestContext;
+
   const dialogTitle = (() => {
     if (open && projectLoading) return t('projectWalletTopUpTitle');
-    if (investingEnabled && !isProjectMember) {
+    if (effectiveInvestorUi) {
       return t('projectInvestDialogTitle');
     }
     return t('projectWalletTopUpTitle');
@@ -129,14 +144,24 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
     if (open && projectLoading) {
       return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
     }
-    if (investingEnabled && !isProjectMember) {
+    if (effectiveInvestorUi) {
       return null;
     }
-    if (isProjectMember) {
+    if (effectiveMemberTopUp) {
       return (
-        <p className="text-sm text-brand-text-primary whitespace-pre-line">
-          {t('projectWalletTopUpDescMember')}
-        </p>
+        <div className="space-y-3">
+          <p className="text-sm text-brand-text-primary whitespace-pre-line">
+            {t('projectMemberInvestContextWarning')}
+          </p>
+          {investingEnabled && showInvestStyleBlock ? (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+              <p className="whitespace-pre-line text-sm text-base-content/80">
+                {t('projectWalletTopUpDescMember')}
+              </p>
+            </div>
+          ) : null}
+        </div>
       );
     }
     return (
@@ -149,9 +174,6 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
     );
   })();
 
-  const loadingInvestContext = projectLoading || (investingEnabled && investmentsLoading);
-  const showInvestStyleBlock = investingEnabled && !loadingInvestContext;
-
   const formDisabled =
     topUp.isPending || globalLoading || maxMerits < 1 || (open && projectLoading);
 
@@ -160,7 +182,7 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
-          {investingEnabled && !isProjectMember ? (
+          {effectiveInvestorUi ? (
             <DialogDescription className="sr-only">{t('projectInvestDialogTitle')}</DialogDescription>
           ) : (
             <DialogDescription asChild>
@@ -170,13 +192,13 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
-            {investingEnabled && !isProjectMember && (projectLoading || investmentsLoading) ? (
+            {effectiveInvestorUi && (projectLoading || investmentsLoading) ? (
               <div className="flex justify-center py-8 text-base-content/60">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : null}
 
-            {investingEnabled && !isProjectMember && showInvestStyleBlock ? (
+            {effectiveInvestorUi && showInvestStyleBlock ? (
               <div className="space-y-4">
                 <p className="text-sm font-medium text-base-content/90">
                   {tInvesting('contractTerms', {
@@ -206,7 +228,7 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
               </div>
             ) : null}
 
-            {investingEnabled && isProjectMember && showInvestStyleBlock ? (
+            {investingEnabled && effectiveMemberTopUp && showInvestStyleBlock ? (
               <div className="space-y-2 rounded-lg border border-base-300 bg-base-200/40 p-3 text-sm">
                 <p className="font-medium text-base-content/90">
                   {tInvesting('contractTerms', {
@@ -266,7 +288,7 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
               </div>
             </div>
 
-            {investingEnabled && !isProjectMember && effectiveAmount > 0 && showInvestStyleBlock ? (
+            {effectiveInvestorUi && effectiveAmount > 0 && showInvestStyleBlock ? (
               <div className="space-y-1">
                 <p className="text-sm font-medium text-primary">
                   {tInvesting('yourShareProject', {
@@ -279,7 +301,7 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
               </div>
             ) : null}
 
-            {investingEnabled && !isProjectMember && myExistingAmount > 0 && showInvestStyleBlock ? (
+            {effectiveInvestorUi && myExistingAmount > 0 && showInvestStyleBlock ? (
               <div className="text-sm text-base-content/80 space-y-0.5">
                 <p>
                   {tInvesting('repeatInvestmentCurrent', {
@@ -299,20 +321,11 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
               </div>
             ) : null}
 
-            {investingEnabled && !isProjectMember && showInvestStyleBlock ? (
+            {effectiveInvestorUi && showInvestStyleBlock ? (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
                 <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-base-content/80 whitespace-pre-line">
                   {t('projectInvestWarningFull')}
-                </p>
-              </div>
-            ) : null}
-
-            {investingEnabled && isProjectMember && showInvestStyleBlock ? (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
-                <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-base-content/80 whitespace-pre-line">
-                  {t('projectMemberInvestContextWarning')}
                 </p>
               </div>
             ) : null}
@@ -325,7 +338,7 @@ export function TopUpWalletDialog({ projectId, open, onOpenChange }: TopUpWallet
             <Button type="submit" disabled={formDisabled}>
               {topUp.isPending
                 ? tCommunities('walletTopUpSubmitting')
-                : investingEnabled && !isProjectMember
+                : effectiveInvestorUi
                   ? t('projectInvestSubmit')
                   : t('projectWalletTopUpSubmit')}
             </Button>

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { PieChart, Users, Wallet } from 'lucide-react';
+import { PieChart, Users } from 'lucide-react';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { ProjectWalletCard } from './ProjectWalletCard';
 import { ProjectPayoutDialog } from './ProjectPayoutDialog';
@@ -18,6 +18,8 @@ export interface ProjectDashboardProps {
   totalMembers: number;
   /** When true, show investor list control on the Shares card */
   investingEnabled?: boolean;
+  /** Current user is lead or participant — drives wallet CTA labels */
+  isProjectMember?: boolean;
   /** Lead or superadmin: show payout from project wallet */
   canPayout?: boolean;
   readOnly?: boolean;
@@ -58,6 +60,7 @@ export function ProjectDashboard({
   investorSharePercent,
   totalMembers,
   investingEnabled = false,
+  isProjectMember = false,
   canPayout = false,
   readOnly = false,
 }: ProjectDashboardProps) {
@@ -74,6 +77,9 @@ export function ProjectDashboard({
       <div className="flex min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
         <ProjectWalletCard
           projectId={projectId}
+          investingEnabled={investingEnabled}
+          isProjectMember={isProjectMember}
+          readOnly={readOnly}
           title={t('cardWallet')}
           footer={
             founderSharePercent > 0 || investorSharePercent > 0 ? (
