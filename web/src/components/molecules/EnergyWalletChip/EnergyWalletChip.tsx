@@ -7,6 +7,7 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { useCommunity } from '@/hooks/api';
 import { POLLING } from '@/lib/constants';
 import { formatMerits } from '@/lib/utils/currency';
+import { useTranslations } from 'next-intl';
 
 export interface EnergyWalletChipProps {
     communityId: string;
@@ -34,6 +35,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
     variant = 'default',
     inverted = false,
 }) => {
+    const t = useTranslations('common');
     // Fetch wallet data with auto-refresh
     const { data: wallet, refetch: refetchWallet } = useWallet(communityId);
 
@@ -81,7 +83,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                             {currencyIconUrl && (
                                 <img
                                     src={currencyIconUrl}
-                                    alt="Currency"
+                                    alt={t('altMeritCurrency')}
                                     className="w-2.5 h-2.5 flex-shrink-0"
                                 />
                             )}
@@ -110,7 +112,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                             {currencyIconUrl && (
                                 <img
                                     src={currencyIconUrl}
-                                    alt="Currency"
+                                    alt={t('altMeritCurrency')}
                                     className="w-2.5 h-2.5 flex-shrink-0 opacity-70"
                                 />
                             )}
@@ -140,7 +142,7 @@ export const EnergyWalletChip: React.FC<EnergyWalletChipProps> = ({
                             {currencyIconUrl && (
                                 <img
                                     src={currencyIconUrl}
-                                    alt="Currency"
+                                    alt={t('altMeritCurrency')}
                                     className="w-3 h-3 flex-shrink-0"
                                 />
                             )}

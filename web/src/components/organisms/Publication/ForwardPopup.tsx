@@ -25,6 +25,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
   onClose,
 }) => {
   const t = useTranslations('feed');
+  const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
   const addToast = useToastStore((state) => state.addToast);
   const proposeForward = useProposeForward();
@@ -125,7 +126,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
           <div className="bg-background rounded-xl p-6 w-full max-w-md mx-4 shadow-lg max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">
-            {isLead ? 'Forward Post' : 'Propose Forward'}
+            {isLead ? t('forwardTitleLead') : t('forwardTitlePropose')}
           </h2>
           <Button
             variant="ghost"
@@ -152,9 +153,7 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
             </div>
 
             <p className="text-sm text-muted-foreground mb-4">
-          {isLead
-            ? 'Select a target group to forward this post to:'
-            : 'Select a target group to propose forwarding this post to:'}
+          {isLead ? t('forwardIntroLead') : t('forwardIntroPropose')}
             </p>
 
             {/* Communities list with scrolling */}
@@ -219,20 +218,24 @@ export const ForwardPopup: React.FC<ForwardPopupProps> = ({
 
           {!communitiesLoading && filteredSpecialCommunities.length === 0 && filteredTeamCommunities.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">
-              {searchQuery ? 'No communities found' : 'No communities available'}
+              {searchQuery ? t('forwardNoCommunitiesSearch') : t('forwardNoCommunities')}
             </p>
           )}
             </div>
 
             <div className="flex gap-2 justify-end pt-4 border-t">
               <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
-                Cancel
+                {tCommon('cancel')}
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={!selectedTarget || isSubmitting}
               >
-                {isSubmitting ? 'Processing...' : isLead ? 'Forward' : 'Propose'}
+                {isSubmitting
+                  ? t('forwardProcessing')
+                  : isLead
+                    ? t('forwardSubmitLead')
+                    : t('forwardSubmitPropose')}
               </Button>
             </div>
           </div>

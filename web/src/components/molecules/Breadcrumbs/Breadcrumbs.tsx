@@ -36,7 +36,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
             <img
               className="w-5 h-5"
               src={"/meriter/home.svg"}
-              alt="Profile"
+              alt={t('myProfile')}
             />
             <span>{t('home')}</span>
           </Link>
@@ -44,7 +44,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
         {chatId && !tag && !postText && (
           <li>
             <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
-              {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
+              {chatIcon && <img className="w-4 h-4" src={chatIcon} alt={t('altMeritCurrency')} />}
               {chatNameVerb}
             </Link>
           </li>
@@ -52,7 +52,7 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
         {chatId && (tag || postText) && (
           <li>
             <Link href={"/meriter/communities/" + chatId} className="link link-hover flex items-center gap-1">
-              {chatIcon && <img className="w-4 h-4" src={chatIcon} alt="Currency" />}
+              {chatIcon && <img className="w-4 h-4" src={chatIcon} alt={t('altMeritCurrency')} />}
               {chatNameVerb}
             </Link>
           </li>

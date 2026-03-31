@@ -11,6 +11,7 @@
         "somethingWentWrongMessage": "Произошла неожиданная ошибка. Пожалуйста, попробуйте обновить страницу.",
         "goHome": "На главную",
         "reloadPage": "Обновить страницу",
+        "chunkLoadUserMessage": "Не удалось загрузить ресурсы приложения. Обычно это происходит после обновления. Перезагрузка страницы должна помочь.",
         "loggingOut": "Выход...",
         "save": "Сохранить",
         "authenticationFailed": "Ошибка аутентификации",
@@ -20,6 +21,8 @@
         "edit": "Редактировать",
         "close": "Закрыть",
         "confirm": "Подтвердить",
+        "reject": "Отклонить",
+        "processing": "Обработка…",
         "dailyMerits": "Дневная квота",
         "permanentMerits": "Постоянные",
         "sharedMerit": "Общие заслуги",
@@ -35,6 +38,9 @@
         "favorites": "Избранное",
         "myProfile": "Мой профиль",
         "communities": "Сообщества",
+        "navPolls": "Опросы",
+        "navWallet": "Кошелёк",
+        "altMeritCurrency": "Заслуги",
         "sidebarPrimary": "Главное",
         "futureVisions": "Образы будущего",
         "marathonOfGoodLabel": "Биржа",
@@ -522,6 +528,15 @@
         "noVotesToWithdraw": "Нет голосов для вывода",
         "withdrawing": "Вывод...",
         "cannotWithdrawInCommunity": "В этом сообществе нельзя забирать заслуги с постов",
+        "headerTooltips": {
+            "edit": "Редактировать",
+            "delete": "Удалить",
+            "deletePermanent": "Удалить навсегда",
+            "closePost": "Закрыть пост",
+            "reviewForward": "Просмотр предложения пересылки",
+            "forwardPost": "Переслать пост",
+            "viewDetails": "Подробности"
+        },
         "totalVotes": "Всего голосов",
         "totalVotesTooltip": "Всего голосов включая выведенные",
         "writeComment": "Напишите комментарий",
@@ -804,7 +819,19 @@
         "points": "Баллы",
         "communitySetupPending": "Настройка сообщества не завершена, ваш администратор настроит его скоро",
         "projectNoVoting": "Посты типа PROJECT предназначены только для обсуждения. Голосование и заслуги недоступны.",
-        "addComment": "Добавить комментарий"
+        "addComment": "Добавить комментарий",
+        "forwardTitleLead": "Переслать пост",
+        "forwardTitlePropose": "Предложить пересылку",
+        "forwardIntroLead": "Выберите целевую группу для пересылки этого поста:",
+        "forwardIntroPropose": "Выберите целевую группу, чтобы предложить переслать этот пост:",
+        "forwardNoCommunitiesSearch": "Сообщества не найдены",
+        "forwardNoCommunities": "Нет доступных сообществ",
+        "forwardProcessing": "Обработка…",
+        "forwardSubmitLead": "Переслать",
+        "forwardSubmitPropose": "Предложить",
+        "reviewForwardTitle": "Просмотр предложения пересылки",
+        "reviewForwardProposedBy": "Предложил(а):",
+        "reviewForwardTarget": "Целевая группа:"
     },
     "comments": {
         "editComment": "Редактировать комментарий",
@@ -2087,6 +2114,11 @@
     "profile": {
         "bulletList": "Маркированный список",
         "orderedList": "Нумерованный список",
+        "richTextBold": "Жирный",
+        "richTextItalic": "Курсив",
+        "richTextHeading": "Заголовок",
+        "richTextLink": "Ссылка",
+        "richTextQuote": "Цитата",
         "deleteConfirmation": {
             "title": "Подтвердите удаление",
             "message": "Вы уверены, что хотите удалить этот {itemType}? Это действие нельзя отменить."
@@ -2832,5 +2864,9 @@
         "aboutSaved": "Сохранено",
         "aboutSaveFailed": "Не удалось сохранить",
         "aboutInvalidNumber": "Введите число ≥ 0"
+    },
+    "metadata": {
+        "birzhaPosts": "Посты на Бирже",
+        "joinCommunity": "Вступить в сообщество"
     }
 }

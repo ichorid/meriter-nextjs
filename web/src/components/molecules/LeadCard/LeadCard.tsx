@@ -89,7 +89,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <div className="flex-shrink-0">
                 <Avatar className="w-10 h-10 text-sm">
                     {avatarUrl && (
-                        <AvatarImage src={avatarUrl} alt={displayName || username || 'User'} />
+                        <AvatarImage src={avatarUrl} alt={displayName || username || t('user')} />
                     )}
                     <AvatarFallback userId={id} className="font-medium uppercase">
                         {(displayName || username) ? (displayName || username).slice(0, 2).toUpperCase() : <User size={18} />}
@@ -101,7 +101,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <div className="flex-1 min-w-0 flex flex-col gap-0.5 items-start">
                 {/* Name */}
                 <div className="text-[15px] font-normal leading-[120%] text-base-content text-left">
-                    {displayName || username || 'Unknown User'}
+                    {displayName || username || t('unknownUser')}
                 </div>
                 
                 {/* Team name */}

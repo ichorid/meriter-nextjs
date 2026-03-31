@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Search, X, Filter, Calendar, User, Hash, Users } from 'lucide-react';
@@ -32,12 +32,12 @@ export interface SearchParams {
   dateTo?: string;
 }
 
-const CONTENT_TYPES: Array<{ value: SearchContentType; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'publications', label: 'Publications' },
-  { value: 'comments', label: 'Comments' },
-  { value: 'polls', label: 'Polls' },
-  { value: 'communities', label: 'Communities' },
+const CONTENT_TYPE_VALUES: SearchContentType[] = [
+  'all',
+  'publications',
+  'comments',
+  'polls',
+  'communities',
 ];
 
 export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
@@ -48,6 +48,14 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const router = useRouter();
   const t = useTranslations('search');
   const tCommon = useTranslations('common');
+  const contentTypes = useMemo(
+    () =>
+      CONTENT_TYPE_VALUES.map((value) => ({
+        value,
+        label: t(`contentTypes.${value}`),
+      })),
+    [t],
+  );
   const [query, setQuery] = useState(initialQuery);
   const [contentType, setContentType] = useState<SearchContentType>('all');
   const [showFilters, setShowFilters] = useState(false);
@@ -261,7 +269,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CONTENT_TYPES.map((type) => (
+                {contentTypes.map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {t(`contentTypes.${type.value}`) || type.label}
                   </SelectItem>

@@ -475,7 +475,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             className={`rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0 ${editButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             title={editButtonDisabled && publication.permissions?.editDisabledReason 
               ? t(publication.permissions.editDisabledReason) 
-              : 'Edit'}
+              : t('headerTooltips.edit')}
           >
             <Edit size={16} />
           </Button>
@@ -495,8 +495,8 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             title={deleteButtonDisabled && publication.permissions?.deleteDisabledReason 
               ? t(publication.permissions.deleteDisabledReason) 
               : isAlreadyDeleted 
-                ? 'Permanently Delete' 
-                : 'Delete'}
+                ? t('headerTooltips.deletePermanent') 
+                : t('headerTooltips.delete')}
           >
             <Trash2 size={16} />
           </Button>
@@ -510,7 +510,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
               setShowClosePostDialog(true);
             }}
             className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
-            title="Close post"
+            title={t('headerTooltips.closePost')}
           >
             <Lock size={16} />
           </Button>
@@ -528,7 +528,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
               }
             }}
             className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
-            title={isLead && isPendingForward ? 'Review forward proposal' : 'Forward post'}
+            title={isLead && isPendingForward ? t('headerTooltips.reviewForward') : t('headerTooltips.forwardPost')}
           >
             {isLead && isPendingForward ? <Eye size={16} /> : <Send size={16} />}
           </Button>
@@ -541,7 +541,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             setShowDetailsPopup(true);
           }}
           className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0 opacity-60 hover:opacity-100"
-          title="View details"
+          title={t('headerTooltips.viewDetails')}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

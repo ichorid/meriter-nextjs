@@ -61,6 +61,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
     totalWithdrawn,
 }) => {
     const t = useTranslations('comments');
+    const tCommon = useTranslations('common');
 
     if (!isOpen) {
         return null;
@@ -183,7 +184,7 @@ export const CommentDetailsPopup: React.FC<CommentDetailsPopupProps> = ({
                                         {currencyIcon && (
                                             <img 
                                                 src={currencyIcon} 
-                                                alt="Currency" 
+                                                alt={tCommon('altMeritCurrency')} 
                                                 className="w-6 h-6"
                                             />
                                         )}

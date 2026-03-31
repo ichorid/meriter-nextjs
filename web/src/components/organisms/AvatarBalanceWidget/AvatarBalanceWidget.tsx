@@ -50,13 +50,13 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
           {balance1 && (
             <div className="flex items-center justify-end gap-1 mb-1">
               {balance1.icon && <span className="text-xs opacity-60">{t('balance')} </span>}
-              {balance1.icon && <img className="w-4 h-4 inline" src={balance1.icon} alt="Currency" />}
+              {balance1.icon && <img className="w-4 h-4 inline" src={balance1.icon} alt={tCommon('altMeritCurrency')} />}
               <span className="font-medium">{balance1.amount}</span>
             </div>
           )}
           {balance2 && (
             <div className="flex items-center justify-end gap-1">
-              <img className="w-4 h-4 inline" src={balance2.icon} alt="Currency" />
+              <img className="w-4 h-4 inline" src={balance2.icon} alt={tCommon('altMeritCurrency')} />
               <span className="font-medium">{balance2.amount}</span>
             </div>
           )}
@@ -64,14 +64,14 @@ export const AvatarBalanceWidget: React.FC<AvatarBalanceWidgetProps> = ({
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-1">
           <div className="text-right min-w-0 flex-1">
             <div className="text-xs sm:text-sm font-medium text-base-content dark:text-base-content truncate">
-              {userName || 'User'}
+              {userName || tCommon('user')}
             </div>
           </div>
           <div className="flex items-center gap-1 sm:gap-1.5">
             <Avatar className="w-10 h-10">
               <AvatarImage 
                 src={avatarUrl} 
-                alt={userName || 'User'}
+                alt={userName || tCommon('user')}
                 onError={onAvatarUrlNotFound}
               />
               <AvatarFallback userId={userId || userName} className="font-medium">

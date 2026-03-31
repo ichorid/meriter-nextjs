@@ -41,6 +41,7 @@ import {
     voteCtaUsesCommentLabel,
 } from '@/lib/utils/vote-cta-label';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
+import { toastMessageForVoteDisabledReason } from '@/lib/i18n/vote-disabled-toast';
 
 interface PostPageClientProps {
     communityId: string;
@@ -575,18 +576,10 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                         variant="outline"
                                         onClick={() => {
                                             if (!canVoteOnPost) {
-                                                const reason = votePerms?.voteDisabledReason;
-                                                let msg = tShared('voteDisabled.default');
-                                                if (reason) {
-                                                    try {
-                                                        const tr = tShared(reason);
-                                                        if (tr !== reason) {
-                                                            msg = tr;
-                                                        }
-                                                    } catch {
-                                                        /* use default */
-                                                    }
-                                                }
+                                                const msg = toastMessageForVoteDisabledReason(
+                                                    votePerms?.voteDisabledReason,
+                                                    tShared,
+                                                );
                                                 addToast(msg, 'error');
                                                 return;
                                             }

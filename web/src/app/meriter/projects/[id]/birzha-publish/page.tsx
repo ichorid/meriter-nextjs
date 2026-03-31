@@ -1,11 +1,12 @@
 import { ProjectBirzhaPublishPageClient } from './ProjectBirzhaPublishPageClient';
+import { metadataTitle } from '@/lib/i18n/metadata-title';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata() {
-  return { title: 'Publish to Birzha' };
+  return metadataTitle('birzhaSource.publishTitle');
 }
 
 export default async function ProjectBirzhaPublishPage({ params }: PageProps) {

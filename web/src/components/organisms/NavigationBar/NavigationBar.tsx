@@ -15,10 +15,10 @@ import { useTranslations } from 'next-intl';
 import { formatMerits } from '@/lib/utils/currency';
 
 const NAV_LINKS = [
-  { href: routes.profile, label: 'Profile', icon: 'home' },
-  { href: routes.communities, label: 'Communities', icon: 'group' },
-  { href: routes.polls, label: 'Polls', icon: 'poll' },
-  { href: routes.wallet, label: 'Wallet', icon: 'account_balance_wallet' },
+  { href: routes.profile, labelKey: 'myProfile' as const, icon: 'home' },
+  { href: routes.communities, labelKey: 'communities' as const, icon: 'group' },
+  { href: routes.polls, labelKey: 'navPolls' as const, icon: 'poll' },
+  { href: routes.wallet, labelKey: 'navWallet' as const, icon: 'account_balance_wallet' },
 ];
 
 export interface NavigationBarProps {
@@ -92,7 +92,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                   className={pathname === link.href ? 'btn-active' : ''}
                 >
                   <Icon name={link.icon} size={20} />
-                  <span className="hidden lg:inline">{link.label}</span>
+                  <span className="hidden lg:inline">{t(link.labelKey)}</span>
                 </Button>
               </Link>
             ))}
@@ -146,7 +146,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                           onClick={() => setShowDropdown(false)}
                         >
                           <Icon name="settings" size={18} />
-                          Settings
+                          {t('settings')}
                         </button>
                       </Link>
                       <button
@@ -154,7 +154,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
                         className="w-full text-left px-4 py-2 text-sm hover:bg-base-200 rounded flex items-center gap-2 text-error"
                       >
                         <Icon name="logout" size={18} />
-                        Logout
+                        {t('logout')}
                       </button>
                     </div>
                   </div>
@@ -163,7 +163,7 @@ export const NavigationBar: React.FC<NavigationBarProps> = ({ className = '' }) 
             ) : (
               <Link href={routes.login}>
                 <Button variant="primary" size="sm">
-                  Login
+                  {t('login')}
                 </Button>
               </Link>
             )}

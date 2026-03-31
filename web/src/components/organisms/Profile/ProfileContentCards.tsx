@@ -104,7 +104,7 @@ function ProfileContentCardsComponent({
         className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
       >
         <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
-          {tProfile('activity') || 'Activity'}
+          {tProfile('activity')}
         </p>
         {activityExpanded ? (
           <ChevronUp className="w-4 h-4 text-base-content/40" />

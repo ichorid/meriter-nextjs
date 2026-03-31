@@ -34,6 +34,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
     currencyIconUrl,
 }) => {
     const t = useTranslations('shared');
+    const tCommon = useTranslations('common');
     const [selected, setSelected] = useState(false);
     
     const maxAmount = isWithdrawal ? maxWithdrawAmount : maxTopUpAmount;
@@ -65,7 +66,7 @@ export const FormWithdrawVertical: React.FC<FormWithdrawVerticalProps> = ({
                     amount > 0 ? "text-primary" : "text-secondary"
                 )}>
                     {currencyIconUrl && amount > 0 && (
-                        <img src={currencyIconUrl} alt="Currency" className="w-6 h-6" />
+                        <img src={currencyIconUrl} alt={tCommon('altMeritCurrency')} className="w-6 h-6" />
                     )}
                     {amount > 0 ? `+${amount}` : amount}
                 </div>

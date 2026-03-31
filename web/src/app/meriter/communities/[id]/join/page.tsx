@@ -1,12 +1,13 @@
 import { Suspense } from 'react';
 import { JoinCommunityPageClient } from './JoinCommunityPageClient';
+import { metadataTitle } from '@/lib/i18n/metadata-title';
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata() {
-  return { title: 'Join community' };
+  return metadataTitle('metadata.joinCommunity');
 }
 
 export default async function CommunityJoinPage({ params }: PageProps) {

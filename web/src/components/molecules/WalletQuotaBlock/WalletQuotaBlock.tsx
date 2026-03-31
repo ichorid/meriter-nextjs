@@ -3,6 +3,7 @@
 import React from 'react';
 import { Zap } from 'lucide-react';
 import { formatMerits } from '@/lib/utils/currency';
+import { useTranslations } from 'next-intl';
 
 export interface WalletQuotaBlockProps {
   balance: number;
@@ -23,6 +24,7 @@ export const WalletQuotaBlock: React.FC<WalletQuotaBlockProps> = ({
   currencyIconUrl,
   className = '',
 }) => {
+  const t = useTranslations('common');
   return (
     <div className={`flex flex-col items-end gap-0.5 text-right ${className}`}>
       {/* Wallet balance row */}
@@ -30,7 +32,7 @@ export const WalletQuotaBlock: React.FC<WalletQuotaBlockProps> = ({
         {currencyIconUrl && (
           <img 
             src={currencyIconUrl} 
-            alt="Currency" 
+            alt={t('altMeritCurrency')} 
             className="w-3 h-3 flex-shrink-0" 
           />
         )}

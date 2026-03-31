@@ -557,7 +557,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 <button
                     onClick={onClose}
                     className="absolute top-4 right-4 p-2 text-base-content/50 hover:text-base-content rounded-full hover:bg-base-content/5 transition-colors z-10"
-                    aria-label={tShared("close") || "Close"}
+                    aria-label={tShared('close')}
                 >
                     <X size={20} />
                 </button>

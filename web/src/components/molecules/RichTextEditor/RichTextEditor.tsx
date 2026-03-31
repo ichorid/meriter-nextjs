@@ -51,7 +51,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('bold') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Bold"
+                title={tProfile('richTextBold')}
             >
                 <Bold size={18} />
             </button>
@@ -62,7 +62,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('italic') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Italic"
+                title={tProfile('richTextItalic')}
             >
                 <Italic size={18} />
             </button>
@@ -73,7 +73,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('heading', { level: 2 }) ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Heading"
+                title={tProfile('richTextHeading')}
             >
                 <Heading1 size={18} />
             </button>
@@ -104,7 +104,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('link') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Link"
+                title={tProfile('richTextLink')}
             >
                 <LinkIcon size={18} />
             </button>
@@ -114,7 +114,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                     "p-1.5 rounded hover:bg-base-300 transition-colors",
                     editor.isActive('blockquote') ? 'bg-base-300 text-brand-primary' : 'text-base-content/70'
                 )}
-                title="Quote"
+                title={tProfile('richTextQuote')}
             >
                 <Quote size={18} />
             </button>

@@ -31,18 +31,9 @@ export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
                            error?.message?.includes('Loading chunk') ||
                            error?.message?.includes('ChunkLoadError');
   
-  // Safe translation helper
-  const safeTranslate = (key: string, fallback: string): string => {
-    try {
-      return tCommon(key);
-    } catch {
-      return fallback;
-    }
-  };
-  
   const errorMessage = isChunkLoadError
-    ? 'Failed to load application resources. This usually happens after an update. Reloading the page should fix this.'
-    : (error?.message || safeTranslate('unexpectedError', 'An unexpected error occurred'));
+    ? tCommon('chunkLoadUserMessage')
+    : (error?.message || tCommon('unexpectedError'));
   
   return (
     <ErrorDisplay
@@ -58,7 +49,7 @@ export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
               variant="primary" 
               onClick={() => window.location.reload()}
             >
-              {safeTranslate('reloadPage', 'Reload Page')}
+              {tCommon('reloadPage')}
             </Button>
           ) : (
             <>
@@ -66,13 +57,13 @@ export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
                 variant="primary" 
                 onClick={() => window.location.href = '/meriter/profile'}
               >
-                {safeTranslate('goHome', 'Go Home')}
+                {tCommon('goHome')}
               </Button>
               <Button 
                 variant="secondary" 
                 onClick={() => window.location.reload()}
               >
-                {safeTranslate('reloadPage', 'Reload Page')}
+                {tCommon('reloadPage')}
               </Button>
             </>
           )}
@@ -81,4 +72,3 @@ export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
     />
   );
 }
-

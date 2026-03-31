@@ -24,6 +24,7 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
   onClose,
 }) => {
   const t = useTranslations('feed');
+  const tCommon = useTranslations('common');
   const addToast = useToastStore((state) => state.addToast);
   const forward = useForward();
   const rejectForward = useRejectForward();
@@ -31,7 +32,7 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
 
   // Get proposer user info
   const { data: proposer } = useUserProfile(proposedBy);
-  const proposerName = proposer?.displayName || proposer?.username || 'Someone';
+  const proposerName = proposer?.displayName || proposer?.username || tCommon('someone');
 
   // Get target community info
   const { data: targetCommunity } = useCommunity(targetCommunityId);
@@ -74,7 +75,7 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-background rounded-xl p-6 w-full max-w-md mx-4 shadow-lg">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Review Forward Proposal</h2>
+          <h2 className="text-xl font-semibold">{t('reviewForwardTitle')}</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -87,12 +88,12 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
 
         <div className="space-y-4 mb-6">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Proposed by:</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('reviewForwardProposedBy')}</p>
             <p className="font-medium">{proposerName}</p>
           </div>
 
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Target group:</p>
+            <p className="text-sm text-muted-foreground mb-1">{t('reviewForwardTarget')}</p>
             <p className="font-medium">{targetCommunityName}</p>
           </div>
         </div>
@@ -104,10 +105,10 @@ export const ReviewForwardPopup: React.FC<ReviewForwardPopupProps> = ({
             disabled={isSubmitting}
             className="text-error hover:text-error"
           >
-            {isSubmitting ? 'Processing...' : 'Reject'}
+            {isSubmitting ? tCommon('processing') : tCommon('reject')}
           </Button>
           <Button onClick={handleConfirm} disabled={isSubmitting}>
-            {isSubmitting ? 'Processing...' : 'Confirm'}
+            {isSubmitting ? tCommon('processing') : tCommon('confirm')}
           </Button>
         </div>
       </div>

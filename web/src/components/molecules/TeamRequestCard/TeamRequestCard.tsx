@@ -26,9 +26,10 @@ export const TeamRequestCard: React.FC<TeamRequestCardProps> = ({
   isRejecting = false,
 }) => {
   const t = useTranslations('pages.communities');
+  const tCommon = useTranslations('common');
   const { data: user } = useUserProfile(request.userId);
 
-  const displayName = user?.displayName || user?.username || 'Unknown User';
+  const displayName = user?.displayName || user?.username || tCommon('unknownUser');
   const avatarUrl = user?.avatarUrl;
   const note =
     typeof request.applicantMessage === 'string' ? request.applicantMessage.trim() : '';

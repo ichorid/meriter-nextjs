@@ -27,6 +27,7 @@ import { Switch } from '@/components/ui/shadcn/switch';
 
 function WelcomeMeritsPlatformRow() {
   const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const addToast = useToastStore((s) => s.addToast);
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.platformSettings.get.useQuery(undefined, { retry: false });
@@ -55,7 +56,7 @@ function WelcomeMeritsPlatformRow() {
     return (
       <div className="flex items-center gap-2 text-base-content/60">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span className="text-sm">Loading...</span>
+        <span className="text-sm">{tCommon('loading')}</span>
       </div>
     );
   }
@@ -80,7 +81,7 @@ function WelcomeMeritsPlatformRow() {
           {updateMutation.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
-            'Save'
+            tCommon('save')
           )}
         </Button>
       </div>
@@ -97,6 +98,7 @@ function mergeTagsDedupe(existing: string[], addition: string): string[] {
 
 function FutureVisionRubricatorRow() {
   const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
   const tRv = useTranslations('valuesRubricator');
   const addToast = useToastStore((s) => s.addToast);
   const utils = trpc.useUtils();
@@ -162,7 +164,7 @@ function FutureVisionRubricatorRow() {
     return (
       <div className="flex items-center gap-2 text-base-content/60">
         <Loader2 className="w-4 h-4 animate-spin" />
-        <span className="text-sm">Loading...</span>
+        <span className="text-sm">{tCommon('loading')}</span>
       </div>
     );
   }
@@ -232,7 +234,7 @@ function FutureVisionRubricatorRow() {
             {t('futureVisionRubricatorAdd')}
           </Button>
           <Button size="sm" onClick={handleSave} disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+            {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : tCommon('save')}
           </Button>
         </div>
       </div>

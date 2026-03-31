@@ -47,18 +47,6 @@ const NOTIFY_SUB = {
   stamp: 'text-xs text-base-content/55',
 } as const;
 
-/** Maps API `payoutBucket` (project payout line) to localized role label for notifications. */
-function labelForProjectPayoutBucket(
-  bucket: string,
-  t: (key: string) => string,
-): string {
-  const b = bucket.trim().toLowerCase();
-  if (b === 'founder') return t('projectDistributedPayoutRoleFounder');
-  if (b === 'investor') return t('projectDistributedPayoutRoleInvestor');
-  if (b === 'team') return t('projectDistributedPayoutRoleTeam');
-  return bucket.trim();
-}
-
 const SYSTEM_NOTICE_TITLE_TO_KIND: Record<string, string> = {
   'Team join request approved': 'team_join_approved',
   'Team join request rejected': 'team_join_rejected',
@@ -703,8 +691,7 @@ export default function NotificationsPage() {
       return t('postInactivityWarningBody', { postTitle, days });
     }
     if (notification.type === 'investment_pool_depleted') {
-      const exited =
-        meta.variant === 'exited_tappalka' || notification.title === 'Post exited tappalka';
+      const exited = meta.variant === 'exited_tappalka';
       if (exited) {
         return t('postExitedTappalkaBody');
       }
@@ -834,9 +821,7 @@ export default function NotificationsPage() {
       return t('postInactivityWarningTitle');
     }
     if (notification.type === 'investment_pool_depleted') {
-      const exited =
-        notification.metadata?.variant === 'exited_tappalka' ||
-        notification.title === 'Post exited tappalka';
+      const exited = notification.metadata?.variant === 'exited_tappalka';
       return exited ? t('postExitedTappalkaTitle') : t('investmentPoolDepletedTitle');
     }
     if (notification.type === 'ob_vote_join_offer') return t('obVoteJoinOfferTitle');
@@ -1272,7 +1257,13 @@ export default function NotificationsPage() {
           {payoutBucket ? (
             <div className={NOTIFY_SUB.bodyMuted}>
               {t('projectDistributedSubtitleRole', {
-                role: labelForProjectPayoutBucket(payoutBucket, t),
+                role: (() => {
+                  const b = payoutBucket.trim().toLowerCase();
+                  if (b === 'founder') return t('projectDistributedPayoutRoleFounder');
+                  if (b === 'investor') return t('projectDistributedPayoutRoleInvestor');
+                  if (b === 'team') return t('projectDistributedPayoutRoleTeam');
+                  return payoutBucket.trim();
+                })(),
               })}
             </div>
           ) : null}

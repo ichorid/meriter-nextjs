@@ -4,6 +4,7 @@ import React from 'react';
 import { Zap } from 'lucide-react';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { formatMerits } from '@/lib/utils/currency';
+import { useTranslations } from 'next-intl';
 
 export interface WalletChipProps {
   balance: number;
@@ -31,6 +32,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
   flashTrigger,
   variant = 'default',
 }) => {
+  const t = useTranslations('common');
   return (
     <button
       onClick={onClick}
@@ -53,7 +55,7 @@ export const WalletChip: React.FC<WalletChipProps> = ({
             {currencyIconUrl && (
               <img 
                 src={currencyIconUrl} 
-                alt="Currency" 
+                alt={t('altMeritCurrency')} 
                 className="w-3.5 h-3.5 flex-shrink-0" 
               />
             )}
