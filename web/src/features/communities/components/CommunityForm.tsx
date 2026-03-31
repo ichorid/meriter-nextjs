@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
 import {
     useCommunity,
@@ -48,7 +48,6 @@ export const CommunityForm = ({
     const queryClient = useQueryClient();
     const t = useTranslations("pages.communitySettings");
     const tCreate = useTranslations("communities.create");
-    const locale = useLocale();
 
     const { user } = useAuth();
     const { data: userRoles } = useUserRoles(user?.id || "");
@@ -71,13 +70,13 @@ export const CommunityForm = ({
     const [avatarUrl, setAvatarUrl] = useState("");
     const [coverImageUrl, setCoverImageUrl] = useState("");
     const [currencySingular, setCurrencySingular] = useState(() =>
-        locale === "ru" ? "заслуга" : "merit"
+        t("defaultCurrencySingular")
     );
     const [currencyPlural, setCurrencyPlural] = useState(() =>
-        locale === "ru" ? "заслуги" : "merits"
+        t("defaultCurrencyPlural")
     );
     const [currencyGenitive, setCurrencyGenitive] = useState(() =>
-        locale === "ru" ? "заслуг" : "merits"
+        t("defaultCurrencyGenitive")
     );
     const [isPriority, setIsPriority] = useState(false);
     // Default icon is "thanks" emoji (🙏)
