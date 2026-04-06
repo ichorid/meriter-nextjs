@@ -31,7 +31,8 @@ alwaysApply: false
 |---------|-------------|
 | Fee (any community) | Global (canonical rule: @business-index.mdc, Critical Implementation Rules) |
 | Voting in priority community | Global |
-| Voting in local community | Local community wallet |
+| Voting in local community (not `isProject`) | Local community wallet |
+| Voting in `isProject` community | Global (`MeritResolverService`, `operationType === 'voting'`) |
 | Withdrawal in priority community (normal post) | Global — to **effective beneficiary’s** personal wallet |
 | Withdrawal from **МД Birzha** post with `sourceEntityType === 'community'` | **CommunityWallet** on `sourceEntityId` (accumulative `deposit`), not personal wallet |
 | Withdrawal from **МД Birzha** post with `sourceEntityType === 'project'` | Cooperative distribution — @business-projects.mdc |
@@ -70,7 +71,7 @@ When both merits and quota can be used for an action:
 
 | Method | Source | Emission Type |
 |--------|--------|---------------|
-| Tappalka | 10 comparisons = 1 merit | System emission |
+| Tappalka | `userReward` merits per `comparisonsRequired` comparisons (defaults **1** / **10**, configurable per community `tappalkaSettings`) | System emission |
 | Welcome merits | At registration | System emission |
 | From administration | Direct credit | Manual emission |
 | From posts | Positive comments from others | User transfer |
@@ -78,7 +79,7 @@ When both merits and quota can be used for an action:
 
 ### Starting Merits
 Welcome merits are credited to the global wallet from platform settings (`welcomeMeritsGlobal`).
-Default value in code is `0` unless configured.
+`PlatformSettingsService.getWelcomeMeritsGlobal()` returns `welcomeMeritsGlobal ?? 0` for legacy docs with a missing field. When the platform-settings document is **first created**, it is seeded from `PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP` (**100** in current bootstrap constants).
 
 ### Earning from Posts
 1. Other users leave positive comments under posts
@@ -131,10 +132,12 @@ Fee payment is always from global merits (canonical: @business-index.mdc). Publi
 | Positive comment | Post rating increases | Quota (if enabled) → Global wallet | Quota → Local wallet |
 | Negative comment | Post rating decreases | Global wallet ONLY | Local wallet ONLY |
 | Self-vote (if allowed) | Rating increases | Global wallet ONLY | Local wallet ONLY |
-| Poll vote | Vote weight = merit amount | Global merits | Local merits |
+| Poll cast | Vote weight = merits spent (`quotaAmount` + `walletAmount`); quota used first when enabled and role allowed (`polls.cast`) | Quota (if enabled) → wallet resolved by `MeritResolverService` (`voting`: global for priority hubs and `isProject` communities, else local id) | Same |
 | Investment in post | Funds `investmentPool` | Global wallet ONLY | Local wallet ONLY |
 
 **Priority communities** = МД, ОБ, Projects, Support (typeTag or isPriority).
+
+**`isProject` communities:** for **`voting`** only, `MeritResolverService` uses the **global** wallet (not the project community id), matching priority hubs for comment and poll spend. The **“Local”** column below does **not** apply to `isProject` spenders (use global wallet there too).
 
 ### Future Vision Poll Constraint (Current)
 - Poll creation is blocked in `future-vision` communities.
@@ -153,10 +156,11 @@ Fee payment is always from global merits (canonical: @business-index.mdc). Publi
 Voting source priority (upvote: quota → wallet; downvote/self-vote: wallet only; quota forbidden for own posts): see Critical Implementation Rules in @business-index.mdc.
 
 ### For Teammates' Posts
-Teammates = members of same local communities as the voter.
+Teammates = members of same local (“team”) communities as the beneficiary (`sharedTeamCommunities` in vote-factor context).
 
-- **Default:** Merits allowed for everything, quota only for non-teammates
-- Configurable per community
+- **Self-vote:** always **wallet-only** (quota cannot be used) — `SocialCurrencyConstraintFactor`.
+- **Teammate voting in `future-vision` or `marathon-of-good`:** when the vote is permitted, currency is **wallet-only** (quota cannot be used) — same factor.
+- **Optional hard block:** `votingSettings.votingRestriction === 'not-same-team'` rejects votes when users share team communities (`RoleHierarchyFactor`).
 
 ---
 
@@ -228,12 +232,12 @@ Voting flow:
 Implemented procedures:
 - `wallets.getByCommunity` — user wallet for a community (for priority communities returns global wallet).
 - `wallets.getBalance` — balance for a community.
-- `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt).
-- `wallets.getFreeBalance` — remaining quota for voting.
+- `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt); respects `meritSettings.quotaEnabled` and forces **0** for `future-vision`.
+- `wallets.getFreeBalance` — numeric **remaining** quota only; unlike `getQuota`, it does **not** apply `meritSettings.quotaEnabled` (only `future-vision` forces zero `dailyQuota` in the handler). Prefer `getQuota` when documenting “quota disabled” behavior.
 - `wallets.getAll` — all user wallets.
 - `wallets.getTransactions` — user transactions.
 - `wallets.addMerits` — available only when fake data mode is enabled.
-- `wallets.addMeritsToUser` — superadmin or community lead only.
+- `wallets.addMeritsToUser` — superadmin or community admin (`isUserAdmin` for the community).
 
 Not implemented:
 - `wallets.withdraw` exists in router but returns `NOT_IMPLEMENTED`.
