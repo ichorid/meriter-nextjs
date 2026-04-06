@@ -93,7 +93,7 @@ Lookup: `findFutureVisionPostId(hubId, sourceCommunityId)`.
 5. **Tag filter:** if `tags` provided, keep only sources whose `futureVisionTags` intersects the filter; **sources with no tags are dropped** when filtering.
 6. Paginate; items expose `communityId`, `name`, `description`, `futureVision*`, `publicationId`, `score` (from OB post), `memberCount`.
 
-**UI:** `web` uses `useFutureVisions` → `communities.getFutureVisions`; tags for filter from `platformSettings.get` (`useFutureVisionTags`).
+**UI:** `web` uses `useFutureVisions` → `communities.getFutureVisions`. The feed’s tag filter (`FutureVisionFeed`) uses `usePlatformValueRubricatorSections` → `platformSettings.get` and `buildEffectiveRubricatorSections` in `libs/shared-types/value-rubricator.ts`: when `decree809Enabled`, the picker includes Decree 809 tags plus **`availableFutureVisionTags`** (admin extras, de-duplicated). Community create/edit (`CommunityForm`, `CreateTeamDialog`) reads suggested tags from the same `platformSettings.get` result via `useFutureVisionTags`.
 
 ---
 
@@ -111,9 +111,9 @@ Lookup: `findFutureVisionPostId(hubId, sourceCommunityId)`.
 
 ## Tags rubric
 
-- **Storage:** `platformSettings.availableFutureVisionTags` (array).
+- **Storage:** `platformSettings.availableFutureVisionTags` (array). Decree 809 lists live in `decree809Enabled` / `decree809Tags` (see platform settings schema).
 - **Mutation:** `platformSettings.updateFutureVisionTags` (superadmin; see router).
-- **Usage:** feed filtering + create-community form; **filtering** uses **intersection** with each source’s `futureVisionTags` (see [Feed](#future-visions-feed)).
+- **Usage:** **Feed tag UI** merges Decree 809 (when enabled) and admin extras via `buildEffectiveRubricatorSections`. **Server-side feed filter** still matches only each source community’s stored `futureVisionTags` against the selected tags (intersection; see [Feed](#future-visions-feed)). Create-community forms use `availableFutureVisionTags` for suggestions.
 
 ---
 
@@ -184,7 +184,9 @@ Publication in hub (sourceEntityType community)
        └── ob_vote_join_offer (vote.service)
 
 PlatformSettings.availableFutureVisionTags
-       └── Feed / forms
+       └── Form tag suggestions; admin extras in rubricator UI
+decree809Enabled / decree809Tags (platform settings)
+       └── Optional Decree 809 block in feed tag UI (`buildEffectiveRubricatorSections`)
 ```
 
 ---
