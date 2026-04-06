@@ -43,6 +43,7 @@ api/apps/meriter/src/
 │   └── trpc.ts                # initTRPC + superjson + Sentry + HttpException mapping
 ├── api-v1/                    # REST modules (auth, config, legacy uploads) + api-v1/common/*
 ├── common/                    # Shared backend helpers/services/schemas/interceptors
+├── decorators/                # Top-level Nest param decorators (e.g. `user.decorator.ts`; permission/Zod under `common/decorators/`)
 ├── updates-conductors/        # Update conductor subsystem
 ├── migrations/                # Migration scripts
 ├── seed-data/                 # Dev/demo seed snapshots, loaders, TSV/JSON helpers
