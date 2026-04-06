@@ -17,7 +17,7 @@ alwaysApply: false
   - **Muted / labels**: `text-brand-text-secondary whitespace-pre-wrap break-words`
   - **Navigable entities** (users, communities, projects, posts, “open post”): `font-medium text-brand-primary hover:underline break-words` on `Link`, with `onClick={(e) => e.stopPropagation()}` so row click still works.
   - **Entity plain text** (no URL): `font-medium text-brand-text-primary break-words`
-  - **Timestamp**: `text-xs text-base-content/55` (one step smaller than body)
+  - **Timestamp** (`NOTIFY_SUB.stamp`): `text-xs text-base-content/55` (one step smaller than body)
 
 Do not mix arbitrary `text-xs` / `text-sm` inside subtitle rows except the timestamp.
 
@@ -27,7 +27,7 @@ Do not mix arbitrary `text-xs` / `text-sm` inside subtitle rows except the times
 - **User names** that identify a profile: own line when paired with action suffixes; use `routes.userProfile(id)` (or existing helpers) when `id` is known.
 - **Community / project / post titles**: separate lines when both title and place matter; link when `communityId`, `projectId`, or post route is available.
 - **Prefer structured JSX branches** in `renderNotificationSubtitle` over a single translation string that concatenates names and titles.
-- **`project_distributed`**: metadata `payoutBucket` is `founder` | `investor` | `team` (API). Subtitle line uses `notifications.projectDistributedSubtitleRole` and `labelForProjectPayoutBucket` — do not show raw English bucket strings to users.
+- **`project_distributed`**: metadata `payoutBucket` is `founder` | `investor` | `team` (API / `project-payout.service.ts`). Subtitle maps unknown buckets to a trimmed fallback; known buckets use `notifications.projectDistributedSubtitleRole` with `{ role }` from `notifications.projectDistributedPayoutRoleFounder` | `...Investor` | `...Team` (see `renderNotificationSubtitle` for `project_distributed`) — do not show raw API bucket strings to users when a mapped label exists.
 - **Fallback** (`formatNotificationMessage` + default subtitle): keep lines split by `\n`; actor row uses a profile link when `actor.id` is present.
 
 ## Files
