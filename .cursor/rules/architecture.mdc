@@ -45,6 +45,7 @@ api/apps/meriter/src/
 ├── common/                       # Shared backend utilities (helpers, services, interfaces, decorators, interceptors, filters, pipes, exceptions, validation, database)
 │   └── schemas/                  # Backend-only Zod schemas (small set; e.g. `pagination.schema.ts`)
 ├── config/                       # NestJS runtime configuration (e.g. `configuration.ts`)
+├── decorators/                   # Top-level Nest param decorators (e.g. `user.decorator.ts`; permission/Zod decorators also live under `common/decorators/`)
 ├── telegram/                     # Telegram integration
 ├── tg-bots/                      # Telegram bot module and services
 ├── updates-conductors/           # Update conductor subsystem
@@ -86,6 +87,7 @@ web/src/
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Home page
 ├── components/                   # 🟢 UI Components
+│   ├── atoms/                    # Smallest UI primitives (design-system pieces)
 │   ├── ui/                       # Base UI (buttons, inputs)
 │   ├── molecules/                # Composite UI pieces
 │   ├── organisms/                # Complex feature blocks
