@@ -69,7 +69,7 @@ Tappalka — primary merit-emission path **for communities that enable it** (MVP
 | `tappalkaSettings.userReward` | `1` | Reward to user per cycle |
 | `tappalkaSettings.comparisonsRequired` | `10` | Comparisons needed for user reward |
 | `tappalkaSettings.showCost` | `0.1` | Cost per post show |
-| `tappalkaSettings.minRating` | `1` | Minimum rating when paying showCost from rating; not a global filter (posts with rating below this can participate if they pay from investmentPool or pool + rating above stopLoss) |
+| `tappalkaSettings.minRating` | `1` | Used in `getEligiblePosts`: together with `showCost` and `stopLoss` in the Mongo predicate (see [Post Participation](#post-participation-in-tappalka)); not a standalone `metrics.score >= minRating` gate for all paths |
 | `tappalkaSettings.onboardingText` | optional | Community-specific onboarding text |
 
 ### Show Cost
@@ -85,7 +85,11 @@ Tappalka — primary merit-emission path **for communities that enable it** (MVP
 
 ### Participation Conditions
 1. `tappalkaSettings.enabled = true`
-2. Post is eligible to pay showCost (see Post Selection Algorithm): at least one of (investmentPool ≥ showCost), (metrics.score ≥ max(minRating, showCost)), or (investmentPool + max(0, metrics.score − stopLoss) ≥ showCost). Thus a post with rating below minRating can participate if it can pay from pool (or pool + rating above stopLoss).
+2. Post matches **`getEligiblePosts`** (same as Post Selection Algorithm): **any** of:
+   - `investmentPool >= showCost`, **or**
+   - `metrics.score >= max(minRating, showCost)`, **or**
+   - `investmentPool + max(0, metrics.score − stopLoss) >= showCost` **and** (`investmentPool >= showCost` **or** `metrics.score >= minRating`).  
+   So a post with **`metrics.score < minRating`** can still appear **only** via the first branch (pool alone covers `showCost`). Combined pool+rating without `investmentPool >= showCost` still requires `metrics.score >= minRating` for the third branch.
 3. Post rating ≥ author's stop-loss setting (post `stopLoss`) when paying from rating.
 4. Post not closed (`status !== 'closed'`) and not deleted (`deleted !== true`, `deletedAt` null)
 
@@ -152,8 +156,8 @@ In MVP, priority hubs configure **`meritSettings.quotaEnabled === false`** so qu
 - Both posts in the pair pay each round (see [Show Cost](#show-cost) above), which limits junk participation.
 
 ### Minimum Rating / visibility
-- Posts can become eligible **without** comment support if **`investmentPool`** alone covers **`showCost`**, or pool + rating above **`stopLoss`** satisfies the eligibility query.
-- Otherwise, raising **`metrics.score`** (e.g. via comments/votes) is typically needed to meet **`minRating` / `showCost`** thresholds.
+- Posts with **`metrics.score < minRating`** can still be eligible when **`investmentPool >= showCost`** (pool-only branch of `getEligiblePosts`).
+- Otherwise, meeting **`getEligiblePosts`** usually requires **`metrics.score >= max(minRating, showCost)`** or the third OR-branch (combined spendable **and** `metrics.score >= minRating` when pool does not cover `showCost` alone).
 
 ---
 
@@ -164,7 +168,7 @@ In MVP, priority hubs configure **`meritSettings.quotaEnabled === false`** so qu
 
 ### Notifications
 - When show-cost deduction leaves remainder after the investment pool, author may receive `investment_pool_depleted` (pool depleted; shows continue from rating/wallet/entity wallet per rules).
-- When a post exits tappalka (e.g. `noAuthorWalletSpend`, or insufficient funds including source `CommunityWallet` for `sourceEntityId` posts), author may receive the same notification type with an “exited tappalka” style message.
+- When a post exits tappalka (e.g. `noAuthorWalletSpend`, or insufficient `CommunityWallet` for posts with `sourceEntityId`), author may receive `investment_pool_depleted` with an “exited tappalka” style title/message. **`metadata.variant === 'exited_tappalka'`** is set on the **`noAuthorWalletSpend`** path; the **`CommunityWallet` insufficient** path uses the same notification type but **may omit** that variant (check title/message, not only `variant`).
 
 ---
 
@@ -203,11 +207,13 @@ Let **`S` = `showCost`**, **`W` = `winReward`**, **`U` = `userReward`**, **`N` =
    - deleted !== true, deletedAt null
    - status !== 'closed'
    - if `tappalkaSettings.categories` is non-empty: post `valueTags` or `categories` intersects that list (implementation uses `$in` on both).
-   - eligible to pay showCost: (investmentPool >= showCost) OR (metrics.score >= max(minRating, showCost)) OR (investmentPool + max(0, metrics.score - stopLoss) >= showCost)
+   - show-cost eligibility (same predicate as `getEligiblePosts` / Participation Conditions #2):
+     (investmentPool >= showCost) OR (metrics.score >= max(minRating, showCost)) OR
+     ( (investmentPool + max(0, metrics.score - stopLoss) >= showCost) AND (investmentPool >= showCost OR metrics.score >= minRating) )
 2. Random select 2 posts from result
 3. Return pair to user (sessionId generated per pair; not validated on submit)
 ```
-Note: There is no global filter on metrics.score >= minRating. A post with rating below minRating can be selected if it satisfies the showCost eligibility via pool alone or via pool + rating above stopLoss.
+Note: There is no separate `metrics.score >= minRating` filter for every path: a post with **`metrics.score < minRating`** can still match when **`investmentPool >= showCost`**. The third OR-branch does **not** allow “only” combined pool+rating without **`metrics.score >= minRating`** when **`investmentPool < showCost`**.
 
 Note: Eligibility does **not** check author wallet balance; insufficient wallet at step 4 of show-cost deduction surfaces as a **failed** `submitChoice` (see Show Cost Deduction).
 
