@@ -25,6 +25,7 @@ import { useIntlPortalStore } from '@/stores/intl-portal.store';
 
 interface ClientRootLayoutProps {
   children: React.ReactNode;
+  serverLocale?: Locale;
 }
 
 // Stable fallback values computed once at module load time
@@ -64,48 +65,35 @@ function detectLocale(): Locale {
   }
 }
 
-export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
-  // Always start with DEFAULT_LOCALE to match pre-rendered HTML from static export
-  // This prevents hydration mismatches - locale will be updated after mount
-  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
-  const [messages, setMessages] = useState(enMessages);
+export default function ClientRootLayout({ children, serverLocale }: ClientRootLayoutProps) {
+  const initialLocale = serverLocale ?? DEFAULT_LOCALE;
+  const initialLocaleRef = useRef(initialLocale);
+  const [locale, setLocale] = useState<Locale>(initialLocale);
+  const [messages, setMessages] = useState(initialLocale === 'ru' ? ruMessages : enMessages);
   const hasInitializedLocale = useRef(false);
   const setIntlPortal = useIntlPortalStore((s) => s.setIntl);
 
   useEffect(() => {
-    // Only run once after mount to avoid hydration mismatches and infinite loops
-    if (hasInitializedLocale.current) {
-      return;
-    }
+    if (hasInitializedLocale.current) return;
     hasInitializedLocale.current = true;
 
-    // Detect and update locale after mount to avoid hydration mismatches
-    // The initial render uses DEFAULT_LOCALE which matches the pre-rendered HTML
     const detectedLocale = detectLocale();
     
-    // Always update locale if different from DEFAULT_LOCALE
-    // This ensures the UI reflects the user's language preference
-    // Use startTransition to batch the state update and prevent refresh loops
-    if (detectedLocale !== DEFAULT_LOCALE) {
+    if (detectedLocale !== initialLocaleRef.current) {
       startTransition(() => {
         setLocale(detectedLocale);
         setMessages(detectedLocale === 'ru' ? ruMessages : enMessages);
       });
     }
 
-    // Always update document language attribute
     document.documentElement.lang = detectedLocale;
 
-    // Set cookie if not already set - use detectedLocale to ensure consistency
-    // This prevents mismatches between detected locale and cookie value
     if (!document.cookie.includes('NEXT_LOCALE=')) {
-      // Use SameSite=Lax (first-party) to avoid browser rejections on misconfigured Secure flags.
-      // This is correct because Meriter runs on a single origin (no cross-site cookie use required).
       const isSecure = window.location.protocol === 'https:';
       const secureFlag = isSecure ? '; secure' : '';
       document.cookie = `NEXT_LOCALE=${detectedLocale}; max-age=${365 * 24 * 60 * 60}; path=/; samesite=lax${secureFlag}`;
     }
-  }, []); // Empty deps - only run once after mount
+  }, []);
 
   // Sync locale and messages to portal store so portaled content (e.g. WithdrawPopup) has intl context
   useEffect(() => {
@@ -119,10 +107,6 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
   const fallbackEnabledProviders = FALLBACK_ENABLED_PROVIDERS;
   const fallbackAuthnEnabled = false; // Default to false, will be set by RuntimeConfigProvider
 
-  // Always render the full app structure to avoid hydration mismatches
-  // The initial render uses default locale, which will be updated after mount
-  // Use suppressHydrationWarning on NextIntlClientProvider to prevent hydration warnings
-  // since locale changes after mount are expected and handled gracefully
   return (
     <StyledJsxRegistry>
       <AppModeProvider>
@@ -131,8 +115,6 @@ export default function ClientRootLayout({ children }: ClientRootLayoutProps) {
             locale={locale} 
             messages={messages}
             timeZone="UTC"
-            // Locale detection happens client-side after mount to avoid hydration mismatches
-            // This is safe because NextIntl handles locale changes gracefully
           >
             {/* CaptiveBrowserProvider must wrap both TelegramHint and routed content so login and tg-hint share the same captive state. */}
             <CaptiveBrowserProvider>

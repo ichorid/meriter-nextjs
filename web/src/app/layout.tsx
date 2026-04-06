@@ -1,8 +1,9 @@
 import type { Viewport } from 'next';
 import './globals.css';
-import { DEFAULT_LOCALE } from '@/i18n/request';
+import { detectBrowserLanguage, type Locale } from '@/i18n/request';
 import ClientRootLayout from './ClientRootLayout';
 import { Metadata } from 'next';
+import { cookies, headers } from 'next/headers';
 
 export const metadata: Metadata = {
   title: {
@@ -19,13 +20,23 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+async function resolveServerLocale(): Promise<Locale> {
+  const cookieVal = (await cookies()).get('NEXT_LOCALE')?.value;
+  if (cookieVal === 'ru' || cookieVal === 'en') return cookieVal;
+
+  const acceptLang = (await headers()).get('accept-language') ?? undefined;
+  return detectBrowserLanguage(acceptLang);
+}
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale = await resolveServerLocale();
+
   return (
-    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+    <html lang={locale} translate="no" className="notranslate" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -133,7 +144,7 @@ export default function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <ClientRootLayout>{children}</ClientRootLayout>
+        <ClientRootLayout serverLocale={locale}>{children}</ClientRootLayout>
       </body>
     </html>
   );

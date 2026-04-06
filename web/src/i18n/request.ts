@@ -1,22 +1,30 @@
-/**
- * Client-side locale detection utilities
- * Server-side functions removed for static export
- */
-
 export type Locale = 'en' | 'ru';
 export type LocalePreference = 'en' | 'ru' | 'auto';
 
 export const SUPPORTED_LOCALES: Locale[] = ['en', 'ru'];
-export const DEFAULT_LOCALE: Locale = 'en';
+
+function isLocale(v: unknown): v is Locale {
+    return v === 'en' || v === 'ru';
+}
 
 /**
- * Detect browser language from Accept-Language header or navigator
+ * Returns the deployment-level default locale.
+ * Reads NEXT_PUBLIC_DEFAULT_LOCALE env var; falls back to 'en'.
+ */
+export function getDefaultLocale(): Locale {
+    const env = process.env.NEXT_PUBLIC_DEFAULT_LOCALE;
+    return isLocale(env) ? env : 'en';
+}
+
+export const DEFAULT_LOCALE: Locale = getDefaultLocale();
+
+/**
+ * Detect browser language from Accept-Language header or navigator.
  */
 export function detectBrowserLanguage(acceptLanguage?: string): Locale {
     if (typeof window !== 'undefined' && !acceptLanguage) {
-        // Use browser navigator if no header provided
         const browserLang = navigator.language?.split('-')[0]?.toLowerCase() || 'en';
-        return browserLang === 'ru' ? 'ru' : 'en';
+        return isLocale(browserLang) ? browserLang : DEFAULT_LOCALE;
     }
     
     if (!acceptLanguage) return DEFAULT_LOCALE;
@@ -24,11 +32,9 @@ export function detectBrowserLanguage(acceptLanguage?: string): Locale {
     const languages = acceptLanguage
         .split(',')
         .map(lang => lang.split(';')[0]?.trim().toLowerCase() || '')
-        .map(lang => lang.split('-')[0] || ''); // Extract primary language
+        .map(lang => lang.split('-')[0] || '');
     
-    // Check for Russian first
     if (languages.includes('ru')) return 'ru';
     
-    // Default to English
     return DEFAULT_LOCALE;
 }
