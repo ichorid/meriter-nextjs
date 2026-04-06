@@ -1,5 +1,5 @@
 ---
-description: After finishing a plan, run tests and build; on structural/pattern changes update .cursor/rules. Clean AI slop.
+description: After finishing a plan, run lint, lint:fix, tests, and build; on structural/pattern changes update .cursor/rules. Clean AI slop.
 alwaysApply: true
 ---
 
@@ -18,9 +18,10 @@ Before marking a step as done, briefly state what existing behavior could break 
    - Remove any `// AI-generated`, `// Added by Cursor`, or similar markers
    - Check for overengineered abstractions: if a wrapper/helper is used only once and adds no clarity, inline it
 
-2. **Run tests and build** to check for errors:
+2. **Run lint, tests, and build** to check for errors (from repository root; align with `pnpm.mdc`):
    ```
    pnpm lint
+   pnpm lint:fix
    pnpm test
    pnpm build
    ```
