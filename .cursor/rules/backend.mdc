@@ -13,6 +13,7 @@ alwaysApply: false
 - REST (`api-v1`) for auth/config endpoints and legacy upload compatibility
 - MongoDB + Mongoose
 - Zod shared contracts from `libs/shared-types`
+- `zod` is also a direct dependency of `@meriter/api` (see `api/package.json`) for validation beyond shared-types
 
 ## Backend Structure
 
@@ -27,7 +28,9 @@ api/apps/meriter/src/
 │   ├── aggregates/            # Domain entities/aggregates
 │   ├── events/                # Domain events and event bus
 │   ├── value-objects/         # Strongly-typed domain identifiers and VOs
-│   └── common/helpers/        # Domain helpers (e.g. priority community logic)
+│   └── common/
+│       ├── helpers/           # Domain helpers (e.g. priority community logic)
+│       └── constants/           # Domain constants (bootstrap, platform, roles)
 ├── trpc/
 │   ├── routers/               # tRPC routers (publications, votes, wallets, ...)
 │   ├── middleware/            # tRPC middleware (permission checks)
@@ -40,11 +43,16 @@ api/apps/meriter/src/
 ├── common/                    # Shared backend helpers/services/schemas/interceptors
 ├── updates-conductors/        # Update conductor subsystem
 ├── migrations/                # Migration scripts
+├── seed-data/                 # Dev/demo seed snapshots, loaders, TSV/JSON helpers
+├── i18n/                      # Backend locale message maps
 ├── config/                    # Runtime configuration + validation schema
 ├── telegram/                  # Telegram integrations (content pipeline helpers)
 ├── tg-bots/                   # Telegram bot module/services
 ├── domain.module.ts           # Shared domain wiring module
 ├── meriter.module.ts          # Root Nest module composition
+├── meriter.controller.ts      # Root controller
+├── meriter.service.ts         # Root app service
+├── config.ts                  # Root-level app URL / bot env constants
 ├── main.ts                    # App bootstrap; mounts tRPC Express middleware at /trpc
 ├── permission.guard.ts        # REST permission guard
 └── user.guard.ts              # Authenticated user guard
@@ -64,8 +72,9 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 - Perform transport-level checks and call domain services.
 - Prefer thin routers (orchestration + mapping), but current codebase still contains substantial business logic and direct DB reads in some routers.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
-- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`.
+- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`.
 - Investments group is mounted as `investments` in appRouter, with implementation file `trpc/routers/investment.router.ts`.
+- Platform dev group is mounted as `platformDev` in appRouter, with implementation file `trpc/routers/platform-dev.router.ts` (superadmin-only procedures).
 
 ### REST (`api-v1`)
 - Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS/email OTP, phone call-check, magic-link), plus development/test auth endpoints (`fake`, `fake/superadmin`, `mock/:provider`), with shared REST helpers/services under `api-v1/common`.
@@ -75,6 +84,7 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 ## Bootstrap and Runtime Wiring
 - `main.ts` mounts tRPC via Express middleware (`/trpc`) before Nest routes to correctly handle batched requests.
 - Cookie parser is mounted on the raw Express app before tRPC middleware so authenticated and batched `/trpc` requests have parsed cookies in context.
+- `main.ts` also calls `app.use(cookieParser())` again later (after tRPC setup); the file notes this mount is redundant but safe.
 - Global exception/response handling is configured in bootstrap (`ApiExceptionFilter`, `ApiResponseInterceptor`).
 - Sentry is initialized during bootstrap and also used in tRPC procedure middleware.
 
@@ -96,9 +106,9 @@ Never rely on UI assumptions for security-critical checks.
 
 ## Data and Schema Rules
 - Shared API contracts: `libs/shared-types/src/`.
-- Backend-only schemas: `api/apps/meriter/src/common/schemas/` (currently minimal).
+- Backend-only schemas: `api/apps/meriter/src/common/schemas/` (currently minimal; e.g. `pagination.schema.ts`).
 - Most Mongoose models are in `domain/models/**`; additional schemas can also exist in dedicated feature modules (e.g. `updates-conductors/model`).
-- Auth persistence schemas are in `domain/models/auth/**` (e.g. passkey challenge and OTP-related schemas).
+- Auth persistence schemas are in `domain/models/auth/**` (`passkey-challenge.schema.ts`, `auth-magic-link.schema.ts`, `sms-otp.schema.ts`, `email-otp.schema.ts`).
 - When changing contract shape, update both backend usage and frontend consumers.
 
 ## Service Pattern
