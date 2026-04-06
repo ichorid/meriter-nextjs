@@ -22,7 +22,7 @@ alwaysApply: false
 
 **Game Goal:** Collect as many merits as possible and use them to promote "Images of Future" (posts in ОБ) that the user likes.
 
-**Main currency:** Global merit. One wallet for МД, ОБ, Projects, Support. Quota is disabled in priority communities — tappalka and voting are the emission sources.
+**Main currency:** Global merit. One wallet for МД, ОБ, Projects, Support. MVP assumes **no daily quota** for priority hubs (tappalka/voting as emission); ensure `meritSettings.quotaEnabled` is off in DB where the table below says No (runtime defaults alone may not match until overridden). `future-vision` is always forced to zero effective quota in `QuotaResetService`.
 
 ---
 
@@ -63,7 +63,7 @@ MVP has **4 priority communities** (all use global merit, quota disabled):
 | `settings.pollCost` | 1 merit | Standard |
 | `settings.commentMode` | `all` (weighted) | Standard voting/comments behavior |
 
-**Implementation note:** Bootstrap does not set `allowWithdraw`; schema default is `true`. Set `settings.allowWithdraw = false` on the future-vision community to keep merits on posts. Polls: poll creation and casting are blocked for `future-vision` in current routers; `polls.getByCommunity` returns an empty list for this community.
+**Implementation note:** Fresh hub creation via `ensureBaseCommunities` uses `PRIORITY_HUB_BOOTSTRAP['future-vision']`, which includes `settings.allowWithdraw: false`, and `createCommunity` persists it when present. Older databases that created the ОБ hub before that bootstrap shape may still need `settings.allowWithdraw = false` applied manually. Shared-types / Mongoose default for omitted `allowWithdraw` remains `true`. Polls: poll creation and casting are blocked for `future-vision` in current routers; `polls.getByCommunity` returns an empty list for this community.
 
 **OB hub, Future Visions feed, `futureVision*` fields, `getFutureVisions`:** @business-future-vision.mdc.
 
@@ -126,7 +126,7 @@ Do not use internal tags or Mongo ids as user-visible titles; do not assume a si
 
 **Implementation note:** Defaults for typeTag `team-projects` (CommunityDefaultsService) deny participant `POST_PUBLICATION` and `CREATE_POLL` (lead-only) and set `votingSettings.spendsMerits`/`awardsMerits` to false. To allow participants to publish and collect merits as in the MVP flow, store DB overrides: set `permissionRules` (or rule overrides) to allow participant `POST_PUBLICATION` and `CREATE_POLL`, and set merit/voting settings so that votes spend and award merits as needed.
 
-**Special Feature:** When project is completed, post can be **transferred** to MД community — and there all earned merits can be withdrawn. This is the ONLY case of transfer with merits.
+**Special Feature:** When project is completed, post can be **transferred** to MД community — and there all earned merits can be withdrawn. In code, transfer with merits is not restricted to this route: it applies whenever the **source** community has `settings.forwardRule === 'project'` (see `publications.forward` / `forward` flow). The MVP product path is Projects hub (`team-projects`) → МД with that forward mode; other communities can use the same mechanism if configured.
 
 **Cooperative projects (`isProject` communities, tickets, Birzha-from-project, `ProjectDistributionService`):** not the same as this global community — see @business-projects.mdc.
 
@@ -264,7 +264,7 @@ Member of all global communities
 - Own internal currency (separate from global merits)
 
 ### Restrictions
-- Post forwarding — ALWAYS copy without merits
+- Post forwarding — default `settings.forwardRule` is `standard` (copy without merits, original kept). Transfer with merits applies when the **source** community has `settings.forwardRule === 'project'` (same as global Projects → МД flow; not limited to the Projects hub).
 - Lead CANNOT delete community — only request
 
 ---
@@ -279,7 +279,7 @@ Member of all global communities
 - [x] Enable tappalka for МД and Projects
 - [x] Disable quota for priority communities (tappalka as emission source)
 - [x] Enable investing for МД (`settings.investingEnabled = true`)
-- [ ] ⚠️ MANUAL SETUP: Set `settings.allowWithdraw = false` for future-vision (ОБ) if not set by bootstrap
+- [ ] ⚠️ LEGACY DBs: if the future-vision hub predates `PRIORITY_HUB_BOOTSTRAP` / bootstrap, confirm `settings.allowWithdraw` is `false` for ОБ (fresh `ensureBaseCommunities` creation sets it from bootstrap)
 
 ### User Registration
 - [x] Standard registration flow
