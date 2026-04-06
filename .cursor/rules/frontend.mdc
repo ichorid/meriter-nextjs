@@ -53,7 +53,7 @@ Shown on small viewports (`lg:hidden`). Tab order (left → right):
 
 Long-press on Profile opens a small menu (About, Support if `typeTag === 'support'`, Favorites, Log out).
 
-### Left sidebar (`web/src/components/organisms/VerticalSidebar.tsx`)
+### Left sidebar (`web/src/components/organisms/VerticalSidebar/VerticalSidebar.tsx`)
 
 Desktop / large layout: same **three primary hubs** (Future Visions → МД → Projects), then Notifications, Favorites, etc. For the МД item, the link is `routes.community(marathon.id)`. When the sidebar is **expanded**, the МД row shows **`marathon.name`** from the API (community document), **not** `marathonOfGoodLabel` — so the visible title can match the long product name (e.g. «Биржа социальных инвестиций») if stored on the community.
 
@@ -347,7 +347,7 @@ export function useVoteOnPublicationWithComment() {
 - For voting on comments in domain flows, the target is a vote entity (`targetType: 'vote'`).
 - `votes.createWithComment` uses `VoteWithCommentDtoSchema` and accepts weighted vote or neutral comment (`comment`), with optional `direction` and `images`.
 - `VoteWithCommentDtoSchema` currently allows `targetType: 'publication' | 'comment' | 'vote'`, but `votes.createWithComment` enforces runtime validation and rejects `'comment'` (requires `'publication'` or `'vote'`).
-- `communityId` is resolved server-side from target and is not part of `votes.create` or `votes.createWithComment` input schemas.
+- `communityId` is resolved server-side from target and is not part of `votes.create` or `votes.createWithComment` **Zod** input schemas. Some **client hooks** (e.g. `useVoteOnPublicationWithComment`, `useVoteOnPublication`) still pass `communityId` on the mutation call for optimistic quota/wallet updates and targeted cache invalidation; that field is not in the schema and is not used by the server procedure input.
 
 ## Common Mistakes
 
