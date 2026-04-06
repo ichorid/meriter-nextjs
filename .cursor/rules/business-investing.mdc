@@ -73,15 +73,16 @@ In code, "rating" is stored as `metrics.score`. There is no `maxRating` field.
 
 ### Show Cost Deduction Priority (Canonical — Single Source of Truth)
 
-When tappalka deducts 0.1 merit per show, sources are tried in this order:
+When tappalka deducts `tappalkaSettings.showCost` (default **0.1**) per show, sources are tried in this order (see `TappalkaService.deductShowCost`):
 
 | Priority | Source | When depleted |
 |----------|--------|---------------|
 | 1 | `investmentPool` | Move to next |
-| 2 | `metrics.score` (rating, down to stopLoss) | Move to next |
-| 3 | `author.wallet` | Post exits tappalka |
+| 2 | `metrics.score` (rating, down to `stopLoss`) | Move to next |
+| 3 | **If `sourceEntityId` is set (Birzha project/community source):** that entity’s **`CommunityWallet`** | Insufficient balance → post may exit tappalka; **author wallet is not used** for that remainder |
+| 4 | **Otherwise:** author’s personal wallet (resolved via `MeritResolverService` for `tappalka_reward`) | If `noAuthorWalletSpend=true`, author wallet is skipped — when pool and rating are exhausted, the post exits tappalka |
 
-If all three sources are empty, the post stops participating in tappalka. If the post has `noAuthorWalletSpend=true`, the author wallet is not used for show cost; when pool and rating are exhausted, the post exits tappalka without deducting from the author.
+Full edge cases (eligibility query, `submitChoice` vs insufficient author wallet): **@business-tappalka.mdc**.
 
 ---
 
@@ -95,9 +96,9 @@ If all three sources are empty, the post stops participating in tappalka. If the
 4. On confirmation, merits transfer from user's wallet to `investmentPool`
 
 **Restrictions:**
-- **No minimum/maximum investment amount** — users can invest any amount
+- **Amount:** tRPC input requires a **positive integer** (`investments.invest` — `amount >= 1`); no upper cap in API
 - Investment can ONLY be made from **wallet** (NOT from quota)
-- Investment is **IRREVOCABLE** — cannot be withdrawn or cancelled
+- Investment is **irrevocable** — cannot be withdrawn or cancelled
 
 ### For Author (Promoting Own Post)
 - Author can add merits to their post's **rating** (main account)
@@ -135,24 +136,22 @@ Investor's share = their total investment / sum of ALL investments
 
 1. Author initiates withdrawal (partial or full amount from rating)
 2. `investorShare = withdrawAmount × contractPercent%` — distributed among investors proportionally
-3. `authorShare = withdrawAmount − investorShare` — goes to **author's personal wallet** **except** for **`sourceEntityType === 'project'`** (Birzha post from a cooperative project) — see [below](#project-source-birzha-posts-sourceentitytype--project).
+3. `authorShare = withdrawAmount − investorShare` — goes to **author's personal wallet** **except** for МД Birzha posts with `sourceEntityId` + `sourceEntityType` (`'project'` or `'community'`) — see **Birzha source posts (Marathon of Good)** below.
 4. Post rating decreases by withdrawal amount
 5. All investors receive notifications with their share
 6. Investor shares are rounded to 0.01; any remainder goes to the author.
 
-### Project-source Birzha posts (`sourceEntityType === 'project'`)
+### Birzha source posts (Marathon of Good)
 
-Applies when the publication was created from a **cooperative project** onto the exchange (`sourceEntityId` = project id, `sourceEntityType: 'project'`). **Investor contract math is unchanged** (steps 1–2 above: pool slice, proportional investor payouts).
+Applies when the publication is in **Marathon of Good** (`typeTag === 'marathon-of-good'`) with `sourceEntityId` + `sourceEntityType` set (e.g. cooperative **project** → `sourceEntityType: 'project'`, or community actor → `'community'`). **Investor contract math is unchanged** (steps 1–2 above: pool slice, proportional investor payouts).
 
 **Order of handling (withdraw and close):**
 
-1. **Investors** — `investmentService` / `distributeOnWithdrawal` (manual withdraw) or post-close investment handling: investor share of the amount, proportional among investors.
-2. **`authorShare`** — remainder after the contract slice; **not** `processWithdrawal` to the post author's wallet.
-3. **Cooperative routing** — `authorShare` is passed to **`ProjectDistributionService.distribute(sourceEntityId, authorShare)`** (founder/team split per project shares; `CommunityWallet.balance` untouched for this leg; see @business-projects.mdc).
+1. **Investors** — `InvestmentService.distributeOnWithdrawal` (manual `publications.withdraw`) or `InvestmentService.handlePostClose` (close): investor share of the amount, proportional among investors.
+2. **`authorShare`** — remainder after the contract slice; **not** `processWithdrawal` to the post author’s **personal** wallet.
+3. **CommunityWallet** — `authorShare` is credited via **`CommunityWalletService.deposit(sourceEntityId, authorShare, …)`** — reason **`publication_withdrawal`** on withdraw, **`publication_close`** on close (`publications.router` / `PostClosingService`).
 
-**Close** (`publications.close` → `PostClosingService`): same sequence after `handlePostClose` — investor distribution first, then **`ProjectDistributionService`** for the author portion instead of crediting the author wallet.
-
-**Caller permission** on `publications.withdraw` for these posts: **lead of the project** (`sourceEntityId`), not the effective-beneficiary rule — @business-projects.mdc.
+**Caller permission** on `publications.withdraw` for these posts: **`communityService.isUserAdmin(sourceEntityId, userId)`** (lead **or** superadmin), not the effective-beneficiary rule — @business-projects.mdc.
 
 ### Distribution Example
 
@@ -167,7 +166,7 @@ Applies when the publication was created from a **cooperative project** onto the
   - Vasya: 100 × 50% = 50 merits
   - Petya: 100 × 25% = 25 merits
   - Sasha: 100 × 25% = 25 merits
-- To author: 500 − 100 = 400 merits (personal wallet — **not** for `sourceEntityType === 'project'`; use [subsection above](#project-source-birzha-posts-sourceentitytype--project))
+- To author: 500 − 100 = 400 merits as **`authorShare`** (personal wallet for normal posts; for МД Birzha `sourceEntity*` posts → **CommunityWallet** on `sourceEntityId` — see **Birzha source posts (Marathon of Good)** above)
 
 ### Author's Own Merits in the Pool
 
@@ -203,7 +202,7 @@ On close, the post is updated with `closingSummary`: `totalEarned`, `distributed
 
 - Invested merits are spent on tappalka shows — they cannot be returned
 - The only "return" events are: (a) unspent pool on close, (b) profit distribution on withdrawal/close
-- When post closes, investors receive notification (type `post_closed_investment`) with message: "Post closed. Pool returned: X merits. Your share of rating: Y merits. Total received: Z merits" (X, Y, Z are the actual amounts).
+- When post closes, investors receive notification (type `post_closed_investment`); body is built in `PostClosingService` (optional project name prefix; then pool returned / share of rating / total received — see code for exact template).
 
 ### Pool Return Example
 - Total invested: 200 merits (Vasya 100, Petya 50, Sasha 50)
@@ -281,7 +280,7 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 |-------|-----------|---------|
 | New investment received | Post author | "User X invested N merits in your post" |
 | Author withdrew merits | All investors | "Author withdrew N merits from post. Your share: M merits" |
-| Post closed | All investors | "Post closed. Pool returned: X merits. Your share of rating: Y merits. Total received: Z merits" (type `post_closed_investment`) |
+| Post closed | All investors | Pool returned / share of rating / total received (type `post_closed_investment`; optional project prefix when `sourceEntityType === 'project'`) |
 | Investment pool depleted | Post author | "Investment pool depleted. Shows now deducted from post rating." (type `investment_pool_depleted`) |
 | Post exited tappalka (no funds) | Post author | "Post exited tappalka — no funds available for shows." (type `investment_pool_depleted`, title "Post exited tappalka") |
 
