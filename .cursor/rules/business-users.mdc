@@ -41,7 +41,7 @@ alwaysApply: false
 | globalRole | Optional; only `superadmin` in code (User.globalRole) |
 | communityMemberships | Array of community IDs (User schema) |
 | communityTags | Array of tags (User schema) |
-| meritStats | Optional; per-community merit summary (User schema) |
+| meritStats | Optional; per-community merit map on User (shared-types comment: lead-facing stats usage) |
 | authenticators | Optional; passkeys (User schema) |
 | teamId | Optional; in shared-types UserSchema only (not in backend Mongoose user schema) |
 
@@ -75,7 +75,8 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 
 **Restrictions:**
 - CANNOT delete community (only request from administration; request flow not implemented)
-- CANNOT change post forwarding mode (always copy without merits)
+
+**Forwarding mode (`settings.forwardRule`):** Leads and superadmins may change this via **`communities.update`** when they pass `isUserAdmin` / superadmin checks. Values: `standard` (copy without merits, keep original) or `project` (transfer with merits, soft-delete original). Default in schema is `standard` — not hard-locked to “always copy” for team communities.
 
 ### Lead (Global Community)
 **Appointed by superadmin.** Administers specific global community. In code this is the same **lead** role (`UserCommunityRole.role: 'lead'`) for that community; there is no separate role type.
@@ -83,7 +84,8 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 **Rights:**
 - All lead rights for their global community
 - Configure global community parameters
-- Manage post categories
+
+**Post categories (platform catalog):** Create/update/delete is **`categories.*` superadmin-only** (`categories.router.ts`) — not granted to global leads by role alone.
 
 ### Superadministrator
 **Full platform access.**
@@ -93,9 +95,9 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 - Access to settings of ALL local communities
 - Create global communities
 - Appoint global community administrators
-- Direct merit credit to ANY user
-- Configure rates (multipliers) for communities
-- Delete communities
+- Direct merit credit to users (and platform-wide tools; **`wallets.addMeritsToUser`** also allows community admins for a chosen `communityId`)
+- Edit **platform** settings (`platformSettings.*`: e.g. `welcomeMeritsGlobal`, future-vision tags) — **not** per-community merit multipliers (those are **not implemented** in schema/runtime; see @business-merits.mdc)
+- **Delete communities:** No dedicated **`communities.delete`** tRPC procedure in current code; `CommunityService.deleteCommunity` exists for **internal** use (e.g. project creation rollback), not a general admin “delete any community” API
 
 ---
 
@@ -116,6 +118,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 ### Community Deletion
 - Lead **CANNOT** delete community independently
 - Can only submit deletion request to administration (this flow is not implemented — no dedicated API)
+- **Current API:** No general **`communities.delete`** for superadmin either — see **Superadministrator** rights (internal `CommunityService.deleteCommunity` only for limited flows)
 
 ---
 
@@ -279,10 +282,10 @@ Global community administrator is implemented as **lead** for that community; th
 | Edit settings | ✗ | ✓ | ✓ | ✓ |
 | Moderate content | ✗ | ✓ | ✓ | ✓ |
 | Credit merits | ✗ | ✓ | ✓ | ✓ |
-| Manage categories | ✗ | ✗ | ✓ | ✓ |
-| Configure rates | ✗ | ✗ | ✗ | ✓ |
+| Manage categories (platform `categories.*`) | ✗ | ✗ | ✗ | ✓ |
+| Community merit rate multipliers | ✗ | ✗ | ✗ | ✗ |
 | Create global community | ✗ | ✗ | ✗ | ✓ |
-| Delete community | ✗ | ✗ | ✗ | ✓ |
+| Delete community (dedicated API) | ✗ | ✗ | ✗ | ✗ |
 
 *In code: role is `participant`. Allowed only if community permissionRules grant the action for that role (e.g. action `post_publication` for publishing); see action-types.constants.ts and permission.service.ts.
 
