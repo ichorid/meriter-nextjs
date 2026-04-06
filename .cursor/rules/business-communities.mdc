@@ -26,9 +26,9 @@ Communities that are treated as priority context. Includes:
 
 **Characteristics:**
 - Users are auto-added to base priority communities by backend sync logic.
-- Priority communities use global merit context for voting, investment, tappalka rewards, and withdrawals.
+- Priority communities use global merit context for voting, post investments, and tappalka rewards (see `MeritResolverService`); merits withdrawn from posts credit the beneficiary via the global wallet context.
 - Fee routing is operation-specific (see "Action Payment Rules" below).
-- No dedicated self-leave API is implemented in current routers (applies generally, including priority communities).
+- Priority hubs cannot be left via `communities.leaveCommunity` (see "Member Join Logic" / `leaveLocalCommunity`).
 
 ### Global Communities (Public Groups)
 
@@ -48,9 +48,9 @@ User-created team communities (`typeTag: 'team'`).
 
 **Characteristics:**
 - Team membership uses invite/request flows (team invitations + join requests).
-- Voting/investment/tappalka wallet routing uses local community context (non-priority behavior).
+- Voting/investment/tappalka wallet routing uses local community context where applicable (see "Action Payment Rules"; `isProject` has a special case for **`voting`**).
 - Wallet routing is operation-specific (see "Action Payment Rules" below).
-- No dedicated self-leave endpoint is implemented.
+- Participants may leave eligible local non-project teams via `communities.leaveCommunity` (`CommunityService.leaveLocalCommunity`); leads cannot leave without promoting another lead; priority hubs and `isProject` communities use other flows.
 - Membership removal is implemented via admin/lead-only `removeMember` API.
 - "Lead requests deletion from administration" flow is not implemented as a dedicated API feature.
 
@@ -139,7 +139,7 @@ Community
 | `editWindowMinutes` | Participant edit window (`0` = unlimited) | `30` |
 | `allowEditByOthers` | Allow participants editing others' posts | `false` |
 | `canPayPostFromQuota` | Allow post payment from quota | `false` |
-| `allowWithdraw` | Stored community flag for withdrawal policy (`true` by default); current withdrawal enforcement in routers/services is partial and type-specific | `true` |
+| `allowWithdraw` | Stored community flag for withdrawal policy (`true` by default); `publications.withdraw` rejects when `false` before other authorization | `true` |
 | `forwardRule` | Forward behavior: `standard` or `project` | `standard` |
 
 #### Investing / comment mode
@@ -182,7 +182,7 @@ Community
 | Field | Description | Default |
 |------|-------------|---------|
 | `enabled` | Tappalka enabled | `false` |
-| `categories` | Allowed category IDs (empty = all) | `[]` |
+| `categories` | Value rubricator tag strings and/or legacy publication category IDs (empty = no filter / all) | `[]` |
 | `winReward` | Reward for chosen post | `1` |
 | `userReward` | Reward for user progress cycle | `1` |
 | `comparisonsRequired` | Comparisons needed for user reward | `10` |
@@ -218,13 +218,12 @@ If needed in future, treat this as planned work and define explicit API/storage 
 ### Action Payment Rules
 - Costs are configured by `settings.postCost`, `settings.pollCost`, `settings.forwardCost`.
 - `publications.create`: wallet fee is debited from `GLOBAL_COMMUNITY_ID`; optional quota part is possible when `settings.canPayPostFromQuota=true`.
-- `polls.create`: wallet fee is debited from the poll community wallet; for `marathon-of-good`/`future-vision`, debit is synchronized between both community wallets by router helper logic.
-- `polls.cast`: wallet amount is debited from the poll community wallet; for `marathon-of-good`/`future-vision`, debit is synchronized between both community wallets by router helper logic.
+- `polls.create`: poll creation fee is validated against and debited from the user’s **`GLOBAL_COMMUNITY_ID`** wallet (`polls.router.ts`); there is no МД/ОБ dual-wallet sync for poll fees.
+- `polls.cast`: wallet spend uses `MeritResolverService.getWalletCommunityId(community, 'voting')` — global wallet for priority communities and for **`isProject === true`** communities; otherwise the poll’s community id. Quota portion (when allowed) is tracked per poll `communityId` via existing quota helpers.
 - `proposeForward`: `settings.forwardCost` is charged from `GLOBAL_COMMUNITY_ID` (participant flow).
 - `forward` (lead/superadmin direct forward): no forward fee is charged in current implementation.
-- Withdrawals are routed to `GLOBAL_COMMUNITY_ID` by merit resolver (`operationType='withdrawal'`).
-- Current `publications.withdraw` logic does not enforce `settings.allowWithdraw` as a generic gate; it enforces a hard restriction for `future-vision` and permission checks via vote service.
-- Voting/tappalka/investment wallet routing uses merit resolver: global wallet for priority communities, source community wallet for non-priority communities.
+- Merit resolver: `fee` and `withdrawal` always use `GLOBAL_COMMUNITY_ID`. For `voting`, `tappalka_reward`, and `investment`: priority communities (`isPriorityCommunity`) use the global wallet; non-priority communities use `community.id`, **except** `voting` when `community.isProject === true`, which uses the global wallet (see `merit-resolver.service.ts`).
+- `publications.withdraw`: rejects when the post’s community has `settings.allowWithdraw === false`; then applies Birzha source-admin rules or `voteService.canUserWithdraw` for ordinary posts (no `typeTag === 'future-vision'`–only guard in this procedure).
 - Priority community detection: `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` or `isPriority=true`.
 - Voting source restrictions are configured through `votingSettings.currencySource` (with backward-compatible logic in domain services).
 - In several router flows (`publications.create`, `polls.create`, `proposeForward`), debit is attempted after entity creation and deduction errors are swallowed; this is best-effort charging, not strict all-or-nothing transactionality.
@@ -272,7 +271,7 @@ Team communities (`typeTag='team'`):
 - Join via invitation acceptance OR join request approval
 - Invitation flow is implemented (create/accept/reject)
 - Join-request flow is implemented (submit/approve/reject)
-- No dedicated self-leave endpoint is implemented in current API
+- Participants may leave via `communities.leaveCommunity` when eligible (non-priority, non-project local team); leads must promote another lead first
 - Membership removal is available via admin/lead `removeMember`
 ```
 
