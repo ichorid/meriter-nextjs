@@ -67,7 +67,7 @@ Structure and layer overview: see @architecture.mdc.
 ## Before Making Changes
 1. Check existing patterns in similar files
 2. Use shared schemas when shape is reused
-3. Run `pnpm lint` before committing
+3. Run `pnpm lint && pnpm lint:fix` from the repository root before committing (see @pnpm.mdc)
 4. Update both frontend AND backend when changing contracts
 
 ## Related Rules
