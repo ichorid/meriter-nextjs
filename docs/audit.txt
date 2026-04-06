@@ -1,0 +1,63 @@
+Проанализируй файл  @rules/business-glossary.mdc на соответствие текущему коду проекта.
+
+Для каждого утверждения в файле проверь:
+1. Совпадают ли имена полей/настроек с реальными в коде (schemas, types, services)?
+2. Совпадает ли описанная структура проекта с реальной?
+3. Есть ли ссылки на несуществующие файлы или правила?
+4. Какие реализованные фичи не упомянуты?
+5. Какие описанные фичи не реализованы или работают иначе?
+
+Формат ответа:
+❌ НЕ СООТВЕТСТВУЕТ — [что написано] → [что в коде]
+➕ НЕ ОТРАЖЕНО — [что есть в коде, но нет в доке]
+⚠️ УСТАРЕЛО — [что больше не актуально]
+✅ ОК — [что корректно]
+
+———
+
+На основе анализа выше, предложи конкретные правки для  @rules/business-glossary.mdc
+
+Правила:
+- Source of truth = КОД, документация подстраивается под код
+- Сохраняй язык файла (English для .mdc)
+- Сохраняй формат и стиль (frontmatter, заголовки, таблицы)
+- Не добавляй спекуляций — только то, что подтверждено кодом
+
+По этим правкам будет работать агент, который я запущу следующим сообщением, пиши для него. Ничего не упусти, сформулируй так, чтобы была точная реализация нужных правок.
+
+——
+
+Примени все согласованные правки к  @rules/business-glossary.mdc
+
+После внесения изменений:
+1. Убедись что frontmatter (description, globs, alwaysApply) корректен
+2. Убедись что нет битых ссылок на другие файлы или правила
+3. Оформи коммит, сообщение на английском, в origin не пуш.
+
+
+@rules/index.mdc
+@rules/business-glossary.mdc
+
+@rules/architecture.mdc
+@rules/backend.mdc
+@rules/frontend.mdc
+
+@rules/business-merits.mdc
+@rules/business-content.mdc
+@rules/business-users.mdc
+@rules/business-communities.mdc
+@rules/business-tappalka.mdc
+@rules/business-investing.mdc
+@rules/business-projects.mdc
+@rules/business-future-vision.mdc
+@rules/business-mvp.mdc
+
+@rules/frontend-notifications.mdc
+@rules/appversioning.mdc
+@rules/buildcheck.mdc
+@rules/kiss.mdc
+@rules/pnpm.mdc
+@rules/commits.mdc
+@rules/local-dev-linux.mdc
+@rules/local-dev-win.mdc
+@rules/progress-log.mdc
