@@ -24,7 +24,7 @@ Unit of reputation/currency within a community.
 **Properties:**
 - Numeric amounts can be fractional (e.g. tappalka `showCost` uses fractional merits in community settings).
 - **Wallet routing (code):** `MeritResolverService.getWalletCommunityId` — **`fee`** and **`withdrawal`** operations always use the global merit wallet (`GLOBAL_COMMUNITY_ID`). For **`voting`**, **`tappalka_reward`**, and **`investment`**: use the global wallet when `isPriorityCommunity(community)` is true (`typeTag` in `marathon-of-good`, `future-vision`, `team-projects`, `support`, or `isPriority === true`), and when `community.isProject === true` **and** `operationType === 'voting'`; otherwise use `community.id`.
-- **Plain language:** Priority hub communities share the global merit wallet for those operations; local non-priority, non-project communities generally use that community’s wallet id for voting, tappalka reward, and investment (per resolver).
+- **Plain language:** **`fee`** and **`withdrawal`** always use the global merit wallet for **any** community. For **`voting`**, **`tappalka_reward`**, and **`investment`**, priority hubs use the global wallet; non-priority communities use **`community.id`**, except **`voting`** in an **`isProject`** community, which uses the global wallet.
 - Each user holds balances per resolved wallet `communityId`; accumulation and spend follow those rules.
 
 ### Quota
@@ -42,6 +42,9 @@ Daily "burnable" merits. Auto-credited to a separate account, unused quota expir
 ### Wallet
 Accumulated merits of a user in a specific community. Unlike quota — does NOT expire, accumulates.
 
+### Global merit wallet (`GLOBAL_COMMUNITY_ID`)
+Reserved internal community id used when **`MeritResolverService`** routes **`fee`** and **`withdrawal`** (always, for any community) and other operations per **Merit**. Not the same as the MVP label “public group” for the four priority hubs — those are normal **`Community`** records identified by **`typeTag`** / **`isPriority`**. See **@business-communities.mdc**.
+
 ### Fee (Commission)
 **Fees** configured on the community (`settings.postCost`, `settings.pollCost`, `settings.forwardCost`) are debited per router flows; **fee** routing uses the global wallet via the merit resolver (see **Merit**). Post creation may use quota first when **`settings.canPayPostFromQuota`** is true, then wallet, per **Quota** rules.
 
@@ -53,7 +56,7 @@ User who receives merits from withdrawal (and is allowed to withdraw). For a pub
 For **МД (`typeTag === 'marathon-of-good'`) publications with `sourceEntityId` and `sourceEntityType`**, withdrawal authorization and destination wallets follow **`publications.withdraw`** and related services — not only “beneficiary vs author”; see **@business-content.mdc**.
 
 ### Poll
-Separate entity from Publication (own collection `polls`). Has question, options, expiresAt; voting spends merits (weight = amount). No "rating" on poll; neutral votes only. Creation cost: `settings.pollCost`.
+Separate entity from Publication (own collection **`polls`**). Has **`question`**, **`options`**, **`expiresAt`**. A poll does **not** use publication **`metrics.score`** (that field applies to publications). **Casting** a vote (`polls.cast`) requires a **positive** total merit amount (`quotaAmount` + `walletAmount` > 0) — weighted voting on an option, not zero-weight “neutral” casts. Creation cost: **`settings.pollCost`**. Current routers block poll **create** and **cast** in **`typeTag === 'future-vision'`** communities.
 
 ### Post Type
 **In schema / types:** `postType` is `'basic' | 'poll' | 'project' | 'ticket' | 'discussion'`.
@@ -75,7 +78,7 @@ Paginated list of communities via their OB posts: `communities.getFutureVisions`
 **Product / i18n** names for the **Marathon of Good** exchange hub (`typeTag === 'marathon-of-good'`) — weighted posts, tappalka, investing. **Not** stored as a literal `typeTag` value (the tag is `marathon-of-good`). User-facing label vs internal id: **@business-mvp.mdc**, **@frontend.mdc**. Birzha **publications** (feed in МД): **@business-content.mdc**.
 
 ### Community actor; `actingAsCommunityId`
-**Actor = community** when the **lead** publishes on behalf of the team: optional **`actingAsCommunityId`** on **`publications.create`** only; server maps to `sourceEntityId` + `sourceEntityType: 'community'` (field not stored under `actingAsCommunityId`). When `sourceEntityType === 'community'` and `sourceEntityId` are set from this flow, the publication also stores **`authorKind: 'community'`**, **`authoredCommunityId`** (= source community id), and **`publishedByUserId`** (= acting user id). Withdraw/top-up paths may use **`CommunityWallet`**. Rules: **@business-communities.mdc**.
+**Actor = community** when the **lead** publishes on behalf of the team: optional **`actingAsCommunityId`** on **`publications.create`** only; server maps to `sourceEntityId` + `sourceEntityType: 'community'` (field not stored under `actingAsCommunityId`). When `sourceEntityType === 'community'` and `sourceEntityId` are set from this flow, the publication also stores **`authorKind: 'community'`**, **`authoredCommunityId`** (= source community id), and **`publishedByUserId`** (= acting user id). Optional **`postCostFunding`** on create (`source_community_wallet` | `caller_global_wallet`) selects whether **`postCost`** is paid from the source **`CommunityWallet`** or the caller’s global wallet where applicable. Withdraw/top-up paths may use **`CommunityWallet`**. Rules: **@business-communities.mdc**.
 
 ### Permission Rules
 Community configuration: `permissionRules` — role → action → allow/deny, with optional conditions (e.g. `canVoteForOwnPosts`). Controls who can publish, vote, edit, etc. Replaces legacy toggles like canPublish, whoCanVote.
@@ -111,8 +114,9 @@ Community created by platform administration.
 
 **Properties:**
 - All users are members by default (immediately after registration)
-- Priority hub communities (`isPriority` or `typeTag` in `marathon-of-good`, `future-vision`, `team-projects`, `support`) use the **global merit wallet** for fee, withdrawal, and (per resolver) voting/tappalka/investment as in **Merit**
-- Merits earned in one priority hub can be spent in another priority hub in that sense (shared `GLOBAL_COMMUNITY_ID` for those operations)
+- Per **`MeritResolverService`**, **`fee`** and **`withdrawal`** always resolve to **`GLOBAL_COMMUNITY_ID`** for **any** community (not only priority hubs).
+- Priority hub communities (`isPriority` or `typeTag` in `marathon-of-good`, `future-vision`, `team-projects`, `support`) share the global merit wallet for **`voting`**, **`tappalka_reward`**, and **`investment`** as in **Merit** (plus the **`isProject` + `voting`** rule).
+- Merits earned in one priority hub can be spent in another priority hub for those **`voting` / `tappalka_reward` / `investment`** contexts (shared **`GLOBAL_COMMUNITY_ID`**); **`fee`** / **`withdrawal`** already use that wallet for everyone.
 - User CANNOT leave a global community (priority hubs are not leavable via `leaveLocalCommunity`)
 - List of global communities can expand
 
@@ -142,7 +146,7 @@ Canonical rule: **@business-index.mdc** (Forwarding, Transfer with merits). **Tw
 ### Merit Withdrawal
 Transferring merits from post **rating** (`metrics.score`) to a wallet or ledger per rules. Post rating decreases by the withdrawn amount when applicable.
 
-**Default (non–source-linked posts):** effective beneficiary is `publication.beneficiaryId` if set, otherwise `authorId`. **`publications.withdraw`** enforces permissions and `community.settings.allowWithdraw` where applicable (see `publications.router.ts` for special cases such as `future-vision`).
+**Default (non–source-linked posts):** effective beneficiary is `publication.beneficiaryId` if set, otherwise `authorId`. **`publications.withdraw`** enforces **`community.settings.allowWithdraw`** (rejects when `false`) and authorization (effective beneficiary vs МД **`sourceEntity*`** admins per **@business-content.mdc**). There is **no** explicit **`typeTag === 'future-vision'`** check in **`publications.withdraw`**. The deprecated **`votes.withdraw`** procedure rejects withdrawals for **`future-vision`** communities (`votes.router.ts`). Product policy for Future Vision (e.g. no withdrawals) is expected to be enforced via **`settings.allowWithdraw`** and related rules, not via a `typeTag`-only guard in **`publications.withdraw`**.
 
 **МД (`typeTag === 'marathon-of-good'`) with `sourceEntityId` + `sourceEntityType`:** caller authorization and whether merits go to a **personal wallet**, **`CommunityWallet`**, or **project distribution** follow `publications.withdraw` and related services — not the single “effective beneficiary only” rule. See **@business-content.mdc** and **@business-projects.mdc**.
 
