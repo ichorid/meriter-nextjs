@@ -37,7 +37,7 @@ alwaysApply: false
 
 1. **Future Vision hub** — one platform community (`typeTag: 'future-vision'`), bootstrap name/description in `PRIORITY_HUB_BOOTSTRAP`, `settings.allowWithdraw: false` in bootstrap (`platform-bootstrap.constants.ts`). Users see **cards** in the app under the Future Visions route; each card is backed by a **normal team/custom community** plus its **OB post** in the hub.
 
-2. **Source community** — any non-project community that has **`futureVisionText`** (and optional tags/cover). On create/update, the hub holds a **single** OB post per source: `communityId` = hub id, `sourceEntityId` = source community id, `sourceEntityType: 'community'`.
+2. **Source community** — teams (and other non–future-vision communities) that have **`futureVisionText`** (and optional tags/cover). On create/update, the hub holds a **single** OB post per source: `communityId` = hub id, `sourceEntityId` = source community id, `sourceEntityType: 'community'`. **`getFutureVisions` omits** communities with **`isProject === true`** or **`typeTag === 'project'`** (even if an OB mirror exists). **`CommunityService` create** still registers an OB post whenever `futureVisionText` is set and `typeTag !== 'future-vision'` (no `isProject` guard); the idempotent script `api/scripts/create-ob-posts.ts` only backfills **non-project** communities.
 
 3. **Rating / “mining”** — OB posts earn **`metrics.score`** via weighted votes in the **hub** (same mechanics as other publications). There is no separate “mining” flag; emission from **tappalka** depends on **`tappalkaSettings.enabled`** on the community used as tappalka context (the hub is usually kept **without** tappalka in product config; not hard-disabled by `typeTag` in `TappalkaService`).
 
@@ -120,7 +120,7 @@ Lookup: `findFutureVisionPostId(hubId, sourceCommunityId)`.
 ## Voting and onboarding
 
 - **Quota:** `CommunityDefaultsService` sets **`quotaEnabled: false`** for `typeTag === 'future-vision'` merit defaults; `quota-reset.service` forces **effective daily quota 0** for `future-vision` (see @business-merits.mdc).
-- **Vote on OB post:** standard weighted vote in the hub; first successful vote document triggers **`ob_vote_join_offer`** (see [Notifications](#notifications)).
+- **Vote on OB post:** standard vote in the hub (merit weight per vote amounts; neutral text-only allowed when `commentMode` permits zero amount). The **first** vote row for `(userId, publication)` triggers **`ob_vote_join_offer`** (see [Notifications](#notifications)).
 - **Legacy users without hub role:** `users.ensureBaseCommunities` adds roles in base/priority communities (used from Future Visions UI so voting permission works).
 
 ---
@@ -146,7 +146,7 @@ Publishing **as** a community (`actingAsCommunityId`) sets `sourceEntity*` on ne
 
 | Type | When |
 |------|------|
-| `ob_vote_join_offer` | User casts a **weighted** vote on an OB post (`community` = hub, `sourceEntityType === 'community'`) and **vote count** for `(userId, publicationId)` is **1** (first vote on that post) |
+| `ob_vote_join_offer` | After **`VoteService`** creates a vote on an OB post (`publication` in hub, `sourceEntityType === 'community'`, `sourceEntityId` set), **`Vote`** count for `(userId, publicationId)` is **1** (first vote on that post). **No** `totalAmount > 0` check — a text-only neutral vote counts if the router allows it. |
 
 Metadata keys used for redirects: `communityId` (source), `publicationId`, `publicationCommunityId`, `sourceCommunityName` (see `notification.schema.ts` / `NotificationService`).
 
