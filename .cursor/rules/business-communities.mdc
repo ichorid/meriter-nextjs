@@ -26,7 +26,7 @@ Communities that are treated as priority context. Includes:
 
 **Characteristics:**
 - Users are auto-added to base priority communities by backend sync logic.
-- Priority communities use global merit context for voting, post investments, and tappalka rewards (see `MeritResolverService`); merits withdrawn from posts credit the beneficiary via the global wallet context.
+- Priority communities use global merit context for voting, post investments, and tappalka rewards (see `MeritResolverService`). For ordinary posts, merits withdrawn from post rating credit the effective beneficiary via the global wallet; **МД Birzha** posts with `sourceEntityId` / `sourceEntityType` use `CommunityWallet` / cooperative rules instead (see **Withdraw** under “Community as actor” and @business-content.mdc).
 - Fee routing is operation-specific (see "Action Payment Rules" below).
 - Priority hubs cannot be left via `communities.leaveCommunity` (see "Member Join Logic" / `leaveLocalCommunity`).
 
@@ -36,7 +36,7 @@ Includes platform base communities and other non-team communities.
 
 **Important implementation facts:**
 - Priority base communities are ensured by backend bootstrap logic.
-- `isPriority` can only be set by superadmin.
+- On `communities.create` / `communities.update`, only **superadmin** may set `isPriority`; startup `ensure*` / bootstrap may also set or repair it.
 - Reserved internal `global` community (`GLOBAL_COMMUNITY_ID`) is system-managed, uses `typeTag: 'global'`, and is excluded from user-facing community lists.
 - `typeTag: 'global'` is reserved for internal global-merit storage community.
 - Backend enforces reserved creation path: `typeTag: 'global'` is only valid for the reserved `GLOBAL_COMMUNITY_ID`.
@@ -104,7 +104,7 @@ Not a separate community **type** — a **mode** on `publications.create`:
 
 Optional **`postCostFunding`** on create (when publishing as a community source to Birzha): `source_community_wallet` (default) debits **`postCost` from that community’s `CommunityWallet.balance`**; `caller_global_wallet` charges the caller’s global wallet instead.
 
-**Withdraw** from a **МД** post that is a Birzha source post (`postCommunity.typeTag === 'marathon-of-good'` and publication has `sourceEntityType === 'community'` and `sourceEntityId`): caller must be **admin/lead of `sourceEntityId`** (same as project-source permission pattern); **author share** (after investor slice if any) is **`CommunityWallet.deposit(sourceEntityId, authorShare, 'publication_withdrawal')`** — merits accumulate on the **source community wallet**, not the user’s personal wallet. Details: @business-content.mdc, @business-merits.mdc.
+**Withdraw** from a **МД** post that is a Birzha source post (`postCommunity.typeTag === 'marathon-of-good'` and publication has `sourceEntityId` with `sourceEntityType === 'project'` or `'community'`): caller must be **admin/lead of `sourceEntityId`** on that source entity; **author share** (after investor slice if any) is **`CommunityWallet.deposit(sourceEntityId, authorShare, 'publication_withdrawal')`** — merits accumulate on the **source entity’s `CommunityWallet`**, not the user’s personal wallet. Cooperative distribution beyond this path: @business-projects.mdc. Details: @business-content.mdc, @business-merits.mdc.
 
 ---
 
@@ -226,7 +226,8 @@ If needed in future, treat this as planned work and define explicit API/storage 
 - `publications.withdraw`: rejects when the post’s community has `settings.allowWithdraw === false`; then applies Birzha source-admin rules or `voteService.canUserWithdraw` for ordinary posts (no `typeTag === 'future-vision'`–only guard in this procedure).
 - Priority community detection: `typeTag in ['marathon-of-good', 'future-vision', 'team-projects', 'support']` or `isPriority=true`.
 - Voting source restrictions are configured through `votingSettings.currencySource` (with backward-compatible logic in domain services).
-- In several router flows (`publications.create`, `polls.create`, `proposeForward`), debit is attempted after entity creation and deduction errors are swallowed; this is best-effort charging, not strict all-or-nothing transactionality.
+- In `publications.create` and `polls.create`, fee debit is attempted **after** the publication/poll record is created; errors in deduction may be swallowed (best-effort, not all-or-nothing).
+- In `proposeForward`, forward-cost debit from the global wallet is attempted **before** the forward-proposal fields are persisted; debit errors may be swallowed while the proposal update still runs.
 
 ### Forwarding Between Communities
 
@@ -257,7 +258,7 @@ Canonical forward rule (standard vs project, transfer with merits): @business-in
 3. Apply base settings payload
 4. Assign creator as lead and member
 5. Create creator wallet in community context
-6. `isPriority` can be set only by superadmin
+6. `isPriority` is set only by superadmin on `communities.create` / `update` (bootstrap may set it)
 7. Reserved internal `global` community is system-managed
 ```
 
