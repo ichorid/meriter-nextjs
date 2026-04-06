@@ -43,9 +43,12 @@ Main content type on the platform. All other types inherit from base post.
 | authorId | Creator user id |
 | communityId | Community where post is published |
 | beneficiaryId | Optional; effective beneficiary for withdrawal (defaults to author when unset) |
+| sourceEntityId / sourceEntityType | Optional; `'project' \| 'community'` — Birzha source binding, future-vision OB mirror, etc. Set from create flow (e.g. lead **acting as** community: see below) |
 | metrics | Object including `score` (current merit total on post), `upvotes`, `downvotes`, `commentCount` |
 | lifetimeCredits | Total merits ever credited to this post (votes, author top-up, tappalka wins); never decreased; used for closing summary |
 | status, closedAt, closeReason | Lifecycle: active/closed, close time, reason (`manual`, `ttl`, `inactive`, `negative_rating`) |
+
+**Publishing as a community (actor):** create input may include **`actingAsCommunityId`** (only on `publications.create`). Backend checks lead role, then stores **`sourceEntityId` / `sourceEntityType: 'community'`** on the publication. The field `actingAsCommunityId` is not stored on the document. Optional **`postCostFunding`** controls whether **`postCost`** is paid from that community’s **CommunityWallet** or from the caller’s global wallet when applicable. Canonical community-actor + wallet rules: @business-communities.mdc.
 
 URL for sharing is derived from publication id; there is no stored `permalink` field. Comments and votes are stored in separate collections (votes, comments), not embedded in the publication document.
 
@@ -88,9 +91,9 @@ Conceptually similar to base post (content with time limit, no own rating, neutr
 - Rating CAN be negative.
 
 ### Merit Withdrawal from Post
-- Author can withdraw merits from post rating to their wallet
-- Upon withdrawal, post rating (metrics.score) decreases
-- Withdrawal availability determined by community settings (`settings.allowWithdraw`)
+- Default path: **effective beneficiary** withdraws from post rating to **personal wallet** (`processWithdrawal`), subject to `settings.allowWithdraw`.
+- **Birzha source posts in МД** (`publication.community` = marathon-of-good, `sourceEntityType` is `'project'` or `'community'`, `sourceEntityId` set): caller must be **lead/superadmin of `sourceEntityId`** (not the effective-beneficiary rule). After investor distribution, **author share** routes to **`CommunityWallet.deposit`** on `sourceEntityId` when `sourceEntityType === 'community'`; **`project`** branch uses `ProjectDistributionService` — @business-projects.mdc.
+- Upon withdrawal, post rating (metrics.score) decreases by the withdrawn amount in all cases above.
 
 ### Negative Rating Consequences
 - If rating (metrics.score) goes negative, the post can be closed with `closeReason: 'negative_rating'`.
@@ -289,36 +292,28 @@ Teammates = members of same local communities as voter.
 
 ---
 
-## Tappalka and Posts
+## Tappalka and posts
 
-### Participation Conditions
-1. `tappalkaSettings.enabled = true`
-2. Post rating ≥ `tappalkaSettings.minRating` (default 1)
-3. Post rating ≥ author's stop-loss setting
-4. Post not closed
+Canonical rules (eligibility, show-cost priority including `sourceEntityId` / `CommunityWallet`, stop-loss, `noAuthorWalletSpend`, win reward): **@business-tappalka.mdc**. tRPC: `tappalka.getPair`, `tappalka.submitChoice`, `tappalka.getProgress`, `tappalka.markOnboardingSeen`.
 
-### Exit from Tappalka
-Post stops being shown if:
-- Rating drops below minimum threshold
-- Rating drops below author's stop-loss
-- No funds to pay for showing (neither on post nor from author)
-- If the post has `noAuthorWalletSpend: true`, the author wallet is not used for show cost; when all other sources are exhausted, the post stops being shown
+---
 
-### Stop-Loss
-- Set by post owner
-- Minimum rating threshold below which post not shown
-- Protection from "draining" merits on shows of losing post
+## Exchange (Birzha) publications
 
-### IMPORTANT: Cannot Disable Tappalka Show
-- Author **CANNOT** choose "don't show in tappalka"
-- Only ways to remove post from tappalka:
-  1. Set high stop-loss
-  2. Set `noAuthorWalletSpend = true` (post exits once pool and rating down to stop-loss are exhausted; author wallet is not charged for shows)
-  3. Close post and withdraw all merits
+**Product “Биржа” / exchange feed** = posts whose **`communityId`** is the **Marathon of Good** hub (`typeTag === 'marathon-of-good'`). The hub is resolved in code by that tag (stable bootstrap id in DB — not a separate URL scheme; user-facing names vs `typeTag`: @business-mvp.mdc, @frontend.mdc).
 
-### What Post Gets in Tappalka
-- When chosen by user: +`tappalkaSettings.winReward` (emission, not from user's wallet)
-- Each show charges `tappalkaSettings.showCost` per post (winner and loser)
+### Creating a Birzha post (sources)
+
+| Source | tRPC (typical) | `postCost` / wallet |
+|--------|----------------|---------------------|
+| **Cooperative project** (`isProject`) | `project.publishToBirzha` | Debited from the **project’s `CommunityWallet.balance`** (atomic); insufficient balance → error. Flow sets `sourceEntityType: 'project'`, `sourceEntityId` = project id. Caller: lead or superadmin (`isUserAdmin`). Full rules: @business-projects.mdc. |
+| **Eligible non-project community** (team/custom; not ineligible `typeTag` list) | `communities.publishToBirzha` | `postCostFunding` chooses **`source_community_wallet`** vs **`caller_global_wallet`** for paying **`settings.postCost`** of the МД publication. See `TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE` in code. |
+
+Implementation detail: both paths create a **Publication** in the МД community via `PublicationService` helpers (e.g. `publishSourceEntityToBirzha`); **`publication.communityId`** is always the **marathon-of-good** community, while **`sourceEntity*`** points back to the project or community actor.
+
+### Investing on Birzha posts
+
+If **`settings.investingEnabled`** is true on the МД community and the post enables investing, the **same investment contract and pool rules** apply as for any investment post — @business-investing.mdc. Investor share is taken **before** cooperative routing to `ProjectDistributionService` or `CommunityWallet` on withdraw/close (@business-projects.mdc).
 
 ---
 
@@ -331,9 +326,7 @@ Post stops being shown if:
 - If `settings.requireTTLForInvestPosts = true`, investment-enabled posts must have TTL.
 
 ### During Tappalka Shows
-- For investment-enabled posts, show-cost deduction priority is:
-  `investmentPool` → `post rating` (respecting stop-loss) → `author wallet`.
-- If all sources are exhausted, post stops participating in tappalka.
+- Show-cost deduction order (pool, rating, entity wallet vs author wallet): **@business-tappalka.mdc** (same flow for investment-enabled posts; Birzha posts with `sourceEntityId` use source `CommunityWallet` before author wallet where applicable).
 
 ### On Withdraw / Close
 - Withdrawal distributes by contract percent:
@@ -343,48 +336,18 @@ Post stops being shown if:
 
 ---
 
-## Project Community vs Project Post Type
+## Projects community vs cooperative project
 
-### Projects Community (exists now)
-- `Projects` is an existing priority/global community (`typeTag='team-projects'`).
-- It supports publication flow, tappalka participation, and special transfer to МД.
-
-### Project Post Type (v2.0 planned)
-
-*Deferred to version 2.0 — requires verification mechanics development.*
-
-### Concept
-Assumes collecting and attracting resources for implementing a specific idea.
-
-### Differences from Base Post
-- Additional "resources" fields: money, help, etc. — everything needed for implementation
-- Filled by user at creation
-
-### Planned Logic (v2.0+)
-
-**Project Statuses:**
-- Idea
-- In Progress
-- Completed
-
-**Completion Verification:**
-- Author clicks "project completed"
-- Project goes to completed listing
-- Verifiers (schools, NGOs, trusted people) confirm
-- Verifiers bear responsibility in amount of merits on post
-- On fraud — fine deducted from their account
-
-**Current Solution:**
-Use "base post + poll" combination, provide place for resource list in post.
+- **Global “Projects” hub** (`typeTag === 'team-projects'`): idea feed, tappalka, forward to МД — @business-mvp.mdc.
+- **Cooperative project communities** (`isProject`, tickets, Birzha, `CommunityWallet`): @business-projects.mdc.
+- Standalone legacy **`postType === 'project'`** (non–project-community posts) is feature-flagged in web (`ENABLE_PROJECT_POSTS`, typically off); product flows use **cooperative projects** or base posts instead.
 
 ---
 
 ## Future Features
 
 ### Comments on Comments
-- Comments on comments will work same as comments on posts (future).
-- Comments will have their own merit rating.
-- Withdrawal from own comment/vote: see Comment Merit Withdrawal below (implemented).
+- Threaded replies exist on comments; deeper nested UX may evolve. Comment merit rating and withdrawal: **Comment Merit Withdrawal** below.
 
 ### Comment Merit Withdrawal
 - Withdrawal of merits from one's own comment (vote) is implemented: `votes.withdrawFromVote` procedure in the votes router; authorization is enforced in the vote service (`canUserWithdraw` for targetType `'vote'`). If a comment (vote) is downvoted to negative score, same withdrawal/beneficiary rules apply as for posts; automatic 24h deduction from author wallet is not implemented.

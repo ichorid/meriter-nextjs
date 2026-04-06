@@ -35,6 +35,39 @@ Full monorepo and layer overview: @architecture.mdc.
 - `__tests__/` — tests
 - Route handlers are also used in App Router (`app/**/route.ts`) for auth link flows.
 
+## Meriter primary navigation
+
+Canonical route helpers: `web/src/lib/constants/routes.ts`. There is **no** dedicated static URL such as `/meriter/birzha`; the МД («Биржа») hub is always `/meriter/communities/{communityId}` with `communityId` resolved at runtime.
+
+### Bottom bar (`web/src/components/organisms/BottomNavigation.tsx`)
+
+Shown on small viewports (`lg:hidden`). Tab order (left → right):
+
+| # | Target | Path pattern | Label source |
+|---|--------|--------------|--------------|
+| 1 | Future Visions feed | `/meriter/future-visions` | `common.futureVisions` (e.g. RU «Образы будущего», EN «Future Visions») |
+| 2 | МД hub (main weighted feed / «Биржа») | `/meriter/communities/{id}` — `id` from `useUserCommunities()` where `typeTag === 'marathon-of-good'`; if missing, tab falls back to `/meriter/profile` | `common.marathonOfGoodLabel` (e.g. RU «Биржа», EN default «Exchange») |
+| 3 | Projects catalog | `/meriter/projects` | `common.projects` |
+| 4 | Notifications | `/meriter/notifications` | `common.notifications` |
+| 5 | Profile | `/meriter/profile` | `common.myProfile` |
+
+Long-press on Profile opens a small menu (About, Support if `typeTag === 'support'`, Favorites, Log out).
+
+### Left sidebar (`web/src/components/organisms/VerticalSidebar.tsx`)
+
+Desktop / large layout: same **three primary hubs** (Future Visions → МД → Projects), then Notifications, Favorites, etc. For the МД item, the link is `routes.community(marathon.id)`. When the sidebar is **expanded**, the МД row shows **`marathon.name`** from the API (community document), **not** `marathonOfGoodLabel` — so the visible title can match the long product name (e.g. «Биржа социальных инвестиций») if stored on the community.
+
+### Global «Биржа» / МД feed: user-facing copy vs identifiers
+
+Use this when wiring UI or docs so marketing names are not confused with `typeTag` / routes.
+
+| User-facing (what players see) | Internal / technical (source of truth in code) |
+|----------------------------------|-----------------------------------------------|
+| RU short tab: «Биржа» (`common.marathonOfGoodLabel`) | Community `typeTag`: **`marathon-of-good`** |
+| RU long form in help / projects copy: «Биржа Социальных Инвестиций» | Same community; display name may come from **`community.name`** (DB) or i18n strings — not a separate entity |
+| EN tab default: «Exchange» | Bootstrap seed name for the hub is set in API (`PRIORITY_HUB_BOOTSTRAP` / `ensureBaseCommunities`); still keyed by **`marathon-of-good`** |
+| «Лента» МД = weighted posts inside that community | **No** separate `feed` route key in the router; it is the **community page** for that id: `/meriter/communities/{marathon-of-good-id}` |
+
 ## Notifications list UI
 
 Subtitle typography, stacked lines, and profile/community/post links: @frontend-notifications.mdc (`NotificationsClient`, `InfoCard`).

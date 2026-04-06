@@ -11,6 +11,8 @@ alwaysApply: false
 
 > Complete rules for community types, settings, and interactions.
 
+**Future Vision hub, OB feed, `futureVision*` fields:** @business-future-vision.mdc (avoid duplicating here).
+
 ---
 
 ## Community Types
@@ -89,6 +91,20 @@ User-created team communities (`typeTag: 'team'`).
 
 - **Standard project:** `parentCommunityId` links to the parent team/community. Parent lead may receive a `project_created` notification when a different user creates the project under that parent.
 - **Personal project:** `isPersonalProject === true`, no `parentCommunityId`; the logical owner is `founderUserId`. No parent-community notification on create. Invite links do not embed a parent team; accepting an invite adds the user only to the project, not to a parent community.
+
+Full cooperative-project rules (Birzha `sourceEntityType === 'project'`, distribution, tickets): @business-projects.mdc.
+
+### Community as actor (lead publishing)
+
+Not a separate community **type** — a **mode** on `publications.create`:
+
+| Input (tRPC / DTO) | Server behavior |
+|--------------------|-----------------|
+| `actingAsCommunityId` | If set: caller must be **lead** of that community (`userCommunityRoleService.getRole` → `role === 'lead'`). Field is **not** persisted; mapped to `sourceEntityId = actingAsCommunityId`, `sourceEntityType = 'community'`, then stripped from the create payload. |
+
+Optional **`postCostFunding`** on create (when publishing as a community source to Birzha): `source_community_wallet` (default) debits **`postCost` from that community’s `CommunityWallet.balance`**; `caller_global_wallet` charges the caller’s global wallet instead.
+
+**Withdraw** from a **МД** post that is a Birzha source post (`postCommunity.typeTag === 'marathon-of-good'` and publication has `sourceEntityType === 'community'` and `sourceEntityId`): caller must be **admin/lead of `sourceEntityId`** (same as project-source permission pattern); **author share** (after investor slice if any) is **`CommunityWallet.deposit(sourceEntityId, authorShare, 'publication_withdrawal')`** — merits accumulate on the **source community wallet**, not the user’s personal wallet. Details: @business-content.mdc, @business-merits.mdc.
 
 ---
 
@@ -275,15 +291,3 @@ Team communities (`typeTag='team'`):
 - `votingRestriction` is normalized to `any | not-same-team` in update/validation flow
 - Deprecated `tappalkaOnlyMode` maps to `commentMode='neutralOnly'` for backward compatibility
 ```
-
----
-
-## Future Features (v2.0+)
-
-Status: planned only (not implemented in current codebase).
-
-### Community Wallet
-Local community will be able to act as participant in global communities:
-- Admin posts on behalf of community
-- Community receives and spends merits
-- Separate balance from members' personal wallets

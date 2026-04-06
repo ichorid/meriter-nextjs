@@ -74,7 +74,9 @@ Tappalka — main method of merit emission and earning for users.
 
 ### Show Cost
 - Each post show in tappalka costs **0.1 merit**
-- Deduction priority: **investmentPool → post rating → author wallet**
+- Deduction priority (after pool and rating):
+  - **Default (no `sourceEntityId`):** **investmentPool → post rating (down to `stopLoss`) → author wallet** (unless `noAuthorWalletSpend`)
+  - **Birzha / exchange posts tied to a project or community source (`sourceEntityId` set):** **investmentPool → post rating → CommunityWallet of the source entity** (project/community wallet). If the remainder cannot be covered by that wallet, the post **exits tappalka**; the author’s personal wallet is **not** used for that remainder (no fallback to author after the entity wallet step).
 - Deducted from **BOTH** posts in pair (winner AND loser)
 
 ---
@@ -91,7 +93,7 @@ Tappalka — main method of merit emission and earning for users.
 Post stops being shown if:
 - Rating drops below minimum threshold
 - Rating drops below author's stop-loss
-- No funds for show payment: `investmentPool` and post rating (down to `stopLoss`) exhausted, and either author wallet is not used for show cost (`noAuthorWalletSpend === true`) or author wallet is insufficient
+- No funds for show payment: `investmentPool` and post rating (down to `stopLoss`) exhausted, and for posts **with** `sourceEntityId` the source **CommunityWallet** is insufficient; or for posts **without** `sourceEntityId`, either author wallet is not used (`noAuthorWalletSpend === true`) or author wallet is insufficient
 
 ### Stop-Loss
 - Set by post owner
@@ -115,9 +117,8 @@ Tappalka category filtering is backed by `tappalkaSettings.categories`:
 - non-empty array means only posts in those category IDs are eligible
 - user-side selection should be intersected with community-level `tappalkaSettings.categories`
 
-### By Content Type (Planned)
-- Current code does **not** filter by `postType`; any publication in the collection that meets other conditions can be selected (including polls if they have the required fields).
-- Planned: base posts with base posts, projects with projects; polls excluded from tappalka.
+### By content type
+- `getEligiblePosts` does **not** filter by `postType`; documents that satisfy the query (including polls if they match fields) can appear in pairs.
 
 ---
 
@@ -141,9 +142,8 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 - User NEVER sees their own posts in tappalka
 - Excludes possibility of "boosting" own posts
 
-### Show Cost
-- Both posts pay for show, even loser
-- Makes creating "junk" posts for participation unprofitable
+### Per-show cost (abuse angle)
+- Both posts in the pair pay each round (see [Show Cost](#show-cost) above), which limits junk participation.
 
 ### Minimum Rating
 - New posts without merits don't get into tappalka immediately
@@ -154,11 +154,11 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
 ## Implementation Details (Current)
 
 ### Onboarding
-- Progress record has `onboardingSeen`; community `tappalkaSettings.onboardingText` is optional. API: `markOnboardingSeen(communityId)` sets onboardingSeen for (userId, communityId). Frontend uses onboarding flow and progress.onboardingSeen.
+- Progress record has `onboardingSeen`; community `tappalkaSettings.onboardingText` is optional. **tRPC:** `tappalka.markOnboardingSeen` sets onboarding for `(userId, communityId)`. Frontend uses onboarding flow and `progress.onboardingSeen`.
 
 ### Notifications
-- When show-cost deduction depletes investment pool and cost remains, author receives `investment_pool_depleted` notification.
-- When post exits tappalka (noAuthorWalletSpend and insufficient pool/rating), author receives notification (post exited tappalka, no funds for shows).
+- When show-cost deduction leaves remainder after the investment pool, author may receive `investment_pool_depleted` (pool depleted; shows continue from rating/wallet/entity wallet per rules).
+- When a post exits tappalka (e.g. `noAuthorWalletSpend`, or insufficient funds including source `CommunityWallet` for `sourceEntityId` posts), author may receive the same notification type with an “exited tappalka” style message.
 
 ---
 
@@ -194,7 +194,7 @@ Logic: tappalka becomes main emission source, quota no longer needed to ensure a
    - authorId != currentUser
    - deleted !== true, deletedAt null
    - status !== 'closed'
-   - at least one of post's categories is in tappalkaSettings.categories (if categories non-empty; else no category filter). Implementation: post has categories: string[]; query uses categories: { $in: categories }.
+   - if `tappalkaSettings.categories` is non-empty: post `valueTags` or `categories` intersects that list (implementation uses `$in` on both).
    - eligible to pay showCost: (investmentPool >= showCost) OR (metrics.score >= max(minRating, showCost)) OR (investmentPool + max(0, metrics.score - stopLoss) >= showCost)
 2. Random select 2 posts from result
 3. Return pair to user (sessionId generated per pair; not validated on submit)
@@ -206,8 +206,9 @@ Note: There is no global filter on metrics.score >= minRating. A post with ratin
 For each post in pair:
 1. Deduct from `investmentPool` (up to remaining cost)
 2. If insufficient, deduct from post rating (metrics.score), not below post `stopLoss`
-3. If still insufficient and post `noAuthorWalletSpend !== true`, deduct from author wallet (community resolved via merit resolver, e.g. global for priority communities)
-4. If noAuthorWalletSpend or all sources insufficient, post is excluded from future selections; author may be notified when pool depleted or post exits tappalka
+3. If still insufficient and post has `sourceEntityId`, deduct remainder from that entity’s CommunityWallet (`tappalka_show_cost`). If wallet insufficient, post exits tappalka (no author wallet for remainder)
+4. If still insufficient and no `sourceEntityId`, and `noAuthorWalletSpend !== true`, deduct from author wallet (community resolved via merit resolver, e.g. global for priority communities)
+5. If noAuthorWalletSpend (no source path) or all sources insufficient, post is excluded from future selections; author may be notified when pool depleted or post exits tappalka
 ```
 
 ### Win Processing
@@ -229,26 +230,11 @@ Operations in submitChoice are sequential; no single database transaction is use
 ```
 
 ### SessionId
-- `sessionId` is generated per pair in getPair and returned to client; it is **not** validated on submitChoice. Replay or reuse of sessionId is not enforced.
+- `sessionId` is generated per pair in `tappalka.getPair` and returned to the client; it is **not** validated on `tappalka.submitChoice`. Replay or reuse of `sessionId` is not enforced.
 
 ---
 
-## Metrics to Track (Planned)
+## Observability (current)
 
-The following are not fully implemented in current code. Implemented: per-user progress has `comparisonCount`, `totalComparisons`, `totalRewardsEarned` (TappalkaProgress); on post close, `closingSummary.spentOnShows` is set from pool difference.
-
-### Per Community (planned)
-- Total comparisons per day
-- Total emission per day
-- Average post participation rate
-- Stop-loss trigger frequency
-
-### Per Post (planned)
-- Show count, win count, win rate
-- Merits earned from tappalka (lifetimeCredits includes them)
-- Merits spent on shows (only pool portion in closingSummary.spentOnShows at close)
-
-### Per User (partially implemented)
-- Comparisons completed: `TappalkaProgress.comparisonCount`, `totalComparisons`, `totalRewardsEarned`
-- Merits earned from tappalka participation: via totalRewardsEarned and wallet
-- Tappalka session duration: not implemented
+- **User:** `TappalkaProgress` — `comparisonCount`, `totalComparisons`, `totalRewardsEarned`.
+- **Post close:** `closingSummary.spentOnShows` reflects pool spend; full show-cost split (rating / entity wallet) is not itemized there.

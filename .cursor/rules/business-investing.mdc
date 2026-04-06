@@ -135,10 +135,24 @@ Investor's share = their total investment / sum of ALL investments
 
 1. Author initiates withdrawal (partial or full amount from rating)
 2. `investorShare = withdrawAmount × contractPercent%` — distributed among investors proportionally
-3. `authorShare = withdrawAmount − investorShare` — goes to author's wallet
+3. `authorShare = withdrawAmount − investorShare` — goes to **author's personal wallet** **except** for **`sourceEntityType === 'project'`** (Birzha post from a cooperative project) — see [below](#project-source-birzha-posts-sourceentitytype--project).
 4. Post rating decreases by withdrawal amount
 5. All investors receive notifications with their share
 6. Investor shares are rounded to 0.01; any remainder goes to the author.
+
+### Project-source Birzha posts (`sourceEntityType === 'project'`)
+
+Applies when the publication was created from a **cooperative project** onto the exchange (`sourceEntityId` = project id, `sourceEntityType: 'project'`). **Investor contract math is unchanged** (steps 1–2 above: pool slice, proportional investor payouts).
+
+**Order of handling (withdraw and close):**
+
+1. **Investors** — `investmentService` / `distributeOnWithdrawal` (manual withdraw) or post-close investment handling: investor share of the amount, proportional among investors.
+2. **`authorShare`** — remainder after the contract slice; **not** `processWithdrawal` to the post author's wallet.
+3. **Cooperative routing** — `authorShare` is passed to **`ProjectDistributionService.distribute(sourceEntityId, authorShare)`** (founder/team split per project shares; `CommunityWallet.balance` untouched for this leg; see @business-projects.mdc).
+
+**Close** (`publications.close` → `PostClosingService`): same sequence after `handlePostClose` — investor distribution first, then **`ProjectDistributionService`** for the author portion instead of crediting the author wallet.
+
+**Caller permission** on `publications.withdraw` for these posts: **lead of the project** (`sourceEntityId`), not the effective-beneficiary rule — @business-projects.mdc.
 
 ### Distribution Example
 
@@ -153,7 +167,7 @@ Investor's share = their total investment / sum of ALL investments
   - Vasya: 100 × 50% = 50 merits
   - Petya: 100 × 25% = 25 merits
   - Sasha: 100 × 25% = 25 merits
-- To author: 500 − 100 = 400 merits
+- To author: 500 − 100 = 400 merits (personal wallet — **not** for `sourceEntityType === 'project'`; use [subsection above](#project-source-birzha-posts-sourceentitytype--project))
 
 ### Author's Own Merits in the Pool
 
@@ -399,8 +413,8 @@ Investment-related tRPC procedures:
 | `investments` | `getByPost` | List investments for a post with share percentages |
 | `investments` | `getByUser` | List current user's investments across posts |
 | `investments` | `getInvestmentBreakdown` | Public breakdown: contract, pool, investor list with user info |
-| `users` | `getMyPortfolio` | Current user's portfolio (stats + paginated items, SROI in stats) |
-| `users` | `getInvestmentDetails` | Details for one post where current user is investor (earningsHistory, etc.) |
+| `users` | `myInvestments` | Current user's investments list (portfolio-style stats + items in code) |
+| `users` | `investmentDetails` | One post where the current user is an investor (earnings history, etc.) |
 
 ---
 
@@ -410,7 +424,7 @@ Investment-related tRPC procedures:
 Authors will be able to include volunteers (people who helped with the project) in the merit distribution. **Strictly future** — not designed or implemented now.
 
 ### Investor Dashboard
-Basic portfolio list and investment details are implemented: `users.getMyPortfolio` (stats include totalInvested, totalEarned, sroi, activeCount, closedCount), `users.getInvestmentDetails`; profile investments page. Full dashboard with per-post SROI and richer aggregated views is future.
+Portfolio-style list and per-post details are implemented: `users.myInvestments`, `users.investmentDetails`; profile investments UI. Richer dashboards (extra aggregates, per-post SROI views) may extend this later.
 
 ### Automatic Reinvestment
 Auto-invest earned profits back into posts.

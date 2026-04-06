@@ -1,0 +1,287 @@
+---
+description: Cooperative projects (isProject communities), Birzha source posts, tickets, CommunityWallet, and distribution. Apply when working with project.*, ticket.*, sourceEntityType, or project UI.
+globs:
+  - "**/project*.ts"
+  - "**/ticket*.ts"
+  - "**/community-wallet*.ts"
+  - "**/project-distribution*.ts"
+alwaysApply: false
+---
+
+# Projects (Cooperative) — Business Logic
+
+> **Canonical order of truth:** current code + `libs/shared-types` + Mongoose `*.schema.ts` + tRPC routers → sprint reports / MASTER-PRD → other drafts. PRD may lag minor post-release changes.
+>
+> This file is the **single domain source** for agents/development: invariants, flows, boundaries, and **procedure names**. It does not duplicate full PRD text.
+
+---
+
+## Navigation
+
+| Section | Topics |
+|---------|--------|
+| [Concept](#concept) | What a “project” is in code vs global `team-projects` community |
+| [Terms](#terms) | Source entity, cooperative shares, tickets |
+| [Data model](#data-model) | Community, publication, wallet, membership |
+| [Creation](#creation-modes) | Parent, new community, personal project |
+| [Lifecycle](#lifecycle) | Active → archived, close project |
+| [Permissions](#permissions) | Lead, member, withdraw vs PRD wording |
+| [Economy](#economy) | CommunityWallet, publishToBirzha, tappalka, top-up |
+| [Tickets](#tickets-and-discussions) | postType, statuses, neutral tickets |
+| [Withdraw / close / investing](#withdraw-close-and-investing) | `sourceEntityType='project'`, `ProjectDistributionService` |
+| [Cross-domain](#cross-domain-links) | investing, communities, content, merits |
+| [Future visions & context](#future-visions-and-context-switch-brief) | ОБ posts, `actingAsCommunityId` (pointer) |
+| [Notifications](#notifications) | Types in code |
+| [UI notes](#ui-behavior-notes) | Routes, flags |
+| [API surface](#api-surface-trpc) | `project.*`, `ticket.*`, related |
+
+---
+
+## Concept
+
+**Cooperative project** — a **community** row with `isProject === true` and `typeTag === 'project'` (both are used in code; `isProjectCommunity()` treats either flag as a project).
+
+This is **not** the same entity as the global MVP community **“Projects”** (`typeTag === 'team-projects'`), which is a normal feed for ideas. Cooperative projects are first-class communities with their own `CommunityWallet`, tickets, and Birzha integration.
+
+**Unified source mechanism (publications):** optional `sourceEntityId` + `sourceEntityType` (`'project' | 'community'`). Used for Birzha posts created from a project, future-vision ОБ posts, and context-switch posts.
+
+---
+
+## Terms
+
+| Term | Meaning |
+|------|---------|
+| **Project community** | `Community` document with `isProject` / `typeTag 'project'` |
+| **Birzha / МД** | Marathon of Good — target community for `publishToBirzha` (resolved via `typeTag === 'marathon-of-good'`) |
+| **CommunityWallet** | Per-project (or per eligible source) wallet: `balance` (operational), `totalReceived`, `totalDistributed` (transit accounting for distributions) |
+| **Author share** | After investor slice (if any), the remainder of a withdrawal/close amount attributed to the “author” path — for project-source posts routed to `ProjectDistributionService`, not to the author’s personal wallet |
+| **Effective beneficiary** | `beneficiaryId ?? authorId` — used where beneficiary rules apply; **withdraw permission** for project Birzha posts is **not** the beneficiary (see [Permissions](#permissions)) |
+| **Internal merits share** | Cooperative share denominator from `TicketService.getProjectShares` (active + frozen) |
+
+---
+
+## Data model
+
+### Community (project-specific)
+
+Key fields (non-exhaustive; see `community.schema.ts`):
+
+| Field | Role |
+|-------|------|
+| `isProject`, `typeTag: 'project'` | Identify project community |
+| `projectDuration`, `projectStatus` | Lifecycle |
+| `founderUserId`, `founderSharePercent`, `investorSharePercent` | Cooperative + default Birzha invest % |
+| `parentCommunityId` | Link to parent (ОБ / team); optional |
+| `communityWalletId` | Wallet document |
+| `futureVisionText`, `futureVisionTags`, `futureVisionCover` | Parent ОБ-style metadata where used |
+| `rejectionMessage` | Neutral ticket rejection copy |
+| `investingEnabled` (optional) | Project-level investing toggle where applicable |
+
+### Publication (inside project or Birzha-bound)
+
+| Field | Role |
+|-------|------|
+| `postType` | In a project community: `'ticket' \| 'discussion'` required (enforced when `community.isProject`); elsewhere includes `basic`, `poll`, legacy `project` |
+| `ticketStatus`, `isNeutralTicket`, `applicants`, `deadline` | Ticket workflow |
+| `sourceEntityId`, `sourceEntityType` | Link to project or community for Birzha / context posts |
+| `beneficiaryId` | Optional; immutable on create when set |
+
+### CommunityWallet
+
+| Field | Role |
+|-------|------|
+| `communityId` | Project (or source) id |
+| `balance` | Operational: top-up, `postCost`, tappalka show cost from wallet |
+| `totalReceived`, `totalDistributed` | Accumulators; **distribution** does not debit `balance`, increments `totalDistributed` |
+
+### Membership
+
+`UserCommunityRole`: `role` `'lead' | 'participant'`; `frozenInternalMerits` when member leaves with frozen share.
+
+---
+
+## Creation modes
+
+Exactly **one** of (enforced in `project.router` / service):
+
+1. **`parentCommunityId`** — project under an existing community  
+2. **`newCommunity`** — inline parent community + project (compensation on failure in service)  
+3. **`personalProject: true`** — project **without** a parent community (PRD task lists did not name this mode; **code is canonical**)
+
+Join uses the same join-request flow as teams; `typeTag === 'project'` is allowed in team join requests.
+
+---
+
+## Lifecycle
+
+- **Active:** normal operations; `projectStatus` active (see schema enum).  
+- **Archived:** `closeProject` closes Birzha posts for this project (`sourceEntityType='project'`, `sourceEntityId=projectId`) via post closing, sets archived, blocks mutations via `PermissionService` for project communities.  
+- **Shares update:** `updateShares` — decrease-only `founderSharePercent` (lead).  
+- **Leave:** tickets adjusted; frozen merits stored; notifications (see reports).
+
+---
+
+## Permissions
+
+| Action | Rule (canonical — code) |
+|--------|-------------------------|
+| **Withdraw** on Birzha post with `sourceEntityType === 'project'` | Caller must be **lead** of `sourceEntityId` (project), **not** “effective beneficiary” for permission. Investor split runs first; **author share** → `ProjectDistributionService.distribute` (not `processWithdrawal` to beneficiary wallet). |
+| **Withdraw** on post with `sourceEntityType === 'community'` | Accumulative `CommunityWallet.deposit` on that community; see community wallet rules in `publications.router` (not personal wallet). |
+| **publishToBirzha** | `communityService.isUserAdmin(projectId, userId)` — **lead or global superadmin**. |
+| **Archived project** | `canCreatePublication`, `canCreatePoll`, `canVote` false for project community. |
+| **Tickets** | Named ticket: **lead** creates; **discussion**: any member (when `community.isProject`). |
+
+`transferAdmin`: swaps lead; **`founderUserId` unchanged**.
+
+---
+
+## Economy
+
+### CommunityWallet flows
+
+- **Operational debits:** `postCost` for publishing to Birzha (from project wallet), tappalka **show** cost for posts whose source is a project — **third priority** after investment pool and post rating in `TappalkaService` (see @business-tappalka.mdc / investing for base priority).  
+- **Transit:** `ProjectDistributionService.distribute` — credits **personal** wallets from author share; updates **`totalDistributed`**, does **not** reduce `balance`.
+
+### publishToBirzha
+
+- Creates publication in **МД** with `sourceEntityType='project'`, `sourceEntityId=projectId`.  
+- `publicationService.publishSourceEntityToBirzha` / related helpers; post cost funding may include `postCostFunding` (`source_community_wallet` vs `caller_global_wallet`) per input.  
+- Optional **investment contract / pool** on the created post follows @business-investing.mdc (МД `investingEnabled`, bounds, TTL, etc.).
+
+### Inside project community
+
+Defaults target **`postCost` = 0** for project communities (`CommunityDefaultsService` / settings). Discussions and tickets do not use the legacy global “Projects” community — they live **inside** the project community.
+
+### Top-up
+
+`topUpWallet` — merits move from member into **project** `CommunityWallet` (donation semantics in UI).
+
+### Payout / invest (extended surface)
+
+`project` router also exposes **investment-like** flows for the project wallet: `investInProject`, `listInvestments`, `payoutPreview`, `payoutExecute` (see @business-investing.mdc for generic investing; project wallet semantics in `ProjectPayoutService`).
+
+---
+
+## Tickets and discussions
+
+- **`postType === 'ticket'`** — task; named vs **neutral** (`isNeutralTicket`, `ticketStatus` includes `open` for neutral).  
+- **`postType === 'discussion'`** — member-created discussions.  
+- **Statuses:** workflow includes done / closed / revision paths; see `TicketService` and `ticket.*` procedures (`returnWorkForRevision`, `declineAsAssignee`, `takeOpenNeutralAsModerator`, etc.).  
+- **getProjectShares:** denominator includes **frozen** internal merits for members who left.
+
+---
+
+## Withdraw, close, and investing
+
+**Investor slice / contract / pool** on Birzha posts: @business-investing.mdc. **After** `authorShare` is computed, project-source posts route it to **`ProjectDistributionService.distribute`** (manual withdraw and close), not to the author’s personal wallet.
+
+**Invariant:** For `totalInternalMerits === 0`, distribution sends **100% author share to founder** (lead-derived if `founderUserId` missing — see `ProjectDistributionService`).
+
+---
+
+## Cross-domain links
+
+| Domain | Link |
+|--------|------|
+| **Investing** | Contract, pool, investor share on withdraw/close: @business-investing.mdc (subsection **Project-source Birzha posts**) |
+| **Communities** | Parent ОБ, future-vision feed, `getFutureVisions`, `ensureBaseCommunities` for legacy users |
+| **Content** | Publications, feeds, `postType` validation in `PublicationService` for `isProject` |
+| **Merits** | Wallets (personal + community wallet), global merit for fees, quota rules elsewhere |
+
+---
+
+## Future visions and context switch (brief)
+
+- **ОБ hub and feed** (tags, constraints, notifications): @business-future-vision.mdc.  
+- **ОБ post** per source community: `sourceEntityType='community'`, `sourceEntityId` = that community’s id; implementation in `CommunityService` + `PublicationService` OB helpers.  
+- **`actingAsCommunityId`** on `publications.create`: lead publishes **as** community; sets `sourceEntity*`; withdraw to `CommunityWallet` — distinct from project `sourceEntityType`.
+
+---
+
+## Notifications
+
+Types present in `notification.schema.ts` for this domain (subset; see file for full union):
+
+| Type | Typical trigger |
+|------|-----------------|
+| `project_created` | Project created (parent lead / context) |
+| `ticket_assigned`, `ticket_done`, `ticket_accepted`, `ticket_evaluated`, `ticket_returned_for_revision`, `ticket_assignee_declined` | Ticket lifecycle |
+| `project_published` | Published to Birzha |
+| `project_distributed` | After cooperative distribution |
+| `project_closed` | Project archived / close |
+| `member_joined`, `member_left_project` | Membership |
+| `shares_changed` | Founder share update **or** admin transfer (metadata may carry `transferAdmin`) |
+| `ticket_apply`, `ticket_rejection` | Neutral ticket applications |
+| `ob_vote_join_offer` | First vote on ОБ post (future-vision) |
+| `project_parent_link_requested`, `project_parent_link_approved`, `project_parent_link_rejected` | Parent link workflow |
+
+Investor messaging on close may include **project name** prefix in `PostClosingService` notifications (investment types: see @business-investing.mdc).
+
+---
+
+## UI behavior notes
+
+- App routes live under **`/meriter/projects`** (not bare `/projects`).  
+- **Publish to Birzha** from UI: navigates to **`/meriter/projects/[id]/birzha-publish`** (not only an inline dialog).  
+- Legacy **`postType === 'project'`** in non-project communities is gated by **`ENABLE_PROJECT_POSTS`** (`web` constants) — **currently `false`**; cooperative projects use **communities + ticket/discussion**, not this legacy path.  
+- **Top-up** dialog stresses donation vs investment where applicable.
+
+---
+
+## API surface (tRPC)
+
+### `project` router
+
+| Procedure | Notes |
+|-----------|------|
+| `create` | One of parent / `newCommunity` / `personalProject` |
+| `getById`, `list`, `getGlobalList` | List filters include `memberId`, status, etc. |
+| `getOpenTickets` | **public** — neutral open tickets (title/description) |
+| `join`, `leave`, `closeProject`, `update`, `getMembers` | Core |
+| `topUpWallet`, `getWallet`, `getShares` | Wallet + cooperative shares |
+| `publishToBirzha` | Birzha create + notifications |
+| `updateShares`, `transferAdmin` | Lead |
+| `investInProject`, `listInvestments`, `payoutPreview`, `payoutExecute` | Project wallet / investments |
+| `listParentLinkRequests`, `listMyParentLinkRequests`, `approveParentLinkRequest`, `rejectParentLinkRequest`, `cancelParentLinkRequest`, `requestParentChange` | Parent link |
+
+### `ticket` router
+
+| Procedure | Notes |
+|-----------|------|
+| `create`, `createNeutral`, `applyForTicket`, `approve`, `reject`, `getApplicants` | Neutral ticket flow |
+| `takeOpenNeutralAsModerator` | Moderator self-assign |
+| `updateStatus`, `accept`, `returnWorkForRevision`, `declineAsAssignee`, `update` | Lifecycle |
+| `getByProject` | Member-scoped list |
+
+### Related routers
+
+| Router | Procedure | Notes |
+|--------|-----------|------|
+| `publications` | `create`, `withdraw`, `close` | `actingAsCommunityId`, `sourceEntity*` branches |
+| `communities` | `getFutureVisions`, … | ОБ list, tags |
+| `votes` | (handlers) | Special cases for `community.isProject` merit display / rules — see code |
+| `investments` | @business-investing.mdc | Birzha post investments |
+
+---
+
+## Dependencies
+
+```
+Community (isProject)
+  ├── UserCommunityRole (lead/participant, frozenInternalMerits)
+  ├── CommunityWalletService
+  ├── TicketService + publications (ticket/discussion)
+  ├── project.publishToBirzha → Publication in МД (sourceEntityType project)
+  ├── publications.withdraw / PostClosingService → ProjectDistributionService
+  └── TappalkaService (show cost from project wallet when source is project)
+
+Related:
+  InvestmentService (investor slice) → then cooperative distribution
+  Future-vision / ОБ (sourceEntityType community) — separate wallet path
+```
+
+---
+
+## Audit note
+
+Inventory aligned with repository audit **2026-04-06**. If a procedure or field is missing in code after this date, prefer the codebase over this file.

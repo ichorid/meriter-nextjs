@@ -1,0 +1,194 @@
+---
+description: Future Vision hub (ОБ), OB publications, feed, tags, and constraints. Apply when working with future-vision typeTag, getFutureVisions, or OB UI.
+globs:
+  - "**/future-vision*.ts"
+  - "**/FutureVision*.tsx"
+  - "**/future-visions/**/*"
+alwaysApply: false
+---
+
+# Future Vision (Образ будущего) — Business Logic
+
+> **Truth order:** code + `libs/shared-types` + Mongoose schemas + tRPC → sprint notes / PRD → other drafts.
+>
+> **Scope:** the **`future-vision` priority hub community** (`typeTag === 'future-vision'`), **OB publications** inside it (`sourceEntityType === 'community'`), **`communities.getFutureVisions`**, and **per-community `futureVision*` fields** on ordinary communities. Not to be confused with cooperative **project** communities (`isProject`) — see @business-projects.mdc.
+
+---
+
+## Navigation
+
+| Section | Topics |
+|---------|--------|
+| [Concept](#concept) | Two levels: hub vs source communities |
+| [Data model](#data-model) | `futureVision*` on Community; OB `Publication` shape |
+| [Feed](#future-visions-feed) | `getFutureVisions`, sort, tags, exclusions |
+| [OB post lifecycle](#ob-publication-lifecycle) | Auto-create, update text, withdraw |
+| [Tags rubric](#tags-rubric) | `platformSettings.availableFutureVisionTags` |
+| [Voting & onboarding](#voting-and-onboarding) | Quota, `ob_vote_join_offer`, `ensureBaseCommunities` |
+| [Constraints](#constraints-vs-regular-community) | Polls, withdraw, tappalka |
+| [Context switch](#relation-to-context-switch) | Pointer to community wallet path |
+| [Notifications](#notifications) | `ob_vote_join_offer` |
+| [API surface](#api-surface-trpc) | Procedure names |
+| [Scripts](#scripts) | OB backfill migration |
+
+---
+
+## Concept
+
+1. **Future Vision hub** — one platform community (`typeTag: 'future-vision'`), bootstrap name/description in `PRIORITY_HUB_BOOTSTRAP`, `settings.allowWithdraw: false` in bootstrap (`platform-bootstrap.constants.ts`). Users see **cards** in the app under the Future Visions route; each card is backed by a **normal team/custom community** plus its **OB post** in the hub.
+
+2. **Source community** — any non-project community that has **`futureVisionText`** (and optional tags/cover). On create/update, the hub holds a **single** OB post per source: `communityId` = hub id, `sourceEntityId` = source community id, `sourceEntityType: 'community'`.
+
+3. **Rating / “mining”** — OB posts earn **`metrics.score`** via weighted votes in the **hub** (same mechanics as other publications). There is no separate “mining” flag; emission from **tappalka** depends on **`tappalkaSettings.enabled`** on the community used as tappalka context (the hub is usually kept **without** tappalka in product config; not hard-disabled by `typeTag` in `TappalkaService`).
+
+---
+
+## Data model
+
+### On **source** `Community` (team, custom, …)
+
+| Field | Role |
+|-------|------|
+| `futureVisionText` | Required for OB narrative; drives OB post **content** |
+| `futureVisionTags` | String array; feed filter + UI pills |
+| `futureVisionCover` | URL; card cover |
+
+### In **`future-vision` hub** — `Publication` (OB post)
+
+Created by `PublicationService.createFutureVisionPost`:
+
+| Field | Value |
+|-------|--------|
+| `communityId` | Hub id (`getCommunityByTypeTag('future-vision')`) |
+| `sourceEntityId` | Source community id |
+| `sourceEntityType` | `'community'` |
+| `postType` | `'basic'` |
+| `content` | From `futureVisionText` |
+| `postCost` | Effectively none (system create; no fee path) |
+
+Updates: `updateFutureVisionPostContent` — **content only**, **no** edit-window check; votes/comments/rating unchanged.
+
+Lookup: `findFutureVisionPostId(hubId, sourceCommunityId)`.
+
+### Platform settings
+
+| Field | Role |
+|-------|------|
+| `availableFutureVisionTags` | Superadmin-managed list for filters / forms (default `[]` in bootstrap) |
+
+---
+
+## Future Visions feed
+
+**Procedure:** `communities.getFutureVisions` (`publicProcedure`).
+
+**Input:** `page`, `pageSize` (max 100), optional `tags[]`, `sort`: `'score' | 'createdAt'` (default `score`).
+
+**Algorithm (canonical):**
+
+1. Resolve hub by `typeTag 'future-vision'`. If missing → empty page.
+2. Load OB posts via `publicationService.findObPosts(hubId, { sort })`.
+3. **Deduplicate** by `sourceEntityId` (first wins in sort order).
+4. Load source communities; **skip** `isProject` / `typeTag === 'project'`.
+5. **Tag filter:** if `tags` provided, keep only sources whose `futureVisionTags` intersects the filter; **sources with no tags are dropped** when filtering.
+6. Paginate; items expose `communityId`, `name`, `description`, `futureVision*`, `publicationId`, `score` (from OB post), `memberCount`.
+
+**UI:** `web` uses `useFutureVisions` → `communities.getFutureVisions`; tags for filter from `platformSettings.get` (`useFutureVisionTags`).
+
+---
+
+## OB publication lifecycle
+
+| Event | Behavior |
+|-------|----------|
+| Create community with `futureVisionText` | After persist, `createFutureVisionPost` if hub exists |
+| Update `futureVisionText` | `updateFutureVisionPostContent` on matching OB post |
+| Withdraw from OB post | Gated by **`settings.allowWithdraw`** on the **publication’s community** (the hub). Bootstrap sets **`allowWithdraw: false`** for the hub → withdrawal from merits **on the post** is blocked for normal config |
+
+**Context-switch** posts (`actingAsCommunityId`) that resolve to `sourceEntityType: 'community'` accrue to **`CommunityWallet`** on withdraw — see @business-projects.mdc.
+
+---
+
+## Tags rubric
+
+- **Storage:** `platformSettings.availableFutureVisionTags` (array).
+- **Mutation:** `platformSettings.updateFutureVisionTags` (superadmin; see router).
+- **Usage:** feed filtering + create-community form; **filtering** uses **intersection** with each source’s `futureVisionTags` (see [Feed](#future-visions-feed)).
+
+---
+
+## Voting and onboarding
+
+- **Quota:** `CommunityDefaultsService` sets **`quotaEnabled: false`** for `typeTag === 'future-vision'` merit defaults; `quota-reset.service` forces **effective daily quota 0** for `future-vision` (see @business-merits.mdc).
+- **Vote on OB post:** standard weighted vote in the hub; first successful vote document triggers **`ob_vote_join_offer`** (see [Notifications](#notifications)).
+- **Legacy users without hub role:** `users.ensureBaseCommunities` adds roles in base/priority communities (used from Future Visions UI so voting permission works).
+
+---
+
+## Constraints vs regular community
+
+| Area | `future-vision` hub (and product rules) |
+|------|----------------------------------------|
+| **Polls** | Creation and casting **blocked** in `polls` router when `community.typeTag === 'future-vision'`; `getByCommunity` returns **empty** for that community |
+| **Withdraw** on posts | Hub bootstrap **`allowWithdraw: false`** — merits stay on posts unless DB overrides |
+| **Tappalka** | No `typeTag` special-case in `TappalkaService`; MVP keeps hub **non-tappalka** via settings. ОБ “mining” in product language = **voting / rating**, not tappalka comparisons in the hub |
+| **Posting** | OB posts are system-created from `futureVisionText`; users publish **in their own** communities; hub hosts the OB mirror |
+
+---
+
+## Relation to context switch
+
+Publishing **as** a community (`actingAsCommunityId`) sets `sourceEntity*` on new publications elsewhere; **withdraw** to `CommunityWallet` applies for `sourceEntityType === 'community'`. That path is **orthogonal** to the OB hub feed but shares `sourceEntityType` vocabulary — see @business-projects.mdc.
+
+---
+
+## Notifications
+
+| Type | When |
+|------|------|
+| `ob_vote_join_offer` | User casts a **weighted** vote on an OB post (`community` = hub, `sourceEntityType === 'community'`) and **vote count** for `(userId, publicationId)` is **1** (first vote on that post) |
+
+Metadata keys used for redirects: `communityId` (source), `publicationId`, `publicationCommunityId`, `sourceCommunityName` (see `notification.schema.ts` / `NotificationService`).
+
+---
+
+## API surface (tRPC)
+
+| Router | Procedure | Role |
+|--------|-----------|------|
+| `communities` | `getFutureVisions` | Paginated OB feed |
+| `communities` | `create` / `update` | Accept `futureVisionText`, `futureVisionTags`, `futureVisionCover` where schema allows |
+| `platformSettings` | `get` | Includes `availableFutureVisionTags` |
+| `platformSettings` | `updateFutureVisionTags` | Superadmin rubric |
+| `users` | `ensureBaseCommunities` | Sync roles for voting |
+| `publications` | `create` / `withdraw` | `actingAsCommunityId` / wallet branch (related) |
+
+---
+
+## Scripts
+
+- `api/scripts/create-ob-posts.ts` — idempotent backfill of OB posts for existing communities with `futureVisionText` (see script header / package `migration:ob-posts`).
+
+---
+
+## Dependencies
+
+```
+Community (source) + futureVisionText
+       │
+       ▼
+Publication in hub (sourceEntityType community)
+       │
+       ├── getFutureVisions feed (communities router)
+       ├── Votes in hub → metrics.score
+       └── ob_vote_join_offer (vote.service)
+
+PlatformSettings.availableFutureVisionTags
+       └── Feed / forms
+```
+
+---
+
+## Audit note
+
+Aligned with codebase as of **2026-04-06**. If procedure names or hub bootstrap flags change, update this file from code first.

@@ -25,6 +25,9 @@ Structure and layer overview: see @architecture.mdc.
 - **Publication**: Content that can receive votes
 - **Quota**: Daily free merits for voting (refreshes daily)
 - **Wallet**: Accumulated merits in a community
+- **ОБ / Future Visions** (hub `future-vision`): feed of “images of future” cards — see @business-future-vision.mdc
+- **Биржа / МД** (`marathon-of-good`): global weighted feed and investing “showcase”; product labels vs `typeTag` — @business-mvp.mdc, @business-content.mdc
+- **Community actor**: lead may publish **as** a community (`actingAsCommunityId` → `sourceEntityType: 'community'`) — @business-communities.mdc
 
 ## Key Patterns
 
@@ -44,6 +47,11 @@ Structure and layer overview: see @architecture.mdc.
 
 ## Implemented Feature Surface
 - **Authentication**: JWT/cookie auth, fake auth endpoints, OAuth-compatible REST auth paths, and passkey/WebAuthn support
+- **Navigation (primary hubs)**: Future Visions (`/meriter/future-visions`), МД / «Биржа» (`/meriter/communities/{marathon-of-good-id}`), Projects (`/meriter/projects`), notifications, profile — details @frontend.mdc
+- **ОБ / Future Visions feed**: `communities.getFutureVisions`, `futureVision*` fields, OB posts in the hub — @business-future-vision.mdc
+- **Биржа as showcase**: publications in the **Marathon of Good** community (`marathon-of-good`) — weighted feed, tappalka, investing on posts; Birzha-source posts from projects/communities — @business-content.mdc, @business-investing.mdc
+- **Cooperative projects**: `isProject` communities, tickets/discussions, `CommunityWallet`, `project.publishToBirzha`, withdraw/close → `ProjectDistributionService` — @business-projects.mdc
+- **Community actor**: `actingAsCommunityId` on create, `CommunityWallet` credit/debit for source Birzha posts — @business-communities.mdc
 - **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
 - **Communities and teams**: community management, team creation, team join request workflows, team invitation/accept/reject flows, role operations
 - **Economy**: wallets, withdrawals, transfers, quota handling, voting/polls/comments, investments, tappalka mechanics
@@ -63,6 +71,8 @@ Structure and layer overview: see @architecture.mdc.
 Use this file as the first entry point. For domain/business logic: open @business-index.mdc for routing, then the relevant business-*.mdc from its "Business Rules File Structure" table. For code structure and layers use @architecture.mdc; for frontend patterns @frontend.mdc; for backend patterns @backend.mdc.
 
 - @business-index.mdc — Voting rules, permissions, merit flow (routing to business-*.mdc)
+- @business-projects.mdc — Cooperative projects (isProject), tickets, Birzha from project, CommunityWallet
+- @business-future-vision.mdc — ОБ hub, OB posts, Future Visions feed, tags
 - @architecture.mdc — Repository structure and code layers
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)

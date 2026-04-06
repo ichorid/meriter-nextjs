@@ -32,9 +32,21 @@ alwaysApply: false
 | Fee (any community) | Global (canonical rule: @business-index.mdc, Critical Implementation Rules) |
 | Voting in priority community | Global |
 | Voting in local community | Local community wallet |
-| Withdrawal in priority community | Global |
+| Withdrawal in priority community (normal post) | Global — to **effective beneficiary’s** personal wallet |
+| Withdrawal from **МД Birzha** post with `sourceEntityType === 'community'` | **CommunityWallet** on `sourceEntityId` (accumulative `deposit`), not personal wallet |
+| Withdrawal from **МД Birzha** post with `sourceEntityType === 'project'` | Cooperative distribution — @business-projects.mdc |
 | Tappalka reward in priority community | Global |
 | Investment in priority community post | Global |
+
+### CommunityWallet (community actor / Birzha source)
+
+Per-community ledger (`CommunityWalletService`): **`balance`** (operational), **`totalReceived`**, **`totalDistributed`**.
+
+- **Debit:** e.g. **`postCost`** when creating a Birzha post with community source and `postCostFunding === 'source_community_wallet'` (after lead check via `actingAsCommunityId` mapping).
+- **Credit:** **`publications.withdraw`** author share → **`deposit(sourceEntityId, amount, 'publication_withdrawal')`** for МД posts with `sourceEntityType === 'community'` and matching `sourceEntityId`.
+- **Top-up post rating** from source wallet: `publications.topUpRating` with source-entity funding path (see `publicationService.topUpBirzhaPublicationFromSourceWallet`).
+
+Community-level rules and `actingAsCommunityId`: @business-communities.mdc. Project source entity: @business-projects.mdc.
 
 ---
 
@@ -75,8 +87,9 @@ Default value in code is `0` unless configured.
    - Community settings allow it (`settings.allowWithdraw !== false`)
    - Publication is active
    - Publication score is positive
-   - Caller is effective beneficiary (author/beneficiary)
+   - **Authorization:** for ordinary posts — caller is **effective beneficiary**; for **МД Birzha source** posts (`sourceEntityType` + `sourceEntityId`) — caller is **lead/superadmin of the source entity** (community or project); see @business-content.mdc
 4. Upon withdrawal, post rating decreases
+5. **Destination of merits:** default — personal wallet of beneficiary; for `sourceEntityType === 'community'` on МД Birzha — **CommunityWallet** on `sourceEntityId` (see table above). Project path: @business-projects.mdc
 
 ### Withdrawal Endpoints (Current)
 - `publications.withdraw` is the primary withdrawal endpoint for post rating.
@@ -181,10 +194,7 @@ Current code includes:
 
 ## Rates (Multipliers)
 
-Status: planned only in current codebase.
-
-- There is no active `rateMultiplier` field or runtime multiplier application in current TypeScript implementation.
-- Keep multiplier examples and policy decisions in product/business planning docs, not as implemented behavior.
+Not implemented in code: no `rateMultiplier` (or equivalent) on communities and no runtime multiplier. Product docs may describe future policy; do not treat multipliers as live behavior.
 
 ---
 
