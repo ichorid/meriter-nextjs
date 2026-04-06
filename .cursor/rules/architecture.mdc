@@ -19,7 +19,9 @@ meriter-nextjs/
 └── pnpm-workspace.yaml           # pnpm workspace config
 ```
 
-Note: `web/pnpm-workspace.yaml` also exists in this repository.
+Notes:
+- Root `pnpm-workspace.yaml` lists workspace packages `api`, `web`, and `libs/shared-types`.
+- `web/pnpm-workspace.yaml` also exists in this repository.
 
 ## Backend Structure (api/)
 ```
@@ -31,19 +33,24 @@ api/apps/meriter/src/
 │   ├── aggregates/               # Domain aggregates/entities
 │   ├── events/                   # Domain events + event bus
 │   ├── value-objects/            # Strongly-typed identifiers/value objects
-│   └── common/helpers/           # Domain helpers/constants
+│   └── common/
+│       ├── helpers/              # Domain helpers
+│       └── constants/            # Domain constants (bootstrap, platform, Birzha, hub defaults, ...)
 ├── domain.module.ts              # Shared NestJS module wiring domain providers/models
 ├── trpc/                         # 🟢 tRPC layer (API)
+│   ├── middleware/               # tRPC middleware (e.g. permission checks)
 │   └── routers/
 │       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
-├── api-v1/                       # 🟡 REST layer (auth/uploads/config) + api-v1/common helpers/services/mappers/utils/interfaces
-├── common/                       # Shared backend utilities
+├── api-v1/                       # 🟡 REST layer (auth, uploads, config/bootstrap, and related api-v1/common helpers/services/mappers/utils/interfaces)
+├── common/                       # Shared backend utilities (helpers, services, interfaces, decorators, interceptors, filters, pipes, exceptions, validation, database)
 │   └── schemas/                  # Backend-only Zod schemas (currently minimal)
 ├── config/                       # Configuration
 ├── telegram/                     # Telegram integration
 ├── tg-bots/                      # Telegram bot module and services
 ├── updates-conductors/           # Update conductor subsystem
 ├── migrations/                   # One-off migration scripts
+├── seed-data/                    # Dev/demo seed snapshots, loaders, TSV/JSON helpers
+├── i18n/                         # Backend locale message maps
 ├── meriter.module.ts             # Root Nest module composition
 ├── meriter.controller.ts         # Root controller
 ├── meriter.service.ts            # Root app service
@@ -56,6 +63,7 @@ api/apps/meriter/src/
 Notes:
 - `domain/models/` includes auth-related schemas (e.g. passkey challenge schema)
 - Domain contains dedicated background modules/services (e.g. quota reset and post-closing cron modules)
+- `trpc/types.ts` re-exports type-only `AppRouter` from `trpc/router.ts` for the frontend (see Common Mistakes)
 
 ### Adding New Backend Feature
 1. Add/update schema in `domain/models/[entity]/`; for cross-cutting models, a top-level schema file under `domain/models/` is also used in this codebase
@@ -82,18 +90,22 @@ web/src/
 │   ├── settings/                 # Settings-related components
 │   └── providers/                # React provider wrappers/components
 ├── features/                     # 🟡 Feature modules
-├── hooks/                        # Custom React hooks
+├── hooks/                        # Custom React hooks (most tRPC-related hooks live under hooks/api/)
 ├── stores/                       # Zustand stores
 ├── contexts/                     # React contexts
-├── lib/                          # Utilities & helpers (incl. tRPC client)
+├── lib/                          # Utilities: trpc/, api/, routing/, constants/, i18n/, community/, comments/, utils/, ...
 ├── i18n/                         # i18n request/config layer
 ├── config/                       # Runtime frontend config
 ├── providers/                    # Provider components
 ├── shared/                       # Shared UI/lib/hooks/stores/types
 ├── types/                        # TypeScript types
 ├── generated/                    # Auto-generated build metadata
-└── __tests__/                    # Frontend tests
+└── __tests__/                    # Frontend tests (see note below)
 ```
+
+Notes:
+- `web/tsconfig.json` path aliases: `@/*`, `@app/*`, `@features/*`, `@shared/*`, `@types/*`, `@lib/*` (→ `shared/lib/*`), `@meriter/shared-types`, `@config/*`, `@styles/*`.
+- `web/tsconfig.json` excludes `**/__tests__/**` and `**/*.test.*` / `**/*.spec.*` from compilation; test files may still live under those paths.
 
 ### Adding New Frontend Feature
 1. Place UI in `components/`, `features/*/components`, or `shared/components` depending on scope
@@ -108,6 +120,8 @@ libs/shared-types/src/
 ├── schemas.ts                    # Complex DTOs
 ├── taxonomy.ts                   # Shared taxonomy enums/lists
 ├── tappalka.ts                   # Shared tappalka-specific schemas
+├── value-rubricator.ts           # Value rubricator types/helpers
+├── decree809-tag-remap.ts        # Decree809 tag remap
 └── index.ts                      # Public exports
 ```
 
@@ -165,11 +179,11 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 | Type | Convention | Example |
 |------|------------|---------|
 | Components | Mixed (PascalCase and kebab-case) | `VoteButton.tsx`, `card-comment-vote.tsx` |
-| Hooks | use-prefixed files in hooks/, including helper companions | `useVoting.ts`, `useVotes.helpers.ts` |
+| Hooks | use-prefixed files in hooks/, including helper companions | `usePublicationVoting.ts`, `hooks/api/useVotes.helpers.ts` |
 | Services | kebab-case + .service | `vote.service.ts` |
 | Schemas | kebab-case + .schema | `vote.schema.ts` |
 | Routers | kebab-case + .router | `vote.router.ts` |
-| Stores | kebab-case + .store | `vote.store.ts` |
+| Stores | kebab-case + .store | `locale.store.ts`, `ui.store.ts` |
 
 ## Module Dependencies
 ```
@@ -188,7 +202,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 ## Common Mistakes
 
 ❌ Importing backend runtime code from `api/` in `web/`
-✅ Type-only import bridge from `api/apps/meriter/src/trpc/types` is used in this codebase
+✅ Type-only import bridge from `api/apps/meriter/src/trpc/types.ts` (re-exports `AppRouter` from `./router`) is used in this codebase
 ❌ Duplicating types instead of using shared-types
 ⚠️ Prefer keeping new business logic in services; current codebase still contains substantial logic in some routers (legacy/transition areas)
 ❌ Putting reusable shared components only in `app/` (prefer `components/`, `features/*/components`, or `shared/components`)
