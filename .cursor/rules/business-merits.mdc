@@ -122,7 +122,7 @@ Welcome merits are credited to the global wallet from platform settings (`welcom
 Fee payment is always from global merits (canonical: @business-index.mdc). Publication fee may use quota first when `settings.canPayPostFromQuota=true`.
 
 ### Forward Fee by Endpoint (Current Behavior)
-- `proposeForward` charges `settings.forwardCost` from global wallet (`GLOBAL_COMMUNITY_ID`), with best-effort deduction after proposal creation.
+- `proposeForward` charges `settings.forwardCost` from global wallet (`GLOBAL_COMMUNITY_ID`) **before** the publication forward-proposal fields are updated; wallet debit is best-effort (errors in `addTransaction` are swallowed), but the proposal update still runs.
 - `forward` (lead/superadmin direct forward) does not charge forward fee in current implementation.
 
 ### Voting for Content
@@ -146,8 +146,8 @@ Fee payment is always from global merits (canonical: @business-index.mdc). Publi
 
 ### Tappalka Show-Cost Spending (Current)
 - Tappalka show cost is deducted from both posts in comparison.
-- Deduction order is: `investmentPool` -> post `rating` (respecting `stopLoss`) -> author wallet.
-- If `noAuthorWalletSpend=true`, author wallet is not used for show cost.
+- Deduction order is: `investmentPool` → post `rating` (respecting `stopLoss`) → if `sourceEntityId` is set (Birzha source), **`CommunityWallet` on that entity** (`tappalka_show_cost`); if still insufficient there, post may exit tappalka without debiting author → otherwise **author wallet** (unless `noAuthorWalletSpend=true`).
+- If `noAuthorWalletSpend=true`, author wallet is not used for show cost (after pool/rating; Birzha `sourceEntityId` path still uses `CommunityWallet` when applicable).
 
 ---
 
@@ -167,11 +167,12 @@ Teammates = members of same local (“team”) communities as the beneficiary (`
 ## Quota Rules
 
 ### Core Quota Rules
-1. Credited daily in amount set in community settings: volume by `settings.dailyEmission`; quota is enabled by `meritSettings.quotaEnabled` (if `quotaEnabled === false`, quota is not used).
-2. For communities with `typeTag === 'future-vision'`, effective daily quota is always 0 in code (even if `settings.dailyEmission` > 0).
-3. Quota balance CANNOT exceed single credit amount — excess BURNS
-4. Used same as regular merits, BUT with restrictions
-5. Can be used for publication fee only when `settings.canPayPostFromQuota=true`
+1. **`meritSettings.quotaEnabled`:** when `false`, quota is treated as unused (zero) in quota reset and `wallets.getQuota`.
+2. **Daily volume field is path-dependent in current code:** `wallets.getQuota` and `QuotaResetService` use **`settings.dailyEmission`** for the daily cap when quota is enabled. **`publications.create`** (quota part of post fee when `canPayPostFromQuota`) and **vote/poll quota helpers** in routers use **`getEffectiveMeritSettings(community).dailyQuota`** (`meritSettings.dailyQuota` merged with defaults) — not `settings.dailyEmission`. If these differ, remaining quota from `wallets.getQuota` may not match what the publication fee path allows; treat as implementation detail until unified.
+3. For communities with `typeTag === 'future-vision'`, effective daily quota is always 0 in code (even if `dailyEmission` / `dailyQuota` > 0).
+4. Quota balance CANNOT exceed single credit amount — excess BURNS
+5. Used same as regular merits, BUT with restrictions
+6. Can be used for publication fee only when `settings.canPayPostFromQuota=true`
 
 ### Quota Restrictions
 - ❌ Cannot vote with quota for own posts
@@ -225,14 +226,14 @@ Voting flow:
 ```
 
 ### Transaction Integrity
-- Publication creation, poll creation, and forward proposal perform fee deduction after entity creation.
-- In these handlers, if fee deduction fails, the request may still succeed.
+- **Publication create** and **poll create:** fee deduction runs **after** the publication/poll record is created; debit is best-effort (errors swallowed), so the entity may exist without a matching wallet transaction.
+- **`proposeForward`:** forward-cost debit is attempted **before** forward-proposal fields are persisted on the publication; debit errors are swallowed, but the proposal update still runs.
 
 ### Wallet API Status (Current)
 Implemented procedures:
-- `wallets.getByCommunity` — user wallet for a community (for priority communities returns global wallet).
-- `wallets.getBalance` — balance for a community.
-- `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt); respects `meritSettings.quotaEnabled` and forces **0** for `future-vision`.
+- `wallets.getByCommunity` — user wallet for a community (for **priority** communities returns global wallet). **`isProject`** communities are **not** priority hubs: this returns the wallet for **`communityId`** as stored, while **`MeritResolverService`** still resolves **`voting`** spend to the **global** wallet for `isProject` — do not equate `getBalance`/`getByCommunity` for a project id with vote spend capacity without checking global balance.
+- `wallets.getBalance` — balance for a community (same priority vs `isProject` caveat as `getByCommunity`).
+- `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt); when enabled, daily cap comes from **`settings.dailyEmission`**; respects `meritSettings.quotaEnabled` and forces **0** for `future-vision`.
 - `wallets.getFreeBalance` — numeric **remaining** quota only; unlike `getQuota`, it does **not** apply `meritSettings.quotaEnabled` (only `future-vision` forces zero `dailyQuota` in the handler). Prefer `getQuota` when documenting “quota disabled” behavior.
 - `wallets.getAll` — all user wallets.
 - `wallets.getTransactions` — user transactions.
