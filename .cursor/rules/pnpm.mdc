@@ -9,8 +9,8 @@ USE pnpm lint && pnpm lint:fix BEFORE EVERY COMMIT!!!
 
 Run both from **repository root**.
 
-What happens under the hood:
-- `pnpm lint` — check both packages (`@meriter/api` lint already includes `--fix`; `@meriter/web` lint is check-only)
-- `pnpm lint:fix` — auto-fix both packages (`@meriter/api` re-runs lint with `--fix`; `@meriter/web` runs `lint:fix`)
+What happens under the hood (root `package.json`):
+- `pnpm lint` — `pnpm --filter @meriter/api lint` then `pnpm --filter @meriter/web lint`. API’s script runs eslint with `--fix` (may modify files); web’s `lint` has no `--fix` (check-only).
+- `pnpm lint:fix` — same `@meriter/api` command as `pnpm lint`, then `pnpm --filter @meriter/web lint:fix` (eslint with `--fix` for web). Only the **web** step differs from `pnpm lint`.
 
 Full command list and dev setup: see @local-dev-win.mdc or `docs/LOCAL_DEVELOPMENT_SETUP.md`.
