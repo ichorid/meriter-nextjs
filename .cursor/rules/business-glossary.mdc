@@ -22,10 +22,10 @@ Platform overview and current status: see @business-index.mdc.
 Unit of reputation/currency within a community.
 
 **Properties:**
-- Numeric, can have fractional part (1 merit, 1.5 merits)
-- Community-specific: each community has its own merits
-- **EXCEPTION:** All global communities share the SAME merit (meta-community Meriter)
-- Each user individually accumulates and spends their merits
+- Numeric amounts can be fractional (e.g. tappalka `showCost` uses fractional merits in community settings).
+- **Wallet routing (code):** `MeritResolverService.getWalletCommunityId` — **`fee`** and **`withdrawal`** operations always use the global merit wallet (`GLOBAL_COMMUNITY_ID`). For **`voting`**, **`tappalka_reward`**, and **`investment`**: use the global wallet when `isPriorityCommunity(community)` is true (`typeTag` in `marathon-of-good`, `future-vision`, `team-projects`, `support`, or `isPriority === true`), and when `community.isProject === true` **and** `operationType === 'voting'`; otherwise use `community.id`.
+- **Plain language:** Priority hub communities share the global merit wallet for those operations; local non-priority, non-project communities generally use that community’s wallet id for voting, tappalka reward, and investment (per resolver).
+- Each user holds balances per resolved wallet `communityId`; accumulation and spend follow those rules.
 
 ### Quota
 Daily "burnable" merits. Auto-credited to a separate account, unused quota expires.
@@ -35,36 +35,47 @@ Daily "burnable" merits. Auto-credited to a separate account, unused quota expir
 - Amount CANNOT exceed single credit amount — excess burns
 - System fees (post, poll, forward) are paid from global wallet (canonical: @business-index.mdc); exception: post creation may be paid from quota first when `canPayPostFromQuota` is true, then wallet
 - When both quota and wallet can be used for an action — quota is spent FIRST
+- Daily quota volume is taken from **`community.settings.dailyEmission`** when quota is in effect.
+- Quota is disabled when **`community.meritSettings.quotaEnabled === false`** (service returns zero quota).
+- For **`typeTag === 'future-vision'`**, effective quota is forced to **0** in `QuotaResetService` regardless of `dailyEmission`.
 
 ### Wallet
 Accumulated merits of a user in a specific community. Unlike quota — does NOT expire, accumulates.
 
 ### Fee (Commission)
-System commission for an action (publishing, commenting). Merits are BURNED — not transferred to anyone.
+**Fees** configured on the community (`settings.postCost`, `settings.pollCost`, `settings.forwardCost`) are debited per router flows; **fee** routing uses the global wallet via the merit resolver (see **Merit**). Post creation may use quota first when **`settings.canPayPostFromQuota`** is true, then wallet, per **Quota** rules.
+
+**Weighted comments/votes** are not a single `settings.*` “commission” field: amounts come from vote **`amountQuota`** / **`amountWallet`** and direction rules (merits burned or transferred per vote logic).
 
 ### Effective Beneficiary
 User who receives merits from withdrawal (and is allowed to withdraw). For a publication: `publication.beneficiaryId` if set, otherwise the author. Used in permission and withdrawal logic.
+
+For **МД (`typeTag === 'marathon-of-good'`) publications with `sourceEntityId` and `sourceEntityType`**, withdrawal authorization and destination wallets follow **`publications.withdraw`** and related services — not only “beneficiary vs author”; see **@business-content.mdc**.
 
 ### Poll
 Separate entity from Publication (own collection `polls`). Has question, options, expiresAt; voting spends merits (weight = amount). No "rating" on poll; neutral votes only. Creation cost: `settings.pollCost`.
 
 ### Post Type
-Publication has `postType`: `'basic' | 'poll' | 'project'` plus, **inside cooperative project communities** (`isProject`), `'ticket'` and `'discussion'`. Used for forwarding and display. (Standalone Poll entity is separate from publications.) Canonical rules: @business-projects.mdc.
+**In schema / types:** `postType` is `'basic' | 'poll' | 'project' | 'ticket' | 'discussion'`.
+
+**Creation rules:** `PublicationService.createPublication` requires `postType` **`ticket`** or **`discussion`** when **`community.isProject === true`** (otherwise `BadRequestException`). Other communities do not enforce that pair in the same way.
+
+Standalone **Poll** entity remains the `polls` collection (see **Poll**). A legacy **`postType: 'poll'`** may exist on publications; product poll flows use **`polls.*`**. Canonical cooperative rules: **@business-projects.mdc**.
 
 ### Cooperative project (isProject)
-A **community** that represents a team project: `isProject === true` and/or `typeTag === 'project'`, optional `parentCommunityId`, `CommunityWallet`, tickets/discussions, and Birzha posts via `sourceEntityId` / `sourceEntityType`. Distinct from the global MVP **“Projects”** feed community (`team-projects`). Full rules: @business-projects.mdc.
+A **community** that represents a team project: **`isProject === true`** and/or **`typeTag === 'project'`** (both exist in `Community` schema; cooperative flows rely heavily on **`isProject`**), optional `parentCommunityId`, `CommunityWallet`, tickets/discussions, and Birzha posts via `sourceEntityId` / `sourceEntityType`. Distinct from the global MVP **“Projects”** feed community (`team-projects`). Full rules: **@business-projects.mdc**.
 
 ### ОБ (Образ будущего)
-Short name for the **Future Vision** priority hub. **In code:** community `typeTag === 'future-vision'` (bootstrap hub). Do not confuse with `futureVisionText` on a normal community (source narrative for the OB card). Rules: @business-future-vision.mdc.
+Short name for the **Future Vision** priority hub. **In code:** community `typeTag === 'future-vision'` (bootstrap hub). Do not confuse with `futureVisionText` on a normal community (source narrative for the OB card). Rules: **@business-future-vision.mdc**.
 
 ### Лента ОБ / Future Visions feed
-Paginated list of communities via their OB posts: `communities.getFutureVisions`. **Web route:** `/meriter/future-visions`. Rules: @business-future-vision.mdc.
+Paginated list of communities via their OB posts: `communities.getFutureVisions`. **Web route:** `/meriter/future-visions`. Rules: **@business-future-vision.mdc**.
 
 ### Биржа СИ (Биржа социальных инвестиций); «Биржа»
-**Product / i18n** names for the **Marathon of Good** exchange hub (`typeTag === 'marathon-of-good'`) — weighted posts, tappalka, investing. **Not** stored as a literal `typeTag` value (the tag is `marathon-of-good`). User-facing label vs internal id: @business-mvp.mdc, @frontend.mdc. Birzha **publications** (feed in МД): @business-content.mdc.
+**Product / i18n** names for the **Marathon of Good** exchange hub (`typeTag === 'marathon-of-good'`) — weighted posts, tappalka, investing. **Not** stored as a literal `typeTag` value (the tag is `marathon-of-good`). User-facing label vs internal id: **@business-mvp.mdc**, **@frontend.mdc**. Birzha **publications** (feed in МД): **@business-content.mdc**.
 
 ### Community actor; `actingAsCommunityId`
-**Actor = community** when the **lead** publishes on behalf of the team: optional **`actingAsCommunityId`** on **`publications.create`** only; server maps to `sourceEntityId` + `sourceEntityType: 'community'` (field not stored under `actingAsCommunityId`). Withdraw/top-up paths may use **`CommunityWallet`**. Rules: @business-communities.mdc.
+**Actor = community** when the **lead** publishes on behalf of the team: optional **`actingAsCommunityId`** on **`publications.create`** only; server maps to `sourceEntityId` + `sourceEntityType: 'community'` (field not stored under `actingAsCommunityId`). When `sourceEntityType === 'community'` and `sourceEntityId` are set from this flow, the publication also stores **`authorKind: 'community'`**, **`authoredCommunityId`** (= source community id), and **`publishedByUserId`** (= acting user id). Withdraw/top-up paths may use **`CommunityWallet`**. Rules: **@business-communities.mdc**.
 
 ### Permission Rules
 Community configuration: `permissionRules` — role → action → allow/deny, with optional conditions (e.g. `canVoteForOwnPosts`). Controls who can publish, vote, edit, etc. Replaces legacy toggles like canPublish, whoCanVote.
@@ -100,20 +111,20 @@ Community created by platform administration.
 
 **Properties:**
 - All users are members by default (immediately after registration)
-- Share ONE common merit between themselves
-- Merits earned in one global community can be spent in another global community
-- User CANNOT leave a global community
+- Priority hub communities (`isPriority` or `typeTag` in `marathon-of-good`, `future-vision`, `team-projects`, `support`) use the **global merit wallet** for fee, withdrawal, and (per resolver) voting/tappalka/investment as in **Merit**
+- Merits earned in one priority hub can be spent in another priority hub in that sense (shared `GLOBAL_COMMUNITY_ID` for those operations)
+- User CANNOT leave a global community (priority hubs are not leavable via `leaveLocalCommunity`)
 - List of global communities can expand
 
 ### Local Community (Private Group)
 Community created and managed by users.
 
 **Properties:**
-- Has its OWN merit (separate from global)
+- Non-priority local communities use **that community’s wallet id** for voting/tappalka/investment per **Merit** (not the global wallet), unless `isProject` voting branch applies
 - Full set of settings available to lead
 - User can be member of ANY number of local communities
 - User can be lead of ANY number of communities
-- User can voluntarily leave any local community
+- **Leave (code):** `communities.leaveCommunity` → `CommunityService.leaveLocalCommunity`: allowed for **participants** in eligible local communities; **lead** cannot leave (must transfer lead first); **`isProject === true`** must use the project leave flow; **priority** communities cannot be left this way
 - Lead CANNOT delete community — only request deletion from administration (dedicated "request deletion" API is not implemented in current codebase)
 
 ### Lead
@@ -126,17 +137,22 @@ Administrator of a local community (creator or appointed). Has access to communi
 ### Post Forwarding
 Moving a post from one community to another.
 
-Canonical rule: @business-index.mdc (Forwarding, Transfer with merits). **Two modes (source `settings.forwardRule`):** `standard` — copy without merits, original preserved; `project` — transfer with merits, original deleted. **In code:** `community.settings.forwardRule`: `'standard' | 'project'`.
+Canonical rule: **@business-index.mdc** (Forwarding, Transfer with merits). **Two modes (source `settings.forwardRule`):** `standard` — copy without merits, original preserved; `project` — transfer with merits, original deleted. **In code:** `community.settings.forwardRule`: `'standard' | 'project'`.
 
 ### Merit Withdrawal
-Transferring merits from post rating to the effective beneficiary's wallet. Post rating (`metrics.score`) decreases.
+Transferring merits from post **rating** (`metrics.score`) to a wallet or ledger per rules. Post rating decreases by the withdrawn amount when applicable.
 
-**Effective beneficiary:** `publication.beneficiaryId` if set, otherwise the author. Only the effective beneficiary may withdraw; they receive the merits.
+**Default (non–source-linked posts):** effective beneficiary is `publication.beneficiaryId` if set, otherwise `authorId`. **`publications.withdraw`** enforces permissions and `community.settings.allowWithdraw` where applicable (see `publications.router.ts` for special cases such as `future-vision`).
+
+**МД (`typeTag === 'marathon-of-good'`) with `sourceEntityId` + `sourceEntityType`:** caller authorization and whether merits go to a **personal wallet**, **`CommunityWallet`**, or **project distribution** follow `publications.withdraw` and related services — not the single “effective beneficiary only” rule. See **@business-content.mdc** and **@business-projects.mdc**.
 
 ### Post Closing
 Post is moved to archive (removed from feed). Closed post CANNOT be re-published.
 
-**In code:** `publication.status`: `'active' | 'closed'`; `closeReason`: `'manual' | 'ttl' | 'inactive' | 'negative_rating'`; optional `closingSummary` with distribution totals.
+**In code:** `publication.status`: `'active' | 'closed'`; `closeReason`: `'manual' | 'ttl' | 'inactive' | 'negative_rating' | null`; optional `closingSummary` with distribution totals.
+
+### Post soft delete and restore
+Publications may be soft-deleted (`deleted`, `deletedAt`). **tRPC:** `publications.delete` (soft), `publications.restore`, `publications.permanentDelete` — see `publications.router.ts`. Soft-deleted posts are excluded from feeds, tappalka, and search per services.
 
 ---
 
@@ -151,17 +167,17 @@ Creation of new merits by the system. Happens through tappalka, from administrat
 **Welcome merits:** Amount from platform setting `welcomeMeritsGlobal` (PlatformSettings); credited to global wallet at registration.
 
 ### Stop-Loss
-Minimum rating/merit threshold below which post stops being shown in tappalka. Set by post owner.
-
-**In code:** `publication.stopLoss`.
+Per-post floor for **rating** when paying **tappalka show cost**: rating is not reduced below **`publication.stopLoss`** (treated as 0 when absent). Eligibility to appear in tappalka pairs also depends on **`tappalkaSettings.minRating`**, **`tappalkaSettings.showCost`**, `investmentPool`, and combined spendable rating (`pool + max(0, score - stopLoss)`) as implemented in **`tappalka.service.ts`** (`getEligiblePosts`). See **@business-tappalka.mdc** for the full rules.
 
 ### Investment Pool
-Post-level balance funded by investors. Used first for tappalka show-cost deductions in investment mode.
+Post-level balance funded by investors. Used first for tappalka show-cost deductions when the post has investing fields enabled (`investingEnabled` / pool balance).
 
 ### Investment Contract
 Immutable agreement created at post publication when investing is enabled. Defines `investorSharePercent` (within community `settings.investorShareMin`..`settings.investorShareMax`) and distribution rules between author and investors.
 
 **In code:** `publication.investorSharePercent`; bounds in `community.settings.investorShareMin` / `investorShareMax`.
+
+**Close distribution toggle:** `community.settings.distributeAllByContractOnClose` — when `true`, on close all merits (pool + rating) are distributed by contract; when `false`, pool is returned to investors proportionally first, then rating by contract (see `community.schema.ts` / `CommunitySettings` comments).
 
 ### Investor Share
 Portion of withdrawal/close distribution allocated to investors according to contract percent, then split proportionally by each investor's contribution.
@@ -175,10 +191,10 @@ Post lifetime limit in days. For investment posts, TTL may be required by commun
 Automatic post closing after configured days without earnings (`inactiveCloseDays`).
 
 ### Comment (Vote) Withdrawal
-Withdrawal of merits from one's own comment (vote) to the voter's wallet. **In code:** `votes.withdrawFromVote`; same effective-beneficiary and balance rules as for post withdrawal.
+Withdrawal from a **comment** score via **`votes.withdrawFromVote`** (`votes.router.ts`). Eligibility uses **`VoteService.canUserWithdraw`** for the target. This path is **not** the same implementation as **`publications.withdraw`** for every edge case (e.g. МД `sourceEntity*` routing). See **@business-content.mdc**.
 
 ### noAuthorWalletSpend
-Publication-level flag. When true, tappalka does **not** debit the **author’s personal wallet** for show cost after pool and rating; posts with **`sourceEntityId`** may still use the source **`CommunityWallet`** per @business-tappalka.mdc. Post exits tappalka when no remaining source can cover the cost.
+Publication-level flag. When true, tappalka does **not** debit the **author’s personal wallet** for show cost after pool and rating; posts with **`sourceEntityId`** may still use the source **`CommunityWallet`** per **@business-tappalka.mdc**. Post exits tappalka when no remaining source can cover the cost.
 
 ---
 
@@ -191,7 +207,7 @@ Publication-level flag. When true, tappalka does **not** debit the **author’s 
 | Global community | Public group |
 
 ### "Image of Future" (ОБ / Obraz Budushchego)
-Synonym for **ОБ** hub; see **ОБ**, **Лента ОБ**, and @business-future-vision.mdc.
+Synonym for **ОБ** hub; see **ОБ**, **Лента ОБ**, and **@business-future-vision.mdc**.
 
 ### "Marathon of Good" (МД / Marafon Dobra)
 Global community for reports on actually done good deeds. Main source of merit earning.
