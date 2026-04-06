@@ -9,8 +9,8 @@ When doing significant changes in the api package, bump `version` in `api/packag
 
 Root `package.json` version is not used for release image tags in CI; release tags are derived from `web/package.json` and `api/package.json`.
 
-On `main` pushes, CI reads `web/package.json` and `api/package.json` versions and publishes `v<version>` tags.
+On `main` pushes, CI reads `web/package.json` and `api/package.json` versions and publishes image tags including `v<version>`, `latest`, and `sha-<short_sha>` per component (see `.github/workflows/build-and-push.yml`).
 
-On `dev` pushes, CI publishes dev/SHA tags and does not use semantic version tags.
+On `dev` pushes, CI publishes `<component>-dev-<full_commit_sha>` and `<component>-dev-latest` tags (e.g. `web-dev-…`, `api-dev-…`); semver `v*` tags are not used for dev builds.
 
 `libs/shared-types/package.json` also has an independent `version` field (`@meriter/shared-types`).
