@@ -14,6 +14,7 @@ alwaysApply: false
 - MongoDB + Mongoose
 - Zod shared contracts from `libs/shared-types`
 - `zod` is also a direct dependency of `@meriter/api` (see `api/package.json`) for validation beyond shared-types
+- tRPC uses the `superjson` transformer (`trpc/trpc.ts` `initTRPC`; dependency in `api/package.json`)
 
 ## Backend Structure
 
@@ -30,15 +31,16 @@ api/apps/meriter/src/
 │   ├── value-objects/         # Strongly-typed domain identifiers and VOs
 │   └── common/
 │       ├── helpers/           # Domain helpers (e.g. priority community logic)
-│       └── constants/           # Domain constants (bootstrap, platform, roles)
+│       └── constants/         # Domain constants (bootstrap, platform, roles)
 ├── trpc/
 │   ├── routers/               # tRPC routers (publications, votes, wallets, ...)
 │   ├── middleware/            # tRPC middleware (permission checks)
 │   ├── context.ts             # Request context construction
 │   ├── router.ts              # Main appRouter composition
+│   ├── types.ts               # Type-only AppRouter re-export for frontend (see file header comment in code)
 │   ├── trpc.service.ts        # DI-backed context/service wiring for tRPC
 │   ├── trpc.module.ts         # tRPC Nest module
-│   └── trpc.ts                # Procedure helpers + Sentry + HttpException mapping
+│   └── trpc.ts                # initTRPC + superjson + Sentry + HttpException mapping
 ├── api-v1/                    # REST modules (auth, config, legacy uploads) + api-v1/common/*
 ├── common/                    # Shared backend helpers/services/schemas/interceptors
 ├── updates-conductors/        # Update conductor subsystem
@@ -99,7 +101,7 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 Never rely on UI assumptions for security-critical checks.
 
 ### Auth Implementation Notes (Current Code)
-- OAuth providers are handled via REST auth controller (including Google and Yandex callbacks).
+- OAuth-related flows use the REST auth controller and Passport strategies (`api-v1/auth/strategies/google.strategy.ts`, `api-v1/auth/strategies/mailru.strategy.ts`); Yandex OAuth routes and callbacks are in `api-v1/auth/auth.controller.ts`.
 - Passkeys support both split flows (`register/login`) and unified flow (`passkey/authenticate/start|finish`).
 - Magic-link redeem endpoint includes in-memory IP rate limiting.
 - Legacy `GET /api/v1/auth/me` exists and is marked deprecated in favor of `trpc.users.getMe`.
