@@ -10,6 +10,8 @@ alwaysApply: false
 
 Use two terminals for full local stack: API and Web.
 
+From the **repository root**, you can use `pnpm dev:api` and `pnpm dev:web` in separate terminals (set the same env vars in the shell or in `api/.env` / `web/.env` as below). Or `cd` into each package:
+
 **Terminal 1 — API:**
 ```powershell
 cd api
@@ -55,10 +57,10 @@ pnpm test
 ## Common Issues
 
 **"Failed to fetch" tRPC errors:**
-→ If `NEXT_PUBLIC_API_URL` is set in `web/.env`, ensure it points to a reachable API (e.g. `http://localhost:8002`). If unset, the frontend uses the same host as the page. Comment it out or remove it to fall back to same-origin.
+→ If `NEXT_PUBLIC_API_URL` is set in `web/.env` (or `web/.env.local`), ensure it points to a reachable API (e.g. `http://localhost:8002`). When it is **set**, `web/next.config.js` skips rewrites and the client uses that URL directly. When it is **unset** on localhost, the browser calls relative `/trpc` (same origin as the Next dev server); Next.js rewrites `/api/*` and `/trpc/*` to `http://localhost:8002` in development. Comment out or remove `NEXT_PUBLIC_API_URL` to use that proxy path.
 
 **"DOMAIN environment variable is required":**
-→ Add `DOMAIN=localhost` to both `api/.env` and `web/.env`
+→ Set `DOMAIN=localhost` in `api/.env` (or the shell). For web, set `DOMAIN` or `NEXT_PUBLIC_DOMAIN` (e.g. `localhost`) in `web/.env` / `web/.env.local` or the shell — see `web/src/config/index.ts`.
 
 ## Full Setup Guide
 See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.
