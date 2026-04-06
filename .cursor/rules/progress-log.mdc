@@ -7,9 +7,12 @@ alwaysApply: false
 
 ## Progress Log
 
-When working on a feature that has a PRD in `docs/prd/`:
+When working on a feature that has a PRD under `docs/prd/` (including subfolders such as `docs/prd/projects/`, `docs/prd/investing/`):
 
-1. **At the start of a session**, check if `docs/prd/[feature-name]-progress.md` exists. If it does, read it to understand current state. If it doesn't, create it.
+1. **At the start of a session**, find or create the progress file for that feature. **Naming in this repo** (pick one consistent with the PRD location):
+   - Same directory as the PRD: `<slug>-progress.md` (e.g. `docs/prd/projects/project-page-redesign-progress.md` next to `project-page-redesign-prd.md`).
+   - Or at `docs/prd/` root with a `PRD-` prefix when the PRD uses that style: `PRD-<TOPIC>-progress.md` alongside `PRD-<TOPIC>.md` (see `docs/prd/PRD-BIRZHA-SOURCE-ENTITY-progress.md`).
+   If the file exists, read it for current state; if not, create it.
 
 2. **After completing each logical step**, append to the progress log:
    ```markdown
@@ -32,12 +35,13 @@ When working on a feature that has a PRD in `docs/prd/`:
 4. **Progress log template** (create if doesn't exist):
    ```markdown
    # Progress: [Feature Name]
-   PRD: @docs/prd/[feature-name].md
+   PRD: @docs/prd/.../[prd-file].md
    Branch: feat/[feature-name]
    Started: [date]
    
    ## Steps
    [append here]
    ```
+   Use the **actual** PRD path (e.g. `PRD-BIRZHA-SOURCE-ENTITY.md`, `projects/project-page-redesign-prd.md`, `investing/PRD-A-comment-modes.md`).
 
-This log serves as external memory. When starting a new chat session, attach it with `@docs/prd/[feature-name]-progress.md` to resume from where you left off.
+This log serves as external memory. When starting a new chat session, attach the progress file with `@` using its path under `docs/prd/` (same path you created above) to resume from where you left off.
