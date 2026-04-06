@@ -99,6 +99,7 @@ Full edge cases (eligibility query, `submitChoice` vs insufficient author wallet
 - **Amount:** tRPC input requires a **positive integer** (`investments.invest` — `amount >= 1`); no upper cap in API
 - Investment can ONLY be made from **wallet** (NOT from quota)
 - Investment is **irrevocable** — cannot be withdrawn or cancelled
+- **МД Birzha, community source:** `InvestmentService.processInvestment` **rejects** investing when the publication is in **`marathon-of-good`** and `sourceEntityType === 'community'` (community-actor / `communities.publishToBirzha` path). **Project-sourced** Birzha posts (`sourceEntityType === 'project'`) are not blocked by this rule. UI should hide/disable Invest accordingly.
 
 ### For Author (Promoting Own Post)
 - Author can add merits to their post's **rating** (main account)
@@ -145,6 +146,8 @@ Investor's share = their total investment / sum of ALL investments
 
 Applies when the publication is in **Marathon of Good** (`typeTag === 'marathon-of-good'`) with `sourceEntityId` + `sourceEntityType` set (e.g. cooperative **project** → `sourceEntityType: 'project'`, or community actor → `'community'`). **Investor contract math is unchanged** (steps 1–2 above: pool slice, proportional investor payouts).
 
+**New investments:** third parties **cannot** invest in **community-sourced** Birzha posts (`sourceEntityType === 'community'`) — API rejects with `BadRequestException`. **Project-sourced** posts may still accept investments when `investingEnabled` on the post.
+
 **Order of handling (withdraw and close):**
 
 1. **Investors** — `InvestmentService.distributeOnWithdrawal` (manual `publications.withdraw`) or `InvestmentService.handlePostClose` (close): investor share of the amount, proportional among investors.
@@ -176,22 +179,25 @@ Applies when the publication is in **Marathon of Good** (`typeTag === 'marathon-
 
 ## Post Closing with Investments
 
-### Closing = Automatic Full Withdrawal + Pool Return
+### Closing = automatic distribution (no idle pool left behind)
 
-There is no "close without withdrawal". Closing a post with investments triggers an automatic sequence:
+There is no "close without processing" the economic state. Closing runs `InvestmentService.handlePostClose` (from `PostClosingService.closePost`), then credits **`authorShare`** to the personal wallet or **`CommunityWallet`** for МД Birzha `sourceEntity*` posts, same as withdrawal rules.
+
+**Default — Mode A (`distributeAllByContractOnClose === true`, schema default):** Investors receive **contract %** of **`currentScore + currentPool`** in one pass (`distributeOnWithdrawal` with the combined amount). The pool is **not** “returned to investors first” as a separate step; unspent pool is part of that combined amount and split by contract (investor slice vs author).
+
+**Mode B (`distributeAllByContractOnClose === false`):** First, remaining **`investmentPool`** is returned to investors **proportionally** to their contributions (`Math.floor` per investor; any remainder goes to the first investor in the list — see `investment.service.ts`). Then remaining **rating** is distributed via **`distributeOnWithdrawal`** (contract % to investors, rest as **`authorShare`**).
 
 ```
 Author clicks "Close post"
         │
         ▼
-Step 1: Return unspent investmentPool to investors (proportional to contributions)
+InvestmentService.handlePostClose (Mode A or B per community setting)
         │
         ▼
-Step 2: Auto-withdraw ALL remaining rating per contract
-        (X% to investors proportionally, rest to author)
+PostClosingService credits authorShare (wallet vs CommunityWallet for Birzha source)
         │
         ▼
-Step 3: Post archived. All investors notified with final earnings.
+Post archived; investors notified (post_closed_investment)
 ```
 
 On close, the post is updated with `closingSummary`: `totalEarned`, `distributedToInvestors`, `authorReceived`, `spentOnShows`, `poolReturned`.
@@ -200,16 +206,18 @@ On close, the post is updated with `closingSummary`: `totalEarned`, `distributed
 
 **CRITICAL:** There is NO investment refund and NO investment cancellation mid-lifecycle.
 
-- Invested merits are spent on tappalka shows — they cannot be returned
-- The only "return" events are: (a) unspent pool on close, (b) profit distribution on withdrawal/close
+- Invested merits are spent on tappalka shows — they cannot be returned mid-flight
+- **Close / withdraw outcomes:** investor payouts come from **withdrawal** (`distributeOnWithdrawal`) and **close** (`handlePostClose`). In **Mode B**, remaining pool is **returned proportionally** before rating is split; in **Mode A**, unspent pool is **not** a separate principal return — it is included in the **combined** amount split by contract (see **Post Closing with Investments**).
 - When post closes, investors receive notification (type `post_closed_investment`); body is built in `PostClosingService` (optional project name prefix; then pool returned / share of rating / total received — see code for exact template).
 
-### Pool Return Example
+### Pool return example (Mode B only)
+
+When **`distributeAllByContractOnClose === false`**, proportional pool return happens before rating distribution. Example (integer amounts after `Math.floor`; remainder handling in code):
+
 - Total invested: 200 merits (Vasya 100, Petya 50, Sasha 50)
 - Spent on shows: 100 merits (50% consumed)
 - Remaining pool: 100 merits
-- Return: Vasya 50, Petya 25, Sasha 25
-- Then remaining rating is distributed per contract on top of this
+- Return: proportional shares of 100, then remaining **rating** is distributed per contract
 
 ---
 
@@ -276,13 +284,14 @@ If community allows self-voting, author's self-vote merits go to post rating (no
 
 ## Notifications
 
-| Event | Recipient | Message |
-|-------|-----------|---------|
-| New investment received | Post author | "User X invested N merits in your post" |
-| Author withdrew merits | All investors | "Author withdrew N merits from post. Your share: M merits" |
-| Post closed | All investors | Pool returned / share of rating / total received (type `post_closed_investment`; optional project prefix when `sourceEntityType === 'project'`) |
-| Investment pool depleted | Post author | "Investment pool depleted. Shows now deducted from post rating." (type `investment_pool_depleted`) |
-| Post exited tappalka (no funds) | Post author | "Post exited tappalka — no funds available for shows." (type `investment_pool_depleted`, title "Post exited tappalka") |
+Backend **`type`** values (titles/messages are built in code; i18n may vary):
+
+| Notification `type` | Recipient | Typical body (EN) |
+|---------------------|-----------|-------------------|
+| `investment_received` | Post author | "`{investor}` invested `{N}` merits in your post" (`investment.service.ts`) |
+| `investment_distributed` | Each investor with a share | "`{author}` withdrew `{N}` merits from post. Your share: `{M}` merits" (`investment.service.ts`) |
+| `post_closed_investment` | All investors | Final summary (pool / rating / totals; optional project prefix when `sourceEntityType === 'project'` — `PostClosingService`) |
+| `investment_pool_depleted` | Post author | Pool exhausted; shows continue from rating (and then entity wallet / author wallet per tappalka rules). Variant metadata: `variant: 'pool_depleted'` vs `exited_tappalka` (`tappalka.service.ts`) |
 
 ---
 
@@ -328,7 +337,8 @@ Both modes are implemented in investing/post-closing services.
 investingEnabled = true
 investorShareMin = 1
 investorShareMax = 99
-commentMode = 'neutralOnly' (recommended)
+commentMode = 'all'   # schema default; MVP table in @business-mvp.mdc matches weighted `all`
+                      # optional: 'neutralOnly' to avoid negative rating from weighted comments
 requireTTLForInvestPosts = false (configurable)
 maxTTL = null (configurable)
 inactiveCloseDays = 7 (default)
