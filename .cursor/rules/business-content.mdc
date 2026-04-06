@@ -91,8 +91,8 @@ Conceptually similar to base post (content with time limit, no publication `metr
 - Rating CAN be negative.
 
 ### Merit Withdrawal from Post
-- Default path: **effective beneficiary** withdraws from post rating to **personal wallet** (`processWithdrawal`), subject to `settings.allowWithdraw`.
-- **Birzha source posts in МД** (`publication.community` = marathon-of-good, `sourceEntityType` is `'project'` or `'community'`, `sourceEntityId` set): caller must be **lead/superadmin of `sourceEntityId`** (not the effective-beneficiary rule). After investor distribution, **author share** routes to **`CommunityWallet.deposit`** on `sourceEntityId` when `sourceEntityType === 'community'`; **`project`** branch uses `ProjectDistributionService` — @business-projects.mdc.
+- Default path: **effective beneficiary** withdraws from post rating to **personal wallet** (`processWithdrawal` helper inside `publications.withdraw`), subject to `settings.allowWithdraw`.
+- **Birzha source posts in МД** (`publication.community` = marathon-of-good, `sourceEntityType` is `'project'` or `'community'`, `sourceEntityId` set): caller must pass **`isUserAdmin(sourceEntityId)`** (global superadmin or **lead** of the source entity — not the effective-beneficiary rule). When the post has investments, **`InvestmentService.distributeOnWithdrawal`** runs first; **`authorShare`** is then credited via **`CommunityWallet.deposit(sourceEntityId, authorShare, 'publication_withdrawal')`** for **both** `'project'` and `'community'` sources (`publications.router.ts`). **`ProjectDistributionService`** is used in **other** cooperative-project flows (e.g. close/payout), not in this `publications.withdraw` path — @business-projects.mdc.
 - Upon withdrawal, post rating (metrics.score) decreases by the withdrawn amount in all cases above.
 
 ### Negative Rating Consequences
@@ -154,7 +154,7 @@ Forward mode is determined by the **source** community's `settings.forwardRule`.
 
 ### Restrictions
 - Forward guards reject publications with legacy **`postType === 'poll'`** only (`proposeForward` and `forward`). Other publication `postType` values (e.g. `ticket`, `discussion`) are **not** rejected by this check — product flows normally use `basic` / `project`. Standalone **Poll** entity (`polls` collection) is separate from publication `postType`.
-- Participant-initiated forward (`proposeForward`): only when source `typeTag === 'team'`
+- Participant-initiated forward (`proposeForward`): only when source `typeTag === 'team'`; charges **`settings.forwardCost`** from the caller’s **global** wallet (`GLOBAL_COMMUNITY_ID`); wallet debit is best-effort (errors in debit may be swallowed while the proposal still updates).
 - Lead/superadmin direct `forward`: no forward fee charged in current implementation
 - Target community is validated via post-type support check before forward/proposal
 
@@ -238,10 +238,13 @@ Canonical voting source priority (quota first, downvote/self-vote wallet only): 
 
 ### Restrictions by Post Type
 
+Applies to **publication** `Vote` rows (`votes.*` on `targetType: 'publication'`). Standalone **Poll** documents use **`polls.cast`**, not publication votes.
+
 | Post Type | Positive | Negative | Neutral |
 |-----------|----------|----------|---------|
 | Base post | ✅ | ✅ | ✅ |
-| Poll | ❌ | ❌ | ✅ |
+| Poll (`polls` collection) | N/A | N/A | N/A |
+| Legacy **`postType === 'poll'`** on a publication | ⚠️ Not primary (prefer **`polls.*`**) | ⚠️ Same | ⚠️ Same — backend does not reject by `postType` in `votes` router; UI may hide voting |
 
 ### Self-Voting
 - Default: **PROHIBITED**
@@ -313,7 +316,7 @@ Implementation detail: both paths create a **Publication** in the МД community
 
 ### Investing on Birzha posts
 
-If **`settings.investingEnabled`** is true on the МД community and the post enables investing, the **same investment contract and pool rules** apply as for any investment post — @business-investing.mdc. Investor share is taken **before** cooperative routing to `ProjectDistributionService` or `CommunityWallet` on withdraw/close (@business-projects.mdc).
+If **`settings.investingEnabled`** is true on the МД community and the post enables investing, the **same investment contract and pool rules** apply as for any investment post — @business-investing.mdc. Investor share is taken **first** (`InvestmentService.distributeOnWithdrawal` / close handling); **`authorShare`** then goes to the author’s personal wallet or, for МД Birzha `sourceEntity*` posts, to **`CommunityWallet.deposit`** on `sourceEntityId` — **not** via `ProjectDistributionService` on withdraw (that service is for other project distribution flows) — @business-projects.mdc.
 
 ---
 
