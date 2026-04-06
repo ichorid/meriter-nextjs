@@ -11,7 +11,7 @@ alwaysApply: true
 Merit-based social platform operating through web. Users earn and spend "merits" (internal currency) to participate in community activities: create publications, vote for content creators, comment, participate in polls, and invest merits into posts.
 
 ## Tech Stack
-- **Frontend**: React 19 + Next.js 16 + TypeScript + TanStack Query + tRPC + Tailwind + Zustand
+- **Frontend**: React 19 + Next.js 16 + TypeScript + TanStack Query + tRPC + Tailwind + Zustand; Telegram Mini App SDK packages (`@telegram-apps/sdk-react`, `@telegram-apps/telegram-ui`) are present in `web` for Telegram WebApp integration
 - **Backend**: NestJS + TypeScript + tRPC + REST API
 - **Database**: MongoDB 8 + Mongoose
 - **Infrastructure**: pnpm monorepo, Docker Compose, Caddy reverse proxy, AWS S3/MinIO
@@ -27,34 +27,38 @@ Structure and layer overview: see @architecture.mdc.
 - **Wallet**: Accumulated merits in a community
 - **ОБ / Future Visions** (hub `future-vision`): feed of “images of future” cards — see @business-future-vision.mdc
 - **Биржа / МД** (`marathon-of-good`): global weighted feed and investing “showcase”; product labels vs `typeTag` — @business-mvp.mdc, @business-content.mdc
+- **Global Projects hub** vs **cooperative project**: the global MVP “Projects” community uses `typeTag === 'team-projects'` (web route `/meriter/projects`); cooperative **project** teams are separate (`isProject` communities, tickets, `CommunityWallet`) — @business-mvp.mdc, @business-projects.mdc
 - **Community actor**: lead may publish **as** a community (`actingAsCommunityId` → `sourceEntityType: 'community'`) — @business-communities.mdc
 
 ## Key Patterns
 
 ### API Calls
 - **Primary API pattern**: TanStack Query + tRPC for most authenticated and domain operations (many procedures are `protectedProcedure`; selected reads are `publicProcedure`)
-- **REST usage (`api-v1`)**: auth flows (including fake auth), OAuth redirects/callbacks, WebAuthn/Passkey endpoints, and runtime config bootstrap
-- **File uploads**: tRPC mutations (`uploads.*`) are the primary path; REST upload controller exists for backward compatibility (`api-v1/uploads`) and is marked deprecated server-side
+- **REST (`api-v1` / `/api/v1`)**: Nest modules live under `api/apps/meriter/src/api-v1/`; HTTP routes are mounted under the `/api/v1/...` prefix. Used for selected flows including auth (including fake auth), OAuth redirects/callbacks, WebAuthn/Passkey, SMS OTP, email OTP, magic link redeem, phone call-check endpoints, and runtime/config bootstrap where exposed via REST controllers (not an exhaustive list—see `api-v1/` tree)
+- **File uploads**: tRPC mutations (`uploads.*`) are the primary path; REST upload controller exists for backward compatibility under `/api/v1/uploads/...` (module `api-v1/uploads`) and is marked `@deprecated` in `uploads.controller.ts`
 
 ### Schema Location
 - Shared schemas: `libs/shared-types/src/`
 - Backend schemas and model definitions: primarily `api/apps/meriter/src/domain/models/**/*.schema.ts`, plus backend validation schemas in `api/apps/meriter/src/config/` and selective shared schemas in `api/apps/meriter/src/common/schemas/`
 
 ### Naming Conventions
-- Routes: core CRUD names (`getById`, `getAll`, `create`, `update`, `delete`) plus domain-specific operations (`getFeed`, `withdraw`, `transfer`, `close`, `restore`, `permanentDelete`, `search`, `markAllAsRead`, etc.)
+- Routes: core CRUD names (`getById`, `getAll`, `create`, `update`, `delete`) plus domain-specific operations (`getFeed`, `withdraw`, `forward`, `publishToBirzha`, `close`, `restore`, `permanentDelete`, `search`, `markAllAsRead`, etc.)
 - Files: mixed conventions by layer — kebab-case is common, while PascalCase/camelCase is used in many React app/context/provider/client files
 - Variables: camelCase
 
 ## Implemented Feature Surface
-- **Authentication**: JWT/cookie auth, fake auth endpoints, OAuth-compatible REST auth paths, and passkey/WebAuthn support
+- **Authentication**: JWT/cookie auth; fake auth via tRPC/REST; OAuth-compatible REST auth paths; passkey/WebAuthn; additional REST auth flows include SMS OTP, email OTP, and magic link (see `api-v1/auth`)
 - **Navigation (primary hubs)**: Future Visions (`/meriter/future-visions`), МД / «Биржа» (`/meriter/communities/{marathon-of-good-id}`), Projects (`/meriter/projects`), notifications, profile — details @frontend.mdc
-- **ОБ / Future Visions feed**: `communities.getFutureVisions`, `futureVision*` fields, OB posts in the hub — @business-future-vision.mdc
+- **ОБ / Future Visions feed**: `communities.getFutureVisions`; hub cards use `Community` fields `futureVisionText`, `futureVisionTags`, `futureVisionCover` (see `community.schema.ts`); OB posts in the hub — @business-future-vision.mdc
 - **Биржа as showcase**: publications in the **Marathon of Good** community (`marathon-of-good`) — weighted feed, tappalka, investing on posts; Birzha-source posts from projects/communities — @business-content.mdc, @business-investing.mdc
 - **Cooperative projects**: `isProject` communities, tickets/discussions, `CommunityWallet`, `project.publishToBirzha`, withdraw/close → `ProjectDistributionService` — @business-projects.mdc
+- **Tickets (cooperative projects)**: `ticket` tRPC router — @business-projects.mdc
+- **Investments**: tRPC namespace `investments` (router file `trpc/routers/investment.router.ts`)
+- **Platform dev tooling**: tRPC namespace `platformDev` — superadmin-only procedures such as `wipeUserContent`, `seedDemoWorld`, `exportDatabaseDump`, `restoreDatabaseDump`, `resetDecree809Rubricator` (`platform-dev.router.ts`; destructive—see router comment)
 - **Community actor**: `actingAsCommunityId` on create, `CommunityWallet` credit/debit for source Birzha posts — @business-communities.mdc
 - **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
 - **Communities and teams**: community management, team creation, team join request workflows, team invitation/accept/reject flows, role operations
-- **Economy**: wallets, withdrawals, transfers, quota handling, voting/polls/comments, investments, tappalka mechanics
+- **Economy**: wallet and quota reads via `wallets.*` (e.g. `getByCommunity`, `getQuota`, `getBalance`, `getTransactions`); merit withdrawal from post rating via `publications.withdraw`; comment-score withdrawal via `votes.withdrawFromVote`; `wallets.withdraw` and `wallets.transfer` exist but return `NOT_IMPLEMENTED` in the current codebase; quota handling; voting, polls, comments; investments via `investments.*`; tappalka mechanics
 - **User engagement**: favorites module and notifications (including read-state operations)
 - **Platform modules**: about content module, platform settings module, runtime config/feature flags module, categories, search, uploads
 - **Background/domain automation**: post closing cron and quota reset services
