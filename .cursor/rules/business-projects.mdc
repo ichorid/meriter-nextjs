@@ -75,7 +75,7 @@ Key fields (non-exhaustive; see `community.schema.ts`):
 | `communityWalletId` | Wallet document |
 | `futureVisionText`, `futureVisionTags`, `futureVisionCover` | Parent ОБ-style metadata where used |
 | `rejectionMessage` | Neutral ticket rejection copy |
-| `investingEnabled` (optional) | Project-level investing toggle where applicable |
+| `settings.investingEnabled` | Under `Community.settings` (not a top-level Community field). `project.create` maps input `investingEnabled` here; project wallet invest / payout code reads `project.settings?.investingEnabled`. |
 
 ### Publication (inside project or Birzha-bound)
 
@@ -115,7 +115,7 @@ Join uses the same join-request flow as teams; `typeTag === 'project'` is allowe
 ## Lifecycle
 
 - **Active:** normal operations; `projectStatus` active (see schema enum).  
-- **Archived:** `closeProject` closes Birzha posts for this project (`sourceEntityType='project'`, `sourceEntityId=projectId`) via post closing, sets archived, blocks mutations via `PermissionService` for project communities.  
+- **Archived:** `closeProject` closes active Birzha posts for this project (`sourceEntityType='project'`, `sourceEntityId=projectId`) via `PostClosingService`, then `ProjectPayoutService.executePayoutAll` runs to pay out remaining **operational** `CommunityWallet` balance when it is at least 1 merit, sets `projectStatus` archived, blocks mutations via `PermissionService` for project communities.  
 - **Shares update:** `updateShares` — decrease-only `founderSharePercent` (lead).  
 - **Leave:** tickets adjusted; frozen merits stored; notifications (see reports).
 
@@ -258,7 +258,7 @@ Investor messaging on close may include **project name** prefix in `PostClosingS
 | Router | Procedure | Notes |
 |--------|-----------|------|
 | `publications` | `create`, `withdraw`, `close` | `actingAsCommunityId`, `sourceEntity*` branches |
-| `communities` | `getFutureVisions`, … | ОБ list, tags |
+| `communities` | `getFutureVisions`, `getCommunityWallet`, … | ОБ list, tags; `getCommunityWallet` reads the same **`CommunityWallet`** as `project.getWallet` when `communityId` is the cooperative project id (member-gated). **`communities.topUpCommunityWallet` rejects `isProject`** — use **`project.topUpWallet`** for cooperative projects. |
 | `votes` | (handlers) | Special cases for `community.isProject` merit display / rules — see code |
 | `investments` | @business-investing.mdc | Birzha post investments |
 
