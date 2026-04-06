@@ -21,7 +21,7 @@ meriter-nextjs/
 
 Notes:
 - Root `pnpm-workspace.yaml` lists workspace packages `api`, `web`, and `libs/shared-types`.
-- `web/pnpm-workspace.yaml` also exists in this repository.
+- `web/pnpm-workspace.yaml` exists but does not duplicate the root workspace package list; it carries pnpm-only settings (e.g. `ignoredBuiltDependencies` for `mongodb-memory-server` and `sharp`).
 
 ## Backend Structure (api/)
 ```
@@ -43,8 +43,8 @@ api/apps/meriter/src/
 │       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
 ├── api-v1/                       # 🟡 REST layer (auth, uploads, config/bootstrap, and related api-v1/common helpers/services/mappers/utils/interfaces)
 ├── common/                       # Shared backend utilities (helpers, services, interfaces, decorators, interceptors, filters, pipes, exceptions, validation, database)
-│   └── schemas/                  # Backend-only Zod schemas (currently minimal)
-├── config/                       # Configuration
+│   └── schemas/                  # Backend-only Zod schemas (small set; e.g. `pagination.schema.ts`)
+├── config/                       # NestJS runtime configuration (e.g. `configuration.ts`)
 ├── telegram/                     # Telegram integration
 ├── tg-bots/                      # Telegram bot module and services
 ├── updates-conductors/           # Update conductor subsystem
@@ -54,7 +54,7 @@ api/apps/meriter/src/
 ├── meriter.module.ts             # Root Nest module composition
 ├── meriter.controller.ts         # Root controller
 ├── meriter.service.ts            # Root app service
-├── config.ts                     # Runtime config bootstrap
+├── config.ts                     # App URL from `DOMAIN`, bot env constants, Telegram message templates
 ├── permission.guard.ts           # Permission guard
 ├── user.guard.ts                 # Authenticated user guard
 └── main.ts                       # App entry point
@@ -63,7 +63,10 @@ api/apps/meriter/src/
 Notes:
 - `domain/models/` includes auth-related schemas (e.g. passkey challenge schema)
 - Domain contains dedicated background modules/services (e.g. quota reset and post-closing cron modules)
-- `trpc/types.ts` re-exports type-only `AppRouter` from `trpc/router.ts` for the frontend (see Common Mistakes)
+- `trpc/types.ts` re-exports type-only `AppRouter` from `trpc/router.ts` for the frontend (see Common Mistakes). The web app imports that type via a relative path in `web/src/lib/trpc/client.ts` (still type-only).
+- `trpc/router.ts` `appRouter` namespaces: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`.
+- Sub-router file/export names may differ from the `appRouter` key (e.g. `investmentRouter` from `investment.router.ts` is mounted as `investments`).
+- Migration and maintenance scripts also live under `api/scripts/` (outside `api/apps/meriter/src/`); some are wired from `api/package.json` scripts.
 
 ### Adding New Backend Feature
 1. Add/update schema in `domain/models/[entity]/`; for cross-cutting models, a top-level schema file under `domain/models/` is also used in this codebase
@@ -79,7 +82,7 @@ web/src/
 ├── app/                          # 🔵 Next.js App Router
 │   ├── meriter/                  # Main app routes
 │   ├── tests/                    # Test/demo routes
-│   ├── **/route.ts               # App Router route handlers (server endpoints)
+│   ├── **/route.ts               # App Router route handlers (few; e.g. `app/auth/link/[token]/route.ts`, `app/a/[token]/route.ts`)
 │   ├── layout.tsx                # Root layout
 │   └── page.tsx                  # Home page
 ├── components/                   # 🟢 UI Components
@@ -202,7 +205,7 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 ## Common Mistakes
 
 ❌ Importing backend runtime code from `api/` in `web/`
-✅ Type-only import bridge from `api/apps/meriter/src/trpc/types.ts` (re-exports `AppRouter` from `./router`) is used in this codebase
+✅ Type-only import bridge: `api/apps/meriter/src/trpc/types.ts` re-exports `AppRouter` from `./router`. The web tRPC client imports it from there via a relative path (`web/src/lib/trpc/client.ts`).
 ❌ Duplicating types instead of using shared-types
 ⚠️ Prefer keeping new business logic in services; current codebase still contains substantial logic in some routers (legacy/transition areas)
 ❌ Putting reusable shared components only in `app/` (prefer `components/`, `features/*/components`, or `shared/components`)
