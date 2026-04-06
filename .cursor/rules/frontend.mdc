@@ -13,10 +13,11 @@ Full monorepo and layer overview: @architecture.mdc.
 - React 19 + Next.js 16 (App Router)
 - TypeScript (strict)
 - TanStack Query v5 + tRPC client (`@trpc/react-query` v11)
-- REST client via Axios (`lib/api/client.ts`, `lib/api/v1`)
+- REST client via Axios (`lib/api/client.ts`, `lib/api/v1` under `web/src`)
 - Tailwind CSS
 - Zustand (store middleware is mixed by store: some use `devtools + persist`, some only `devtools`, some plain `create`)
 - next-intl (i18n runtime and translations)
+- Telegram Mini App: `@telegram-apps/sdk-react`, `@telegram-apps/telegram-ui` (where WebApp behavior is needed)
 
 ## Web Structure (web/src)
 - `app/` — App Router pages/layouts/routes
@@ -55,7 +56,7 @@ Long-press on Profile opens a small menu (About, Support if `typeTag === 'suppor
 
 ### Left sidebar (`web/src/components/organisms/VerticalSidebar/VerticalSidebar.tsx`)
 
-Desktop / large layout: same **three primary hubs** (Future Visions → МД → Projects), then Notifications, Favorites, etc. For the МД item, the link is `routes.community(marathon.id)`. When the sidebar is **expanded**, the МД row shows **`marathon.name`** from the API (community document), **not** `marathonOfGoodLabel` — so the visible title can match the long product name (e.g. «Биржа социальных инвестиций») if stored on the community.
+Desktop / large layout: same **three primary hubs** (Future Visions → МД → Projects), then Notifications, Favorites, etc. For the МД item, the link is `routes.community(marathon.id)`. When the sidebar is **expanded**, the МД row shows **`marathon.name`** from the API (community document), **not** `marathonOfGoodLabel` — so the visible title can match the long product name (e.g. «Биржа социальных инвестиций») if stored on the community. If **`marathon-of-good` is missing** from `allCommunities`, the sidebar **omits** the МД row entirely (the bottom bar still falls back the second tab to `/meriter/profile` when the id is missing).
 
 ### Global «Биржа» / МД feed: user-facing copy vs identifiers
 
@@ -128,15 +129,13 @@ export function ExampleVote({ publicationId, communityId }: ExampleVoteProps) {
 import { trpc } from '@/lib/trpc/client';
 import { STALE_TIME } from '@/lib/constants/query-config';
 
+/** Fields actually forwarded to `publications.getAll` today (input has no sort/order). */
 interface ListQueryParams {
   skip?: number;
   limit?: number;
-  type?: string;
   communityId?: string;
   userId?: string;
   tag?: string;
-  sort?: string;
-  order?: string;
 }
 
 export function usePublications(params: ListQueryParams = {}) {
@@ -154,6 +153,8 @@ export function usePublications(params: ListQueryParams = {}) {
   );
 }
 ```
+
+The checked-in `usePublications` may still declare extra `ListQueryParams` keys that are not passed through to `getAll`; what reaches the procedure matches the fields above.
 
 ### REST (Specialized endpoint families)
 - Use REST wrappers for endpoint families that remain REST by design (auth/bootstrap, OAuth callbacks, uploads, runtime config).
@@ -379,7 +380,7 @@ export function useVoteOnPublicationWithComment() {
 - App-level query+tRPC providers are configured in `@/providers/QueryProvider`.
 
 ### Vote API Input Contracts
-- `votes.create` uses `CreateVoteDtoSchema`: `targetType`, `targetId`, `quotaAmount?`, `walletAmount?`, `attachedCommentId?`. The router passes `comment: ''` into `createVoteLogic` (no comment text on this procedure). Extra keys some client calls attach (e.g. `comment`, `direction`, `communityId`) are outside the Zod input and are not applied server-side; use `votes.createWithComment` when comment text or direction must be stored on the vote.
+- `votes.create` uses `CreateVoteDtoSchema`: `targetType`, `targetId`, `quotaAmount?`, `walletAmount?`, `attachedCommentId?`. The router passes `comment: ''` into `createVoteLogic` (no comment text on this procedure). Extra keys some client calls attach (e.g. `comment`, `direction`, `images`, `communityId`) are outside the Zod input and are not applied server-side; use `votes.createWithComment` when comment text or direction must be stored on the vote.
 - For voting on comments in domain flows, the target is a vote entity (`targetType: 'vote'`).
 - `votes.createWithComment` uses `VoteWithCommentDtoSchema` and accepts weighted vote or neutral comment (`comment`), with optional `direction` and `images`.
 - `VoteWithCommentDtoSchema` currently allows `targetType: 'publication' | 'comment' | 'vote'`, but `votes.createWithComment` enforces runtime validation and rejects `'comment'` (requires `'publication'` or `'vote'`).
