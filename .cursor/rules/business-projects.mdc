@@ -28,7 +28,7 @@ alwaysApply: false
 | [Permissions](#permissions) | Lead, member, withdraw vs PRD wording |
 | [Economy](#economy) | CommunityWallet, publishToBirzha, tappalka, top-up |
 | [Tickets](#tickets-and-discussions) | postType, statuses, neutral tickets |
-| [Withdraw / close / investing](#withdraw-close-and-investing) | `sourceEntityType='project'`, `ProjectDistributionService` |
+| [Withdraw / close / investing](#withdraw-close-and-investing) | МД Birzha `sourceEntity*`, `CommunityWallet`, `ProjectPayoutService` |
 | [Cross-domain](#cross-domain-links) | investing, communities, content, merits |
 | [Future visions & context](#future-visions-and-context-switch-brief) | ОБ posts, `actingAsCommunityId` (pointer) |
 | [Notifications](#notifications) | Types in code |
@@ -54,7 +54,7 @@ This is **not** the same entity as the global MVP community **“Projects”** (
 | **Project community** | `Community` document with `isProject` / `typeTag 'project'` |
 | **Birzha / МД** | Marathon of Good — target community for `publishToBirzha` (resolved via `typeTag === 'marathon-of-good'`) |
 | **CommunityWallet** | Per-project (or per eligible source) wallet: `balance` (operational), `totalReceived`, `totalDistributed` (transit accounting for distributions) |
-| **Author share** | After investor slice (if any), the remainder of a withdrawal/close amount attributed to the “author” path — for project-source posts routed to `ProjectDistributionService`, not to the author’s personal wallet |
+| **Author share** | After investor slice (if any), the remainder credited on **МД Birzha** posts with `sourceEntityId` — for both `sourceEntityType === 'project'` and `'community'`, **`CommunityWalletService.deposit`** on `sourceEntityId` (`publications.withdraw`, `PostClosingService`), not the post author’s personal wallet |
 | **Effective beneficiary** | `beneficiaryId ?? authorId` — used where beneficiary rules apply; **withdraw permission** for project Birzha posts is **not** the beneficiary (see [Permissions](#permissions)) |
 | **Internal merits share** | Cooperative share denominator from `TicketService.getProjectShares` (active + frozen) |
 
@@ -92,7 +92,7 @@ Key fields (non-exhaustive; see `community.schema.ts`):
 |-------|------|
 | `communityId` | Project (or source) id |
 | `balance` | Operational: top-up, `postCost`, tappalka show cost from wallet |
-| `totalReceived`, `totalDistributed` | Accumulators; **distribution** does not debit `balance`, increments `totalDistributed` |
+| `totalReceived`, `totalDistributed` | `deposit` increments **`balance`** and **`totalReceived`**; **`debit`** (payout from wallet) decrements **`balance`** and increments **`totalDistributed`**; **`addTotalDistributed`** increments only **`totalDistributed`** (transit helper; used by `ProjectDistributionService` when that path runs) |
 
 ### Membership
 
@@ -125,8 +125,7 @@ Join uses the same join-request flow as teams; `typeTag === 'project'` is allowe
 
 | Action | Rule (canonical — code) |
 |--------|-------------------------|
-| **Withdraw** on Birzha post with `sourceEntityType === 'project'` | Caller must be **lead** of `sourceEntityId` (project), **not** “effective beneficiary” for permission. Investor split runs first; **author share** → `ProjectDistributionService.distribute` (not `processWithdrawal` to beneficiary wallet). |
-| **Withdraw** on post with `sourceEntityType === 'community'` | Accumulative `CommunityWallet.deposit` on that community; see community wallet rules in `publications.router` (not personal wallet). |
+| **Withdraw** on МД Birzha post with `sourceEntityType === 'project'` or `'community'` | Caller must be **lead or superadmin** of `sourceEntityId` (`isUserAdmin`), **not** the effective-beneficiary rule. Investor split runs first when applicable; **author share** → **`CommunityWalletService.deposit(sourceEntityId, …)`** — same code path for project and community sources (`publications.router.ts`). |
 | **publishToBirzha** | `communityService.isUserAdmin(projectId, userId)` — **lead or global superadmin**. |
 | **Archived project** | `canCreatePublication`, `canCreatePoll`, `canVote` false for project community. |
 | **Tickets** | Named ticket: **lead** creates; **discussion**: any member (when `community.isProject`). |
@@ -140,7 +139,9 @@ Join uses the same join-request flow as teams; `typeTag === 'project'` is allowe
 ### CommunityWallet flows
 
 - **Operational debits:** `postCost` for publishing to Birzha (from project wallet), tappalka **show** cost for posts whose source is a project — **third priority** after investment pool and post rating in `TappalkaService` (see @business-tappalka.mdc / investing for base priority).  
-- **Transit:** `ProjectDistributionService.distribute` — credits **personal** wallets from author share; updates **`totalDistributed`**, does **not** reduce `balance`.
+- **Credits from Birzha rating:** manual **`publications.withdraw`** and **`PostClosingService.closePost`** use **`CommunityWalletService.deposit`** on the source entity id for МД posts with `sourceEntityType` **`project` or `community`** — **increments `balance`** (and `totalReceived`).  
+- **Payout / sweep from wallet:** **`ProjectPayoutService`** (`project.payoutPreview`, `project.payoutExecute`, `project`-close **`executePayoutAll`**) debits **`CommunityWallet.balance`** and credits **personal** wallets per founder / project-investor / team split (`project-payout.service.ts`).  
+- **`ProjectDistributionService.distribute`** — implements founder + team-pool split into **personal** wallets and **`addTotalDistributed`** transit accounting; **not called** from production routers (only tests). Prefer **`ProjectPayoutService`** for wallet sweep semantics in code.
 
 ### publishToBirzha
 
@@ -173,9 +174,13 @@ Defaults target **`postCost` = 0** for project communities (`CommunityDefaultsSe
 
 ## Withdraw, close, and investing
 
-**Investor slice / contract / pool** on Birzha posts: @business-investing.mdc. **After** `authorShare` is computed, project-source posts route it to **`ProjectDistributionService.distribute`** (manual withdraw and close), not to the author’s personal wallet.
+**Investor slice / contract / pool** on Birzha posts: @business-investing.mdc.
 
-**Invariant:** For `totalInternalMerits === 0`, distribution sends **100% author share to founder** (lead-derived if `founderUserId` missing — see `ProjectDistributionService`).
+**МД Birzha `sourceEntityType === 'project'`** — **same as `community` for rating economics:** after `authorShare` is computed, **`CommunityWalletService.deposit(sourceEntityId, authorShare, …)`** in **`publications.withdraw`** and **`PostClosingService`** (not personal wallet, not `processWithdrawal` to beneficiary).
+
+**Project archive (`closeProject`):** closes active Birzha posts via **`PostClosingService.closePost`** (rating slice → **`CommunityWallet.deposit`** as above), then **`ProjectPayoutService.executePayoutAll`** sweeps remaining **operational `CommunityWallet.balance`** (≥ 1 merit) to members.
+
+**`ProjectDistributionService`:** **`distribute()`** sends **100% of `authorShare` to founder** when cooperative internal-merits total is **0** (`totalInternalMerits === 0`); otherwise founder fixed % + team pool by **`TicketService.getProjectShares`**. This service is **not invoked** from production withdraw/close/payout paths today — see **`ProjectPayoutService`** for live wallet sweep behavior.
 
 ---
 
@@ -183,7 +188,7 @@ Defaults target **`postCost` = 0** for project communities (`CommunityDefaultsSe
 
 | Domain | Link |
 |--------|------|
-| **Investing** | Contract, pool, investor share on withdraw/close: @business-investing.mdc (subsection **Project-source Birzha posts**) |
+| **Investing** | Contract, pool, investor share on withdraw/close: @business-investing.mdc (**Birzha source posts (Marathon of Good)**) |
 | **Communities** | Parent ОБ, future-vision feed, `getFutureVisions`, `ensureBaseCommunities` for legacy users |
 | **Content** | Publications, feeds, `postType` validation in `PublicationService` for `isProject` |
 | **Merits** | Wallets (personal + community wallet), global merit for fees, quota rules elsewhere |
@@ -207,7 +212,7 @@ Types present in `notification.schema.ts` for this domain (subset; see file for 
 | `project_created` | Project created (parent lead / context) |
 | `ticket_assigned`, `ticket_done`, `ticket_accepted`, `ticket_evaluated`, `ticket_returned_for_revision`, `ticket_assignee_declined` | Ticket lifecycle |
 | `project_published` | Published to Birzha |
-| `project_distributed` | After cooperative distribution |
+| `project_distributed` | After **`ProjectPayoutService`** credits (wallet payout / sweep); same type is also emitted inside **`ProjectDistributionService.distribute`** if that path runs |
 | `project_closed` | Project archived / close |
 | `member_joined`, `member_left_project` | Membership |
 | `shares_changed` | Founder share update **or** admin transfer (metadata may carry `transferAdmin`) |
@@ -258,7 +263,7 @@ Investor messaging on close may include **project name** prefix in `PostClosingS
 | Router | Procedure | Notes |
 |--------|-----------|------|
 | `publications` | `create`, `withdraw`, `close` | `actingAsCommunityId`, `sourceEntity*` branches |
-| `communities` | `getFutureVisions`, `getCommunityWallet`, … | ОБ list, tags; `getCommunityWallet` reads the same **`CommunityWallet`** as `project.getWallet` when `communityId` is the cooperative project id (member-gated). **`communities.topUpCommunityWallet` rejects `isProject`** — use **`project.topUpWallet`** for cooperative projects. |
+| `communities` | `getFutureVisions`, `getCommunityWallet`, `communityWalletPayoutPreview`, `communityWalletPayoutExecute`, … | ОБ list, tags; `getCommunityWallet` reads the same **`CommunityWallet`** as `project.getWallet` when `communityId` is the cooperative project id (member-gated). **`topUpCommunityWallet`** calls **`CommunityService.topUpSourceCommunityWallet`**, which **rejects `isProject === true`** — use **`project.topUpWallet`** for cooperative projects. **Payout preview/execute** on `communities` mirror **`project.payoutPreview` / `payoutExecute`** for eligible **non-project** Birzha source communities (`project-payout.service.ts`). |
 | `votes` | (handlers) | Special cases for `community.isProject` merit display / rules — see code |
 | `investments` | @business-investing.mdc | Birzha post investments |
 
@@ -272,11 +277,13 @@ Community (isProject)
   ├── CommunityWalletService
   ├── TicketService + publications (ticket/discussion)
   ├── project.publishToBirzha → Publication in МД (sourceEntityType project)
-  ├── publications.withdraw / PostClosingService → ProjectDistributionService
+  ├── publications.withdraw / PostClosingService → CommunityWallet.deposit (source entity)
+  ├── ProjectPayoutService (wallet sweep; project + eligible non-project sources)
   └── TappalkaService (show cost from project wallet when source is project)
 
 Related:
-  InvestmentService (investor slice) → then cooperative distribution
+  InvestmentService (investor slice) → then authorShare to CommunityWallet for МД Birzha source posts
+  ProjectDistributionService (unused from routers; tests only)
   Future-vision / ОБ (sourceEntityType community) — separate wallet path
 ```
 
