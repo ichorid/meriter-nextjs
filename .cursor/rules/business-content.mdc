@@ -33,7 +33,7 @@ Main content type on the platform. All other types inherit from base post.
 | beneficiaries | No | Taxonomy: who benefits |
 | methods | No | Taxonomy: methods used |
 | stage | No | Taxonomy: project stage |
-| helpNeeded | No | Taxonomy: what help is needed |
+| helpNeeded | No | Taxonomy: array (max 3) of help-needed tags |
 
 ### System Fields
 
@@ -56,16 +56,16 @@ URL for sharing is derived from publication id; there is no stored `permalink` f
 
 ## Poll
 
-Conceptually similar to base post (content with time limit, no own rating, neutral votes only). In code, **Poll is a separate entity**: its own collection (`polls`) and schema with `question`, `options`, `expiresAt`, and metrics (`totalCasts`, `casterCount`, `totalAmount`). It is not a Publication subtype or a publication with `postType: 'poll'`.
+Conceptually similar to base post (content with time limit, no publication `metrics.score`). In code, **Poll is a separate entity**: its own collection (`polls`) and schema with `question`, `options`, `expiresAt`, and metrics (`totalCasts`, `casterCount`, `totalAmount`). Voting is via **`polls.cast`** / **`poll_casts`** (merit-weighted choice per option), not publication **`Vote`** rows. It is not a Publication subtype or a publication with `postType: 'poll'`.
 
 ### Differences from Base Post
 
 | Characteristic | Base Post | Poll |
 |----------------|-----------|------|
-| Own rating | Yes | No |
-| Weighted comments | Yes | Neutral only |
+| Own rating (`metrics.score`) | Yes | No (poll has its own metrics on the Poll document) |
+| Merit-weighted feedback | `Vote` on publication (`votes.*`) | `polls.cast` (option choice; not a publication Vote) |
 | Additional fields | — | Question, answer options |
-| Time limit | No | Optional |
+| Time limit | No | Optional (`expiresAt`) |
 
 ### Poll-Specific Fields
 
@@ -153,7 +153,7 @@ Conceptually similar to base post (content with time limit, no own rating, neutr
 Forward mode is determined by the **source** community's `settings.forwardRule`. Code does not restrict transfer-with-merits to a single hardcoded route (canonical: @business-index.mdc, Critical Implementation Rules #3-4).
 
 ### Restrictions
-- Forwardable post types: `basic` and `project`; `poll` forwarding is rejected
+- Forward guards reject publications with legacy **`postType === 'poll'`** only (`proposeForward` and `forward`). Other publication `postType` values (e.g. `ticket`, `discussion`) are **not** rejected by this check — product flows normally use `basic` / `project`. Standalone **Poll** entity (`polls` collection) is separate from publication `postType`.
 - Participant-initiated forward (`proposeForward`): only when source `typeTag === 'team'`
 - Lead/superadmin direct `forward`: no forward fee charged in current implementation
 - Target community is validated via post-type support check before forward/proposal
@@ -230,7 +230,7 @@ Canonical voting source priority (quota first, downvote/self-vote wallet only): 
 
 | Mode | Allowed behavior |
 |------|------------------|
-| `all` | In current code: non-zero amount required (weighted in practice). |
+| `all` | Weighted votes (`totalAmount > 0`) **or** neutral (`totalAmount = 0`) when **comment text is provided**; zero amount without text is rejected (except ticket-task paths where the router allows text-only task comments). |
 | `neutralOnly` | Only neutral comments (`totalAmount = 0`) |
 | `weightedOnly` | Only weighted comments (`totalAmount > 0`) |
 
