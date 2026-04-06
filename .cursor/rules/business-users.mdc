@@ -76,7 +76,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 **Restrictions:**
 - CANNOT delete community (only request from administration; request flow not implemented)
 
-**Forwarding mode (`settings.forwardRule`):** Leads and superadmins may change this via **`communities.update`** when they pass `isUserAdmin` / superadmin checks. Values: `standard` (copy without merits, keep original) or `project` (transfer with merits, soft-delete original). Default in schema is `standard` — not hard-locked to “always copy” for team communities.
+**Forwarding mode (`settings.forwardRule`):** Leads and superadmins may change this via **`communities.update`** when the caller is a community admin (`CommunityService.isUserAdmin`: lead in that community or `User.globalRole === 'superadmin'`). Values: `standard` (copy without merits, keep original) or `project` (transfer with merits, soft-delete original). Default in schema is `standard` — not hard-locked to “always copy” for team communities.
 
 ### Lead (Global Community)
 **Appointed by superadmin.** Administers specific global community. In code this is the same **lead** role (`UserCommunityRole.role: 'lead'`) for that community; there is no separate role type.
@@ -104,7 +104,7 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 ## Community Membership Rules
 
 ### Joining
-- User automatically becomes member of **ALL global communities** at registration
+- At registration / first login sync, the backend adds the user to **platform base hub communities** if missing: one community per `typeTag` among `future-vision`, `marathon-of-good`, `team-projects`, and `support` (`UserService.ensureUserInBaseCommunities`). Other global or custom communities are **not** auto-joined by this path unless added elsewhere.
 - Joins local communities voluntarily
 
 ### Multiple Membership
@@ -112,8 +112,8 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
 - User can be lead of **ANY number** of communities
 
 ### Leaving
-- From local community — can leave at will
-- From global community — **CANNOT** leave
+- From local **team** (`typeTag === 'team'`, etc.): **participants** may leave via `communities.leaveCommunity` when eligible; **leads** cannot leave until another lead is promoted (`leaveLocalCommunity`). **Priority** hub communities and **`isProject`** communities use other rules / flows (cannot use the generic local leave path for those cases).
+- From base hub / “global” MVP communities — **CANNOT** leave (same priority hubs as auto-join)
 
 ### Community Deletion
 - Lead **CANNOT** delete community independently
@@ -146,15 +146,17 @@ Roles are **COMMUNITY-SPECIFIC** — user can have different roles in different 
                             ▼
 ┌─────────────────────────────────────────────────────────┐
 │ 3. Automatic actions                                    │
-│    - participant role in all global communities         │
+│    - participant role in each base hub (four typeTags)  │
+│      if not already a member (ensureUserInBaseCommunities) │
 │    - Welcome merits to global wallet (platform setting  │
-│      welcomeMeritsGlobal, e.g. 100)                     │
+│      welcomeMeritsGlobal, e.g. 100) when first joining  │
+│      any of those hubs (not on every arbitrary join)    │
 │    - Additional role by invite code (if entered)        │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ### Starting Merits
-At registration the user receives welcome merits to the **global wallet**. The amount is set by the platform setting **welcomeMeritsGlobal** (e.g. 100).
+Welcome merits are credited to the **global wallet** when the user is first added to any of the four base hubs (`ensureUserInBaseCommunities`, typically during auth after signup). The amount comes from **welcomeMeritsGlobal** (e.g. 100 from bootstrap defaults when set).
 
 ---
 
@@ -229,13 +231,12 @@ Invite codes — main tool for granting roles to users.
 ```
 1. On registration:
    - Create user record
-   - Assign participant role to all global communities
-   - Credit welcome merits to global wallet (amount from platform setting, e.g. 100)
+   - Sync membership to base hub communities (`ensureUserInBaseCommunities`: participant role per hub) and credit **welcomeMeritsGlobal** to global wallet when first joining any of those hubs
    - Process invite code if provided
 
-2. On community join:
-   - Assign participant role
-   - Credit welcome merits (if configured)
+2. On community join (invite / approval / team flows):
+   - Assign participant role (or lead when applicable)
+   - Create or ensure community wallet; if new wallet, optional **starting merits** per community `meritSettings` / `CommunityService.startingMeritsOnJoin` (not `welcomeMeritsGlobal` — that is registration/base-hub only)
 
 3. On community creation:
    - Create community
