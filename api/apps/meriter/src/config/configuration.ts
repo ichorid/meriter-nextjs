@@ -63,7 +63,7 @@ export interface SmsConfig {
   apiUrl?: string;
   /** SMS API ID/Key (from SMS_API_ID env var, provider-specific) */
   apiId?: string;
-  /** SMS sender name (from SMS_FROM env var, default: 'Meriter') */
+  /** SMS sender name (SMS_FROM). When unset or whitespace-only, the provider request omits `from` (SMS.ru uses the account default). */
   from?: string;
   /** SMS test mode (from SMS_TEST_MODE env var or auto-enabled in dev) */
   testMode?: boolean;
@@ -381,7 +381,7 @@ export default (): AppConfig => {
       provider: env.SMS_PROVIDER || 'smsru',
       apiUrl: env.SMS_API_URL || 'https://sms.ru/sms',
       apiId: env.SMS_API_ID,
-      from: env.SMS_FROM || 'Meriter',
+      from: env.SMS_FROM?.trim() || undefined,
       testMode: env.SMS_TEST_MODE === 'true' || nodeEnv !== 'production',
       otpLength: 6,
       otpExpiryMinutes: 5,
