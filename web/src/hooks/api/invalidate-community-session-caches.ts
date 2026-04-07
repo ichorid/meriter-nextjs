@@ -21,6 +21,9 @@ export type CommunitySessionCacheUtils = {
       invalidate: (input: { userId: string; communityId: string }) => Promise<unknown>;
       refetch: (input: { userId: string; communityId: string }) => Promise<unknown>;
     };
+    getQuotaBatch: {
+      invalidate: () => Promise<unknown>;
+    };
   };
 };
 
@@ -65,5 +68,6 @@ export async function invalidateFeedWalletQuotaForCommunity(
     await utils.wallets.getQuota.refetch({ userId: 'me', communityId });
     await utils.wallets.getQuota.invalidate({ userId: userId, communityId });
     await utils.wallets.getQuota.refetch({ userId: userId, communityId });
+    await utils.wallets.getQuotaBatch.invalidate();
   }
 }

@@ -75,14 +75,14 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   // Check if it's marathon-of-good
   const isMarathonOfGood = community?.typeTag === 'marathon-of-good';
 
-  // Fetch quota data for this community
-  const { data: quotaData } = useUserQuota(communityId);
+  // Only fetch quota when no prop supplied (avoids N+1 when parent already batch-fetched)
+  const { data: quotaData } = useUserQuota(quota ? undefined : communityId);
 
   // Format balance and quota display (merits rounded to tenths)
   const balanceRaw = wallet?.balance || 0;
   const balance = formatMerits(balanceRaw);
-  const remainingQuota = quotaData?.remainingToday ?? quota?.remainingToday ?? 0;
-  const dailyQuota = quotaData?.dailyQuota ?? quota?.dailyQuota ?? 0;
+  const remainingQuota = quota?.remainingToday ?? quotaData?.remainingToday ?? 0;
+  const dailyQuota = quota?.dailyQuota ?? quotaData?.dailyQuota ?? 0;
 
   const hasMembershipRole = userRole === 'lead' || userRole === 'participant';
 

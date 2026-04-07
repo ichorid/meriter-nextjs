@@ -234,6 +234,7 @@ Implemented procedures:
 - `wallets.getByCommunity` — user wallet for a community (for **priority** communities returns global wallet). **`isProject`** communities are **not** priority hubs: this returns the wallet for **`communityId`** as stored, while **`MeritResolverService`** still resolves **`voting`** spend to the **global** wallet for `isProject` — do not equate `getBalance`/`getByCommunity` for a project id with vote spend capacity without checking global balance.
 - `wallets.getBalance` — balance for a community (same priority vs `isProject` caveat as `getByCommunity`).
 - `wallets.getQuota` — user quota for a community (dailyQuota, used, remaining, resetAt); when enabled, daily cap comes from **`settings.dailyEmission`**; respects `meritSettings.quotaEnabled` and forces **0** for `future-vision`.
+- `wallets.getQuotaBatch` — batch variant of `getQuota` for the **current user only** (no `userId` param). Input: `{ communityIds: string[] }` (max 100). Returns `Record<communityId, { dailyQuota, used, remaining, resetAt }>`. Same quota math as `getQuota`; skips per-community permission checks (self-access). Frontend `useCommunityQuotas` uses this instead of N individual `getQuota` calls.
 - `wallets.getFreeBalance` — numeric **remaining** quota only; unlike `getQuota`, it does **not** apply `meritSettings.quotaEnabled` (only `future-vision` forces zero `dailyQuota` in the handler). Prefer `getQuota` when documenting “quota disabled” behavior.
 - `wallets.getAll` — all user wallets.
 - `wallets.getTransactions` — user transactions.

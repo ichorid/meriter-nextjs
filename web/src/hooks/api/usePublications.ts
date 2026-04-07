@@ -354,6 +354,7 @@ export const useCreatePublication = () => {
                 await utils.wallets.getQuota.refetch({ userId: 'me', communityId });
                 await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
                 await utils.wallets.getQuota.refetch({ userId: user.id, communityId });
+                await utils.wallets.getQuotaBatch.invalidate();
             } else if (communityId) {
                 queryClient.invalidateQueries({
                     queryKey: ['quota'],
@@ -457,10 +458,10 @@ export const useProposeForward = () => {
 
     return trpc.publications.proposeForward.useMutation({
         onSuccess: () => {
-            // Invalidate publications queries to refresh the UI
             queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
             if (user?.id) {
                 queryClient.invalidateQueries({ queryKey: [['wallets', 'getQuota'], { userId: user.id }] });
+                queryClient.invalidateQueries({ queryKey: [['wallets', 'getQuotaBatch']] });
             }
         },
     });
@@ -472,10 +473,10 @@ export const useForward = () => {
 
     return trpc.publications.forward.useMutation({
         onSuccess: () => {
-            // Invalidate publications queries to refresh the UI
             queryClient.invalidateQueries({ queryKey: queryKeys.publications.all });
             if (user?.id) {
                 queryClient.invalidateQueries({ queryKey: [['wallets', 'getQuota'], { userId: user.id }] });
+                queryClient.invalidateQueries({ queryKey: [['wallets', 'getQuotaBatch']] });
             }
         },
     });

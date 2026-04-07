@@ -154,8 +154,7 @@ export function useResetDailyQuota() {
       utils.communities.getAll.invalidate();
       utils.communities.getById.invalidate({ id: variables.id });
       utils.wallets.getQuota.invalidate({ userId: 'me', communityId: variables.id });
-      // Invalidate quota-related queries
-      utils.invalidate({ queryKey: [['community-quota']] });
+      utils.wallets.getQuotaBatch.invalidate();
     },
   });
 }

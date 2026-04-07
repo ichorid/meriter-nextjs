@@ -1,9 +1,7 @@
-// Community quota React Query hooks - migrated to tRPC
+import { useMemo } from 'react';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { quotaKeys } from './useQuota';
 import { STALE_TIME } from '@/lib/constants/query-config';
-import { useBatchQueries } from './useBatchQueries';
 
 export interface CommunityQuota {
   communityId: string;
@@ -13,56 +11,44 @@ export interface CommunityQuota {
   resetAt: string;
 }
 
-interface QuotaData {
-  dailyQuota: number;
-  usedToday: number;
-  remainingToday: number;
-  resetAt: string;
-}
-
 /**
- * Fetch quota for multiple communities in parallel
- * @param communityIds Array of community IDs to fetch quota for
- * @returns Array of query results, one per community
+ * Fetch quota for multiple communities in a single batch request.
+ * Returns a Map of communityId -> CommunityQuota.
  */
 export function useCommunityQuotas(communityIds: string[]) {
   const { user } = useAuth();
-  const utils = trpc.useUtils();
 
-  const result = useBatchQueries<QuotaData, string>({
-    ids: communityIds,
-    queryKey: (communityId) => quotaKeys.quota(user?.id, communityId),
-    queryFn: async (communityId) => {
-      const data = await utils.wallets.getQuota.fetch({ userId: 'me', communityId });
-      return {
-        dailyQuota: data.dailyQuota,
-        usedToday: data.used,
-        remainingToday: data.remaining,
-        resetAt: new Date().toISOString(), // TODO: Get actual reset time from backend
-      };
+  // Stabilize input: dedupe + sort so the tRPC query key stays consistent
+  const idsJoined = [...new Set(communityIds.filter(Boolean))].sort().join(',');
+  const stableIds = useMemo(
+    () => (idsJoined ? idsJoined.split(',') : []),
+    [idsJoined],
+  );
+
+  const { data } = trpc.wallets.getQuotaBatch.useQuery(
+    { communityIds: stableIds },
+    {
+      enabled: !!user?.id && stableIds.length > 0,
+      staleTime: STALE_TIME.SHORT,
+      retry: false,
     },
-    enabled: (communityId) => !!user?.id && !!communityId,
-    staleTime: STALE_TIME.SHORT,
-    retry: false, // Don't retry on quota errors (community not configured)
-    shouldInclude: (data, _id, query) => {
-      // Only include if data exists, no error, and has valid structure
-      return !!data && !query.error && typeof data.remainingToday === 'number';
-    },
-    transformData: (data, communityId) => {
-      // Transform to include communityId
-      return {
+  );
+
+  const quotasMap = useMemo(() => {
+    const map = new Map<string, CommunityQuota>();
+    if (!data) return map;
+    for (const [communityId, quota] of Object.entries(data)) {
+      if (typeof quota.remaining !== 'number') continue;
+      map.set(communityId, {
         communityId,
-        dailyQuota: data.dailyQuota ?? 0,
-        usedToday: data.usedToday ?? 0,
-        remainingToday: data.remainingToday, // Keep original value, even if 0
-        resetAt: data.resetAt ?? '',
-      } as CommunityQuota;
-    },
-  });
+        dailyQuota: quota.dailyQuota ?? 0,
+        usedToday: quota.used ?? 0,
+        remainingToday: quota.remaining,
+        resetAt: quota.resetAt ?? '',
+      });
+    }
+    return map;
+  }, [data]);
 
-  return {
-    queries: result.queries,
-    quotasMap: result.dataMap as Map<string, CommunityQuota>,
-  };
+  return { quotasMap };
 }
-

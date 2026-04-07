@@ -3,7 +3,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { useAuth } from '@/contexts/AuthContext';
-import { quotaKeys } from '@/hooks/api/useQuota';
 
 const POLLING_INTERVAL_MS = 30000; // 30 seconds
 
@@ -44,11 +43,8 @@ export function useCommunityPolling(communityId?: string, enabled: boolean = tru
 
             // 2. Refresh Quota and Wallet Balance
             if (user?.id) {
-                // Refresh specific quota for this community (tRPC query)
                 utils.wallets.getQuota.invalidate({ userId: 'me', communityId });
-
-                // Refresh custom quota query used by batch fetcher (useUserMeritsBalance -> useCommunityQuotas)
-                queryClient.invalidateQueries({ queryKey: quotaKeys.quota(user.id, communityId) });
+                utils.wallets.getQuotaBatch.invalidate();
 
                 // Refresh wallet balance for this community
                 utils.wallets.getBalance.invalidate({ communityId });

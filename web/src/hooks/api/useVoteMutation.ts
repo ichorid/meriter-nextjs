@@ -162,6 +162,7 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         if (user?.id && communityId) {
           await utils.wallets.getQuota.invalidate({ userId: 'me', communityId });
           await utils.wallets.getQuota.invalidate({ userId: user.id, communityId });
+          await utils.wallets.getQuotaBatch.invalidate();
         }
         if (ctx?.quotaKey) {
           queryClient.invalidateQueries({ queryKey: ctx.quotaKey });

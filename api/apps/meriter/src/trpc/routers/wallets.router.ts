@@ -256,6 +256,100 @@ export const walletsRouter = router({
     }),
 
   /**
+   * Get quota for multiple communities in one call (current user only).
+   * Replaces N individual getQuota calls with batched DB aggregations.
+   */
+  getQuotaBatch: protectedProcedure
+    .input(z.object({
+      communityIds: z.array(z.string()).max(100),
+    }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+
+      if (input.communityIds.length === 0) {
+        return {} as Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }>;
+      }
+
+      const communities = await ctx.communityService.listCommunitiesByIds(input.communityIds);
+
+      if (!ctx.connection.db) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection not available',
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const communityQuotaConfig = new Map<string, { dailyQuota: number; quotaStartTime: Date }>();
+      for (const community of communities) {
+        const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
+        const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
+        const dailyQuota =
+          !quotaEnabled || community.typeTag === 'future-vision'
+            ? 0
+            : baseDailyQuota;
+        const quotaStartTime = community.lastQuotaResetAt
+          ? new Date(community.lastQuotaResetAt)
+          : today;
+        communityQuotaConfig.set(community.id, { dailyQuota, quotaStartTime });
+      }
+
+      // Group IDs by quotaStartTime so each group shares one $gte filter
+      const startTimeGroups = new Map<number, string[]>();
+      for (const [communityId, config] of communityQuotaConfig) {
+        const key = config.quotaStartTime.getTime();
+        if (!startTimeGroups.has(key)) {
+          startTimeGroups.set(key, []);
+        }
+        startTimeGroups.get(key)!.push(communityId);
+      }
+
+      const aggregateUsage = async (
+        collection: string,
+        ids: string[],
+        since: Date,
+      ): Promise<Array<{ _id: string; total: number }>> =>
+        ctx.connection.db!
+          .collection(collection)
+          .aggregate<{ _id: string; total: number }>([
+            { $match: { userId, communityId: { $in: ids }, createdAt: { $gte: since } } },
+            { $group: { _id: '$communityId', total: { $sum: '$amountQuota' } } },
+          ])
+          .toArray();
+
+      const usedMap = new Map<string, number>();
+
+      for (const [startTimeMs, ids] of startTimeGroups) {
+        const since = new Date(startTimeMs);
+        const [votesResults, pollCastsResults, quotaUsageResults] = await Promise.all([
+          aggregateUsage('votes', ids, since),
+          aggregateUsage('poll_casts', ids, since),
+          aggregateUsage('quota_usage', ids, since),
+        ]);
+        for (const row of [...votesResults, ...pollCastsResults, ...quotaUsageResults]) {
+          usedMap.set(row._id, (usedMap.get(row._id) || 0) + row.total);
+        }
+      }
+
+      const result: Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }> = {};
+      for (const [communityId, config] of communityQuotaConfig) {
+        const usedRaw = usedMap.get(communityId) || 0;
+        const used = config.dailyQuota === 0 ? 0 : usedRaw;
+        const remaining = config.dailyQuota === 0 ? 0 : Math.max(0, config.dailyQuota - used);
+
+        const resetAt = new Date(config.quotaStartTime);
+        resetAt.setDate(resetAt.getDate() + 1);
+        resetAt.setHours(0, 0, 0, 0);
+
+        result[communityId] = { dailyQuota: config.dailyQuota, used, remaining, resetAt: resetAt.toISOString() };
+      }
+
+      return result;
+    }),
+
+  /**
    * Get all user wallets (for all communities)
    */
   getAll: protectedProcedure
