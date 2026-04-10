@@ -24,7 +24,7 @@ export function useMeritTransfersByUser(
   return trpc.meritTransfer.getByUser.useQuery(
     {
       userId: userId!,
-      direction,
+      transferDirection: direction,
       page: opts?.page,
       limit: opts?.limit,
     },

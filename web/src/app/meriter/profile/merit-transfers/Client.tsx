@@ -28,7 +28,7 @@ export default function ProfileMeritTransfersClient() {
   const incomingQuery = trpc.meritTransfer.getByUser.useInfiniteQuery(
     {
       userId,
-      direction: 'incoming',
+      transferDirection: 'incoming',
       page: 1,
       limit: PAGE_LIMIT,
     },
@@ -42,7 +42,7 @@ export default function ProfileMeritTransfersClient() {
   const outgoingQuery = trpc.meritTransfer.getByUser.useInfiniteQuery(
     {
       userId,
-      direction: 'outgoing',
+      transferDirection: 'outgoing',
       page: 1,
       limit: PAGE_LIMIT,
     },

@@ -63,7 +63,7 @@ Currency labels come from the **resolved** wallet community (`settings.currencyN
 |-----------|--------|--------|
 | `create` | `protectedProcedure` | `senderId` = current user; caller must be a **member** of `input.communityContextId`. |
 | `getByCommunity` | `protectedProcedure` | `communityId` + pagination; member-only. |
-| `getByUser` | `protectedProcedure` | `userId` + `direction: 'incoming' \| 'outgoing'` + pagination; any authenticated user may query (no “own profile only” gate in router — product may tighten later). |
+| `getByUser` | `protectedProcedure` | `userId` + `transferDirection: 'incoming' \| 'outgoing'` + pagination (not named `direction` — TanStack `useInfiniteQuery` reserves `direction` for `'forward' \| 'backward'`). |
 
 Router: `api/apps/meriter/src/trpc/routers/merit-transfer.router.ts`. Service: `MeritTransferService`.
 

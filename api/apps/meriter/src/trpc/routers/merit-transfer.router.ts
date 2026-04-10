@@ -60,7 +60,8 @@ export const meritTransferRouter = router({
     .input(
       z.object({
         userId: z.string().min(1),
-        direction: z.enum(['incoming', 'outgoing']),
+        /** Must not be named `direction` — TanStack useInfiniteQuery injects `direction: 'forward'|'backward'` into tRPC input. */
+        transferDirection: z.enum(['incoming', 'outgoing']),
         ...PaginationInputSchema.shape,
       }),
     )
@@ -77,7 +78,7 @@ export const meritTransferRouter = router({
       const page = pagination.page ?? 1;
       const limit = pagination.limit ?? 20;
 
-      return ctx.meritTransferService.getByUser(input.userId, input.direction, {
+      return ctx.meritTransferService.getByUser(input.userId, input.transferDirection, {
         page,
         limit,
       });
