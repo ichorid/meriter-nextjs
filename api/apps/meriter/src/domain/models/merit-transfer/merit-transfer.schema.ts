@@ -20,7 +20,7 @@ export interface MeritTransfer {
 }
 
 @Schema({ collection: 'merit_transfers', timestamps: true })
-export class MeritTransferSchemaClass implements MeritTransfer {
+export class MeritTransferSchemaClass implements Omit<MeritTransfer, 'createdAt' | 'updatedAt'> {
   @Prop({ required: true, unique: true })
   id!: string;
 
@@ -53,12 +53,6 @@ export class MeritTransferSchemaClass implements MeritTransfer {
 
   @Prop({ index: true })
   eventPostId?: string;
-
-  @Prop({ required: true })
-  createdAt!: Date;
-
-  @Prop({ required: true })
-  updatedAt!: Date;
 }
 
 export const MeritTransferSchema = SchemaFactory.createForClass(MeritTransferSchemaClass);

@@ -41,3 +41,10 @@ Started: 2026-04-10
 - **Files changed**: маршруты и страницы `merit-transfers` (community / project / profile), `MembersTab`, `CommunityMembersPageClient`, `CommunityPageClient`, `project-dashboard`, `ProfileContentCards`, `MeritTransferButton` (`iconOnly`), `route-patterns`, `web/messages`, `web/package.json`, `docs/prd/merit-transfer/reports/05-frontend-integration.md`, `tasklist.md`, `merit-transfer-progress.md`.
 - **What was done**: Кнопки передачи в списках участников, навигация и ленты по контексту, профиль с вкладками входящие/исходящие, отчёт этапа 4.
 - **Known issues**: Полный `pnpm lint` по web по-прежнему с историческими warnings вне этой фичи.
+
+### Step 6: Проверка QA (этап 5)
+
+- **Status**: Done
+- **Files changed**: `api/apps/meriter/test/merit-transfer.service.spec.ts`, `merit-transfer.schema.ts` (timestamps без дублирующих `@Prop`), `api/package.json`, `docs/prd/merit-transfer/reports/06-qa.md`, `tasklist.md`, `merit-transfer-progress.md`.
+- **What was done**: Интеграционные тесты QA-1…QA-4 (API), QA-5 (`wallets.addMeritsToUser`), QA-6 (`getByUser`); исправление схемы для `create` в транзакции; отчёт `06-qa.md`; QA-7 — полный lint / test / build с корня (зафиксировано в отчёте).
+- **Known issues**: QA-4 (пустой комментарий в UI) и QA-6 (визуал профиля) остаются в чеклисте для ручной проверки в браузере.
