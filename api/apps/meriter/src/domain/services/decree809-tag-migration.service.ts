@@ -66,15 +66,15 @@ export class Decree809TagMigrationService implements OnModuleInit {
       .find({
         $or: [
           { futureVisionTags: { $exists: true, $ne: [] } },
-          { categories: { $exists: true, $ne: [] } },
+          { 'tappalkaSettings.categories': { $exists: true, $ne: [] } },
         ],
       })
-      .select({ _id: 1, futureVisionTags: 1, categories: 1 })
+      .select({ _id: 1, futureVisionTags: 1, tappalkaSettings: 1 })
       .cursor();
 
     for await (const c of commCursor) {
       const fv = c.futureVisionTags;
-      const cat = c.categories;
+      const cat = c.tappalkaSettings?.categories;
       const nextFv = fv?.length ? remapDecree809ValueTags(fv) : fv;
       const nextCat = cat?.length ? remapDecree809ValueTags(cat) : cat;
       const fvChanged =
@@ -91,7 +91,7 @@ export class Decree809TagMigrationService implements OnModuleInit {
           {
             $set: {
               ...(fvChanged ? { futureVisionTags: nextFv } : {}),
-              ...(catChanged ? { categories: nextCat } : {}),
+              ...(catChanged ? { 'tappalkaSettings.categories': nextCat } : {}),
             },
           },
         );

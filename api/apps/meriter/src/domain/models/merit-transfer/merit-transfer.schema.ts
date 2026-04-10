@@ -56,7 +56,9 @@ export class MeritTransferSchemaClass implements Omit<MeritTransfer, 'createdAt'
 }
 
 export const MeritTransferSchema = SchemaFactory.createForClass(MeritTransferSchemaClass);
-export type MeritTransferDocument = MeritTransferSchemaClass & Document;
+/** Timestamps are applied by Mongoose; declare for TypeScript (no duplicate @Prop on the class). */
+export type MeritTransferDocument = MeritTransferSchemaClass &
+  Document & { createdAt: Date; updatedAt: Date };
 
 MeritTransferSchema.index({ communityContextId: 1, createdAt: -1 });
 MeritTransferSchema.index({ senderId: 1, createdAt: -1 });
