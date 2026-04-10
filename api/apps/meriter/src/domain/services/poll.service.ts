@@ -170,38 +170,38 @@ export class PollService {
     return poll;
   }
 
+  /** Same filter as {@link getPollsByUser} (author or participated via casts). */
+  private async buildPollsByUserFilter(userId: string): Promise<Record<string, unknown>> {
+    const userCasts = await this.pollCastRepository.findByUser(userId, 1000, 0);
+    const pollIdsWithCasts = [...new Set(userCasts.map((cast) => cast.pollId))];
+
+    if (pollIdsWithCasts.length > 0) {
+      return {
+        $or: [{ authorId: userId }, { id: { $in: pollIdsWithCasts } }],
+      };
+    }
+    return { authorId: userId };
+  }
+
+  async countPollsForUserProfile(userId: string): Promise<number> {
+    const filter = await this.buildPollsByUserFilter(userId);
+    return this.pollModel.countDocuments(filter);
+  }
+
   async getPollsByUser(
     userId: string,
     limit: number = 20,
     skip: number = 0
   ): Promise<Poll[]> {
-    // Get poll IDs where user has cast votes
-    const userCasts = await this.pollCastRepository.findByUser(userId, 1000, 0);
-    const pollIdsWithCasts = [...new Set(userCasts.map(cast => cast.pollId))];
-    
-    // Build query: polls created by user OR polls where user has cast votes
-    let query: any;
-    
-    if (pollIdsWithCasts.length > 0) {
-      // User has casts: get polls created by user OR polls where user has cast votes
-      query = {
-        $or: [
-          { authorId: userId },
-          { id: { $in: pollIdsWithCasts } },
-        ],
-      };
-    } else {
-      // User has no casts: only get polls created by user
-      query = { authorId: userId };
-    }
-    
+    const query = await this.buildPollsByUserFilter(userId);
+
     const docs = await this.pollModel
       .find(query)
       .limit(limit)
       .skip(skip)
       .sort({ createdAt: -1 })
       .lean();
-    
+
     return docs.map(doc => Poll.fromSnapshot(doc as any));
   }
 

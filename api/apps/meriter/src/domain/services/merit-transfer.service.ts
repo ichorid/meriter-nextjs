@@ -305,4 +305,11 @@ export class MeritTransferService {
       },
     };
   }
+
+  /** Transfers where the user sent or received merits (for profile activity counts). */
+  async countTransfersInvolvingUser(userId: string): Promise<number> {
+    return this.meritTransferModel.countDocuments({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    });
+  }
 }

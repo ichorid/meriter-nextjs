@@ -407,6 +407,43 @@ export const usersRouter = router({
   }),
 
   /**
+   * Aggregated activity counts for profile cards (publications / comments / polls / merit transfers).
+   */
+  getProfileActivityCounts: protectedProcedure
+    .input(z.object({ userId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const target = await ctx.userService.getUser(input.userId);
+      if (!target) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'User not found',
+        });
+      }
+
+      const userId = input.userId;
+      const [publications, polls, meritTransfers] = await Promise.all([
+        ctx.publicationService.countProfilePublicationsByAuthor(userId),
+        ctx.pollService.countPollsForUserProfile(userId),
+        ctx.meritTransferService.countTransfersInvolvingUser(userId),
+      ]);
+
+      let comments = 0;
+      if (ctx.connection?.db) {
+        comments = await ctx.connection.db.collection('votes').countDocuments({
+          userId,
+          targetType: 'publication',
+        });
+      }
+
+      return {
+        publications,
+        comments,
+        polls,
+        meritTransfers,
+      };
+    }),
+
+  /**
    * Get all users with lead role
    */
   getAllLeads: protectedProcedure

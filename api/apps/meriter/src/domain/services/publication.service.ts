@@ -951,6 +951,17 @@ export class PublicationService {
     );
   }
 
+  /**
+   * Count active publications by author excluding project posts (aligns with profile publications tab).
+   */
+  async countProfilePublicationsByAuthor(authorId: string): Promise<number> {
+    return this.publicationModel.countDocuments({
+      authorId,
+      deleted: { $ne: true },
+      $nor: [{ isProject: true }, { postType: 'project' }],
+    });
+  }
+
   async getPublicationsByHashtag(
     hashtag: string,
     limit: number = 50,
