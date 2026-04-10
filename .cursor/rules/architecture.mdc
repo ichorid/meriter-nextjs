@@ -65,7 +65,7 @@ Notes:
 - `domain/models/` includes auth-related schemas (e.g. passkey challenge schema)
 - Domain contains dedicated background modules/services (e.g. quota reset and post-closing cron modules)
 - `trpc/types.ts` re-exports type-only `AppRouter` from `trpc/router.ts` for the frontend (see Common Mistakes). The web app imports that type via a relative path in `web/src/lib/trpc/client.ts` (still type-only).
-- `trpc/router.ts` `appRouter` namespaces: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`.
+- `trpc/router.ts` `appRouter` namespaces: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`.
 - Sub-router file/export names may differ from the `appRouter` key (e.g. `investmentRouter` from `investment.router.ts` is mounted as `investments`).
 - Migration and maintenance scripts also live under `api/scripts/` (outside `api/apps/meriter/src/`); some are wired from `api/package.json` scripts.
 

@@ -31,11 +31,11 @@
 
 ## Этап 2: Backend — роутер
 
-- [ ] **BE-7**: Создать `merit-transfer.router.ts` — процедура `create`: protected, проверка что отправитель — участник контекста, вызов сервиса.
-- [ ] **BE-8**: Процедура `getByCommunity`: protected, member check, pagination.
-- [ ] **BE-9**: Процедура `getByUser`: protected (свой профиль или публичный), pagination, direction filter.
-- [ ] **BE-10**: Зарегистрировать роутер в app router.
-- [ ] **BE-11**: `pnpm lint && pnpm build` в api — чисто.
+- [x] **BE-7**: Создать `merit-transfer.router.ts` — процедура `create`: protected, проверка что отправитель — участник контекста, вызов сервиса.
+- [x] **BE-8**: Процедура `getByCommunity`: protected, member check, pagination.
+- [x] **BE-9**: Процедура `getByUser`: protected (свой профиль или публичный), pagination, direction filter.
+- [x] **BE-10**: Зарегистрировать роутер в app router.
+- [x] **BE-11**: `pnpm lint && pnpm build` в api — чисто.
 
 **Отчёт**: `reports/03-backend-router.md`
 

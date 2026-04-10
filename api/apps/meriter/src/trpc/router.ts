@@ -21,6 +21,7 @@ import { platformSettingsRouter } from './routers/platform-settings.router';
 import { projectRouter } from './routers/project.router';
 import { ticketRouter } from './routers/ticket.router';
 import { platformDevRouter } from './routers/platform-dev.router';
+import { meritTransferRouter } from './routers/merit-transfer.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -49,6 +50,7 @@ export const appRouter = router({
   project: projectRouter,
   ticket: ticketRouter,
   platformDev: platformDevRouter,
+  meritTransfer: meritTransferRouter,
 });
 
 export type AppRouter = typeof appRouter;

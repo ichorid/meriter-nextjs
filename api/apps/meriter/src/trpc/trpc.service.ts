@@ -46,6 +46,7 @@ import { ProjectPayoutService } from '../domain/services/project-payout.service'
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
+import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -96,6 +97,7 @@ export class TrpcService {
     private platformWipeService: PlatformWipeService,
     private platformDemoSeedService: PlatformDemoSeedService,
     private platformDatabaseDumpService: PlatformDatabaseDumpService,
+    private meritTransferService: MeritTransferService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -152,6 +154,7 @@ export class TrpcService {
       platformWipeService: this.platformWipeService,
       platformDemoSeedService: this.platformDemoSeedService,
       platformDatabaseDumpService: this.platformDatabaseDumpService,
+      meritTransferService: this.meritTransferService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

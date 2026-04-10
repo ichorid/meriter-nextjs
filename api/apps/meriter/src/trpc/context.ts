@@ -47,6 +47,7 @@ import { ProjectPayoutService } from '../domain/services/project-payout.service'
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
+import { MeritTransferService } from '../domain/services/merit-transfer.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -93,6 +94,7 @@ export interface CreateContextOptions {
   platformWipeService: PlatformWipeService;
   platformDemoSeedService: PlatformDemoSeedService;
   platformDatabaseDumpService: PlatformDatabaseDumpService;
+  meritTransferService: MeritTransferService;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
@@ -151,6 +153,7 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDatabaseDumpService,
+    meritTransferService,
     connection,
     configService,
     cookieManager,
@@ -258,6 +261,7 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDatabaseDumpService,
+    meritTransferService,
     connection,
     configService,
     cookieManager,

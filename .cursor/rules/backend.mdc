@@ -75,7 +75,7 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 - Perform transport-level checks and call domain services.
 - Prefer thin routers (orchestration + mapping), but current codebase still contains substantial business logic and direct DB reads in some routers.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
-- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`.
+- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`.
 - Investments group is mounted as `investments` in appRouter, with implementation file `trpc/routers/investment.router.ts`.
 - Platform dev group is mounted as `platformDev` in appRouter, with implementation file `trpc/routers/platform-dev.router.ts` (superadmin-only procedures).
 
