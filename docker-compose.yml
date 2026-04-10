@@ -22,12 +22,17 @@ services:
       - ./mongodb-init:/docker-entrypoint-initdb.d:ro
     networks:
       - meriter-database-network
+    # Must authenticate when root user exists (production .env); unauthenticated ping fails then.
     healthcheck:
-      test: mongosh --quiet --eval "db.adminCommand('ping')"
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --host 127.0.0.1 --port 27017 --eval "db.adminCommand({ping:1}).ok" | grep -qx 1 || exit 1',
+        ]
       interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 60s
     deploy:
       resources:
         limits:
