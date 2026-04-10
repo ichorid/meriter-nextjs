@@ -36,6 +36,31 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  # Idempotent rs.initiate for volumes created before replSet + initdb.d (e.g. existing VPS data).
+  # Requires Docker Compose v2 (depends_on: service_completed_successfully).
+  mongodb-rs-init:
+    image: mongo:8
+    container_name: meriter-mongodb-rs-init
+    restart: "no"
+    env_file:
+      - .env
+    volumes:
+      - ./mongodb-init/rs-init-every-deploy.js:/scripts/rs-init-every-deploy.js:ro
+      - ./mongodb-init/rs-init-on-deploy.sh:/scripts/rs-init-on-deploy.sh:ro
+    networks:
+      - meriter-database-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/scripts/rs-init-on-deploy.sh"]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    security_opt:
+      - no-new-privileges:true
+
   api:
     image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
     container_name: meriter-api
@@ -56,6 +81,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongodb-rs-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8002/health || exit 1"]
       interval: 30s

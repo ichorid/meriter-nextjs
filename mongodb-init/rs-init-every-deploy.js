@@ -1,7 +1,6 @@
-// Single-node replica set — required for multi-document transactions (e.g. merit transfer).
-// Runs during Docker first-time init (empty data volume), before user creation in init-mongo.js.
-// For existing volumes, see mongodb-rs-init service + rs-init-every-deploy.js (same rs0 config).
-// Member host must match the Docker Compose service name so other containers can reach PRIMARY.
+// Idempotent replica set init — runs on every deploy via mongodb-rs-init service.
+// Matches mongodb-init/01-replica-set.js (rs0, single member mongodb:27017).
+// Needed when data volume already existed before initdb.d scripts ran (e.g. remote VPS).
 
 (function initReplicaSet() {
   const cfg = {

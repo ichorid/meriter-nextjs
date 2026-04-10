@@ -20,6 +20,22 @@ services:
       retries: 5
       start_period: 30s
 
+  mongodb-rs-init:
+    image: mongo:8
+    container_name: meriter-mongodb-rs-init
+    restart: "no"
+    env_file:
+      - .env
+    volumes:
+      - ./mongodb-init/rs-init-every-deploy.js:/scripts/rs-init-every-deploy.js:ro
+      - ./mongodb-init/rs-init-on-deploy.sh:/scripts/rs-init-on-deploy.sh:ro
+    networks:
+      - meriter-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/scripts/rs-init-on-deploy.sh"]
+
   web:
     build:
       context: .
@@ -139,6 +155,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongodb-rs-init:
+        condition: service_completed_successfully
     healthcheck:
       test: [ "CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8002/health || exit 1" ]
       interval: 30s
