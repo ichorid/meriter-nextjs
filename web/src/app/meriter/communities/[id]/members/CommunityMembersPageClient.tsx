@@ -64,6 +64,7 @@ import {
 import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 import { isPriorityCommunity } from '@/lib/community/is-priority-community';
+import { MeritTransferButton } from '@/features/merit-transfer';
 
 interface CommunityMembersPageClientProps {
   communityId: string;
@@ -83,6 +84,7 @@ export function CommunityMembersPageClient({
     const tLeadActions = useTranslations('pages.communities.members.leadActions');
     const tProjects = useTranslations('projects');
     const tSearch = useTranslations('search');
+    const tCommon = useTranslations('common');
     const { user } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
@@ -248,9 +250,9 @@ export function CommunityMembersPageClient({
                 onClick={() => router.push(routes.userProfile(member.id))}
                 hideChevron={isAdmin}
             />
-            {isAdmin && (
+            {(isAdmin || (isCurrentUserMember && member.id !== user?.id)) && (
                 <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                    {member.id !== user?.id && (
+                    {isAdmin && member.id !== user?.id && (
                         <button
                             type="button"
                             onClick={(e) => {
@@ -268,6 +270,7 @@ export function CommunityMembersPageClient({
                             )}
                         </button>
                     )}
+                    {isAdmin && (
                     <button
                         type="button"
                         onClick={(e) => {
@@ -283,6 +286,26 @@ export function CommunityMembersPageClient({
                     >
                         <Coins className="h-4 w-4" />
                     </button>
+                    )}
+                    {isCurrentUserMember && member.id !== user?.id ? (
+                        <div
+                            className="flex items-center"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            role="presentation"
+                        >
+                            <MeritTransferButton
+                                iconOnly
+                                variant="ghost"
+                                className="h-9 w-9 shrink-0 rounded-full text-primary hover:bg-primary/10"
+                                receiverId={member.id}
+                                receiverDisplayName={
+                                    member.displayName || member.username || tCommon('unknownUser')
+                                }
+                                communityContextId={communityId}
+                            />
+                        </div>
+                    ) : null}
                     {(leadManagementAllowed || isPlatformSuperadmin) &&
                         member.id === user?.id &&
                         member.role === 'lead' && (

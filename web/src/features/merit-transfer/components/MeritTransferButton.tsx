@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { SendHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { MeritTransferDialog } from './MeritTransferDialog';
@@ -13,6 +14,8 @@ export interface MeritTransferButtonProps {
   communityContextId: string;
   onSuccess?: () => void;
   buttonText?: string;
+  /** Compact icon button for dense member rows (tooltip = transfer merits). */
+  iconOnly?: boolean;
   variant?: ButtonProps['variant'];
   size?: ButtonProps['size'];
   className?: string;
@@ -25,6 +28,7 @@ export function MeritTransferButton({
   communityContextId,
   onSuccess,
   buttonText,
+  iconOnly = false,
   variant = 'outline',
   size = 'sm',
   className,
@@ -38,17 +42,21 @@ export function MeritTransferButton({
     return null;
   }
 
+  const label = buttonText ?? t('transferMerits');
+
   return (
     <>
       <Button
         type="button"
         variant={variant}
-        size={size}
+        size={iconOnly ? 'icon' : size}
         className={className}
         disabled={disabled}
         onClick={() => setOpen(true)}
+        title={iconOnly ? label : undefined}
+        aria-label={iconOnly ? label : undefined}
       >
-        {buttonText ?? t('transferMerits')}
+        {iconOnly ? <SendHorizontal className="h-4 w-4" aria-hidden /> : label}
       </Button>
       <MeritTransferDialog
         open={open}

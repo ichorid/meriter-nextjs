@@ -2170,6 +2170,7 @@
         "inviteSection": "Код приглашения",
         "noRoles": "Роли не назначены",
         "noProjects": "Пока нет проектов",
+        "meritTransfersCardTitle": "Передачи заслуг",
         "investments": {
             "title": "Инвестиции",
             "statsSummary": "Итоги портфеля",
@@ -2893,7 +2894,15 @@
         "walletBadgeProject": "Проект",
         "feedLoading": "Загрузка передач…",
         "feedEmpty": "Пока нет передач",
-        "feedAmount": "{amount} засл."
+        "feedAmount": "{amount} засл.",
+        "navMeritTransfers": "Переданные заслуги",
+        "pageTitleCommunity": "Передачи заслуг в сообществе",
+        "pageTitleProject": "Передачи заслуг в проекте",
+        "pageLoginRequired": "Войдите, чтобы видеть передачи заслуг.",
+        "loadMore": "Загрузить ещё",
+        "profilePageTitle": "Передачи заслуг",
+        "tabIncoming": "Входящие",
+        "tabOutgoing": "Исходящие"
     },
     "metadata": {
         "birzhaPosts": "Посты на Бирже",

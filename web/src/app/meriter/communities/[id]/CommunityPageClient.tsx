@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -87,6 +87,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const tMerit = useTranslations('meritTransfer');
     const tTaxonomy = useTranslations('publications.create.taxonomy');
     const tValues = useTranslations('valuesRubricator');
     const {
@@ -788,6 +789,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             readOnly={false}
                         />
                     </div>
+                    {user && isCommunityMember ? (
+                        <Link
+                            href={routes.communityMeritTransfers(chatId)}
+                            className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                        >
+                            <div className="flex min-w-0 items-center gap-3">
+                                <ArrowLeftRight className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                <span className="truncate font-medium text-base-content">
+                                    {tMerit('navMeritTransfers')}
+                                </span>
+                            </div>
+                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                {tCommunities('all')}
+                                <ChevronRight size={14} />
+                            </span>
+                        </Link>
+                    ) : null}
                     <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
                         <div className="flex min-w-0 flex-1 flex-col gap-2">
                             <Link
@@ -861,49 +879,68 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </div>
                 </div>
             ) : comms ? (
-                <div
-                    className={cn(
-                        'mb-6 grid gap-3',
-                        isMarathonOfGood ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
-                    )}
-                >
-                    <Link
-                        href={routes.communityMembers(chatId)}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                <div className="mb-6 flex flex-col gap-3">
+                    <div
+                        className={cn(
+                            'grid gap-3',
+                            isMarathonOfGood ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+                        )}
                     >
-                        <div className="flex min-w-0 items-center gap-3">
-                            <Users className="h-5 w-5 shrink-0 text-base-content/70" />
-                            <div className="flex min-w-0 items-baseline gap-2">
-                                <span className="truncate font-medium text-base-content">
-                                    {tCommunities('members.title')}
-                                </span>
-                                <span className="shrink-0 tabular-nums text-sm text-base-content/60">
-                                    {comms.memberCount ?? 0}
-                                </span>
-                            </div>
-                        </div>
-                        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                            {tCommunities('all')}
-                            <ChevronRight size={14} />
-                        </span>
-                    </Link>
-                    {!isMarathonOfGood ? (
                         <Link
-                            href={routes.communityProjects(chatId)}
+                            href={routes.communityMembers(chatId)}
                             className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
                         >
                             <div className="flex min-w-0 items-center gap-3">
-                                <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                                <Users className="h-5 w-5 shrink-0 text-base-content/70" />
                                 <div className="flex min-w-0 items-baseline gap-2">
                                     <span className="truncate font-medium text-base-content">
-                                        {tCommunities('communityProjects')}
+                                        {tCommunities('members.title')}
                                     </span>
                                     <span className="shrink-0 tabular-nums text-sm text-base-content/60">
-                                        {communityProjectsCountPending
-                                            ? '…'
-                                            : (communityProjectsSummary?.total ?? 0)}
+                                        {comms.memberCount ?? 0}
                                     </span>
                                 </div>
+                            </div>
+                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                {tCommunities('all')}
+                                <ChevronRight size={14} />
+                            </span>
+                        </Link>
+                        {!isMarathonOfGood ? (
+                            <Link
+                                href={routes.communityProjects(chatId)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
+                                    <div className="flex min-w-0 items-baseline gap-2">
+                                        <span className="truncate font-medium text-base-content">
+                                            {tCommunities('communityProjects')}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-sm text-base-content/60">
+                                            {communityProjectsCountPending
+                                                ? '…'
+                                                : (communityProjectsSummary?.total ?? 0)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
+                                </span>
+                            </Link>
+                        ) : null}
+                    </div>
+                    {user && isCommunityMember ? (
+                        <Link
+                            href={routes.communityMeritTransfers(chatId)}
+                            className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                        >
+                            <div className="flex min-w-0 items-center gap-3">
+                                <ArrowLeftRight className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                <span className="truncate font-medium text-base-content">
+                                    {tMerit('navMeritTransfers')}
+                                </span>
                             </div>
                             <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
                                 {tCommunities('all')}

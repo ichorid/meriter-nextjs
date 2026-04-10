@@ -15,6 +15,7 @@ export const STATIC_ROUTE_PATTERNS = [
   /^\/meriter\/spaces$/,
   /^\/meriter\/settings$/,
   /^\/meriter\/profile$/,
+  /^\/meriter\/profile\/merit-transfers$/,
   /^\/meriter\/new-user$/,
   /^\/meriter\/welcome$/,
   /^\/meriter\/search$/,
@@ -44,9 +45,11 @@ export const DYNAMIC_ROUTE_PATTERNS = [
   /^\/meriter\/communities\/[^/]+\/posts\/[^/]+$/, // /meriter/communities/[id]/posts/[slug]
   /^\/meriter\/communities\/[^/]+\/rules$/, // /meriter/communities/[id]/rules
   /^\/meriter\/communities\/[^/]+\/members$/, // /meriter/communities/[id]/members
+  /^\/meriter\/communities\/[^/]+\/merit-transfers$/, // /meriter/communities/[id]/merit-transfers
   /^\/meriter\/communities\/[^/]+\/join$/, // /meriter/communities/[id]/join
   /^\/meriter\/users\/[^/]+$/, // /meriter/users/[userId]
   /^\/meriter\/projects\/[^/]+$/, // /meriter/projects/[id]
+  /^\/meriter\/projects\/[^/]+\/merit-transfers$/, // /meriter/projects/[id]/merit-transfers
   /^\/meriter\/publications\/[^/]+$/, // /meriter/publications/[id]
   /^\/meriter\/polls\/[^/]+$/, // /meriter/polls/[id]
   /^\/meriter\/spaces\/[^/]+$/, // /meriter/spaces/[slug]

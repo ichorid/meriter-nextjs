@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { PieChart, Users } from 'lucide-react';
+import { ArrowLeftRight, PieChart, Users } from 'lucide-react';
 import { CooperativeSharesDisplay } from '@/components/molecules/CooperativeSharesDisplay';
 import { ProjectWalletCard } from './ProjectWalletCard';
 import { ProjectPayoutDialog } from './ProjectPayoutDialog';
@@ -65,6 +65,7 @@ export function ProjectDashboard({
   readOnly = false,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
+  const tMerit = useTranslations('meritTransfer');
   const [payoutOpen, setPayoutOpen] = useState(false);
   const [investorsOpen, setInvestorsOpen] = useState(false);
   const { data: wallet } = useProjectWallet(projectId);
@@ -103,14 +104,29 @@ export function ProjectDashboard({
         {totalMembers === 0 && (
           <p className="text-sm text-base-content/50">{t('teamNoMembersPreview')}</p>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-auto h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
-          asChild
-        >
-          <Link href={routes.projectMembers(projectId)}>{t('viewTeamMembers')}</Link>
-        </Button>
+        <div className="mt-auto flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+            asChild
+          >
+            <Link href={routes.projectMembers(projectId)}>{t('viewTeamMembers')}</Link>
+          </Button>
+          {isProjectMember ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
+              asChild
+            >
+              <Link href={routes.projectMeritTransfers(projectId)} className="gap-2">
+                <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden />
+                {tMerit('navMeritTransfers')}
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">

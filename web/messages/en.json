@@ -2172,6 +2172,7 @@
         "inviteSection": "Invite Code",
         "noRoles": "No roles assigned",
         "noProjects": "No projects yet",
+        "meritTransfersCardTitle": "Merit transfers",
         "investments": {
             "title": "Investments",
             "statsSummary": "Portfolio summary",
@@ -2893,7 +2894,15 @@
         "walletBadgeProject": "Project",
         "feedLoading": "Loading transfers…",
         "feedEmpty": "No transfers yet",
-        "feedAmount": "{amount} merit(s)"
+        "feedAmount": "{amount} merit(s)",
+        "navMeritTransfers": "Transferred merits",
+        "pageTitleCommunity": "Merit transfers in this community",
+        "pageTitleProject": "Merit transfers in this project",
+        "pageLoginRequired": "Sign in to view merit transfers.",
+        "loadMore": "Load more",
+        "profilePageTitle": "Merit transfers",
+        "tabIncoming": "Incoming",
+        "tabOutgoing": "Outgoing"
     },
     "metadata": {
         "birzhaPosts": "Birzha posts",

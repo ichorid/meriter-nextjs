@@ -33,4 +33,11 @@ Started: 2026-04-10
 - **Status**: Done
 - **Files changed**: `web/src/features/merit-transfer/**`, `web/messages/en.json`, `web/messages/ru.json`, `web/package.json`, `api/package.json`, `docs/prd/merit-transfer/reports/04-frontend-components.md`, `tasklist.md`, `merit-transfer-progress.md`; правка TS в `merit-transfer.service.ts` после `Model.create`.
 - **What was done**: `MeritTransferButton`, `MeritTransferDialog` (`meritTransfer.create`), `MeritTransferFeed`, хуки `useMeritTransfersByCommunity` / `useMeritTransfersByUser`, i18n, отчёт этапа 3.
-- **Known issues**: Интеграция в UI (этап 4) не делалась.
+- **Known issues**: None
+
+### Step 5: Frontend — интеграция merit transfer (этап 4)
+
+- **Status**: Done
+- **Files changed**: маршруты и страницы `merit-transfers` (community / project / profile), `MembersTab`, `CommunityMembersPageClient`, `CommunityPageClient`, `project-dashboard`, `ProfileContentCards`, `MeritTransferButton` (`iconOnly`), `route-patterns`, `web/messages`, `web/package.json`, `docs/prd/merit-transfer/reports/05-frontend-integration.md`, `tasklist.md`, `merit-transfer-progress.md`.
+- **What was done**: Кнопки передачи в списках участников, навигация и ленты по контексту, профиль с вкладками входящие/исходящие, отчёт этапа 4.
+- **Known issues**: Полный `pnpm lint` по web по-прежнему с историческими warnings вне этой фичи.

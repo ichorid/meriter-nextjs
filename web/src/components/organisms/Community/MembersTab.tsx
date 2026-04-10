@@ -23,6 +23,7 @@ import {
     CommunityPromoteLeadDialog,
     CommunitySuperadminDemoteToParticipantDialog,
 } from '@/components/organisms/Community/CommunityLeadActionDialogs';
+import { MeritTransferButton } from '@/features/merit-transfer';
 
 interface MembersTabProps {
     communityId: string;
@@ -64,6 +65,10 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
     const canRemoveMembers = isCommunityAdmin || isSuperadmin || isUserLead;
     const leadManagementAllowed =
         canRemoveMembers && communityAllowsLeadManagement(community?.typeTag);
+
+    const myRoleInCommunity = userRoles.find((r) => r.communityId === communityId)?.role;
+    const isCurrentUserMember =
+        myRoleInCommunity === 'lead' || myRoleInCommunity === 'participant';
 
     const handleRemoveMember = (userId: string, userName: string) => {
         if (confirm(t('members.confirmRemove', { name: userName }) || `Remove ${userName} from community?`)) {
@@ -145,9 +150,9 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                     quota={member.quota}
                     onClick={() => router.push(routes.userProfile(member.id))}
                 />
-                {canRemoveMembers && (
+                {(canRemoveMembers || (isCurrentUserMember && member.id !== user?.id)) && (
                     <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                        {member.id !== user?.id && (
+                        {canRemoveMembers && member.id !== user?.id && (
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -170,6 +175,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                                 )}
                             </button>
                         )}
+                        {canRemoveMembers && (
                         <button
                             type="button"
                             onClick={(e) => {
@@ -188,6 +194,28 @@ export const MembersTab: React.FC<MembersTabProps> = ({ communityId }) => {
                         >
                             <Coins className="h-4 w-4" />
                         </button>
+                        )}
+                        {isCurrentUserMember && member.id !== user?.id ? (
+                            <div
+                                className="flex items-center"
+                                onClick={(e) => e.stopPropagation()}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                role="presentation"
+                            >
+                                <MeritTransferButton
+                                    iconOnly
+                                    variant="ghost"
+                                    className="h-9 w-9 shrink-0 rounded-full text-primary hover:bg-primary/10"
+                                    receiverId={member.id}
+                                    receiverDisplayName={
+                                        member.displayName ||
+                                        member.username ||
+                                        tCommon('unknownUser')
+                                    }
+                                    communityContextId={communityId}
+                                />
+                            </div>
+                        ) : null}
                         {(leadManagementAllowed || isSuperadmin) &&
                             member.id === user?.id &&
                             communityRoleStr === 'lead' && (

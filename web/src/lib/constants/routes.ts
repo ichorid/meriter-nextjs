@@ -10,11 +10,13 @@ export const routes = {
     // Main
     home: "/meriter/home", // Deprecated - use profile instead
     profile: "/meriter/profile",
+    profileMeritTransfers: "/meriter/profile/merit-transfers",
     futureVisions: "/meriter/future-visions",
     projects: "/meriter/projects",
     project: (id: string) => `/meriter/projects/${id}`,
     /** Project team list (wraps member management in project URL space). */
     projectMembers: (projectId: string) => `/meriter/projects/${projectId}/members`,
+    projectMeritTransfers: (projectId: string) => `/meriter/projects/${projectId}/merit-transfers`,
     /** Birzha posts published on behalf of this project (lead). */
     projectBirzhaPosts: (id: string) => `/meriter/projects/${id}/birzha-posts`,
     userProfile: (userId: string) => `/meriter/users/${userId}`,
@@ -26,6 +28,8 @@ export const routes = {
     communities: "/meriter/communities",
     community: (id: string) => `/meriter/communities/${id}`,
     communityMembers: (id: string) => `/meriter/communities/${id}/members`,
+    /** Peer-to-peer merit transfers scoped to this community / project context. */
+    communityMeritTransfers: (id: string) => `/meriter/communities/${id}/merit-transfers`,
     /** @deprecated Use projectMembers — canonical URL is under /meriter/projects/:id/members */
     projectMembersManage: (projectCommunityId: string) =>
       `/meriter/projects/${projectCommunityId}/members`,

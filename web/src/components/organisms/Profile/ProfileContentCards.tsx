@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeftRight, FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useMyInvestmentsCount } from '@/hooks/api/useMyInvestments';
@@ -44,6 +44,8 @@ function ProfileContentCardsComponent({
     iconClassName?: string;
     /** When true, show "..." instead of value (e.g. async count). */
     valueLoading?: boolean;
+    /** Hide the numeric value column (e.g. navigational card). */
+    hideValue?: boolean;
   };
 
   const statCards: StatCard[] = useMemo(() => [
@@ -90,6 +92,15 @@ function ProfileContentCardsComponent({
       route: `${routes.profile}/investments`,
       valueLoading: investmentsCountLoading,
     },
+    {
+      label: tProfile('meritTransfersCardTitle'),
+      value: 0,
+      icon: ArrowLeftRight,
+      color: 'text-base-content',
+      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+      route: routes.profileMeritTransfers,
+      hideValue: true,
+    },
   ], [t, tCommon, tProfile, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount, investmentsCount, investmentsCountLoading]);
 
   const handleCardClick = (route: string) => {
@@ -116,7 +127,7 @@ function ProfileContentCardsComponent({
       {/* Statistics Cards */}
       {activityExpanded && (
         <div className="animate-in fade-in duration-200">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {statCards.map((stat, index) => {
               const Icon = stat.icon;
               return (
@@ -125,11 +136,13 @@ function ProfileContentCardsComponent({
                   onClick={() => handleCardClick(stat.route)}
                   className={`${stat.bgColor} rounded-xl p-4 transition-all hover:bg-base-200 cursor-pointer text-left group`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className={`flex items-center mb-2 ${stat.hideValue ? 'justify-start' : 'justify-between'}`}>
                     <Icon className={stat.iconClassName || "text-base-content/40 w-5 h-5"} />
-                    <span className="text-2xl font-semibold text-base-content">
-                      {stat.valueLoading || isLoading ? '...' : stat.value}
-                    </span>
+                    {!stat.hideValue ? (
+                      <span className="text-2xl font-semibold text-base-content">
+                        {stat.valueLoading || isLoading ? '...' : stat.value}
+                      </span>
+                    ) : null}
                   </div>
                   <p className="text-xs text-base-content/60 font-medium">
                     {stat.label}
