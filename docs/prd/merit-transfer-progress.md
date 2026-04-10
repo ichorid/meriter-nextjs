@@ -27,3 +27,10 @@ Started: 2026-04-10
 - **Files changed**: `trpc/routers/merit-transfer.router.ts`, `trpc/router.ts`, `trpc/context.ts`, `trpc/trpc.service.ts`, `api/package.json`, `.cursor/rules/architecture.mdc`, `backend.mdc`, `docs/prd/merit-transfer/reports/03-backend-router.md`, `tasklist.md`
 - **What was done**: Namespace `meritTransfer` (`create`, `getByCommunity`, `getByUser`), проверки членства, контекст Nest/tRPC, отчёт этапа 2.
 - **Known issues**: None
+
+### Step 4: Frontend — компоненты merit transfer (этап 3)
+
+- **Status**: Done
+- **Files changed**: `web/src/features/merit-transfer/**`, `web/messages/en.json`, `web/messages/ru.json`, `web/package.json`, `api/package.json`, `docs/prd/merit-transfer/reports/04-frontend-components.md`, `tasklist.md`, `merit-transfer-progress.md`; правка TS в `merit-transfer.service.ts` после `Model.create`.
+- **What was done**: `MeritTransferButton`, `MeritTransferDialog` (`meritTransfer.create`), `MeritTransferFeed`, хуки `useMeritTransfersByCommunity` / `useMeritTransfersByUser`, i18n, отчёт этапа 3.
+- **Known issues**: Интеграция в UI (этап 4) не делалась.

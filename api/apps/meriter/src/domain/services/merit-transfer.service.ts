@@ -202,7 +202,7 @@ export class MeritTransferService {
           'Merit transfer (received)',
           session,
         );
-        const [doc] = await this.meritTransferModel.create(
+        const createdDocs = await this.meritTransferModel.create(
           [
             {
               id,
@@ -222,6 +222,10 @@ export class MeritTransferService {
           ],
           { session },
         );
+        const doc = createdDocs[0];
+        if (!doc) {
+          throw new BadRequestException('Merit transfer document was not created');
+        }
         created = doc;
       });
 
