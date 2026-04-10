@@ -58,7 +58,7 @@ Structure and layer overview: see @architecture.mdc.
 - **Community actor**: `actingAsCommunityId` on create, `CommunityWallet` credit/debit for source Birzha posts — @business-communities.mdc
 - **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
 - **Communities and teams**: community management, team creation, team join request workflows, team invitation/accept/reject flows, role operations
-- **Economy**: wallet and quota reads via `wallets.*` (e.g. `getByCommunity`, `getQuota`, `getBalance`, `getTransactions`); merit withdrawal from post rating via `publications.withdraw`; comment-score withdrawal via `votes.withdrawFromVote`; `wallets.withdraw` and `wallets.transfer` exist but return `NOT_IMPLEMENTED` in the current codebase; quota handling; voting, polls, comments; investments via `investments.*`; tappalka mechanics
+- **Economy**: wallet and quota reads via `wallets.*` (e.g. `getByCommunity`, `getQuota`, `getBalance`, `getTransactions`); merit withdrawal from post rating via `publications.withdraw`; comment-score withdrawal via `votes.withdrawFromVote`; `wallets.withdraw` and `wallets.transfer` exist but return `NOT_IMPLEMENTED` in the current codebase; **peer merit transfer** via `meritTransfer.*` (wallet-only, shared community context) — @business-merit-transfer.mdc; quota handling; voting, polls, comments; investments via `investments.*`; tappalka mechanics
 - **User engagement**: favorites module and notifications (including read-state operations)
 - **Platform modules**: about content module, platform settings module, runtime config/feature flags module, categories, search, uploads
 - **Background/domain automation**: post closing cron and quota reset services
@@ -77,6 +77,7 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @business-index.mdc — Voting rules, permissions, merit flow (routing to business-*.mdc)
 - @business-projects.mdc — Cooperative projects (isProject), tickets, Birzha from project, CommunityWallet
 - @business-future-vision.mdc — ОБ hub, OB posts, Future Visions feed, tags
+- @business-merit-transfer.mdc — Peer merit transfers (`meritTransfer` tRPC, UI feeds)
 - @architecture.mdc — Repository structure and code layers
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)

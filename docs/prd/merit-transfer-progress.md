@@ -48,3 +48,10 @@ Started: 2026-04-10
 - **Files changed**: `api/apps/meriter/test/merit-transfer.service.spec.ts`, `merit-transfer.schema.ts` (timestamps без дублирующих `@Prop`), `api/package.json`, `docs/prd/merit-transfer/reports/06-qa.md`, `tasklist.md`, `merit-transfer-progress.md`.
 - **What was done**: Интеграционные тесты QA-1…QA-4 (API), QA-5 (`wallets.addMeritsToUser`), QA-6 (`getByUser`); исправление схемы для `create` в транзакции; отчёт `06-qa.md`; QA-7 — полный lint / test / build с корня (зафиксировано в отчёте).
 - **Known issues**: QA-4 (пустой комментарий в UI) и QA-6 (визуал профиля) остаются в чеклисте для ручной проверки в браузере.
+
+### Step 7: Документация и Cursor rules (этап 6)
+
+- **Status**: Done
+- **Files changed**: `.cursor/rules/business-merit-transfer.mdc`, правки `business-merits.mdc`, `business-communities.mdc`, `business-index.mdc`, `index.mdc`, `docs/prd/merit-transfer/reports/07-final.md`, `tasklist.md`, `merit-transfer-progress.md`.
+- **What was done**: Правило фичи, перекрёстные ссылки в индексах, финальный отчёт PRD; тасклист этапа 6 закрыт.
+- **Known issues**: None

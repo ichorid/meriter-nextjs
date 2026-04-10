@@ -2,6 +2,7 @@
 description: Merit system business logic - emission, wallet, quota, spending, rates. Apply when working with merit-related features.
 globs:
   - "**/merit*.ts"
+  - "**/merit-transfer*.ts"
   - "**/wallet*.ts"
   - "**/quota*.ts"
   - "**/transaction*.ts"
@@ -245,6 +246,12 @@ Not implemented:
 - `wallets.withdraw` exists in router but returns `NOT_IMPLEMENTED`.
 - `wallets.transfer` exists in router but returns `NOT_IMPLEMENTED`.
 - Do not document these two flows as available user operations yet.
+
+### Peer merit transfer (`meritTransfer`)
+
+- **Implemented:** tRPC namespace `meritTransfer` — `create`, `getByCommunity`, `getByUser`. User-to-user transfer of merits between wallets in a shared **community/project context**; **wallet only** (quota is not involved). Persistence: collection `merit_transfers`; wallet lines use `referenceType` **`merit_transfer`** with a shared correlation id (`MeritTransferService` + `WalletService.addTransaction` inside a MongoDB transaction).
+- **Not** routed through `MeritResolverService`. Storage community ids for debit/credit use the same **priority hub → `GLOBAL_COMMUNITY_ID`** rule as `wallets.getByCommunity` (see `MeritTransferService.resolveUserWalletCommunityId`).
+- Full rules and UI map: @business-merit-transfer.mdc.
 
 ### Negative Balance Handling
 - Wallets CANNOT go negative (`wallet.deduct` enforces balance check)

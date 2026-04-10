@@ -213,6 +213,14 @@ If needed in future, treat this as planned work and define explicit API/storage 
 
 ---
 
+## Peer merit transfers (UI)
+
+- **Community / project:** dashboard links to **«Переданные заслуги»** — routes `…/communities/[id]/merit-transfers` and `…/projects/[id]/merit-transfers`; data via `meritTransfer.getByCommunity` (members only). Member lists expose **transfer to peer** (`MeritTransferButton`) toward other participants.
+- **Profile:** `/meriter/profile/merit-transfers` — incoming/outgoing via `meritTransfer.getByUser`.
+- Wallet rules, API shape, and distinction from `wallets.transfer` / quota: @business-merit-transfer.mdc.
+
+---
+
 ## Global and Local Community Interaction
 
 ### Action Payment Rules

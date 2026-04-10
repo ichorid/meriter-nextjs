@@ -36,6 +36,9 @@ alwaysApply: true
 ### Investments
 - `investingEnabled`; contract `investorShareMin/Max` (1..99); `commentMode`; lifecycle: `requireTTLForInvestPosts`, `maxTTL`, `inactiveCloseDays`, `distributeAllByContractOnClose`. Details: @business-investing.mdc.
 
+### Peer merit transfer
+- `meritTransfer` tRPC: wallet-only P2P moves in a shared team/project context; recorded in `merit_transfers`; optional `eventPostId` for future events linkage. Details: @business-merit-transfer.mdc.
+
 ### Future Vision (ОБ) and cooperative projects
 - **ОБ** hub + **лента ОБ** (`/meriter/future-visions`, `communities.getFutureVisions`) vs **`isProject`** communities (Birzha `sourceEntity*`, `CommunityWallet`, tickets): @business-future-vision.mdc · @business-projects.mdc — open the relevant file for detail.
 
@@ -53,6 +56,7 @@ Use this file for routing only. Details and full rule text live in the listed bu
 | `business-content.mdc` | Posts, polls, comments, voting | Content features |
 | `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
 | `business-investing.mdc` | Investment contracts, pool, distribution | Investment features |
+| `business-merit-transfer.mdc` | Peer merit transfers (`meritTransfer`), `merit_transfers`, transfer UI | Transfer button, context/profile feeds, wallet `merit_transfer` lines |
 | `business-projects.mdc` | Cooperative projects (isProject), Birzha source, tickets, CommunityWallet | Project / ticket / Birzha-from-project; web hub **`/meriter/projects`** |
 | `business-future-vision.mdc` | ОБ hub (`typeTag === 'future-vision'`), OB posts, Future Visions feed, tags | OB / `getFutureVisions`; web **`/meriter/future-visions`** |
 | `business-users.mdc` | Users, roles, permissions | Auth, permissions |
@@ -162,3 +166,4 @@ Automatic deduction from author wallet after 24h is not implemented.
 | 1.6 | April 2026 | Add `business-future-vision.mdc` to index and quick reference |
 | 1.7 | April 2026 | Quick Reference: single line for ОБ + projects; table routes for future-vision / projects web paths |
 | 1.8 | April 2026 | Tappalka permission row; cross-links to business-tappalka for eligibility |
+| 1.9 | April 2026 | Add `business-merit-transfer.mdc` to index and quick reference (peer transfers) |
