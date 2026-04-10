@@ -33,7 +33,7 @@ services:
       - meriter-network
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
     entrypoint: ["/bin/sh", "/scripts/rs-init-on-deploy.sh"]
 
   web:

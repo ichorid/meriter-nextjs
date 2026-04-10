@@ -22,17 +22,16 @@ services:
       - ./mongodb-init:/docker-entrypoint-initdb.d:ro
     networks:
       - meriter-database-network
-    # Must authenticate when root user exists (production .env); unauthenticated ping fails then.
+    # Auth ping inside container (MONGO_INITDB_* are set from .env at create time). No grep; $$ → $ for Docker Compose.
+    # rs-init uses service_started so we do not deadlock waiting for PRIMARY before rs.initiate runs.
     healthcheck:
       test:
-        [
-          "CMD-SHELL",
-          'mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --host 127.0.0.1 --port 27017 --eval "db.adminCommand({ping:1}).ok" | grep -qx 1 || exit 1',
-        ]
+        - CMD-SHELL
+        - mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --host 127.0.0.1 --port 27017 --eval "const r=db.adminCommand({ping:1}); if(!r||r.ok!==1) process.exit(1);"
       interval: 10s
-      timeout: 10s
-      retries: 8
-      start_period: 60s
+      timeout: 15s
+      retries: 12
+      start_period: 90s
     deploy:
       resources:
         limits:
@@ -56,7 +55,7 @@ services:
       - meriter-database-network
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
     entrypoint: ["/bin/sh", "/scripts/rs-init-on-deploy.sh"]
     deploy:
       resources:
