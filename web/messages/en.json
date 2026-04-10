@@ -2901,7 +2901,8 @@
         "pageLoginRequired": "Sign in to view merit transfers.",
         "loadMore": "Load more",
         "profilePageTitle": "Merit transfers",
-        "sharedContextForTransfer": "Community context for transfer",
+        "profileTransferContextLabel": "Transfer context",
+        "profileTransferContextGlobal": "Global (global wallet to global wallet)",
         "tabIncoming": "Incoming",
         "tabOutgoing": "Outgoing"
     },

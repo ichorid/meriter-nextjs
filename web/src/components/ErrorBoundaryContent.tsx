@@ -22,18 +22,36 @@ interface ErrorBoundaryContentProps {
   error: Error | null;
 }
 
+/** Next/Turbopack sometimes surfaces minified module paths as `error.message` — not user-readable. */
+function looksLikeBundledInternalMessage(message: string): boolean {
+  return (
+    message.includes('__TURBOPACK__') ||
+    message.includes('__webpack') ||
+    message.includes('next/dist') ||
+    message.includes('next/headers') ||
+    message.length > 500
+  );
+}
+
 export function ErrorBoundaryContent({ error }: ErrorBoundaryContentProps) {
   const tCommon = useTranslations('common');
-  
+  const fallbackMessage = tCommon('unexpectedError');
+
   // Check if this is a ChunkLoadError
   const isChunkLoadError = error?.name === 'ChunkLoadError' || 
                            error?.message?.includes('Failed to load chunk') ||
                            error?.message?.includes('Loading chunk') ||
                            error?.message?.includes('ChunkLoadError');
-  
+
+  const rawMessage = typeof error?.message === 'string' ? error.message : '';
+  const useFallbackForCorruptMessage =
+    !isChunkLoadError && rawMessage.length > 0 && looksLikeBundledInternalMessage(rawMessage);
+
   const errorMessage = isChunkLoadError
     ? tCommon('chunkLoadUserMessage')
-    : (error?.message || tCommon('unexpectedError'));
+    : useFallbackForCorruptMessage
+      ? fallbackMessage
+      : (rawMessage || fallbackMessage);
   
   return (
     <ErrorDisplay

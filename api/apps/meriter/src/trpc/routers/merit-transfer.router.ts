@@ -5,6 +5,8 @@ import { MeritTransferCreateInputSchema } from '@meriter/shared-types';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import type { UserService } from '../../domain/services/user.service';
+import type { CommunityService } from '../../domain/services/community.service';
+import type { Community } from '../../domain/models/community/community.schema';
 import type {
   MeritTransferListResult,
   MeritTransferRecord,
@@ -18,6 +20,23 @@ type MeritTransferListItemEnriched = MeritTransferRecord & {
   senderDisplayName: string;
   receiverDisplayName: string;
 };
+
+export type MeritTransferWalletContextMeta = {
+  id: string;
+  name: string;
+  isProject: boolean;
+};
+
+type MeritTransferListItemApi = MeritTransferListItemEnriched & {
+  sourceWalletContext?: MeritTransferWalletContextMeta;
+  targetWalletContext?: MeritTransferWalletContextMeta;
+};
+
+function communityToWalletContextMeta(c: Community): MeritTransferWalletContextMeta {
+  const name = (c.name ?? '').trim() || c.id;
+  const isProject = Boolean(c.isProject) || c.typeTag === 'project';
+  return { id: c.id, name, isProject };
+}
 
 async function enrichMeritTransferList(
   userService: UserService,
@@ -36,6 +55,51 @@ async function enrichMeritTransferList(
       receiverDisplayName: names.get(r.receiverId) ?? r.receiverId,
     })),
   };
+}
+
+async function enrichMeritTransferWalletContexts(
+  communityService: CommunityService,
+  rows: MeritTransferListItemEnriched[],
+): Promise<MeritTransferListItemApi[]> {
+  const contextIds = new Set<string>();
+  for (const r of rows) {
+    if (r.sourceWalletType !== 'global' && r.sourceContextId) {
+      contextIds.add(r.sourceContextId);
+    }
+    if (r.targetWalletType !== 'global' && r.targetContextId) {
+      contextIds.add(r.targetContextId);
+    }
+  }
+  const metaById = new Map<string, MeritTransferWalletContextMeta>();
+  const communities = await communityService.listCommunitiesByIds([...contextIds]);
+  for (const c of communities) {
+    metaById.set(c.id, communityToWalletContextMeta(c));
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    sourceWalletContext:
+      r.sourceWalletType !== 'global' && r.sourceContextId
+        ? metaById.get(r.sourceContextId)
+        : undefined,
+    targetWalletContext:
+      r.targetWalletType !== 'global' && r.targetContextId
+        ? metaById.get(r.targetContextId)
+        : undefined,
+  }));
+}
+
+async function enrichMeritTransfersForApi(
+  userService: UserService,
+  communityService: CommunityService,
+  result: MeritTransferListResult,
+): Promise<{
+  data: MeritTransferListItemApi[];
+  pagination: MeritTransferListResult['pagination'];
+}> {
+  const withUsers = await enrichMeritTransferList(userService, result);
+  const data = await enrichMeritTransferWalletContexts(communityService, withUsers.data);
+  return { pagination: withUsers.pagination, data };
 }
 
 export const meritTransferRouter = router({
@@ -83,7 +147,7 @@ export const meritTransferRouter = router({
         page,
         limit,
       });
-      return enrichMeritTransferList(ctx.userService, raw);
+      return enrichMeritTransfersForApi(ctx.userService, ctx.communityService, raw);
     }),
 
   getByUser: protectedProcedure
@@ -112,6 +176,6 @@ export const meritTransferRouter = router({
         page,
         limit,
       });
-      return enrichMeritTransferList(ctx.userService, raw);
+      return enrichMeritTransfersForApi(ctx.userService, ctx.communityService, raw);
     }),
 });

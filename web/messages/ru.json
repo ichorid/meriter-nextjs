@@ -2901,7 +2901,8 @@
         "pageLoginRequired": "Войдите, чтобы видеть передачи заслуг.",
         "loadMore": "Загрузить ещё",
         "profilePageTitle": "Передачи заслуг",
-        "sharedContextForTransfer": "Сообщество для передачи",
+        "profileTransferContextLabel": "Контекст передачи",
+        "profileTransferContextGlobal": "Глобальные (с глобального кошелька на глобальный кошелёк)",
         "tabIncoming": "Входящие",
         "tabOutgoing": "Исходящие"
     },

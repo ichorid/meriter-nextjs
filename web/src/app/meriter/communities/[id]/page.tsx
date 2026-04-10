@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { CommunityPageClient } from './CommunityPageClient';
 import config from '@/config';
 
@@ -43,5 +44,15 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const { id } = await params;
   // 404 handling is done in CommunityPageClient component
   // since we need to check the API response to determine if community exists
-  return <CommunityPageClient communityId={id} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center text-sm text-base-content/60">
+          Loading…
+        </div>
+      }
+    >
+      <CommunityPageClient communityId={id} />
+    </Suspense>
+  );
 }

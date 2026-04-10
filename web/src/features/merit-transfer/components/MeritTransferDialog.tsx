@@ -23,13 +23,17 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { isPriorityCommunity } from '@/lib/community/is-priority-community';
 import { cn } from '@/lib/utils';
 import type { MeritTransferWalletType } from '@meriter/shared-types';
+import type { MeritTransferProfileContextConfig } from '../lib/profile-merit-transfer-context';
 
 export interface MeritTransferDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   receiverId: string;
   receiverDisplayName: string;
-  communityContextId: string;
+  /** Fixed context when opened from community/project members. */
+  communityContextId?: string;
+  /** When opened from another user's profile: user picks global vs local shared context here. */
+  profileContext?: MeritTransferProfileContextConfig;
   onSuccess?: () => void;
 }
 
@@ -47,7 +51,8 @@ export function MeritTransferDialog({
   onOpenChange,
   receiverId,
   receiverDisplayName,
-  communityContextId,
+  communityContextId: fixedCommunityContextId,
+  profileContext,
   onSuccess,
 }: MeritTransferDialogProps) {
   const t = useTranslations('meritTransfer');
@@ -59,10 +64,25 @@ export function MeritTransferDialog({
   const [sourceChoice, setSourceChoice] = useState<SourceChoice>('global');
   const [targetChoice, setTargetChoice] = useState<TargetChoice>('global');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  /** `__global__` = use membership anchor only for API; otherwise local community id. */
+  const [selectedProfileScope, setSelectedProfileScope] = useState<string>('__global__');
 
-  const { data: community, isLoading: communityLoading } = useCommunity(communityContextId);
+  const hasProfileMode = Boolean(profileContext);
+  const hasCommunityMode = Boolean(fixedCommunityContextId);
+  const configValid = hasProfileMode !== hasCommunityMode;
+
+  const effectiveCommunityContextId = useMemo(() => {
+    if (profileContext) {
+      return selectedProfileScope === '__global__'
+        ? profileContext.membershipAnchorCommunityId
+        : selectedProfileScope;
+    }
+    return fixedCommunityContextId ?? '';
+  }, [profileContext, selectedProfileScope, fixedCommunityContextId]);
+
+  const { data: community, isLoading: communityLoading } = useCommunity(effectiveCommunityContextId);
   const { data: globalWallet, isLoading: globalLoading } = useWallet(GLOBAL_COMMUNITY_ID);
-  const { data: contextWallet, isLoading: contextLoading } = useWallet(communityContextId);
+  const { data: contextWallet, isLoading: contextLoading } = useWallet(effectiveCommunityContextId);
 
   const createMutation = trpc.meritTransfer.create.useMutation();
 
@@ -74,7 +94,7 @@ export function MeritTransferDialog({
   const showContextWallet =
     !!community &&
     !priorityContext &&
-    communityContextId !== GLOBAL_COMMUNITY_ID;
+    effectiveCommunityContextId !== GLOBAL_COMMUNITY_ID;
 
   const isProject = Boolean(community?.isProject);
 
@@ -90,6 +110,7 @@ export function MeritTransferDialog({
     setSourceChoice('global');
     setTargetChoice('global');
     setIsSubmitting(false);
+    setSelectedProfileScope('__global__');
   }, [open]);
 
   useEffect(() => {
@@ -139,6 +160,12 @@ export function MeritTransferDialog({
 
     const { sourceWalletType, targetWalletType } = buildWalletTypes();
 
+    const resolvedCommunityContextId = profileContext
+      ? selectedProfileScope === '__global__'
+        ? profileContext.membershipAnchorCommunityId
+        : selectedProfileScope
+      : (fixedCommunityContextId ?? '');
+
     setIsSubmitting(true);
     try {
       await createMutation.mutateAsync({
@@ -146,10 +173,10 @@ export function MeritTransferDialog({
         amount: n,
         comment: trimmed,
         sourceWalletType,
-        sourceContextId: sourceWalletType === 'global' ? undefined : communityContextId,
+        sourceContextId: sourceWalletType === 'global' ? undefined : resolvedCommunityContextId,
         targetWalletType,
-        targetContextId: targetWalletType === 'global' ? undefined : communityContextId,
-        communityContextId,
+        targetContextId: targetWalletType === 'global' ? undefined : resolvedCommunityContextId,
+        communityContextId: resolvedCommunityContextId,
       });
 
       addToast(t('success', { amount: n }), 'success');
@@ -159,18 +186,23 @@ export function MeritTransferDialog({
       const invalidations: Promise<unknown>[] = [
         utils.wallets.getAll.invalidate(),
         utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: GLOBAL_COMMUNITY_ID }),
-        utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: communityContextId }),
+        utils.wallets.getByCommunity.invalidate({
+          userId: 'me',
+          communityId: resolvedCommunityContextId,
+        }),
         utils.wallets.getByCommunity.invalidate(),
         utils.wallets.getQuota.invalidate(),
         utils.wallets.getBalance.invalidate(),
         utils.wallets.getFreeBalance.invalidate(),
-        utils.communities.getMembers.invalidate({ id: communityContextId }),
-        utils.meritTransfer.getByCommunity.invalidate({ communityId: communityContextId }),
+        utils.communities.getMembers.invalidate({ id: resolvedCommunityContextId }),
+        utils.meritTransfer.getByCommunity.invalidate({ communityId: resolvedCommunityContextId }),
         utils.meritTransfer.getByUser.invalidate(),
         utils.users.getProfileActivityCounts.invalidate(),
       ];
       if (isProject) {
-        invalidations.push(utils.project.getMembers.invalidate({ projectId: communityContextId }));
+        invalidations.push(
+          utils.project.getMembers.invalidate({ projectId: resolvedCommunityContextId }),
+        );
       }
       await Promise.all(invalidations);
     } catch (error: unknown) {
@@ -182,7 +214,8 @@ export function MeritTransferDialog({
   };
 
   const walletsLoading = globalLoading || contextLoading;
-  const formDisabled = isSubmitting || communityLoading || walletsLoading;
+  const formDisabled =
+    isSubmitting || !configValid || !effectiveCommunityContextId || communityLoading || walletsLoading;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -196,6 +229,25 @@ export function MeritTransferDialog({
               <Label>{t('receiver')}</Label>
               <p className="text-sm text-base-content/80">{receiverDisplayName}</p>
             </div>
+
+            {profileContext ? (
+              <div className="space-y-2">
+                <Label htmlFor="merit-transfer-profile-context">{t('profileTransferContextLabel')}</Label>
+                <select
+                  id="merit-transfer-profile-context"
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={selectedProfileScope}
+                  onChange={(e) => setSelectedProfileScope(e.target.value)}
+                >
+                  <option value="__global__">{t('profileTransferContextGlobal')}</option>
+                  {profileContext.localContextOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
             {showContextWallet ? (
               <fieldset className="space-y-2" disabled={formDisabled}>

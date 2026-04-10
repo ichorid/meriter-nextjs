@@ -5,8 +5,9 @@ import ru from '../../../messages/ru.json';
 
 type MessagesRoot = typeof en;
 
-function localeFromCookie(): Locale {
-    const v = cookies().get('NEXT_LOCALE')?.value;
+async function localeFromCookie(): Promise<Locale> {
+    const cookieStore = await cookies();
+    const v = cookieStore.get('NEXT_LOCALE')?.value;
     return v === 'ru' ? 'ru' : 'en';
 }
 
@@ -27,8 +28,8 @@ function getNestedString(messages: MessagesRoot, dotPath: string): string | unde
  * Server-only metadata title using the same message bundles as the client.
  * Respects `NEXT_LOCALE` cookie when set; otherwise defaults to English.
  */
-export function metadataTitle(dotPath: string): { title: string } {
-    const locale = localeFromCookie();
+export async function metadataTitle(dotPath: string): Promise<{ title: string }> {
+    const locale = await localeFromCookie();
     const messages = (locale === 'ru' ? ru : en) as MessagesRoot;
     const title = getNestedString(messages, dotPath) ?? dotPath;
     return { title };

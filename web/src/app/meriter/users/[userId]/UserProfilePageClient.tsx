@@ -20,6 +20,7 @@ import { ProfileContentCards } from '@/components/organisms/Profile/ProfileConte
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
+import { buildProfileMeritTransferContext } from '@/features/merit-transfer/lib/profile-merit-transfer-context';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -33,10 +34,8 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
   const tProfile = useTranslations('profile');
-  const tMeritTransfer = useTranslations('meritTransfer');
   const { user: authUser, isAuthenticated } = useAuth();
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [meritTransferContextId, setMeritTransferContextId] = useState<string>('');
 
   const { data: user, isLoading, error, isFetched } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
@@ -74,41 +73,13 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     return Array.from(new Set(userRoles.map((r) => r.communityId).filter(Boolean))) as string[];
   }, [userRoles]);
 
-  const sharedMeritTransferContexts = useMemo(() => {
-    if (!viewingOtherProfile) return [];
-    const viewedMember = new Set(
-      userRoles.map((r) => r.communityId).filter(Boolean) as string[],
-    );
-    const viewerMember = new Set(
-      viewerRoles.map((r) => r.communityId).filter(Boolean) as string[],
-    );
-    const sharedIds = [...viewedMember].filter((id) => viewerMember.has(id));
-    const nameById = new Map(
-      userRoles.map((r) => [r.communityId, r.communityName || r.communityId || '']),
-    );
-    return sharedIds
-      .map((id) => ({
-        id,
-        name: (nameById.get(id) as string) || id,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [viewingOtherProfile, viewerRoles, userRoles]);
-
-  useEffect(() => {
-    if (!sharedMeritTransferContexts.length) {
-      setMeritTransferContextId('');
-      return;
-    }
-    setMeritTransferContextId((prev) => {
-      if (prev && sharedMeritTransferContexts.some((c) => c.id === prev)) {
-        return prev;
-      }
-      return sharedMeritTransferContexts[0]!.id;
-    });
-  }, [sharedMeritTransferContexts]);
-
-  const canTransferMeritsToProfile =
-    viewingOtherProfile && sharedMeritTransferContexts.length > 0 && !!meritTransferContextId;
+  const profileMeritTransfer = useMemo(
+    () =>
+      viewingOtherProfile
+        ? buildProfileMeritTransferContext(viewerRoles, userRoles)
+        : null,
+    [viewingOtherProfile, viewerRoles, userRoles],
+  );
 
   const administeredCommunityIds = useMemo(() => {
     return Array.from(
@@ -272,31 +243,15 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     <UserPlus className="h-4 w-4 shrink-0" />
                     {tProfile('inviteUserProfileButton')}
                   </Button>
-                  {canTransferMeritsToProfile ? (
-                    <>
-                      {sharedMeritTransferContexts.length > 1 ? (
-                        <select
-                          className="h-9 max-w-[min(100%,14rem)] truncate rounded-xl border border-input bg-gray-200 px-2 text-sm text-base-content dark:bg-gray-700 dark:text-base-content/90"
-                          value={meritTransferContextId}
-                          onChange={(e) => setMeritTransferContextId(e.target.value)}
-                          aria-label={tMeritTransfer('sharedContextForTransfer')}
-                        >
-                          {sharedMeritTransferContexts.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name}
-                            </option>
-                          ))}
-                        </select>
-                      ) : null}
-                      <MeritTransferButton
-                        receiverId={user.id}
-                        receiverDisplayName={displayName}
-                        communityContextId={meritTransferContextId}
-                        variant="outline"
-                        size="sm"
-                        className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
-                      />
-                    </>
+                  {profileMeritTransfer ? (
+                    <MeritTransferButton
+                      receiverId={user.id}
+                      receiverDisplayName={displayName}
+                      profileContext={profileMeritTransfer}
+                      variant="outline"
+                      size="sm"
+                      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
+                    />
                   ) : null}
                 </div>
                 <InviteToTeamDialog

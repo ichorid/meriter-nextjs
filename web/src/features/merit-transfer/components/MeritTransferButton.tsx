@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/shadcn/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { MeritTransferDialog } from './MeritTransferDialog';
 import type { ButtonProps } from '@/components/ui/shadcn/button';
+import type { MeritTransferProfileContextConfig } from '../lib/profile-merit-transfer-context';
 
-export interface MeritTransferButtonProps {
+type MeritTransferButtonBaseProps = {
   receiverId: string;
   receiverDisplayName: string;
-  communityContextId: string;
   onSuccess?: () => void;
   buttonText?: string;
   /** Compact icon button for dense member rows (tooltip = transfer merits). */
@@ -20,12 +20,19 @@ export interface MeritTransferButtonProps {
   size?: ButtonProps['size'];
   className?: string;
   disabled?: boolean;
-}
+};
+
+export type MeritTransferButtonProps = MeritTransferButtonBaseProps &
+  (
+    | { communityContextId: string; profileContext?: never }
+    | { profileContext: MeritTransferProfileContextConfig; communityContextId?: never }
+  );
 
 export function MeritTransferButton({
   receiverId,
   receiverDisplayName,
   communityContextId,
+  profileContext,
   onSuccess,
   buttonText,
   iconOnly = false,
@@ -39,6 +46,12 @@ export function MeritTransferButton({
   const [open, setOpen] = useState(false);
 
   if (!user?.id || user.id === receiverId) {
+    return null;
+  }
+
+  const hasCommunity = Boolean(communityContextId);
+  const hasProfile = Boolean(profileContext);
+  if (hasCommunity === hasProfile) {
     return null;
   }
 
@@ -64,6 +77,7 @@ export function MeritTransferButton({
         receiverId={receiverId}
         receiverDisplayName={receiverDisplayName}
         communityContextId={communityContextId}
+        profileContext={profileContext}
         onSuccess={onSuccess}
       />
     </>

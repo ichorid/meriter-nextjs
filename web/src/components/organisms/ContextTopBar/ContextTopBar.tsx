@@ -62,21 +62,31 @@ export const ContextTopBar: React.FC<ContextTopBarProps> = () => {
 };
 
 // Profile Top Bar with Tabs
-export const ProfileTopBar: React.FC<{ 
+export const ProfileTopBar: React.FC<{
   asStickyHeader?: boolean;
   title?: React.ReactNode;
   showBack?: boolean;
-}> = ({ asStickyHeader = false, title, showBack = true }) => {
+  /** Explicit back target; otherwise `/meriter/users/:id` sub-pages return to that user profile. */
+  backHref?: string;
+}> = ({ asStickyHeader = false, title, showBack = true, backHref }) => {
   const tCommon = useTranslations('common');
   const router = useRouter();
+  const pathname = usePathname();
 
   const displayTitle = title ?? tCommon('profile');
+
+  const resolvedBackHref = React.useMemo(() => {
+    if (backHref) return backHref;
+    const m = pathname?.match(/^\/meriter\/users\/([^/]+)\//);
+    if (m) return routes.userProfile(m[1]);
+    return '/meriter/profile';
+  }, [pathname, backHref]);
 
   return (
     <SimpleStickyHeader
       title={displayTitle}
       showBack={showBack}
-      onBack={() => router.push('/meriter/profile')}
+      onBack={() => router.push(resolvedBackHref)}
       asStickyHeader={asStickyHeader}
     />
   );

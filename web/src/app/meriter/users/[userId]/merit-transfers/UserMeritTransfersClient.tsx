@@ -6,8 +6,11 @@ import { Loader2 } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { ProfileTopBar } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { trpc } from '@/lib/trpc/client';
-import { MeritTransferFeed } from '@/features/merit-transfer/components/MeritTransferFeed';
+import { MeritTransferButton, MeritTransferFeed } from '@/features/merit-transfer';
+import { buildProfileMeritTransferContext } from '@/features/merit-transfer/lib/profile-merit-transfer-context';
+import { useUserProfile } from '@/hooks/api/useUsers';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { Button } from '@/components/ui/shadcn/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -20,8 +23,22 @@ type DirectionTab = 'incoming' | 'outgoing';
 
 export default function UserMeritTransfersClient({ userId }: { userId: string }) {
   const t = useTranslations('meritTransfer');
+  const tCommon = useTranslations('common');
   const { user: me, isLoading: authLoading, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<DirectionTab>('incoming');
+
+  const viewingOther = Boolean(me?.id && me.id !== userId);
+  const { data: viewedUser } = useUserProfile(userId);
+  const { data: viewedRoles = [] } = useUserRoles(userId);
+  const { data: viewerRoles = [] } = useUserRoles(viewingOther && me?.id ? me.id : '');
+
+  const profileMeritTransfer = useMemo(
+    () => (viewingOther ? buildProfileMeritTransferContext(viewerRoles, viewedRoles) : null),
+    [viewingOther, viewerRoles, viewedRoles],
+  );
+
+  const receiverDisplayName =
+    viewedUser?.displayName || viewedUser?.username || tCommon('user');
 
   const incomingQuery = trpc.meritTransfer.getByUser.useInfiniteQuery(
     {
@@ -100,6 +117,18 @@ export default function UserMeritTransfersClient({ userId }: { userId: string })
   return (
     <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        {profileMeritTransfer ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <MeritTransferButton
+              receiverId={userId}
+              receiverDisplayName={receiverDisplayName}
+              profileContext={profileMeritTransfer}
+              variant="outline"
+              size="sm"
+              className="inline-flex h-9 shrink-0 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
+            />
+          </div>
+        ) : null}
         <Tabs
           value={tab}
           onValueChange={(v) => setTab(v as DirectionTab)}

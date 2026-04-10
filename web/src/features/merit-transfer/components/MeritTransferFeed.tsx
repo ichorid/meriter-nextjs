@@ -6,7 +6,11 @@ import { useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
-import type { MeritTransferListItem, MeritTransferFeedMode } from '../types';
+import type {
+  MeritTransferListItem,
+  MeritTransferFeedMode,
+  MeritTransferWalletContextMeta,
+} from '../types';
 import type { MeritTransferWalletType } from '@meriter/shared-types';
 
 export interface MeritTransferFeedProps {
@@ -26,6 +30,32 @@ function formatWhen(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+function WalletLegLabel({
+  type,
+  meta,
+  walletLabel,
+}: {
+  type: MeritTransferWalletType;
+  meta?: MeritTransferWalletContextMeta;
+  walletLabel: (type: MeritTransferWalletType) => string;
+}) {
+  if (type === 'global') {
+    return <span>{walletLabel(type)}</span>;
+  }
+  if (meta) {
+    const href = meta.isProject ? routes.project(meta.id) : routes.community(meta.id);
+    return (
+      <Link
+        href={href}
+        className="font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {meta.name}
+      </Link>
+    );
+  }
+  return <span>{walletLabel(type)}</span>;
 }
 
 function UserAvatarLink({ userId }: { userId: string }) {
@@ -102,8 +132,18 @@ export function MeritTransferFeed({
               {t('feedAmount', { amount: row.amount })}
             </span>
           </div>
-          <p className="mt-2 text-xs text-base-content/60">
-            {walletLabel(row.sourceWalletType)} → {walletLabel(row.targetWalletType)}
+          <p className="mt-2 flex flex-wrap items-center gap-x-1 text-xs text-base-content/60">
+            <WalletLegLabel
+              type={row.sourceWalletType}
+              meta={row.sourceWalletContext}
+              walletLabel={walletLabel}
+            />
+            <span aria-hidden>→</span>
+            <WalletLegLabel
+              type={row.targetWalletType}
+              meta={row.targetWalletContext}
+              walletLabel={walletLabel}
+            />
           </p>
           {row.comment ? (
             <p className="mt-2 whitespace-pre-wrap text-sm text-base-content/90">{row.comment}</p>
