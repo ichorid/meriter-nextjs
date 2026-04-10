@@ -22,16 +22,17 @@ services:
       - ./mongodb-init:/docker-entrypoint-initdb.d:ro
     networks:
       - meriter-database-network
-    # Auth ping inside container (MONGO_INITDB_* are set from .env at create time). No grep; $$ → $ for Docker Compose.
-    # rs-init uses service_started so we do not deadlock waiting for PRIMARY before rs.initiate runs.
+    # PRIMARY only: ping can pass before rs.initiate(); api also waits rs-init, but this matches real RS readiness.
+    # start_period must cover rs-init-on-deploy.sh worst case (~120s connect + ~120s PRIMARY wait).
+    # rs-init depends on service_started (not healthy) to avoid deadlock.
     healthcheck:
       test:
         - CMD-SHELL
-        - mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --host 127.0.0.1 --port 27017 --eval "const r=db.adminCommand({ping:1}); if(!r||r.ok!==1) process.exit(1);"
-      interval: 10s
+        - mongosh --quiet -u "$$MONGO_INITDB_ROOT_USERNAME" -p "$$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --host 127.0.0.1 --port 27017 --eval 'try{const s=rs.status();if(s.myState===1)quit(0);quit(1)}catch(e){quit(1)}'
+      interval: 5s
       timeout: 15s
-      retries: 12
-      start_period: 90s
+      retries: 40
+      start_period: 180s
     deploy:
       resources:
         limits:
