@@ -6,9 +6,31 @@ alwaysApply: false
 
 # Local Development Commands (Windows PowerShell)
 
+## MongoDB (без Docker)
+
+Фичи с **много-документными транзакциями** (в т.ч. **передача заслуг**) требуют, чтобы MongoDB работала как **replica set** (достаточно одного узла `rs0`). Обычный standalone даёт ошибку: `Transaction numbers are only allowed on a replica set member or mongos`.
+
+**Один раз (от администратора):** в корне репозитория выполнить:
+
+```powershell
+Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ".\scripts\windows\enable-mongodb-replica-set.ps1"' -Verb RunAs -Wait
+```
+
+Скрипт правит `mongod.cfg` службы MongoDB, перезапускает службу и вызывает `replSetInitiate`. Резервная копия: `mongod.cfg.bak`.
+
+**В `api/.env`:** строка подключения с именем набора:
+
+```env
+MONGO_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0
+```
+
+Если replica set уже включён, только инициализация: из корня `pnpm --filter @meriter/api exec node scripts/windows/mongo-rs-initiate.cjs` (использует `mongodb` из `api`).
+
+Подробнее: `docs/LOCAL_DEVELOPMENT_SETUP.md` (шаг про MongoDB replica set).
+
 ## Start Servers
 
-Use two terminals for full local stack: API and Web.
+Use two terminals for full local stack: API and Web, **после** того как MongoDB запущена в режиме replica set (см. выше).
 
 From the **repository root**, you can use `pnpm dev:api` and `pnpm dev:web` in separate terminals (set the same env vars in the shell or in `api/.env` / `web/.env` as below). Or `cd` into each package:
 
@@ -61,6 +83,9 @@ pnpm test
 
 **"DOMAIN environment variable is required":**
 → Set `DOMAIN=localhost` in `api/.env` (or the shell). For web, set `DOMAIN` or `NEXT_PUBLIC_DOMAIN` (e.g. `localhost`) in `web/.env` / `web/.env.local` or the shell — see `web/src/config/index.ts`.
+
+**`Transaction numbers are only allowed on a replica set member or mongos`:**
+→ Локальная MongoDB без replica set. См. раздел **MongoDB (без Docker)** выше и `docs/LOCAL_DEVELOPMENT_SETUP.md`.
 
 ## Full Setup Guide
 See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

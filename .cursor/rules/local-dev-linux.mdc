@@ -6,6 +6,19 @@ alwaysApply: false
 
 # Local Development Commands (Linux/macOS)
 
+## MongoDB (без Docker)
+
+Передача заслуг и другие операции с **транзакциями** требуют **replica set** (одного члена достаточно). В `/etc/mongod.conf` (или вашем конфиге) добавьте:
+
+```yaml
+replication:
+  replSetName: rs0
+```
+
+Перезапустите `mongod`, затем один раз: `mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'` (подставьте хост/порт, если отличаются). В `api/.env`: `MONGO_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0`.
+
+Подробнее: `docs/LOCAL_DEVELOPMENT_SETUP.md`.
+
 ## Start Servers
 
 **Terminal 1 — API:**
@@ -64,6 +77,9 @@ pnpm test
 lsof -ti:8001 | xargs kill -9
 lsof -ti:8002 | xargs kill -9
 ```
+
+**`Transaction numbers are only allowed on a replica set member or mongos`:**
+→ MongoDB запущена как standalone. Включите replica set (см. **MongoDB (без Docker)** выше).
 
 ## Full Setup Guide
 See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

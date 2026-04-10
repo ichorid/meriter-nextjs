@@ -142,9 +142,9 @@ TEST\_AUTH\_MODE=true
 
 
 
-\# MongoDB (для локальной разработки без Docker)
+\# MongoDB (для локальной разработки без Docker; replica set обязателен для транзакций — см. шаг 3.2.1)
 
-MONGO\_URL=mongodb://127.0.0.1:27017/meriter
+MONGO\_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0
 
 
 
@@ -171,6 +171,62 @@ Get-Content api\\.env | Select-String -Pattern "^DOMAIN|^FAKE\_DATA\_MODE|^TEST\
 \# TEST\_AUTH\_MODE=true
 
 ```
+
+
+
+\### 3.2.1. MongoDB replica set (Windows, служба MongoDB, без Docker)
+
+
+
+Много-документные транзакции (в т.ч. **передача заслуг**) на **standalone** MongoDB не работают — будет ошибка `Transaction numbers are only allowed on a replica set member or mongos`. Нужен одноузловой replica set `rs0`.
+
+
+
+\*\*Автоматически (рекомендуется):\*\* откройте PowerShell \*\*от имени администратора\*\* и выполните из корня репозитория:
+
+
+
+```powershell
+
+Set-Location путь\\к\\meriter-nextjs
+
+.\\scripts\\windows\\enable-mongodb-replica-set.ps1
+
+```
+
+
+
+Либо одной командой с запросом UAC:
+
+
+
+```powershell
+
+Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ".\\scripts\\windows\\enable-mongodb-replica-set.ps1"' -Verb RunAs -Wait
+
+```
+
+
+
+Скрипт добавляет в `mongod.cfg` блок `replication.replSetName: rs0`, перезапускает службу `MongoDB`, выполняет `replSetInitiate` (через Node и драйвер `mongodb` из пакета `api`). Перед правкой создаётся резервная копия `mongod.cfg.bak`.
+
+
+
+\*\*Если replica set уже прописан в конфиге,\*\* но набор ещё не инициализирован:
+
+
+
+```powershell
+
+cd путь\\к\\meriter-nextjs
+
+pnpm --filter @meriter/api exec node scripts/windows/mongo-rs-initiate.cjs
+
+```
+
+
+
+\*\*Linux / macOS (кратко):\*\* в конфиге `mongod` добавьте `replication.replSetName: rs0`, перезапустите демон, затем `mongosh` / `rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"127.0.0.1:27017\" }] })` (хост замените при необходимости). Строка `MONGO\_URL` — как в примере выше с `?replicaSet=rs0`.
 
 
 
@@ -532,7 +588,7 @@ try {
 
 } catch {
 
-&nbsp;   Write-Host "MongoDB недоступен. Запустите MongoDB или используйте Docker Compose"
+&nbsp;   Write-Host "MongoDB недоступен. Запустите службу MongoDB (Windows: Get-Service MongoDB)"
 
 }
 
@@ -638,7 +694,7 @@ try {
 
 \- \[ ] `NEXT\_PUBLIC\_API\_URL` закомментирован в `web/.env`
 
-\- \[ ] MongoDB запущен (или используется Docker Compose)
+\- \[ ] MongoDB запущена; для транзакций — replica set `rs0` и `MONGO_URL` с `replicaSet=rs0` (см. §3.2.1)
 
 \- \[ ] API сервер запущен на порту 8002 и отвечает
 
