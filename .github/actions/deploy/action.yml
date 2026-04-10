@@ -32,20 +32,18 @@ runs:
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
     # Stack definition on the VPS must match the repo (compose, init scripts, Caddy).
     # Image pull alone does not update docker-compose.yml or mongodb-init/.
+    # Use scp (not rsync): ubuntu-latest runners may not ship rsync.
     - name: Sync stack files to VPS
       shell: bash
       env:
         VPS_HOST: ${{ inputs.vps-host }}
       run: |
         set -euo pipefail
-        rsync -avz -e ssh \
-          docker-compose.yml \
-          deploy.sh \
-          Caddyfile \
-          "deploy@${VPS_HOST}:/opt/meriter/"
-        rsync -avz --delete -e ssh \
-          mongodb-init/ \
-          "deploy@${VPS_HOST}:/opt/meriter/mongodb-init/"
+        TARGET="deploy@${VPS_HOST}:/opt/meriter/"
+        scp docker-compose.yml deploy.sh Caddyfile "$TARGET"
+        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh"
+        ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
+        scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script
       shell: bash
       env:
