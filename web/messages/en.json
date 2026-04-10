@@ -2901,6 +2901,7 @@
         "pageLoginRequired": "Sign in to view merit transfers.",
         "loadMore": "Load more",
         "profilePageTitle": "Merit transfers",
+        "sharedContextForTransfer": "Community context for transfer",
         "tabIncoming": "Incoming",
         "tabOutgoing": "Outgoing"
     },

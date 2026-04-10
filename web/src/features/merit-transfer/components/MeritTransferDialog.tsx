@@ -156,13 +156,23 @@ export function MeritTransferDialog({
       onOpenChange(false);
       onSuccess?.();
 
-      await Promise.all([
+      const invalidations: Promise<unknown>[] = [
         utils.wallets.getAll.invalidate(),
         utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: GLOBAL_COMMUNITY_ID }),
         utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: communityContextId }),
+        utils.wallets.getByCommunity.invalidate(),
+        utils.wallets.getQuota.invalidate(),
+        utils.wallets.getBalance.invalidate(),
+        utils.wallets.getFreeBalance.invalidate(),
+        utils.communities.getMembers.invalidate({ id: communityContextId }),
         utils.meritTransfer.getByCommunity.invalidate({ communityId: communityContextId }),
         utils.meritTransfer.getByUser.invalidate(),
-      ]);
+        utils.users.getProfileActivityCounts.invalidate(),
+      ];
+      if (isProject) {
+        invalidations.push(utils.project.getMembers.invalidate({ projectId: communityContextId }));
+      }
+      await Promise.all(invalidations);
     } catch (error: unknown) {
       const raw = error instanceof Error ? error.message : undefined;
       addToast(resolveApiErrorToastMessage(raw), 'error');

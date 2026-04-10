@@ -20,6 +20,10 @@ export const routes = {
     /** Birzha posts published on behalf of this project (lead). */
     projectBirzhaPosts: (id: string) => `/meriter/projects/${id}/birzha-posts`,
     userProfile: (userId: string) => `/meriter/users/${userId}`,
+    userProfilePublications: (userId: string) => `/meriter/users/${userId}/publications`,
+    userProfileComments: (userId: string) => `/meriter/users/${userId}/comments`,
+    userProfilePolls: (userId: string) => `/meriter/users/${userId}/polls`,
+    userProfileMeritTransfers: (userId: string) => `/meriter/users/${userId}/merit-transfers`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
     about: "/meriter/about",

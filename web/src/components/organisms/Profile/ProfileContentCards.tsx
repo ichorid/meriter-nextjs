@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftRight, FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
+import { cn } from '@/lib/utils';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useMyInvestmentsCount } from '@/hooks/api/useMyInvestments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -16,13 +17,17 @@ interface ProfileContentCardsProps {
     polls: number;
     projects?: number;
     favorites?: number;
+    meritTransfers?: number;
   };
   isLoading?: boolean;
+  /** When set, show only the four activity cards with links under `/meriter/users/:id/...`. */
+  activityForUserId?: string;
 }
 
 function ProfileContentCardsComponent({
   stats,
   isLoading = false,
+  activityForUserId,
 }: ProfileContentCardsProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -31,7 +36,10 @@ function ProfileContentCardsComponent({
   const { data: unreadFavorites } = useUnreadFavoritesCount();
   const unreadFavoritesCount = unreadFavorites?.count ?? 0;
   const { count: investmentsCount, isLoading: investmentsCountLoading } = useMyInvestmentsCount();
-  const [activityExpanded, setActivityExpanded] = useLocalStorage<boolean>('profile.activityExpanded', true);
+  const activityStorageKey = activityForUserId
+    ? `userProfile.${activityForUserId}.activityExpanded`
+    : 'profile.activityExpanded';
+  const [activityExpanded, setActivityExpanded] = useLocalStorage<boolean>(activityStorageKey, true);
 
   type StatCard = {
     label: string;
@@ -48,60 +56,117 @@ function ProfileContentCardsComponent({
     hideValue?: boolean;
   };
 
-  const statCards: StatCard[] = useMemo(() => [
-    {
-      label: t('hero.stats.publications'),
-      value: stats.publications,
-      icon: FileText,
-      color: 'text-base-content',
-      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-      route: `${routes.profile}/publications`,
-    },
-    {
-      label: t('hero.stats.comments'),
-      value: stats.comments,
-      icon: Hand,
-      color: 'text-base-content',
-      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-      route: `${routes.profile}/comments`,
-      iconClassName: 'w-[1.2rem] h-[1.2rem] text-base-content/50 group-hover:text-base-content/70 transition-colors',
-    },
-    {
-      label: t('hero.stats.polls'),
-      value: stats.polls,
-      icon: BarChart3,
-      color: 'text-base-content',
-      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-      route: `${routes.profile}/polls`,
-    },
-    {
-      label: tCommon('favorites'),
-      value: stats.favorites ?? 0,
-      icon: Star,
-      color: 'text-base-content',
-      bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-gray-100 dark:bg-gray-800/50',
-      route: `${routes.profile}/favorites`,
-      isHighlighted: unreadFavoritesCount > 0,
-    },
-    {
-      label: tProfile('investments.title'),
-      value: investmentsCount,
-      icon: TrendingUp,
-      color: 'text-base-content',
-      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-      route: `${routes.profile}/investments`,
-      valueLoading: investmentsCountLoading,
-    },
-    {
-      label: tProfile('meritTransfersCardTitle'),
-      value: 0,
-      icon: ArrowLeftRight,
-      color: 'text-base-content',
-      bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-      route: routes.profileMeritTransfers,
-      hideValue: true,
-    },
-  ], [t, tCommon, tProfile, stats.publications, stats.comments, stats.polls, stats.favorites, unreadFavoritesCount, investmentsCount, investmentsCountLoading]);
+  const statCards: StatCard[] = useMemo(() => {
+    if (activityForUserId) {
+      const uid = activityForUserId;
+      return [
+        {
+          label: t('hero.stats.publications'),
+          value: stats.publications,
+          icon: FileText,
+          color: 'text-base-content',
+          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          route: routes.userProfilePublications(uid),
+        },
+        {
+          label: t('hero.stats.comments'),
+          value: stats.comments,
+          icon: Hand,
+          color: 'text-base-content',
+          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          route: routes.userProfileComments(uid),
+          iconClassName:
+            'w-[1.2rem] h-[1.2rem] text-base-content/50 group-hover:text-base-content/70 transition-colors',
+        },
+        {
+          label: t('hero.stats.polls'),
+          value: stats.polls,
+          icon: BarChart3,
+          color: 'text-base-content',
+          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          route: routes.userProfilePolls(uid),
+        },
+        {
+          label: tProfile('meritTransfersCardTitle'),
+          value: stats.meritTransfers ?? 0,
+          icon: ArrowLeftRight,
+          color: 'text-base-content',
+          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          route: routes.userProfileMeritTransfers(uid),
+          hideValue: false,
+        },
+      ];
+    }
+
+    return [
+      {
+        label: t('hero.stats.publications'),
+        value: stats.publications,
+        icon: FileText,
+        color: 'text-base-content',
+        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        route: `${routes.profile}/publications`,
+      },
+      {
+        label: t('hero.stats.comments'),
+        value: stats.comments,
+        icon: Hand,
+        color: 'text-base-content',
+        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        route: `${routes.profile}/comments`,
+        iconClassName:
+          'w-[1.2rem] h-[1.2rem] text-base-content/50 group-hover:text-base-content/70 transition-colors',
+      },
+      {
+        label: t('hero.stats.polls'),
+        value: stats.polls,
+        icon: BarChart3,
+        color: 'text-base-content',
+        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        route: `${routes.profile}/polls`,
+      },
+      {
+        label: tCommon('favorites'),
+        value: stats.favorites ?? 0,
+        icon: Star,
+        color: 'text-base-content',
+        bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-gray-100 dark:bg-gray-800/50',
+        route: `${routes.profile}/favorites`,
+        isHighlighted: unreadFavoritesCount > 0,
+      },
+      {
+        label: tProfile('investments.title'),
+        value: investmentsCount,
+        icon: TrendingUp,
+        color: 'text-base-content',
+        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        route: `${routes.profile}/investments`,
+        valueLoading: investmentsCountLoading,
+      },
+      {
+        label: tProfile('meritTransfersCardTitle'),
+        value: 0,
+        icon: ArrowLeftRight,
+        color: 'text-base-content',
+        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        route: routes.profileMeritTransfers,
+        hideValue: true,
+      },
+    ];
+  }, [
+    activityForUserId,
+    t,
+    tCommon,
+    tProfile,
+    stats.publications,
+    stats.comments,
+    stats.polls,
+    stats.favorites,
+    stats.meritTransfers,
+    unreadFavoritesCount,
+    investmentsCount,
+    investmentsCountLoading,
+  ]);
 
   const handleCardClick = (route: string) => {
     router.push(route);
@@ -127,7 +192,12 @@ function ProfileContentCardsComponent({
       {/* Statistics Cards */}
       {activityExpanded && (
         <div className="animate-in fade-in duration-200">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div
+            className={cn(
+              'grid grid-cols-2 gap-3 md:grid-cols-3',
+              activityForUserId ? 'lg:grid-cols-4' : 'lg:grid-cols-6',
+            )}
+          >
             {statCards.map((stat, index) => {
               const Icon = stat.icon;
               return (

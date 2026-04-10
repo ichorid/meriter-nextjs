@@ -7,6 +7,13 @@ export const useUserProfile = (userId: string) => {
   );
 };
 
+export function useProfileActivityCounts(userId: string | undefined) {
+  return trpc.users.getProfileActivityCounts.useQuery(
+    { userId: userId! },
+    { enabled: !!userId },
+  );
+}
+
 export function useAllLeads(
   params: { page?: number; pageSize?: number } = {},
   options?: { enabled?: boolean }

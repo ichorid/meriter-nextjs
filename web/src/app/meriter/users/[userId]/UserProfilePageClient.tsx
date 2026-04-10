@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
-import { useUserProfile } from '@/hooks/api/useUsers';
+import { useProfileActivityCounts, useUserProfile } from '@/hooks/api/useUsers';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useInvitableCommunities } from '@/hooks/api/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,8 +16,10 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
+import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { Button } from '@/components/ui/shadcn/button';
+import { MeritTransferButton } from '@/features/merit-transfer';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -31,17 +33,24 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
   const tProfile = useTranslations('profile');
+  const tMeritTransfer = useTranslations('meritTransfer');
   const { user: authUser, isAuthenticated } = useAuth();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [meritTransferContextId, setMeritTransferContextId] = useState<string>('');
 
   const { data: user, isLoading, error, isFetched } = useUserProfile(userId);
   const { data: userRoles = [], isLoading: rolesLoading } = useUserRoles(userId);
+  const { data: activityCounts, isLoading: activityCountsLoading } = useProfileActivityCounts(userId);
 
-  const canInviteFromProfile =
+  const viewingOtherProfile =
     isAuthenticated && !!authUser?.id && authUser.id !== userId;
 
+  const { data: viewerRoles = [] } = useUserRoles(
+    viewingOtherProfile ? authUser!.id : '',
+  );
+
   const { data: invitableCommunities = [] } = useInvitableCommunities(
-    canInviteFromProfile ? userId : '',
+    viewingOtherProfile ? userId : '',
   );
 
   const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.meritsExpanded`, true);
@@ -64,6 +73,42 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const communityIds = useMemo(() => {
     return Array.from(new Set(userRoles.map((r) => r.communityId).filter(Boolean))) as string[];
   }, [userRoles]);
+
+  const sharedMeritTransferContexts = useMemo(() => {
+    if (!viewingOtherProfile) return [];
+    const viewedMember = new Set(
+      userRoles.map((r) => r.communityId).filter(Boolean) as string[],
+    );
+    const viewerMember = new Set(
+      viewerRoles.map((r) => r.communityId).filter(Boolean) as string[],
+    );
+    const sharedIds = [...viewedMember].filter((id) => viewerMember.has(id));
+    const nameById = new Map(
+      userRoles.map((r) => [r.communityId, r.communityName || r.communityId || '']),
+    );
+    return sharedIds
+      .map((id) => ({
+        id,
+        name: (nameById.get(id) as string) || id,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [viewingOtherProfile, viewerRoles, userRoles]);
+
+  useEffect(() => {
+    if (!sharedMeritTransferContexts.length) {
+      setMeritTransferContextId('');
+      return;
+    }
+    setMeritTransferContextId((prev) => {
+      if (prev && sharedMeritTransferContexts.some((c) => c.id === prev)) {
+        return prev;
+      }
+      return sharedMeritTransferContexts[0]!.id;
+    });
+  }, [sharedMeritTransferContexts]);
+
+  const canTransferMeritsToProfile =
+    viewingOtherProfile && sharedMeritTransferContexts.length > 0 && !!meritTransferContextId;
 
   const administeredCommunityIds = useMemo(() => {
     return Array.from(
@@ -131,6 +176,16 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     [userRoles]
   );
 
+  const activityStats = useMemo(
+    () => ({
+      publications: activityCounts?.publications ?? 0,
+      comments: activityCounts?.comments ?? 0,
+      polls: activityCounts?.polls ?? 0,
+      meritTransfers: activityCounts?.meritTransfers ?? 0,
+    }),
+    [activityCounts]
+  );
+
   if (isLoading) {
     return (
       <AdaptiveLayout
@@ -177,6 +232,15 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           userRoles={userRoles}
         />
 
+        <div className="px-4">
+          <Separator className="bg-base-300" />
+          <ProfileContentCards
+            stats={activityStats}
+            isLoading={activityCountsLoading}
+            activityForUserId={user.id}
+          />
+        </div>
+
         {communityIds.length > 0 && (
           <div>
             <Separator className="bg-base-300" />
@@ -194,9 +258,9 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         <div>
           <Separator className="bg-base-300" />
           <div className="bg-base-100 py-4 space-y-4">
-            {canInviteFromProfile && (
+            {viewingOtherProfile && (
               <>
-                <div className="px-4">
+                <div className="flex flex-wrap items-center gap-2 px-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -208,6 +272,32 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     <UserPlus className="h-4 w-4 shrink-0" />
                     {tProfile('inviteUserProfileButton')}
                   </Button>
+                  {canTransferMeritsToProfile ? (
+                    <>
+                      {sharedMeritTransferContexts.length > 1 ? (
+                        <select
+                          className="h-9 max-w-[min(100%,14rem)] truncate rounded-xl border border-input bg-gray-200 px-2 text-sm text-base-content dark:bg-gray-700 dark:text-base-content/90"
+                          value={meritTransferContextId}
+                          onChange={(e) => setMeritTransferContextId(e.target.value)}
+                          aria-label={tMeritTransfer('sharedContextForTransfer')}
+                        >
+                          {sharedMeritTransferContexts.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
+                      <MeritTransferButton
+                        receiverId={user.id}
+                        receiverDisplayName={displayName}
+                        communityContextId={meritTransferContextId}
+                        variant="outline"
+                        size="sm"
+                        className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
+                      />
+                    </>
+                  ) : null}
                 </div>
                 <InviteToTeamDialog
                   open={inviteOpen}

@@ -2901,6 +2901,7 @@
         "pageLoginRequired": "Войдите, чтобы видеть передачи заслуг.",
         "loadMore": "Загрузить ещё",
         "profilePageTitle": "Передачи заслуг",
+        "sharedContextForTransfer": "Сообщество для передачи",
         "tabIncoming": "Входящие",
         "tabOutgoing": "Исходящие"
     },

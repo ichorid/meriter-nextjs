@@ -76,13 +76,29 @@ export function MeritTransferFeed({
           key={row.id}
           className="rounded-lg border border-base-content/10 bg-base-100 p-3 shadow-sm"
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <UserAvatarLink userId={row.senderId} />
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex min-w-0 max-w-full items-center gap-1.5">
+              <UserAvatarLink userId={row.senderId} />
+              <Link
+                href={routes.userProfile(row.senderId)}
+                className="min-w-0 truncate text-sm font-medium text-base-content hover:underline"
+              >
+                {row.senderDisplayName ?? row.senderId}
+              </Link>
+            </div>
             <span className="text-base-content/50" aria-hidden>
               →
             </span>
-            <UserAvatarLink userId={row.receiverId} />
-            <span className="ml-auto text-lg font-semibold tabular-nums">
+            <div className="flex min-w-0 max-w-full items-center gap-1.5">
+              <UserAvatarLink userId={row.receiverId} />
+              <Link
+                href={routes.userProfile(row.receiverId)}
+                className="min-w-0 truncate text-sm font-medium text-base-content hover:underline"
+              >
+                {row.receiverDisplayName ?? row.receiverId}
+              </Link>
+            </div>
+            <span className="ml-auto shrink-0 text-lg font-semibold tabular-nums">
               {t('feedAmount', { amount: row.amount })}
             </span>
           </div>

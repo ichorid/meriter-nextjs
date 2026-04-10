@@ -5,6 +5,8 @@ export type MeritTransferListItem = {
   id: string;
   senderId: string;
   receiverId: string;
+  senderDisplayName?: string;
+  receiverDisplayName?: string;
   amount: number;
   comment?: string;
   sourceWalletType: MeritTransferWalletType;
