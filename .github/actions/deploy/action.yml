@@ -9,8 +9,12 @@ inputs:
     description: 'VPS host address'
     required: true
   commit-sha:
-    description: 'Short commit SHA for image tag'
+    description: 'Short commit SHA for image tag (stage/prod release builds)'
     required: false
+  use-dev-image-tags:
+    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest)'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -26,15 +30,33 @@ runs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+    # Stack definition on the VPS must match the repo (compose, init scripts, Caddy).
+    # Image pull alone does not update docker-compose.yml or mongodb-init/.
+    - name: Sync stack files to VPS
+      shell: bash
+      env:
+        VPS_HOST: ${{ inputs.vps-host }}
+      run: |
+        set -euo pipefail
+        rsync -avz -e ssh \
+          docker-compose.yml \
+          deploy.sh \
+          Caddyfile \
+          "deploy@${VPS_HOST}:/opt/meriter/"
+        rsync -avz --delete -e ssh \
+          mongodb-init/ \
+          "deploy@${VPS_HOST}:/opt/meriter/mongodb-init/"
     - name: Run remote deploy script
       shell: bash
       env:
         VPS_HOST: ${{ inputs.vps-host }}
         COMMIT_SHA: ${{ inputs.commit-sha }}
+        USE_DEV_IMAGE_TAGS: ${{ inputs.use-dev-image-tags }}
       run: |
         ssh "deploy@$VPS_HOST" <<EOF
           cd /opt/meriter
           export COMMIT_SHA="$COMMIT_SHA"
+          export USE_DEV_IMAGE_TAGS="$USE_DEV_IMAGE_TAGS"
           ./deploy.sh
         EOF
 
