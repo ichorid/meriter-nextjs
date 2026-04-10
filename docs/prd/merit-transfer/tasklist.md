@@ -18,12 +18,12 @@
 
 ## Этап 1: Backend — модель и сервис
 
-- [ ] **BE-1**: Создать схему `MeritTransfer` в `api/apps/meriter/src/domain/schemas/` (или аналогичное расположение по паттерну проекта). Поля: senderId, receiverId, amount, comment? (опциональный — обязательность на клиенте), sourceWalletType, sourceContextId, targetWalletType, targetContextId, communityContextId, eventPostId?, createdAt.
-- [ ] **BE-2**: Создать shared-types если нужно: Zod-схема для create input, response type. В `libs/shared-types/src/`.
-- [ ] **BE-3**: Создать `MeritTransferService` — метод `create`: валидация (баланс, участник контекста), дебет через merit-resolver, кредит, создание записи. **Примечание**: `comment` на уровне API — опциональный, обязательность обеспечивается клиентом.
-- [ ] **BE-4**: В `MeritTransferService` — метод `getByCommunityContext(communityId, pagination)`: записи в контексте сообщества/проекта, сортировка по дате desc.
-- [ ] **BE-5**: В `MeritTransferService` — метод `getByUser(userId, direction: 'incoming' | 'outgoing', pagination)`: записи по пользователю.
-- [ ] **BE-6**: `pnpm lint` в api — чисто.
+- [x] **BE-1**: Создать схему `MeritTransfer` в `api/apps/meriter/src/domain/schemas/` (или аналогичное расположение по паттерну проекта). Поля: senderId, receiverId, amount, comment? (опциональный — обязательность на клиенте), sourceWalletType, sourceContextId, targetWalletType, targetContextId, communityContextId, eventPostId?, createdAt.
+- [x] **BE-2**: Создать shared-types если нужно: Zod-схема для create input, response type. В `libs/shared-types/src/`.
+- [x] **BE-3**: Создать `MeritTransferService` — метод `create`: валидация (баланс, участник контекста), дебет через merit-resolver, кредит, создание записи. **Примечание**: `comment` на уровне API — опциональный, обязательность обеспечивается клиентом.
+- [x] **BE-4**: В `MeritTransferService` — метод `getByCommunityContext(communityId, pagination)`: записи в контексте сообщества/проекта, сортировка по дате desc.
+- [x] **BE-5**: В `MeritTransferService` — метод `getByUser(userId, direction: 'incoming' | 'outgoing', pagination)`: записи по пользователю.
+- [x] **BE-6**: `pnpm lint` в api — чисто.
 
 **Отчёт**: Записать в `reports/02-backend-model.md` что создано, какие решения приняты.
 

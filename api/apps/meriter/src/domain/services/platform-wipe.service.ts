@@ -57,6 +57,7 @@ export class PlatformWipeService {
     const ordered = [
       'notifications',
       'favorites',
+      'merit_transfers',
       'votes',
       'comments',
       'poll_casts',

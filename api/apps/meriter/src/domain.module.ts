@@ -80,6 +80,10 @@ import {
   CommunityWalletSchemaClass,
   CommunityWalletSchema,
 } from './domain/models/community-wallet/community-wallet.schema';
+import {
+  MeritTransferSchemaClass,
+  MeritTransferSchema,
+} from './domain/models/merit-transfer/merit-transfer.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -126,6 +130,7 @@ import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
+import { MeritTransferService } from './domain/services/merit-transfer.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -168,6 +173,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: TeamInvitationSchemaClass.name, schema: TeamInvitationSchema },
       { name: PlatformSettingsSchemaClass.name, schema: PlatformSettingsSchema },
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
+      { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
     ]),
   ],
   providers: [
@@ -216,6 +222,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDemoSeedService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
+    MeritTransferService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -271,6 +278,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformWipeService,
     PlatformDemoSeedService,
     PlatformDatabaseDumpService,
+    MeritTransferService,
 
     // Export vote factor services
     RoleHierarchyFactor,

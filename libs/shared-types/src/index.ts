@@ -96,6 +96,11 @@ export {
     UpdateTappalkaSettingsInputSchema,
 } from './tappalka';
 
+export {
+    MeritTransferWalletTypeSchema,
+    MeritTransferCreateInputSchema,
+} from './merit-transfer';
+
 // Export taxonomy constants
 export {
     IMPACT_AREAS,
@@ -179,6 +184,8 @@ export type {
     MarkTappalkaOnboardingSeenInput,
     UpdateTappalkaSettingsInput,
 } from './tappalka';
+
+export type { MeritTransferWalletType, MeritTransferCreateInput } from './merit-transfer';
 
 export {
     DECREE_809_TAGS,
