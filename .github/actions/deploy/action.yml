@@ -41,7 +41,9 @@ runs:
         set -euo pipefail
         TARGET="deploy@${VPS_HOST}:/opt/meriter/"
         scp docker-compose.yml deploy.sh Caddyfile "$TARGET"
-        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh"
+        ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker"
+        scp scripts/docker/mongo-docker-entry.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/docker/mongo-docker-entry.sh"
+        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh"
         ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
         scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script

@@ -1,0 +1,4 @@
+# Shell used by Docker/Linux must stay LF (Windows CRLF breaks shebang in containers).
+scripts/docker/*.sh text eol=lf
+mongodb-init/*.sh text eol=lf
+deploy.sh text eol=lf

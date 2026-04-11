@@ -3,13 +3,26 @@ services:
     image: mongo:8
     container_name: meriter-mongodb
     restart: unless-stopped
-    # Transactions (e.g. merit transfer) require a replica set — single-member rs0 is enough.
-    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    # Same replica set + keyFile path as production docker-compose.yml.
+    entrypoint: ["/bin/sh", "/scripts/mongo-docker-entry.sh"]
+    command:
+      [
+        'mongod',
+        '--replSet',
+        'rs0',
+        '--bind_ip_all',
+        '--keyFile',
+        '/var/lib/mongo-rs-key/mongo-rs.key',
+      ]
+    env_file:
+      - .env
     # Port mapping for local development - allows API running on host to connect
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+      - mongo_rs_keyfile:/var/lib/mongo-rs-key
+      - ./scripts/docker/mongo-docker-entry.sh:/scripts/mongo-docker-entry.sh:ro
       - ./mongodb-init:/docker-entrypoint-initdb.d:ro
     networks:
       - meriter-network
@@ -222,6 +235,8 @@ networks:
 
 volumes:
   mongodb_data:
+    driver: local
+  mongo_rs_keyfile:
     driver: local
   minio_data:
     driver: local
