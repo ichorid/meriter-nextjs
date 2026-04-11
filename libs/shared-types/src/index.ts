@@ -98,7 +98,9 @@ export {
 
 export {
     MeritTransferWalletTypeSchema,
+    MeritTransferCreateObjectSchema,
     MeritTransferCreateInputSchema,
+    MeritTransferCreateProcedureInputSchema,
 } from './merit-transfer';
 
 // Export taxonomy constants
@@ -185,7 +187,11 @@ export type {
     UpdateTappalkaSettingsInput,
 } from './tappalka';
 
-export type { MeritTransferWalletType, MeritTransferCreateInput } from './merit-transfer';
+export type {
+    MeritTransferWalletType,
+    MeritTransferCreateInput,
+    MeritTransferCreateProcedureInput,
+} from './merit-transfer';
 
 export {
     DECREE_809_TAGS,

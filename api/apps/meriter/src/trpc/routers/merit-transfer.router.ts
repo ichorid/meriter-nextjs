@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { MeritTransferCreateInputSchema } from '@meriter/shared-types';
+import { MeritTransferCreateProcedureInputSchema } from '@meriter/shared-types';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import type { UserService } from '../../domain/services/user.service';
@@ -11,10 +11,6 @@ import type {
   MeritTransferListResult,
   MeritTransferRecord,
 } from '../../domain/services/merit-transfer.service';
-
-const MeritTransferCreateProcedureSchema = MeritTransferCreateInputSchema.omit({
-  senderId: true,
-});
 
 type MeritTransferListItemEnriched = MeritTransferRecord & {
   senderDisplayName: string;
@@ -104,8 +100,15 @@ async function enrichMeritTransfersForApi(
 
 export const meritTransferRouter = router({
   create: protectedProcedure
-    .input(MeritTransferCreateProcedureSchema)
+    .input(MeritTransferCreateProcedureInputSchema)
     .mutation(async ({ ctx, input }) => {
+      if (input.receiverId === ctx.user.id) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'senderId and receiverId must differ',
+        });
+      }
+
       const role = await ctx.userCommunityRoleService.getRole(
         ctx.user.id,
         input.communityContextId,
