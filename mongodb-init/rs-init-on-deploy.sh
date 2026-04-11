@@ -1,6 +1,7 @@
 #!/bin/sh
 # Runs in mongo:8 one-shot container; ensures rs0 exists on existing volumes (not only first initdb).
-# Uses admin auth only when Mongo accepts it (production). Local compose often has no auth — try unauth first.
+# When MONGO_ADMIN_PASSWORD is set (production), use admin auth only: unauth ping can succeed while
+# replSetInitiate still requires auth. Local compose without a password uses unauth only.
 set -eu
 
 run_mongosh_unauth() {
@@ -12,12 +13,15 @@ run_mongosh_auth() {
 }
 
 pick_mongosh() {
+  if [ -n "${MONGO_ADMIN_PASSWORD:-}" ]; then
+    if run_mongosh_auth --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -qx 1; then
+      echo auth
+      return 0
+    fi
+    return 1
+  fi
   if run_mongosh_unauth --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -qx 1; then
     echo unauth
-    return 0
-  fi
-  if [ -n "${MONGO_ADMIN_PASSWORD:-}" ] && run_mongosh_auth --quiet --eval 'db.adminCommand({ ping: 1 }).ok' 2>/dev/null | grep -qx 1; then
-    echo auth
     return 0
   fi
   return 1
