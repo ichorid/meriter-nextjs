@@ -18,5 +18,5 @@
     // Not initialized — proceed.
   }
   const res = rs.initiate(cfg);
-  print('rs.initiate: ' + tojson(res));
+  print('rs.initiate: ' + JSON.stringify(res));
 })();
