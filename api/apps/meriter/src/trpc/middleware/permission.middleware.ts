@@ -1,5 +1,4 @@
 import { TRPCError } from '@trpc/server';
-import { protectedProcedure } from '../trpc';
 import type { PermissionAction, PermissionResource } from '../../common/decorators/permission.decorator';
 
 /**
@@ -380,25 +379,5 @@ export async function checkPermissionInHandler(
       message: `An error occurred while checking permissions: ${errorMessage}`,
     });
   }
-}
-
-/**
- * Legacy function name for backward compatibility
- * @deprecated Use checkPermissionInHandler() instead, or restructure to use middleware after input validation
- */
-export function requirePermission(
-  _action: PermissionAction,
-  _resource: PermissionResource,
-) {
-  // Return a procedure builder that validates input first, then checks permissions
-  return protectedProcedure.use(async ({ ctx: _ctx, input: _input, next: _next }) => {
-    // This will run before input validation, so input will be undefined
-    // We need to defer the permission check
-    // For now, throw an error to indicate this pattern doesn't work
-    throw new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: `requirePermission() middleware must be applied AFTER .input() validation. Use checkPermissionInHandler() in the handler instead, or restructure to: protectedProcedure.input(...).use(requirePermissionMiddleware(...)).mutation(...)`,
-    });
-  });
 }
 

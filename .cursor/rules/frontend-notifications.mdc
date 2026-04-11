@@ -11,7 +11,7 @@ alwaysApply: false
 ## Base typography
 
 - **Card subtitle container** (`InfoCard`): `text-sm text-brand-text-secondary` on the wrapper around `subtitle` so body copy has one consistent size across notification types.
-- **In-code tokens** (`NOTIFY_SUB` in `NotificationsClient.tsx`): keep subtitle JSX aligned with this rule.
+- **In-code tokens** (`NOTIFY_SUB` in `web/src/app/meriter/notifications/notificationClientConstants.ts`): keep subtitle JSX aligned with this rule.
   - **Stack**: `flex flex-col gap-1.5`
   - **Body**: `text-brand-text-primary whitespace-pre-wrap break-words`
   - **Muted / labels**: `text-brand-text-secondary whitespace-pre-wrap break-words`
@@ -32,5 +32,5 @@ Do not mix arbitrary `text-xs` / `text-sm` inside subtitle rows except the times
 
 ## Files
 
-- `web/src/app/meriter/notifications/NotificationsClient.tsx` — subtitle rendering and `NOTIFY_SUB`.
+- `web/src/app/meriter/notifications/NotificationsClient.tsx` — subtitle rendering; `NOTIFY_SUB` and notification routing helpers in `notificationClientConstants.ts`; title/body copy in `notificationClientFormat.ts`.
 - `web/src/components/ui/InfoCard.tsx` — title `text-sm`, subtitle wrapper size as above.

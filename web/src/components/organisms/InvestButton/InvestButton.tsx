@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
 import { PiggyBank, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
@@ -8,7 +9,15 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useUIStore } from '@/stores/ui.store';
 import { InvestDialog } from '@/components/organisms/InvestDialog';
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
-import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
+
+/** Dynamic import breaks a static import cycle: InvestButton → BirzhaTappalkaModal → TappalkaScreen → PublicationCard → … → InvestButton */
+const BirzhaTappalkaModal = dynamic(
+  () =>
+    import('@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal').then((m) => ({
+      default: m.BirzhaTappalkaModal,
+    })),
+  { ssr: false },
+);
 
 interface InvestButtonProps {
   postId: string;
