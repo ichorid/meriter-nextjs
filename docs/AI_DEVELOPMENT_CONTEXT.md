@@ -46,6 +46,7 @@ meriter-nextjs/
 2. **PRD-driven подход** — большие фичи начинаются с документа требований
 3. **Итеративная работа** — маленькие шаги, частые коммиты
 4. **Ручная проверка** — всегда смотреть diff перед Accept
+5. **Codegraph** — граф зависимостей уровня функций; AI использует его вместо grep для навигации и анализа blast radius
 
 ---
 
@@ -66,6 +67,7 @@ meriter-nextjs/
 | `buildcheck.mdc` | Always | Запуск тестов и билда после задач |
 | `kiss.mdc` | Always | KISS/DRY/SOLID, проверка логики, no `any` |
 | `pnpm.mdc` | Always | Использовать pnpm, lint перед коммитом |
+| `codegraph.mdc` | Always | Codegraph-first навигация, impact analysis, MCP tools |
 
 ### Принцип работы
 - **Always Applied** — включены в каждый запрос
@@ -151,7 +153,43 @@ tRPC Router → PermissionService → PermissionContextService → PermissionRul
 
 ---
 
-## 7. Документация проекта
+## 7. Codegraph (Dependency Intelligence)
+
+Проект использует [codegraph](https://github.com/optave/ops-codegraph-tool) — граф зависимостей уровня функций по всему монорепо (`api/`, `web/`, `libs/shared-types/`).
+
+### Зачем
+- AI-агент находит определения, вызовы и blast radius **без чтения файлов** — через MCP
+- Semantic search позволяет искать код по смыслу, а не по имени
+- `diff-impact` показывает что затронут staged-изменения до коммита
+
+### Первый запуск
+```bash
+npm install -g @optave/codegraph   # Node >= 22.6
+codegraph build                    # ~6s full build
+codegraph embed                    # semantic embeddings (~2 min)
+codegraph co-change --analyze      # git co-change analysis
+```
+
+### При разработке
+```bash
+codegraph watch                    # в отдельном терминале — авто-обновление графа
+codegraph where <name>             # найти символ
+codegraph context <name> -T        # полный контекст
+codegraph fn-impact <name> -T      # blast radius
+codegraph diff-impact --staged -T  # impact перед коммитом
+codegraph search "запрос"          # semantic search
+```
+
+### Cursor интеграция
+- **MCP server** — `.cursor/mcp.json`, AI вызывает codegraph напрямую
+- **Rule** — `.cursor/rules/codegraph.mdc` (always-apply), приоритет codegraph над grep
+- **Skill** — `.cursor/skills/codegraph/SKILL.md` + `reference.md`
+
+Конфигурация: `.codegraphrc.json` (repo root). `.codegraph/` gitignored — каждый разработчик билдит локально.
+
+---
+
+## 8. Документация проекта
 
 | Файл | Содержание |
 |------|------------|
@@ -164,7 +202,7 @@ tRPC Router → PermissionService → PermissionContextService → PermissionRul
 
 ---
 
-## 8. Для Claude: как помогать
+## 9. Для Claude: как помогать
 
 ### При работе с этим проектом:
 1. **Всегда учитывай контекст** из `.cursor/rules/` — там актуальные паттерны
@@ -181,7 +219,7 @@ tRPC Router → PermissionService → PermissionContextService → PermissionRul
 
 ---
 
-## 9. История решений
+## 10. История решений
 
 ### Январь 2026: Внедрение AI workflow
 - **Проблема**: ~100K строк кода, AI начал ломать смежные системы

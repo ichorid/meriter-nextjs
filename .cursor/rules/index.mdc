@@ -82,3 +82,4 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
 - @backend.mdc — NestJS/tRPC patterns
+- @codegraph.mdc — Codegraph-first navigation, impact analysis, MCP tools

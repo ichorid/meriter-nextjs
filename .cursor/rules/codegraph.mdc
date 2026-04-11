@@ -1,0 +1,45 @@
+---
+description: Codegraph-first code navigation and impact analysis
+alwaysApply: true
+---
+# Codegraph
+
+This project has a live dependency graph at `.codegraph/graph.db`.
+Use codegraph MCP tools or CLI **before** grep/find/cat for navigation, context, and impact analysis.
+Grep is the fallback when codegraph does not cover the query (e.g. string literals, config values, regex patterns in non-code files).
+
+## Before modifying code
+1. `codegraph where <name>` -- find definition + usage sites
+2. `codegraph context <name> -T` -- source + deps + callers in one call (replaces reading 3-5 files)
+3. `codegraph fn-impact <name> -T` -- blast radius before editing
+
+## After modifying code
+4. `codegraph build .` -- incremental rebuild (sub-second)
+5. `codegraph diff-impact --staged -T` -- verify impact before committing
+
+## Locating code (use INSTEAD of grep/find)
+- Symbol lookup: `codegraph where <name>` (not `grep -r "functionName"`)
+- File overview: `codegraph where --file <path>` (not `cat <file> | head`)
+- Semantic search: `codegraph search "<intent>"` (not grep for approximate names)
+- File deps: `codegraph deps <file>` (not manually tracing imports)
+- Exports: `codegraph exports <file> -T`
+
+## When to fall back to grep
+- Searching for string literals, error messages, config keys, or comments
+- Searching non-code files (JSON, YAML, Markdown, .env)
+- When codegraph MCP server is unavailable
+
+## Key flags
+`-T` exclude tests (default) | `-j` JSON | `--file <path>` scope to file | `--kind <kind>` filter kind
+
+## Other useful commands
+- `codegraph map` -- module overview
+- `codegraph query <name> -T` -- call chain
+- `codegraph path <from> <to> -T` -- shortest path
+- `codegraph search "<query>"` -- semantic search (multi-query: separate with `;`)
+- `codegraph audit --quick <target>` -- structural summary
+- `codegraph roles --role dead -T` -- dead code
+- `codegraph complexity -T` -- per-function metrics
+- `codegraph cycles` -- circular deps
+- `codegraph co-change <file>` -- files that historically change together
+- `codegraph check --staged` -- CI validation (exit 0/1)

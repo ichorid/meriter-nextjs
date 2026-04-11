@@ -701,6 +701,7 @@ try {
 \- \[ ] Web сервер запущен на порту 8001 и отвечает
 
 \- \[ ] tRPC запросы проходят через прокси (проверка через `/trpc/users.getMe`)
+\- \[ ] Codegraph установлен (`npm i -g @optave/codegraph`) и граф собран (`codegraph build && codegraph embed && codegraph co-change --analyze`)
 
 
 

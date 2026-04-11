@@ -101,6 +101,39 @@
 
 ---
 
+## Codegraph — навигация по коду
+
+Перед grep/find используй **codegraph** — он знает граф зависимостей всего монорепо.
+
+```bash
+# Найти символ (определение + все использования)
+codegraph where <name>
+
+# Полный контекст: исходник + зависимости + вызывающие
+codegraph context <name> -T
+
+# Что сломается если изменить функцию
+codegraph fn-impact <name> -T
+
+# Impact staged-изменений перед коммитом
+codegraph diff-impact --staged -T
+
+# Semantic search (по смыслу, не по имени)
+codegraph search "обработка авторизации"
+```
+
+**Первый запуск** (если `.codegraph/` не существует):
+```bash
+npm install -g @optave/codegraph
+codegraph build && codegraph embed && codegraph co-change --analyze
+```
+
+**При разработке**: запусти `codegraph watch` в отдельном терминале для auto-rebuild.
+
+> Cursor агент использует codegraph автоматически через MCP (`.cursor/mcp.json`). Правило `.cursor/rules/codegraph.mdc` заставляет агент предпочитать codegraph над grep.
+
+---
+
 ## Полезные промпты
 
 ### Исследование кода

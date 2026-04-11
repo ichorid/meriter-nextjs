@@ -313,6 +313,62 @@ To test Telegram Web App features in a regular browser during development, you c
    Auth: Real initData validation
    ```
 
+## Codegraph (Dependency Intelligence)
+
+The project uses [codegraph](https://github.com/optave/ops-codegraph-tool) to maintain a function-level dependency graph across both `api/` and `web/` packages. This powers AI-assisted navigation, impact analysis, and semantic search.
+
+### Initial Setup
+
+```bash
+# Install globally (requires Node >= 22.6)
+npm install -g @optave/codegraph
+
+# Build the graph (~6s, reads .codegraphrc.json for include/exclude/aliases)
+codegraph build
+
+# Build semantic embeddings for natural-language search (~2 min, one-time)
+codegraph embed
+
+# Analyze git history for co-change coupling (one-time)
+codegraph co-change --analyze
+
+# Verify
+codegraph stats    # node/edge counts, quality score
+codegraph map      # most-connected files
+```
+
+### During Development
+
+Run `codegraph watch` in a terminal tab to keep the graph fresh as you edit files. If watch mode is not running, `codegraph build .` does a sub-second incremental rebuild.
+
+Key commands:
+
+```bash
+codegraph where <name>             # find where a symbol is defined and used
+codegraph context <name> -T        # full context: source + deps + callers
+codegraph fn-impact <name> -T      # what breaks if this function changes
+codegraph diff-impact --staged -T  # impact of staged changes
+codegraph search "handle auth"     # semantic search by intent
+codegraph deps <file>              # file imports and importers
+codegraph cycles                   # circular dependency detection
+```
+
+Use `-T` (exclude test files) by default. Use `--file <path>` to disambiguate same-named symbols across api/web.
+
+### Cursor Integration
+
+- **MCP server**: configured in `.cursor/mcp.json` — Cursor agents call codegraph tools directly
+- **Agent rule**: `.cursor/rules/codegraph.mdc` — always-apply rule that instructs agents to prefer codegraph over grep
+- **Agent skill**: `.cursor/skills/codegraph/` — full 6-step agent workflow and command reference
+
+### Configuration
+
+Graph configuration is in `.codegraphrc.json` at the repo root. It includes:
+- `include`: source directories for both api and web
+- `aliases`: tsconfig path aliases (`@/`, `@features/`, `@meriter/shared-types`, `@common/*`)
+- `manifesto`: complexity thresholds for CI gates
+- The `.codegraph/` directory is gitignored — each developer builds locally
+
 ## Testing
 
 ### Backend Tests

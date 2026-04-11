@@ -1,0 +1,41 @@
+{
+  "include": [
+    "api/apps/meriter/src/**",
+    "api/libs/**",
+    "web/src/**",
+    "libs/shared-types/src/**"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/__tests__/**",
+    "**/__mocks__/**",
+    "**/*.d.ts"
+  ],
+  "ignoreDirs": ["node_modules", ".git", "dist", ".next", "build", "coverage", "out"],
+  "extensions": [".ts", ".tsx", ".js", ".jsx"],
+  "aliases": {
+    "@/": "./web/src/",
+    "@app/": "./web/src/app/",
+    "@features/": "./web/src/features/",
+    "@shared/": "./web/src/shared/",
+    "@types/": "./web/src/types/",
+    "@lib/": "./web/src/shared/lib/",
+    "@meriter/shared-types": "./libs/shared-types/src/index.ts",
+    "@common/extapis/": "./api/libs/extapis/src/",
+    "@common/lambdas/": "./api/libs/lambdas/src/",
+    "@common/tg-sync/": "./api/libs/tg-sync/src/",
+    "@common/abstracts/": "./api/libs/abstracts/src/"
+  },
+  "excludeTests": true,
+  "manifesto": {
+    "rules": {
+      "cognitive_complexity": { "warn": 15, "fail": 30 },
+      "cyclomatic_complexity": { "warn": 10, "fail": 20 },
+      "nesting_depth": { "warn": 4, "fail": 6 },
+      "maintainability_index": { "warn": 40, "fail": 20 }
+    }
+  }
+}

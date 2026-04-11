@@ -67,6 +67,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Codegraph
+.codegraph/
+
 # Misc
 .eslintcache
 .prettiercache

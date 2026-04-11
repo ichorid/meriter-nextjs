@@ -81,5 +81,20 @@ lsof -ti:8002 | xargs kill -9
 **`Transaction numbers are only allowed on a replica set member or mongos`:**
 → MongoDB запущена как standalone. Включите replica set (см. **MongoDB (без Docker)** выше).
 
+## Codegraph (Dependency Graph)
+
+```bash
+# Install (once, requires Node >= 22.6)
+npm install -g @optave/codegraph
+
+# Initialize graph (first time or after clean checkout)
+codegraph build && codegraph embed && codegraph co-change --analyze
+
+# Keep graph fresh during development (run in a terminal tab)
+codegraph watch
+```
+
+Codegraph MCP server is configured in `.cursor/mcp.json`. Graph data lives in `.codegraph/` (gitignored). Config: `.codegraphrc.json`.
+
 ## Full Setup Guide
 See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

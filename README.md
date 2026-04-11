@@ -81,6 +81,33 @@ See [README.deployment.md](README.deployment.md) for detailed Docker deployment 
   
 > Note: See `api/apps/meriter/test/` for backend tests and docs.
 
+## 🔬 Codegraph (Dependency Intelligence)
+
+The project uses [codegraph](https://github.com/optave/ops-codegraph-tool) to provide a function-level dependency graph across the entire monorepo. AI agents and developers can query callers, callees, blast radius, and semantic search — without reading files manually.
+
+**First-time setup:**
+
+```bash
+npm install -g @optave/codegraph   # requires Node >= 22.6
+cd meriter-nextjs
+codegraph build                    # ~6s full build, sub-second incremental
+codegraph embed                    # semantic embeddings (~2 min, one-time)
+codegraph co-change --analyze      # git co-change coupling (one-time)
+```
+
+**During development:**
+
+```bash
+codegraph watch                    # keep graph fresh in a terminal tab
+codegraph where <name>             # find any symbol
+codegraph context <name> -T        # full context in one call
+codegraph fn-impact <name> -T      # blast radius before editing
+codegraph diff-impact --staged -T  # verify impact before committing
+codegraph search "handle auth"     # semantic search by intent
+```
+
+The graph is stored locally in `.codegraph/` (gitignored). A Cursor MCP server is configured in `.cursor/mcp.json` — Cursor agents can query the graph directly via MCP tools. See `.cursor/rules/codegraph.mdc` and `.cursor/skills/codegraph/` for agent integration details.
+
 ## 🛠️ Tech Stack
 
 ### Frontend
