@@ -83,3 +83,4 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
 - @backend.mdc — NestJS/tRPC patterns
 - @codegraph.mdc — Codegraph-first navigation, impact analysis, MCP tools
+- @terse-japanese-thinking.mdc — Internal reasoning / Task `prompt`: terse タメ口 Japanese; user-facing text follows user language
