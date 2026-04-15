@@ -1,6 +1,6 @@
 'use client';
 
-import { type PropsWithChildren, useState, useEffect, useRef } from 'react';
+import { type PropsWithChildren, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 
@@ -44,18 +44,11 @@ function RootInner({ children }: PropsWithChildren) {
   return <AppWrapper>{children}</AppWrapper>;
 }
 
+/** Renders the app shell on first client paint (no deferred mount). */
 export function Root(props: PropsWithChildren) {
-  const [didMount, setDidMount] = useState(false);
-
-  useEffect(() => {
-    setDidMount(true);
-  }, []);
-
-  return didMount ? (
+  return (
     <ErrorBoundary>
       <RootInner {...props} />
     </ErrorBoundary>
-  ) : (
-    <div className="root__loading">Loading</div>
   );
 }
