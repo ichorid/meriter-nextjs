@@ -141,6 +141,9 @@ Community
 | `canPayPostFromQuota` | Allow post payment from quota | `false` |
 | `allowWithdraw` | Stored community flag for withdrawal policy (`true` by default); `publications.withdraw` rejects when `false` before other authorization | `true` |
 | `forwardRule` | Forward behavior: `standard` or `project` | `standard` |
+| `eventCreation` | Who may create **events** (`events.createEvent`): `admin` (lead/superadmin only) or `members` (any user with a role in the community) | `admin` |
+
+**Events (web):** hub lists at **`/meriter/communities/[id]/events`** and **`/meriter/projects/[id]/events`**; single event **`/meriter/event/[communityId]/[publicationId]`**; invites **`/meriter/event/invite/[token]`** (short redirect **`/event/invite/[token]`**). Full rules: @business-events.mdc.
 
 #### Investing / comment mode
 | Field | Description | Default |

@@ -83,6 +83,17 @@ Conceptually similar to base post (content with time limit, no publication `metr
 
 ---
 
+## Event publication (`postType === 'event'`)
+
+- **Publication** in `publications` with calendar fields (`eventStartDate`, `eventEndDate`, optional `eventTime`, `eventLocation`, `eventAttendees`).
+- **Created only** via **`events.createEvent`** (not `publications.create` with `postType: 'event'`). Who may create: **`settings.eventCreation`** (`admin` \| `members`) — @business-events.mdc, @business-communities.mdc.
+- **Voting** on event publications is **rejected** in vote creation logic (`createVoteLogic` / equivalent).
+- **Forward / Birzha**: `proposeForward`, `forward`, and Birzha publish flows **reject** event posts.
+- **Merit transfer in thread**: optional `eventPostId` on transfer; auto **`Comment`** with `isAutoComment` / `meritTransferId` — @business-events.mdc, @business-merit-transfer.mdc.
+- **`comments.getByPublicationId`**: on the **first page** (`skip === 0`), auto-comments (e.g. transfer log lines) are merged ahead of vote-based rows for the event thread.
+
+---
+
 ## Post Rating
 
 ### Rating Calculation
@@ -153,7 +164,7 @@ Conceptually similar to base post (content with time limit, no publication `metr
 Forward mode is determined by the **source** community's `settings.forwardRule`. Code does not restrict transfer-with-merits to a single hardcoded route (canonical: @business-index.mdc, Critical Implementation Rules #3-4).
 
 ### Restrictions
-- Forward guards reject publications with legacy **`postType === 'poll'`** only (`proposeForward` and `forward`). Other publication `postType` values (e.g. `ticket`, `discussion`) are **not** rejected by this check — product flows normally use `basic` / `project`. Standalone **Poll** entity (`polls` collection) is separate from publication `postType`.
+- Forward guards reject publications with **`postType === 'poll'`** (legacy) or **`postType === 'event'`** (`proposeForward` and `forward`). Other publication `postType` values (e.g. `ticket`, `discussion`) are **not** rejected by this check — product flows normally use `basic` / `project`. Standalone **Poll** entity (`polls` collection) is separate from publication `postType`. Events: @business-events.mdc.
 - Participant-initiated forward (`proposeForward`): only when source `typeTag === 'team'`; charges **`settings.forwardCost`** from the caller’s **global** wallet (`GLOBAL_COMMUNITY_ID`); wallet debit is best-effort (errors in debit may be swallowed while the proposal still updates).
 - Lead/superadmin direct `forward`: no forward fee charged in current implementation
 - Target community is validated via post-type support check before forward/proposal
@@ -195,6 +206,8 @@ Weighted comments (votes) on publications are represented by the **Vote** entity
 | authorId | Comment author |
 | targetType, targetId | Target publication or parent comment |
 | images | Optional array of image URLs |
+| isAutoComment | When true, system-generated line (e.g. merit transfer log on an **event** thread) — not a user-typed reply |
+| meritTransferId | Optional; links auto-comment to **`merit_transfers`** row (`eventPostId` on transfer may point at the event publication) — @business-merit-transfer.mdc, @business-events.mdc |
 | createdAt, updatedAt | Timestamps |
 
 ---
@@ -243,6 +256,7 @@ Applies to **publication** `Vote` rows (`votes.*` on `targetType: 'publication'`
 | Post Type | Positive | Negative | Neutral |
 |-----------|----------|----------|---------|
 | Base post | ✅ | ✅ | ✅ |
+| **`postType === 'event'`** | ❌ | ❌ | ❌ — vote creation rejects event publications (@business-events.mdc) |
 | Poll (`polls` collection) | N/A | N/A | N/A |
 | Legacy **`postType === 'poll'`** on a publication | ⚠️ Not primary (prefer **`polls.*`**) | ⚠️ Same | ⚠️ Same — backend does not reject by `postType` in `votes` router; UI may hide voting |
 

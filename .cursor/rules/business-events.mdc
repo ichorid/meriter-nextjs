@@ -1,0 +1,94 @@
+---
+description: Community/project events (event publications), RSVP, invites, merit transfer in event context. Apply when working on events tRPC, EventService, or event UI.
+globs:
+  - "**/event*.ts"
+  - "**/events/**"
+  - "**/Event*.tsx"
+alwaysApply: false
+---
+
+# Events (Ивенты)
+
+> Event = a **Publication** with `postType === 'event'`. Created via **`events.createEvent`** (not `publications.create` with that type). Calendar fields live on the publication document.
+
+---
+
+## Concept
+
+- **Event post** shares the same `publications` collection as other posts but uses dedicated fields: `eventStartDate`, `eventEndDate`, optional `eventTime`, `eventLocation`, `eventAttendees` (user ids).
+- **RSVP**: members of the event’s **`communityId`** (team or `isProject` community) can attend/unattend; list is `eventAttendees`.
+- **Invites**: tokenized **`EventInvite`** records; **`attendViaInvite`** adds the user to `eventAttendees` **without** requiring community membership (invite-only guests).
+- **Merit transfer in event context**: optional **`eventPostId`** on `meritTransfer` / `events.transferMeritInEvent` — creates a **`merit_transfer`** row and an **auto `Comment`** on the event thread (`isAutoComment: true`, `meritTransferId`). See @business-merit-transfer.mdc.
+
+---
+
+## Who can create events (`settings.eventCreation`)
+
+| Mode | Who may call `events.createEvent` |
+|------|-------------------------------------|
+| **`admin`** (default) | Community **admin** only: `communityService.isUserAdmin` → **superadmin** or **lead** in that community. |
+| **`members`** | Any user with a **role** in the community (`userCommunityRoleService.getRole` truthy) — typically **lead** or **participant**. |
+
+Configured in **community settings** (`CommunityForm` / `communities.update`). Persisted as `settings.eventCreation`. **Future Vision** hub settings form skips this block (events are not configured there in current UI).
+
+---
+
+## tRPC (`events` router)
+
+Typical procedures (see `api/apps/meriter/src/trpc/routers/events.router.ts`):
+
+| Area | Procedures |
+|------|------------|
+| CRUD | `createEvent`, `updateEvent`, `deleteEvent`, `getEventsByCommunity` |
+| RSVP | `attend`, `unattend`, `attendViaInvite` |
+| Invites | `createInviteLink`, `getInvitePreview` (public), `inviteUser` |
+| Economy | `transferMeritInEvent` (wallet + auto-comment) |
+
+**Payment:** `createEvent` uses the same publication cost path as normal posts (quota/wallet per community `postCost` / helpers).
+
+---
+
+## Voting and Birzha
+
+- **Voting** on a publication with `postType === 'event'` is **rejected** in vote creation logic (`createVoteLogic` / equivalent guard).
+- **Forward / Birzha**: `proposeForward`, `forward`, and Birzha publish flows **reject** `postType === 'event'`.
+
+Details and cross-links: @business-content.mdc.
+
+---
+
+## Notifications
+
+- **`event_created`**: sent to leads + participants when an event is created (community/project name + title + date in metadata).
+- **`event_invitation`**: direct invite from author/admin to a user.
+
+`buildRedirectUrl` supports navigation to the event page from notification metadata.
+
+---
+
+## Web routes (canonical)
+
+| Flow | Route |
+|------|--------|
+| Event page | `/meriter/event/[communityId]/[publicationId]` |
+| Invite landing | `/meriter/event/invite/[token]` |
+| Short invite URL (redirect) | `/event/invite/[token]` → canonical invite path |
+| Events hub (community) | `/meriter/communities/[id]/events` |
+| Events hub (project) | `/meriter/projects/[id]/events` |
+
+Constants: `routes.eventView`, `routes.eventInvite`, `routes.communityEvents`, `routes.projectEvents`.
+
+---
+
+## Comments feed merge (auto lines)
+
+`comments.getByPublicationId` merges **`isAutoComment`** publication-thread comments (e.g. merit-transfer log lines) **on the first page only** (`skip === 0`) ahead of vote-based rows. Full-thread sorting across pages is not merged for performance.
+
+---
+
+## Related rules
+
+- @business-communities.mdc — `eventCreation`, community/project context
+- @business-content.mdc — post types, voting/forward restrictions, comment model
+- @business-merit-transfer.mdc — `eventPostId`, wallet rules for invite-only attendees
+- @business-projects.mdc — cooperative project communities as event hosts

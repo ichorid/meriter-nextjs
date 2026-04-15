@@ -83,6 +83,8 @@ Feature folder: `web/src/features/merit-transfer/` (dialog, feed, hooks, pages).
 
 ## Events (`eventPostId`)
 
+Canonical event product rules (create, RSVP, invites, notifications, routes): **@business-events.mdc**.
+
 - When **`eventPostId`** is omitted: **receiver** must be a **member** of `communityContextId` (unchanged).
 - When **`eventPostId`** is set:
   - Publication must exist, have `postType === 'event'`, `communityId === communityContextId`, and **`receiverId` must appear in `eventAttendees`** (RSVP list).
@@ -103,4 +105,5 @@ Feature folder: `web/src/features/merit-transfer/` (dialog, feed, hooks, pages).
 
 - Wallet balances, quota vs wallet, and unrelated `wallets.transfer` stub: @business-merits.mdc  
 - Membership, priority communities, community navigation: @business-communities.mdc  
-- Cooperative projects (`isProject`): @business-projects.mdc
+- Cooperative projects (`isProject`): @business-projects.mdc  
+- Events (`postType === 'event'`, auto-comments on event thread): @business-events.mdc

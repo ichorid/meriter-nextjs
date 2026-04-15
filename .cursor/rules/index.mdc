@@ -29,6 +29,7 @@ Structure and layer overview: see @architecture.mdc.
 - **Биржа / МД** (`marathon-of-good`): global weighted feed and investing “showcase”; product labels vs `typeTag` — @business-mvp.mdc, @business-content.mdc
 - **Global Projects hub** vs **cooperative project**: the global MVP “Projects” community uses `typeTag === 'team-projects'` (web route `/meriter/projects`); cooperative **project** teams are separate (`isProject` communities, tickets, `CommunityWallet`) — @business-mvp.mdc, @business-projects.mdc
 - **Community actor**: lead may publish **as** a community (`actingAsCommunityId` → `sourceEntityType: 'community'`) — @business-communities.mdc
+- **Events**: calendar **publications** with `postType === 'event'`; **`events.*`** tRPC; community setting **`eventCreation`**; hubs **`/meriter/communities/[id]/events`**, **`/meriter/projects/[id]/events`** — @business-events.mdc
 
 ## Key Patterns
 
@@ -58,7 +59,7 @@ Structure and layer overview: see @architecture.mdc.
 - **Community actor**: `actingAsCommunityId` on create, `CommunityWallet` credit/debit for source Birzha posts — @business-communities.mdc
 - **Content lifecycle**: publication create/update/delete, forward proposal workflow (`proposeForward`/`forward`/`rejectForward`), post close/restore/permanent delete flows
 - **Communities and teams**: community management, team creation, team join request workflows, team invitation/accept/reject flows, role operations
-- **Economy**: wallet and quota reads via `wallets.*` (e.g. `getByCommunity`, `getQuota`, `getBalance`, `getTransactions`); merit withdrawal from post rating via `publications.withdraw`; comment-score withdrawal via `votes.withdrawFromVote`; `wallets.withdraw` and `wallets.transfer` exist but return `NOT_IMPLEMENTED` in the current codebase; **peer merit transfer** via `meritTransfer.*` (wallet-only, shared community context) — @business-merit-transfer.mdc; quota handling; voting, polls, comments; investments via `investments.*`; tappalka mechanics
+- **Economy**: wallet and quota reads via `wallets.*` (e.g. `getByCommunity`, `getQuota`, `getBalance`, `getTransactions`); merit withdrawal from post rating via `publications.withdraw`; comment-score withdrawal via `votes.withdrawFromVote`; `wallets.withdraw` and `wallets.transfer` exist but return `NOT_IMPLEMENTED` in the current codebase; **peer merit transfer** via `meritTransfer.*` (wallet-only, shared community context; optional **`eventPostId`**) — @business-merit-transfer.mdc; **community/project events** (`events.*`, RSVP, invites) — @business-events.mdc; quota handling; voting, polls, comments; investments via `investments.*`; tappalka mechanics
 - **User engagement**: favorites module and notifications (including read-state operations)
 - **Platform modules**: about content module, platform settings module, runtime config/feature flags module, categories, search, uploads
 - **Background/domain automation**: post closing cron and quota reset services
@@ -78,6 +79,7 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @business-projects.mdc — Cooperative projects (isProject), tickets, Birzha from project, CommunityWallet
 - @business-future-vision.mdc — ОБ hub, OB posts, Future Visions feed, tags
 - @business-merit-transfer.mdc — Peer merit transfers (`meritTransfer` tRPC, UI feeds)
+- @business-events.mdc — Event publications, RSVP, invites, `eventCreation`, event-linked transfers
 - @architecture.mdc — Repository structure and code layers
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
