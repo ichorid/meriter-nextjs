@@ -284,7 +284,7 @@ export class CommunityService {
   /**
    * Get effective merit settings (defaults merged with custom overrides)
    */
-  getEffectiveMeritSettings(community: Community): CommunityMeritSettings {
+  getEffectiveMeritSettings(community: Pick<Community, 'typeTag' | 'meritSettings'>): CommunityMeritSettings {
     const defaults = this.communityDefaultsService.getDefaultMeritSettings(
       community.typeTag,
     );
