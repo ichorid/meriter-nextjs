@@ -375,10 +375,7 @@ export class TicketService {
     }
 
     const projectId = doc.communityId;
-    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
-    if (role?.role !== 'lead') {
-      throw new ForbiddenException('Only the project lead can approve applicants');
-    }
+    await this.assertProjectLeadOrSuperadmin(leadUserId, projectId);
 
     const applicants = doc.applicants ?? [];
     if (!applicants.includes(applicantUserId)) {
@@ -547,10 +544,7 @@ export class TicketService {
     }
 
     const projectId = doc.communityId;
-    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
-    if (role?.role !== 'lead') {
-      throw new ForbiddenException('Only the project lead can reject applicants');
-    }
+    await this.assertProjectLeadOrSuperadmin(leadUserId, projectId);
 
     const applicants = doc.applicants ?? [];
     if (!applicants.includes(applicantUserId)) {
@@ -625,10 +619,7 @@ export class TicketService {
     }
 
     const projectId = doc.communityId;
-    const role = await this.userCommunityRoleService.getRole(leadUserId, projectId);
-    if (role?.role !== 'lead') {
-      throw new ForbiddenException('Only the project lead can view applicants');
-    }
+    await this.assertProjectLeadOrSuperadmin(leadUserId, projectId);
 
     return doc.applicants ?? [];
   }
