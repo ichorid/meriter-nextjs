@@ -62,6 +62,11 @@ export class EventService {
       if (!ok) {
         throw new ForbiddenException('Only community administrators can create events');
       }
+      return;
+    }
+    const role = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (!role) {
+      throw new ForbiddenException('Only community members can create events');
     }
   }
 

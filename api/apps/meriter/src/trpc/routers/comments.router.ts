@@ -98,9 +98,17 @@ export const commentsRouter = router({
         sortOrder,
       );
 
-      // Extract unique user IDs (vote authors)
+      const autoDocs =
+        skip === 0
+          ? await ctx.commentService.findPublicationAutoComments(input.publicationId)
+          : [];
+
+      // Extract unique user IDs (vote authors + auto-comment authors)
       const userIdsArray = Array.from(
-        new Set(votes.map((v) => v.userId).filter(Boolean)),
+        new Set([
+          ...votes.map((v) => v.userId).filter(Boolean),
+          ...autoDocs.map((d) => d.authorId).filter(Boolean),
+        ]),
       );
 
       // Batch fetch all users using enrichment service
@@ -162,12 +170,36 @@ export const commentsRouter = router({
         comment.permissions = permissionsMap.get(comment.id);
       });
 
+      let mergedComments = enrichedComments;
+      if (skip === 0 && autoDocs.length > 0) {
+        const autoIds = autoDocs.map((d) => d.id);
+        const autoPermMap = await ctx.permissionsHelperService.batchCalculateCommentPermissions(
+          ctx.user?.id || null,
+          autoIds,
+        );
+        const autoEnriched = autoDocs.map((doc) => {
+          const base = EntityMappers.mapCommentToApi(doc, usersMap, publicationSlug, communityId);
+          return {
+            ...base,
+            isAutoComment: true,
+            metrics: {
+              upvotes: 0,
+              downvotes: 0,
+              score: 0,
+              replyCount: 0,
+            },
+            permissions: autoPermMap.get(doc.id) ?? { canVote: false },
+          };
+        });
+        mergedComments = [...autoEnriched, ...enrichedComments];
+      }
+
       // Get total count for pagination
       const totalVotes = await ctx.voteService.getVotesOnPublication(input.publicationId);
-      const total = totalVotes.length;
+      const total = totalVotes.length + (skip === 0 ? autoDocs.length : 0);
 
       return {
-        data: enrichedComments,
+        data: mergedComments,
         total,
         skip,
         limit: pagination.limit || 20,

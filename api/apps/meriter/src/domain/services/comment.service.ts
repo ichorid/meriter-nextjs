@@ -146,6 +146,20 @@ export class CommentService {
     return id;
   }
 
+  /** System lines (e.g. merit transfer) on a publication thread; small bounded set. */
+  async findPublicationAutoComments(publicationId: string, max = 100): Promise<ICommentDocument[]> {
+    const rows = await this.commentModel
+      .find({
+        targetType: 'publication',
+        targetId: publicationId,
+        isAutoComment: true,
+      })
+      .sort({ createdAt: -1 })
+      .limit(max)
+      .lean();
+    return rows as ICommentDocument[];
+  }
+
   async getComment(id: string): Promise<Comment | null> {
     const doc = await this.commentModel.findOne({ id }).lean();
     return doc ? Comment.fromSnapshot(doc as ICommentDocument) : null;

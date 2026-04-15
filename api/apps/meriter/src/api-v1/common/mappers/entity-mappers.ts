@@ -194,7 +194,8 @@ export class EntityMappers {
     communityId?: string,
   ): any {
     // Handle both Comment entities and Vote objects (votes contain comments)
-    const authorId = comment.userId || comment.getAuthorId?.getValue();
+    const authorId =
+      comment.userId || comment.authorId || comment.getAuthorId?.getValue?.();
     const author = usersMap.get(authorId);
 
     // Get images from entity or schema - check multiple sources
@@ -210,7 +211,11 @@ export class EntityMappers {
       targetType: comment.targetType || comment.getTargetType,
       targetId: comment.targetId || comment.getTargetId,
       authorId,
-      content: comment.comment || comment.content || comment.getContent,
+      content:
+        comment.comment ||
+        comment.content ||
+        (typeof comment.getContent === 'function' ? comment.getContent() : undefined),
+      ...(comment.isAutoComment === true ? { isAutoComment: true } : {}),
       ...(images && Array.isArray(images) && images.length > 0 && { images }),
       createdAt:
         comment.createdAt?.toISOString?.() ||

@@ -132,6 +132,7 @@ export interface UpdateCommunityDto {
     /** @deprecated Use commentMode instead. When true, mapped to commentMode: 'neutralOnly'. */
     tappalkaOnlyMode?: boolean;
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
+    eventCreation?: 'admin' | 'members';
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-same-team';
@@ -855,6 +856,9 @@ export class CommunityService {
       }
       if (dto.settings.commentMode !== undefined) {
         settingsUpdate['settings.commentMode'] = dto.settings.commentMode;
+      }
+      if (dto.settings.eventCreation !== undefined) {
+        settingsUpdate['settings.eventCreation'] = dto.settings.eventCreation;
       }
       // Deprecated: still accept tappalkaOnlyMode; map to commentMode when true
       if ('tappalkaOnlyMode' in dto.settings) {
