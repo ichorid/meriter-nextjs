@@ -52,7 +52,7 @@
         "shared/lib/*"
       ],
       "@meriter/shared-types": [
-        "../../libs/shared-types/dist/index.d.ts"
+        "../../libs/shared-types/src/index.ts"
       ],
       "@config/*": [
         "../config/*"
