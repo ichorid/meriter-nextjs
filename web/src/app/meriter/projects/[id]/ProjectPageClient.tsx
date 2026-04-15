@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Calendar, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
 import { ProjectHero } from '@/components/organisms/Project/project-hero';
@@ -37,6 +38,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const router = useRouter();
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
+  const tPagesCommunities = useTranslations('pages.communities');
   const { user } = useAuth();
   const { data, isLoading } = useProject(projectId);
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
@@ -258,6 +260,22 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           canPayout={Boolean(user && isLead)}
           readOnly={isArchived}
         />
+
+        {user && isMember ? (
+          <Link
+            href={routes.projectEvents(projectId)}
+            className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+              <span className="truncate font-medium text-base-content">{t('navEvents')}</span>
+            </div>
+            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+              {tPagesCommunities('all')}
+              <ChevronRight size={14} />
+            </span>
+          </Link>
+        ) : null}
 
         {isLead && !isArchived ? (
           <BirzhaSourcePostsEntryRow

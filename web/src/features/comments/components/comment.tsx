@@ -7,6 +7,7 @@ import { BarWithdraw } from "@shared/components/bar-withdraw";
 import { useUIStore } from "@/stores/ui.store";
 import { classList } from "@lib/classList";
 import { useState, useEffect } from "react";
+import { Gift } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { dateVerbose } from "@shared/lib/date";
 import { useCommunity } from '@/hooks/api';
@@ -54,6 +55,7 @@ interface CommentProps {
     content?: string;
     createdAt?: string;
     sum?: number;
+    isAutoComment?: boolean;
     [key: string]: any;
 }
 
@@ -90,6 +92,7 @@ export const Comment: React.FC<CommentProps> = ({
     metrics,
     content,
     createdAt,
+    isAutoComment,
     ...rest
 }) => {
     const t = useTranslations('comments');
@@ -224,17 +227,27 @@ export const Comment: React.FC<CommentProps> = ({
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
     const avatarUrl = authorMeta?.photoUrl || '';
+    const isMeritTransferAutoLine = Boolean(isAutoComment);
 
     return (
         <div
             className={classList(
                 "comment-vote-wrapper transition-all duration-300",
                 commentUnderReply ? "scale-100 opacity-100" : "scale-100 opacity-100",
-                highlightTransactionId == _id ? "highlight" : ""
+                highlightTransactionId == _id ? "highlight" : "",
+                isMeritTransferAutoLine
+                    ? "rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-2 dark:border-amber-400/30 dark:bg-amber-400/[0.08]"
+                    : ""
             )}
             data-comment-id={_id}
             key={_id}
         >
+            {isMeritTransferAutoLine ? (
+                <div className="mb-2 flex items-center gap-1.5 px-1 text-xs font-medium text-amber-800 dark:text-amber-300">
+                    <Gift className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                    <span>{t('meritTransferAutoLabel')}</span>
+                </div>
+            ) : null}
             <CardCommentVote
                 title={authorName}
                 subtitle={dateVerbose(new Date(commentTimestamp || ''))}
@@ -270,7 +283,9 @@ export const Comment: React.FC<CommentProps> = ({
                 publicationSlug={inPublicationSlug}
                 commentId={_id}
                 bottom={
-                    // Comments cannot have beneficiaries, so logic is simpler:
+                    isMeritTransferAutoLine
+                        ? null
+                        : // Comments cannot have beneficiaries, so logic is simpler:
                     // - If author: show withdraw (if balance > 0) UNLESS special group
                     // - If !author: show vote
                     isAuthor && !isSpecialGroup ? (

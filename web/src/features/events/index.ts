@@ -1,4 +1,7 @@
 export * from './lib/event-status';
+export * from './lib/event-permissions';
+export * from './pages/EventsContextPage';
+export * from './components/EventEditDialog';
 export * from './components/EventCard';
 export * from './components/EventCreateDialog';
 export * from './components/EventDirectInvite';

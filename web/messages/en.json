@@ -841,6 +841,7 @@
         "save": "Save",
         "cancel": "Cancel",
         "voteTitle": "Vote",
+        "meritTransferAutoLabel": "Merit transfer",
         "futureVisionSupportTitle": "Support",
         "futureVisionVotingHint": "When you vote for an image of the future, you support it without compensation — it is not an investment. This action uses merits from your global wallet.",
         "futureVisionCommentHelper": "Please explain your decision.",
@@ -1157,6 +1158,7 @@
             "futureVisionSectionCollapseAria": "Collapse future vision section",
             "futureVisionOpenSupporters": "Open votes and comments (side panel)",
             "communityProjects": "Community projects",
+            "communityEvents": "Events",
             "dashboardCreateProject": "Create project",
             "dashboardCreateBirzhaPost": "Create Birzha post",
             "cardWallet": "Wallet",
@@ -1258,6 +1260,11 @@
                 "standard": "Standard (post is forwarded without votes, original is preserved)",
                 "project": "Project (post is forwarded with all votes, original is deleted)"
             },
+            "eventCreationSection": "Events",
+            "eventCreationLabel": "Who can create events",
+            "eventCreationHelp": "Admins only (lead), or any participating member when members mode is enabled.",
+            "eventCreationAdmin": "Admins only (lead)",
+            "eventCreationMembers": "All members (lead and participants)",
             "canPayPostFromQuota": "Can pay post from quota",
             "canPayPostFromQuotaHelp": "If disabled, posts can only be paid from wallet merits",
             "currencyNames": "Currency Names",
@@ -1766,6 +1773,7 @@
         "birzhaPostProjectNameLoading": "Loading…",
         "birzhaPostProjectNameUnknown": "Project",
         "publishedToBirzhaSuccess": "Published to Birzha",
+        "navEvents": "Events",
         "birzhaPostsSection": "Posts on Birzha",
         "publishing": "Publishing...",
         "reject": "Reject",
@@ -2914,7 +2922,11 @@
         "inviteOpenEventPage": "Open event page",
         "inviteLoginToConfirm": "Sign in to confirm your attendance.",
         "inviteSignIn": "Sign in",
-        "inviteConfirmSuccess": "You are on the attendee list."
+        "inviteConfirmSuccess": "You are on the attendee list.",
+        "editOpen": "Edit",
+        "editTitle": "Edit event",
+        "editSubmit": "Save changes",
+        "editSuccess": "Event updated"
     },
     "toasts": {
         "forwardPostSuccess": "Post forwarded successfully",

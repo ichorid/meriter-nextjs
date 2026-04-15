@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2, MapPin, User } from 'lucide-react';
@@ -29,6 +29,7 @@ import { EventRSVP } from './EventRSVP';
 import { EventInviteDialog } from './EventInviteDialog';
 import { EventQRDisplay } from './EventQRDisplay';
 import { EventDirectInvite } from './EventDirectInvite';
+import { EventEditDialog, type EventEditDialogInitial } from './EventEditDialog';
 import { routes } from '@/lib/constants/routes';
 import {
   resolveVoteCtaCommentMode,
@@ -84,6 +85,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
   const [directOpen, setDirectOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrInviteUrl, setQrInviteUrl] = useState<string | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
 
   const highlightCommentId = searchParams?.get('highlight');
 
@@ -191,6 +193,26 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
       pub?.authorId &&
       (user.id === pub.authorId || isLeadInCommunity || user.globalRole === 'superadmin'),
   );
+
+  const canEditEvent = canManageInvites;
+
+  const editInitial: EventEditDialogInitial | null = useMemo(() => {
+    if (!pub?.id || pub.postType !== 'event') return null;
+    return {
+      publicationId: pub.id,
+      title: pub.title,
+      description: pub.description,
+      content: String(pub.content ?? ''),
+      eventStartDate: pub.eventStartDate as string,
+      eventEndDate: pub.eventEndDate as string,
+      eventTime: pub.eventTime,
+      eventLocation: pub.eventLocation,
+    };
+  }, [pub]);
+
+  const handleSaved = useCallback(() => {
+    void utils.publications.getById.invalidate({ id: publicationId });
+  }, [utils, publicationId]);
 
   const createInviteLink = trpc.events.createInviteLink.useMutation();
 
@@ -414,6 +436,13 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
             </p>
           ) : null}
 
+          {canEditEvent ? (
+            <div className="mb-3">
+              <Button type="button" size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
+                {tEvents('editOpen')}
+              </Button>
+            </div>
+          ) : null}
           {canManageInvites ? (
             <div className="mb-4 flex flex-wrap gap-2">
               <Button type="button" size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
@@ -601,6 +630,13 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
       {qrInviteUrl ? (
         <EventQRDisplay open={qrOpen} onOpenChange={setQrOpen} inviteUrl={qrInviteUrl} />
       ) : null}
+      <EventEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        communityId={publicationCommunityId}
+        initial={editInitial}
+        onSaved={handleSaved}
+      />
     </AdaptiveLayout>
   );
 }

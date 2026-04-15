@@ -841,6 +841,7 @@
         "save": "Сохранить",
         "cancel": "Отмена",
         "voteTitle": "Голосовать",
+        "meritTransferAutoLabel": "Передача заслуг",
         "futureVisionSupportTitle": "Поддержка",
         "futureVisionVotingHint": "Голосуя за образ будущего, вы поддерживаете его безвозмездно – это не инвестиция. Для этого действия используются заслуги вашего глобального кошелька",
         "futureVisionCommentHelper": "Пожалуйста, поясните своё решение.",
@@ -1157,6 +1158,7 @@
             "futureVisionSectionCollapseAria": "Свернуть блок образа будущего",
             "futureVisionOpenSupporters": "Открыть голоса и комментарии (боковая панель)",
             "communityProjects": "Проекты сообщества",
+            "communityEvents": "Ивенты",
             "dashboardCreateProject": "Создать проект",
             "dashboardCreateBirzhaPost": "Создать пост на бирже",
             "cardWallet": "Кошелёк",
@@ -1258,6 +1260,11 @@
                 "standard": "Стандарт (пост переносится без голосов, исходная версия сохраняется)",
                 "project": "Проект (пост переносится со всеми голосами, исходная версия удаляется)"
             },
+            "eventCreationSection": "Ивенты",
+            "eventCreationLabel": "Кто может создавать ивенты",
+            "eventCreationHelp": "Только администраторы (лид) или любой участник при режиме «участники».",
+            "eventCreationAdmin": "Только администраторы (лид)",
+            "eventCreationMembers": "Все участники (лид и участники)",
             "canPayPostFromQuota": "Можно оплачивать пост из квоты",
             "canPayPostFromQuotaHelp": "Если выключено, постить можно только за заслуги с кошелька",
             "currencyNames": "Названия валюты",
@@ -1766,6 +1773,7 @@
         "birzhaPostProjectNameLoading": "Загрузка…",
         "birzhaPostProjectNameUnknown": "Проект",
         "publishedToBirzhaSuccess": "Опубликовано на Бирже",
+        "navEvents": "Ивенты",
         "birzhaPostsSection": "Посты на Бирже",
         "publishing": "Публикация…",
         "reject": "Отклонить",
@@ -2914,7 +2922,11 @@
         "inviteOpenEventPage": "Открыть страницу ивента",
         "inviteLoginToConfirm": "Войдите, чтобы подтвердить участие.",
         "inviteSignIn": "Войти",
-        "inviteConfirmSuccess": "Вы в списке участников."
+        "inviteConfirmSuccess": "Вы в списке участников.",
+        "editOpen": "Изменить",
+        "editTitle": "Редактировать ивент",
+        "editSubmit": "Сохранить",
+        "editSuccess": "Ивент обновлён"
     },
     "toasts": {
         "forwardPostSuccess": "Пост переслан",

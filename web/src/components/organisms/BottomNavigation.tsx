@@ -67,8 +67,9 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
         const isMembersPage = pathname.includes('/members');
         const isSettingsPage = pathname.includes('/settings');
         const isCreatePage = pathname.includes('/create');
+        const isEventsPage = pathname.includes('/events');
         
-        return !isMembersPage && !isSettingsPage && !isCreatePage;
+        return !isMembersPage && !isSettingsPage && !isCreatePage && !isEventsPage;
     }, [pathname, communityContextId]);
 
     // Get marathon-of-good quota for global context

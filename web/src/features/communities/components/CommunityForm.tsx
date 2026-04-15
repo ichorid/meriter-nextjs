@@ -87,6 +87,7 @@ export const CommunityForm = ({
     const [futureVisionText, setFutureVisionText] = useState("");
     const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
     const [futureVisionCover, setFutureVisionCover] = useState("");
+    const [eventCreation, setEventCreation] = useState<"admin" | "members">("admin");
     const futureVisionTextareaRef = useRef<HTMLTextAreaElement>(null);
     const didFocusFutureVisionRef = useRef(false);
 
@@ -110,6 +111,8 @@ export const CommunityForm = ({
             setFutureVisionText(c.futureVisionText || "");
             setFutureVisionTags(Array.isArray(c.futureVisionTags) ? c.futureVisionTags : []);
             setFutureVisionCover(c.futureVisionCover || "");
+            const ec = c.settings?.eventCreation;
+            setEventCreation(ec === "members" ? "members" : "admin");
         }
     }, [community, isEditMode]);
 
@@ -153,6 +156,7 @@ export const CommunityForm = ({
                         plural: currencyPlural,
                         genitive: currencyGenitive,
                     },
+                    ...(isEditMode && (isUserLead || isSuperadmin) ? { eventCreation } : {}),
                 },
             };
 
@@ -444,6 +448,29 @@ export const CommunityForm = ({
                 </>
             )}
 
+            {isEditMode && (isUserLead || isSuperadmin) && !isFutureVisionHub && (
+                <div className="border-t border-base-300 pt-6">
+                    <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">
+                        {t("eventCreationSection")}
+                    </h2>
+                    <p className="mb-3 text-sm text-base-content/70">{t("eventCreationHelp")}</p>
+                    <BrandFormControl label={t("eventCreationLabel")}>
+                        <Select
+                            value={eventCreation}
+                            onValueChange={(v) => setEventCreation(v as "admin" | "members")}
+                            disabled={isPending}
+                        >
+                            <SelectTrigger className="h-11 rounded-xl w-full max-w-md">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="admin">{t("eventCreationAdmin")}</SelectItem>
+                                <SelectItem value="members">{t("eventCreationMembers")}</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </BrandFormControl>
+                </div>
+            )}
 
             <div className="flex justify-end pt-4">
                 <Button
