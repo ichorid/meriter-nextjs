@@ -266,6 +266,13 @@ export async function createVoteLogic(
     );
   }
 
+  if (publicationDoc?.postType === 'event') {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Event publications cannot be voted on',
+    });
+  }
+
   const requestedQuotaEarly = input.quotaAmount ?? 0;
   const requestedWalletEarly = input.walletAmount ?? 0;
   const requestedTotalEarly = requestedQuotaEarly + requestedWalletEarly;

@@ -1,6 +1,6 @@
 {
     "name": "@meriter/web",
-    "version": "0.47.146",
+    "version": "0.47.148",
     "main": "index.js",
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {
@@ -66,6 +66,7 @@
         "next-session": "^4.0.5",
         "openapi-typescript": "^7.10.1",
         "openapi-typescript-codegen": "^0.29.0",
+        "qrcode.react": "^4.2.0",
         "react": "^19.0.0",
         "react-awesome-reveal": "^4.3.1",
         "react-dom": "^19.0.0",

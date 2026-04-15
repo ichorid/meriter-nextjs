@@ -36,7 +36,7 @@ export interface CreatePublicationDto {
   description?: string;
   content: string;
   type: 'text' | 'image' | 'video';
-  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
+  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' | 'event';
   isProject?: boolean;
   hashtags?: string[];
   categories?: string[]; // Array of category IDs
@@ -61,6 +61,11 @@ export interface CreatePublicationDto {
   ttlExpiresAt?: Date | null;
   stopLoss?: number;
   noAuthorWalletSpend?: boolean;
+  eventStartDate?: Date;
+  eventEndDate?: Date;
+  eventTime?: string;
+  eventLocation?: string;
+  eventAttendees?: string[];
 }
 
 @Injectable()
@@ -98,9 +103,13 @@ export class PublicationService {
 
     const community = await this.communityService.getCommunity(dto.communityId);
     if (community?.isProject) {
-      if (dto.postType !== 'ticket' && dto.postType !== 'discussion') {
+      if (
+        dto.postType !== 'ticket' &&
+        dto.postType !== 'discussion' &&
+        dto.postType !== 'event'
+      ) {
         throw new BadRequestException(
-          'When creating a post in a project community, postType must be "ticket" or "discussion"',
+          'When creating a post in a project community, postType must be "ticket", "discussion", or "event"',
         );
       }
       const role = await this.userCommunityRoleService.getRole(userId, dto.communityId);
@@ -197,6 +206,15 @@ export class PublicationService {
       sourceEntityId: dto.sourceEntityId,
       sourceEntityType: dto.sourceEntityType,
       valueTags: dto.valueTags ?? [],
+      ...(dto.postType === 'event'
+        ? {
+            eventStartDate: dto.eventStartDate,
+            eventEndDate: dto.eventEndDate,
+            eventTime: dto.eventTime,
+            eventLocation: dto.eventLocation,
+            eventAttendees: dto.eventAttendees ?? [],
+          }
+        : {}),
     });
 
     // Publish domain event
@@ -1167,6 +1185,32 @@ export class PublicationService {
     }
     if (updateData.valueTags !== undefined) {
       updatePayload.valueTags = updateData.valueTags || [];
+    }
+
+    if ((doc as IPublicationDocument).postType === 'event') {
+      if (updateData.eventStartDate !== undefined) {
+        updatePayload.eventStartDate = updateData.eventStartDate;
+      }
+      if (updateData.eventEndDate !== undefined) {
+        updatePayload.eventEndDate = updateData.eventEndDate;
+      }
+      if (updateData.eventTime !== undefined) {
+        updatePayload.eventTime = updateData.eventTime;
+      }
+      if (updateData.eventLocation !== undefined) {
+        updatePayload.eventLocation = updateData.eventLocation;
+      }
+      const nextStart =
+        updateData.eventStartDate !== undefined
+          ? updateData.eventStartDate
+          : (doc as IPublicationDocument).eventStartDate;
+      const nextEnd =
+        updateData.eventEndDate !== undefined
+          ? updateData.eventEndDate
+          : (doc as IPublicationDocument).eventEndDate;
+      if (nextStart && nextEnd && nextEnd < nextStart) {
+        throw new BadRequestException('eventEndDate must be on or after eventStartDate');
+      }
     }
 
     // Mutable advanced settings

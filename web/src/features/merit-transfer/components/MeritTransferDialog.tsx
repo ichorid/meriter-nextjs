@@ -34,6 +34,8 @@ export interface MeritTransferDialogProps {
   communityContextId?: string;
   /** When opened from another user's profile: user picks global vs local shared context here. */
   profileContext?: MeritTransferProfileContextConfig;
+  /** With `communityContextId`, submits via `events.transferMeritInEvent` (RSVP / event thread). */
+  eventPostId?: string;
   onSuccess?: () => void;
 }
 
@@ -53,6 +55,7 @@ export function MeritTransferDialog({
   receiverDisplayName,
   communityContextId: fixedCommunityContextId,
   profileContext,
+  eventPostId,
   onSuccess,
 }: MeritTransferDialogProps) {
   const t = useTranslations('meritTransfer');
@@ -69,6 +72,7 @@ export function MeritTransferDialog({
 
   const hasProfileMode = Boolean(profileContext);
   const hasCommunityMode = Boolean(fixedCommunityContextId);
+  const hasEventMode = Boolean(eventPostId && fixedCommunityContextId && !profileContext);
   const configValid = hasProfileMode !== hasCommunityMode;
 
   const effectiveCommunityContextId = useMemo(() => {
@@ -85,6 +89,7 @@ export function MeritTransferDialog({
   const { data: contextWallet, isLoading: contextLoading } = useWallet(effectiveCommunityContextId);
 
   const createMutation = trpc.meritTransfer.create.useMutation();
+  const eventTransferMutation = trpc.events.transferMeritInEvent.useMutation();
 
   const priorityContext = useMemo(
     () => isPriorityCommunity(community ?? null),
@@ -168,16 +173,30 @@ export function MeritTransferDialog({
 
     setIsSubmitting(true);
     try {
-      await createMutation.mutateAsync({
-        receiverId,
-        amount: n,
-        comment: trimmed,
-        sourceWalletType,
-        sourceContextId: sourceWalletType === 'global' ? undefined : resolvedCommunityContextId,
-        targetWalletType,
-        targetContextId: targetWalletType === 'global' ? undefined : resolvedCommunityContextId,
-        communityContextId: resolvedCommunityContextId,
-      });
+      if (hasEventMode && eventPostId) {
+        await eventTransferMutation.mutateAsync({
+          publicationId: eventPostId,
+          receiverId,
+          amount: n,
+          comment: trimmed,
+          sourceWalletType,
+          sourceContextId: sourceWalletType === 'global' ? undefined : resolvedCommunityContextId,
+          targetWalletType,
+          targetContextId: targetWalletType === 'global' ? undefined : resolvedCommunityContextId,
+          communityContextId: resolvedCommunityContextId,
+        });
+      } else {
+        await createMutation.mutateAsync({
+          receiverId,
+          amount: n,
+          comment: trimmed,
+          sourceWalletType,
+          sourceContextId: sourceWalletType === 'global' ? undefined : resolvedCommunityContextId,
+          targetWalletType,
+          targetContextId: targetWalletType === 'global' ? undefined : resolvedCommunityContextId,
+          communityContextId: resolvedCommunityContextId,
+        });
+      }
 
       addToast(t('success', { amount: n }), 'success');
       onOpenChange(false);
@@ -199,6 +218,12 @@ export function MeritTransferDialog({
         utils.meritTransfer.getByUser.invalidate(),
         utils.users.getProfileActivityCounts.invalidate(),
       ];
+      if (hasEventMode && eventPostId) {
+        invalidations.push(
+          utils.comments.getByPublicationId.invalidate({ publicationId: eventPostId }),
+          utils.events.getEventsByCommunity.invalidate({ communityId: resolvedCommunityContextId }),
+        );
+      }
       if (isProject) {
         invalidations.push(
           utils.project.getMembers.invalidate({ projectId: resolvedCommunityContextId }),

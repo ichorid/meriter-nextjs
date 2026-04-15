@@ -62,6 +62,7 @@ export class PlatformWipeService {
       'comments',
       'poll_casts',
       'polls',
+      'event_invites',
       'publications',
       'team_invitations',
       'team_join_requests',

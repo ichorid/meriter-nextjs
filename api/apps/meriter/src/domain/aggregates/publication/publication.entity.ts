@@ -66,7 +66,7 @@ export class Publication implements EditableEntity {
     private readonly imageUrl: string | null,
     private readonly images: string[],
     private readonly videoUrl: string | null,
-    private readonly postType: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion',
+    private readonly postType: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' | 'event',
     private readonly isProject: boolean,
     private readonly title: string | null,
     private readonly description: string | null,
@@ -115,7 +115,7 @@ export class Publication implements EditableEntity {
       imageUrl?: string;
       images?: string[];
       videoUrl?: string;
-      postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
+      postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' | 'event';
       isProject?: boolean;
       title?: string;
       description?: string;
@@ -345,7 +345,7 @@ export class Publication implements EditableEntity {
     return this.metrics.score;
   }
 
-  get getPostType(): 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' {
+  get getPostType(): 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' | 'event' {
     return this.postType;
   }
 

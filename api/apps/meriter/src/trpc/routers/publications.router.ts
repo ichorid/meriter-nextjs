@@ -15,7 +15,7 @@ import { mapInvestmentsForPublicationFeed } from '../../domain/services/feed-ite
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import { getRemainingQuotaForPublicationCreate } from '../helpers/publication-creation-quota';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -153,110 +153,6 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
 
   await ctx.publicationService.reduceScore(publicationId, currentScore);
   return currentScore;
-}
-
-/**
- * Helper to calculate remaining quota for a user in a community.
- * Priority communities: quota disabled in MVP, return 0.
- */
-async function _getRemainingQuota(
-  userId: string,
-  communityId: string,
-  community: any,
-  communityService: any,
-  connection: any,
-): Promise<number> {
-  if (isPriorityCommunity(community)) {
-    return 0;
-  }
-
-  if (community?.meritSettings?.quotaEnabled === false) {
-    return 0;
-  }
-
-  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
-  const dailyQuota =
-    typeof effectiveMeritSettings?.dailyQuota === 'number'
-      ? effectiveMeritSettings.dailyQuota
-      : 0;
-
-  if (dailyQuota <= 0) {
-    return 0;
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const quotaStartTime = community.lastQuotaResetAt
-    ? new Date(community.lastQuotaResetAt)
-    : today;
-
-  if (!connection.db) {
-    throw new Error('Database connection not available');
-  }
-
-  // Aggregate quota used from votes, poll casts, and quota usage
-  const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-    connection.db
-      .collection('votes')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-    connection.db
-      .collection('poll_casts')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-    connection.db
-      .collection('quota_usage')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-  ]);
-
-  const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
-  const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
-  const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-  const used = votesTotal + pollCastsTotal + quotaUsageTotal;
-
-  return Math.max(0, dailyQuota - used);
 }
 
 export const publicationsRouter = router({
@@ -874,6 +770,12 @@ export const publicationsRouter = router({
   create: protectedProcedure
     .input(CreatePublicationDtoSchema)
     .mutation(async ({ ctx, input }) => {
+      if (input.postType === 'event') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Use events.createEvent to create event publications',
+        });
+      }
       const createDto = { ...input } as typeof input & { sourceEntityId?: string; sourceEntityType?: 'community' };
       const postCostFundingInput = createDto.postCostFunding;
       if (createDto.actingAsCommunityId) {
@@ -987,7 +889,7 @@ export const publicationsRouter = router({
           walletAmount = 0;
         } else if (canPayFromQuota) {
           // Try to pay from quota first, then wallet
-          const remainingQuota = await _getRemainingQuota(
+          const remainingQuota = await getRemainingQuotaForPublicationCreate(
             ctx.user.id,
             input.communityId,
             community,
@@ -1016,7 +918,7 @@ export const publicationsRouter = router({
 
         // Check quota if quota payment is required
         if (quotaAmount > 0) {
-          const remainingQuota = await _getRemainingQuota(
+          const remainingQuota = await getRemainingQuotaForPublicationCreate(
             ctx.user.id,
             input.communityId,
             community,
@@ -1889,12 +1791,18 @@ export const publicationsRouter = router({
         });
       }
 
-      // Validate: post type must be 'basic' or 'project' (not 'poll')
-      const postType = (publication as any).postType || 'basic';
+      // Validate: post type must be 'basic' or 'project' (not 'poll' or 'event')
+      const postType = publication.getPostType;
       if (postType === 'poll') {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Cannot forward polls',
+        });
+      }
+      if (postType === 'event') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward event publications',
         });
       }
 
@@ -2036,12 +1944,18 @@ export const publicationsRouter = router({
         });
       }
 
-      // Validate: post type must be 'basic' or 'project' (not 'poll')
-      const postType = (publication as any).postType || 'basic';
+      // Validate: post type must be 'basic' or 'project' (not 'poll' or 'event')
+      const postType = publication.getPostType;
       if (postType === 'poll') {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message: 'Cannot forward polls',
+        });
+      }
+      if (postType === 'event') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Cannot forward event publications',
         });
       }
 

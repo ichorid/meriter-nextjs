@@ -15,6 +15,10 @@ import {
   UserCommunityRoleSchemaClass,
   UserCommunityRoleDocument,
 } from '../src/domain/models/user-community-role/user-community-role.schema';
+import {
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../src/domain/models/publication/publication.schema';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { TestSetupHelper } from './helpers/test-setup.helper';
@@ -33,6 +37,7 @@ describe('MeritTransferService (integration)', () => {
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let publicationModel: Model<PublicationDocument>;
 
   let teamId: string;
   let senderId: string;
@@ -67,6 +72,7 @@ describe('MeritTransferService (integration)', () => {
     userCommunityRoleModel = connection.model<UserCommunityRoleDocument>(
       UserCommunityRoleSchemaClass.name,
     );
+    publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
 
     teamId = uid();
     senderId = uid();
@@ -272,5 +278,112 @@ describe('MeritTransferService (integration)', () => {
     expect(incoming.data[0].receiverId).toBe(receiverId);
     expect(outgoing.data.length).toBe(1);
     expect(outgoing.data[0].senderId).toBe(senderId);
+  });
+
+  it('QA-7: event invitee (not a community member) receives global→global transfer when eventPostId + RSVP', async () => {
+    const outsiderId = uid();
+    await userModel.create({
+      id: outsiderId,
+      authProvider: 'telegram',
+      authId: `tg-${outsiderId}`,
+      displayName: 'Invitee',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const eventPostId = uid();
+    const now = new Date();
+    const start = new Date(now.getTime() + 86400000);
+    const end = new Date(now.getTime() + 172800000);
+    await publicationModel.create({
+      id: eventPostId,
+      communityId: teamId,
+      authorId: senderId,
+      postType: 'event',
+      title: 'Park cleanup',
+      description: 'Join us',
+      content: 'Details',
+      type: 'text',
+      hashtags: [],
+      categories: [],
+      valueTags: [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      images: [],
+      eventStartDate: start,
+      eventEndDate: end,
+      eventAttendees: [outsiderId],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await walletService.addTransaction(senderId, GLOBAL_COMMUNITY_ID, 'credit', 30, 'personal', 'test_setup', 'g-ev', currency);
+
+    const record = await meritTransferService.create({
+      senderId,
+      receiverId: outsiderId,
+      amount: 5,
+      comment: 'thanks for joining',
+      sourceWalletType: 'global',
+      targetWalletType: 'global',
+      communityContextId: teamId,
+      eventPostId,
+    });
+
+    expect(record.eventPostId).toBe(eventPostId);
+    const outsiderGlobal =
+      (await walletService.getWallet(outsiderId, GLOBAL_COMMUNITY_ID))?.getBalance() ?? 0;
+    expect(outsiderGlobal).toBe(5);
+  });
+
+  it('QA-7b: non-member invitee cannot use community target wallet', async () => {
+    const outsiderId = uid();
+    await userModel.create({
+      id: outsiderId,
+      authProvider: 'telegram',
+      authId: `tg-${outsiderId}-2`,
+      displayName: 'Invitee2',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const eventPostId = uid();
+    const now = new Date();
+    await publicationModel.create({
+      id: eventPostId,
+      communityId: teamId,
+      authorId: senderId,
+      postType: 'event',
+      title: 'Meetup',
+      description: 'Hi',
+      content: 'X',
+      type: 'text',
+      hashtags: [],
+      categories: [],
+      valueTags: [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      images: [],
+      eventStartDate: now,
+      eventEndDate: now,
+      eventAttendees: [outsiderId],
+      status: 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await walletService.addTransaction(senderId, GLOBAL_COMMUNITY_ID, 'credit', 20, 'personal', 'test_setup', 'g-ev2', currency);
+
+    await expect(
+      meritTransferService.create({
+        senderId,
+        receiverId: outsiderId,
+        amount: 3,
+        sourceWalletType: 'global',
+        targetWalletType: 'community',
+        targetContextId: teamId,
+        communityContextId: teamId,
+        eventPostId,
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

@@ -677,6 +677,24 @@ export class NotificationService {
         return undefined;
       }
 
+      case 'event_created':
+      case 'event_invitation': {
+        const communityId = metadata?.communityId as string | undefined;
+        const publicationId = metadata?.publicationId as string | undefined;
+        const isProject = metadata?.inviteTargetIsProject === true;
+        if (communityId && publicationId) {
+          return isProject
+            ? `/meriter/projects/${communityId}?post=${publicationId}`
+            : `/meriter/communities/${communityId}?post=${publicationId}`;
+        }
+        if (communityId) {
+          return isProject
+            ? `/meriter/projects/${communityId}`
+            : `/meriter/communities/${communityId}`;
+        }
+        return undefined;
+      }
+
       case 'system': {
         const noticeKind = metadata?.noticeKind as string | undefined;
         const cid = metadata?.communityId as string | undefined;

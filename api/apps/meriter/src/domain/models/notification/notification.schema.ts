@@ -41,7 +41,9 @@ export type NotificationType =
   | 'project_parent_link_requested'
   | 'project_parent_link_approved'
   | 'project_parent_link_rejected'
-  | 'community_member_removed';
+  | 'community_member_removed'
+  | 'event_created'
+  | 'event_invitation';
 
 export type NotificationSource = 'user' | 'system' | 'community';
 
@@ -53,6 +55,8 @@ export type NotificationSource = 'user' | 'system' | 'community';
  * - ob_vote_join_offer: publicationId, publicationCommunityId?, communityId (source to join), sourceCommunityName?
  * - team_join_request: requestId, communityId, communityName?, userId; when resolved: joinRequestResolution, resolvedByUserId, resolvedByDisplayName
  * - community_member_removed: communityId, communityName?, inviteTargetIsProject?
+ * - event_created: communityId, publicationId, communityName?, eventTitle?, eventDateLabel?
+ * - event_invitation: communityId, publicationId, communityName?, eventTitle?, senderId?
  */
 export interface NotificationMetadata {
   [key: string]: any;
@@ -83,7 +87,7 @@ export class NotificationSchemaClass implements Notification {
 
   @Prop({
     required: true,
-    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation', 'investment_received', 'investment_distributed', 'post_closed_investment', 'investment_pool_depleted', 'post_closed', 'post_ttl_warning', 'post_inactivity_warning', 'project_created', 'ticket_assigned', 'ticket_done', 'ticket_assignee_declined', 'ticket_accepted', 'ticket_returned_for_revision', 'ticket_evaluated', 'project_published', 'project_distributed', 'project_closed', 'member_joined', 'member_left_project', 'shares_changed', 'ticket_apply', 'ticket_rejection', 'ob_vote_join_offer', 'project_parent_link_requested', 'project_parent_link_approved', 'project_parent_link_rejected', 'community_member_removed'],
+    enum: ['vote', 'beneficiary', 'mention', 'reply', 'comment', 'publication', 'poll', 'favorite_update', 'system', 'quota', 'forward_proposal', 'team_join_request', 'team_invitation', 'investment_received', 'investment_distributed', 'post_closed_investment', 'investment_pool_depleted', 'post_closed', 'post_ttl_warning', 'post_inactivity_warning', 'project_created', 'ticket_assigned', 'ticket_done', 'ticket_assignee_declined', 'ticket_accepted', 'ticket_returned_for_revision', 'ticket_evaluated', 'project_published', 'project_distributed', 'project_closed', 'member_joined', 'member_left_project', 'shares_changed', 'ticket_apply', 'ticket_rejection', 'ob_vote_join_offer', 'project_parent_link_requested', 'project_parent_link_approved', 'project_parent_link_rejected', 'community_member_removed', 'event_created', 'event_invitation'],
     index: true,
   })
   type!: NotificationType;

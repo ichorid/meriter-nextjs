@@ -84,6 +84,10 @@ import {
   MeritTransferSchemaClass,
   MeritTransferSchema,
 } from './domain/models/merit-transfer/merit-transfer.schema';
+import {
+  EventInviteSchemaClass,
+  EventInviteSchema,
+} from './domain/models/event-invite/event-invite.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -131,6 +135,7 @@ import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.se
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
+import { EventService } from './domain/services/event.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -174,6 +179,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: PlatformSettingsSchemaClass.name, schema: PlatformSettingsSchema },
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
       { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
+      { name: EventInviteSchemaClass.name, schema: EventInviteSchema },
     ]),
   ],
   providers: [
@@ -223,6 +229,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
     MeritTransferService,
+    EventService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -279,6 +286,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDemoSeedService,
     PlatformDatabaseDumpService,
     MeritTransferService,
+    EventService,
 
     // Export vote factor services
     RoleHierarchyFactor,

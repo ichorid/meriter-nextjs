@@ -61,6 +61,11 @@ export const routes = {
     /** Community post detail (publication id as slug). */
     communityPost: (communityId: string, postId: string) =>
       `/meriter/communities/${communityId}/posts/${postId}`,
+    /** Event publication (same id space as community / project workspace). */
+    eventView: (communityId: string, publicationId: string) =>
+      `/meriter/event/${communityId}/${publicationId}`,
+    /** RSVP via invite token (public landing, auth required to confirm). */
+    eventInvite: (token: string) => `/meriter/event/invite/${token}`,
 
     // Publications
     publication: (id: string) => `/meriter/publications/${id}`,

@@ -11,6 +11,9 @@ export interface CommentDocument {
     score: number;
   };
   parentCommentId?: string;
+  images?: string[];
+  isAutoComment?: boolean;
+  meritTransferId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

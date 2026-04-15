@@ -77,6 +77,8 @@ export interface CommunitySettings {
   tappalkaOnlyMode?: boolean;
   /** Comment/vote mode: all (default), neutralOnly (no weighted votes), weightedOnly (no neutral comments). */
   commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
+  /** Who may create event posts (`postType === 'event'`). Default: admin/lead only. */
+  eventCreation?: 'admin' | 'members';
 }
 
 export interface CommunityMeritConversion {
@@ -402,6 +404,7 @@ export class CommunitySchemaClass implements Community {
         enum: ['all', 'neutralOnly', 'weightedOnly'],
         default: 'all',
       },
+      eventCreation: { type: String, enum: ['admin', 'members'], default: 'admin' },
     },
     default: {},
   })

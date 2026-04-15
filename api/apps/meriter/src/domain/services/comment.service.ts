@@ -8,6 +8,8 @@ import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { CommentDocument as ICommentDocument } from '../../common/interfaces/comment-document.interface';
+import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
+import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommentSortingHelpers } from './comment-sorting.helpers';
 
@@ -104,6 +106,44 @@ export class CommentService {
 
     this.logger.log(`Comment created successfully: ${comment.getId}`);
     return comment;
+  }
+
+  /**
+   * System line for merit transfer in an event thread; increments publication commentCount.
+   * Skips CommentAddedEvent to avoid treating it like a normal user comment for notifications.
+   */
+  async createMeritTransferAutoComment(params: {
+    eventPostId: string;
+    authorId: string;
+    meritTransferId: string;
+    content: string;
+  }): Promise<string> {
+    const publication = await this.publicationModel.findOne({ id: params.eventPostId }).lean();
+    if (!publication) {
+      throw new NotFoundException('Publication not found');
+    }
+    const now = new Date();
+    const id = uid();
+    await this.commentModel.create({
+      id,
+      targetType: 'publication',
+      targetId: params.eventPostId,
+      authorId: params.authorId,
+      content: params.content,
+      metrics: { upvotes: 0, downvotes: 0, score: 0, replyCount: 0 },
+      isAutoComment: true,
+      meritTransferId: params.meritTransferId,
+      createdAt: now,
+      updatedAt: now,
+    });
+    const { Publication } = await import('../aggregates/publication/publication.entity');
+    const pub = Publication.fromSnapshot(publication as unknown as IPublicationDocument);
+    pub.addComment();
+    await this.publicationModel.updateOne(
+      { id: params.eventPostId },
+      { $set: pub.toSnapshot() },
+    );
+    return id;
   }
 
   async getComment(id: string): Promise<Comment | null> {

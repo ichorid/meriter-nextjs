@@ -20,12 +20,14 @@ type MeritTransferButtonBaseProps = {
   size?: ButtonProps['size'];
   className?: string;
   disabled?: boolean;
+  /** When set with `communityContextId`, uses `events.transferMeritInEvent`. */
+  eventPostId?: string;
 };
 
 export type MeritTransferButtonProps = MeritTransferButtonBaseProps &
   (
-    | { communityContextId: string; profileContext?: never }
-    | { profileContext: MeritTransferProfileContextConfig; communityContextId?: never }
+    | { communityContextId: string; profileContext?: never; eventPostId?: string }
+    | { profileContext: MeritTransferProfileContextConfig; communityContextId?: never; eventPostId?: never }
   );
 
 export function MeritTransferButton({
@@ -33,6 +35,7 @@ export function MeritTransferButton({
   receiverDisplayName,
   communityContextId,
   profileContext,
+  eventPostId,
   onSuccess,
   buttonText,
   iconOnly = false,
@@ -52,6 +55,9 @@ export function MeritTransferButton({
   const hasCommunity = Boolean(communityContextId);
   const hasProfile = Boolean(profileContext);
   if (hasCommunity === hasProfile) {
+    return null;
+  }
+  if (profileContext && eventPostId) {
     return null;
   }
 
@@ -78,6 +84,7 @@ export function MeritTransferButton({
         receiverDisplayName={receiverDisplayName}
         communityContextId={communityContextId}
         profileContext={profileContext}
+        eventPostId={eventPostId}
         onSuccess={onSuccess}
       />
     </>

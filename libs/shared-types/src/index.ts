@@ -103,6 +103,21 @@ export {
     MeritTransferCreateProcedureInputSchema,
 } from './merit-transfer';
 
+export {
+    EventCreateInputSchema,
+    EventUpdateInputSchema,
+    EventPublicationViewSchema,
+    EventInviteCreateOptionsSchema,
+    EventInviteRecordSchema,
+    EventsGetByCommunityInputSchema,
+    EventsDeleteInputSchema,
+    EventsCreateInviteLinkInputSchema,
+    EventsInvitePreviewInputSchema,
+    EventsAttendViaInviteInputSchema,
+    EventsInviteUserInputSchema,
+    EventsTransferMeritInEventInputSchema,
+} from './events';
+
 // Export taxonomy constants
 export {
     IMPACT_AREAS,
@@ -192,6 +207,15 @@ export type {
     MeritTransferCreateInput,
     MeritTransferCreateProcedureInput,
 } from './merit-transfer';
+
+export type {
+    EventCreateInput,
+    EventUpdateInput,
+    EventPublicationView,
+    EventInviteCreateOptions,
+    EventInviteRecord,
+    EventsTransferMeritInEventInput,
+} from './events';
 
 export {
     DECREE_809_TAGS,

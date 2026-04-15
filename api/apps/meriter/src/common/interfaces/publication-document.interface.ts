@@ -20,7 +20,7 @@ export interface PublicationDocument {
   imageUrl?: string; // Legacy single image support
   images?: string[]; // Array of image URLs for multi-image support
   videoUrl?: string;
-  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion';
+  postType?: 'basic' | 'poll' | 'project' | 'ticket' | 'discussion' | 'event';
   isProject?: boolean;
   ticketStatus?: 'open' | 'in_progress' | 'done' | 'closed';
   isNeutralTicket?: boolean;
@@ -94,6 +94,11 @@ export interface PublicationDocument {
   authoredCommunityId?: string;
   /** Audit: who published when authorKind=community. */
   publishedByUserId?: string;
+  eventStartDate?: Date;
+  eventEndDate?: Date;
+  eventTime?: string;
+  eventLocation?: string;
+  eventAttendees?: string[];
 }
 
 /**

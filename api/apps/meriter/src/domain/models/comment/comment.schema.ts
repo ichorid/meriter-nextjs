@@ -29,6 +29,8 @@ export interface Comment {
   metrics: CommentMetrics;
   parentCommentId?: string;
   images?: string[];
+  isAutoComment?: boolean;
+  meritTransferId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +73,12 @@ export class CommentSchemaClass implements Comment {
 
   @Prop({ type: [String], default: [] })
   images?: string[]; // Array of image URLs for comment attachments
+
+  @Prop({ default: false })
+  isAutoComment?: boolean;
+
+  @Prop()
+  meritTransferId?: string;
 
   @Prop({ required: true })
   createdAt!: Date;

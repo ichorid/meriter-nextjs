@@ -297,7 +297,9 @@ export type NotificationType =
     | "project_parent_link_requested"
     | "project_parent_link_approved"
     | "project_parent_link_rejected"
-    | "community_member_removed";
+    | "community_member_removed"
+    | "event_created"
+    | "event_invitation";
 
 export interface Notification {
     id: string;

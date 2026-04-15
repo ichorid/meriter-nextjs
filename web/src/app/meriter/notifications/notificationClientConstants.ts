@@ -52,6 +52,7 @@ export const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationTyp
   'ticket_assignee_declined',
   'ticket_apply',
   'ticket_rejection',
+  'event_created',
 ]);
 
 export const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([

@@ -18,6 +18,10 @@ import {
   MeritTransferDocument,
   type MeritTransferWalletType,
 } from '../models/merit-transfer/merit-transfer.schema';
+import {
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../models/publication/publication.schema';
 import { WalletService } from './wallet.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
@@ -61,6 +65,8 @@ export class MeritTransferService {
   constructor(
     @InjectModel(MeritTransferSchemaClass.name)
     private readonly meritTransferModel: Model<MeritTransferDocument>,
+    @InjectModel(PublicationSchemaClass.name)
+    private readonly publicationModel: Model<PublicationDocument>,
     @InjectConnection() private readonly connection: Connection,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
@@ -133,6 +139,43 @@ export class MeritTransferService {
   }
 
   /**
+   * When `eventPostId` is set, the receiver must appear on the event post's RSVP list.
+   * Invitees who are not community members may only receive a global→global transfer (PRD).
+   */
+  private async validateEventLinkedTransfer(input: MeritTransferCreateInput): Promise<void> {
+    if (!input.eventPostId) {
+      return;
+    }
+    const pub = await this.publicationModel.findOne({ id: input.eventPostId }).lean();
+    if (!pub) {
+      throw new NotFoundException('Event publication not found');
+    }
+    if (pub.communityId !== input.communityContextId) {
+      throw new BadRequestException('eventPostId does not belong to communityContextId');
+    }
+    if (pub.postType !== 'event') {
+      throw new BadRequestException('eventPostId must reference a post with postType event');
+    }
+    const attendees = pub.eventAttendees ?? [];
+    if (!attendees.includes(input.receiverId)) {
+      throw new BadRequestException(
+        'When eventPostId is set, the receiver must be listed in the event attendees',
+      );
+    }
+    const receiverRole = await this.userCommunityRoleService.getRole(
+      input.receiverId,
+      input.communityContextId,
+    );
+    if (!receiverRole) {
+      if (input.sourceWalletType !== 'global' || input.targetWalletType !== 'global') {
+        throw new BadRequestException(
+          'Merits to non-member event attendees must use global wallet for both source and target',
+        );
+      }
+    }
+  }
+
+  /**
    * Validates membership, balances, debits sender wallet, credits receiver wallet, persists MeritTransfer.
    */
   async create(rawInput: unknown): Promise<MeritTransferRecord> {
@@ -154,7 +197,10 @@ export class MeritTransferService {
     if (!senderRole) {
       throw new BadRequestException('Sender is not a member of this community context');
     }
-    if (!receiverRole) {
+    if (input.eventPostId) {
+      await this.validateEventLinkedTransfer(input);
+    }
+    if (!receiverRole && !input.eventPostId) {
       throw new BadRequestException('Receiver is not a member of this community context');
     }
 

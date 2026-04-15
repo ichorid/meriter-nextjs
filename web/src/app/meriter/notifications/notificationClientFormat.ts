@@ -60,6 +60,9 @@ export function getNotificationIcon(type: NotificationType): string {
       return '👤';
     case 'community_member_removed':
       return '⛔';
+    case 'event_created':
+    case 'event_invitation':
+      return '📅';
     case 'shares_changed':
       return '📊';
     default:

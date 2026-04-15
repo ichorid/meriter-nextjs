@@ -52,7 +52,8 @@ export type PublicationPostType =
   | 'poll'
   | 'project'
   | 'ticket'
-  | 'discussion';
+  | 'discussion'
+  | 'event';
 export type PublicationTicketStatus =
   | 'open'
   | 'in_progress'
@@ -137,6 +138,14 @@ export interface Publication {
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
   inactivityWarningNotified?: boolean;
+  /** When `postType === 'event'`: scheduled start (date-only semantics at product layer). */
+  eventStartDate?: Date;
+  /** When `postType === 'event'`: scheduled end. */
+  eventEndDate?: Date;
+  eventTime?: string;
+  eventLocation?: string;
+  /** RSVP user ids for event posts. */
+  eventAttendees?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -172,9 +181,9 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ type: String, default: undefined })
   publishedByUserId?: string;
 
-  // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта
+  // Тип поста: basic/poll/project = обычные; ticket/discussion = внутри проекта; event = ивент
   @Prop({
-    enum: ['basic', 'poll', 'project', 'ticket', 'discussion'],
+    enum: ['basic', 'poll', 'project', 'ticket', 'discussion', 'event'],
     default: 'basic',
   })
   postType?: PublicationPostType;
@@ -403,6 +412,21 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop({ default: false })
   inactivityWarningNotified?: boolean;
+
+  @Prop({ type: Date })
+  eventStartDate?: Date;
+
+  @Prop({ type: Date })
+  eventEndDate?: Date;
+
+  @Prop({ maxlength: 500 })
+  eventTime?: string;
+
+  @Prop({ maxlength: 2000 })
+  eventLocation?: string;
+
+  @Prop({ type: [String], default: [] })
+  eventAttendees?: string[];
 
   @Prop({ required: true })
   createdAt!: Date;
