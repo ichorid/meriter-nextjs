@@ -9,10 +9,20 @@ import { useCommunityMembers } from '@/hooks/api/useCommunityMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc/client';
 
+/** Populated by publications.getById for events (displayName / avatar for RSVP list). */
+export type EventAttendeeSummary = {
+  id: string;
+  name: string;
+  username?: string;
+  photoUrl?: string;
+};
+
 export interface EventRSVPProps {
   publicationId: string;
   communityId: string;
   attendeeIds: string[];
+  /** When set (from getById), used instead of resolving names from paginated community members. */
+  attendeeSummaries?: EventAttendeeSummary[];
   isMember: boolean;
   isAttending: boolean;
 }
@@ -21,6 +31,7 @@ export function EventRSVP({
   publicationId,
   communityId,
   attendeeIds,
+  attendeeSummaries,
   isMember,
   isAttending,
 }: EventRSVPProps) {
@@ -40,7 +51,7 @@ export function EventRSVP({
     },
   });
 
-  const { data: membersRes } = useCommunityMembers(communityId, { limit: 500 });
+  const { data: membersRes } = useCommunityMembers(communityId, { limit: 100 });
   const memberById = useMemo(() => {
     const m = new Map<string, { id: string; displayName: string; avatarUrl?: string }>();
     for (const row of membersRes?.data ?? []) {
@@ -53,13 +64,21 @@ export function EventRSVP({
     return m;
   }, [membersRes?.data]);
 
-  const rows = useMemo(
-    () =>
-      attendeeIds
-        .map((id) => memberById.get(id) ?? { id, displayName: id, avatarUrl: undefined })
-        .filter(Boolean),
-    [attendeeIds, memberById],
-  );
+  const rows = useMemo(() => {
+    if (attendeeSummaries && attendeeSummaries.length > 0) {
+      const byId = new Map(attendeeSummaries.map((s) => [s.id, s]));
+      return attendeeIds.map((id) => {
+        const s = byId.get(id);
+        if (s) {
+          return { id: s.id, displayName: s.name, avatarUrl: s.photoUrl };
+        }
+        return memberById.get(id) ?? { id, displayName: id, avatarUrl: undefined };
+      });
+    }
+    return attendeeIds.map(
+      (id) => memberById.get(id) ?? { id, displayName: id, avatarUrl: undefined },
+    );
+  }, [attendeeIds, attendeeSummaries, memberById]);
 
   const busy = attend.isPending || unattend.isPending;
 

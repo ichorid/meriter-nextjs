@@ -25,7 +25,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avat
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Comment as CommentComponent } from '@features/comments/components/comment';
-import { EventRSVP } from './EventRSVP';
+import { EventRSVP, type EventAttendeeSummary } from './EventRSVP';
 import { EventInviteDialog } from './EventInviteDialog';
 import { EventQRDisplay } from './EventQRDisplay';
 import { EventDirectInvite } from './EventDirectInvite';
@@ -55,6 +55,7 @@ type PublicationDetail = Record<string, unknown> & {
   eventTime?: string;
   eventLocation?: string;
   eventAttendees?: string[];
+  eventAttendeeSummaries?: EventAttendeeSummary[];
   createdAt?: string;
   meta?: {
     author?: { id?: string; name?: string; photoUrl?: string; username?: string };
@@ -583,6 +584,9 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
           publicationId={publicationId}
           communityId={publicationCommunityId}
           attendeeIds={attendeeIds}
+          attendeeSummaries={
+            Array.isArray(pub.eventAttendeeSummaries) ? pub.eventAttendeeSummaries : undefined
+          }
           isMember={isMember}
           isAttending={isAttending}
         />

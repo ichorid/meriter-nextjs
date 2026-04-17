@@ -11,6 +11,7 @@ import { createVoteLogic } from './votes.router';
 
 const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { mapInvestmentsForPublicationFeed } from '../../domain/services/feed-item-investments.mapper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
@@ -282,6 +283,16 @@ export const publicationsRouter = router({
         mappedPublication.eventAttendees = Array.isArray(raw.eventAttendees)
           ? [...raw.eventAttendees]
           : [];
+
+        const attendeeIdsList = mappedPublication.eventAttendees as string[];
+        if (attendeeIdsList.length > 0) {
+          const attendeeMap = await ctx.userEnrichmentService.batchFetchUsers(attendeeIdsList);
+          mappedPublication.eventAttendeeSummaries = attendeeIdsList.map((attendeeId: string) =>
+            UserFormatter.formatUserForApi(attendeeMap.get(attendeeId) ?? null, attendeeId),
+          );
+        } else {
+          mappedPublication.eventAttendeeSummaries = [];
+        }
       }
 
       // Investment fields (from document)
