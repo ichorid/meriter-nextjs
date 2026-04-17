@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Loader2, MapPin, User } from 'lucide-react';
+import { CalendarClock, Loader2, MapPin, User, Users } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { SortToggle } from '@/components/ui/SortToggle';
@@ -400,7 +400,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
               publishedByUserId: pub.publishedByUserId,
             }}
             showCommunityAvatar={false}
-            className="mb-3"
+            className="mb-4 border-b border-base-content/10 pb-4"
             authorId={pub.authorId as string}
             metrics={(pub as { metrics?: unknown }).metrics}
             publicationId={pub.id}
@@ -408,58 +408,97 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
             isPoll={false}
           />
 
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {statusLabel ? <Badge variant="secondary">{statusLabel}</Badge> : null}
-            {pub.eventStartDate && pub.eventEndDate ? (
-              <span className="text-sm text-base-content/80">
-                {new Date(pub.eventStartDate).toLocaleString(undefined, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}{' '}
-                —{' '}
-                {new Date(pub.eventEndDate).toLocaleString(undefined, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}
-              </span>
+          <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <h1 className="min-w-0 flex-1 text-xl font-semibold leading-tight text-base-content">
+              {pub.title?.trim() ? pub.title : tEvents('untitledEvent')}
+            </h1>
+            {statusLabel ? (
+              <Badge variant={eventStatus === 'past' ? 'secondary' : 'default'} className="shrink-0">
+                {statusLabel}
+              </Badge>
             ) : null}
           </div>
-          {pub.eventTime ? (
-            <p className="mb-2 text-sm text-base-content/80">
-              {tEvents('eventTimeLabel')}: {pub.eventTime}
-            </p>
-          ) : null}
-          {pub.eventLocation ? (
-            <p className="mb-4 flex items-start gap-1 text-sm text-base-content/80">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span className="break-words">{pub.eventLocation}</span>
-            </p>
-          ) : null}
 
-          {canEditEvent ? (
-            <div className="mb-3">
-              <Button type="button" size="sm" variant="secondary" onClick={() => setEditOpen(true)}>
-                {tEvents('editOpen')}
-              </Button>
-            </div>
-          ) : null}
-          {canManageInvites ? (
+          <div className="mb-4 space-y-2 text-sm text-base-content/80">
+            {pub.eventStartDate && pub.eventEndDate ? (
+              <p className="flex items-start gap-2">
+                <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
+                <span className="min-w-0 break-words">
+                  {new Date(pub.eventStartDate).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}{' '}
+                  —{' '}
+                  {new Date(pub.eventEndDate).toLocaleString(undefined, {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </span>
+              </p>
+            ) : null}
+            {pub.eventTime ? (
+              <p className="flex items-start gap-2 pl-6 text-base-content/70">
+                <span>
+                  {tEvents('eventTimeLabel')}: {pub.eventTime}
+                </span>
+              </p>
+            ) : null}
+            {pub.eventLocation ? (
+              <p className="flex items-start gap-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
+                <span className="min-w-0 break-words">{pub.eventLocation}</span>
+              </p>
+            ) : null}
+            <p className="flex items-center gap-2 text-base-content/70">
+              <Users className="h-4 w-4 shrink-0 text-base-content/50" aria-hidden />
+              {tEvents('attendeeCount', { count: attendeeIds.length })}
+            </p>
+          </div>
+
+          {canEditEvent || canManageInvites ? (
             <div className="mb-4 flex flex-wrap gap-2">
-              <Button type="button" size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
-                {tEvents('actionInviteLink')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={createInviteLink.isPending}
-                onClick={() => void openQrWithFreshLink()}
-              >
-                {tEvents('actionShowQr')}
-              </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => setDirectOpen(true)}>
-                {tEvents('actionDirectInvite')}
-              </Button>
+              {canEditEvent ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 rounded-lg px-2.5 text-xs"
+                  onClick={() => setEditOpen(true)}
+                >
+                  {tEvents('editOpen')}
+                </Button>
+              ) : null}
+              {canManageInvites ? (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg px-2.5 text-xs"
+                    onClick={() => setInviteOpen(true)}
+                  >
+                    {tEvents('actionInviteLink')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg px-2.5 text-xs"
+                    disabled={createInviteLink.isPending}
+                    onClick={() => void openQrWithFreshLink()}
+                  >
+                    {tEvents('actionShowQr')}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg px-2.5 text-xs"
+                    onClick={() => setDirectOpen(true)}
+                  >
+                    {tEvents('actionDirectInvite')}
+                  </Button>
+                </>
+              ) : null}
             </div>
           ) : null}
 
@@ -482,7 +521,8 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
               helpNeeded: (pub as { helpNeeded?: unknown }).helpNeeded,
               meta: transformedMeta,
             }}
-            className="mb-4"
+            className="mb-4 border-t border-base-content/10 pt-4"
+            hideTitle
           />
 
           <PublicationActions

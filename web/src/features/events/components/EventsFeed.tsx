@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { CalendarDays, History, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -65,29 +66,33 @@ export function EventsFeed({ communityId, isMember, canCreateEvents }: EventsFee
   const { data, isLoading, isError } = trpc.events.getEventsByCommunity.useQuery({ communityId });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-xl font-semibold">{t('feedTitle')}</h2>
-        {canCreateEvents ? (
-          <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+    <div className="space-y-10">
+      {canCreateEvents ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button type="button" size="sm" className="h-9 rounded-xl px-3" onClick={() => setCreateOpen(true)}>
             {t('newEvent')}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
-      {isLoading ? <p className="text-sm text-base-content/60">{t('feedLoading')}</p> : null}
+      {isLoading ? (
+        <div className="flex min-h-[200px] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-primary" aria-hidden />
+        </div>
+      ) : null}
       {isError ? <p className="text-sm text-error">{t('feedError')}</p> : null}
 
       {data ? (
         <>
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-base-content/60">
-              {t('sectionUpcoming')}
-            </h3>
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 border-b border-base-content/10 pb-2">
+              <CalendarDays className="h-5 w-5 shrink-0 text-base-content/50" aria-hidden />
+              <h3 className="text-base font-semibold text-base-content">{t('sectionUpcoming')}</h3>
+            </div>
             {data.upcoming.length === 0 ? (
               <p className="text-sm text-base-content/60">{t('sectionEmptyUpcoming')}</p>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-4">
                 {data.upcoming.map((ev) => (
                   <EventCardWithRsvp
                     key={ev.id}
@@ -100,14 +105,15 @@ export function EventsFeed({ communityId, isMember, canCreateEvents }: EventsFee
             )}
           </section>
 
-          <section className="space-y-3">
-            <h3 className="text-sm font-medium uppercase tracking-wide text-base-content/60">
-              {t('sectionPast')}
-            </h3>
+          <section className="space-y-4 border-t border-base-content/10 pt-8">
+            <div className="flex items-center gap-2 border-b border-base-content/10 pb-2">
+              <History className="h-5 w-5 shrink-0 text-base-content/50" aria-hidden />
+              <h3 className="text-base font-semibold text-base-content">{t('sectionPast')}</h3>
+            </div>
             {data.past.length === 0 ? (
               <p className="text-sm text-base-content/60">{t('sectionEmptyPast')}</p>
             ) : (
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex flex-col gap-4">
                 {data.past.map((ev) => (
                   <EventCard key={ev.id} communityId={communityId} event={ev} variant="past" />
                 ))}
