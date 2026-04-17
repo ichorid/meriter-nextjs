@@ -218,6 +218,12 @@ export type {
 } from './events';
 
 export {
+    DEMO_EVENT_SEED_COMMUNITY_IDS,
+    DEMO_EVENT_TITLE_PREFIX,
+    DEMO_EVENT_SEED_MAX_TOTAL,
+} from './demo-event-seed-targets';
+
+export {
     DECREE_809_TAGS,
     VALUE_TAG_MAX_LENGTH,
     VALUE_TAGS_MAX_PER_POST,

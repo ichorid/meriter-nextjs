@@ -45,6 +45,7 @@ import { CommunityWalletService } from '../domain/services/community-wallet.serv
 import { ProjectPayoutService } from '../domain/services/project-payout.service';
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
+import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-events-seed.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
@@ -97,6 +98,7 @@ export class TrpcService {
     private projectPayoutService: ProjectPayoutService,
     private platformWipeService: PlatformWipeService,
     private platformDemoSeedService: PlatformDemoSeedService,
+    private platformDemoEventsSeedService: PlatformDemoEventsSeedService,
     private platformDatabaseDumpService: PlatformDatabaseDumpService,
     private meritTransferService: MeritTransferService,
     private eventService: EventService,
@@ -155,6 +157,7 @@ export class TrpcService {
       projectPayoutService: this.projectPayoutService,
       platformWipeService: this.platformWipeService,
       platformDemoSeedService: this.platformDemoSeedService,
+      platformDemoEventsSeedService: this.platformDemoEventsSeedService,
       platformDatabaseDumpService: this.platformDatabaseDumpService,
       meritTransferService: this.meritTransferService,
       eventService: this.eventService,

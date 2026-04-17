@@ -46,6 +46,7 @@ import { CommunityWalletService } from '../domain/services/community-wallet.serv
 import { ProjectPayoutService } from '../domain/services/project-payout.service';
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
+import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-events-seed.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
@@ -94,6 +95,7 @@ export interface CreateContextOptions {
   projectPayoutService: ProjectPayoutService;
   platformWipeService: PlatformWipeService;
   platformDemoSeedService: PlatformDemoSeedService;
+  platformDemoEventsSeedService: PlatformDemoEventsSeedService;
   platformDatabaseDumpService: PlatformDatabaseDumpService;
   meritTransferService: MeritTransferService;
   eventService: EventService;
@@ -154,6 +156,7 @@ export async function createContext(opts: CreateContextOptions) {
     projectPayoutService,
     platformWipeService,
     platformDemoSeedService,
+    platformDemoEventsSeedService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,
@@ -263,6 +266,7 @@ export async function createContext(opts: CreateContextOptions) {
     projectPayoutService,
     platformWipeService,
     platformDemoSeedService,
+    platformDemoEventsSeedService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,

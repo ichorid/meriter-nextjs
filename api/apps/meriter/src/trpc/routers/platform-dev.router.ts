@@ -53,6 +53,20 @@ export const platformDevRouter = router({
       });
     }),
 
+  /** Add demo event posts to restored demo communities/projects (no wipe). Idempotent per community via `[demo]` title prefix. */
+  seedDemoEvents: protectedProcedure.mutation(async ({ ctx }) => {
+    if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Only superadmin can seed demo events',
+      });
+    }
+    if (!ctx.user.id) {
+      throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+    }
+    return ctx.platformDemoEventsSeedService.seedDemoEvents(ctx.user.id);
+  }),
+
   exportDatabaseDump: protectedProcedure
     .input(z.object({ wipePassword: z.string() }))
     .mutation(async ({ ctx, input }) => {

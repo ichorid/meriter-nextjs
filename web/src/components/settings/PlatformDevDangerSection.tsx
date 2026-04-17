@@ -13,7 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { Loader2, FlaskConical, Skull, Database, Upload, Tags } from 'lucide-react';
+import { Loader2, FlaskConical, Skull, Database, Upload, Tags, CalendarPlus } from 'lucide-react';
+import { DEMO_EVENT_SEED_COMMUNITY_IDS } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
@@ -23,6 +24,7 @@ const WIPE_CONFIRM_TOKEN = 'WIPE';
 const PLATFORM_WIPE_EXTRA_PASSWORD = '1243';
 const WIPE_COUNTDOWN_SEC = 12;
 const SEED_COUNTDOWN_SEC = 3;
+const DEMO_EVENTS_COUNTDOWN_SEC = 3;
 const DUMP_COUNTDOWN_SEC = 5;
 const RESET809_COUNTDOWN_SEC = 5;
 const RESTORE_COUNTDOWN_SEC = 12;
@@ -42,6 +44,9 @@ export function PlatformDevDangerSection() {
   const [seedOpen, setSeedOpen] = useState(false);
   const [seedSeconds, setSeedSeconds] = useState(SEED_COUNTDOWN_SEC);
   const [seedAckWipe, setSeedAckWipe] = useState(false);
+
+  const [demoEventsOpen, setDemoEventsOpen] = useState(false);
+  const [demoEventsSeconds, setDemoEventsSeconds] = useState(DEMO_EVENTS_COUNTDOWN_SEC);
 
   const [reset809Open, setReset809Open] = useState(false);
   const [reset809Seconds, setReset809Seconds] = useState(RESET809_COUNTDOWN_SEC);
@@ -84,6 +89,18 @@ export function PlatformDevDangerSection() {
     }, 1000);
     return () => window.clearInterval(tmr);
   }, [seedOpen]);
+
+  useEffect(() => {
+    if (!demoEventsOpen) {
+      setDemoEventsSeconds(DEMO_EVENTS_COUNTDOWN_SEC);
+      return;
+    }
+    setDemoEventsSeconds(DEMO_EVENTS_COUNTDOWN_SEC);
+    const tmr = window.setInterval(() => {
+      setDemoEventsSeconds((s) => (s <= 1 ? 0 : s - 1));
+    }, 1000);
+    return () => window.clearInterval(tmr);
+  }, [demoEventsOpen]);
 
   useEffect(() => {
     if (!reset809Open) {
@@ -156,6 +173,29 @@ export function PlatformDevDangerSection() {
       ]);
       addToast(t('platformDevSeedSuccess'), 'success');
       setSeedOpen(false);
+    },
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
+  });
+
+  const demoEventsMutation = trpc.platformDev.seedDemoEvents.useMutation({
+    onSuccess: async (data) => {
+      await Promise.all([
+        utils.users.getMe.invalidate(),
+        utils.communities.getAll.invalidate(),
+        utils.publications.getAll.invalidate(),
+        utils.wallets.getAll.invalidate(),
+        ...DEMO_EVENT_SEED_COMMUNITY_IDS.map((communityId) =>
+          utils.events.getEventsByCommunity.invalidate({ communityId }),
+        ),
+      ]);
+      addToast(
+        t('platformDevDemoEventsSuccess', {
+          created: String(data.created),
+          skippedCount: String(data.skipped?.length ?? 0),
+        }),
+        'success',
+      );
+      setDemoEventsOpen(false);
     },
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
@@ -235,6 +275,8 @@ export function PlatformDevDangerSection() {
     !!restoreDumpJson &&
     !restoreDumpMutation.isPending;
 
+  const demoEventsEnabled = demoEventsSeconds === 0 && !demoEventsMutation.isPending;
+
   return (
     <div className="space-y-6 border-t border-base-300 pt-6">
       <div className="rounded-lg border border-error/40 bg-error/5 p-4 space-y-2">
@@ -262,6 +304,16 @@ export function PlatformDevDangerSection() {
           >
             <FlaskConical className="w-4 h-4 mr-1" />
             {t('platformDevSeedOpen')}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setDemoEventsOpen(true)}
+            className="border-warning text-warning hover:bg-warning/10"
+          >
+            <CalendarPlus className="w-4 h-4 mr-1" />
+            {t('platformDevDemoEventsOpen')}
           </Button>
           <Button
             type="button"
@@ -388,6 +440,36 @@ export function PlatformDevDangerSection() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 t('platformDevSeedConfirm')
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={demoEventsOpen} onOpenChange={setDemoEventsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('platformDevDemoEventsDialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm text-base-content/80">
+            <p>{t('platformDevDemoEventsHelp')}</p>
+            <p className="text-xs text-base-content/60">
+              {t('platformDevDemoEventsTimer', { seconds: demoEventsSeconds })}
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setDemoEventsOpen(false)}>
+              {t('platformDevCancel')}
+            </Button>
+            <Button
+              type="button"
+              disabled={!demoEventsEnabled}
+              onClick={() => demoEventsMutation.mutate()}
+            >
+              {demoEventsMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                t('platformDevDemoEventsConfirm')
               )}
             </Button>
           </DialogFooter>

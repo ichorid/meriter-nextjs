@@ -132,6 +132,7 @@ import { ProjectDistributionService } from './domain/services/project-distributi
 import { ProjectPayoutService } from './domain/services/project-payout.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
+import { PlatformDemoEventsSeedService } from './domain/services/platform-demo-events-seed.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
@@ -226,6 +227,7 @@ import { EventBus } from './domain/events/event-bus';
     ProjectDistributionService,
     PlatformWipeService,
     PlatformDemoSeedService,
+    PlatformDemoEventsSeedService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
     MeritTransferService,
@@ -284,6 +286,7 @@ import { EventBus } from './domain/events/event-bus';
     ProjectDistributionService,
     PlatformWipeService,
     PlatformDemoSeedService,
+    PlatformDemoEventsSeedService,
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
