@@ -98,6 +98,13 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
 
   const { data: community } = useCommunity(communityId);
   const publicationCommunityId = pub?.communityId ?? communityId;
+  const eventsListHref = useMemo(() => {
+    const cid = publicationCommunityId;
+    if (community?.isProject) {
+      return routes.projectEvents(cid);
+    }
+    return routes.communityEvents(cid);
+  }, [community?.isProject, publicationCommunityId]);
   const { data: votingContextCommunity } = useCommunity(publicationCommunityId);
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
@@ -235,7 +242,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
       title={
         <button
           type="button"
-          onClick={() => router.push(`/meriter/communities/${communityId}`)}
+          onClick={() => router.push(eventsListHref)}
           className="flex items-center gap-2 transition-opacity hover:opacity-80"
         >
           {community ? (
@@ -257,7 +264,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
         </button>
       }
       showBack
-      onBack={() => router.push(`/meriter/communities/${communityId}`)}
+      onBack={() => router.push(eventsListHref)}
       rightAction={
         <SortToggle
           value={commentSort as 'recent' | 'voted'}
@@ -307,9 +314,9 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
           <button
             type="button"
             className="btn btn-primary mt-4"
-            onClick={() => router.push(`/meriter/communities/${communityId}`)}
+            onClick={() => router.push(eventsListHref)}
           >
-            {t('backToCommunity')}
+            {t('backToEventsList')}
           </button>
         </div>
       </AdaptiveLayout>
@@ -331,8 +338,8 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
       >
         <div className="flex h-64 flex-col items-center justify-center gap-2">
           <p className="text-error">{tEvents('pageNotEvent')}</p>
-          <Button type="button" variant="outline" onClick={() => router.push(`/meriter/communities/${communityId}`)}>
-            {t('backToCommunity')}
+          <Button type="button" variant="outline" onClick={() => router.push(eventsListHref)}>
+            {t('backToEventsList')}
           </Button>
         </div>
       </AdaptiveLayout>

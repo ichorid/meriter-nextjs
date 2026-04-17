@@ -261,6 +261,29 @@ export const publicationsRouter = router({
       mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
       mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
 
+      // Event fields live on the persisted document only (not on Publication aggregate / mapPublicationToApi).
+      if (pubSnap.postType === 'event' || (doc as { postType?: string } | null)?.postType === 'event') {
+        const raw = doc as {
+          eventStartDate?: Date | string;
+          eventEndDate?: Date | string;
+          eventTime?: string;
+          eventLocation?: string;
+          eventAttendees?: string[];
+        };
+        const toIso = (v: Date | string | undefined): string | undefined => {
+          if (v == null) return undefined;
+          const d = v instanceof Date ? v : new Date(v);
+          return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+        };
+        mappedPublication.eventStartDate = toIso(raw.eventStartDate);
+        mappedPublication.eventEndDate = toIso(raw.eventEndDate);
+        mappedPublication.eventTime = raw.eventTime;
+        mappedPublication.eventLocation = raw.eventLocation;
+        mappedPublication.eventAttendees = Array.isArray(raw.eventAttendees)
+          ? [...raw.eventAttendees]
+          : [];
+      }
+
       // Investment fields (from document)
       mappedPublication.investingEnabled = (doc as any)?.investingEnabled ?? false;
       mappedPublication.investorSharePercent = (doc as any)?.investorSharePercent ?? undefined;
