@@ -18,18 +18,17 @@ import { Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
+import {
+  EventDateTimeRangeFields,
+  defaultEventDateTimeParts,
+  mergeDateTimeParts,
+} from './EventDateTimeRangeFields';
 
 export interface EventCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   communityId: string;
   onCreated?: (publicationId: string) => void;
-}
-
-function toDateFromLocal(value: string): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function EventCreateDialog({
@@ -46,8 +45,10 @@ export function EventCreateDialog({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const [eventStartLocal, setEventStartLocal] = useState('');
-  const [eventEndLocal, setEventEndLocal] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('10:00');
   const [eventTime, setEventTime] = useState('');
   const [eventLocation, setEventLocation] = useState('');
 
@@ -56,18 +57,25 @@ export function EventCreateDialog({
     setTitle('');
     setDescription('');
     setContent('');
-    setEventStartLocal('');
-    setEventEndLocal('');
+    const d = defaultEventDateTimeParts();
+    setStartDate(d.startDate);
+    setStartTime(d.startTime);
+    setEndDate(d.endDate);
+    setEndTime(d.endTime);
     setEventTime('');
     setEventLocation('');
   }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const start = toDateFromLocal(eventStartLocal);
-    const end = toDateFromLocal(eventEndLocal);
+    const start = mergeDateTimeParts(startDate, startTime);
+    const end = mergeDateTimeParts(endDate, endTime);
     if (!start || !end) {
       addToast(t('createDateRequired'), 'error');
+      return;
+    }
+    if (start.getTime() >= end.getTime()) {
+      addToast(t('createEndBeforeStart'), 'error');
       return;
     }
     const parsed = EventCreateInputSchema.safeParse({
@@ -139,28 +147,17 @@ export function EventCreateDialog({
               maxLength={10000}
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="ev-start">{t('fieldStart')}</Label>
-              <Input
-                id="ev-start"
-                type="datetime-local"
-                value={eventStartLocal}
-                onChange={(e) => setEventStartLocal(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="ev-end">{t('fieldEnd')}</Label>
-              <Input
-                id="ev-end"
-                type="datetime-local"
-                value={eventEndLocal}
-                onChange={(e) => setEventEndLocal(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+          <EventDateTimeRangeFields
+            idPrefix="ev-create"
+            startDate={startDate}
+            startTime={startTime}
+            endDate={endDate}
+            endTime={endTime}
+            onStartDateChange={setStartDate}
+            onStartTimeChange={setStartTime}
+            onEndDateChange={setEndDate}
+            onEndTimeChange={setEndTime}
+          />
           <div className="space-y-1">
             <Label htmlFor="ev-time">{t('fieldTimeOptional')}</Label>
             <Input id="ev-time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} maxLength={500} />

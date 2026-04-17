@@ -18,6 +18,11 @@ import { Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
+import {
+  EventDateTimeRangeFields,
+  mergeDateTimeParts,
+  splitToDateTimeParts,
+} from './EventDateTimeRangeFields';
 
 export interface EventEditDialogInitial {
   publicationId: string;
@@ -28,19 +33,6 @@ export interface EventEditDialogInitial {
   eventEndDate: Date | string;
   eventTime?: string;
   eventLocation?: string;
-}
-
-function toDatetimeLocalValue(d: Date | string): string {
-  const x = new Date(d);
-  if (Number.isNaN(x.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${x.getFullYear()}-${pad(x.getMonth() + 1)}-${pad(x.getDate())}T${pad(x.getHours())}:${pad(x.getMinutes())}`;
-}
-
-function toDateFromLocal(value: string): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export interface EventEditDialogProps {
@@ -66,8 +58,10 @@ export function EventEditDialog({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [content, setContent] = useState('');
-  const [eventStartLocal, setEventStartLocal] = useState('');
-  const [eventEndLocal, setEventEndLocal] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [startTime, setStartTime] = useState('09:00');
+  const [endDate, setEndDate] = useState('');
+  const [endTime, setEndTime] = useState('10:00');
   const [eventTime, setEventTime] = useState('');
   const [eventLocation, setEventLocation] = useState('');
 
@@ -76,8 +70,12 @@ export function EventEditDialog({
     setTitle(initial.title ?? '');
     setDescription(initial.description ?? '');
     setContent(initial.content);
-    setEventStartLocal(toDatetimeLocalValue(initial.eventStartDate));
-    setEventEndLocal(toDatetimeLocalValue(initial.eventEndDate));
+    const s = splitToDateTimeParts(initial.eventStartDate);
+    const e = splitToDateTimeParts(initial.eventEndDate);
+    setStartDate(s.date);
+    setStartTime(s.time);
+    setEndDate(e.date);
+    setEndTime(e.time);
     setEventTime(initial.eventTime ?? '');
     setEventLocation(initial.eventLocation ?? '');
   }, [open, initial]);
@@ -85,10 +83,14 @@ export function EventEditDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!initial?.publicationId) return;
-    const start = toDateFromLocal(eventStartLocal);
-    const end = toDateFromLocal(eventEndLocal);
+    const start = mergeDateTimeParts(startDate, startTime);
+    const end = mergeDateTimeParts(endDate, endTime);
     if (!start || !end) {
       addToast(t('createDateRequired'), 'error');
+      return;
+    }
+    if (start.getTime() >= end.getTime()) {
+      addToast(t('createEndBeforeStart'), 'error');
       return;
     }
     const parsed = EventUpdateInputSchema.safeParse({
@@ -161,28 +163,17 @@ export function EventEditDialog({
               maxLength={10000}
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label htmlFor="ev-edit-start">{t('fieldStart')}</Label>
-              <Input
-                id="ev-edit-start"
-                type="datetime-local"
-                value={eventStartLocal}
-                onChange={(e) => setEventStartLocal(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="ev-edit-end">{t('fieldEnd')}</Label>
-              <Input
-                id="ev-edit-end"
-                type="datetime-local"
-                value={eventEndLocal}
-                onChange={(e) => setEventEndLocal(e.target.value)}
-                required
-              />
-            </div>
-          </div>
+          <EventDateTimeRangeFields
+            idPrefix="ev-edit"
+            startDate={startDate}
+            startTime={startTime}
+            endDate={endDate}
+            endTime={endTime}
+            onStartDateChange={setStartDate}
+            onStartTimeChange={setStartTime}
+            onEndDateChange={setEndDate}
+            onEndTimeChange={setEndTime}
+          />
           <div className="space-y-1">
             <Label htmlFor="ev-edit-time">{t('fieldTimeOptional')}</Label>
             <Input id="ev-edit-time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} maxLength={500} />

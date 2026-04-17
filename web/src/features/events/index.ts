@@ -4,6 +4,7 @@ export * from './pages/EventsContextPage';
 export * from './components/EventEditDialog';
 export * from './components/EventCard';
 export * from './components/EventCreateDialog';
+export * from './components/EventDateTimeRangeFields';
 export * from './components/EventDirectInvite';
 export * from './components/EventInviteDialog';
 export * from './components/EventInviteLanding';
