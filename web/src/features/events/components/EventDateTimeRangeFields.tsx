@@ -5,7 +5,8 @@ import { Label } from '@/components/ui/shadcn/label';
 import { Input } from '@/components/ui/shadcn/input';
 import { cn } from '@/lib/utils';
 
-const touchInputClass = 'min-h-11 w-full touch-manipulation text-base md:text-sm';
+const touchInputClass =
+  'min-h-10 w-full min-w-0 max-w-full touch-manipulation text-base md:text-sm';
 
 export function splitToDateTimeParts(d: Date | string): { date: string; time: string } {
   const x = new Date(d);
@@ -70,13 +71,14 @@ export function EventDateTimeRangeFields({
   const locale = useLocale();
 
   return (
-    <div className="space-y-2" lang={locale}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <fieldset className="space-y-3 rounded-xl border border-base-content/15 bg-base-200/30 p-3 sm:p-4">
-          <legend className="mb-0 px-1 text-sm font-semibold text-base-content">{t('fieldStartSection')}</legend>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <Label htmlFor={`${idPrefix}-start-date`} className="text-xs font-medium text-base-content/70">
+    <div className="min-w-0 space-y-1.5" lang={locale}>
+      {/* Stacked: two columns inside max-w-lg dialog overflowed (grid min-width:auto). */}
+      <div className="flex min-w-0 flex-col gap-2.5">
+        <fieldset className="min-w-0 w-full space-y-2 rounded-lg border border-base-content/15 bg-base-200/30 p-2.5">
+          <legend className="px-0.5 text-xs font-semibold text-base-content">{t('fieldStartSection')}</legend>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_7.75rem] sm:items-end">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor={`${idPrefix}-start-date`} className="text-[11px] font-medium text-base-content/70">
                 {t('fieldDate')}
               </Label>
               <Input
@@ -89,8 +91,8 @@ export function EventDateTimeRangeFields({
                 autoComplete="off"
               />
             </div>
-            <div className="w-full shrink-0 space-y-1.5 sm:max-w-[10rem]">
-              <Label htmlFor={`${idPrefix}-start-time`} className="text-xs font-medium text-base-content/70">
+            <div className="min-w-0 space-y-1 sm:max-w-[7.75rem] sm:justify-self-stretch">
+              <Label htmlFor={`${idPrefix}-start-time`} className="text-[11px] font-medium text-base-content/70">
                 {t('fieldClockTime')}
               </Label>
               <Input
@@ -107,11 +109,11 @@ export function EventDateTimeRangeFields({
           </div>
         </fieldset>
 
-        <fieldset className="space-y-3 rounded-xl border border-base-content/15 bg-base-200/30 p-3 sm:p-4">
-          <legend className="mb-0 px-1 text-sm font-semibold text-base-content">{t('fieldEndSection')}</legend>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <Label htmlFor={`${idPrefix}-end-date`} className="text-xs font-medium text-base-content/70">
+        <fieldset className="min-w-0 w-full space-y-2 rounded-lg border border-base-content/15 bg-base-200/30 p-2.5">
+          <legend className="px-0.5 text-xs font-semibold text-base-content">{t('fieldEndSection')}</legend>
+          <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_7.75rem] sm:items-end">
+            <div className="min-w-0 space-y-1">
+              <Label htmlFor={`${idPrefix}-end-date`} className="text-[11px] font-medium text-base-content/70">
                 {t('fieldDate')}
               </Label>
               <Input
@@ -124,8 +126,8 @@ export function EventDateTimeRangeFields({
                 autoComplete="off"
               />
             </div>
-            <div className="w-full shrink-0 space-y-1.5 sm:max-w-[10rem]">
-              <Label htmlFor={`${idPrefix}-end-time`} className="text-xs font-medium text-base-content/70">
+            <div className="min-w-0 space-y-1 sm:max-w-[7.75rem] sm:justify-self-stretch">
+              <Label htmlFor={`${idPrefix}-end-time`} className="text-[11px] font-medium text-base-content/70">
                 {t('fieldClockTime')}
               </Label>
               <Input
@@ -142,7 +144,7 @@ export function EventDateTimeRangeFields({
           </div>
         </fieldset>
       </div>
-      <p className="text-xs leading-relaxed text-base-content/60">{t('eventDateTimeHint')}</p>
+      <p className="text-[11px] leading-snug text-base-content/60">{t('eventDateTimeHint')}</p>
     </div>
   );
 }

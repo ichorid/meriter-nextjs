@@ -110,11 +110,11 @@ export function EventCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] min-w-0 max-w-[calc(100vw-1.5rem)] overflow-y-auto overflow-x-hidden sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('createTitle')}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-3">
           <div className="space-y-1">
             <Label htmlFor="ev-title">{t('fieldTitle')}</Label>
             <Input
