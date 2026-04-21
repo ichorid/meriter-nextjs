@@ -203,7 +203,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           userRoles={userRoles}
         />
 
-        <div className="px-4">
+        <div>
           <Separator className="bg-base-300" />
           <ProfileMeritsActivityPanel
             meritsSlot={

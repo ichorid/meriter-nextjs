@@ -20,14 +20,13 @@ export function ProfileMeritsActivityPanel({ meritsSlot, activitySlot, className
     <div
       className={cn(
         'bg-base-100',
-        // One soft surface — no extra frame (matches profile lists below)
-        'rounded-md sm:rounded-lg',
+        // Flush with ProfileHero sections (same width as contacts / about)
         className,
       )}
     >
       {showMerits ? (
         <>
-          <div className="px-1 pb-1.5 pt-1 sm:px-0 sm:pb-2 sm:pt-1.5">{meritsSlot}</div>
+          <div className="px-0 pb-1.5 pt-2 sm:pb-2 sm:pt-2.5">{meritsSlot}</div>
           <div
             className="h-px w-full bg-base-content/[0.06] dark:bg-base-content/[0.08]"
             role="presentation"
@@ -37,8 +36,8 @@ export function ProfileMeritsActivityPanel({ meritsSlot, activitySlot, className
       ) : null}
       <div
         className={cn(
-          'px-1 py-2 sm:px-0 sm:py-2.5',
-          !showMerits && 'pt-2.5 sm:pt-3',
+          'px-0 py-2 sm:py-2.5',
+          !showMerits && 'pt-3 sm:pt-3.5',
           showMerits && 'pt-1.5 sm:pt-2',
         )}
       >

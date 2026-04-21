@@ -188,7 +188,8 @@ function ProfileContentCardsComponent({
               'grid',
               embedded
                 ? cn(
-                    'gap-1.5 sm:gap-2',
+                    // Hairline gutters = vertical rules between cells (any column count)
+                    'gap-px rounded-md bg-base-content/[0.1] p-px dark:bg-base-content/[0.14]',
                     activityForUserId ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
                   )
                 : cn('grid-cols-2 gap-3 md:grid-cols-3', activityForUserId ? 'lg:grid-cols-3' : 'lg:grid-cols-5'),
@@ -204,7 +205,10 @@ function ProfileContentCardsComponent({
                   className={cn(
                     'cursor-pointer text-left transition-colors group',
                     embedded
-                      ? 'rounded-md bg-transparent p-2 sm:p-2.5 hover:bg-base-content/[0.04] active:bg-base-content/[0.06] dark:hover:bg-base-content/[0.06]'
+                      ? cn(
+                          'min-h-[3.25rem] bg-base-100 px-2 py-2 sm:min-h-[3.5rem] sm:px-2.5 sm:py-2.5',
+                          'rounded-none hover:bg-base-200/50 active:bg-base-200/65',
+                        )
                       : cn(stat.bgColor, 'rounded-xl p-4 transition-all hover:bg-base-200/80'),
                   )}
                 >

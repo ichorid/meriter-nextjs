@@ -183,8 +183,8 @@ function ProfilePageComponent() {
           </div>
         )}
 
-        {/* Merits + activity in one card */}
-        <div className="px-4">
+        {/* Merits + activity — full width like ProfileHero (no extra horizontal inset) */}
+        <div>
           <Separator className="bg-base-300" />
           <ProfileMeritsActivityPanel
             meritsSlot={
