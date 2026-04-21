@@ -152,7 +152,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
       publications: activityCounts?.publications ?? 0,
       comments: activityCounts?.comments ?? 0,
       polls: activityCounts?.polls ?? 0,
-      meritTransfers: activityCounts?.meritTransfers ?? 0,
     }),
     [activityCounts]
   );
@@ -203,17 +202,8 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           userRoles={userRoles}
         />
 
-        <div className="px-4">
-          <Separator className="bg-base-300" />
-          <ProfileContentCards
-            stats={activityStats}
-            isLoading={activityCountsLoading}
-            activityForUserId={user.id}
-          />
-        </div>
-
         {communityIds.length > 0 && (
-          <div>
+          <div className="px-4">
             <Separator className="bg-base-300" />
             <MeritsAndQuotaSection
               userId={user.id}
@@ -225,6 +215,15 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
             />
           </div>
         )}
+
+        <div className="px-4">
+          <Separator className="bg-base-300" />
+          <ProfileContentCards
+            stats={activityStats}
+            isLoading={activityCountsLoading}
+            activityForUserId={user.id}
+          />
+        </div>
 
         <div>
           <Separator className="bg-base-300" />

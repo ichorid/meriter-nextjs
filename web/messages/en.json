@@ -2996,6 +2996,8 @@
     },
     "meritHistory": {
         "pageTitle": "Merit history",
+        "openFullHistoryLink": "Full merit ledger",
+        "missingPermissionContext": "Open this page from the user's profile — the link includes access context.",
         "loading": "Loading…",
         "empty": "No transactions yet",
         "loadMore": "Load more",

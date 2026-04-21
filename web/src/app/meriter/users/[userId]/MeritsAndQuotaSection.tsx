@@ -7,6 +7,9 @@ import { useTranslations } from 'next-intl';
 import { ChevronDown, ChevronUp, Coins } from 'lucide-react';
 import { useOtherUserWallet } from '@/hooks/api/useWallet';
 import { formatMerits } from '@/lib/utils/currency';
+import { useAuth } from '@/contexts/AuthContext';
+import { routes } from '@/lib/constants/routes';
+import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -36,6 +39,7 @@ export function MeritsAndQuotaSection({
 }: MeritsAndQuotaSectionProps) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
+  const { user: me } = useAuth();
 
   const { priorityRoles, localRoles } = useMemo(() => {
     const priority = userRoles.filter((r) => r.communityTypeTag && PRIORITY_TYPE_TAGS.includes(r.communityTypeTag as (typeof PRIORITY_TYPE_TAGS)[number]));
@@ -47,6 +51,31 @@ export function MeritsAndQuotaSection({
   const firstPriorityId = priorityRoles[0]?.communityId;
   const { canView: canViewGlobal } = useCanViewUserMerits(firstPriorityId ?? undefined);
   const hasLocal = localRoles.length > 0;
+
+  const meritHistoryHref = useMemo(() => {
+    if (!me?.id) return null;
+    if (me.id === userId) {
+      return routes.profileMeritTransfers;
+    }
+    if (me.globalRole === 'superadmin') {
+      const ctx = firstPriorityId || communityIds[0] || 'viewer';
+      return routes.userMeritHistory(userId, ctx);
+    }
+    if (hasPriority && canViewGlobal && firstPriorityId) {
+      return routes.userMeritHistory(userId, firstPriorityId);
+    }
+    return null;
+  }, [
+    me?.id,
+    me?.globalRole,
+    userId,
+    hasPriority,
+    canViewGlobal,
+    firstPriorityId,
+    communityIds,
+  ]);
+
+  const showGlobalMeritBlock = Boolean(hasPriority && canViewGlobal && firstPriorityId);
 
   if (communityIds.length === 0) {
     return null;
@@ -70,9 +99,18 @@ export function MeritsAndQuotaSection({
       </button>
       {expanded && (
         <div className="animate-in fade-in duration-200 space-y-4">
-          {hasPriority && canViewGlobal && firstPriorityId && (
-            <GlobalMeritBlock userId={userId} walletCommunityId={firstPriorityId} />
-          )}
+          {meritHistoryHref && !showGlobalMeritBlock ? (
+            <div className="flex justify-start">
+              <ProfileMeritHistoryLink href={meritHistoryHref} />
+            </div>
+          ) : null}
+          {showGlobalMeritBlock && firstPriorityId ? (
+            <GlobalMeritBlock
+              userId={userId}
+              walletCommunityId={firstPriorityId}
+              meritHistoryHref={meritHistoryHref ?? undefined}
+            />
+          ) : null}
           {showLocalTeamGroups && hasLocal && (
             <div className="space-y-2">
               <p className="text-xs font-medium text-base-content/50 uppercase tracking-wide px-0.5">
@@ -99,9 +137,11 @@ export function MeritsAndQuotaSection({
 function GlobalMeritBlock({
   userId,
   walletCommunityId,
+  meritHistoryHref,
 }: {
   userId: string;
   walletCommunityId: string;
+  meritHistoryHref?: string;
 }) {
   const tCommon = useTranslations('common');
   const { data: globalWallet } = useOtherUserWallet(userId, walletCommunityId);
@@ -122,6 +162,14 @@ function GlobalMeritBlock({
           <p className="mt-2 text-xs text-base-content/60">
             {tCommon('sharedMeritUsedIn')}
           </p>
+          {meritHistoryHref ? (
+            <div className="mt-3 border-t border-base-300/50 pt-3">
+              <ProfileMeritHistoryLink
+                href={meritHistoryHref}
+                className="inline-flex w-full max-w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-base-200/50 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-base-200"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

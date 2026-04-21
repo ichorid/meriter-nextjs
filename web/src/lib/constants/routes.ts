@@ -25,6 +25,9 @@ export const routes = {
     userProfileComments: (userId: string) => `/meriter/users/${userId}/comments`,
     userProfilePolls: (userId: string) => `/meriter/users/${userId}/polls`,
     userProfileMeritTransfers: (userId: string) => `/meriter/users/${userId}/merit-transfers`,
+    /** Global-wallet merit ledger for a user; `context` = community id for permission (see wallets.getTransactions). */
+    userMeritHistory: (userId: string, permissionCommunityId: string) =>
+        `/meriter/users/${userId}/merit-history?context=${encodeURIComponent(permissionCommunityId)}`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
     about: "/meriter/about",

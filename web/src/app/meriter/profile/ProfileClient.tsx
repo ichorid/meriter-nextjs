@@ -13,6 +13,8 @@ import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
 import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuotaSection';
+import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
+import { routes } from '@/lib/constants/routes';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/shadcn/button';
 import { Separator } from '@/components/ui/shadcn/separator';
@@ -180,18 +182,9 @@ function ProfilePageComponent() {
           </div>
         )}
 
-        {/* Content Cards (Publications, Comments, Polls) */}
-        <div>
-          <Separator className="bg-base-300" />
-          <ProfileContentCards
-            stats={contentCardsStats}
-            isLoading={contentCardsLoading}
-          />
-        </div>
-
-        {/* Merits & Quota Section (global/priority only; team groups moved to communities below) */}
-        {communityIds.length > 0 && (
-          <div>
+        {/* Merits & quota (and merit ledger link); team groups live under communities below */}
+        {communityIds.length > 0 ? (
+          <div className="px-4">
             <Separator className="bg-base-300" />
             <MeritsAndQuotaSection
               userId={user.id}
@@ -208,7 +201,23 @@ function ProfilePageComponent() {
               showLocalTeamGroups={false}
             />
           </div>
+        ) : (
+          <div className="px-4">
+            <Separator className="bg-base-300" />
+            <div className="bg-base-100 py-3">
+              <ProfileMeritHistoryLink href={routes.profileMeritTransfers} />
+            </div>
+          </div>
         )}
+
+        {/* Activity: publications, comments, polls, … */}
+        <div className="px-4">
+          <Separator className="bg-base-300" />
+          <ProfileContentCards
+            stats={contentCardsStats}
+            isLoading={contentCardsLoading}
+          />
+        </div>
 
         {/* My communities: administered + create + member */}
         <div>

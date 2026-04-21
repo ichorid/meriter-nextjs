@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftRight, FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+import { FileText, Hand, BarChart3, Star, TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
@@ -17,7 +17,6 @@ interface ProfileContentCardsProps {
     polls: number;
     projects?: number;
     favorites?: number;
-    meritTransfers?: number;
   };
   isLoading?: boolean;
   /** When set, show only the four activity cards with links under `/meriter/users/:id/...`. */
@@ -86,15 +85,6 @@ function ProfileContentCardsComponent({
           bgColor: 'bg-gray-100 dark:bg-gray-800/50',
           route: routes.userProfilePolls(uid),
         },
-        {
-          label: tProfile('meritTransfersCardTitle'),
-          value: stats.meritTransfers ?? 0,
-          icon: ArrowLeftRight,
-          color: 'text-base-content',
-          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-          route: routes.profileMeritTransfers,
-          hideValue: true,
-        },
       ];
     }
 
@@ -143,15 +133,6 @@ function ProfileContentCardsComponent({
         route: `${routes.profile}/investments`,
         valueLoading: investmentsCountLoading,
       },
-      {
-        label: tProfile('meritTransfersCardTitle'),
-        value: 0,
-        icon: ArrowLeftRight,
-        color: 'text-base-content',
-        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-        route: routes.profileMeritTransfers,
-        hideValue: true,
-      },
     ];
   }, [
     activityForUserId,
@@ -162,7 +143,6 @@ function ProfileContentCardsComponent({
     stats.comments,
     stats.polls,
     stats.favorites,
-    stats.meritTransfers,
     unreadFavoritesCount,
     investmentsCount,
     investmentsCountLoading,
@@ -195,7 +175,7 @@ function ProfileContentCardsComponent({
           <div
             className={cn(
               'grid grid-cols-2 gap-3 md:grid-cols-3',
-              activityForUserId ? 'lg:grid-cols-4' : 'lg:grid-cols-6',
+              activityForUserId ? 'lg:grid-cols-3' : 'lg:grid-cols-5',
             )}
           >
             {statCards.map((stat, index) => {

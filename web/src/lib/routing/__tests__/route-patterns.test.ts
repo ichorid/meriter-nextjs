@@ -41,6 +41,8 @@ describe('Route Pattern Matching', () => {
     it('should match dynamic user routes', () => {
       expect(isDynamicRoute('/meriter/users/123')).toBe(true);
       expect(isDynamicRoute('/meriter/users/user-id')).toBe(true);
+      expect(isDynamicRoute('/meriter/users/u1/merit-transfers')).toBe(true);
+      expect(isDynamicRoute('/meriter/users/u1/merit-history')).toBe(true);
     });
 
     it('should match dynamic post routes', () => {

@@ -94,6 +94,11 @@ export const walletsRouter = router({
           ],
         )
         .optional(),
+      /**
+       * When reading another user's ledger, pass a community where the viewer may see that user's merits
+       * (same rule as `wallets.getByCommunity` / `canViewUserMerits`).
+       */
+      permissionCommunityId: z.string().optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       if (!input) {
@@ -106,12 +111,29 @@ export const walletsRouter = router({
       // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
 
-      // Users can only see their own transactions
       if (actualUserId !== ctx.user.id) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You can only view your own transactions',
-        });
+        const requester = await ctx.userService.getUserById(ctx.user.id);
+        const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+        if (!isSuperadmin) {
+          const ctxCommunity = input.permissionCommunityId?.trim();
+          if (!ctxCommunity) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'permissionCommunityId is required to view another user\'s transactions',
+            });
+          }
+          const canView = await ctx.permissionService.canViewUserMerits(
+            ctx.user.id,
+            actualUserId,
+            ctxCommunity,
+          );
+          if (!canView) {
+            throw new TRPCError({
+              code: 'FORBIDDEN',
+              message: 'You do not have permission to view this user\'s transactions',
+            });
+          }
+        }
       }
 
       const pagination = PaginationHelper.parseOptions(input);
