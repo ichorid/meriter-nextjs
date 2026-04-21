@@ -155,7 +155,7 @@ function ProfilePageComponent() {
 
   return (
     <AdaptiveLayout>
-      <div className="space-y-0">
+      <div className="space-y-6">
         {/* Profile Hero Section */}
         {isEditing ? (
           <div className="w-full">
@@ -189,7 +189,7 @@ function ProfilePageComponent() {
 
         {/* Merit Statistics */}
         {meritStatsData?.meritStats && meritStatsData.meritStats.length > 0 && (
-          <div className="mt-6">
+          <div>
             <ProfileStats
               meritStats={meritStatsData.meritStats}
               isLoading={meritStatsLoading}
@@ -197,24 +197,24 @@ function ProfilePageComponent() {
           </div>
         )}
 
-        {/* Merits + activity — full width like ProfileHero (no extra horizontal inset) */}
         <div>
-          <Separator className="bg-base-300" />
-          <ProfileMeritsActivityPanel
-            activitySlot={
-              <ProfileContentCards
-                stats={contentCardsStats}
-                isLoading={contentCardsLoading}
-                embedded
-              />
-            }
-          />
+          <Separator className="bg-base-300/70" />
+          <div className="mt-3 overflow-hidden rounded-2xl border border-base-300/45 bg-base-200/15 shadow-sm">
+            <ProfileMeritsActivityPanel
+              activitySlot={
+                <ProfileContentCards
+                  stats={contentCardsStats}
+                  isLoading={contentCardsLoading}
+                  embedded
+                />
+              }
+            />
+          </div>
         </div>
 
-        {/* My communities: administered + create + member */}
         <div>
-          <Separator className="bg-base-300" />
-          <div className="bg-base-100 py-4 space-y-4">
+          <Separator className="bg-base-300/70" />
+          <div className="mt-3 space-y-5 rounded-2xl border border-base-300/45 bg-base-200/15 p-4 shadow-sm sm:p-5">
             <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('administeredCommunities')}
             </p>
@@ -224,7 +224,7 @@ function ProfilePageComponent() {
                 <CardSkeleton />
               </div>
             ) : administeredCommunities.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {administeredCommunities.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -267,7 +267,7 @@ function ProfilePageComponent() {
                 <CardSkeleton />
               </div>
             ) : memberCommunities.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {memberCommunities.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -299,7 +299,7 @@ function ProfilePageComponent() {
                 <CardSkeleton />
               </div>
             ) : administeredProjects.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {administeredProjects.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -331,7 +331,7 @@ function ProfilePageComponent() {
                 <CardSkeleton />
               </div>
             ) : memberProjects.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {memberProjects.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);

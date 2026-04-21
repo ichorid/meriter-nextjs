@@ -109,7 +109,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
   return (
     <aside
-      className={`flex fixed left-0 bg-base-200 border-r border-base-300 z-40 flex-col py-4 pb-16 lg:pb-4 transition-all duration-300 overflow-hidden ${className}`}
+      className={`flex fixed left-0 z-40 flex-col overflow-hidden border-r border-base-300/60 bg-base-200/95 py-4 pb-16 shadow-[4px_0_32px_rgba(0,0,0,0.06)] backdrop-blur-md transition-all duration-300 lg:pb-4 ${className}`}
       style={asideStyle}
     >
       {/* Primary hubs (expanded desktop: labeled card + divider; collapsed: compact stack) */}

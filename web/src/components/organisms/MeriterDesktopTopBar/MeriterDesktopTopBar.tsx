@@ -43,9 +43,8 @@ export function MeriterDesktopTopBar() {
   return (
     <header
       className={cn(
-        'hidden lg:flex sticky top-0 z-30 w-full min-w-0 shrink-0',
-        'h-14 items-center justify-between gap-6 px-6',
-        'border-b border-base-300/80 bg-base-100/75 backdrop-blur-md',
+        'sticky top-0 z-30 hidden h-14 w-full min-w-0 shrink-0 items-center justify-between gap-6 px-6 lg:flex',
+        'border-b border-base-300/70 bg-base-100/80 shadow-sm backdrop-blur-md',
       )}
     >
       <nav className="flex flex-wrap items-center gap-x-6 gap-y-1" aria-label={t('sidebarPrimary')}>

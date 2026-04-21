@@ -206,7 +206,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         <SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} showScrollToTop={true} />
       }
     >
-      <div className="space-y-0">
+      <div className="space-y-6">
         <ProfileHero
           user={user}
           showEdit={false}
@@ -222,22 +222,24 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         />
 
         <div>
-          <Separator className="bg-base-300" />
-          <ProfileMeritsActivityPanel
-            activitySlot={
-              <ProfileContentCards
-                stats={activityStats}
-                isLoading={activityCountsLoading}
-                activityForUserId={user.id}
-                embedded
-              />
-            }
-          />
+          <Separator className="bg-base-300/70" />
+          <div className="mt-3 overflow-hidden rounded-2xl border border-base-300/45 bg-base-200/15 shadow-sm">
+            <ProfileMeritsActivityPanel
+              activitySlot={
+                <ProfileContentCards
+                  stats={activityStats}
+                  isLoading={activityCountsLoading}
+                  activityForUserId={user.id}
+                  embedded
+                />
+              }
+            />
+          </div>
         </div>
 
         <div>
-          <Separator className="bg-base-300" />
-          <div className="bg-base-100 py-4 space-y-4">
+          <Separator className="bg-base-300/70" />
+          <div className="mt-3 space-y-5 rounded-2xl border border-base-300/45 bg-base-200/15 p-4 shadow-sm sm:p-5">
             {viewingOtherProfile && (
               <>
                 <div className="flex flex-wrap items-center gap-2">
@@ -245,7 +247,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                    className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                     aria-label={tProfile('inviteUserProfileButton')}
                     onClick={() => {
                       trackMeriterUiEvent({ name: 'profile_invite_open' });
@@ -263,7 +265,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                       variant="outline"
                       size="sm"
                       onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
-                      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
+                      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
                     />
                   ) : null}
                 </div>
@@ -284,7 +286,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 <CardSkeleton />
               </div>
             ) : administeredCommunityIds.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {administeredCommunityIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -308,7 +310,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 <CardSkeleton />
               </div>
             ) : memberCommunityIds.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {memberCommunityIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -332,7 +334,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 <CardSkeleton />
               </div>
             ) : administeredProjectIds.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {administeredProjectIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -356,7 +358,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 <CardSkeleton />
               </div>
             ) : memberProjectIds.length > 0 ? (
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-2">
                 {memberProjectIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}

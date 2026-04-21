@@ -222,7 +222,10 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     }, [logout]);
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-base-100 border-t border-base-300 pb-[env(safe-area-inset-bottom)] z-40 lg:hidden w-full" style={{ maxWidth: '100vw' }}>
+        <div
+            className="fixed bottom-0 left-0 right-0 z-40 w-full border-t border-base-300/70 bg-base-100/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] backdrop-blur-lg lg:hidden"
+            style={{ maxWidth: '100vw' }}
+        >
             <div className="h-16 flex items-center justify-around px-2 py-1 w-full relative">
                 {tabs.map((tab) => {
                     const active = tab.isActive(pathname || '');

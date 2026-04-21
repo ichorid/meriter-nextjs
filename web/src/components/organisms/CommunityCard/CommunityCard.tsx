@@ -123,10 +123,10 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={href}>
         <div
-          className={`w-full min-w-0 rounded-xl flex flex-row items-start gap-3 py-3 pr-2 pl-4 cursor-pointer transition-all duration-200 overflow-visible relative ${isActive
-            ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01]'
-            : ''
-            } ${!isActive && !hasCover ? 'bg-base-200 hover:bg-base-300' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
+          className={`relative flex w-full min-w-0 cursor-pointer flex-row items-start gap-3 overflow-visible rounded-xl border py-3 pl-4 pr-2 transition-all duration-200 ${hasCover ? 'border-white/15' : 'border-base-300/35'} ${isActive
+            ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01] ring-1 ring-primary/25'
+            : hasCover ? 'hover:border-white/25' : 'hover:border-primary/30'
+            } ${!isActive && !hasCover ? 'bg-base-200/80 hover:bg-base-300/90' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
           style={hasCover ? {
             backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
             backgroundSize: 'cover',
