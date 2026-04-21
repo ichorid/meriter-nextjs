@@ -81,7 +81,7 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @business-merit-transfer.mdc — Peer merit transfers (`meritTransfer` tRPC, UI feeds)
 - @business-events.mdc — Event publications, RSVP, invites, `eventCreation`, event-linked transfers
 - @architecture.mdc — Repository structure and code layers
-- @design-system.mdc — Volt Obsidian / light tokens, Manrope, spacing, copy policy (Заслуги)
+- @design-system.mdc — Volt Obsidian / light tokens, Manrope, spacing, stitch rail vs canvas, copy policy (Заслуги)
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
 - @backend.mdc — NestJS/tRPC patterns
