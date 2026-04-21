@@ -153,7 +153,7 @@ function GlobalMeritBlock({
   const balance = globalWallet?.balance ?? 0;
 
   return (
-    <div className="rounded-xl border border-base-content/10 bg-base-200/25 p-3 shadow-sm">
+    <div className="rounded-xl bg-base-200/25 p-3">
       <div className="flex gap-2.5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
           <Coins className="h-4 w-4" aria-hidden />
