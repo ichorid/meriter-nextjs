@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn
 import { Button } from '@/components/ui/shadcn/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useWallets } from '@/hooks/api/useWallet';
+import { routes } from '@/lib/constants/routes';
 import type { Wallet } from '@/types/api-v1';
 
 const PAGE_LIMIT = 20;
@@ -22,12 +24,20 @@ const PAGE_LIMIT = 20;
 type DirectionTab = 'incoming' | 'outgoing';
 
 export default function UserMeritTransfersClient({ userId }: { userId: string }) {
+  const router = useRouter();
   const t = useTranslations('meritTransfer');
   const tCommon = useTranslations('common');
   const { user: me, isLoading: authLoading, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<DirectionTab>('incoming');
 
   const viewingOther = Boolean(me?.id && me.id !== userId);
+  const peerListEnabled = Boolean(userId && me?.id && me.id !== userId);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !me?.id) return;
+    if (userId !== me.id) return;
+    router.replace(routes.profileMeritTransfers);
+  }, [authLoading, isAuthenticated, me?.id, router, userId]);
   const { data: viewedUser } = useUserProfile(userId);
   const { data: viewedRoles = [] } = useUserRoles(userId);
   const { data: viewerRoles = [] } = useUserRoles(viewingOther && me?.id ? me.id : '');
@@ -50,7 +60,7 @@ export default function UserMeritTransfersClient({ userId }: { userId: string })
     {
       initialPageParam: 1,
       getNextPageParam: (last) => (last.pagination.hasMore ? last.pagination.page + 1 : undefined),
-      enabled: !!userId && tab === 'incoming',
+      enabled: peerListEnabled && tab === 'incoming',
     },
   );
 
@@ -64,7 +74,7 @@ export default function UserMeritTransfersClient({ userId }: { userId: string })
     {
       initialPageParam: 1,
       getNextPageParam: (last) => (last.pagination.hasMore ? last.pagination.page + 1 : undefined),
-      enabled: !!userId && tab === 'outgoing',
+      enabled: peerListEnabled && tab === 'outgoing',
     },
   );
 
@@ -93,8 +103,18 @@ export default function UserMeritTransfersClient({ userId }: { userId: string })
   const wallets = walletsRaw as Wallet[];
 
   const pageHeader = (
-    <ProfileTopBar asStickyHeader title={t('profilePageTitle')} showBack />
+    <ProfileTopBar asStickyHeader title={t('peerTransfersPublicPageTitle')} showBack />
   );
+
+  if (!authLoading && isAuthenticated && me?.id === userId) {
+    return (
+      <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
+        <div className="flex h-64 flex-1 items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+        </div>
+      </AdaptiveLayout>
+    );
+  }
 
   if (authLoading || !isAuthenticated) {
     return (

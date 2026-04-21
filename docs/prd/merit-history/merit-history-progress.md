@@ -32,4 +32,13 @@ Started: 2026-04-21
 - **What was done**: Ответ `wallets.getTransactions` дополнен `meritHistoryCategory`, `ledgerMultiplier`, ISO-датами; учтён `cursor` для infinite query; исправлен приоритет `skip`/`cursor`. Профиль `/meriter/profile/merit-transfers`: заголовок «История заслуг», фильтры-категории, лента из глобального кошелька через `useInfiniteQuery`.
 - **Known issues**: Страницы community/project/user merit-transfers пока старый peer-only UI; обогащение постами/именами — следующий шаг.
 
+### Step 3: Фаза D (частично) — терминология и чужой/свой профиль
+- **Status**: Done
+- **Files changed**:
+  - `web/.../users/[userId]/merit-transfers/UserMeritTransfersClient.tsx`
+  - `web/messages/en.json`, `web/messages/ru.json` (`meritTransfersCardTitle`, `navMeritTransfers`, `peerTransfersPublicPageTitle`)
+  - `web/package.json`
+- **What was done**: Карточка активности профиля и глобальный раздел — «История заслуг»; навигация в общине/проекте — «Прямые передачи» (узкий peer-only контекст). `/meriter/users/[id]/merit-transfers` для **своего** id редиректит на `/meriter/profile/merit-transfers` (полная история кошелька); для **чужого** — только peer-лента и заголовок «Прямые передачи заслуг».
+- **Known issues**: Community/project страницы по-прежнему только `meritTransfer.getByCommunity`; обогащение строк — Фаза E / следующий спринт API.
+
 _(дальше дополнять после каждого логического шага по `@.cursor/rules/progress-log.mdc`)_
