@@ -2,9 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { routes } from '@/lib/constants/routes';
+import { resolveMeritHistoryLineDescription } from '@/features/merit-transfer/merit-history-line-description';
 
 export type MeritHistoryEnrichmentFields = {
   publicationId?: string;
@@ -37,15 +38,46 @@ export interface MeritHistoryFeedProps {
   className?: string;
 }
 
-function formatWhen(iso: string): string {
+function formatWhen(iso: string, locale: string): string {
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(iso));
   } catch {
     return iso;
   }
+}
+
+function formatLineDescription(
+  tLine: ReturnType<typeof useTranslations<'meritHistory.lineDescription'>>,
+  row: MeritHistoryFeedRow,
+  communityName: string | undefined,
+): string {
+  const spec = resolveMeritHistoryLineDescription({
+    referenceType: row.referenceType,
+    type: row.type,
+    description: row.description,
+  });
+  if (spec.kind === 'raw') {
+    return spec.text;
+  }
+  let key = spec.messageKey;
+  const comm = communityName?.trim();
+  if (key === 'community_wallet_topup' && comm) {
+    key = 'community_wallet_topup_named';
+  }
+  if (key === 'community_starting_merits' && comm) {
+    key = 'community_starting_merits_named';
+  }
+  if (key === 'project_investment' && comm) {
+    key = 'project_investment_named';
+  }
+  const params: Record<string, string> = { ...(spec.params ?? {}) };
+  if (comm && (key === 'community_wallet_topup_named' || key === 'community_starting_merits_named' || key === 'project_investment_named')) {
+    params.community = comm;
+  }
+  return tLine(key as Parameters<typeof tLine>[0], params);
 }
 
 /** Loading skeleton — matches card layout for CLS (phase E). */
@@ -76,6 +108,8 @@ export function MeritHistoryFeedSkeleton({
 
 export function MeritHistoryFeed({ items, isLoading = false, className }: MeritHistoryFeedProps) {
   const t = useTranslations('meritHistory');
+  const tLine = useTranslations('meritHistory.lineDescription');
+  const locale = useLocale();
 
   if (isLoading) {
     return <MeritHistoryFeedSkeleton className={className} />;
@@ -104,6 +138,7 @@ export function MeritHistoryFeed({ items, isLoading = false, className }: MeritH
         const pubId = en?.publicationId;
         const commId = en?.communityId ?? undefined;
         const commName = en?.communityName?.trim();
+        const lineDescription = formatLineDescription(tLine, row, commName);
 
         const publicationHref =
           pubId && commId
@@ -133,7 +168,7 @@ export function MeritHistoryFeed({ items, isLoading = false, className }: MeritH
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div className="min-w-0 flex-1 space-y-1.5">
                 <p className="text-xs text-base-content/60">{t(categoryKey)}</p>
-                <p className="text-sm leading-snug text-base-content">{row.description}</p>
+                <p className="text-sm leading-snug text-base-content">{lineDescription}</p>
 
                 {en ? (
                   <div className="flex flex-col gap-1 text-xs text-base-content/70">
@@ -200,7 +235,7 @@ export function MeritHistoryFeed({ items, isLoading = false, className }: MeritH
                 ) : null}
 
                 <p className="text-xs text-base-content/50">
-                  <time dateTime={row.createdAt}>{formatWhen(row.createdAt)}</time>
+                  <time dateTime={row.createdAt}>{formatWhen(row.createdAt, locale)}</time>
                 </p>
               </div>
               <p

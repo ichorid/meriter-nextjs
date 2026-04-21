@@ -38,6 +38,9 @@ const PUBLICATION_REF_TYPES = new Set<string>([
 const COMMUNITY_REF_TYPES = new Set<string>([
   'tappalka_reward',
   'community_starting_merits',
+  'community_wallet_topup',
+  'project_topup',
+  'project_investment',
   'project_payout',
   'project_distribution',
 ]);
