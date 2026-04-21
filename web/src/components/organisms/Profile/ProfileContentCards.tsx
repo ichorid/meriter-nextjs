@@ -87,13 +87,13 @@ function ProfileContentCardsComponent({
           route: routes.userProfilePolls(uid),
         },
         {
-          label: tProfile('meritTransfersPeerOnlyCardTitle'),
+          label: tProfile('meritTransfersCardTitle'),
           value: stats.meritTransfers ?? 0,
           icon: ArrowLeftRight,
           color: 'text-base-content',
           bgColor: 'bg-gray-100 dark:bg-gray-800/50',
-          route: routes.userProfileMeritTransfers(uid),
-          hideValue: false,
+          route: routes.profileMeritTransfers,
+          hideValue: true,
         },
       ];
     }
