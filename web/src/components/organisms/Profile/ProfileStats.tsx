@@ -4,6 +4,8 @@ import React from 'react';
 import { Award } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
+import { cn } from '@/lib/utils';
+
 interface MeritStat {
   communityId: string;
   communityName: string;
@@ -18,23 +20,21 @@ interface ProfileStatsProps {
 function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   const t = useTranslations('profile');
 
+  const shellClass =
+    'rounded-2xl border border-base-300/50 bg-base-200/25 p-6 shadow-sm backdrop-blur-sm';
+
   if (isLoading) {
     return (
-      <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
+      <div className={shellClass}>
+        <div className="mb-4 flex items-center space-x-3">
+          <div className="rounded-lg bg-primary/15 p-2 text-primary">
             <Award size={24} />
           </div>
-          <h2 className="text-lg font-bold text-brand-text-primary">
-            {t('meritStats')}
-          </h2>
+          <h2 className="text-lg font-bold text-base-content">{t('meritStats')}</h2>
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-16 bg-base-200 rounded-lg animate-pulse"
-            />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-base-300/40" />
           ))}
         </div>
       </div>
@@ -46,34 +46,29 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   }
 
   return (
-    <div className="bg-gray-100 dark:bg-gray-800/50 rounded-xl p-6">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="text-brand-primary bg-brand-primary/10 p-2 rounded-lg">
+    <div className={shellClass}>
+      <div className="mb-5 flex items-center gap-3">
+        <div className="rounded-lg bg-primary/15 p-2 text-primary">
           <Award size={24} />
         </div>
-        <h2 className="text-lg font-bold text-brand-text-primary">
-          {t('meritStats')}
-        </h2>
+        <h2 className="text-lg font-bold tracking-tight text-base-content">{t('meritStats')}</h2>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {meritStats.map((stat) => (
           <div
             key={stat.communityId}
-            className="flex items-center justify-between p-4 bg-base-100 rounded-lg hover:bg-base-200 transition-colors"
+            className={cn(
+              'flex items-center justify-between rounded-xl border border-base-300/35 bg-base-100/70 p-4',
+              'transition-colors hover:border-primary/25 hover:bg-base-100',
+            )}
           >
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-brand-text-primary truncate">
-                {stat.communityName}
-              </p>
-              <p className="text-sm text-brand-text-secondary mt-1">
-                {t('meritAmount', { amount: stat.amount })}
-              </p>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-semibold text-base-content">{stat.communityName}</p>
+              <p className="mt-1 text-sm text-base-content/55">{t('meritAmount', { amount: stat.amount })}</p>
             </div>
-            <div className="ml-4 flex-shrink-0">
-              <div className="text-xl font-bold text-brand-primary">
-                {stat.amount}
-              </div>
+            <div className="ml-4 shrink-0">
+              <div className="text-xl font-bold tabular-nums text-primary">{stat.amount}</div>
             </div>
           </div>
         ))}
@@ -83,4 +78,3 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
 }
 
 export const ProfileStats = ProfileStatsComponent;
-

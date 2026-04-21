@@ -11,7 +11,7 @@ type Props = {
 /** Profile card: activity stats (merits summary lives in ProfileHero). */
 export function ProfileMeritsActivityPanel({ activitySlot, className }: Props) {
   return (
-    <div className={cn('bg-base-100', className)}>
+    <div className={cn('bg-transparent', className)}>
       <div className="px-0 py-4">{activitySlot}</div>
     </div>
   );

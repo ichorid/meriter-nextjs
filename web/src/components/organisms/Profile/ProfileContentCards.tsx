@@ -81,7 +81,7 @@ function ProfileContentCardsComponent({
           value: stats.publications,
           icon: FileText,
           color: 'text-base-content',
-          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          bgColor: 'bg-base-200/40',
           route: routes.userProfilePublications(uid),
         },
         {
@@ -89,7 +89,7 @@ function ProfileContentCardsComponent({
           value: stats.comments,
           icon: Hand,
           color: 'text-base-content',
-          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          bgColor: 'bg-base-200/40',
           route: routes.userProfileComments(uid),
           iconClassName:
             'w-[1.2rem] h-[1.2rem] text-base-content/50 group-hover:text-base-content/70 transition-colors',
@@ -99,7 +99,7 @@ function ProfileContentCardsComponent({
           value: stats.polls,
           icon: BarChart3,
           color: 'text-base-content',
-          bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+          bgColor: 'bg-base-200/40',
           route: routes.userProfilePolls(uid),
         },
       ];
@@ -111,7 +111,7 @@ function ProfileContentCardsComponent({
         value: stats.publications,
         icon: FileText,
         color: 'text-base-content',
-        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        bgColor: 'bg-base-200/40',
         route: `${routes.profile}/publications`,
       },
       {
@@ -119,7 +119,7 @@ function ProfileContentCardsComponent({
         value: stats.comments,
         icon: Hand,
         color: 'text-base-content',
-        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        bgColor: 'bg-base-200/40',
         route: `${routes.profile}/comments`,
         iconClassName:
           'w-[1.2rem] h-[1.2rem] text-base-content/50 group-hover:text-base-content/70 transition-colors',
@@ -129,7 +129,7 @@ function ProfileContentCardsComponent({
         value: stats.polls,
         icon: BarChart3,
         color: 'text-base-content',
-        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        bgColor: 'bg-base-200/40',
         route: `${routes.profile}/polls`,
       },
       {
@@ -137,7 +137,7 @@ function ProfileContentCardsComponent({
         value: stats.favorites ?? 0,
         icon: Star,
         color: 'text-base-content',
-        bgColor: unreadFavoritesCount > 0 ? 'bg-warning/15' : 'bg-gray-100 dark:bg-gray-800/50',
+        bgColor: 'bg-base-200/40',
         route: `${routes.profile}/favorites`,
         isHighlighted: unreadFavoritesCount > 0,
       },
@@ -146,7 +146,7 @@ function ProfileContentCardsComponent({
         value: investmentsCount,
         icon: TrendingUp,
         color: 'text-base-content',
-        bgColor: 'bg-gray-100 dark:bg-gray-800/50',
+        bgColor: 'bg-base-200/40',
         route: `${routes.profile}/investments`,
         valueLoading: investmentsCountLoading,
       },
@@ -180,9 +180,9 @@ function ProfileContentCardsComponent({
       <button
         type="button"
         onClick={() => setActivityExpanded(!activityExpanded)}
-        className="flex w-full items-center justify-between rounded-md py-0.5 transition-opacity hover:opacity-80"
+        className="flex w-full items-center justify-between rounded-lg py-1 transition-opacity hover:opacity-90"
       >
-        <p className="text-xs font-medium uppercase tracking-wide text-base-content/40">
+        <p className="text-xs font-semibold uppercase tracking-wider text-base-content/45">
           {tProfile('activity')}
         </p>
         {activityExpanded ? (
@@ -217,12 +217,15 @@ function ProfileContentCardsComponent({
                     'cursor-pointer text-left transition-colors group',
                     embedded
                       ? cn(
-                          'rounded-xl border border-base-content/[0.08] bg-base-200/25 p-3 sm:p-3.5',
-                          'shadow-sm dark:border-base-content/[0.12] dark:bg-base-200/20',
-                          'hover:border-base-content/[0.14] hover:bg-base-200/40 active:bg-base-200/55',
-                          'min-h-[5.25rem] sm:min-h-[5.5rem]',
+                          'min-h-[5.25rem] rounded-xl border border-base-300/45 bg-base-200/35 p-3 shadow-sm sm:min-h-[5.5rem] sm:p-3.5',
+                          'hover:border-primary/25 hover:bg-base-200/55 active:bg-base-200/65',
+                          stat.isHighlighted && 'ring-2 ring-warning/40 ring-offset-2 ring-offset-base-100',
                         )
-                      : cn(stat.bgColor, 'rounded-xl p-4 transition-all hover:bg-base-200/80'),
+                      : cn(
+                          stat.bgColor,
+                          'rounded-xl border border-base-300/30 p-4 shadow-sm transition-all hover:border-primary/20 hover:bg-base-200/50',
+                          stat.isHighlighted && 'ring-2 ring-warning/35',
+                        ),
                   )}
                 >
                   {embedded ? (
