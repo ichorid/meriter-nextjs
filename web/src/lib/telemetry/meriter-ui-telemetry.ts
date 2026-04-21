@@ -19,6 +19,7 @@ export type NavPrimaryItem =
   | 'notifications'
   | 'favorites'
   | 'profile'
+  | 'settings'
   | 'support'
   | 'about';
 

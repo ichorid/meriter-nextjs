@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { ArrowUp } from 'lucide-react';
-import { VerticalSidebar, ContextTopBar, BottomNavigation } from '@/components/organisms';
+import { VerticalSidebar, ContextTopBar, BottomNavigation, MeriterDesktopTopBar } from '@/components/organisms';
 import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
@@ -197,6 +197,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
         {/* Main scroll container */}
         <div className="mainWrap">
+          <MeriterDesktopTopBar />
           <div className="main pb-24 lg:pb-0">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
             {stickyHeader && !showCommentsInCenter && (

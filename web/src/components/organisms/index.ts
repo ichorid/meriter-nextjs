@@ -14,3 +14,4 @@ export * from './UpdateCard';
 export * from './EmptyCommunitiesBanner';
 export * from './VersionDisplay';
 export * from './BottomNavigation';
+export * from './MeriterDesktopTopBar/MeriterDesktopTopBar';
