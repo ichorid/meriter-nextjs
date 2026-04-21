@@ -10,6 +10,10 @@ import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
+import {
+  meritHistoryReferenceTypeMatch,
+  type MeritHistoryFilterKey,
+} from '../common/helpers/wallet-transaction-history';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -278,14 +282,45 @@ export class WalletService {
     return [];
   }
 
+  /**
+   * Paginated wallet transaction rows for Merit History (default: global wallet).
+   * @param _legacyType reserved for older callers — ignored
+   */
   async getUserTransactions(
-    _userId: string,
-    _type: string,
-    _limit: number,
-    _skip: number,
-  ): Promise<any[]> {
-    // This is a simplified implementation
-    return [];
+    userId: string,
+    _legacyType: string,
+    limit: number,
+    skip: number,
+    options?: {
+      communityId?: string;
+      category?: MeritHistoryFilterKey;
+    },
+  ): Promise<{ data: Transaction[]; total: number }> {
+    const communityId = options?.communityId ?? GLOBAL_COMMUNITY_ID;
+    const category = options?.category ?? 'all';
+
+    const wallet = await this.getWallet(userId, communityId);
+    if (!wallet) {
+      return { data: [], total: 0 };
+    }
+
+    const walletId = wallet.getId.getValue();
+    const refClause = meritHistoryReferenceTypeMatch(category);
+    const filter: Record<string, unknown> =
+      refClause === null ? { walletId } : { walletId, ...refClause };
+
+    const [total, rows] = await Promise.all([
+      this.transactionModel.countDocuments(filter),
+      this.transactionModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+    ]);
+
+    return { data: rows as unknown as Transaction[], total };
   }
 
   async deleteTransaction(_id: string): Promise<void> {

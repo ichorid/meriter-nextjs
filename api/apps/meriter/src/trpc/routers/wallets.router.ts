@@ -5,6 +5,10 @@ import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import {
+  MERIT_HISTORY_FILTER_KEYS,
+  type MeritHistoryFilterKey,
+} from '../../domain/common/helpers/wallet-transaction-history';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -77,6 +81,14 @@ export const walletsRouter = router({
       skip: z.number().int().min(0).optional(),
       communityId: z.string().optional(),
       type: z.string().optional(),
+      category: z
+        .enum(
+          MERIT_HISTORY_FILTER_KEYS as unknown as [
+            MeritHistoryFilterKey,
+            ...MeritHistoryFilterKey[],
+          ],
+        )
+        .optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       if (!input) {
@@ -99,19 +111,27 @@ export const walletsRouter = router({
 
       const pagination = PaginationHelper.parseOptions(input);
       const skip = PaginationHelper.getSkip(pagination);
-      
+      const limit = pagination.limit || 20;
+
       const result = await ctx.walletService.getUserTransactions(
         actualUserId,
         'all',
-        pagination.limit || 20,
+        limit,
         skip,
+        {
+          communityId: input.communityId,
+          category: input.category,
+        },
       );
-      
+
+      const loaded = result.data.length;
+
       return {
-        data: result,
-        total: result.length,
+        data: result.data,
+        total: result.total,
         skip,
-        limit: pagination.limit || 20,
+        limit,
+        hasMore: skip + loaded < result.total,
       };
     }),
 
