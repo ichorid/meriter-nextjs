@@ -14,6 +14,7 @@ import {
   type ActivityCardId,
   type ProfileActivityScope,
 } from '@/lib/telemetry/meriter-ui-telemetry';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 function activityCardFromProfileRoute(route: string): ActivityCardId | null {
   if (route.includes('/publications')) return 'publications';
@@ -45,6 +46,7 @@ function ProfileContentCardsComponent({
   activityForUserId,
   embedded = false,
 }: ProfileContentCardsProps) {
+  const sc = useMeriterStitchChrome();
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
   const tProfile = useTranslations('profile');
@@ -182,13 +184,18 @@ function ProfileContentCardsComponent({
         onClick={() => setActivityExpanded(!activityExpanded)}
         className="flex w-full items-center justify-between rounded-lg py-1 transition-opacity hover:opacity-90"
       >
-        <p className="text-xs font-semibold uppercase tracking-wider text-base-content/45">
+        <p
+          className={cn(
+            'text-xs font-semibold uppercase tracking-wider',
+            sc ? 'text-stitch-muted' : 'text-base-content/45',
+          )}
+        >
           {tProfile('activity')}
         </p>
         {activityExpanded ? (
-          <ChevronUp className="h-4 w-4 shrink-0 text-base-content/40" />
+          <ChevronUp className={cn('h-4 w-4 shrink-0', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
         ) : (
-          <ChevronDown className="h-4 w-4 shrink-0 text-base-content/40" />
+          <ChevronDown className={cn('h-4 w-4 shrink-0', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
         )}
       </button>
 
@@ -217,9 +224,12 @@ function ProfileContentCardsComponent({
                     'cursor-pointer text-left transition-colors group',
                     embedded
                       ? cn(
-                          'min-h-[5.25rem] rounded-xl border border-base-300/45 bg-base-200/35 p-3 shadow-sm sm:min-h-[5.5rem] sm:p-3.5',
-                          'hover:border-primary/25 hover:bg-base-200/55 active:bg-base-200/65',
-                          stat.isHighlighted && 'ring-2 ring-warning/40 ring-offset-2 ring-offset-base-100',
+                          'min-h-[5.25rem] rounded-xl p-3 sm:min-h-[5.5rem] sm:p-3.5',
+                          sc
+                            ? 'border-0 bg-stitch-surface2/90 shadow-none hover:bg-stitch-elevated active:bg-stitch-elevated'
+                            : 'border border-base-300/45 bg-base-200/35 shadow-sm hover:border-primary/25 hover:bg-base-200/55 active:bg-base-200/65',
+                          stat.isHighlighted &&
+                            (sc ? 'ring-2 ring-amber-400/35 ring-offset-0' : 'ring-2 ring-warning/40 ring-offset-2 ring-offset-base-100'),
                         )
                       : cn(
                           stat.bgColor,
@@ -233,15 +243,27 @@ function ProfileContentCardsComponent({
                       <Icon
                         className={cn(
                           stat.iconClassName,
-                          'h-5 w-5 shrink-0 text-base-content/45 transition-colors group-hover:text-base-content/65',
+                          sc
+                            ? 'h-5 w-5 shrink-0 text-stitch-muted transition-colors group-hover:text-stitch-accent'
+                            : 'h-5 w-5 shrink-0 text-base-content/45 transition-colors group-hover:text-base-content/65',
                         )}
                       />
                       {!stat.hideValue ? (
-                        <span className="text-xl font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-2xl">
+                        <span
+                          className={cn(
+                            'text-xl font-bold tabular-nums leading-none tracking-tight sm:text-2xl',
+                            sc ? 'text-stitch-text' : 'text-base-content',
+                          )}
+                        >
                           {stat.valueLoading || isLoading ? '…' : stat.value}
                         </span>
                       ) : null}
-                      <p className="mt-auto text-sm font-medium leading-snug text-base-content/75">
+                      <p
+                        className={cn(
+                          'mt-auto text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-[11px]',
+                          sc ? 'text-stitch-muted' : 'text-sm font-medium text-base-content/75',
+                        )}
+                      >
                         {stat.label}
                       </p>
                     </div>

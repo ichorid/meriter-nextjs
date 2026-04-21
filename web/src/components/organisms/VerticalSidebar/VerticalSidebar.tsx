@@ -17,6 +17,7 @@ import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 import { useMeriterCommunityCreateContext } from '@/hooks/useMeriterCommunityCreateContext';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { Button } from '@/components/ui/shadcn/button';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 export interface VerticalSidebarProps {
   className?: string;
@@ -38,6 +39,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
   const { communityContextId, shouldShowCreateMenu } = useMeriterCommunityCreateContext();
+  const sc = useMeriterStitchChrome();
 
   const userCommunities = useMemo(
     () =>
@@ -105,23 +107,63 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
     cn(
       isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center',
       isExpanded ? 'h-auto py-2.5' : 'h-12',
-      'rounded-xl flex items-center transition-all duration-200 active:scale-[0.99]',
-      active
-        ? 'bg-primary/12 font-semibold text-base-content ring-1 ring-inset ring-primary/20 dark:bg-primary/20 dark:ring-primary/30'
-        : 'text-base-content/90 hover:bg-base-300/80 dark:hover:bg-base-300/55',
+      'relative rounded-xl flex items-center transition-all duration-200 active:scale-[0.99]',
+      sc
+        ? active
+          ? 'bg-stitch-accent/12 font-semibold text-stitch-accent after:absolute after:right-0 after:top-2 after:bottom-2 after:w-1 after:rounded-full after:bg-stitch-accent'
+          : 'text-stitch-muted hover:bg-white/[0.04] hover:text-stitch-text'
+        : active
+          ? 'bg-primary/12 font-semibold text-base-content ring-1 ring-inset ring-primary/20 dark:bg-primary/20 dark:ring-primary/30'
+          : 'text-base-content/90 hover:bg-base-300/80 dark:hover:bg-base-300/55',
+    );
+
+  const hubIcon = (active: boolean) =>
+    cn('h-6 w-6 shrink-0', sc ? (active ? 'text-stitch-accent' : 'text-stitch-muted') : 'text-primary');
+
+  const secondaryNav = (active: boolean) =>
+    cn(
+      isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center',
+      isExpanded ? 'h-auto py-2' : 'h-12',
+      'rounded-xl flex items-center transition-colors mb-2 relative',
+      sc
+        ? active
+          ? 'bg-stitch-accent/10 text-stitch-accent'
+          : 'text-stitch-muted hover:bg-white/[0.06] hover:text-stitch-text'
+        : active
+          ? 'bg-base-300 text-base-content'
+          : 'hover:bg-base-300 text-base-content',
     );
 
   return (
     <aside
-      className={`flex fixed left-0 z-40 flex-col overflow-hidden border-r border-base-300/60 bg-base-200/95 py-4 pb-16 shadow-[4px_0_32px_rgba(0,0,0,0.06)] backdrop-blur-md transition-all duration-300 lg:pb-4 ${className}`}
+      className={cn(
+        'flex fixed left-0 z-40 flex-col overflow-hidden py-4 pb-16 transition-all duration-300 lg:pb-4',
+        sc
+          ? 'border-r border-stitch-border bg-stitch-sidebar'
+          : 'border-r border-base-300/60 bg-base-200/95 shadow-[4px_0_32px_rgba(0,0,0,0.06)] backdrop-blur-md',
+        className,
+      )}
       style={asideStyle}
     >
+      {isAuthenticated && sc && isExpanded && (
+        <div className={cn(paddingClass, 'mb-5')}>
+          <Link href={routes.futureVisions} className="block px-2">
+            <span className="font-serif text-2xl font-bold italic tracking-tight text-stitch-text">Meriter</span>
+            <p className="mt-0.5 text-[11px] leading-snug text-stitch-muted">{t('brandTagline')}</p>
+          </Link>
+        </div>
+      )}
       {/* Primary hubs (expanded desktop: labeled card + divider; collapsed: compact stack) */}
       {isAuthenticated && (
         <>
           <div className={cn(paddingClass, isExpanded ? 'mb-2' : 'mb-2')}>
             {isExpanded ? (
-              <p className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider text-base-content/45">
+              <p
+                className={cn(
+                  'mb-2 px-2 text-[11px] font-semibold uppercase tracking-wider',
+                  sc ? 'text-stitch-muted' : 'text-base-content/45',
+                )}
+              >
                 {t('sidebarPrimary')}
               </p>
             ) : null}
@@ -141,11 +183,18 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 >
                   {isExpanded ? (
                     <div className="flex w-full items-center">
-                      <Sparkles className="h-6 w-6 shrink-0 text-primary" />
-                      <span className="ml-2.5 text-base font-medium leading-snug">{t('futureVisions', { defaultValue: 'Future Visions' })}</span>
+                      <Sparkles className={hubIcon(Boolean(pathname?.startsWith(routes.futureVisions)))} />
+                      <span
+                        className={cn(
+                          'ml-2.5 text-base font-medium leading-snug',
+                          sc && pathname?.startsWith(routes.futureVisions) ? 'text-stitch-accent' : sc ? 'text-stitch-text' : '',
+                        )}
+                      >
+                        {t('futureVisions', { defaultValue: 'Future Visions' })}
+                      </span>
                     </div>
                   ) : (
-                    <Sparkles className="h-6 w-6 text-primary" />
+                    <Sparkles className={hubIcon(Boolean(pathname?.startsWith(routes.futureVisions)))} />
                   )}
                 </button>
               </Link>
@@ -170,11 +219,18 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     <button type="button" className={primaryNavBtn(marathonActive)}>
                       {isExpanded ? (
                         <div className="flex w-full min-w-0 items-center">
-                          <TrendingUp className="h-6 w-6 shrink-0 text-primary" />
-                          <span className="ml-2.5 truncate text-base font-medium leading-snug">{marathon.name}</span>
+                          <TrendingUp className={hubIcon(marathonActive)} />
+                          <span
+                            className={cn(
+                              'ml-2.5 truncate text-base font-medium leading-snug',
+                              sc && marathonActive ? 'text-stitch-accent' : sc ? 'text-stitch-text' : '',
+                            )}
+                          >
+                            {marathon.name}
+                          </span>
                         </div>
                       ) : (
-                        <TrendingUp className="h-6 w-6 text-primary" />
+                        <TrendingUp className={hubIcon(marathonActive)} />
                       )}
                     </button>
                   </Link>
@@ -196,11 +252,18 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 >
                   {isExpanded ? (
                     <div className="flex w-full items-center">
-                      <FolderKanban className="h-6 w-6 shrink-0 text-primary" />
-                      <span className="ml-2.5 text-base font-medium leading-snug">{t('projects', { defaultValue: 'Projects' })}</span>
+                      <FolderKanban className={hubIcon(Boolean(pathname?.startsWith(routes.projects)))} />
+                      <span
+                        className={cn(
+                          'ml-2.5 text-base font-medium leading-snug',
+                          sc && pathname?.startsWith(routes.projects) ? 'text-stitch-accent' : sc ? 'text-stitch-text' : '',
+                        )}
+                      >
+                        {t('projects', { defaultValue: 'Projects' })}
+                      </span>
                     </div>
                   ) : (
-                    <FolderKanban className="h-6 w-6 text-primary" />
+                    <FolderKanban className={hubIcon(Boolean(pathname?.startsWith(routes.projects)))} />
                   )}
                 </button>
               </Link>
@@ -217,7 +280,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                       <Button
                         type="button"
                         variant="default"
-                        className="h-auto w-full justify-start gap-2 rounded-xl border-0 bg-gradient-to-br from-primary to-primary/80 px-3 py-2.5 text-primary-content shadow-sm hover:from-primary hover:to-primary/90"
+                        className={cn(
+                          'h-auto w-full justify-start gap-2 rounded-xl border-0 px-3 py-2.5 font-semibold shadow-lg',
+                          sc
+                            ? 'bg-gradient-to-br from-stitch-accent2 to-stitch-accent text-white hover:opacity-95'
+                            : 'bg-gradient-to-br from-primary to-primary/80 text-primary-content hover:from-primary hover:to-primary/90',
+                        )}
                       >
                         <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} />
                         <span className="text-sm font-semibold">{t('sidebarCreate')}</span>
@@ -230,7 +298,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     telemetrySurface="sidebar"
                     trigger={
                       <button type="button" className={primaryNavBtn(false)} aria-label={t('sidebarCreate')}>
-                        <Plus className="h-6 w-6 text-primary" strokeWidth={2.25} />
+                        <Plus className={cn('h-6 w-6', sc ? 'text-stitch-accent' : 'text-primary')} strokeWidth={2.25} />
                       </button>
                     }
                   />
@@ -239,7 +307,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 <Link href={`${routes.communities}/create`}>
                   <button type="button" className={cn(primaryNavBtn(false), 'w-full')}>
                     <div className="flex w-full min-w-0 items-center">
-                      <Plus className="h-5 w-5 shrink-0 text-primary" strokeWidth={2.25} />
+                      <Plus className={cn('h-5 w-5 shrink-0', sc ? 'text-stitch-accent' : 'text-primary')} strokeWidth={2.25} />
                       <span className="ml-2.5 truncate text-sm font-medium leading-snug">{t('createCommunity')}</span>
                     </div>
                   </button>
@@ -247,7 +315,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               ) : (
                 <Link href={`${routes.communities}/create`} aria-label={t('createCommunity')}>
                   <button type="button" className={primaryNavBtn(false)}>
-                    <Plus className="h-6 w-6 text-primary" strokeWidth={2.25} />
+                    <Plus className={cn('h-6 w-6', sc ? 'text-stitch-accent' : 'text-primary')} strokeWidth={2.25} />
                   </button>
                 </Link>
               )}
@@ -255,7 +323,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           </div>
 
           <div className={cn(paddingClass, 'mb-2 mt-1')}>
-            <div className="border-t border-base-300" role="separator" aria-hidden />
+            <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} role="separator" aria-hidden />
           </div>
 
           {/* Notifications */}
@@ -269,43 +337,53 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 })
               }
             >
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
+              <button className={secondaryNav(pathname === routes.notifications)}>
                 {isExpanded ? (
                   <div className="flex items-center w-full">
                     <div className="relative">
-                      <Bell className="w-5 h-5" />
+                      <Bell
+                        className={cn(
+                          'w-5 h-5',
+                          sc && pathname === routes.notifications ? 'text-stitch-accent' : sc ? 'text-stitch-muted' : '',
+                        )}
+                      />
                       {unreadCount > 0 && (
-                        <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
-                          ? 'bg-primary-content text-primary'
-                          : 'bg-error text-error-content'
-                          }`}>
+                        <span
+                          className={cn(
+                            'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                            sc ? 'bg-stitch-accent text-white' : pathname === routes.notifications
+                              ? 'bg-primary-content text-primary'
+                              : 'bg-error text-error-content',
+                          )}
+                        >
                           {unreadCount > 99 ? '99+' : unreadCount}
                         </span>
                       )}
                     </div>
                     <span className="ml-2 text-sm font-medium">{t('notifications')}</span>
                     {unreadCount > 0 && (
-                      <span className={`ml-auto text-xs font-semibold ${pathname === routes.notifications
-                        ? 'text-primary-content'
-                        : 'text-error'
-                        }`}>
+                      <span
+                        className={cn(
+                          'ml-auto text-xs font-semibold',
+                          sc ? 'text-stitch-accent' : pathname === routes.notifications ? 'text-primary-content' : 'text-error',
+                        )}
+                      >
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
                   </div>
                 ) : (
                   <div className="relative">
-                    <Bell className="w-6 h-6" />
+                    <Bell className={cn('w-6 h-6', sc ? 'text-stitch-muted' : '')} />
                     {unreadCount > 0 && (
-                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === routes.notifications
-                        ? 'bg-primary-content text-primary'
-                        : 'bg-error text-error-content'
-                        }`}>
+                      <span
+                        className={cn(
+                          'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                          sc ? 'bg-stitch-accent text-white' : pathname === routes.notifications
+                            ? 'bg-primary-content text-primary'
+                            : 'bg-error text-error-content',
+                        )}
+                      >
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
@@ -326,43 +404,53 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 })
               }
             >
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
+              <button className={secondaryNav(pathname === `${routes.profile}/favorites`)}>
                 {isExpanded ? (
                   <div className="flex items-center w-full">
                     <div className="relative">
-                      <Star className="w-5 h-5" />
+                      <Star
+                        className={cn(
+                          'w-5 h-5',
+                          sc && pathname === `${routes.profile}/favorites` ? 'text-stitch-accent' : sc ? 'text-stitch-muted' : '',
+                        )}
+                      />
                       {unreadFavoritesCount > 0 && (
-                        <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
-                          ? 'bg-primary-content text-primary'
-                          : 'bg-warning text-warning-content'
-                          }`}>
+                        <span
+                          className={cn(
+                            'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                            sc ? 'bg-amber-500/90 text-stitch-canvas' : pathname === `${routes.profile}/favorites`
+                              ? 'bg-primary-content text-primary'
+                              : 'bg-warning text-warning-content',
+                          )}
+                        >
                           {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
                         </span>
                       )}
                     </div>
                     <span className="ml-2 text-sm font-medium">{t('favorites')}</span>
                     {unreadFavoritesCount > 0 && (
-                      <span className={`ml-auto text-xs font-semibold ${pathname === `${routes.profile}/favorites`
-                        ? 'text-primary-content'
-                        : 'text-warning'
-                        }`}>
+                      <span
+                        className={cn(
+                          'ml-auto text-xs font-semibold',
+                          sc ? 'text-amber-400' : pathname === `${routes.profile}/favorites` ? 'text-primary-content' : 'text-warning',
+                        )}
+                      >
                         {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
                       </span>
                     )}
                   </div>
                 ) : (
                   <div className="relative">
-                    <Star className="w-6 h-6" />
+                    <Star className={cn('w-6 h-6', sc ? 'text-stitch-muted' : '')} />
                     {unreadFavoritesCount > 0 && (
-                      <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center px-1 rounded-full text-[10px] font-semibold ${pathname === `${routes.profile}/favorites`
-                        ? 'bg-primary-content text-primary'
-                        : 'bg-warning text-warning-content'
-                        }`}>
+                      <span
+                        className={cn(
+                          'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
+                          sc ? 'bg-amber-500/90 text-stitch-canvas' : pathname === `${routes.profile}/favorites`
+                            ? 'bg-primary-content text-primary'
+                            : 'bg-warning text-warning-content',
+                        )}
+                      >
                         {unreadFavoritesCount > 99 ? '99+' : unreadFavoritesCount}
                       </span>
                     )}
@@ -386,18 +474,42 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           }
         >
           <button
-            className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
-              ? 'bg-base-300 text-base-content'
-              : 'hover:bg-base-300 text-base-content'
-              }`}
+            className={secondaryNav(
+              Boolean(
+                pathname === routes.profile ||
+                  (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`),
+              ),
+            )}
           >
             {isExpanded ? (
               <div className="flex items-center w-full">
-                <User className="w-5 h-5" />
+                <User
+                  className={cn(
+                    'w-5 h-5',
+                    sc &&
+                    (pathname === routes.profile ||
+                      (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`))
+                      ? 'text-stitch-accent'
+                      : sc
+                        ? 'text-stitch-muted'
+                        : '',
+                  )}
+                />
                 <span className="ml-2 text-sm font-medium">{t('myProfile', { defaultValue: 'My profile' })}</span>
               </div>
             ) : (
-              <User className="w-6 h-6" />
+              <User
+                className={cn(
+                  'w-6 h-6',
+                  sc &&
+                  (pathname === routes.profile ||
+                    (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`))
+                    ? 'text-stitch-accent'
+                    : sc
+                      ? 'text-stitch-muted'
+                      : '',
+                )}
+              />
             )}
           </button>
         </Link>
@@ -419,19 +531,16 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 })
               }
             >
-              <button
-                className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${isActive
-                  ? 'bg-base-300 text-base-content'
-                  : 'hover:bg-base-300 text-base-content'
-                  }`}
-              >
+              <button className={secondaryNav(isActive)}>
                 {isExpanded ? (
                   <div className="flex items-center w-full min-w-0">
-                    <LifeBuoy className="w-5 h-5 shrink-0" />
+                    <LifeBuoy
+                      className={cn('w-5 h-5 shrink-0', sc ? (isActive ? 'text-stitch-accent' : 'text-stitch-muted') : '')}
+                    />
                     <span className="ml-2 text-sm font-medium truncate">{support.name}</span>
                   </div>
                 ) : (
-                  <LifeBuoy className="w-6 h-6" />
+                  <LifeBuoy className={cn('w-6 h-6', sc ? (isActive ? 'text-stitch-accent' : 'text-stitch-muted') : '')} />
                 )}
               </button>
             </Link>
@@ -451,19 +560,24 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               })
             }
           >
-            <button
-              className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.about
-                ? 'bg-base-300 text-base-content'
-                : 'hover:bg-base-300 text-base-content'
-                }`}
-            >
+            <button className={secondaryNav(pathname === routes.about)}>
               {isExpanded ? (
                 <div className="flex items-center w-full">
-                  <Info className="w-5 h-5" />
+                  <Info
+                    className={cn(
+                      'w-5 h-5',
+                      sc ? (pathname === routes.about ? 'text-stitch-accent' : 'text-stitch-muted') : '',
+                    )}
+                  />
                   <span className="ml-2 text-sm font-medium">{t('aboutProject')}</span>
                 </div>
               ) : (
-                <Info className="w-6 h-6" />
+                <Info
+                  className={cn(
+                    'w-6 h-6',
+                    sc ? (pathname === routes.about ? 'text-stitch-accent' : 'text-stitch-muted') : '',
+                  )}
+                />
               )}
             </button>
           </Link>
@@ -474,12 +588,17 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       {isAuthenticated && isExpanded && (
         <>
           <div className={`${paddingClass} mb-2`}>
-            <div className="border-t border-base-300" />
+            <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} />
           </div>
           <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
             <div className="flex flex-col gap-3 min-w-0">
               <div className="flex flex-col gap-1 min-w-0">
-                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                <p
+                  className={cn(
+                    'px-2 text-xs font-medium uppercase tracking-wide',
+                    sc ? 'text-stitch-muted' : 'text-base-content/40',
+                  )}
+                >
                   {tCommunities('administeredCommunities')}
                 </p>
                 {communitiesLoading ? (
@@ -509,7 +628,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 )}
               </div>
               <div className="flex flex-col gap-1 min-w-0">
-                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                <p
+                  className={cn(
+                    'px-2 text-xs font-medium uppercase tracking-wide',
+                    sc ? 'text-stitch-muted' : 'text-base-content/40',
+                  )}
+                >
                   {tCommunities('communitiesIMemberOf')}
                 </p>
                 {communitiesLoading ? (
@@ -539,7 +663,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 )}
               </div>
               <div className="flex flex-col gap-1 min-w-0">
-                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                <p
+                  className={cn(
+                    'px-2 text-xs font-medium uppercase tracking-wide',
+                    sc ? 'text-stitch-muted' : 'text-base-content/40',
+                  )}
+                >
                   {tCommunities('administeredProjects')}
                 </p>
                 {communitiesLoading ? (
@@ -569,7 +698,12 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 )}
               </div>
               <div className="flex flex-col gap-1 min-w-0">
-                <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-2">
+                <p
+                  className={cn(
+                    'px-2 text-xs font-medium uppercase tracking-wide',
+                    sc ? 'text-stitch-muted' : 'text-base-content/40',
+                  )}
+                >
                   {tCommunities('memberProjects')}
                 </p>
                 {communitiesLoading ? (

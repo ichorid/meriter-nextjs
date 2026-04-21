@@ -15,13 +15,15 @@ import { useProfileData } from '@/hooks/useProfileData';
 import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
 import { ProfileMeritsHeroStrip } from '@/components/organisms/Profile/ProfileMeritsHeroStrip';
 import { Button } from '@/components/ui/shadcn/button';
-import { Separator } from '@/components/ui/shadcn/separator';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Loader2, Plus } from 'lucide-react';
 import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { cn } from '@/lib/utils';
 
 function ProfilePageComponent() {
+  const sc = useMeriterStitchChrome();
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations('profile');
@@ -137,7 +139,7 @@ function ProfilePageComponent() {
     return (
       <AdaptiveLayout>
         <div className="flex justify-center items-center min-h-[400px]">
-          <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />
+          <Loader2 className={cn('w-8 h-8 animate-spin', sc ? 'text-stitch-accent' : 'text-brand-primary')} />
         </div>
       </AdaptiveLayout>
     );
@@ -147,7 +149,7 @@ function ProfilePageComponent() {
     return (
       <AdaptiveLayout>
         <div className="p-4">
-          <p className="text-brand-text-secondary">{t('notFound')}</p>
+          <p className={sc ? 'text-stitch-muted' : 'text-brand-text-secondary'}>{t('notFound')}</p>
         </div>
       </AdaptiveLayout>
     );
@@ -155,7 +157,7 @@ function ProfilePageComponent() {
 
   return (
     <AdaptiveLayout>
-      <div className="space-y-6">
+      <div className={cn('space-y-6', sc && 'text-stitch-text')}>
         {/* Profile Hero Section */}
         {isEditing ? (
           <div className="w-full">
@@ -198,8 +200,12 @@ function ProfilePageComponent() {
         )}
 
         <div>
-          <Separator className="bg-base-300/70" />
-          <div className="mt-3 overflow-hidden rounded-2xl border border-base-300/45 bg-base-200/15 shadow-sm">
+          <div
+            className={cn(
+              'mt-1 overflow-hidden rounded-2xl',
+              sc ? 'border-0 bg-stitch-surface shadow-none' : 'border border-base-300/45 bg-base-200/15 shadow-sm',
+            )}
+          >
             <ProfileMeritsActivityPanel
               activitySlot={
                 <ProfileContentCards
@@ -213,9 +219,18 @@ function ProfilePageComponent() {
         </div>
 
         <div>
-          <Separator className="bg-base-300/70" />
-          <div className="mt-3 space-y-5 rounded-2xl border border-base-300/45 bg-base-200/15 p-4 shadow-sm sm:p-5">
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+          <div
+            className={cn(
+              'mt-6 space-y-5 rounded-2xl p-4 sm:p-5',
+              sc ? 'border-0 bg-stitch-surface shadow-none' : 'border border-base-300/45 bg-base-200/15 shadow-sm',
+            )}
+          >
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('administeredCommunities')}
             </p>
             {communitiesLoading ? (
@@ -245,13 +260,19 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">{tCommunities('noAdministeredCommunities')}</p>
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
+                {tCommunities('noAdministeredCommunities')}
+              </p>
             )}
 
             <div>
               <Button
                 variant="outline"
-                className="w-full gap-2"
+                className={cn(
+                  'w-full gap-2',
+                  sc &&
+                    'border-stitch-accent/40 bg-transparent text-stitch-text hover:bg-stitch-accent/10 hover:text-stitch-text',
+                )}
                 onClick={() => router.push('/meriter/communities/create')}
               >
                 <Plus className="w-4 h-4" />
@@ -259,7 +280,12 @@ function ProfilePageComponent() {
               </Button>
             </div>
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('communitiesIMemberOf')}
             </p>
             {communitiesLoading ? (
@@ -288,10 +314,17 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">{tCommunities('noMemberCommunities')}</p>
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
+                {tCommunities('noMemberCommunities')}
+              </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('administeredProjects')}
             </p>
             {communitiesLoading ? (
@@ -320,10 +353,17 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">{tCommunities('noAdministeredProjects')}</p>
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
+                {tCommunities('noAdministeredProjects')}
+              </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('memberProjects')}
             </p>
             {communitiesLoading ? (
@@ -352,7 +392,9 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">{tCommunities('noMemberProjects')}</p>
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
+                {tCommunities('noMemberProjects')}
+              </p>
             )}
           </div>
         </div>

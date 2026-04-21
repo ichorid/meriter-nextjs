@@ -9,12 +9,14 @@ import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
 import { Clock, TrendingUp, Loader2, ArrowLeft, ArrowUp } from 'lucide-react';
 import { useProfileTabState } from '@/hooks/useProfileTabState';
 import type { TabSortState } from '@/hooks/useProfileTabState';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
 import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 export interface ContextTopBarProps {
   className?: string;
@@ -114,6 +116,7 @@ export const SimpleStickyHeader: React.FC<{
   asStickyHeader = false,
   showScrollToTop = false
 }) => {
+    const sc = useMeriterStitchChrome();
     const router = useRouter();
     const tCommon = useTranslations('common');
     const [showScrollButton, setShowScrollButton] = React.useState(false);
@@ -191,8 +194,9 @@ export const SimpleStickyHeader: React.FC<{
       };
     }, [showScrollToTop]);
 
-    const shellClass =
-      'bg-base-100/80 backdrop-blur-md border-b border-base-300/70 shadow-sm';
+    const shellClass = sc
+      ? 'bg-stitch-canvas/95 backdrop-blur-md border-b border-stitch-border shadow-none'
+      : 'bg-base-100/80 backdrop-blur-md border-b border-base-300/70 shadow-sm';
 
     const headerContent = (
       <div
@@ -216,12 +220,17 @@ export const SimpleStickyHeader: React.FC<{
                 aria-label={tCommon('goBack')}
                 className="rounded-xl active:scale-[0.98] px-2"
               >
-                <ArrowLeft size={20} className="text-base-content" />
+                <ArrowLeft size={20} className={sc ? 'text-stitch-text' : 'text-base-content'} />
               </Button>
             )}
 
             {/* Title */}
-            <h1 className="text-lg font-semibold text-base-content truncate px-2">
+            <h1
+              className={cn(
+                'truncate px-2 text-lg font-semibold',
+                sc ? 'text-stitch-text' : 'text-base-content',
+              )}
+            >
               {title}
             </h1>
           </div>

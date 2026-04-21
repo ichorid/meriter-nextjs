@@ -64,6 +64,10 @@ Desktop / large layout: same **three primary hubs** (Future Visions → МД →
 
 **Create (sidebar):** Under the primary hubs, **before** the divider into Notifications: if `useMeriterCommunityCreateContext()` says the URL allows it (same rules as the bottom FAB — community id from path, not on `/members`, `/settings`, `/create`, `/events`), render **`CreateMenu`** with `telemetrySurface: 'sidebar'`; otherwise link to **`${routes.communities}/create`** (`common.createCommunity`). Bottom nav FAB and sidebar must stay in sync when changing those rules.
 
+### Authenticated Meriter “Stitch” dark chrome
+
+When the user is **signed in** on `/meriter/*` (except login), `AdaptiveLayout` sets `data-meriter-chrome="stitch"` on `.appShell` and wraps the tree in **`MeriterChromeProvider`**. **`useMeriterStitchChrome()`** returns whether that mode is active. **Tailwind** tokens live under `stitch.*` in `web/tailwind.config.ts` (canvas, sidebar, surface, accent, muted, etc.). **globals.css** adjusts `.leftNav` / `.mainWrap` under the data attribute. Profile and nav components branch on `sc` for colors and **avoid light gray card borders** in favor of layered `stitch-surface` panels.
+
 ### Global «Биржа» / МД feed: user-facing copy vs identifiers
 
 Use this when wiring UI or docs so marketing names are not confused with `typeTag` / routes.

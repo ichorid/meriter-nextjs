@@ -9,6 +9,7 @@ import {
 } from '@/hooks/useProfileMeritsLedgerModel';
 import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
 import { cn } from '@/lib/utils';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 type Props = {
   userId: string;
@@ -27,6 +28,7 @@ export function ProfileMeritsHeroStrip({
   userRoles,
   profileActivityScope = 'self',
 }: Props) {
+  const sc = useMeriterStitchChrome();
   const tCommon = useTranslations('common');
   const tProfile = useTranslations('profile');
   const { meritHistoryHref, showGlobalMeritBlock, walletCommunityId, showHeroMerits } =
@@ -37,8 +39,9 @@ export function ProfileMeritsHeroStrip({
     walletCommunityId ?? '',
   );
 
-  const historyClass =
-    'inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 sm:text-sm';
+  const historyClass = sc
+    ? 'inline-flex max-w-full items-center gap-2 rounded-xl border border-stitch-accent/45 bg-transparent px-4 py-2.5 text-sm font-medium text-stitch-text transition-colors hover:bg-stitch-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent/40 sm:text-sm'
+    : 'inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 sm:text-sm';
 
   if (!showHeroMerits) {
     return null;
@@ -49,7 +52,14 @@ export function ProfileMeritsHeroStrip({
   if (!showGlobalMeritBlock || !walletCommunityId) {
     return meritHistoryHref ? (
       <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:items-start sm:text-left">
-        <p className="text-sm font-semibold text-base-content/70">{tProfile('globalMeritsTitle')}</p>
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-widest',
+            sc ? 'text-stitch-muted' : 'text-sm font-semibold text-base-content/70',
+          )}
+        >
+          {sc ? tProfile('balanceSheetTitle') : tProfile('globalMeritsTitle')}
+        </p>
         <ProfileMeritHistoryLink
           href={meritHistoryHref}
           className={historyClass}
@@ -61,17 +71,29 @@ export function ProfileMeritsHeroStrip({
 
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-2 sm:items-start sm:gap-2.5 sm:text-left">
-      <p className="text-sm font-semibold text-base-content/70">{tProfile('globalMeritsTitle')}</p>
       <p
         className={cn(
-          'text-3xl font-bold tabular-nums tracking-tight text-base-content sm:text-4xl',
-          walletPending && 'animate-pulse text-base-content/40',
+          sc ? 'text-[10px] font-bold uppercase tracking-widest text-stitch-muted' : 'text-sm font-semibold text-base-content/70',
+        )}
+      >
+        {sc ? tProfile('balanceSheetTitle') : tProfile('globalMeritsTitle')}
+      </p>
+      <p
+        className={cn(
+          'text-3xl font-bold tabular-nums tracking-tight sm:text-4xl',
+          sc ? 'text-stitch-text' : 'text-base-content',
+          walletPending && (sc ? 'animate-pulse text-stitch-muted' : 'animate-pulse text-base-content/40'),
         )}
         aria-live="polite"
       >
         {walletPending ? '…' : formatMerits(balance)}
       </p>
-      <p className="max-w-md text-xs leading-relaxed text-base-content/60 sm:text-sm">
+      <p
+        className={cn(
+          'max-w-md text-xs leading-relaxed sm:text-sm',
+          sc ? 'text-stitch-muted' : 'text-base-content/60',
+        )}
+      >
         {tCommon('sharedMeritUsedIn')}
       </p>
       {meritHistoryHref ? (

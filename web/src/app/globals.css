@@ -866,6 +866,16 @@
     /* Allow shrinking below content size if needed */
   }
 
+  /* Authenticated Meriter: dark “Stitch” shell (no harsh light dividers) */
+  .appShell[data-meriter-chrome="stitch"] .leftNav {
+    border-right: 1px solid rgba(148, 163, 184, 0.08);
+    background-color: #05070d;
+  }
+
+  .appShell[data-meriter-chrome="stitch"] .mainWrap {
+    background-color: #0b0e14;
+  }
+
 
   /* Overlay inspector (default behavior) */
   .inspectorOverlay {

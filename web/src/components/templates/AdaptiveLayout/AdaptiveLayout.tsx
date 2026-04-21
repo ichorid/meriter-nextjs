@@ -9,13 +9,17 @@ import { CommentsColumn } from '@/components/organisms/CommentsColumn';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { WithdrawPopup } from '@/components/organisms/WithdrawPopup';
 import { ResizeHandle } from '@/components/atoms';
+import { MeriterChromeProvider, useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useInspectorWidth } from '@/hooks/useInspectorWidth';
 import { createCommentsColumnProps } from './helpers';
+import { cn } from '@/lib/utils';
 
 // Scroll to top button component
 const ScrollToTopButton: React.FC = () => {
+  const sc = useMeriterStitchChrome();
   const t = useTranslations('common.ariaLabels');
   const [showButton, setShowButton] = useState(false);
 
@@ -72,7 +76,12 @@ const ScrollToTopButton: React.FC = () => {
   return (
     <button
       onClick={handleScrollToTop}
-      className="fixed bottom-20 right-10 lg:bottom-6 lg:right-3 z-50 p-2.5 rounded-full bg-base-200 shadow-lg hover:bg-base-300 transition-all active:scale-95"
+      className={cn(
+        'fixed bottom-20 right-10 z-50 rounded-full p-2.5 transition-all active:scale-95 lg:bottom-6 lg:right-3',
+        sc
+          ? 'bg-stitch-surface2 text-stitch-text shadow-lg hover:bg-stitch-elevated'
+          : 'bg-base-200 shadow-lg hover:bg-base-300',
+      )}
       aria-label={t('scrollToTop')}
       title={t('scrollToTop')}
     >
@@ -121,6 +130,9 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  const stitchChrome =
+    Boolean(isAuthenticated && pathname?.startsWith('/meriter') && !pathname.includes('/login'));
   const selectedPostSlug = searchParams?.get('post');
   const showComments = !!selectedPostSlug;
   const tCommon = useTranslations('common');
@@ -175,11 +187,13 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
 
 
   return (
+    <MeriterChromeProvider stitch={stitchChrome}>
     <div
       className={`appShell ${className}`}
       data-inspector-mode={inspectorMode}
       data-comments-open={commentsOpen}
       data-header-visible={shouldShowHeader}
+      data-meriter-chrome={stitchChrome ? 'stitch' : undefined}
     >
       {/* Header - only render when ContextTopBar has content */}
       {shouldShowHeader && (
@@ -201,7 +215,11 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
           <div className="main pb-24 lg:pb-0">
             {/* Sticky Header - rendered inside main for proper sticky behavior */}
             {stickyHeader && !showCommentsInCenter && (
-              <div className="sticky top-0 z-20 bg-base-100 -mx-4 -mt-6 mb-4 px-0">
+              <div
+                className={`sticky top-0 z-20 -mx-4 -mt-6 mb-4 px-0 ${
+                  stitchChrome ? 'bg-stitch-canvas' : 'bg-base-100'
+                }`}
+              >
                 {stickyHeader}
               </div>
             )}
@@ -345,6 +363,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       {/* Mobile Bottom Navigation */}
       <BottomNavigation customTabs={bottomNavTabs} />
     </div>
+    </MeriterChromeProvider>
   );
 };
 

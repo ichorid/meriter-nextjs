@@ -5,6 +5,7 @@ import { Award } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { cn } from '@/lib/utils';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 interface MeritStat {
   communityId: string;
@@ -18,23 +19,33 @@ interface ProfileStatsProps {
 }
 
 function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
+  const sc = useMeriterStitchChrome();
   const t = useTranslations('profile');
 
-  const shellClass =
-    'rounded-2xl border border-base-300/50 bg-base-200/25 p-6 shadow-sm backdrop-blur-sm';
+  const shellClass = sc
+    ? 'rounded-2xl border-0 bg-stitch-surface p-6 shadow-none'
+    : 'rounded-2xl border border-base-300/50 bg-base-200/25 p-6 shadow-sm backdrop-blur-sm';
 
   if (isLoading) {
     return (
       <div className={shellClass}>
         <div className="mb-4 flex items-center space-x-3">
-          <div className="rounded-lg bg-primary/15 p-2 text-primary">
+          <div
+            className={cn(
+              'rounded-lg p-2',
+              sc ? 'bg-stitch-accent/15 text-stitch-accent' : 'bg-primary/15 text-primary',
+            )}
+          >
             <Award size={24} />
           </div>
-          <h2 className="text-lg font-bold text-base-content">{t('meritStats')}</h2>
+          <h2 className={cn('text-lg font-bold', sc ? 'text-stitch-text' : 'text-base-content')}>{t('meritStats')}</h2>
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-base-300/40" />
+            <div
+              key={i}
+              className={cn('h-16 animate-pulse rounded-xl', sc ? 'bg-stitch-surface2' : 'bg-base-300/40')}
+            />
           ))}
         </div>
       </div>
@@ -48,10 +59,17 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
   return (
     <div className={shellClass}>
       <div className="mb-5 flex items-center gap-3">
-        <div className="rounded-lg bg-primary/15 p-2 text-primary">
+        <div
+          className={cn(
+            'rounded-lg p-2',
+            sc ? 'bg-stitch-accent/15 text-stitch-accent' : 'bg-primary/15 text-primary',
+          )}
+        >
           <Award size={24} />
         </div>
-        <h2 className="text-lg font-bold tracking-tight text-base-content">{t('meritStats')}</h2>
+        <h2 className={cn('text-lg font-bold tracking-tight', sc ? 'text-stitch-text' : 'text-base-content')}>
+          {t('meritStats')}
+        </h2>
       </div>
 
       <div className="space-y-2.5">
@@ -59,16 +77,24 @@ function ProfileStatsComponent({ meritStats, isLoading }: ProfileStatsProps) {
           <div
             key={stat.communityId}
             className={cn(
-              'flex items-center justify-between rounded-xl border border-base-300/35 bg-base-100/70 p-4',
-              'transition-colors hover:border-primary/25 hover:bg-base-100',
+              'flex items-center justify-between rounded-xl p-4 transition-colors',
+              sc
+                ? 'border-0 bg-stitch-surface2 hover:bg-stitch-elevated'
+                : 'border border-base-300/35 bg-base-100/70 hover:border-primary/25 hover:bg-base-100',
             )}
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-base-content">{stat.communityName}</p>
-              <p className="mt-1 text-sm text-base-content/55">{t('meritAmount', { amount: stat.amount })}</p>
+              <p className={cn('truncate font-semibold', sc ? 'text-stitch-text' : 'text-base-content')}>
+                {stat.communityName}
+              </p>
+              <p className={cn('mt-1 text-sm', sc ? 'text-stitch-muted' : 'text-base-content/55')}>
+                {t('meritAmount', { amount: stat.amount })}
+              </p>
             </div>
             <div className="ml-4 shrink-0">
-              <div className="text-xl font-bold tabular-nums text-primary">{stat.amount}</div>
+              <div className={cn('text-xl font-bold tabular-nums', sc ? 'text-stitch-accent' : 'text-primary')}>
+                {stat.amount}
+              </div>
             </div>
           </div>
         ))}

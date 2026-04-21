@@ -15,6 +15,8 @@ import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { routes } from '@/lib/constants/routes';
 import { trackMeriterUiEvent, type NavPrimaryItem } from '@/lib/telemetry/meriter-ui-telemetry';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { cn } from '@/lib/utils';
 import {
     Dialog,
     DialogContent,
@@ -47,6 +49,7 @@ function primaryFromBottomPath(path: string): NavPrimaryItem | null {
 }
 
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
+    const sc = useMeriterStitchChrome();
     const pathname = usePathname();
     const router = useRouter();
     const t = useTranslations('common');
@@ -205,7 +208,12 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
 
     return (
         <div
-            className="fixed bottom-0 left-0 right-0 z-40 w-full border-t border-base-300/70 bg-base-100/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_40px_rgba(0,0,0,0.08)] backdrop-blur-lg lg:hidden"
+            className={cn(
+                'fixed bottom-0 left-0 right-0 z-40 w-full pb-[env(safe-area-inset-bottom)] lg:hidden',
+                sc
+                    ? 'border-t border-stitch-border bg-stitch-sidebar/98 text-stitch-text backdrop-blur-lg'
+                    : 'border-t border-base-300/70 bg-base-100/95 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] backdrop-blur-lg',
+            )}
             style={{ maxWidth: '100vw' }}
         >
             <div className="h-16 flex items-center justify-around px-2 py-1 w-full relative">
@@ -241,10 +249,23 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                             className="flex-1 flex flex-col items-center justify-center py-1 bg-transparent border-none relative"
                             type="button"
                         >
-                            <div className={`p-1.5 rounded-full ${active ? 'bg-primary/10' : 'bg-transparent'} relative`}>
+                            <div
+                                className={cn(
+                                    'relative rounded-full p-1.5',
+                                    active ? (sc ? 'bg-stitch-accent/15' : 'bg-primary/10') : 'bg-transparent',
+                                )}
+                            >
                                 <Icon
                                     size={24}
-                                    className={active ? 'text-primary' : 'text-base-content/60'}
+                                    className={cn(
+                                        active
+                                            ? sc
+                                                ? 'text-stitch-accent'
+                                                : 'text-primary'
+                                            : sc
+                                              ? 'text-stitch-muted'
+                                              : 'text-base-content/60',
+                                    )}
                                     strokeWidth={active ? 2.5 : 2}
                                 />
                                 {tab.badge && tab.badge > 0 && (
@@ -254,7 +275,16 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                                 )}
                             </div>
                             <span
-                                className={`text-xs mt-0.5 font-medium ${active ? 'text-primary' : 'text-base-content/60'}`}
+                                className={cn(
+                                    'mt-0.5 text-xs font-medium',
+                                    active
+                                        ? sc
+                                            ? 'text-stitch-accent'
+                                            : 'text-primary'
+                                        : sc
+                                          ? 'text-stitch-muted'
+                                          : 'text-base-content/60',
+                                )}
                             >
                                 {tab.name}
                             </span>

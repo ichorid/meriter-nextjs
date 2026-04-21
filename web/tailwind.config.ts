@@ -99,6 +99,19 @@ const config: Config = {
           DEFAULT: 'var(--error)',
           content: 'var(--error-content)',
         },
+        /** Authenticated /meriter dark shell (profile redesign reference) */
+        stitch: {
+          canvas: '#0b0e14',
+          sidebar: '#05070d',
+          surface: '#12161f',
+          surface2: '#181d2a',
+          elevated: '#1e2433',
+          border: 'rgba(148, 163, 184, 0.1)',
+          accent: '#a855f7',
+          accent2: '#7c3aed',
+          text: '#f1f5f9',
+          muted: '#94a3b8',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

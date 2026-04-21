@@ -11,6 +11,7 @@ import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { formatMerits } from '@/lib/utils/currency';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 export interface CommunityCardProps {
   communityId: string;
@@ -48,6 +49,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const t = useTranslations('common');
   const tCommunities = useTranslations('communities');
   const tProjects = useTranslations('projects');
+  const sc = useMeriterStitchChrome();
   const isActive = community?.isProject
     ? pathname === `/meriter/projects/${communityId}` || pathname?.startsWith(`/meriter/projects/${communityId}/`)
     : pathname?.includes(`/communities/${communityId}`);
@@ -123,10 +125,16 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
     return (
       <Link href={href}>
         <div
-          className={`relative flex w-full min-w-0 cursor-pointer flex-row items-start gap-3 overflow-visible rounded-xl border py-3 pl-4 pr-2 transition-all duration-200 ${hasCover ? 'border-white/15' : 'border-base-300/35'} ${isActive
-            ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01] ring-1 ring-primary/25'
-            : hasCover ? 'hover:border-white/25' : 'hover:border-primary/30'
-            } ${!isActive && !hasCover ? 'bg-base-200/80 hover:bg-base-300/90' : ''} ${isActive && !hasCover ? 'bg-base-300' : ''}`}
+          className={`relative flex w-full min-w-0 cursor-pointer flex-row items-start gap-3 overflow-visible rounded-xl py-3 pl-4 pr-2 transition-all duration-200 ${
+            hasCover
+              ? `border border-white/15 ${isActive ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01] ring-1 ring-primary/25' : 'hover:border-white/25'}`
+              : sc
+                ? `border-0 ${isActive ? 'bg-stitch-elevated ring-1 ring-stitch-accent/35' : 'bg-stitch-surface2 hover:bg-stitch-elevated'}`
+                : `border border-base-300/35 ${isActive
+                    ? 'shadow-[0_8px_16px_rgba(0,0,0,0.15)] -translate-y-0.5 scale-[1.01] ring-1 ring-primary/25'
+                    : 'hover:border-primary/30'
+                  } ${!isActive ? 'bg-base-200/80 hover:bg-base-300/90' : ''} ${isActive ? 'bg-base-300' : ''}`
+          }`}
           style={hasCover ? {
             backgroundImage: `linear-gradient(to right, rgba(0,0,0,0.7), rgba(0,0,0,0.4)), url(${coverImageUrl})`,
             backgroundSize: 'cover',
@@ -165,13 +173,18 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
             <div className={`flex flex-col items-start flex-1 min-w-0 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
               {/* Title section */}
               <div className="flex flex-col items-start w-full">
-                <div className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${hasCover ? 'text-white drop-shadow' : 'text-base-content'
-                  }`}>
+                <div
+                  className={`text-[15px] font-semibold leading-[18px] tracking-[0.374px] w-full ${
+                    hasCover ? 'text-white drop-shadow' : sc ? 'text-stitch-text' : 'text-base-content'
+                  }`}
+                >
                   {community.name}
                 </div>
                 {community.isProject && community.isPersonalProject === true && (
                   <span
-                    className={`text-[11px] font-medium uppercase tracking-wide mt-0.5 ${hasCover ? 'text-white/70' : 'text-base-content/50'}`}
+                    className={`text-[11px] font-medium uppercase tracking-wide mt-0.5 ${
+                      hasCover ? 'text-white/70' : sc ? 'text-stitch-muted' : 'text-base-content/50'
+                    }`}
                   >
                     {tProjects('personalProject')}
                   </span>
@@ -179,12 +192,20 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
                 {/* Merits indicator - right below name */}
                 {showMerits && (
                   <div className="flex items-center gap-1 min-w-0 flex-shrink mt-0.5">
-                    <span className={`text-[11px] leading-[14px] tracking-[0.374px] min-w-0 ${hasCover ? 'text-white/70' : 'text-base-content/60'
-                      }`}>
+                    <span
+                      className={`text-[11px] leading-[14px] tracking-[0.374px] min-w-0 ${
+                        hasCover ? 'text-white/70' : sc ? 'text-stitch-muted' : 'text-base-content/60'
+                      }`}
+                    >
                       {t('yourMerits')}:{' '}
                     </span>
-                    <span className={`text-xs font-medium whitespace-nowrap ${hasCover ? 'text-white/80' : 'text-base-content/70'
-                      }`}>{balance}</span>
+                    <span
+                      className={`text-xs font-medium whitespace-nowrap ${
+                        hasCover ? 'text-white/80' : sc ? 'text-stitch-text' : 'text-base-content/70'
+                      }`}
+                    >
+                      {balance}
+                    </span>
                     {currencyIconUrl && (
                       <img
                         src={currencyIconUrl}
@@ -198,8 +219,11 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
               {/* Description */}
               {!hideDescription && community.description && (
-                <div className={`text-xs leading-[14px] tracking-[0.374px] w-full mt-4 ${hasCover ? 'text-white/70' : 'text-base-content/60'
-                  }`}>
+                <div
+                  className={`text-xs leading-[14px] tracking-[0.374px] w-full mt-4 ${
+                    hasCover ? 'text-white/70' : sc ? 'text-stitch-muted' : 'text-base-content/60'
+                  }`}
+                >
                   {community.description}
                 </div>
               )}
@@ -209,8 +233,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           {/* Right section: Chevron */}
           <div className={`flex items-start flex-shrink-0 w-6 h-6 ${!showIndicators && hideDescription ? 'self-center' : ''}`}>
             <ChevronRight
-              className={`w-6 h-6 ${hasCover ? 'text-white/60' : 'text-base-content/60'
-                }`}
+              className={`w-6 h-6 ${hasCover ? 'text-white/60' : sc ? 'text-stitch-muted' : 'text-base-content/60'}`}
             />
           </div>
         </div>

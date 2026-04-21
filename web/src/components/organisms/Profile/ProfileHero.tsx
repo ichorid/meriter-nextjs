@@ -14,9 +14,7 @@ import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 import type { User } from '@/types/api-v1';
 import { cn } from '@/lib/utils';
 import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
-
-const sectionCardClass =
-  'rounded-xl border border-base-300/40 bg-base-100/50 backdrop-blur-sm py-4 px-4 sm:px-4 space-y-3';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 interface ProfileHeroProps {
   user: User | null | undefined;
@@ -38,6 +36,10 @@ function ProfileHeroComponent({
   onEdit,
   meritsHeroSlot,
 }: ProfileHeroProps) {
+  const sc = useMeriterStitchChrome();
+  const sectionCardClass = sc
+    ? 'rounded-xl border-0 bg-stitch-surface2/90 py-4 px-4 sm:px-4 space-y-3'
+    : 'rounded-xl border border-base-300/40 bg-base-100/50 backdrop-blur-sm py-4 px-4 sm:px-4 space-y-3';
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const tShared = useTranslations('shared');
@@ -69,55 +71,114 @@ function ProfileHeroComponent({
     await shareUrl(getProfileUrl(user.id), tShared('urlCopiedToBuffer'));
   };
 
-  return (
-    <div className="relative mb-6 overflow-hidden rounded-2xl border border-base-300/50 bg-base-200/15 shadow-sm">
-      <div className="relative h-28 bg-gradient-to-br from-primary/18 via-base-content/[0.07] to-transparent sm:h-32">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -right-16 -top-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
-        </div>
-        <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
-          {showEdit && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  trackMeriterUiEvent({ name: 'profile_edit_open' });
-                  if (onEdit) onEdit();
-                  else router.push('/meriter/profile/edit');
-                }}
-                className="h-8 rounded-xl border border-base-300/30 bg-base-100/85 px-3 text-base-content/80 shadow-sm backdrop-blur-sm hover:bg-base-100 active:scale-[0.98]"
-              >
-                <Edit size={14} className="mr-1.5" />
-                <span className="text-xs font-medium">{tCommon('edit')}</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  trackMeriterUiEvent({ name: 'profile_settings_open' });
-                  router.push('/meriter/settings');
-                }}
-                aria-label={tCommon('settings')}
-                className="h-8 w-8 rounded-xl border border-base-300/30 bg-base-100/85 p-0 text-base-content/80 shadow-sm backdrop-blur-sm hover:bg-base-100 active:scale-[0.98]"
-              >
-                <Settings size={18} />
-              </Button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={handleShareProfile}
-            className="flex-shrink-0 rounded-full border border-base-300/30 bg-base-100/85 p-2 text-base-content/65 shadow-sm backdrop-blur-sm transition-colors hover:bg-base-100 hover:text-base-content"
-            aria-label={tShared('share')}
-            title={tShared('share')}
-          >
-            <Share2 className="h-4 w-4" aria-hidden />
-          </button>
-        </div>
-      </div>
+  const locationLine =
+    location?.city || location?.region
+      ? [location?.city, location?.region].filter(Boolean).join(', ')
+      : null;
 
-      <div className="relative z-10 -mt-10 px-4 pb-6 sm:px-6">
+  const actionBtnClass = sc
+    ? 'h-8 rounded-xl border-0 bg-white/[0.06] px-3 text-stitch-text shadow-none backdrop-blur-sm hover:bg-white/[0.1] active:scale-[0.98]'
+    : 'h-8 rounded-xl border border-base-300/30 bg-base-100/85 px-3 text-base-content/80 shadow-sm backdrop-blur-sm hover:bg-base-100 active:scale-[0.98]';
+
+  return (
+    <div
+      className={cn(
+        'relative mb-6 overflow-hidden rounded-2xl',
+        sc ? 'border-0 bg-stitch-surface shadow-none' : 'border border-base-300/50 bg-base-200/15 shadow-sm',
+      )}
+    >
+      {!sc ? (
+        <div className="relative h-28 bg-gradient-to-br from-primary/18 via-base-content/[0.07] to-transparent sm:h-32">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute -right-16 -top-24 h-56 w-56 rounded-full bg-primary/15 blur-3xl" />
+          </div>
+          <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+            {showEdit && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_edit_open' });
+                    if (onEdit) onEdit();
+                    else router.push('/meriter/profile/edit');
+                  }}
+                  className={actionBtnClass}
+                >
+                  <Edit size={14} className="mr-1.5" />
+                  <span className="text-xs font-medium">{tCommon('edit')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_settings_open' });
+                    router.push('/meriter/settings');
+                  }}
+                  aria-label={tCommon('settings')}
+                  className="h-8 w-8 rounded-xl border border-base-300/30 bg-base-100/85 p-0 text-base-content/80 shadow-sm backdrop-blur-sm hover:bg-base-100 active:scale-[0.98]"
+                >
+                  <Settings size={18} />
+                </Button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleShareProfile}
+              className="flex-shrink-0 rounded-full border border-base-300/30 bg-base-100/85 p-2 text-base-content/65 shadow-sm backdrop-blur-sm transition-colors hover:bg-base-100 hover:text-base-content"
+              aria-label={tShared('share')}
+              title={tShared('share')}
+            >
+              <Share2 className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="relative h-14 bg-gradient-to-r from-stitch-accent/12 via-transparent to-transparent sm:h-16">
+          <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+            {showEdit && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_edit_open' });
+                    if (onEdit) onEdit();
+                    else router.push('/meriter/profile/edit');
+                  }}
+                  className={actionBtnClass}
+                >
+                  <Edit size={14} className="mr-1.5" />
+                  <span className="text-xs font-medium">{tCommon('edit')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_settings_open' });
+                    router.push('/meriter/settings');
+                  }}
+                  aria-label={tCommon('settings')}
+                  className="h-8 w-8 rounded-xl border-0 bg-white/[0.06] p-0 text-stitch-text hover:bg-white/[0.1]"
+                >
+                  <Settings size={18} />
+                </Button>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={handleShareProfile}
+              className="flex-shrink-0 rounded-full border-0 bg-white/[0.06] p-2 text-stitch-muted transition-colors hover:bg-white/[0.1] hover:text-stitch-text"
+              aria-label={tShared('share')}
+              title={tShared('share')}
+            >
+              <Share2 className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={cn('relative z-10 px-4 pb-6 sm:px-6', sc ? 'pt-5' : '-mt-10')}>
         <div
           className={cn(
             'grid gap-6',
@@ -129,10 +190,12 @@ function ProfileHeroComponent({
               <div className="relative shrink-0">
                 <Avatar
                   className={cn(
-                    'border-4 border-base-100 bg-base-200 text-xl shadow-lg ring-2 ring-base-300/25',
                     meritsHeroSlot
                       ? 'h-28 w-28 rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]'
                       : 'h-20 w-20 rounded-2xl',
+                    sc
+                      ? 'border-4 border-stitch-canvas bg-stitch-surface2 text-xl shadow-lg ring-1 ring-white/10'
+                      : 'border-4 border-base-100 bg-base-200 text-xl shadow-lg ring-2 ring-base-300/25',
                   )}
                 >
                   {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
@@ -140,43 +203,80 @@ function ProfileHeroComponent({
                     {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
                   </AvatarFallback>
                 </Avatar>
-                <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-base-100 bg-success" />
+                <div
+                  className={cn(
+                    'absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 bg-success',
+                    sc ? 'border-stitch-canvas' : 'border-base-100',
+                  )}
+                />
               </div>
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-base-content sm:text-3xl">{displayName}</h1>
+              <h1
+                className={cn(
+                  'text-2xl font-bold tracking-tight sm:text-3xl',
+                  sc ? 'text-stitch-text' : 'text-base-content',
+                )}
+              >
+                {displayName}
+              </h1>
+              {locationLine ? (
+                <p className={cn('mt-1 text-sm font-medium', sc ? 'text-stitch-accent' : 'text-base-content/60')}>
+                  {locationLine}
+                </p>
+              ) : null}
               {user.username && (
-                <p className="mt-1 text-sm font-medium text-base-content/50">@{user.username}</p>
+                <p className={cn('mt-1 text-sm font-medium', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
+                  @{user.username}
+                </p>
               )}
             </div>
 
-            {bio && <p className="text-sm leading-relaxed text-base-content/80">{bio}</p>}
+            {bio && (
+              <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-muted' : 'text-base-content/80')}>{bio}</p>
+            )}
 
             {about && (
               <>
-                {bio ? <Separator className="my-1 bg-base-300/60" /> : null}
+                {bio ? (
+                  <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
+                ) : null}
                 <div className={sectionCardClass}>
                   <button
                     type="button"
                     onClick={() => setAboutExpanded(!aboutExpanded)}
                     className="flex w-full items-center justify-between transition-opacity hover:opacity-90"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-base-content/45">{t('about')}</p>
+                    <p
+                      className={cn(
+                        'text-xs font-semibold uppercase tracking-wide',
+                        sc ? 'text-stitch-muted' : 'text-base-content/45',
+                      )}
+                    >
+                      {t('about')}
+                    </p>
                     {aboutExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-base-content/40" />
+                      <ChevronUp className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-base-content/40" />
+                      <ChevronDown className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
                     )}
                   </button>
                   {aboutExpanded && (
                     <div className="animate-in fade-in space-y-3 duration-200">
-                      <p className="text-sm leading-relaxed text-base-content/75">{about}</p>
+                      <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-text/90' : 'text-base-content/75')}>
+                        {about}
+                      </p>
                       {(location?.city || website) && (
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/55">
+                        <div
+                          className={cn(
+                            'flex flex-wrap items-center gap-x-4 gap-y-1 text-sm',
+                            sc ? 'text-stitch-muted' : 'text-base-content/55',
+                          )}
+                        >
                           {location?.city && location?.region && (
                             <span className="flex items-center gap-1">
-                              <span className="text-base-content/30">📍</span>
+                              <span className={sc ? 'text-stitch-muted/60' : 'text-base-content/30'}>📍</span>
                               {location.city}, {location.region}
                             </span>
                           )}
@@ -185,7 +285,10 @@ function ProfileHeroComponent({
                               href={website}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary/90 transition-colors hover:text-primary hover:underline"
+                              className={cn(
+                                'transition-colors hover:underline',
+                                sc ? 'text-stitch-accent hover:text-stitch-accent' : 'text-primary/90 hover:text-primary',
+                              )}
                             >
                               {website.replace(/^https?:\/\//, '')}
                             </a>
@@ -200,12 +303,21 @@ function ProfileHeroComponent({
 
             {isRepresentativeOrMember && educationalInstitution && (
               <>
-                {(about || bio) ? <Separator className="my-1 bg-base-300/60" /> : null}
+                {(about || bio) ? (
+                  <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
+                ) : null}
                 <div className={sectionCardClass}>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-base-content/45">
+                  <p
+                    className={cn(
+                      'mb-1 text-xs font-semibold uppercase tracking-wide',
+                      sc ? 'text-stitch-muted' : 'text-base-content/45',
+                    )}
+                  >
                     {t('educationalInstitution')}
                   </p>
-                  <p className="text-sm text-base-content/75">{educationalInstitution}</p>
+                  <p className={cn('text-sm', sc ? 'text-stitch-text/90' : 'text-base-content/75')}>
+                    {educationalInstitution}
+                  </p>
                 </div>
               </>
             )}
@@ -213,7 +325,7 @@ function ProfileHeroComponent({
             {showContacts && contacts && (contacts.email || contacts.messenger) && (
               <>
                 {(about || bio || (isRepresentativeOrMember && educationalInstitution)) ? (
-                  <Separator className="my-1 bg-base-300/60" />
+                  <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
                 ) : null}
                 <div className={sectionCardClass}>
                   <button
@@ -221,13 +333,18 @@ function ProfileHeroComponent({
                     onClick={() => setContactsExpanded(!contactsExpanded)}
                     className="flex w-full items-center justify-between transition-opacity hover:opacity-90"
                   >
-                    <p className="text-xs font-semibold uppercase tracking-wide text-base-content/45">
+                    <p
+                      className={cn(
+                        'text-xs font-semibold uppercase tracking-wide',
+                        sc ? 'text-stitch-muted' : 'text-base-content/45',
+                      )}
+                    >
                       {t('contacts')}
                     </p>
                     {contactsExpanded ? (
-                      <ChevronUp className="h-4 w-4 text-base-content/40" />
+                      <ChevronUp className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
                     ) : (
-                      <ChevronDown className="h-4 w-4 text-base-content/40" />
+                      <ChevronDown className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
                     )}
                   </button>
                   {contactsExpanded && (
@@ -257,7 +374,14 @@ function ProfileHeroComponent({
           </div>
 
           {meritsHeroSlot ? (
-            <div className="min-w-0 rounded-xl border border-base-300/50 bg-base-100/75 p-5 shadow-sm backdrop-blur-sm lg:sticky lg:top-4 lg:col-span-4 lg:self-start">
+            <div
+              className={cn(
+                'min-w-0 rounded-xl p-5 lg:sticky lg:top-4 lg:col-span-4 lg:self-start',
+                sc
+                  ? 'border-0 bg-stitch-surface2/90 shadow-none'
+                  : 'border border-base-300/50 bg-base-100/75 shadow-sm backdrop-blur-sm',
+              )}
+            >
               {meritsHeroSlot}
             </div>
           ) : null}
