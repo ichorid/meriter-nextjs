@@ -73,7 +73,7 @@ Structure and layer overview: see @architecture.mdc.
 
 ## Related Rules
 
-Use this file as the first entry point. For domain/business logic: open @business-index.mdc for routing, then the relevant business-*.mdc from its "Business Rules File Structure" table. For code structure and layers use @architecture.mdc; for frontend patterns @frontend.mdc; for backend patterns @backend.mdc.
+Use this file as the first entry point. For domain/business logic: open @business-index.mdc for routing, then the relevant business-*.mdc from its "Business Rules File Structure" table. For code structure and layers use @architecture.mdc; for frontend patterns @frontend.mdc; for backend patterns @backend.mdc. For UI look-and-feel and Russian product copy for заслуги: @design-system.mdc.
 
 - @business-index.mdc — Voting rules, permissions, merit flow (routing to business-*.mdc)
 - @business-projects.mdc — Cooperative projects (isProject), tickets, Birzha from project, CommunityWallet
@@ -81,6 +81,7 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @business-merit-transfer.mdc — Peer merit transfers (`meritTransfer` tRPC, UI feeds)
 - @business-events.mdc — Event publications, RSVP, invites, `eventCreation`, event-linked transfers
 - @architecture.mdc — Repository structure and code layers
+- @design-system.mdc — Volt Obsidian / light tokens, Manrope, spacing, copy policy (Заслуги)
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
 - @backend.mdc — NestJS/tRPC patterns
