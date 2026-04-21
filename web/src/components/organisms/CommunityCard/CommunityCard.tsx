@@ -11,12 +11,15 @@ import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { formatMerits } from '@/lib/utils/currency';
+import { cn } from '@/lib/utils';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
 export interface CommunityCardProps {
   communityId: string;
   pathname: string | null;
   isExpanded?: boolean;
+  /** Dense row: avatar + name + merits (stitch sidebar lists). */
+  compact?: boolean;
   hideDescription?: boolean; // Hide description when used in sidebar
   wallet?: {
     balance: number;
@@ -39,6 +42,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   communityId,
   pathname,
   isExpanded = false,
+  compact = false,
   hideDescription = false,
   wallet,
   quota,
@@ -119,6 +123,55 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
   const hasCover = !!coverImageUrl;
 
   const href = community.isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
+
+  const meritSuffix =
+    wallet && hasMembershipRole ? (
+      <span
+        className={cn(
+          'shrink-0 text-xs font-semibold tabular-nums',
+          sc ? 'text-stitch-accent' : 'text-primary',
+        )}
+      >
+        {formatMerits(wallet.balance || 0)}
+      </span>
+    ) : null;
+
+  if (isExpanded && compact) {
+    return (
+      <Link href={href} className="block min-w-0">
+        <div
+          className={cn(
+            'flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1.5 transition-colors',
+            sc
+              ? isActive
+                ? 'bg-stitch-accent/12 text-stitch-text'
+                : 'hover:bg-white/[0.05]'
+              : isActive
+                ? 'bg-base-300'
+                : 'hover:bg-base-300/70',
+          )}
+        >
+          <CommunityAvatar
+            avatarUrl={community.avatarUrl}
+            communityName={community.name}
+            communityId={community.id}
+            size={32}
+            needsSetup={community.needsSetup}
+            className={cn('shrink-0', sc ? 'bg-stitch-surface2' : 'bg-base-300')}
+          />
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate text-[13px] font-medium leading-tight',
+              sc ? 'text-stitch-text' : 'text-base-content',
+            )}
+          >
+            {community.name}
+          </span>
+          {meritSuffix}
+        </div>
+      </Link>
+    );
+  }
 
   // Expanded version (desktop)
   if (isExpanded) {

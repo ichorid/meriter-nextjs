@@ -322,6 +322,8 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             </div>
           </div>
 
+          {!sc ? (
+            <>
           <div className={cn(paddingClass, 'mb-2 mt-1')}>
             <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} role="separator" aria-hidden />
           </div>
@@ -418,7 +420,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         <span
                           className={cn(
                             'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
-                            sc ? 'bg-amber-500/90 text-stitch-canvas' : pathname === `${routes.profile}/favorites`
+                            sc ? 'bg-amber-500/90 text-white' : pathname === `${routes.profile}/favorites`
                               ? 'bg-primary-content text-primary'
                               : 'bg-warning text-warning-content',
                           )}
@@ -446,7 +448,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                       <span
                         className={cn(
                           'absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-semibold',
-                          sc ? 'bg-amber-500/90 text-stitch-canvas' : pathname === `${routes.profile}/favorites`
+                          sc ? 'bg-amber-500/90 text-white' : pathname === `${routes.profile}/favorites`
                             ? 'bg-primary-content text-primary'
                             : 'bg-warning text-warning-content',
                         )}
@@ -459,10 +461,11 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               </button>
             </Link>
           </div>
-        </>
-      )}
+            </>
+          ) : null}
 
-      {/* My profile (unified nav item) */}
+      {/* My profile — only when not using stitch top bar cluster */}
+      {!sc ? (
       <div className={paddingClass}>
         <Link
           href={routes.profile}
@@ -514,9 +517,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
           </button>
         </Link>
       </div>
+      ) : null}
 
-      {/* Support (dynamic label from community name; below My profile, above About) */}
-      {(() => {
+      {/* Support — stitch: removed (use hubs / search elsewhere) */}
+      {!sc ? (() => {
         const support = allCommunities.find((c) => c.typeTag === 'support');
         if (!support) return null;
         const isActive = pathname === routes.community(support.id);
@@ -546,10 +550,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             </Link>
           </div>
         );
-      })()}
+      })() : null}
 
-      {/* About Button */}
-      {isAuthenticated && (
+      {/* About — legacy sidebar only */}
+      {isAuthenticated && !sc && (
         <div className={paddingClass}>
           <Link
             href={routes.about}
@@ -584,6 +588,9 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         </div>
       )}
 
+        </>
+      )}
+
       {/* Desktop only: scrollable communities (Administrator / Member, same as profile) */}
       {isAuthenticated && isExpanded && (
         <>
@@ -591,7 +598,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} />
           </div>
           <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
-            <div className="flex flex-col gap-3 min-w-0">
+            <div className={cn('flex flex-col min-w-0', sc ? 'gap-2' : 'gap-3')}>
               <div className="flex flex-col gap-1 min-w-0">
                 <p
                   className={cn(
@@ -613,6 +620,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         communityId={community.id}
                         pathname={pathname}
                         isExpanded={true}
+                        compact={sc}
                         hideDescription={true}
                         wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                         quota={
@@ -648,6 +656,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         communityId={community.id}
                         pathname={pathname}
                         isExpanded={true}
+                        compact={sc}
                         hideDescription={true}
                         wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                         quota={
@@ -683,6 +692,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         communityId={community.id}
                         pathname={pathname}
                         isExpanded={true}
+                        compact={sc}
                         hideDescription={true}
                         wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                         quota={
@@ -718,6 +728,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         communityId={community.id}
                         pathname={pathname}
                         isExpanded={true}
+                        compact={sc}
                         hideDescription={true}
                         wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                         quota={

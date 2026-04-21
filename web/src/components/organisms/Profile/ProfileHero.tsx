@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User as UserIcon, Edit, Settings, ChevronDown, ChevronUp, Mail, Share2 } from 'lucide-react';
+import { User as UserIcon, Edit, Settings, ChevronDown, ChevronUp, Mail, Share2, MessageCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { Button } from '@/components/ui/shadcn/button';
 import { useTranslations } from 'next-intl';
@@ -62,6 +62,48 @@ function ProfileHeroComponent({
     user.globalRole === 'superadmin' || userRoles.some((r) => r.role === 'lead' || r.role === 'participant');
 
   const showContacts = user.globalRole === 'superadmin' || userRoles.some((r) => r.role === 'lead');
+
+  const hasContactFields = Boolean(contacts?.email || contacts?.messenger);
+  const messengerRaw = contacts?.messenger?.trim() ?? '';
+  const messengerIsUrl = /^https?:\/\//i.test(messengerRaw);
+
+  const contactInlineChipClass = cn(
+    'inline-flex max-w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors',
+    sc
+      ? 'bg-white/[0.06] text-stitch-text hover:bg-white/[0.1]'
+      : 'bg-base-200/60 text-base-content hover:bg-base-200',
+  );
+
+  const stitchContactRow =
+    sc && showContacts && hasContactFields && contacts ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {contacts.email ? (
+          <a href={`mailto:${contacts.email}`} className={contactInlineChipClass} title={contacts.email}>
+            <Mail className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+            <span className="truncate">{contacts.email}</span>
+          </a>
+        ) : null}
+        {messengerRaw ? (
+          messengerIsUrl ? (
+            <a
+              href={messengerRaw}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={contactInlineChipClass}
+              title={messengerRaw}
+            >
+              <MessageCircle className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+              <span className="truncate max-w-[220px]">{messengerRaw.replace(/^https?:\/\//, '')}</span>
+            </a>
+          ) : (
+            <span className={cn(contactInlineChipClass, 'cursor-default')} title={messengerRaw}>
+              <MessageCircle className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+              <span className="truncate max-w-[220px]">{messengerRaw}</span>
+            </span>
+          )
+        ) : null}
+      </div>
+    ) : null;
 
   const handleShareProfile = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -137,33 +179,19 @@ function ProfileHeroComponent({
         <div className="relative h-14 bg-gradient-to-r from-stitch-accent/12 via-transparent to-transparent sm:h-16">
           <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
             {showEdit && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    trackMeriterUiEvent({ name: 'profile_edit_open' });
-                    if (onEdit) onEdit();
-                    else router.push('/meriter/profile/edit');
-                  }}
-                  className={actionBtnClass}
-                >
-                  <Edit size={14} className="mr-1.5" />
-                  <span className="text-xs font-medium">{tCommon('edit')}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    trackMeriterUiEvent({ name: 'profile_settings_open' });
-                    router.push('/meriter/settings');
-                  }}
-                  aria-label={tCommon('settings')}
-                  className="h-8 w-8 rounded-xl border-0 bg-white/[0.06] p-0 text-stitch-text hover:bg-white/[0.1]"
-                >
-                  <Settings size={18} />
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  trackMeriterUiEvent({ name: 'profile_edit_open' });
+                  if (onEdit) onEdit();
+                  else router.push('/meriter/profile/edit');
+                }}
+                className={actionBtnClass}
+              >
+                <Edit size={14} className="mr-1.5" />
+                <span className="text-xs font-medium">{tCommon('edit')}</span>
+              </Button>
             )}
             <button
               type="button"
@@ -194,7 +222,7 @@ function ProfileHeroComponent({
                       ? 'h-28 w-28 rounded-2xl sm:h-[5.5rem] sm:w-[5.5rem]'
                       : 'h-20 w-20 rounded-2xl',
                     sc
-                      ? 'border-4 border-stitch-canvas bg-stitch-surface2 text-xl shadow-lg ring-1 ring-white/10'
+                      ? 'border-4 border-stitch-canvas bg-stitch-surface2 text-xl shadow-lg ring-1 ring-stitch-border/80'
                       : 'border-4 border-base-100 bg-base-200 text-xl shadow-lg ring-2 ring-base-300/25',
                   )}
                 >
@@ -233,9 +261,13 @@ function ProfileHeroComponent({
               )}
             </div>
 
+            {stitchContactRow && !bio && !about ? <div className="mt-2">{stitchContactRow}</div> : null}
+
             {bio && (
               <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-muted' : 'text-base-content/80')}>{bio}</p>
             )}
+
+            {stitchContactRow && bio ? <div className="mt-2">{stitchContactRow}</div> : null}
 
             {about && (
               <>
@@ -267,6 +299,7 @@ function ProfileHeroComponent({
                       <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-text/90' : 'text-base-content/75')}>
                         {about}
                       </p>
+                      {stitchContactRow && !bio ? <div className="mt-2">{stitchContactRow}</div> : null}
                       {(location?.city || website) && (
                         <div
                           className={cn(
@@ -322,7 +355,7 @@ function ProfileHeroComponent({
               </>
             )}
 
-            {showContacts && contacts && (contacts.email || contacts.messenger) && (
+            {showContacts && contacts && (contacts.email || contacts.messenger) && !sc && (
               <>
                 {(about || bio || (isRepresentativeOrMember && educationalInstitution)) ? (
                   <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />

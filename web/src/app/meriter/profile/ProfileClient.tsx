@@ -202,8 +202,8 @@ function ProfilePageComponent() {
         <div>
           <div
             className={cn(
-              'mt-1 overflow-hidden rounded-2xl',
-              sc ? 'border-0 bg-stitch-surface shadow-none' : 'border border-base-300/45 bg-base-200/15 shadow-sm',
+              'mt-1 overflow-hidden rounded-2xl border-0',
+              sc ? 'bg-stitch-surface shadow-none' : 'bg-base-200/20 shadow-none',
             )}
           >
             <ProfileMeritsActivityPanel
@@ -221,8 +221,8 @@ function ProfilePageComponent() {
         <div>
           <div
             className={cn(
-              'mt-6 space-y-5 rounded-2xl p-4 sm:p-5',
-              sc ? 'border-0 bg-stitch-surface shadow-none' : 'border border-base-300/45 bg-base-200/15 shadow-sm',
+              'mt-1 space-y-4 overflow-hidden rounded-2xl border-0 px-0 py-4',
+              sc ? 'bg-stitch-surface shadow-none' : 'bg-base-200/20 shadow-none',
             )}
           >
             <p
@@ -249,6 +249,7 @@ function ProfilePageComponent() {
                       communityId={community.id}
                       pathname={pathname}
                       isExpanded={true}
+                      compact={sc}
                       wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                       quota={
                         quota && typeof quota.remainingToday === 'number'
@@ -303,6 +304,7 @@ function ProfilePageComponent() {
                       communityId={community.id}
                       pathname={pathname}
                       isExpanded={true}
+                      compact={sc}
                       wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                       quota={
                         quota && typeof quota.remainingToday === 'number'
@@ -342,6 +344,7 @@ function ProfilePageComponent() {
                       communityId={community.id}
                       pathname={pathname}
                       isExpanded={true}
+                      compact={sc}
                       wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                       quota={
                         quota && typeof quota.remainingToday === 'number'
@@ -381,6 +384,7 @@ function ProfilePageComponent() {
                       communityId={community.id}
                       pathname={pathname}
                       isExpanded={true}
+                      compact={sc}
                       wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
                       quota={
                         quota && typeof quota.remainingToday === 'number'

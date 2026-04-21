@@ -224,12 +224,12 @@ function ProfileContentCardsComponent({
                     'cursor-pointer text-left transition-colors group',
                     embedded
                       ? cn(
-                          'min-h-[5.25rem] rounded-xl p-3 sm:min-h-[5.5rem] sm:p-3.5',
+                          'flex min-h-[4.75rem] flex-col items-center justify-center gap-1 rounded-2xl px-2 py-3 text-center sm:min-h-[5rem] sm:px-3',
                           sc
                             ? 'border-0 bg-stitch-surface2/90 shadow-none hover:bg-stitch-elevated active:bg-stitch-elevated'
-                            : 'border border-base-300/45 bg-base-200/35 shadow-sm hover:border-primary/25 hover:bg-base-200/55 active:bg-base-200/65',
+                            : 'border-0 bg-base-200/40 shadow-none hover:bg-base-200/55 active:bg-base-200/65',
                           stat.isHighlighted &&
-                            (sc ? 'ring-2 ring-amber-400/35 ring-offset-0' : 'ring-2 ring-warning/40 ring-offset-2 ring-offset-base-100'),
+                            (sc ? 'ring-2 ring-amber-400/35 ring-offset-0' : 'ring-2 ring-warning/35 ring-offset-0'),
                         )
                       : cn(
                           stat.bgColor,
@@ -239,19 +239,11 @@ function ProfileContentCardsComponent({
                   )}
                 >
                   {embedded ? (
-                    <div className="flex h-full flex-col gap-2">
-                      <Icon
-                        className={cn(
-                          stat.iconClassName,
-                          sc
-                            ? 'h-5 w-5 shrink-0 text-stitch-muted transition-colors group-hover:text-stitch-accent'
-                            : 'h-5 w-5 shrink-0 text-base-content/45 transition-colors group-hover:text-base-content/65',
-                        )}
-                      />
+                    <>
                       {!stat.hideValue ? (
                         <span
                           className={cn(
-                            'text-xl font-bold tabular-nums leading-none tracking-tight sm:text-2xl',
+                            'text-2xl font-bold tabular-nums leading-none tracking-tight sm:text-3xl',
                             sc ? 'text-stitch-text' : 'text-base-content',
                           )}
                         >
@@ -260,13 +252,13 @@ function ProfileContentCardsComponent({
                       ) : null}
                       <p
                         className={cn(
-                          'mt-auto text-[10px] font-semibold uppercase leading-snug tracking-wide sm:text-[11px]',
-                          sc ? 'text-stitch-muted' : 'text-sm font-medium text-base-content/75',
+                          'max-w-full text-[10px] font-semibold uppercase leading-snug tracking-wide',
+                          sc ? 'text-stitch-muted' : 'text-base-content/70',
                         )}
                       >
                         {stat.label}
                       </p>
-                    </div>
+                    </>
                   ) : (
                     <>
                       <div
