@@ -148,7 +148,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       {isAuthenticated && sc && isExpanded && (
         <div className={cn(paddingClass, 'mb-5')}>
           <Link href={routes.futureVisions} className="block px-2">
-            <span className="font-serif text-2xl font-bold italic tracking-tight text-stitch-text">Meriter</span>
+            <span className="font-sans text-2xl font-bold tracking-tight text-stitch-text">Meriter</span>
           </Link>
         </div>
       )}
