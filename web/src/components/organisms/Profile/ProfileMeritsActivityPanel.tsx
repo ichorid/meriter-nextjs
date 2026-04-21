@@ -19,16 +19,17 @@ export function ProfileMeritsActivityPanel({ meritsSlot, activitySlot, className
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-2xl border border-base-300/50 bg-base-100 shadow-sm',
-        'ring-1 ring-black/[0.04] dark:ring-white/[0.06]',
+        'bg-base-100',
+        // One soft surface — no extra frame (matches profile lists below)
+        'rounded-md sm:rounded-lg',
         className,
       )}
     >
       {showMerits ? (
         <>
-          <div className="px-3 pb-2 pt-2.5 sm:px-4 sm:pb-2.5 sm:pt-3">{meritsSlot}</div>
+          <div className="px-1 pb-1.5 pt-1 sm:px-0 sm:pb-2 sm:pt-1.5">{meritsSlot}</div>
           <div
-            className="mx-3 h-px shrink-0 bg-base-300/55 sm:mx-4"
+            className="h-px w-full bg-base-content/[0.06] dark:bg-base-content/[0.08]"
             role="presentation"
             aria-hidden
           />
@@ -36,9 +37,9 @@ export function ProfileMeritsActivityPanel({ meritsSlot, activitySlot, className
       ) : null}
       <div
         className={cn(
-          'px-3 py-2.5 sm:px-4 sm:py-3',
-          !showMerits && 'pt-3 sm:pt-4',
-          showMerits && 'pt-2 sm:pt-2.5',
+          'px-1 py-2 sm:px-0 sm:py-2.5',
+          !showMerits && 'pt-2.5 sm:pt-3',
+          showMerits && 'pt-1.5 sm:pt-2',
         )}
       >
         {activitySlot}

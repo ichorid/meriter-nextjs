@@ -111,10 +111,7 @@ export function MeritsAndQuotaSection({
         <div className="animate-in fade-in duration-200 space-y-2.5">
           {meritHistoryHref && !showGlobalMeritBlock ? (
             <div className="flex justify-start pl-0.5">
-              <ProfileMeritHistoryLink
-                href={meritHistoryHref}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-base-content/10 bg-base-200/30 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-base-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
-              />
+              <ProfileMeritHistoryLink href={meritHistoryHref} />
             </div>
           ) : null}
           {showGlobalMeritBlock && firstPriorityId ? (
@@ -122,6 +119,7 @@ export function MeritsAndQuotaSection({
               userId={userId}
               walletCommunityId={firstPriorityId}
               meritHistoryHref={meritHistoryHref ?? undefined}
+              flat={embedded}
             />
           ) : null}
           {showLocalTeamGroups && hasLocal && (
@@ -156,42 +154,56 @@ function GlobalMeritBlock({
   userId,
   walletCommunityId,
   meritHistoryHref,
+  flat = false,
 }: {
   userId: string;
   walletCommunityId: string;
   meritHistoryHref?: string;
+  /** No inner card frame — aligns with ProfileMeritsActivityPanel */
+  flat?: boolean;
 }) {
   const tCommon = useTranslations('common');
   const { data: globalWallet } = useOtherUserWallet(userId, walletCommunityId);
 
   const balance = globalWallet?.balance ?? 0;
 
-  return (
-    <div className="rounded-xl border border-base-300/30 bg-base-200/20 p-2.5 sm:border-base-300/40 sm:bg-base-200/25 sm:p-3">
-      <div className="flex gap-2 sm:gap-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-9 sm:w-9">
-          <Coins className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
-        </div>
-        <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:gap-x-3">
-            <p className="text-xs font-semibold leading-tight text-base-content sm:text-sm">
-              {tCommon('sharedMerit')}
-            </p>
-            <p className="text-lg font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-xl md:text-2xl">
-              {formatMerits(balance)}
-            </p>
-          </div>
-          <p className="text-[10px] leading-snug text-base-content/55 line-clamp-2 sm:text-[11px]">
-            {tCommon('sharedMeritUsedIn')}
+  const body = (
+    <div className="flex gap-2.5 sm:gap-3">
+      <div
+        className={cn(
+          'flex shrink-0 items-center justify-center bg-primary/10 text-primary',
+          flat ? 'h-9 w-9 rounded-md sm:h-10 sm:w-10' : 'h-9 w-9 rounded-lg bg-primary/12 sm:h-10 sm:w-10',
+        )}
+      >
+        <Coins className="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" aria-hidden />
+      </div>
+      <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:gap-x-3">
+          <p className="text-xs font-semibold leading-tight text-base-content sm:text-sm">
+            {tCommon('sharedMerit')}
           </p>
-          {meritHistoryHref ? (
-            <div className="pt-0.5">
-              <ProfileMeritHistoryLink href={meritHistoryHref} />
-            </div>
-          ) : null}
+          <p className="text-lg font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-xl md:text-2xl">
+            {formatMerits(balance)}
+          </p>
         </div>
+        <p className="text-[10px] leading-snug text-base-content/55 line-clamp-2 sm:text-[11px]">
+          {tCommon('sharedMeritUsedIn')}
+        </p>
+        {meritHistoryHref ? (
+          <div className="pt-0.5">
+            <ProfileMeritHistoryLink href={meritHistoryHref} />
+          </div>
+        ) : null}
       </div>
     </div>
+  );
+
+  if (flat) {
+    return <div className="py-0.5">{body}</div>;
+  }
+
+  return (
+    <div className="rounded-lg bg-base-200/25 p-3 sm:p-3.5 dark:bg-base-200/20">{body}</div>
   );
 }
 

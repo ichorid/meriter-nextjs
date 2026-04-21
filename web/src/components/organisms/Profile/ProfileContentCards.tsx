@@ -202,11 +202,10 @@ function ProfileContentCardsComponent({
                   type="button"
                   onClick={() => handleCardClick(stat.route)}
                   className={cn(
-                    stat.bgColor,
-                    'cursor-pointer text-left transition-all hover:bg-base-200/80 group',
+                    'cursor-pointer text-left transition-colors group',
                     embedded
-                      ? 'rounded-lg border border-base-300/25 p-2 sm:p-2.5 dark:border-base-300/20'
-                      : 'rounded-xl p-4',
+                      ? 'rounded-md bg-transparent p-2 sm:p-2.5 hover:bg-base-content/[0.04] active:bg-base-content/[0.06] dark:hover:bg-base-content/[0.06]'
+                      : cn(stat.bgColor, 'rounded-xl p-4 transition-all hover:bg-base-200/80'),
                   )}
                 >
                   <div
