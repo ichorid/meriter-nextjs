@@ -195,7 +195,7 @@ export const SimpleStickyHeader: React.FC<{
     }, [showScrollToTop]);
 
     const shellClass = sc
-      ? 'bg-stitch-canvas/95 backdrop-blur-md border-b border-stitch-border shadow-none'
+      ? 'bg-stitch-canvas/95 backdrop-blur-md border-b-0 shadow-none'
       : 'bg-base-100/80 backdrop-blur-md border-b border-base-300/70 shadow-sm';
 
     const headerContent = (

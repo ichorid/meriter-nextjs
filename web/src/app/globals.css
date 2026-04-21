@@ -890,9 +890,9 @@
     /* Allow shrinking below content size if needed */
   }
 
-  /* Authenticated Meriter: stitch shell tracks --stitch-*-rgb (light vs dark) */
+  /* Authenticated Meriter: stitch shell — zone split by background only (no rail border) */
   .appShell[data-meriter-chrome="stitch"] .leftNav {
-    border-right: 1px solid rgb(var(--stitch-border-rgb) / 0.14);
+    border-right: none;
     background-color: rgb(var(--stitch-sidebar-rgb) / 1);
   }
 
@@ -900,6 +900,9 @@
     background-color: rgb(var(--stitch-canvas-rgb) / 1);
   }
 
+  .appShell[data-meriter-chrome="stitch"] .appHeader {
+    border-bottom: none;
+  }
 
   /* Overlay inspector (default behavior) */
   .inspectorOverlay {

@@ -211,7 +211,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
             className={cn(
                 'fixed bottom-0 left-0 right-0 z-40 w-full pb-[env(safe-area-inset-bottom)] lg:hidden',
                 sc
-                    ? 'border-t border-stitch-border bg-stitch-sidebar/98 text-stitch-text backdrop-blur-lg'
+                    ? 'border-t-0 bg-stitch-sidebar/98 text-stitch-text shadow-[0_-6px_28px_rgba(0,0,0,0.14)] backdrop-blur-lg'
                     : 'border-t border-base-300/70 bg-base-100/95 shadow-[0_-10px_40px_rgba(0,0,0,0.08)] backdrop-blur-lg',
             )}
             style={{ maxWidth: '100vw' }}

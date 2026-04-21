@@ -139,7 +139,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       className={cn(
         'flex fixed left-0 z-40 flex-col overflow-hidden py-4 pb-16 transition-all duration-300 lg:pb-4',
         sc
-          ? 'border-r border-stitch-border bg-stitch-sidebar'
+          ? 'border-r-0 bg-stitch-sidebar'
           : 'border-r border-base-300/60 bg-base-200/95 shadow-[4px_0_32px_rgba(0,0,0,0.06)] backdrop-blur-md',
         className,
       )}
@@ -281,10 +281,10 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         type="button"
                         variant="default"
                         className={cn(
-                          'h-auto w-full justify-start gap-2 rounded-xl border-0 px-3 py-2.5 font-semibold shadow-lg',
+                          'h-auto w-full justify-start gap-2 border-0 px-4 py-2.5 font-semibold shadow-lg',
                           sc
-                            ? 'bg-gradient-to-br from-stitch-accent2 to-stitch-accent text-white hover:opacity-95'
-                            : 'bg-gradient-to-br from-primary to-primary/80 text-primary-content hover:from-primary hover:to-primary/90',
+                            ? 'rounded-full bg-gradient-to-r from-stitch-accent2 to-stitch-accent text-white hover:opacity-95'
+                            : 'rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-content hover:from-primary hover:to-primary/90',
                         )}
                       >
                         <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} />
@@ -305,11 +305,19 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 )
               ) : isExpanded ? (
                 <Link href={`${routes.communities}/create`}>
-                  <button type="button" className={cn(primaryNavBtn(false), 'w-full')}>
-                    <div className="flex w-full min-w-0 items-center">
-                      <Plus className={cn('h-5 w-5 shrink-0', sc ? 'text-stitch-accent' : 'text-primary')} strokeWidth={2.25} />
-                      <span className="ml-2.5 truncate text-sm font-medium leading-snug">{t('createCommunity')}</span>
-                    </div>
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex w-full min-w-0 items-center justify-center gap-2 font-semibold transition-opacity hover:opacity-95 active:scale-[0.99]',
+                      sc
+                        ? 'rounded-full border-0 bg-gradient-to-r from-stitch-accent2 to-stitch-accent px-4 py-2.5 text-sm text-white shadow-lg'
+                        : cn(primaryNavBtn(false), 'w-full'),
+                    )}
+                  >
+                    <Plus className={cn('h-5 w-5 shrink-0', sc ? 'text-white' : 'text-primary')} strokeWidth={2.25} />
+                    <span className={cn('truncate leading-snug', sc ? 'font-semibold text-white' : 'ml-2.5 text-sm font-medium')}>
+                      {t('createCommunity')}
+                    </span>
                   </button>
                 </Link>
               ) : (
@@ -594,9 +602,13 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       {/* Desktop only: scrollable communities (Administrator / Member, same as profile) */}
       {isAuthenticated && isExpanded && (
         <>
-          <div className={`${paddingClass} mb-2`}>
-            <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} />
-          </div>
+          {!sc ? (
+            <div className={`${paddingClass} mb-2`}>
+              <div className="border-t border-base-300" role="separator" aria-hidden />
+            </div>
+          ) : (
+            <div className={cn(paddingClass, 'mb-1 mt-2')} aria-hidden />
+          )}
           <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 ${paddingClass} py-4`}>
             <div className={cn('flex flex-col min-w-0', sc ? 'gap-2' : 'gap-3')}>
               <div className="flex flex-col gap-1 min-w-0">

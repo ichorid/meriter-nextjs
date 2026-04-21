@@ -49,7 +49,7 @@ export function MeriterDesktopTopBar() {
       className={cn(
         'sticky top-0 z-30 hidden h-14 w-full min-w-0 shrink-0 items-center justify-end gap-3 px-4 sm:px-6 lg:flex',
         sc
-          ? 'border-b border-stitch-border bg-stitch-canvas/90 text-stitch-text backdrop-blur-md'
+          ? 'border-b-0 bg-stitch-canvas/95 text-stitch-text shadow-none backdrop-blur-md'
           : 'border-b border-base-300/70 bg-base-100/80 shadow-sm backdrop-blur-md',
       )}
     >
@@ -147,7 +147,7 @@ export function MeriterDesktopTopBar() {
             })
           }
         >
-          <Avatar className={cn('h-8 w-8', sc ? 'border border-stitch-border' : 'border border-base-300')}>
+          <Avatar className={cn('h-8 w-8', sc ? 'border-0 ring-1 ring-stitch-border/25' : 'border border-base-300')}>
             {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
             <AvatarFallback userId={user.id} className="text-xs font-medium uppercase">
               {displayName.slice(0, 2).toUpperCase()}
