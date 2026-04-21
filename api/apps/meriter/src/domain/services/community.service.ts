@@ -969,7 +969,7 @@ export class CommunityService {
         dto.tappalkaSettings.enabled === true &&
         (existingCommunity as { isProject?: boolean } | null)?.isProject
       ) {
-        throw new BadRequestException('Tappalka cannot be enabled for project communities');
+        throw new BadRequestException('Mining cannot be enabled for project communities');
       }
       const tappalkaSettingsUpdate: Record<string, unknown> = {};
       if (dto.tappalkaSettings.enabled !== undefined) {

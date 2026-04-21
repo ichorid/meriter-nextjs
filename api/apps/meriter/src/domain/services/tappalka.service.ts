@@ -341,7 +341,7 @@ export class TappalkaService {
     );
 
     if (!tappalkaSettings.enabled) {
-      throw new Error('Tappalka is not enabled for this community');
+      throw new Error('Mining is not enabled for this community');
     }
 
     const { showCost, winReward, userReward, comparisonsRequired } =

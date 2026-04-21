@@ -435,7 +435,7 @@ describe('TappalkaService', () => {
           'post1',
           'post2',
         ),
-      ).rejects.toThrow('Tappalka is not enabled');
+      ).rejects.toThrow('Mining is not enabled');
     });
 
     it('should throw error if posts no longer available', async () => {
