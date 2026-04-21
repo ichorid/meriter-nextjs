@@ -16,6 +16,16 @@ import { cn } from '@/lib/utils';
 import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
+/** Full-width action row under contacts (merit history, invite, transfer); subtle corners in stitch + default. */
+export function profileHeroLeftStackActionClass(sc: boolean) {
+  return cn(
+    'inline-flex w-full max-w-full min-w-0 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 active:scale-[0.99] [&_svg]:shrink-0',
+    sc
+      ? 'rounded-xl border border-white/18 bg-white/[0.04] px-4 py-2.5 text-stitch-text/90 shadow-none hover:border-white/28 hover:bg-white/[0.08] hover:text-stitch-text focus-visible:ring-stitch-accent/35 [&_svg]:h-4 [&_svg]:w-4'
+      : 'rounded-xl border border-base-300/55 bg-base-200/55 px-4 py-2.5 text-base-content shadow-sm hover:bg-base-300/60 focus-visible:ring-ring [&_svg]:h-4 [&_svg]:w-4',
+  );
+}
+
 interface ProfileHeroProps {
   user: User | null | undefined;
   stats?: {
@@ -26,8 +36,8 @@ interface ProfileHeroProps {
   onEdit?: () => void;
   /** Compact merits / history row to the right of the avatar (same vertical band as `-mt-10`). */
   meritsHeroSlot?: React.ReactNode;
-  /** Placed inside the merits card, under balance/history (e.g. invite + transfer on another user’s profile). */
-  meritsHeroFooterSlot?: React.ReactNode;
+  /** Stacked actions under contacts / bio (merit history, invite, transfer). */
+  heroLeftStackSlot?: React.ReactNode;
 }
 
 function ProfileHeroComponent({
@@ -37,7 +47,7 @@ function ProfileHeroComponent({
   userRoles = [],
   onEdit,
   meritsHeroSlot,
-  meritsHeroFooterSlot,
+  heroLeftStackSlot,
 }: ProfileHeroProps) {
   const sc = useMeriterStitchChrome();
   const sectionCardClass = sc
@@ -213,7 +223,7 @@ function ProfileHeroComponent({
         >
           <div className={cn('min-w-0 space-y-4', meritsHeroSlot && 'lg:col-span-8')}>
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-start sm:gap-6">
-              <div className="relative shrink-0">
+              <div className="shrink-0">
                 <Avatar
                   className={cn(
                     meritsHeroSlot
@@ -229,12 +239,6 @@ function ProfileHeroComponent({
                     {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
                   </AvatarFallback>
                 </Avatar>
-                <div
-                  className={cn(
-                    'absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 bg-success',
-                    sc ? 'border-stitch-canvas' : 'border-base-100',
-                  )}
-                />
               </div>
             </div>
 
@@ -278,6 +282,10 @@ function ProfileHeroComponent({
             ) : null}
 
             {stitchContactRow && selfSummary ? <div className="mt-2">{stitchContactRow}</div> : null}
+
+            {heroLeftStackSlot ? (
+              <div className="mt-3 flex w-full min-w-0 flex-col gap-2 sm:max-w-md">{heroLeftStackSlot}</div>
+            ) : null}
 
             {isRepresentativeOrMember && educationalInstitution && (
               <>
@@ -361,7 +369,6 @@ function ProfileHeroComponent({
               )}
             >
               {meritsHeroSlot}
-              {meritsHeroFooterSlot ? <div className="mt-4 min-w-0">{meritsHeroFooterSlot}</div> : null}
             </div>
           ) : null}
         </div>

@@ -3029,7 +3029,7 @@
                 "count": "Count"
             }
         },
-        "openFullHistoryLink": "Full merit ledger",
+        "openFullHistoryLink": "Transaction history",
         "missingPermissionContext": "Open this page from the user's profile — the link includes access context.",
         "loading": "Loading…",
         "empty": "No transactions yet",

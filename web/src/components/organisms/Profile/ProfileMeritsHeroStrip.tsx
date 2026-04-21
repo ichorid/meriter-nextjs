@@ -8,6 +8,7 @@ import {
   type ProfileMeritsLedgerRole,
 } from '@/hooks/useProfileMeritsLedgerModel';
 import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
+import { profileHeroLeftStackActionClass } from '@/components/organisms/Profile/ProfileHero';
 import { cn } from '@/lib/utils';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 
@@ -17,6 +18,8 @@ type Props = {
   userRoles: ProfileMeritsLedgerRole[];
   /** Telemetry scope for merit-history link clicks. */
   profileActivityScope?: 'self' | 'other';
+  /** When true, balance strip omits the merit-history link (render it elsewhere, e.g. under contacts). */
+  suppressHistoryLink?: boolean;
 };
 
 /**
@@ -27,6 +30,7 @@ export function ProfileMeritsHeroStrip({
   communityIds,
   userRoles,
   profileActivityScope = 'self',
+  suppressHistoryLink = false,
 }: Props) {
   const sc = useMeriterStitchChrome();
   const tCommon = useTranslations('common');
@@ -40,7 +44,7 @@ export function ProfileMeritsHeroStrip({
   );
 
   const historyClass = sc
-    ? 'inline-flex max-w-full items-center gap-2 rounded-xl border border-stitch-accent/45 bg-transparent px-4 py-2.5 text-sm font-medium text-stitch-text transition-colors hover:bg-stitch-accent/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent/40 sm:text-sm'
+    ? profileHeroLeftStackActionClass(true)
     : 'inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 sm:text-sm';
 
   if (!showHeroMerits) {
@@ -60,11 +64,13 @@ export function ProfileMeritsHeroStrip({
         >
           {sc ? tProfile('balanceSheetTitle') : tProfile('globalMeritsTitle')}
         </p>
-        <ProfileMeritHistoryLink
-          href={meritHistoryHref}
-          className={historyClass}
-          telemetryScope={profileActivityScope}
-        />
+        {!suppressHistoryLink ? (
+          <ProfileMeritHistoryLink
+            href={meritHistoryHref}
+            className={historyClass}
+            telemetryScope={profileActivityScope}
+          />
+        ) : null}
       </div>
     ) : null;
   }
@@ -96,7 +102,7 @@ export function ProfileMeritsHeroStrip({
       >
         {tCommon('sharedMeritUsedIn')}
       </p>
-      {meritHistoryHref ? (
+      {meritHistoryHref && !suppressHistoryLink ? (
         <div className="pt-1">
           <ProfileMeritHistoryLink
             href={meritHistoryHref}

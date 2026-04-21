@@ -8,7 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles, useMeritStats } from '@/hooks/api/useProfile';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { ProfileEditForm } from '@/components/organisms/Profile/ProfileEditForm';
-import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
+import { ProfileHero, profileHeroLeftStackActionClass } from '@/components/organisms/Profile/ProfileHero';
+import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
@@ -20,6 +21,7 @@ import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Loader2, Plus } from 'lucide-react';
 import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { useProfileMeritsLedgerModel } from '@/hooks/useProfileMeritsLedgerModel';
 import { cn } from '@/lib/utils';
 
 function ProfilePageComponent() {
@@ -84,6 +86,21 @@ function ProfilePageComponent() {
     if (!roles) return [];
     return Array.from(new Set(roles.map(role => role.communityId).filter(Boolean)));
   }, [roles]);
+
+  const meritLedgerRoles = useMemo(
+    () =>
+      (roles || []).map((role) => ({
+        id: role.id || '',
+        communityId: role.communityId || '',
+        communityName: role.communityName,
+        communityTypeTag: role.communityTypeTag,
+        role: role.role,
+      })),
+    [roles],
+  );
+
+  const meritLedger = useProfileMeritsLedgerModel(user?.id || '', communityIds, meritLedgerRoles);
+  const suppressMeritHistoryInStrip = Boolean(sc && meritLedger.showGlobalMeritBlock && meritLedger.meritHistoryHref);
 
   // Get profile content data for cards
   const {
@@ -177,14 +194,18 @@ function ProfilePageComponent() {
               <ProfileMeritsHeroStrip
                 userId={user.id}
                 communityIds={communityIds}
-                userRoles={userRolesArray.map((role) => ({
-                  id: role.id || '',
-                  communityId: role.communityId || '',
-                  communityName: role.communityName,
-                  communityTypeTag: role.communityTypeTag,
-                  role: role.role,
-                }))}
+                userRoles={meritLedgerRoles}
+                suppressHistoryLink={suppressMeritHistoryInStrip}
               />
+            }
+            heroLeftStackSlot={
+              suppressMeritHistoryInStrip && meritLedger.meritHistoryHref ? (
+                <ProfileMeritHistoryLink
+                  href={meritLedger.meritHistoryHref}
+                  className={profileHeroLeftStackActionClass(sc)}
+                  telemetryScope="self"
+                />
+              ) : undefined
             }
           />
         )}

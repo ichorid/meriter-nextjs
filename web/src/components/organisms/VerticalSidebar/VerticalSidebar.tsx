@@ -283,7 +283,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         className={cn(
                           'h-auto w-full justify-start gap-2 border-0 px-4 py-2.5 font-semibold shadow-lg',
                           sc
-                            ? 'rounded-full bg-gradient-to-r from-stitch-accent2 to-stitch-accent text-white hover:opacity-95'
+                            ? 'rounded-xl bg-gradient-to-r from-stitch-accent2 to-stitch-accent text-white hover:opacity-95'
                             : 'rounded-xl bg-gradient-to-br from-primary to-primary/80 text-primary-content hover:from-primary hover:to-primary/90',
                         )}
                       >
@@ -310,7 +310,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                     className={cn(
                       'flex w-full min-w-0 items-center justify-center gap-2 font-semibold transition-opacity hover:opacity-95 active:scale-[0.99]',
                       sc
-                        ? 'rounded-full border-0 bg-gradient-to-r from-stitch-accent2 to-stitch-accent px-4 py-2.5 text-sm text-white shadow-lg'
+                        ? 'rounded-xl border-0 bg-gradient-to-r from-stitch-accent2 to-stitch-accent px-4 py-2.5 text-sm text-white shadow-lg'
                         : cn(primaryNavBtn(false), 'w-full'),
                     )}
                   >

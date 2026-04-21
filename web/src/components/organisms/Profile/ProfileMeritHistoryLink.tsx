@@ -8,7 +8,7 @@ import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 type ProfileMeritHistoryLinkProps = {
   href: string;
-  /** Defaults to a compact text-style link; pass a class for a stronger pill (e.g. empty merits strip). */
+  /** Defaults to a compact text-style link; pass a class for a stronger row (e.g. empty merits strip). */
   className?: string;
   /** For client telemetry only (PRD profile-redesign). */
   telemetryScope?: 'self' | 'other';

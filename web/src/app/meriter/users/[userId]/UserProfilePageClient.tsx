@@ -11,17 +11,18 @@ import { useInvitableCommunities } from '@/hooks/api/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserIcon, UserPlus } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
-import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
+import { ProfileHero, profileHeroLeftStackActionClass } from '@/components/organisms/Profile/ProfileHero';
+import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
 import { ProfileMeritsHeroStrip } from '@/components/organisms/Profile/ProfileMeritsHeroStrip';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
-import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
 import { buildProfileMeritTransferContext } from '@/features/merit-transfer/lib/profile-merit-transfer-context';
 import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { useProfileMeritsLedgerModel } from '@/hooks/useProfileMeritsLedgerModel';
 import { cn } from '@/lib/utils';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
@@ -169,6 +170,12 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
     [activityCounts]
   );
 
+  const meritLedger = useProfileMeritsLedgerModel(user?.id ?? '', communityIds, userRolesForMerits);
+  /** Other profiles: merit history stays in the right-hand balance strip. Own /users/:id matches /profile (suppress in stitch only). */
+  const suppressMeritHistoryInStrip = viewingOtherProfile
+    ? false
+    : Boolean(sc && meritLedger.showGlobalMeritBlock && meritLedger.meritHistoryHref);
+
   if (isLoading) {
     return (
       <AdaptiveLayout
@@ -202,9 +209,16 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
 
   const displayName = user.displayName || user.username || tCommon('user');
 
-  const profileHeroFooterBtnClass = sc
-    ? 'inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-white/[0.06] px-3 text-sm font-medium text-stitch-text shadow-none transition-colors hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent/35 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0'
-    : 'inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0';
+  const profileHeroHistoryLink =
+    suppressMeritHistoryInStrip && meritLedger.meritHistoryHref ? (
+      <ProfileMeritHistoryLink
+        href={meritLedger.meritHistoryHref}
+        className={profileHeroLeftStackActionClass(sc)}
+        telemetryScope="self"
+      />
+    ) : null;
+
+  const showHeroLeftStack = Boolean(profileHeroHistoryLink || viewingOtherProfile);
 
   return (
     <AdaptiveLayout
@@ -223,46 +237,50 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
               communityIds={communityIds}
               userRoles={userRolesForMerits}
               profileActivityScope={viewingOtherProfile ? 'other' : 'self'}
+              suppressHistoryLink={suppressMeritHistoryInStrip}
             />
           }
-          meritsHeroFooterSlot={
-            viewingOtherProfile ? (
+          heroLeftStackSlot={
+            showHeroLeftStack ? (
               <>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={profileHeroFooterBtnClass}
-                    aria-label={tProfile('inviteUserProfileButton')}
-                    onClick={() => {
-                      trackMeriterUiEvent({ name: 'profile_invite_open' });
-                      setInviteOpen(true);
-                    }}
-                  >
-                    <UserPlus className="shrink-0" />
-                    {tProfile('inviteUserProfileButton')}
-                  </Button>
-                  {profileMeritTransfer ? (
-                    <MeritTransferButton
-                      receiverId={user.id}
-                      receiverDisplayName={displayName}
-                      profileContext={profileMeritTransfer}
-                      variant="ghost"
-                      size="sm"
-                      onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
-                      className={profileHeroFooterBtnClass}
+                {profileHeroHistoryLink}
+                {viewingOtherProfile ? (
+                  <>
+                    <div className="flex w-full min-w-0 flex-col gap-2 lg:flex-row lg:items-stretch lg:gap-2">
+                      <button
+                        type="button"
+                        className={cn(profileHeroLeftStackActionClass(sc), 'lg:min-w-0 lg:flex-1')}
+                        aria-label={tProfile('inviteUserProfileButton')}
+                        onClick={() => {
+                          trackMeriterUiEvent({ name: 'profile_invite_open' });
+                          setInviteOpen(true);
+                        }}
+                      >
+                        <UserPlus className="shrink-0" />
+                        {tProfile('inviteUserProfileButton')}
+                      </button>
+                      {profileMeritTransfer ? (
+                        <MeritTransferButton
+                          receiverId={user.id}
+                          receiverDisplayName={displayName}
+                          profileContext={profileMeritTransfer}
+                          variant="ghost"
+                          size="sm"
+                          onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
+                          className={cn(profileHeroLeftStackActionClass(sc), 'lg:min-w-0 lg:flex-1')}
+                        />
+                      ) : null}
+                    </div>
+                    <InviteToTeamDialog
+                      open={inviteOpen}
+                      onClose={() => setInviteOpen(false)}
+                      targetUserId={user.id}
+                      communities={invitableCommunities}
                     />
-                  ) : null}
-                </div>
-                <InviteToTeamDialog
-                  open={inviteOpen}
-                  onClose={() => setInviteOpen(false)}
-                  targetUserId={user.id}
-                  communities={invitableCommunities}
-                />
+                  </>
+                ) : null}
               </>
-            ) : null
+            ) : undefined
           }
         />
 
