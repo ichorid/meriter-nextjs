@@ -1,61 +1,61 @@
 ---
-description: Meriter Volt Obsidian design system — typography, colors, spacing, stitch shell, copy policy
+description: Meriter Obsidian Nocturne — layered dark UI, light secondary, Manrope, copy policy
 alwaysApply: true
 ---
 
-# Meriter Design System: Volt Obsidian & Light Mode
+# Meriter Design System: Obsidian Nocturne
 
-## 1. Visual north star: “The Kinetic Vault”
+## 1. Overview & creative north star
 
-Balance **stoic precision** and **kinetic energy**: deep slate structure, **purple** as the kinetic accent. Prefer **surface contrast and soft shadow** over loud borders and decorative gradients.
+**The Obsidian Architect** — reject flat grey SaaS default. Build on **layered obsidian** depth so the app reads as a **secure vault** for заслуги and achievement. Depth comes from **tone steps** (sidebar → canvas → cards), **soft shadow**, and **electric purple** accents — not noisy borders or decorative gradients.
 
 ## 2. Typography
 
-- **Family:** **Manrope** first (`font-sans` in `web/tailwind.config.ts`); fallbacks **Inter**, system UI (`web/src/app/layout.tsx` font link).
-- **Headings:** bold / extrabold, **letter-spacing −0.02em** (`h1–h6` in `web/src/app/globals.css` `@layer base`).
-- **Body:** regular / medium, **line-height ~1.5** (`body` in `globals.css`).
+- **Primary font:** **Manrope** (Google Fonts) — `font-sans` in `web/tailwind.config.ts`, loaded in `web/src/app/layout.tsx`.
+- **Headings:** **ExtraBold**, **`tracking-tight`** (−0.02em) on `h1–h6` in `web/src/app/globals.css` `@layer base`.
+- **Body:** regular / medium, **`line-height: 1.5`** on `body`.
 
-## 3. Color palette (Tailwind-aligned; implemented as CSS vars)
+## 3. Color palette (implementation = CSS vars)
 
-Implementation: **`web/src/app/globals.css`** — `:root` (light) and `[data-theme="dark"]` (dark) set Daisy `--base-*`, shadcn tokens, and authenticated-shell **`--stitch-*-rgb`** (Tailwind `stitch.*` in `web/tailwind.config.ts`).
+Canonical hex → implemented as **`--stitch-*-rgb`** (Tailwind `stitch.*`) and Daisy/shadcn tokens in **`web/src/app/globals.css`** (`:root` = light, `[data-theme="dark"]` = dark). **No green/teal tint** in obsidian surfaces — cool neutral slate only.
 
-### Dark mode (Volt Obsidian)
+### Dark mode (primary) — Obsidian Nocturne
 
-| Role | Tailwind reference | Notes |
-|------|---------------------|--------|
-| **Primary surface** | `slate-950` | Darkest plane — **desktop sidebar rail** (`--stitch-sidebar-rgb`). |
-| **Secondary / canvas** | `slate-900` | **Main content well** — lighter than the rail (`--stitch-canvas-rgb`). |
-| **Cards** | `slate-800` | Panels and cards on the canvas (`--stitch-surface-rgb`). |
-| **Nested / elevated** | `slate-700` → `slate-600` | Stepped surfaces (`--stitch-surface2-rgb`, `--stitch-elevated-rgb`). |
-| **Accent** | `text-purple-400` / `bg-purple-500` | `--stitch-accent-rgb` / `--stitch-accent2-rgb`, `--primary`. |
-| **Text** | `text-slate-100` primary, `text-slate-400` muted | `--stitch-text-rgb`, `--stitch-muted-rgb`. |
-| **Borders** | `border-slate-800` | `--stitch-border-rgb`; **minimal** white/`border-white/*` — only where a11y or focus requires. |
-| **Shadows** | Purple-tinted depth | e.g. `shadow-[0_20px_50px_rgba(156,72,234,0.1)]` for emphasis cards — use sparingly. |
+| Token / role | Hex | Role |
+|----------------|-----|------|
+| **Sidebar / nav rail** | `#020617` | Deepest anchor — `--stitch-sidebar-rgb` |
+| **Main content** | `#0f172a` | Base app surface — `--stitch-canvas-rgb`, `--base-100` |
+| **Cards & elevated panels** | `#1e293b` | Raised slate — `--stitch-surface-rgb`, `--brand-surface`, `--card` |
+| **Nested / hover planes** | stepped slate-700 / 600 | `--stitch-surface2-rgb`, `--stitch-elevated-rgb` (no hue shift off slate) |
+| **Primary accent** | `#A855F7` | Buttons, key icons, merit highlights — `--primary`, `--stitch-accent-rgb` |
+| **Secondary accent (gradients)** | `#9333ea` | `--stitch-accent2-rgb` |
+| **Text primary** | `#f1f5f9` | `--stitch-text-rgb`, `--base-content` |
+| **Text muted** | `#94a3b8` | `--stitch-muted-rgb`, `--brand-text-muted` |
+| **Borders** | `#334155` | Sparse — `--stitch-border-rgb`, `--border` |
 
-### Light mode
+### Light mode (secondary)
 
-| Role | Tailwind reference |
-|------|---------------------|
-| **Background** | `bg-slate-50` primary, **`bg-white` cards** |
-| **Accent** | `text-purple-600` / `bg-purple-600` |
-| **Text** | `text-slate-900` primary, `text-slate-500` muted |
-| **Borders** | `border-slate-200` |
-| **Shadows** | `shadow-sm` / `shadow-md` (soft grey) |
+| Role | Hex |
+|------|-----|
+| Background | `#f8fafc` |
+| Cards | `#ffffff` |
+| Accent | `#9333ea` |
+| Text | `#0f172a` |
 
-**Stitch light:** `--stitch-*-rgb` in `:root` keep canvas/sidebar aligned with slate-50 / white planes; same accent purple-600 scale as `--primary`.
+## 4. Components & layout
 
-## 4. Layout & spacing
+- **Desktop sidebar:** fixed **280px** (product target; layout may use `--left-sidebar-width` where set). **Darkest** obsidian (`#020617`). Logo, primary hubs, communities/projects, one primary **«Создать»** CTA.
+- **Mobile:** bottom bar — **5 tabs**: Образы, Биржа, Проекты, Уведомления, Профиль (existing routes — do not rename without product sign-off).
+- **Cards:** **12px** radius (`--radius`, `rounded-xl`). Soft deep shadows where lift is needed; purple-tint shadow only for emphasis (see prior vault shadow token).
+- **Buttons:** **8px** radius (`rounded-lg` on shared `Button` in `web/src/components/ui/shadcn/button.tsx`). Primary = purple fill, white label.
 
-- **Base unit:** 4px (8, 12, 16, 24, 32, 48, 64).
-- **Radius:** **12px** cards (`rounded-xl`, `--radius`), **~8px** controls where specified, **9999px** only for true chips / compact badges — avoid full pills on full-width primary actions unless spec’d.
-- **Shell:** desktop **padding 24px** / mobile **16px**; content **max-width 1280px** where templates use `max-w-*`.
-- **Navigation:** desktop **sidebar width 280px** (icons + labels); mobile **bottom bar — 5 tabs** (existing layout).
+## 5. Content policy & terminology
 
-## 5. UI elements & logic
+- **Currency (RU):** always **«Заслуги»**. Never «мериты», G-MRT, Credits.
+- **Social noise:** no online status, no verification badges, no follower counts in product chrome.
+- **Projects (lists / marketing):** title, status, description only — **no** investment totals unless the screen is explicitly financial/admin.
+- **Contacts:** email + plaintext **«Другие контакты»** block.
 
-- **Primary button:** purple background, white label. **Secondary:** slate-800 (dark) / slate-100 (light) surfaces; avoid heavy outlines.
-- **Data policy (product):** Russian UI — **«Заслуги»** (not «мериты», not G-MRT). **No** verification badges, **no** online/presence on avatars. **Projects (list/marketing):** title, description, status — **no** raw investment counts unless the screen is investment/admin. **Profile contacts:** email + plaintext “other contacts”.
+## 6. Prompt for AI / Cursor
 
-## 6. Prompt for Cursor / AI
-
-Apply Meriter Design System: **Manrope**. **Dark:** slate-950 **sidebar**, slate-900 **content canvas**, slate-800 **cards**, purple-400/500 accents, slate-800 borders. **Light:** slate-50 / white, purple-600 accents. **Terminology:** «Заслуги» in Russian user copy. **Keep** Profile + Navigation structure. **Avoid** unnecessary borders, gradients, and non-functional metrics.
+Design using **Meriter Obsidian Nocturne**: main background **`#0f172a`**, sidebar **`#020617`**, cards **`#1e293b`**, accents **`#A855F7`**. **Manrope**. Terminology: **«Заслуги»**. No social noise (verification / online). Follow **layered depth**: rail darkest, canvas lighter, cards elevated; borders **`#334155`** sparingly.

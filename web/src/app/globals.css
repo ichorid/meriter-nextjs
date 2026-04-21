@@ -13,7 +13,7 @@
   }
 
   :root {
-    /* Light theme — Volt slate canvas, purple accent (see .cursor/rules/design-system.mdc) */
+    /* Light theme — Obsidian Nocturne secondary (see .cursor/rules/design-system.mdc) */
     --base-100: #f8fafc;
     --base-200: #f1f5f9;
     --base-300: #e2e8f0;
@@ -109,8 +109,7 @@
   }
 
   [data-theme="dark"] {
-    /* Dark theme — Volt Obsidian slate + purple */
-    /* Main reading plane matches stitch canvas (lighter than sidebar rail) */
+    /* Dark theme — Obsidian Nocturne (layered slate, electric purple) */
     --base-100: #0f172a;
     --base-200: #1e293b;
     --base-300: #334155;
@@ -144,12 +143,12 @@
     /* Brand colors (dark theme) */
     --brand-primary: #a855f7;
     --brand-secondary: #64748b;
-    --brand-accent: #c084fc;
+    --brand-accent: #a855f7;
     --brand-background: #020617;
     --brand-surface: #1e293b;
     --brand-border: #334155;
     --brand-text-primary: #f1f5f9;
-    --brand-text-secondary: #cbd5e1;
+    --brand-text-secondary: #94a3b8;
     --brand-text-muted: #94a3b8;
 
     /* shadcn/ui theme variables (dark mode - mapped to existing variables) */
@@ -181,15 +180,15 @@
     --loading-spinner-active: #a855f7;
     --loading-text: #ffffff;
 
-    /* Meriter stitch — dark: darkest sidebar, lighter content canvas, stepped cards (Volt Obsidian) */
+    /* Meriter stitch — Obsidian Nocturne: #020617 rail, #0f172a canvas, #1e293b cards, #334155 borders */
     --stitch-sidebar-rgb: 2 6 23;
     --stitch-canvas-rgb: 15 23 42;
     --stitch-surface-rgb: 30 41 59;
     --stitch-surface2-rgb: 51 65 85;
     --stitch-elevated-rgb: 71 85 105;
-    --stitch-border-rgb: 30 41 59;
-    --stitch-accent-rgb: 192 132 252;
-    --stitch-accent2-rgb: 168 85 247;
+    --stitch-border-rgb: 51 65 85;
+    --stitch-accent-rgb: 168 85 247;
+    --stitch-accent2-rgb: 147 51 234;
     --stitch-text-rgb: 241 245 249;
     --stitch-muted-rgb: 148 163 184;
   }
@@ -208,6 +207,7 @@
   h5,
   h6 {
     letter-spacing: -0.02em;
+    font-weight: 800;
   }
 }
 
