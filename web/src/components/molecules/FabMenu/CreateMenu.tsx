@@ -21,9 +21,15 @@ const BODY_MENU_Z = 10000;
 interface CreateMenuProps {
     communityId: string;
     trigger?: React.ReactNode;
+    /** Defaults to fab (bottom overlay); sidebar uses its own breadcrumb surface. */
+    telemetrySurface?: 'fab' | 'sidebar';
 }
 
-export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) => {
+export const CreateMenu: React.FC<CreateMenuProps> = ({
+    communityId,
+    trigger,
+    telemetrySurface = 'fab',
+}) => {
     const router = useRouter();
     const t = useTranslations('pages.communities');
     const tCommon = useTranslations('common');
@@ -166,7 +172,11 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
             size="sm"
             onClick={() =>
                 setIsOpen((prev) => {
-                    if (!prev) trackMeriterUiEvent({ name: 'nav_create_click', payload: { surface: 'fab' } });
+                    if (!prev)
+                        trackMeriterUiEvent({
+                            name: 'nav_create_click',
+                            payload: { surface: telemetrySurface },
+                        });
                     return !prev;
                 })
             }
@@ -186,7 +196,11 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                           .onClick;
                       orig?.(e);
                       setIsOpen((prev) => {
-                          if (!prev) trackMeriterUiEvent({ name: 'nav_create_click', payload: { surface: 'fab' } });
+                          if (!prev)
+                              trackMeriterUiEvent({
+                                  name: 'nav_create_click',
+                                  payload: { surface: telemetrySurface },
+                              });
                           return !prev;
                       });
                   },

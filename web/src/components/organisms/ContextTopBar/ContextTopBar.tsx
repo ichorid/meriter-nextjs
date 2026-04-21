@@ -191,8 +191,13 @@ export const SimpleStickyHeader: React.FC<{
       };
     }, [showScrollToTop]);
 
+    const shellClass =
+      'bg-base-100/80 backdrop-blur-md border-b border-base-300/70 shadow-sm';
+
     const headerContent = (
-      <div className={`${asStickyHeader ? "bg-base-100/95 backdrop-blur-md border-b border-base-200 px-4" : "sticky top-0 z-30 bg-base-100/95 backdrop-blur-md border-b border-base-200 w-full px-4"} ${className}`}>
+      <div
+        className={`${asStickyHeader ? `${shellClass} px-4` : `sticky top-0 z-30 w-full ${shellClass} px-4`} ${className}`}
+      >
         <div className="flex items-center justify-between h-14 relative">
           <div className="flex items-center flex-1 min-w-0">
             {/* Left Actions */}

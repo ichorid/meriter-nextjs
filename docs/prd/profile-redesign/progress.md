@@ -33,3 +33,10 @@ Started: (дата)
 - **Files**: `ProfileClient.tsx`, `UserProfilePageClient.tsx`, `CommunityCard.tsx`, `VerticalSidebar.tsx`, `BottomNavigation.tsx`, `MeriterDesktopTopBar.tsx`
 - **What**: Rounded shells for activity + communities blocks; spacing; invite/transfer buttons use base surfaces; community expanded cards get border + hover ring; sidebar and bottom bar blur/shadow; top bar shadow.
 - **Known issues**: None
+
+### Step 5: Sidebar create parity + profile sub-header chrome
+
+- **Status**: Done
+- **Files**: `useMeriterCommunityCreateContext.ts`, `VerticalSidebar.tsx`, `BottomNavigation.tsx`, `CreateMenu.tsx` (`telemetrySurface`), `ContextTopBar.tsx` (`SimpleStickyHeader` shell), `en.json` / `ru.json` (`common.sidebarCreate`), `frontend.mdc`
+- **What**: FR-N-06 — sidebar **Create** uses the same community-context rules as the mobile FAB; `CreateMenu` + `nav_create_click` with `surface: 'sidebar'` when applicable; else CTA to community creation. FR-S-01 — sticky profile sub-headers use the same blur/border/shadow tokens as desktop top chrome.
+- **Known issues**: None

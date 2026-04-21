@@ -62,6 +62,8 @@ Long-press on Profile opens a small menu (About, Support if `typeTag === 'suppor
 
 Desktop / large layout: same **three primary hubs** (Future Visions → МД → Projects), then Notifications, Favorites, etc. For the МД item, the link is `routes.community(marathon.id)`. When the sidebar is **expanded**, the МД row shows **`marathon.name`** from the API (community document), **not** `marathonOfGoodLabel` — so the visible title can match the long product name (e.g. «Биржа социальных инвестиций») if stored on the community. If **`marathon-of-good` is missing** from `allCommunities`, the sidebar **omits** the МД row entirely (the bottom bar still falls back the second tab to `/meriter/profile` when the id is missing).
 
+**Create (sidebar):** Under the primary hubs, **before** the divider into Notifications: if `useMeriterCommunityCreateContext()` says the URL allows it (same rules as the bottom FAB — community id from path, not on `/members`, `/settings`, `/create`, `/events`), render **`CreateMenu`** with `telemetrySurface: 'sidebar'`; otherwise link to **`${routes.communities}/create`** (`common.createCommunity`). Bottom nav FAB and sidebar must stay in sync when changing those rules.
+
 ### Global «Биржа» / МД feed: user-facing copy vs identifiers
 
 Use this when wiring UI or docs so marketing names are not confused with `typeTag` / routes.

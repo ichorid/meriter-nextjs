@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User } from 'lucide-react';
+import { Info, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
@@ -14,6 +14,9 @@ import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
+import { useMeriterCommunityCreateContext } from '@/hooks/useMeriterCommunityCreateContext';
+import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
+import { Button } from '@/components/ui/shadcn/button';
 
 export interface VerticalSidebarProps {
   className?: string;
@@ -34,6 +37,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
   const tCommunities = useTranslations('communities');
   const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const { communityContextId, shouldShowCreateMenu } = useMeriterCommunityCreateContext();
 
   const userCommunities = useMemo(
     () =>
@@ -200,6 +204,53 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   )}
                 </button>
               </Link>
+            </div>
+
+            {/* Create: same rules as bottom FAB — CreateMenu in community feed; else new community (PRD FR-N-06). */}
+            <div className={cn(isExpanded ? 'mt-3' : 'mt-2 flex justify-center')}>
+              {shouldShowCreateMenu && communityContextId ? (
+                isExpanded ? (
+                  <CreateMenu
+                    communityId={communityContextId}
+                    telemetrySurface="sidebar"
+                    trigger={
+                      <Button
+                        type="button"
+                        variant="default"
+                        className="h-auto w-full justify-start gap-2 rounded-xl border-0 bg-gradient-to-br from-primary to-primary/80 px-3 py-2.5 text-primary-content shadow-sm hover:from-primary hover:to-primary/90"
+                      >
+                        <Plus className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                        <span className="text-sm font-semibold">{t('sidebarCreate')}</span>
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <CreateMenu
+                    communityId={communityContextId}
+                    telemetrySurface="sidebar"
+                    trigger={
+                      <button type="button" className={primaryNavBtn(false)} aria-label={t('sidebarCreate')}>
+                        <Plus className="h-6 w-6 text-primary" strokeWidth={2.25} />
+                      </button>
+                    }
+                  />
+                )
+              ) : isExpanded ? (
+                <Link href={`${routes.communities}/create`}>
+                  <button type="button" className={cn(primaryNavBtn(false), 'w-full')}>
+                    <div className="flex w-full min-w-0 items-center">
+                      <Plus className="h-5 w-5 shrink-0 text-primary" strokeWidth={2.25} />
+                      <span className="ml-2.5 truncate text-sm font-medium leading-snug">{t('createCommunity')}</span>
+                    </div>
+                  </button>
+                </Link>
+              ) : (
+                <Link href={`${routes.communities}/create`} aria-label={t('createCommunity')}>
+                  <button type="button" className={primaryNavBtn(false)}>
+                    <Plus className="h-6 w-6 text-primary" strokeWidth={2.25} />
+                  </button>
+                </Link>
+              )}
             </div>
           </div>
 

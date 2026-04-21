@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
+import { useMeriterCommunityCreateContext } from '@/hooks/useMeriterCommunityCreateContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { User, Bell, Info, Sparkles, FolderKanban, TrendingUp, Star, LifeBuoy } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -61,26 +62,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
 
-    // Detect community context from pathname
-    const communityContextId = useMemo(() => {
-        if (!pathname) return null;
-        // Match patterns: /meriter/communities/[id] or /meriter/communities/[id]/...
-        const match = pathname.match(/\/meriter\/communities\/([^\/]+)/);
-        return match ? match[1] : null;
-    }, [pathname]);
-
-    // Check if we're on a page where CreateMenu should be hidden
-    const shouldShowCreateMenu = useMemo(() => {
-        if (!pathname || !communityContextId) return false;
-        
-        // Hide on members page, settings page, and create pages
-        const isMembersPage = pathname.includes('/members');
-        const isSettingsPage = pathname.includes('/settings');
-        const isCreatePage = pathname.includes('/create');
-        const isEventsPage = pathname.includes('/events');
-        
-        return !isMembersPage && !isSettingsPage && !isCreatePage && !isEventsPage;
-    }, [pathname, communityContextId]);
+    const { communityContextId, shouldShowCreateMenu } = useMeriterCommunityCreateContext();
 
     // Get marathon-of-good quota for global context
     const { remaining: marathonQuotaRemaining, max: marathonQuotaMax, isLoading: marathonQuotaLoading } = useMarathonOfGoodQuota();
@@ -89,7 +71,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const { data: communityQuota, isLoading: communityQuotaLoading } = useUserQuota(communityContextId || undefined);
 
     // Determine which quota to use and loading state
-    const isInCommunityContext = !!communityContextId;
+    const isInCommunityContext = Boolean(communityContextId);
     const quotaRemaining = isInCommunityContext
         ? (communityQuota?.remainingToday ?? 0)
         : marathonQuotaRemaining;
