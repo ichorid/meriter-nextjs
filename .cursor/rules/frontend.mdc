@@ -40,6 +40,10 @@ Full monorepo and layer overview: @architecture.mdc.
 
 Canonical route helpers: `web/src/lib/constants/routes.ts`. There is **no** dedicated static URL such as `/meriter/birzha`; the МД («Биржа») hub is always `/meriter/communities/{communityId}` with `communityId` resolved at runtime.
 
+### Desktop top bar (`web/src/components/organisms/MeriterDesktopTopBar/MeriterDesktopTopBar.tsx`)
+
+Rendered at the top of **`mainWrap`** inside `AdaptiveLayout` (`web/src/components/templates/AdaptiveLayout/AdaptiveLayout.tsx`). Visible only on **`lg:`** and when the user is **authenticated** on `/meriter/*` routes (hidden on login). Row: **Support** (link to `typeTag === 'support'` hub when present), **Settings** (`routes.settings`), **About** (`routes.about`); right cluster: **Notifications** (`routes.notifications`, unread dot), **avatar** → **Profile** (`routes.profile`). Intended as secondary chrome alongside the left sidebar; **Favorites** remains sidebar-only. Client telemetry: `trackMeriterUiEvent` with `surface: 'topbar'` (see `web/src/lib/telemetry/meriter-ui-telemetry.ts`).
+
 ### Bottom bar (`web/src/components/organisms/BottomNavigation.tsx`)
 
 Shown on small viewports (`lg:hidden`). Tab order (left → right):
