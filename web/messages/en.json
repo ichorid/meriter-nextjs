@@ -2188,6 +2188,7 @@
         "noRoles": "No roles assigned",
         "noProjects": "No projects yet",
         "meritTransfersCardTitle": "Merit history",
+        "meritTransfersPeerOnlyCardTitle": "Direct peer transfers",
         "investments": {
             "title": "Investments",
             "statsSummary": "Portfolio summary",

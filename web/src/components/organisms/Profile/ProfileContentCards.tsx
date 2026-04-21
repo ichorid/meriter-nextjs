@@ -87,7 +87,7 @@ function ProfileContentCardsComponent({
           route: routes.userProfilePolls(uid),
         },
         {
-          label: tProfile('meritTransfersCardTitle'),
+          label: tProfile('meritTransfersPeerOnlyCardTitle'),
           value: stats.meritTransfers ?? 0,
           icon: ArrowLeftRight,
           color: 'text-base-content',
