@@ -1,42 +1,61 @@
 ---
-description: Meriter Volt Obsidian design system — typography, colors, spacing, copy policy
+description: Meriter Volt Obsidian design system — typography, colors, spacing, stitch shell, copy policy
 alwaysApply: true
 ---
 
-# Meriter Design System (Volt Obsidian)
+# Meriter Design System: Volt Obsidian & Light Mode
 
-**North star:** “Kinetic vault” — deep slate surfaces, purple kinetic accents; stoic layout, minimal chrome.
+## 1. Visual north star: “The Kinetic Vault”
 
-## Typography
+Balance **stoic precision** and **kinetic energy**: deep slate structure, **purple** as the kinetic accent. Prefer **surface contrast and soft shadow** over loud borders and decorative gradients.
 
-- **Family:** Manrope first (`font-sans` in `web/tailwind.config.ts`); fallbacks Inter, system UI (`web/src/app/layout.tsx` Google Fonts link).
-- **Headings:** bold / extrabold, **letter-spacing −0.02em** (global `h1–h6` in `web/src/app/globals.css` `@layer base`).
-- **Body:** regular / medium, comfortable line-height (~1.5).
+## 2. Typography
 
-## Color (implementation)
+- **Family:** **Manrope** first (`font-sans` in `web/tailwind.config.ts`); fallbacks **Inter**, system UI (`web/src/app/layout.tsx` font link).
+- **Headings:** bold / extrabold, **letter-spacing −0.02em** (`h1–h6` in `web/src/app/globals.css` `@layer base`).
+- **Body:** regular / medium, **line-height ~1.5** (`body` in `globals.css`).
 
-- **Tokens live in** `web/src/app/globals.css` (`:root` = light, `[data-theme="dark"]` = dark): Daisy `--base-*`, shadcn `--background` / `--card` / `--primary`, and authenticated-shell **`--stitch-*-rgb`** (consumed as `stitch.*` in `web/tailwind.config.ts`).
-- **Dark (Volt Obsidian):** slate-950 / slate-900 surfaces; accents **purple-400–500**; text slate-100, muted slate-400; borders **slate-800** — avoid bright white outlines except where stitch tokens require contrast.
-- **Light:** slate-50 canvas, **white** cards; accent **purple-600**; text slate-900, muted slate-500; borders slate-200.
-- Prefer **surface contrast** and shadow over heavy borders. Optional deep card shadow (purple tint) is documented in this rule for cards that need lift: `shadow-[0_20px_50px_rgba(156,72,234,0.1)]` (use sparingly).
+## 3. Color palette (Tailwind-aligned; implemented as CSS vars)
 
-## Radius & spacing
+Implementation: **`web/src/app/globals.css`** — `:root` (light) and `[data-theme="dark"]` (dark) set Daisy `--base-*`, shadcn tokens, and authenticated-shell **`--stitch-*-rgb`** (Tailwind `stitch.*` in `web/tailwind.config.ts`).
 
-- **Cards ~12px** (`rounded-xl`, `--radius: 12px`). **Controls ~8px** where a smaller radius is specified. Reserve **full pills** for chips / compact badges, not full-width CTAs unless product explicitly requires it.
-- **Layout:** desktop content padding **24px**, mobile **16px**; desktop shell max width **1280px** where templates define `max-w-*`.
+### Dark mode (Volt Obsidian)
 
-## Components
+| Role | Tailwind reference | Notes |
+|------|---------------------|--------|
+| **Primary surface** | `slate-950` | Darkest plane — **desktop sidebar rail** (`--stitch-sidebar-rgb`). |
+| **Secondary / canvas** | `slate-900` | **Main content well** — lighter than the rail (`--stitch-canvas-rgb`). |
+| **Cards** | `slate-800` | Panels and cards on the canvas (`--stitch-surface-rgb`). |
+| **Nested / elevated** | `slate-700` → `slate-600` | Stepped surfaces (`--stitch-surface2-rgb`, `--stitch-elevated-rgb`). |
+| **Accent** | `text-purple-400` / `bg-purple-500` | `--stitch-accent-rgb` / `--stitch-accent2-rgb`, `--primary`. |
+| **Text** | `text-slate-100` primary, `text-slate-400` muted | `--stitch-text-rgb`, `--stitch-muted-rgb`. |
+| **Borders** | `border-slate-800` | `--stitch-border-rgb`; **minimal** white/`border-white/*` — only where a11y or focus requires. |
+| **Shadows** | Purple-tinted depth | e.g. `shadow-[0_20px_50px_rgba(156,72,234,0.1)]` for emphasis cards — use sparingly. |
 
-- **Primary CTA:** purple background, white label. **Secondary:** slate-800 (dark) / slate-100 (light) surfaces, not loud outlines.
-- **Navigation:** preserve existing Profile + global nav structure; evolve visuals through tokens and shared primitives, not one-off pages.
+### Light mode
 
-## Data & copy (product)
+| Role | Tailwind reference |
+|------|---------------------|
+| **Background** | `bg-slate-50` primary, **`bg-white` cards** |
+| **Accent** | `text-purple-600` / `bg-purple-600` |
+| **Text** | `text-slate-900` primary, `text-slate-500` muted |
+| **Borders** | `border-slate-200` |
+| **Shadows** | `shadow-sm` / `shadow-md` (soft grey) |
 
-- **Russian UI:** use **«Заслуги»** for the platform currency (not «мериты», not G-MRT) in user-visible copy and new keys.
-- **No** identity verification badges, **no** online / presence indicators on avatars.
-- **Projects (marketing / list surfaces):** title, description, status — do not surface raw investment totals unless the screen is explicitly an investment or admin tool.
-- **Profile contacts:** email + plaintext “other contacts”; avoid decorative status affordances.
+**Stitch light:** `--stitch-*-rgb` in `:root` keep canvas/sidebar aligned with slate-50 / white planes; same accent purple-600 scale as `--primary`.
 
-## AI prompt snippet
+## 4. Layout & spacing
 
-When styling: keep Profile and Navigation layout; use Manrope + slate / purple token map; avoid gratuitous gradients, extra borders, and non-functional metrics.
+- **Base unit:** 4px (8, 12, 16, 24, 32, 48, 64).
+- **Radius:** **12px** cards (`rounded-xl`, `--radius`), **~8px** controls where specified, **9999px** only for true chips / compact badges — avoid full pills on full-width primary actions unless spec’d.
+- **Shell:** desktop **padding 24px** / mobile **16px**; content **max-width 1280px** where templates use `max-w-*`.
+- **Navigation:** desktop **sidebar width 280px** (icons + labels); mobile **bottom bar — 5 tabs** (existing layout).
+
+## 5. UI elements & logic
+
+- **Primary button:** purple background, white label. **Secondary:** slate-800 (dark) / slate-100 (light) surfaces; avoid heavy outlines.
+- **Data policy (product):** Russian UI — **«Заслуги»** (not «мериты», not G-MRT). **No** verification badges, **no** online/presence on avatars. **Projects (list/marketing):** title, description, status — **no** raw investment counts unless the screen is investment/admin. **Profile contacts:** email + plaintext “other contacts”.
+
+## 6. Prompt for Cursor / AI
+
+Apply Meriter Design System: **Manrope**. **Dark:** slate-950 **sidebar**, slate-900 **content canvas**, slate-800 **cards**, purple-400/500 accents, slate-800 borders. **Light:** slate-50 / white, purple-600 accents. **Terminology:** «Заслуги» in Russian user copy. **Keep** Profile + Navigation structure. **Avoid** unnecessary borders, gradients, and non-functional metrics.

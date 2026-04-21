@@ -110,9 +110,10 @@
 
   [data-theme="dark"] {
     /* Dark theme — Volt Obsidian slate + purple */
-    --base-100: #020617;
-    --base-200: #0f172a;
-    --base-300: #1e293b;
+    /* Main reading plane matches stitch canvas (lighter than sidebar rail) */
+    --base-100: #0f172a;
+    --base-200: #1e293b;
+    --base-300: #334155;
     --base-content: #f1f5f9;
 
     --primary: #a855f7;
@@ -122,7 +123,7 @@
     --secondary-content: #ffffff;
 
     /* Shadcn Accent (UI interactions/Ghost hover) - Neutral */
-    --accent: #191e24;
+    --accent: #1e293b;
     --accent-content: #ffffff;
 
     --neutral: #3d4451;
@@ -145,8 +146,8 @@
     --brand-secondary: #64748b;
     --brand-accent: #c084fc;
     --brand-background: #020617;
-    --brand-surface: #0f172a;
-    --brand-border: #1e293b;
+    --brand-surface: #1e293b;
+    --brand-border: #334155;
     --brand-text-primary: #f1f5f9;
     --brand-text-secondary: #cbd5e1;
     --brand-text-muted: #94a3b8;
@@ -176,16 +177,16 @@
 
     /* Loading indicator colors (dark theme) */
     --loading-overlay: rgba(0, 0, 0, 0.7);
-    --loading-spinner-bg: #2a3239;
+    --loading-spinner-bg: #1e293b;
     --loading-spinner-active: #a855f7;
     --loading-text: #ffffff;
 
-    /* Meriter “stitch” shell — dark theme (slate-950 / 900 + purple) */
-    --stitch-canvas-rgb: 2 6 23;
-    --stitch-sidebar-rgb: 15 23 42;
-    --stitch-surface-rgb: 15 23 42;
-    --stitch-surface2-rgb: 30 41 59;
-    --stitch-elevated-rgb: 51 65 85;
+    /* Meriter stitch — dark: darkest sidebar, lighter content canvas, stepped cards (Volt Obsidian) */
+    --stitch-sidebar-rgb: 2 6 23;
+    --stitch-canvas-rgb: 15 23 42;
+    --stitch-surface-rgb: 30 41 59;
+    --stitch-surface2-rgb: 51 65 85;
+    --stitch-elevated-rgb: 71 85 105;
     --stitch-border-rgb: 30 41 59;
     --stitch-accent-rgb: 192 132 252;
     --stitch-accent2-rgb: 168 85 247;
@@ -197,6 +198,7 @@
     background-color: var(--base-100);
     color: var(--base-content);
     font-family: Manrope, Inter, system-ui, sans-serif;
+    line-height: 1.5;
   }
 
   h1,
