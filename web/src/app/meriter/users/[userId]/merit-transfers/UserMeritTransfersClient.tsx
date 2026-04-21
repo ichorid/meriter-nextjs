@@ -137,6 +137,9 @@ export default function UserMeritTransfersClient({ userId }: { userId: string })
   return (
     <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        {viewingOther ? (
+          <p className="text-sm text-base-content/70">{t('peerTransfersPrivacyNote')}</p>
+        ) : null}
         {profileMeritTransfer ? (
           <div className="flex flex-wrap items-center justify-end gap-2">
             <MeritTransferButton

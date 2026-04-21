@@ -11,6 +11,7 @@ import {
   meritHistoryLedgerMultiplier,
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
+import { enrichMeritHistoryTransactions } from '../../domain/common/helpers/merit-history-enrichment';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -137,11 +138,25 @@ export const walletsRouter = router({
 
       const loaded = result.data.length;
 
+      const enrichmentById = await enrichMeritHistoryTransactions(
+        actualUserId,
+        result.data.map((tx) => ({
+          id: tx.id,
+          referenceType: tx.referenceType,
+          referenceId: tx.referenceId,
+        })),
+        {
+          db: ctx.connection.db ?? undefined,
+          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+        },
+      );
+
       const data = result.data.map((tx) => {
         const createdAt =
           tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
         const updatedAt =
           tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
+        const enriched = enrichmentById.get(tx.id);
         return {
           ...tx,
           createdAt,
@@ -151,6 +166,8 @@ export const walletsRouter = router({
             type: tx.type,
             referenceType: tx.referenceType,
           }),
+          meritHistoryEnrichment:
+            enriched && Object.keys(enriched).length > 0 ? enriched : null,
         };
       });
 

@@ -94,6 +94,7 @@ export function MeritTransfersByContextPage({
       stickyHeader={pageHeader}
     >
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        <p className="text-sm text-base-content/70">{t('contextPeerOnlyDescription')}</p>
         <MeritTransferFeed
           mode="community"
           items={items}

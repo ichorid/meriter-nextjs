@@ -39,6 +39,9 @@ alwaysApply: true
 ### Peer merit transfer
 - `meritTransfer` tRPC: wallet-only P2P moves in a shared team/project context; recorded in `merit_transfers`; optional **`eventPostId`** for transfers in an **event** thread (RSVP / invite rules). Details: @business-merit-transfer.mdc, @business-events.mdc.
 
+### Merit History (global wallet feed)
+- **`wallets.getTransactions`** self-only full ledger + categories + enrichment; peer-only surfaces unchanged. Details: @business-merit-history.mdc.
+
 ### Community / project events
 - **`postType === 'event'`** publications: RSVP, token invites, `settings.eventCreation`, no voting/forward/Birzha; **`events.*`** tRPC. Details: @business-events.mdc.
 
@@ -60,6 +63,7 @@ Use this file for routing only. Details and full rule text live in the listed bu
 | `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
 | `business-investing.mdc` | Investment contracts, pool, distribution | Investment features |
 | `business-merit-transfer.mdc` | Peer merit transfers (`meritTransfer`), `merit_transfers`, transfer UI | Transfer button, context/profile feeds, wallet `merit_transfer` lines |
+| `business-merit-history.mdc` | Merit History hub (`wallets.getTransactions`), enrichment, UI entry points | `/meriter/profile/merit-transfers`, privacy on other profiles |
 | `business-events.mdc` | Event publications (`postType === 'event'`), RSVP, invites, `eventCreation`, `events.*` tRPC | Event pages, community/project events hubs, merit transfer on event thread |
 | `business-projects.mdc` | Cooperative projects (isProject), Birzha source, tickets, CommunityWallet | Project / ticket / Birzha-from-project; web hub **`/meriter/projects`** |
 | `business-future-vision.mdc` | ОБ hub (`typeTag === 'future-vision'`), OB posts, Future Visions feed, tags | OB / `getFutureVisions`; web **`/meriter/future-visions`** |

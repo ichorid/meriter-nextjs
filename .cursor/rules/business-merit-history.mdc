@@ -1,0 +1,38 @@
+---
+description: Merit History — global wallet feed, enrichment, UI entry points
+alwaysApply: false
+globs:
+  - api/apps/meriter/src/domain/common/helpers/wallet-transaction-history.ts
+  - api/apps/meriter/src/domain/common/helpers/merit-history-enrichment.ts
+  - api/apps/meriter/src/trpc/routers/wallets.router.ts
+  - web/src/app/meriter/profile/merit-transfers/**/*.tsx
+  - web/src/features/merit-transfer/components/MeritHistoryFeed.tsx
+---
+
+# Merit History (История заслуг)
+
+## Data source
+
+- **Full history (self):** `transactions` for the user’s **global** wallet (`GLOBAL_COMMUNITY_ID`) via `WalletService.getUserTransactions` → `wallets.getTransactions` (authenticated user **only**; `userId` must resolve to caller).
+- **Peer-only contexts:** `meritTransfer.getByCommunity` on community/project **merit-transfers** pages — **no** merge with wallet lines (TR-5: single source per surface).
+- **Other user’s profile:** `meritTransfer.getByUser` only — **no** full wallet history (privacy).
+
+## Categories
+
+Map: `wallet-transaction-history.ts` (`MERIT_HISTORY_FILTER_KEYS`, `meritHistoryCategoryForReferenceType`, `meritHistoryReferenceTypeMatch`). Peer P2P in the global feed uses wallet lines with `referenceType === 'merit_transfer'` and `referenceId` = merit transfer record id (same id on sender debit and receiver credit — **one logical transfer**, two ledger lines).
+
+## Enrichment
+
+`merit-history-enrichment.ts` batches publications, votes (including nested vote→vote→publication), communities, polls, `merit_transfers`, and user display names. Exposed as `meritHistoryEnrichment` on each row from `wallets.getTransactions`. Safe fallbacks when documents are missing.
+
+## UI routes
+
+| Surface | Route | Feed |
+|--------|-------|------|
+| Own merit history | `/meriter/profile/merit-transfers` | `wallets.getTransactions` + filters |
+| Context peer list | `/meriter/communities/[id]/merit-transfers`, `/meriter/projects/[id]/merit-transfers` | `meritTransfer.getByCommunity` |
+| Other user | `/meriter/users/[id]/merit-transfers` | peer-only; own id redirects to profile hub |
+
+## Related
+
+@business-merits.mdc, @business-merit-transfer.mdc, `docs/prd/merit-history/prd.md`.

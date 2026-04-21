@@ -11,7 +11,7 @@ import {
   MeritHistoryFeed,
   type MeritHistoryFeedRow,
 } from '@/features/merit-transfer/components/MeritHistoryFeed';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { Button } from '@/components/ui/shadcn/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useWallets } from '@/hooks/api/useWallet';
@@ -78,6 +78,7 @@ export default function ProfileMeritTransfersClient() {
         createdAt: typeof row.createdAt === 'string' ? row.createdAt : String(row.createdAt),
         meritHistoryCategory: row.meritHistoryCategory,
         ledgerMultiplier: row.ledgerMultiplier,
+        meritHistoryEnrichment: row.meritHistoryEnrichment ?? null,
       }),
     );
   }, [txQuery.data?.pages]);
@@ -122,26 +123,39 @@ export default function ProfileMeritTransfersClient() {
     <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
         <Tabs value={tab} onValueChange={(v) => setTab(v as MeritHistoryFilterTab)} className="w-full">
-          <TabsList className="flex h-auto w-full flex-wrap gap-1 overflow-x-auto lg:grid lg:grid-cols-5">
+          <TabsList
+            className="flex h-auto w-full flex-wrap gap-1 overflow-x-auto lg:grid lg:grid-cols-5"
+            aria-label={tHist('filtersAriaLabel')}
+          >
             {FILTER_TABS.map((key) => (
-              <TabsTrigger key={key} value={key} className="shrink-0 text-xs lg:text-sm">
+              <TabsTrigger
+                key={key}
+                id={`merit-history-tab-${key}`}
+                value={key}
+                className="shrink-0 text-xs lg:text-sm"
+              >
                 {tHist(tabLabelKey(key))}
               </TabsTrigger>
             ))}
           </TabsList>
-          {FILTER_TABS.map((key) => (
-            <TabsContent key={key} value={key} className="mt-4 outline-none">
-              <MeritHistoryFeed
-                items={rows}
-                isLoading={
-                  txQuery.isLoading || (txQuery.isFetching && !txQuery.data?.pages.length)
-                }
-              />
-              {txQuery.error ? (
-                <p className="mt-2 text-sm text-destructive">{txQuery.error.message}</p>
-              ) : null}
-            </TabsContent>
-          ))}
+          <div
+            className="mt-4 outline-none"
+            role="tabpanel"
+            id={`merit-history-panel-${tab}`}
+            aria-labelledby={`merit-history-tab-${tab}`}
+          >
+            <MeritHistoryFeed
+              items={rows}
+              isLoading={
+                txQuery.isLoading || (txQuery.isFetching && !txQuery.data?.pages.length)
+              }
+            />
+            {txQuery.error ? (
+              <p className="mt-2 text-sm text-destructive" role="alert">
+                {txQuery.error.message}
+              </p>
+            ) : null}
+          </div>
         </Tabs>
         {txQuery.hasNextPage ? (
           <div ref={loadMoreRef} className="flex justify-center py-4">

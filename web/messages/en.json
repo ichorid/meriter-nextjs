@@ -2982,11 +2982,13 @@
         "feedEmpty": "No transfers yet",
         "feedAmount": "{amount} merit(s)",
         "navMeritTransfers": "Direct transfers",
-        "pageTitleCommunity": "Merit transfers in this community",
-        "pageTitleProject": "Merit transfers in this project",
+        "pageTitleCommunity": "Direct merit transfers in this community",
+        "pageTitleProject": "Direct merit transfers in this project",
         "pageLoginRequired": "Sign in to view merit transfers.",
         "loadMore": "Load more",
         "peerTransfersPublicPageTitle": "Direct merit transfers",
+        "peerTransfersPrivacyNote": "Only direct transfers between participants are visible here — not full wallet activity.",
+        "contextPeerOnlyDescription": "Shows direct participant-to-participant merit transfers recorded in this community or project context.",
         "profileTransferContextLabel": "Transfer context",
         "profileTransferContextGlobal": "Global (global wallet to global wallet)",
         "tabIncoming": "Incoming",
@@ -3017,6 +3019,17 @@
             "withdrawals": "Withdrawal",
             "welcome_and_system": "Welcome / system",
             "other": "Other"
+        },
+        "listAriaLabel": "Merit transactions",
+        "filtersAriaLabel": "Filter merit history",
+        "amountAriaLabel": "Amount: {amount}",
+        "enrichment": {
+            "post": "Post",
+            "community": "Community",
+            "counterparty": "Participant",
+            "poll": "Poll",
+            "event": "Event",
+            "eventLink": "Open event"
         }
     },
     "metadata": {

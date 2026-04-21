@@ -2982,11 +2982,13 @@
         "feedEmpty": "Пока нет передач",
         "feedAmount": "{amount} засл.",
         "navMeritTransfers": "Прямые передачи",
-        "pageTitleCommunity": "Передачи заслуг в сообществе",
-        "pageTitleProject": "Передачи заслуг в проекте",
+        "pageTitleCommunity": "Прямые передачи заслуг в сообществе",
+        "pageTitleProject": "Прямые передачи заслуг в проекте",
         "pageLoginRequired": "Войдите, чтобы видеть передачи заслуг.",
         "loadMore": "Загрузить ещё",
         "peerTransfersPublicPageTitle": "Прямые передачи заслуг",
+        "peerTransfersPrivacyNote": "Здесь видны только прямые передачи между участниками — полная активность кошелька недоступна.",
+        "contextPeerOnlyDescription": "Прямые передачи заслуг между участниками, записанные в этом сообществе или проекте.",
         "profileTransferContextLabel": "Контекст передачи",
         "profileTransferContextGlobal": "Глобальные (с глобального кошелька на глобальный кошелёк)",
         "tabIncoming": "Входящие",
@@ -3017,6 +3019,17 @@
             "withdrawals": "Вывод с поста",
             "welcome_and_system": "Приветствие / система",
             "other": "Прочее"
+        },
+        "listAriaLabel": "Операции по заслугам",
+        "filtersAriaLabel": "Фильтр истории заслуг",
+        "amountAriaLabel": "Сумма: {amount}",
+        "enrichment": {
+            "post": "Публикация",
+            "community": "Сообщество",
+            "counterparty": "Участник",
+            "poll": "Опрос",
+            "event": "Событие",
+            "eventLink": "Открыть событие"
         }
     },
     "metadata": {

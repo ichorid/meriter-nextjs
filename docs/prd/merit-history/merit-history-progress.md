@@ -41,4 +41,20 @@ Started: 2026-04-21
 - **What was done**: Карточка активности профиля и глобальный раздел — «История заслуг»; навигация в общине/проекте — «Прямые передачи» (узкий peer-only контекст). `/meriter/users/[id]/merit-transfers` для **своего** id редиректит на `/meriter/profile/merit-transfers` (полная история кошелька); для **чужого** — только peer-лента и заголовок «Прямые передачи заслуг».
 - **Known issues**: Community/project страницы по-прежнему только `meritTransfer.getByCommunity`; обогащение строк — Фаза E / следующий спринт API.
 
+### Step 4: Фаза D (завершение) — контекст общины/проекта, приватность, терминология страниц
+- **Status**: Done
+- **Files changed**: `MeritTransfersByContextPage.tsx`, `UserMeritTransfersClient.tsx`, `web/messages/en.json`, `web/messages/ru.json` (`contextPeerOnlyDescription`, `peerTransfersPrivacyNote`, заголовки community/project).
+- **What was done**: На страницах общины/проекта явный текст: только прямые передачи в контексте (FR-7 зафиксирован: узкий peer-only список без смешивания с глобальной лентой). На чужом профиле — примечание о приватности (AC-5). Заголовки community/project уточнены как «Прямые передачи…».
+
+### Step 5: Обогащение API + фаза E (UI)
+- **Status**: Done
+- **Files changed**:
+  - `api/.../merit-history-enrichment.ts` (new)
+  - `api/.../wallets.router.ts` (`meritHistoryEnrichment`)
+  - `web/.../MeritHistoryFeed.tsx` (ссылки, скелетон, a11y)
+  - `web/.../profile/merit-transfers/Client.tsx` (одна панель вкладки, передача enrichment)
+  - `.cursor/rules/business-merit-history.mdc` (new)
+  - `api/package.json`, `web/package.json`
+- **What was done**: Батч-резолв публикаций / сообществ / опросов / контрагента P2P / события по transfer (FR-5, FR-6, TR-3). Лента: скелетон загрузки, `aria-*`, убраны дублирующие `TabsContent`. i18n для подписей обогащения и подсказок.
+
 _(дальше дополнять после каждого логического шага по `@.cursor/rules/progress-log.mdc`)_
