@@ -149,7 +149,6 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         <div className={cn(paddingClass, 'mb-5')}>
           <Link href={routes.futureVisions} className="block px-2">
             <span className="font-serif text-2xl font-bold italic tracking-tight text-stitch-text">Meriter</span>
-            <p className="mt-0.5 text-[11px] leading-snug text-stitch-muted">{t('brandTagline')}</p>
           </Link>
         </div>
       )}
