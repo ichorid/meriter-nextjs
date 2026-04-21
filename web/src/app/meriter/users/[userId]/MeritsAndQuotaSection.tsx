@@ -82,13 +82,14 @@ export function MeritsAndQuotaSection({
   }
 
   return (
-    <div className="bg-base-100 py-4 space-y-3">
+    <div className="bg-base-100 py-3 space-y-2">
       <button
+        type="button"
         onClick={onToggleExpanded}
-        className="flex items-center justify-between w-full hover:opacity-80 transition-opacity rounded-lg -mx-1 px-1 py-0.5"
+        className="-mx-0.5 flex w-full items-center justify-between rounded-md px-0.5 py-0.5 transition-opacity hover:opacity-80"
         aria-expanded={expanded}
       >
-        <p className="text-xs font-medium text-base-content/50 uppercase tracking-wide">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-base-content/45">
           {tCommon('meritsAndQuota')}
         </p>
         {expanded ? (
@@ -98,10 +99,13 @@ export function MeritsAndQuotaSection({
         )}
       </button>
       {expanded && (
-        <div className="animate-in fade-in duration-200 space-y-4">
+        <div className="animate-in fade-in duration-200 space-y-2.5">
           {meritHistoryHref && !showGlobalMeritBlock ? (
-            <div className="flex justify-start">
-              <ProfileMeritHistoryLink href={meritHistoryHref} />
+            <div className="flex justify-start pl-0.5">
+              <ProfileMeritHistoryLink
+                href={meritHistoryHref}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-base-content/10 bg-base-200/30 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-base-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
+              />
             </div>
           ) : null}
           {showGlobalMeritBlock && firstPriorityId ? (
@@ -112,11 +116,11 @@ export function MeritsAndQuotaSection({
             />
           ) : null}
           {showLocalTeamGroups && hasLocal && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-base-content/50 uppercase tracking-wide px-0.5">
+            <div className="space-y-1.5 pt-0.5">
+              <p className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-base-content/45">
                 {tCommon('teamGroupsSection')}
               </p>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {localRoles.map((role) => (
                   <CommunityMeritsWrapper
                     key={role.communityId}
@@ -149,25 +153,26 @@ function GlobalMeritBlock({
   const balance = globalWallet?.balance ?? 0;
 
   return (
-    <div className="rounded-xl border border-base-200 bg-gradient-to-br from-base-100 to-base-200/50 p-4 shadow-sm">
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Coins className="h-5 w-5" />
+    <div className="rounded-xl border border-base-content/10 bg-base-200/25 p-3 shadow-sm">
+      <div className="flex gap-2.5">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
+          <Coins className="h-4 w-4" aria-hidden />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-base-content">{tCommon('sharedMerit')}</p>
-          <p className="mt-0.5 text-2xl font-bold tabular-nums text-base-content">
-            {formatMerits(balance)}
-          </p>
-          <p className="mt-2 text-xs text-base-content/60">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+            <p className="text-sm font-semibold leading-tight text-base-content">
+              {tCommon('sharedMerit')}
+            </p>
+            <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-2xl">
+              {formatMerits(balance)}
+            </p>
+          </div>
+          <p className="text-[11px] leading-snug text-base-content/55 line-clamp-2">
             {tCommon('sharedMeritUsedIn')}
           </p>
           {meritHistoryHref ? (
-            <div className="mt-3 border-t border-base-300/50 pt-3">
-              <ProfileMeritHistoryLink
-                href={meritHistoryHref}
-                className="inline-flex w-full max-w-full items-center justify-center gap-2 rounded-lg border border-transparent bg-base-200/50 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-base-200"
-              />
+            <div className="pt-0.5">
+              <ProfileMeritHistoryLink href={meritHistoryHref} />
             </div>
           ) : null}
         </div>

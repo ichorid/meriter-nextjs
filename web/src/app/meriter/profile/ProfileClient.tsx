@@ -204,8 +204,11 @@ function ProfilePageComponent() {
         ) : (
           <div className="px-4">
             <Separator className="bg-base-300" />
-            <div className="bg-base-100 py-3">
-              <ProfileMeritHistoryLink href={routes.profileMeritTransfers} />
+            <div className="bg-base-100 py-2.5">
+              <ProfileMeritHistoryLink
+                href={routes.profileMeritTransfers}
+                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-base-content/10 bg-base-200/30 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-base-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
+              />
             </div>
           </div>
         )}
