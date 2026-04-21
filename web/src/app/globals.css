@@ -94,6 +94,18 @@
     --inspector-w: 360px;
     --content-max: 920px;
     --gutter: 24px;
+
+    /* Meriter “stitch” shell — light theme (RGB channels for Tailwind / alpha) */
+    --stitch-canvas-rgb: 241 245 249;
+    --stitch-sidebar-rgb: 232 239 248;
+    --stitch-surface-rgb: 255 255 255;
+    --stitch-surface2-rgb: 248 250 252;
+    --stitch-elevated-rgb: 237 242 250;
+    --stitch-border-rgb: 100 116 139;
+    --stitch-accent-rgb: 147 51 234;
+    --stitch-accent2-rgb: 124 58 237;
+    --stitch-text-rgb: 15 23 42;
+    --stitch-muted-rgb: 100 116 139;
   }
 
   [data-theme="dark"] {
@@ -167,6 +179,18 @@
     --loading-spinner-bg: #2a3239;
     --loading-spinner-active: #3b82f6;
     --loading-text: #ffffff;
+
+    /* Meriter “stitch” shell — dark theme */
+    --stitch-canvas-rgb: 11 14 20;
+    --stitch-sidebar-rgb: 5 7 13;
+    --stitch-surface-rgb: 18 22 31;
+    --stitch-surface2-rgb: 24 29 42;
+    --stitch-elevated-rgb: 30 36 51;
+    --stitch-border-rgb: 148 163 184;
+    --stitch-accent-rgb: 168 85 247;
+    --stitch-accent2-rgb: 124 58 237;
+    --stitch-text-rgb: 241 245 249;
+    --stitch-muted-rgb: 148 163 184;
   }
 
   body {
@@ -866,14 +890,14 @@
     /* Allow shrinking below content size if needed */
   }
 
-  /* Authenticated Meriter: dark “Stitch” shell (no harsh light dividers) */
+  /* Authenticated Meriter: stitch shell tracks --stitch-*-rgb (light vs dark) */
   .appShell[data-meriter-chrome="stitch"] .leftNav {
-    border-right: 1px solid rgba(148, 163, 184, 0.08);
-    background-color: #05070d;
+    border-right: 1px solid rgb(var(--stitch-border-rgb) / 0.14);
+    background-color: rgb(var(--stitch-sidebar-rgb) / 1);
   }
 
   .appShell[data-meriter-chrome="stitch"] .mainWrap {
-    background-color: #0b0e14;
+    background-color: rgb(var(--stitch-canvas-rgb) / 1);
   }
 
 
