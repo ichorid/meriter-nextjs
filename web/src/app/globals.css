@@ -13,13 +13,13 @@
   }
 
   :root {
-    /* Light theme colors (default) */
-    --base-100: #ffffff;
-    --base-200: #f2f2f2;
-    --base-300: #e5e6e6;
-    --base-content: #1f2937;
+    /* Light theme — Volt slate canvas, purple accent (see .cursor/rules/design-system.mdc) */
+    --base-100: #f8fafc;
+    --base-200: #f1f5f9;
+    --base-300: #e2e8f0;
+    --base-content: #0f172a;
 
-    --primary: #2563eb;
+    --primary: #9333ea;
     --primary-content: #ffffff;
 
     --secondary: #64748b;
@@ -45,22 +45,22 @@
     --error-content: #ffffff;
 
     /* Brand colors (light theme) */
-    --brand-primary: #2563eb;
+    --brand-primary: #9333ea;
     --brand-secondary: #64748b;
-    --brand-accent: #0ea5e9;
-    --brand-background: #f8f9fa;
+    --brand-accent: #7c3aed;
+    --brand-background: #f8fafc;
     --brand-surface: #ffffff;
-    --brand-border: #e5e7eb;
-    --brand-text-primary: #1f2937;
-    --brand-text-secondary: #6b7280;
-    --brand-text-muted: #9ca3af;
+    --brand-border: #e2e8f0;
+    --brand-text-primary: #0f172a;
+    --brand-text-secondary: #475569;
+    --brand-text-muted: #64748b;
 
     /* shadcn/ui theme variables (mapped to existing variables) */
     --background: var(--base-100);
     --foreground: var(--base-content);
-    --card: var(--base-100);
+    --card: #ffffff;
     --card-foreground: var(--base-content);
-    --popover: var(--base-100);
+    --popover: #ffffff;
     --popover-foreground: var(--base-content);
     --primary-foreground: var(--primary-content);
     --secondary-foreground: var(--secondary-content);
@@ -96,12 +96,12 @@
     --gutter: 24px;
 
     /* Meriter “stitch” shell — light theme (RGB channels for Tailwind / alpha) */
-    --stitch-canvas-rgb: 241 245 249;
-    --stitch-sidebar-rgb: 232 239 248;
+    --stitch-canvas-rgb: 248 250 252;
+    --stitch-sidebar-rgb: 248 250 252;
     --stitch-surface-rgb: 255 255 255;
     --stitch-surface2-rgb: 248 250 252;
-    --stitch-elevated-rgb: 237 242 250;
-    --stitch-border-rgb: 100 116 139;
+    --stitch-elevated-rgb: 241 245 249;
+    --stitch-border-rgb: 226 232 240;
     --stitch-accent-rgb: 147 51 234;
     --stitch-accent2-rgb: 124 58 237;
     --stitch-text-rgb: 15 23 42;
@@ -109,13 +109,13 @@
   }
 
   [data-theme="dark"] {
-    /* Dark theme colors */
-    --base-100: #1d232a;
-    --base-200: #191e24;
-    --base-300: #15191e;
-    --base-content: #a6adbb;
+    /* Dark theme — Volt Obsidian slate + purple */
+    --base-100: #020617;
+    --base-200: #0f172a;
+    --base-300: #1e293b;
+    --base-content: #f1f5f9;
 
-    --primary: #3b82f6;
+    --primary: #a855f7;
     --primary-content: #ffffff;
 
     --secondary: #64748b;
@@ -141,15 +141,15 @@
     --error-content: #ffffff;
 
     /* Brand colors (dark theme) */
-    --brand-primary: #3b82f6;
+    --brand-primary: #a855f7;
     --brand-secondary: #64748b;
-    --brand-accent: #0ea5e9;
-    --brand-background: #1d232a;
-    --brand-surface: #2a3239;
-    --brand-border: #3d4451;
-    --brand-text-primary: #a6adbb;
-    --brand-text-secondary: #8b92a0;
-    --brand-text-muted: #6b7280;
+    --brand-accent: #c084fc;
+    --brand-background: #020617;
+    --brand-surface: #0f172a;
+    --brand-border: #1e293b;
+    --brand-text-primary: #f1f5f9;
+    --brand-text-secondary: #cbd5e1;
+    --brand-text-muted: #94a3b8;
 
     /* shadcn/ui theme variables (dark mode - mapped to existing variables) */
     --background: var(--base-100);
@@ -177,18 +177,18 @@
     /* Loading indicator colors (dark theme) */
     --loading-overlay: rgba(0, 0, 0, 0.7);
     --loading-spinner-bg: #2a3239;
-    --loading-spinner-active: #3b82f6;
+    --loading-spinner-active: #a855f7;
     --loading-text: #ffffff;
 
-    /* Meriter “stitch” shell — dark theme */
-    --stitch-canvas-rgb: 11 14 20;
-    --stitch-sidebar-rgb: 5 7 13;
-    --stitch-surface-rgb: 18 22 31;
-    --stitch-surface2-rgb: 24 29 42;
-    --stitch-elevated-rgb: 30 36 51;
-    --stitch-border-rgb: 148 163 184;
-    --stitch-accent-rgb: 168 85 247;
-    --stitch-accent2-rgb: 124 58 237;
+    /* Meriter “stitch” shell — dark theme (slate-950 / 900 + purple) */
+    --stitch-canvas-rgb: 2 6 23;
+    --stitch-sidebar-rgb: 15 23 42;
+    --stitch-surface-rgb: 15 23 42;
+    --stitch-surface2-rgb: 30 41 59;
+    --stitch-elevated-rgb: 51 65 85;
+    --stitch-border-rgb: 30 41 59;
+    --stitch-accent-rgb: 192 132 252;
+    --stitch-accent2-rgb: 168 85 247;
     --stitch-text-rgb: 241 245 249;
     --stitch-muted-rgb: 148 163 184;
   }
@@ -196,6 +196,16 @@
   body {
     background-color: var(--base-100);
     color: var(--base-content);
+    font-family: Manrope, Inter, system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    letter-spacing: -0.02em;
   }
 }
 

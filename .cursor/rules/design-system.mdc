@@ -1,0 +1,42 @@
+---
+description: Meriter Volt Obsidian design system — typography, colors, spacing, copy policy
+alwaysApply: true
+---
+
+# Meriter Design System (Volt Obsidian)
+
+**North star:** “Kinetic vault” — deep slate surfaces, purple kinetic accents; stoic layout, minimal chrome.
+
+## Typography
+
+- **Family:** Manrope first (`font-sans` in `web/tailwind.config.ts`); fallbacks Inter, system UI (`web/src/app/layout.tsx` Google Fonts link).
+- **Headings:** bold / extrabold, **letter-spacing −0.02em** (global `h1–h6` in `web/src/app/globals.css` `@layer base`).
+- **Body:** regular / medium, comfortable line-height (~1.5).
+
+## Color (implementation)
+
+- **Tokens live in** `web/src/app/globals.css` (`:root` = light, `[data-theme="dark"]` = dark): Daisy `--base-*`, shadcn `--background` / `--card` / `--primary`, and authenticated-shell **`--stitch-*-rgb`** (consumed as `stitch.*` in `web/tailwind.config.ts`).
+- **Dark (Volt Obsidian):** slate-950 / slate-900 surfaces; accents **purple-400–500**; text slate-100, muted slate-400; borders **slate-800** — avoid bright white outlines except where stitch tokens require contrast.
+- **Light:** slate-50 canvas, **white** cards; accent **purple-600**; text slate-900, muted slate-500; borders slate-200.
+- Prefer **surface contrast** and shadow over heavy borders. Optional deep card shadow (purple tint) is documented in this rule for cards that need lift: `shadow-[0_20px_50px_rgba(156,72,234,0.1)]` (use sparingly).
+
+## Radius & spacing
+
+- **Cards ~12px** (`rounded-xl`, `--radius: 12px`). **Controls ~8px** where a smaller radius is specified. Reserve **full pills** for chips / compact badges, not full-width CTAs unless product explicitly requires it.
+- **Layout:** desktop content padding **24px**, mobile **16px**; desktop shell max width **1280px** where templates define `max-w-*`.
+
+## Components
+
+- **Primary CTA:** purple background, white label. **Secondary:** slate-800 (dark) / slate-100 (light) surfaces, not loud outlines.
+- **Navigation:** preserve existing Profile + global nav structure; evolve visuals through tokens and shared primitives, not one-off pages.
+
+## Data & copy (product)
+
+- **Russian UI:** use **«Заслуги»** for the platform currency (not «мериты», not G-MRT) in user-visible copy and new keys.
+- **No** identity verification badges, **no** online / presence indicators on avatars.
+- **Projects (marketing / list surfaces):** title, description, status — do not surface raw investment totals unless the screen is explicitly an investment or admin tool.
+- **Profile contacts:** email + plaintext “other contacts”; avoid decorative status affordances.
+
+## AI prompt snippet
+
+When styling: keep Profile and Navigation layout; use Manrope + slate / purple token map; avoid gratuitous gradients, extra borders, and non-functional metrics.

@@ -119,8 +119,8 @@ const config: Config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
-        heading: ['Inter', 'Roboto', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
+        heading: ['Manrope', 'Inter', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {
