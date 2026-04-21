@@ -1,5 +1,6 @@
 import type { Connection } from 'mongoose';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import type { Community } from '../../domain/models/community/community.schema';
 import type { CommunityService } from '../../domain/services/community.service';
 
 /**
@@ -27,7 +28,9 @@ export async function getRemainingQuotaForPublicationCreate(
     return 0;
   }
 
-  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
+  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(
+    community as Pick<Community, 'typeTag' | 'meritSettings'>,
+  );
   const dailyQuota =
     typeof effectiveMeritSettings?.dailyQuota === 'number' ? effectiveMeritSettings.dailyQuota : 0;
 

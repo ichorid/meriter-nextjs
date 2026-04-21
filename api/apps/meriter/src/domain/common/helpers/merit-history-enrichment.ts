@@ -4,7 +4,10 @@
  * Bounded queries per page (no per-row N+1).
  */
 
-import type { Db } from 'mongodb';
+import type { Connection } from 'mongoose';
+
+/** Mongoose `connection.db` — avoids duplicate `mongodb` package `Db` types in webpack. */
+export type MeritHistoryMongoDb = NonNullable<Connection['db']>;
 
 export type MeritHistoryEnrichmentPayload = {
   publicationId?: string;
@@ -52,7 +55,7 @@ function pickDisplayName(user: unknown, fallbackId: string): string {
 
 type PublicationLean = { id: string; title?: string | null; communityId?: string | null };
 
-async function loadPublicationsMap(db: Db, ids: Set<string>): Promise<Map<string, PublicationLean>> {
+async function loadPublicationsMap(db: MeritHistoryMongoDb, ids: Set<string>): Promise<Map<string, PublicationLean>> {
   const map = new Map<string, PublicationLean>();
   if (ids.size === 0) return map;
   const docs = await db
@@ -73,7 +76,7 @@ async function loadPublicationsMap(db: Db, ids: Set<string>): Promise<Map<string
 }
 
 async function loadPollsMap(
-  db: Db,
+  db: MeritHistoryMongoDb,
   ids: string[],
 ): Promise<Map<string, { id: string; question?: string | null; communityId?: string | null }>> {
   const map = new Map<string, { id: string; question?: string | null; communityId?: string | null }>();
@@ -113,7 +116,7 @@ export async function enrichMeritHistoryTransactions(
     referenceId?: string | null;
   }>,
   deps: {
-    db: Db | undefined;
+    db: MeritHistoryMongoDb | undefined;
     batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
   },
 ): Promise<Map<string, MeritHistoryEnrichmentPayload | null>> {
