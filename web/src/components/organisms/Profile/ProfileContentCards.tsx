@@ -21,12 +21,15 @@ interface ProfileContentCardsProps {
   isLoading?: boolean;
   /** When set, show only the four activity cards with links under `/meriter/users/:id/...`. */
   activityForUserId?: string;
+  /** When used inside ProfileMeritsActivityPanel: tighter layout, no outer card */
+  embedded?: boolean;
 }
 
 function ProfileContentCardsComponent({
   stats,
   isLoading = false,
   activityForUserId,
+  embedded = false,
 }: ProfileContentCardsProps) {
   const t = useTranslations('home');
   const tCommon = useTranslations('common');
@@ -153,19 +156,27 @@ function ProfileContentCardsComponent({
   };
 
   return (
-    <div className="bg-base-100 py-4 space-y-3">
+    <div className={cn(!embedded && 'bg-base-100 py-4', embedded ? 'space-y-2' : 'space-y-3')}>
       {/* Section Title with Toggle */}
       <button
+        type="button"
         onClick={() => setActivityExpanded(!activityExpanded)}
-        className="flex items-center justify-between w-full hover:opacity-80 transition-opacity"
+        className="flex w-full items-center justify-between rounded-md py-0.5 transition-opacity hover:opacity-80"
       >
-        <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+        <p
+          className={cn(
+            'font-medium uppercase tracking-wide',
+            embedded
+              ? 'text-[10px] text-base-content/45 sm:text-[11px]'
+              : 'text-xs text-base-content/40',
+          )}
+        >
           {tProfile('activity')}
         </p>
         {activityExpanded ? (
-          <ChevronUp className="w-4 h-4 text-base-content/40" />
+          <ChevronUp className="h-4 w-4 shrink-0 text-base-content/40" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-base-content/40" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-base-content/40" />
         )}
       </button>
 
@@ -174,8 +185,13 @@ function ProfileContentCardsComponent({
         <div className="animate-in fade-in duration-200">
           <div
             className={cn(
-              'grid grid-cols-2 gap-3 md:grid-cols-3',
-              activityForUserId ? 'lg:grid-cols-3' : 'lg:grid-cols-5',
+              'grid',
+              embedded
+                ? cn(
+                    'gap-1.5 sm:gap-2',
+                    activityForUserId ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
+                  )
+                : cn('grid-cols-2 gap-3 md:grid-cols-3', activityForUserId ? 'lg:grid-cols-3' : 'lg:grid-cols-5'),
             )}
           >
             {statCards.map((stat, index) => {
@@ -183,18 +199,49 @@ function ProfileContentCardsComponent({
               return (
                 <button
                   key={index}
+                  type="button"
                   onClick={() => handleCardClick(stat.route)}
-                  className={`${stat.bgColor} rounded-xl p-4 transition-all hover:bg-base-200 cursor-pointer text-left group`}
+                  className={cn(
+                    stat.bgColor,
+                    'cursor-pointer text-left transition-all hover:bg-base-200/80 group',
+                    embedded
+                      ? 'rounded-lg border border-base-300/25 p-2 sm:p-2.5 dark:border-base-300/20'
+                      : 'rounded-xl p-4',
+                  )}
                 >
-                  <div className={`flex items-center mb-2 ${stat.hideValue ? 'justify-start' : 'justify-between'}`}>
-                    <Icon className={stat.iconClassName || "text-base-content/40 w-5 h-5"} />
+                  <div
+                    className={cn(
+                      'flex items-center',
+                      stat.hideValue ? 'justify-start' : 'justify-between',
+                      embedded ? 'mb-1' : 'mb-2',
+                    )}
+                  >
+                    <Icon
+                      className={
+                        stat.iconClassName ||
+                        cn(
+                          'text-base-content/40',
+                          embedded ? 'h-4 w-4 sm:h-[1.15rem] sm:w-[1.15rem]' : 'h-5 w-5',
+                        )
+                      }
+                    />
                     {!stat.hideValue ? (
-                      <span className="text-2xl font-semibold text-base-content">
+                      <span
+                        className={cn(
+                          'font-semibold tabular-nums text-base-content',
+                          embedded ? 'text-base sm:text-lg' : 'text-2xl',
+                        )}
+                      >
                         {stat.valueLoading || isLoading ? '...' : stat.value}
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-xs text-base-content/60 font-medium">
+                  <p
+                    className={cn(
+                      'font-medium text-base-content/65',
+                      embedded ? 'text-[10px] leading-tight sm:text-[11px]' : 'text-xs text-base-content/60',
+                    )}
+                  >
                     {stat.label}
                   </p>
                 </button>

@@ -10,6 +10,7 @@ import { formatMerits } from '@/lib/utils/currency';
 import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
+import { cn } from '@/lib/utils';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -27,6 +28,8 @@ interface MeritsAndQuotaSectionProps {
   onToggleExpanded: () => void;
   /** When false, only global/priority merits block is shown (no "Team groups" list). Default true. */
   showLocalTeamGroups?: boolean;
+  /** When used inside ProfileMeritsActivityPanel: skip outer card chrome */
+  embedded?: boolean;
 }
 
 export function MeritsAndQuotaSection({
@@ -36,6 +39,7 @@ export function MeritsAndQuotaSection({
   expanded,
   onToggleExpanded,
   showLocalTeamGroups = true,
+  embedded = false,
 }: MeritsAndQuotaSectionProps) {
   const tCommon = useTranslations('common');
   const tCommunities = useTranslations('communities');
@@ -82,14 +86,19 @@ export function MeritsAndQuotaSection({
   }
 
   return (
-    <div className="bg-base-100 py-3 space-y-2">
+    <div className={cn('space-y-2', !embedded && 'bg-base-100 py-3')}>
       <button
         type="button"
         onClick={onToggleExpanded}
         className="-mx-0.5 flex w-full items-center justify-between rounded-md px-0.5 py-0.5 transition-opacity hover:opacity-80"
         aria-expanded={expanded}
       >
-        <p className="text-[11px] font-medium uppercase tracking-wide text-base-content/45">
+        <p
+          className={cn(
+            'font-medium uppercase tracking-wide text-base-content/45',
+            embedded ? 'text-[10px] sm:text-[11px]' : 'text-[11px]',
+          )}
+        >
           {tCommon('meritsAndQuota')}
         </p>
         {expanded ? (
@@ -117,7 +126,12 @@ export function MeritsAndQuotaSection({
           ) : null}
           {showLocalTeamGroups && hasLocal && (
             <div className="space-y-1.5 pt-0.5">
-              <p className="px-0.5 text-[11px] font-medium uppercase tracking-wide text-base-content/45">
+              <p
+                className={cn(
+                  'px-0.5 font-medium uppercase tracking-wide text-base-content/45',
+                  embedded ? 'text-[10px] sm:text-[11px]' : 'text-[11px]',
+                )}
+              >
                 {tCommon('teamGroupsSection')}
               </p>
               <div className="space-y-1.5">
@@ -153,21 +167,21 @@ function GlobalMeritBlock({
   const balance = globalWallet?.balance ?? 0;
 
   return (
-    <div className="rounded-xl bg-base-200/25 p-3">
-      <div className="flex gap-2.5">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary">
-          <Coins className="h-4 w-4" aria-hidden />
+    <div className="rounded-xl border border-base-300/30 bg-base-200/20 p-2.5 sm:border-base-300/40 sm:bg-base-200/25 sm:p-3">
+      <div className="flex gap-2 sm:gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/12 text-primary sm:h-9 sm:w-9">
+          <Coins className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-            <p className="text-sm font-semibold leading-tight text-base-content">
+        <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:gap-x-3">
+            <p className="text-xs font-semibold leading-tight text-base-content sm:text-sm">
               {tCommon('sharedMerit')}
             </p>
-            <p className="text-xl font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-2xl">
+            <p className="text-lg font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-xl md:text-2xl">
               {formatMerits(balance)}
             </p>
           </div>
-          <p className="text-[11px] leading-snug text-base-content/55 line-clamp-2">
+          <p className="text-[10px] leading-snug text-base-content/55 line-clamp-2 sm:text-[11px]">
             {tCommon('sharedMeritUsedIn')}
           </p>
           {meritHistoryHref ? (

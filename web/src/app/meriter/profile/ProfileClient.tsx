@@ -14,6 +14,7 @@ import { ProfileContentCards } from '@/components/organisms/Profile/ProfileConte
 import { useProfileData } from '@/hooks/useProfileData';
 import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuotaSection';
 import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
+import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
 import { routes } from '@/lib/constants/routes';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Button } from '@/components/ui/shadcn/button';
@@ -182,43 +183,43 @@ function ProfilePageComponent() {
           </div>
         )}
 
-        {/* Merits & quota (and merit ledger link); team groups live under communities below */}
-        {communityIds.length > 0 ? (
-          <div className="px-4">
-            <Separator className="bg-base-300" />
-            <MeritsAndQuotaSection
-              userId={user.id}
-              communityIds={communityIds}
-              userRoles={userRolesArray.map((role) => ({
-                id: role.id || '',
-                communityId: role.communityId || '',
-                communityName: role.communityName,
-                communityTypeTag: role.communityTypeTag,
-                role: role.role,
-              }))}
-              expanded={meritsExpanded}
-              onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
-              showLocalTeamGroups={false}
-            />
-          </div>
-        ) : (
-          <div className="px-4">
-            <Separator className="bg-base-300" />
-            <div className="bg-base-100 py-2.5">
-              <ProfileMeritHistoryLink
-                href={routes.profileMeritTransfers}
-                className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-base-content/10 bg-base-200/30 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-base-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Activity: publications, comments, polls, … */}
+        {/* Merits + activity in one card */}
         <div className="px-4">
           <Separator className="bg-base-300" />
-          <ProfileContentCards
-            stats={contentCardsStats}
-            isLoading={contentCardsLoading}
+          <ProfileMeritsActivityPanel
+            meritsSlot={
+              communityIds.length > 0 ? (
+                <MeritsAndQuotaSection
+                  userId={user.id}
+                  communityIds={communityIds}
+                  userRoles={userRolesArray.map((role) => ({
+                    id: role.id || '',
+                    communityId: role.communityId || '',
+                    communityName: role.communityName,
+                    communityTypeTag: role.communityTypeTag,
+                    role: role.role,
+                  }))}
+                  expanded={meritsExpanded}
+                  onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
+                  showLocalTeamGroups={false}
+                  embedded
+                />
+              ) : (
+                <div className="flex justify-start">
+                  <ProfileMeritHistoryLink
+                    href={routes.profileMeritTransfers}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-base-content/10 bg-base-200/30 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/25 hover:bg-base-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
+                  />
+                </div>
+              )
+            }
+            activitySlot={
+              <ProfileContentCards
+                stats={contentCardsStats}
+                isLoading={contentCardsLoading}
+                embedded
+              />
+            }
           />
         </div>
 

@@ -17,6 +17,7 @@ import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
 import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
+import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
@@ -202,26 +203,30 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           userRoles={userRoles}
         />
 
-        {communityIds.length > 0 && (
-          <div className="px-4">
-            <Separator className="bg-base-300" />
-            <MeritsAndQuotaSection
-              userId={user.id}
-              communityIds={communityIds}
-              userRoles={userRolesForMerits}
-              expanded={meritsExpanded}
-              onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
-              showLocalTeamGroups={false}
-            />
-          </div>
-        )}
-
         <div className="px-4">
           <Separator className="bg-base-300" />
-          <ProfileContentCards
-            stats={activityStats}
-            isLoading={activityCountsLoading}
-            activityForUserId={user.id}
+          <ProfileMeritsActivityPanel
+            meritsSlot={
+              communityIds.length > 0 ? (
+                <MeritsAndQuotaSection
+                  userId={user.id}
+                  communityIds={communityIds}
+                  userRoles={userRolesForMerits}
+                  expanded={meritsExpanded}
+                  onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
+                  showLocalTeamGroups={false}
+                  embedded
+                />
+              ) : undefined
+            }
+            activitySlot={
+              <ProfileContentCards
+                stats={activityStats}
+                isLoading={activityCountsLoading}
+                activityForUserId={user.id}
+                embedded
+              />
+            }
           />
         </div>
 
