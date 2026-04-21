@@ -62,7 +62,7 @@ export function ProfileMeritsHeroStrip({
             sc ? 'text-stitch-muted' : 'text-sm font-semibold text-base-content/70',
           )}
         >
-          {sc ? tProfile('balanceSheetTitle') : tProfile('globalMeritsTitle')}
+          {tProfile('globalMeritsTitle')}
         </p>
         {!suppressHistoryLink ? (
           <ProfileMeritHistoryLink
@@ -82,7 +82,7 @@ export function ProfileMeritsHeroStrip({
           sc ? 'text-[10px] font-bold uppercase tracking-widest text-stitch-muted' : 'text-sm font-semibold text-base-content/70',
         )}
       >
-        {sc ? tProfile('balanceSheetTitle') : tProfile('globalMeritsTitle')}
+        {tProfile('globalMeritsTitle')}
       </p>
       <p
         className={cn(
