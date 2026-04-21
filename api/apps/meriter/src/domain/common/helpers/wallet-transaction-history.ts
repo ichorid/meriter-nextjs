@@ -118,13 +118,17 @@ export function meritHistoryLedgerMultiplier(tx: {
   return -1;
 }
 
-export type MeritHistoryDashboardPeriodDays = 7 | 30 | 90;
+/** Fixed windows for dashboard (UTC calendar days through today). */
+export type MeritHistoryDashboardBoundedPeriodDays = 7 | 30 | 90;
+
+/** Dashboard period: bounded window or entire ledger (`all`). */
+export type MeritHistoryDashboardPeriodDays = MeritHistoryDashboardBoundedPeriodDays | 'all';
 
 /**
  * UTC calendar window: `periodDays` days ending today (inclusive), `[fromInclusive, toExclusive)`.
  */
 export function meritHistoryUtcCalendarRange(
-  periodDays: MeritHistoryDashboardPeriodDays,
+  periodDays: MeritHistoryDashboardBoundedPeriodDays,
   now: Date = new Date(),
 ): { fromInclusive: Date; toExclusive: Date } {
   const y = now.getUTCFullYear();

@@ -457,7 +457,8 @@ export class WalletService {
     }
 
     const walletId = wallet.getId.getValue();
-    const range = meritHistoryUtcCalendarRange(periodDays);
+    const range =
+      periodDays === 'all' ? undefined : meritHistoryUtcCalendarRange(periodDays);
     const match = buildMeritHistoryTransactionMatch(walletId, category, range);
     const signedExpr = meritHistorySignedAmountMongoExpr();
 

@@ -81,5 +81,12 @@ describe('wallet-transaction-history', () => {
     it('omits reference filter for all', () => {
       expect(buildMeritHistoryTransactionMatch('w1', 'all')).toEqual({ walletId: 'w1' });
     });
+
+    it('omits createdAt when date range is omitted (full ledger)', () => {
+      expect(buildMeritHistoryTransactionMatch('w1', 'peer_transfer', undefined)).toEqual({
+        walletId: 'w1',
+        referenceType: { $in: ['merit_transfer'] },
+      });
+    });
   });
 });

@@ -240,7 +240,12 @@ export const walletsRouter = router({
             ...MeritHistoryFilterKey[],
           ],
         ),
-        periodDays: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+        periodDays: z.union([
+          z.literal(7),
+          z.literal(30),
+          z.literal(90),
+          z.literal('all'),
+        ]),
         permissionCommunityId: z.string().optional(),
       }),
     )
