@@ -89,6 +89,10 @@
 - [ ] **AC-5:** Приватность соблюдена для чужих профилей.
 - [ ] **AC-6:** `pnpm lint && pnpm build` проходят.
 
+## Расширение: дэшборд (аналитика над лентой)
+
+PRD агента: **`docs/prd/merit-history/merit-history-dashboard-prd.md`** (KPI + спарклайн на каждой вкладке, таблица категорий на «Все», период 7/30/90 дней). Прогресс: `merit-history-dashboard-progress.md`.
+
 ## Связанные файлы
 
 - `api/apps/meriter/src/domain/services/wallet.service.ts`
