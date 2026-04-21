@@ -82,7 +82,7 @@
     /* Loading indicator colors */
     --loading-overlay: rgba(0, 0, 0, 0.5);
     --loading-spinner-bg: #f3f3f3;
-    --loading-spinner-active: #0474bf;
+    --loading-spinner-active: #9333ea;
     --loading-text: #ffffff;
 
     /* Layout dimensions */
