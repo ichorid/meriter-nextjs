@@ -2992,6 +2992,33 @@
         "tabIncoming": "Входящие",
         "tabOutgoing": "Исходящие"
     },
+    "meritHistory": {
+        "pageTitle": "История заслуг",
+        "loading": "Загрузка…",
+        "empty": "Пока нет операций",
+        "loadMore": "Загрузить ещё",
+        "filter": {
+            "all": "Все",
+            "peer_transfer": "Передачи",
+            "voting": "Голоса и посты",
+            "investment": "Инвестирование",
+            "tappalka": "Тапалка",
+            "fees_and_forward": "Комиссии и пересылки",
+            "withdrawals": "Вывод с постов",
+            "welcome_and_system": "Приветствие и система",
+            "other": "Прочее"
+        },
+        "category": {
+            "peer_transfer": "Передача заслуг",
+            "voting": "Голоса и комментарии",
+            "investment": "Инвестирование",
+            "tappalka": "Тапалка",
+            "fees_and_forward": "Комиссии и пересылки",
+            "withdrawals": "Вывод с поста",
+            "welcome_and_system": "Приветствие / система",
+            "other": "Прочее"
+        }
+    },
     "metadata": {
         "birzhaPosts": "Посты на Бирже",
         "joinCommunity": "Вступить в сообщество"

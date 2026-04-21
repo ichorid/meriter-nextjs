@@ -19,4 +19,17 @@ Started: 2026-04-21
 - **What was done**: Реализована не заглушка, а реальная пагинация по коллекции `transactions` для кошелька пользователя (по умолчанию `GLOBAL_COMMUNITY_ID`). Добавлены фильтры Merit History по `referenceType`, маппинг категорий, корректный `total` и флаг `hasMore`. Процедура `wallets.getTransactions` принимает опциональный `category`.
 - **Known issues**: Обогащение строк (заголовки постов, имена) — следующий шаг (Фаза B). Web/UI и i18n «История заслуг» — Фаза C.
 
+### Step 2: Фазы B+C (частично) — обогащение ответа API + профиль «История заслуг»
+- **Status**: Done
+- **Files changed**:
+  - `api/.../wallet-transaction-history.ts` (`meritHistoryLedgerMultiplier`)
+  - `api/.../wallets.router.ts` (`cursor`, сериализация дат, поля ответа)
+  - `api/.../wallet-transaction-history.spec.ts`
+  - `web/.../profile/merit-transfers/Client.tsx`
+  - `web/.../MeritHistoryFeed.tsx` (new)
+  - `web/messages/en.json`, `web/messages/ru.json`
+  - `web/package.json`, `api/package.json`
+- **What was done**: Ответ `wallets.getTransactions` дополнен `meritHistoryCategory`, `ledgerMultiplier`, ISO-датами; учтён `cursor` для infinite query; исправлен приоритет `skip`/`cursor`. Профиль `/meriter/profile/merit-transfers`: заголовок «История заслуг», фильтры-категории, лента из глобального кошелька через `useInfiniteQuery`.
+- **Known issues**: Страницы community/project/user merit-transfers пока старый peer-only UI; обогащение постами/именами — следующий шаг.
+
 _(дальше дополнять после каждого логического шага по `@.cursor/rules/progress-log.mdc`)_

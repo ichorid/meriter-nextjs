@@ -98,6 +98,26 @@ export function meritHistoryReferenceTypeMatch(
   return { referenceType: { $in: [...include] } };
 }
 
+/**
+ * Display sign for global wallet ledger lines (+ incoming / − outgoing).
+ * publication_*_withdrawal credits use stored type `withdrawal` but are incoming merits.
+ */
+export function meritHistoryLedgerMultiplier(tx: {
+  type: string;
+  referenceType?: string | null;
+}): 1 | -1 {
+  const rt = tx.referenceType ?? '';
+  if (
+    rt === 'publication_withdrawal' ||
+    rt === 'comment_withdrawal' ||
+    rt === 'vote_withdrawal'
+  ) {
+    return 1;
+  }
+  if (tx.type === 'deposit') return 1;
+  return -1;
+}
+
 export function meritHistoryCategoryForReferenceType(
   referenceType: string | undefined | null,
 ): Exclude<MeritHistoryFilterKey, 'all'> {

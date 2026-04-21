@@ -1,5 +1,6 @@
 import {
   meritHistoryCategoryForReferenceType,
+  meritHistoryLedgerMultiplier,
   meritHistoryReferenceTypeMatch,
 } from '../src/domain/common/helpers/wallet-transaction-history';
 
@@ -35,6 +36,23 @@ describe('wallet-transaction-history', () => {
     it('builds $or for other', () => {
       const m = meritHistoryReferenceTypeMatch('other');
       expect(m).toMatchObject({ $or: expect.any(Array) });
+    });
+  });
+
+  describe('meritHistoryLedgerMultiplier', () => {
+    it('treats publication_withdrawal as incoming despite withdrawal type', () => {
+      expect(
+        meritHistoryLedgerMultiplier({
+          type: 'withdrawal',
+          referenceType: 'publication_withdrawal',
+        }),
+      ).toBe(1);
+    });
+
+    it('uses deposit as incoming', () => {
+      expect(meritHistoryLedgerMultiplier({ type: 'deposit', referenceType: 'welcome_merits' })).toBe(
+        1,
+      );
     });
   });
 });

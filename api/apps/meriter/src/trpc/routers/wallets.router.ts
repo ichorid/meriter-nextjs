@@ -7,6 +7,8 @@ import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.consta
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import {
   MERIT_HISTORY_FILTER_KEYS,
+  meritHistoryCategoryForReferenceType,
+  meritHistoryLedgerMultiplier,
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
 
@@ -79,6 +81,8 @@ export const walletsRouter = router({
       pageSize: z.number().int().min(1).max(100).optional(),
       limit: z.number().int().min(1).max(100).optional(),
       skip: z.number().int().min(0).optional(),
+      /** Offset for infinite queries (`useInfiniteQuery` pageParam → cursor). */
+      cursor: z.number().int().min(0).optional(),
       communityId: z.string().optional(),
       type: z.string().optional(),
       category: z
@@ -110,8 +114,15 @@ export const walletsRouter = router({
       }
 
       const pagination = PaginationHelper.parseOptions(input);
-      const skip = PaginationHelper.getSkip(pagination);
       const limit = pagination.limit || 20;
+      let skip: number;
+      if (typeof input.cursor === 'number') {
+        skip = input.cursor;
+      } else if (typeof input.skip === 'number') {
+        skip = input.skip;
+      } else {
+        skip = PaginationHelper.getSkip(pagination);
+      }
 
       const result = await ctx.walletService.getUserTransactions(
         actualUserId,
@@ -126,8 +137,25 @@ export const walletsRouter = router({
 
       const loaded = result.data.length;
 
+      const data = result.data.map((tx) => {
+        const createdAt =
+          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
+        const updatedAt =
+          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
+        return {
+          ...tx,
+          createdAt,
+          updatedAt,
+          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
+          ledgerMultiplier: meritHistoryLedgerMultiplier({
+            type: tx.type,
+            referenceType: tx.referenceType,
+          }),
+        };
+      });
+
       return {
-        data: result.data,
+        data,
         total: result.total,
         skip,
         limit,

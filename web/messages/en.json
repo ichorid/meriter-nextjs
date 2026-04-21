@@ -2992,6 +2992,33 @@
         "tabIncoming": "Incoming",
         "tabOutgoing": "Outgoing"
     },
+    "meritHistory": {
+        "pageTitle": "Merit history",
+        "loading": "Loading…",
+        "empty": "No transactions yet",
+        "loadMore": "Load more",
+        "filter": {
+            "all": "All",
+            "peer_transfer": "Peer transfers",
+            "voting": "Voting & posts",
+            "investment": "Investing",
+            "tappalka": "Tappalka",
+            "fees_and_forward": "Fees & forwards",
+            "withdrawals": "Withdrawals from posts",
+            "welcome_and_system": "Welcome & system",
+            "other": "Other"
+        },
+        "category": {
+            "peer_transfer": "Peer transfer",
+            "voting": "Voting & comments",
+            "investment": "Investing",
+            "tappalka": "Tappalka",
+            "fees_and_forward": "Fees & forwards",
+            "withdrawals": "Withdrawal",
+            "welcome_and_system": "Welcome / system",
+            "other": "Other"
+        }
+    },
     "metadata": {
         "birzhaPosts": "Birzha posts",
         "joinCommunity": "Join community"
