@@ -12,11 +12,8 @@ import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { ProfileStats } from '@/components/organisms/Profile/ProfileStats';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { useProfileData } from '@/hooks/useProfileData';
-import { MeritsAndQuotaSection } from '@/app/meriter/users/[userId]/MeritsAndQuotaSection';
-import { ProfileMeritHistoryLink } from '@/components/organisms/Profile/ProfileMeritHistoryLink';
 import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
-import { routes } from '@/lib/constants/routes';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { ProfileMeritsHeroStrip } from '@/components/organisms/Profile/ProfileMeritsHeroStrip';
 import { Button } from '@/components/ui/shadcn/button';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
@@ -33,8 +30,6 @@ function ProfilePageComponent() {
   const [isEditing, setIsEditing] = useState(false);
 
   const { data: roles } = useUserRoles(user?.id || '');
-  const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>('profile.meritsExpanded', true);
-
   const { communities: allCommunities, walletsMap, quotasMap, isLoading: communitiesLoading } = useUserCommunities();
 
   // Private communities only (no special: future-vision, marathon-of-good, team-projects, support)
@@ -81,7 +76,7 @@ function ProfilePageComponent() {
     [projectsOnly, leadCommunityIds]
   );
 
-  // Get unique community IDs from user roles (for MeritsAndQuotaSection)
+  // Get unique community IDs from user roles (merits hero + domain)
   const communityIds = useMemo(() => {
     if (!roles) return [];
     return Array.from(new Set(roles.map(role => role.communityId).filter(Boolean)));
@@ -170,6 +165,19 @@ function ProfilePageComponent() {
             onEdit={handleEdit}
             showEdit={true}
             userRoles={userRolesArray}
+            meritsHeroSlot={
+              <ProfileMeritsHeroStrip
+                userId={user.id}
+                communityIds={communityIds}
+                userRoles={userRolesArray.map((role) => ({
+                  id: role.id || '',
+                  communityId: role.communityId || '',
+                  communityName: role.communityName,
+                  communityTypeTag: role.communityTypeTag,
+                  role: role.role,
+                }))}
+              />
+            }
           />
         )}
 
@@ -187,29 +195,6 @@ function ProfilePageComponent() {
         <div>
           <Separator className="bg-base-300" />
           <ProfileMeritsActivityPanel
-            meritsSlot={
-              communityIds.length > 0 ? (
-                <MeritsAndQuotaSection
-                  userId={user.id}
-                  communityIds={communityIds}
-                  userRoles={userRolesArray.map((role) => ({
-                    id: role.id || '',
-                    communityId: role.communityId || '',
-                    communityName: role.communityName,
-                    communityTypeTag: role.communityTypeTag,
-                    role: role.role,
-                  }))}
-                  expanded={meritsExpanded}
-                  onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
-                  showLocalTeamGroups={false}
-                  embedded
-                />
-              ) : (
-                <div className="flex justify-start py-0.5">
-                  <ProfileMeritHistoryLink href={routes.profileMeritTransfers} />
-                </div>
-              )
-            }
             activitySlot={
               <ProfileContentCards
                 stats={contentCardsStats}
@@ -224,16 +209,16 @@ function ProfilePageComponent() {
         <div>
           <Separator className="bg-base-300" />
           <div className="bg-base-100 py-4 space-y-4">
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('administeredCommunities')}
             </p>
             {communitiesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
                 <CardSkeleton />
               </div>
             ) : administeredCommunities.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {administeredCommunities.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -254,10 +239,10 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">{tCommunities('noAdministeredCommunities')}</p>
+              <p className="text-sm text-base-content/50">{tCommunities('noAdministeredCommunities')}</p>
             )}
 
-            <div className="px-4">
+            <div>
               <Button
                 variant="outline"
                 className="w-full gap-2"
@@ -268,15 +253,15 @@ function ProfilePageComponent() {
               </Button>
             </div>
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('communitiesIMemberOf')}
             </p>
             {communitiesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : memberCommunities.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {memberCommunities.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -297,18 +282,18 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">{tCommunities('noMemberCommunities')}</p>
+              <p className="text-sm text-base-content/50">{tCommunities('noMemberCommunities')}</p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('administeredProjects')}
             </p>
             {communitiesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : administeredProjects.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {administeredProjects.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -329,18 +314,18 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">{tCommunities('noAdministeredProjects')}</p>
+              <p className="text-sm text-base-content/50">{tCommunities('noAdministeredProjects')}</p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('memberProjects')}
             </p>
             {communitiesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : memberProjects.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {memberProjects.map((community) => {
                   const wallet = walletsMap.get(community.id);
                   const quota = quotasMap.get(community.id);
@@ -361,7 +346,7 @@ function ProfilePageComponent() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">{tCommunities('noMemberProjects')}</p>
+              <p className="text-sm text-base-content/50">{tCommunities('noMemberProjects')}</p>
             )}
           </div>
         </div>

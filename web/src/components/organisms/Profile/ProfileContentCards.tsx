@@ -156,21 +156,14 @@ function ProfileContentCardsComponent({
   };
 
   return (
-    <div className={cn(!embedded && 'bg-base-100 py-4', embedded ? 'space-y-2' : 'space-y-3')}>
+    <div className={cn(!embedded && 'bg-base-100 py-4', embedded ? 'space-y-3' : 'space-y-3')}>
       {/* Section Title with Toggle */}
       <button
         type="button"
         onClick={() => setActivityExpanded(!activityExpanded)}
         className="flex w-full items-center justify-between rounded-md py-0.5 transition-opacity hover:opacity-80"
       >
-        <p
-          className={cn(
-            'font-medium uppercase tracking-wide',
-            embedded
-              ? 'text-[10px] text-base-content/45 sm:text-[11px]'
-              : 'text-xs text-base-content/40',
-          )}
-        >
+        <p className="text-xs font-medium uppercase tracking-wide text-base-content/40">
           {tProfile('activity')}
         </p>
         {activityExpanded ? (
@@ -188,8 +181,7 @@ function ProfileContentCardsComponent({
               'grid',
               embedded
                 ? cn(
-                    // Hairline gutters = vertical rules between cells (any column count)
-                    'gap-px rounded-md bg-base-content/[0.1] p-px dark:bg-base-content/[0.14]',
+                    'gap-2 sm:gap-3',
                     activityForUserId ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5',
                   )
                 : cn('grid-cols-2 gap-3 md:grid-cols-3', activityForUserId ? 'lg:grid-cols-3' : 'lg:grid-cols-5'),
@@ -206,47 +198,54 @@ function ProfileContentCardsComponent({
                     'cursor-pointer text-left transition-colors group',
                     embedded
                       ? cn(
-                          'min-h-[3.25rem] bg-base-100 px-2 py-2 sm:min-h-[3.5rem] sm:px-2.5 sm:py-2.5',
-                          'rounded-none hover:bg-base-200/50 active:bg-base-200/65',
+                          'rounded-xl border border-base-content/[0.08] bg-base-200/25 p-3 sm:p-3.5',
+                          'shadow-sm dark:border-base-content/[0.12] dark:bg-base-200/20',
+                          'hover:border-base-content/[0.14] hover:bg-base-200/40 active:bg-base-200/55',
+                          'min-h-[5.25rem] sm:min-h-[5.5rem]',
                         )
                       : cn(stat.bgColor, 'rounded-xl p-4 transition-all hover:bg-base-200/80'),
                   )}
                 >
-                  <div
-                    className={cn(
-                      'flex items-center',
-                      stat.hideValue ? 'justify-start' : 'justify-between',
-                      embedded ? 'mb-1' : 'mb-2',
-                    )}
-                  >
-                    <Icon
-                      className={
-                        stat.iconClassName ||
-                        cn(
-                          'text-base-content/40',
-                          embedded ? 'h-4 w-4 sm:h-[1.15rem] sm:w-[1.15rem]' : 'h-5 w-5',
-                        )
-                      }
-                    />
-                    {!stat.hideValue ? (
-                      <span
+                  {embedded ? (
+                    <div className="flex h-full flex-col gap-2">
+                      <Icon
                         className={cn(
-                          'font-semibold tabular-nums text-base-content',
-                          embedded ? 'text-base sm:text-lg' : 'text-2xl',
+                          stat.iconClassName,
+                          'h-5 w-5 shrink-0 text-base-content/45 transition-colors group-hover:text-base-content/65',
+                        )}
+                      />
+                      {!stat.hideValue ? (
+                        <span className="text-xl font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-2xl">
+                          {stat.valueLoading || isLoading ? '…' : stat.value}
+                        </span>
+                      ) : null}
+                      <p className="mt-auto text-sm font-medium leading-snug text-base-content/75">
+                        {stat.label}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={cn(
+                          'mb-2 flex items-center',
+                          stat.hideValue ? 'justify-start' : 'justify-between',
                         )}
                       >
-                        {stat.valueLoading || isLoading ? '...' : stat.value}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p
-                    className={cn(
-                      'font-medium text-base-content/65',
-                      embedded ? 'text-[10px] leading-tight sm:text-[11px]' : 'text-xs text-base-content/60',
-                    )}
-                  >
-                    {stat.label}
-                  </p>
+                        <Icon
+                          className={
+                            stat.iconClassName ||
+                            cn('h-5 w-5 text-base-content/40')
+                          }
+                        />
+                        {!stat.hideValue ? (
+                          <span className="text-2xl font-semibold tabular-nums text-base-content">
+                            {stat.valueLoading || isLoading ? '...' : stat.value}
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="text-xs font-medium text-base-content/60">{stat.label}</p>
+                    </>
+                  )}
                 </button>
               );
             })}

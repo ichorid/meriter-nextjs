@@ -12,6 +12,7 @@ import { shareUrl, getProfileUrl } from '@shared/lib/share-utils';
 import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 import type { User } from '@/types/api-v1';
+import { cn } from '@/lib/utils';
 
 interface ProfileHeroProps {
   user: User | null | undefined;
@@ -21,9 +22,18 @@ interface ProfileHeroProps {
   showEdit?: boolean;
   userRoles?: Array<{ id: string; role: string; communityId?: string; communityName?: string; communityTypeTag?: string }>;
   onEdit?: () => void;
+  /** Compact merits / history row to the right of the avatar (same vertical band as `-mt-10`). */
+  meritsHeroSlot?: React.ReactNode;
 }
 
-function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles = [], onEdit }: ProfileHeroProps) {
+function ProfileHeroComponent({
+  user,
+  stats: _stats,
+  showEdit = false,
+  userRoles = [],
+  onEdit,
+  meritsHeroSlot,
+}: ProfileHeroProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const tShared = useTranslations('shared');
@@ -96,19 +106,43 @@ function ProfileHeroComponent({ user, stats: _stats, showEdit = false, userRoles
 
       {/* Profile Content */}
       <div className="relative pb-5">
-        {/* Avatar */}
-        <div className="-mt-10 mb-4">
-          <div className="relative inline-block">
-            <Avatar className="w-20 h-20 text-xl border-4 border-base-100 shadow-md bg-base-200">
-              {avatarUrl && (
-                <AvatarImage src={avatarUrl} alt={displayName} />
+        {/* Avatar + optional merits — one card when merits are shown */}
+        <div className={cn('-mt-10', meritsHeroSlot ? 'mb-6' : 'mb-4')}>
+          <div className={cn(meritsHeroSlot && 'py-1 sm:py-2')}>
+            <div
+              className={cn(
+                'flex',
+                meritsHeroSlot
+                  ? 'flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8'
+                  : 'min-h-[5rem] items-end gap-3',
               )}
-              <AvatarFallback userId={user.id} className="font-medium uppercase">
-                {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
-              </AvatarFallback>
-            </Avatar>
-            {/* Online indicator */}
-            <div className="absolute bottom-1 right-1 w-4 h-4 bg-success border-2 border-base-100 rounded-full" />
+            >
+              <div className="relative shrink-0">
+                <Avatar
+                  className={cn(
+                    'border-4 border-base-100 bg-base-200 text-xl shadow-md',
+                    meritsHeroSlot ? 'h-24 w-24 sm:h-[5.5rem] sm:w-[5.5rem]' : 'h-20 w-20',
+                  )}
+                >
+                  {avatarUrl && (
+                    <AvatarImage src={avatarUrl} alt={displayName} />
+                  )}
+                  <AvatarFallback userId={user.id} className="font-medium uppercase">
+                    {displayName ? displayName.slice(0, 2).toUpperCase() : <UserIcon size={32} />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute bottom-1 right-1 h-4 w-4 rounded-full border-2 border-base-100 bg-success" />
+              </div>
+              {meritsHeroSlot ? (
+                <>
+                  <div
+                    className="hidden h-[4.5rem] w-px shrink-0 bg-gradient-to-b from-transparent via-base-content/15 to-transparent sm:block"
+                    aria-hidden
+                  />
+                  <div className="w-full min-w-0 flex-1 sm:w-auto">{meritsHeroSlot}</div>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
 

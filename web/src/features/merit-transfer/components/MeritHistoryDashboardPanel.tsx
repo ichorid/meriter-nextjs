@@ -18,9 +18,11 @@ export type MeritHistoryDashboardCategory =
   | 'welcome_and_system'
   | 'other';
 
-export type MeritHistoryDashboardPeriod = 7 | 30 | 90;
+export type MeritHistoryDashboardPeriod = 7 | 30 | 90 | 'all';
 
-function utcDateKeysForPeriod(periodDays: MeritHistoryDashboardPeriod): string[] {
+const SPARKLINE_MAX_POINTS = 160;
+
+function utcDateKeysForPeriod(periodDays: Exclude<MeritHistoryDashboardPeriod, 'all'>): string[] {
   const now = new Date();
   const keys: string[] = [];
   for (let i = periodDays - 1; i >= 0; i -= 1) {
@@ -29,6 +31,27 @@ function utcDateKeysForPeriod(periodDays: MeritHistoryDashboardPeriod): string[]
     keys.push(d.toISOString().slice(0, 10));
   }
   return keys;
+}
+
+function subsampleSeries<T>(points: T[], maxPoints: number, pick: (p: T) => string): T[] {
+  if (points.length <= maxPoints) return points;
+  const out: T[] = [];
+  const last = points.length - 1;
+  for (let i = 0; i < maxPoints; i += 1) {
+    const idx = Math.round((i * last) / Math.max(1, maxPoints - 1));
+    out.push(points[idx]!);
+  }
+  // de-dupe adjacent identical dates from rounding
+  const deduped: T[] = [];
+  let prevKey = '';
+  for (const p of out) {
+    const k = pick(p);
+    if (k !== prevKey) {
+      deduped.push(p);
+      prevKey = k;
+    }
+  }
+  return deduped.length >= 2 ? deduped : out;
 }
 
 type Props = {
@@ -64,17 +87,37 @@ export function MeritHistoryDashboardPanel({
     },
   );
 
-  const dateKeys = useMemo(() => utcDateKeysForPeriod(periodDays), [periodDays]);
+  const dateKeys = useMemo(
+    () => (periodDays === 'all' ? [] : utcDateKeysForPeriod(periodDays)),
+    [periodDays],
+  );
 
   const filledSeries = useMemo(() => {
+    if (periodDays === 'all') {
+      const sorted = [...(query.data?.series ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+      return subsampleSeries(sorted, SPARKLINE_MAX_POINTS, (p) => p.date);
+    }
     const byDay = new Map<string, number>();
     for (const p of query.data?.series ?? []) {
       byDay.set(p.date, p.net);
     }
     return dateKeys.map((date) => ({ date, net: byDay.get(date) ?? 0 }));
-  }, [query.data?.series, dateKeys]);
+  }, [periodDays, query.data?.series, dateKeys]);
 
   const sparkSummary = useMemo(() => {
+    if (periodDays === 'all' && query.data?.kpis) {
+      const { net, count } = query.data.kpis;
+      if (count === 0) {
+        return t('sparklineSummaryFlat');
+      }
+      if (net > 0) {
+        return t('sparklineSummaryUp', { net: formatMerits(net) });
+      }
+      if (net < 0) {
+        return t('sparklineSummaryDown', { net: formatMerits(Math.abs(net)) });
+      }
+      return t('sparklineSummaryMixed');
+    }
     const nets = filledSeries.map((p) => p.net);
     const sum = nets.reduce((a, b) => a + b, 0);
     if (nets.length === 0 || nets.every((n) => n === 0)) {
@@ -87,7 +130,7 @@ export function MeritHistoryDashboardPanel({
       return t('sparklineSummaryDown', { net: formatMerits(Math.abs(sum)) });
     }
     return t('sparklineSummaryMixed');
-  }, [filledSeries, t]);
+  }, [filledSeries, periodDays, query.data?.kpis, t]);
 
   const chartGeometry = useMemo(() => {
     const nets = filledSeries.map((p) => p.net);
@@ -106,7 +149,7 @@ export function MeritHistoryDashboardPanel({
     return { w, h, pad, mid, points: points.join(' ') };
   }, [filledSeries]);
 
-  const periods: MeritHistoryDashboardPeriod[] = [7, 30, 90];
+  const periods: MeritHistoryDashboardPeriod[] = [7, 30, 90, 'all'];
 
   if (!enabled || !userId) {
     return null;
@@ -128,17 +171,17 @@ export function MeritHistoryDashboardPanel({
         >
           {periods.map((d) => (
             <button
-              key={d}
+              key={String(d)}
               type="button"
               onClick={() => onPeriodDaysChange(d)}
               className={cn(
-                'rounded px-2 py-1 text-xs font-medium transition-colors',
+                'whitespace-nowrap rounded px-2 py-1 text-xs font-medium transition-colors',
                 periodDays === d
                   ? 'bg-brand-primary text-primary-content'
                   : 'text-base-content/80 hover:bg-base-200',
               )}
             >
-              {t(`period.${d}` as const)}
+              {t(`period.${String(d)}` as 'period.7' | 'period.30' | 'period.90' | 'period.all')}
             </button>
           ))}
         </div>
@@ -194,7 +237,9 @@ export function MeritHistoryDashboardPanel({
               />
             </svg>
           </div>
-          <p className="mb-4 text-xs text-base-content/60">{t('sparklineCaption')}</p>
+          <p className="mb-4 text-xs text-base-content/60">
+            {periodDays === 'all' ? t('sparklineCaptionAll') : t('sparklineCaption')}
+          </p>
 
           {category === 'all' && query.data.breakdown && query.data.breakdown.length > 0 ? (
             <div className="overflow-x-auto rounded-md border border-base-300/60">

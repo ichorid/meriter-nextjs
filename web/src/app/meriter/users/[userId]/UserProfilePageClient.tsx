@@ -9,15 +9,14 @@ import { useProfileActivityCounts, useUserProfile } from '@/hooks/api/useUsers';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useInvitableCommunities } from '@/hooks/api/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { User as UserIcon, UserPlus } from 'lucide-react';
 import { Separator } from '@/components/ui/shadcn/separator';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
-import { MeritsAndQuotaSection } from './MeritsAndQuotaSection';
 import { ProfileContentCards } from '@/components/organisms/Profile/ProfileContentCards';
 import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
+import { ProfileMeritsHeroStrip } from '@/components/organisms/Profile/ProfileMeritsHeroStrip';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
@@ -52,8 +51,6 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
   const { data: invitableCommunities = [] } = useInvitableCommunities(
     viewingOtherProfile ? userId : '',
   );
-
-  const [meritsExpanded, setMeritsExpanded] = useLocalStorage<boolean>(`userProfile.${userId}.meritsExpanded`, true);
 
   // Handle 404 - redirect to not-found if user doesn't exist
   useEffect(() => {
@@ -201,24 +198,18 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           user={user}
           showEdit={false}
           userRoles={userRoles}
+          meritsHeroSlot={
+            <ProfileMeritsHeroStrip
+              userId={user.id}
+              communityIds={communityIds}
+              userRoles={userRolesForMerits}
+            />
+          }
         />
 
         <div>
           <Separator className="bg-base-300" />
           <ProfileMeritsActivityPanel
-            meritsSlot={
-              communityIds.length > 0 ? (
-                <MeritsAndQuotaSection
-                  userId={user.id}
-                  communityIds={communityIds}
-                  userRoles={userRolesForMerits}
-                  expanded={meritsExpanded}
-                  onToggleExpanded={() => setMeritsExpanded(!meritsExpanded)}
-                  showLocalTeamGroups={false}
-                  embedded
-                />
-              ) : undefined
-            }
             activitySlot={
               <ProfileContentCards
                 stats={activityStats}
@@ -235,7 +226,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           <div className="bg-base-100 py-4 space-y-4">
             {viewingOtherProfile && (
               <>
-                <div className="flex flex-wrap items-center gap-2 px-4">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
                     variant="outline"
@@ -266,16 +257,16 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 />
               </>
             )}
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('administeredCommunities')}
             </p>
             {rolesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
                 <CardSkeleton />
               </div>
             ) : administeredCommunityIds.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {administeredCommunityIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -286,20 +277,20 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">
+              <p className="text-sm text-base-content/50">
                 {tCommunities('noAdministeredCommunitiesOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('communitiesIMemberOf')}
             </p>
             {rolesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : memberCommunityIds.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {memberCommunityIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -310,20 +301,20 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">
+              <p className="text-sm text-base-content/50">
                 {tCommunities('noMemberCommunitiesOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('administeredProjects')}
             </p>
             {rolesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : administeredProjectIds.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {administeredProjectIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -334,20 +325,20 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">
+              <p className="text-sm text-base-content/50">
                 {tCommunities('noAdministeredProjectsOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide px-4">
+            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
               {tCommunities('memberProjects')}
             </p>
             {rolesLoading ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 <CardSkeleton />
               </div>
             ) : memberProjectIds.length > 0 ? (
-              <div className="flex flex-col gap-1 px-4">
+              <div className="flex flex-col gap-1">
                 {memberProjectIds.map((communityId) => (
                   <CommunityCard
                     key={communityId}
@@ -358,7 +349,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50 px-4">
+              <p className="text-sm text-base-content/50">
                 {tCommunities('noMemberProjectsOther', { name: displayName })}
               </p>
             )}
