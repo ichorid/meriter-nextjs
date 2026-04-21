@@ -75,7 +75,10 @@ Router: `api/apps/meriter/src/trpc/routers/merit-transfer.router.ts`. Service: `
 - **Members (community):** `MeritTransferButton` on member rows — `MembersTab`, `CommunityMembersPageClient` (icon-only control next to admin merit actions).
 - **Project members:** same pattern where project membership list is integrated (see `project-dashboard` / members flows).
 - **Context feed:** routes `…/communities/[id]/merit-transfers`, `…/projects/[id]/merit-transfers` — `MeritTransferFeed` + `meritTransfer.getByCommunity` (infinite query).
-- **Profile:** `/meriter/profile/merit-transfers` — tabs incoming/outgoing, `meritTransfer.getByUser`.
+- **Profile global merit ledger (not this router’s list API):** `/meriter/profile/merit-transfers` — category tabs, **`wallets.getTransactions`** + **`wallets.getMeritHistoryDashboard`**, `MeritHistoryFeed` / `MeritHistoryDashboardPanel` (see @business-merit-history.mdc).
+- **Peer-only on another user’s profile:** `/meriter/users/[id]/merit-transfers` — incoming/outgoing tabs, **`meritTransfer.getByUser`**.
+
+**`getByUser` access (code):** `protectedProcedure`; router checks target user exists only — **no** `viewerId === userId` guard in `merit-transfer.router.ts` (service filters by `transferDirection` only). Exposure is whatever the web app links to.
 
 Feature folder: `web/src/features/merit-transfer/` (dialog, feed, hooks, pages).
 

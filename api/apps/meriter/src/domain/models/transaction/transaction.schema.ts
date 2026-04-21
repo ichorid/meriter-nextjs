@@ -66,3 +66,5 @@ TransactionSchema.index({ walletId: 1 });
 TransactionSchema.index({ type: 1 });
 TransactionSchema.index({ referenceType: 1, referenceId: 1 });
 TransactionSchema.index({ createdAt: -1 });
+/** Merit history dashboard + dated wallet feeds */
+TransactionSchema.index({ walletId: 1, createdAt: -1 });

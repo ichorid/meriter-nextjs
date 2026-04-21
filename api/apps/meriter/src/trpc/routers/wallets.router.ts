@@ -9,6 +9,7 @@ import {
   MERIT_HISTORY_FILTER_KEYS,
   meritHistoryCategoryForReferenceType,
   meritHistoryLedgerMultiplier,
+  type MeritHistoryDashboardPeriodDays,
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
 import { enrichMeritHistoryTransactions } from '../../domain/common/helpers/merit-history-enrichment';
@@ -18,6 +19,49 @@ const DEFAULT_CURRENCY = {
   plural: 'merits',
   genitive: 'merits',
 } as const;
+
+async function assertMeritHistoryTransactionsAccess(
+  ctx: {
+    user: { id: string };
+    userService: { getUserById: (id: string) => Promise<{ globalRole?: string | null } | null> };
+    permissionService: {
+      canViewUserMerits: (
+        viewerId: string,
+        targetUserId: string,
+        communityId: string,
+      ) => Promise<boolean>;
+    };
+  },
+  actualUserId: string,
+  permissionCommunityId: string | undefined,
+): Promise<void> {
+  if (actualUserId === ctx.user.id) {
+    return;
+  }
+  const requester = await ctx.userService.getUserById(ctx.user.id);
+  const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+  if (isSuperadmin) {
+    return;
+  }
+  const ctxCommunity = permissionCommunityId?.trim();
+  if (!ctxCommunity) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'permissionCommunityId is required to view another user\'s transactions',
+    });
+  }
+  const canView = await ctx.permissionService.canViewUserMerits(
+    ctx.user.id,
+    actualUserId,
+    ctxCommunity,
+  );
+  if (!canView) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to view this user\'s transactions',
+    });
+  }
+}
 
 export const walletsRouter = router({
   /**
@@ -111,30 +155,11 @@ export const walletsRouter = router({
       // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
 
-      if (actualUserId !== ctx.user.id) {
-        const requester = await ctx.userService.getUserById(ctx.user.id);
-        const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
-        if (!isSuperadmin) {
-          const ctxCommunity = input.permissionCommunityId?.trim();
-          if (!ctxCommunity) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'permissionCommunityId is required to view another user\'s transactions',
-            });
-          }
-          const canView = await ctx.permissionService.canViewUserMerits(
-            ctx.user.id,
-            actualUserId,
-            ctxCommunity,
-          );
-          if (!canView) {
-            throw new TRPCError({
-              code: 'FORBIDDEN',
-              message: 'You do not have permission to view this user\'s transactions',
-            });
-          }
-        }
-      }
+      await assertMeritHistoryTransactionsAccess(
+        ctx,
+        actualUserId,
+        input.permissionCommunityId,
+      );
 
       const pagination = PaginationHelper.parseOptions(input);
       const limit = pagination.limit || 20;
@@ -200,6 +225,37 @@ export const walletsRouter = router({
         limit,
         hasMore: skip + loaded < result.total,
       };
+    }),
+
+  /**
+   * Merit history dashboard: KPIs, daily net series, optional category breakdown (tab "all" only).
+   */
+  getMeritHistoryDashboard: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        category: z.enum(
+          MERIT_HISTORY_FILTER_KEYS as unknown as [
+            MeritHistoryFilterKey,
+            ...MeritHistoryFilterKey[],
+          ],
+        ),
+        periodDays: z.union([z.literal(7), z.literal(30), z.literal(90)]),
+        permissionCommunityId: z.string().optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
+      await assertMeritHistoryTransactionsAccess(
+        ctx,
+        actualUserId,
+        input.permissionCommunityId,
+      );
+      return ctx.walletService.getMeritHistoryDashboard(
+        actualUserId,
+        input.category,
+        input.periodDays satisfies MeritHistoryDashboardPeriodDays,
+      );
     }),
 
   /**

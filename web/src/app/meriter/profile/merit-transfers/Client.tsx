@@ -11,6 +11,10 @@ import {
   MeritHistoryFeed,
   type MeritHistoryFeedRow,
 } from '@/features/merit-transfer/components/MeritHistoryFeed';
+import {
+  MeritHistoryDashboardPanel,
+  type MeritHistoryDashboardPeriod,
+} from '@/features/merit-transfer/components/MeritHistoryDashboardPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { Button } from '@/components/ui/shadcn/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -48,6 +52,7 @@ export default function ProfileMeritTransfersClient() {
   const tHist = useTranslations('meritHistory');
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<MeritHistoryFilterTab>('all');
+  const [dashboardPeriodDays, setDashboardPeriodDays] = useState<MeritHistoryDashboardPeriod>(30);
 
   const userId = user?.id ?? '';
 
@@ -122,6 +127,13 @@ export default function ProfileMeritTransfersClient() {
   return (
     <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        <MeritHistoryDashboardPanel
+          userId={userId}
+          category={tab}
+          enabled={Boolean(userId)}
+          periodDays={dashboardPeriodDays}
+          onPeriodDaysChange={setDashboardPeriodDays}
+        />
         <Tabs value={tab} onValueChange={(v) => setTab(v as MeritHistoryFilterTab)} className="w-full">
           <TabsList
             className="flex h-auto w-full flex-wrap gap-1 overflow-x-auto lg:grid lg:grid-cols-5"

@@ -118,6 +118,98 @@ export function meritHistoryLedgerMultiplier(tx: {
   return -1;
 }
 
+export type MeritHistoryDashboardPeriodDays = 7 | 30 | 90;
+
+/**
+ * UTC calendar window: `periodDays` days ending today (inclusive), `[fromInclusive, toExclusive)`.
+ */
+export function meritHistoryUtcCalendarRange(
+  periodDays: MeritHistoryDashboardPeriodDays,
+  now: Date = new Date(),
+): { fromInclusive: Date; toExclusive: Date } {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth();
+  const d = now.getUTCDate();
+  const toExclusive = new Date(Date.UTC(y, m, d + 1));
+  const fromInclusive = new Date(Date.UTC(y, m, d));
+  fromInclusive.setUTCDate(fromInclusive.getUTCDate() - (periodDays - 1));
+  fromInclusive.setUTCHours(0, 0, 0, 0);
+  return { fromInclusive, toExclusive };
+}
+
+/**
+ * MongoDB `$match` for merit-history rows: global `walletId`, optional category filter, optional date range.
+ */
+export function buildMeritHistoryTransactionMatch(
+  walletId: string,
+  category: MeritHistoryFilterKey,
+  dateRange?: { fromInclusive: Date; toExclusive: Date },
+): Record<string, unknown> {
+  const refClause = meritHistoryReferenceTypeMatch(category);
+  const match: Record<string, unknown> =
+    refClause === null ? { walletId } : { walletId, ...refClause };
+  if (dateRange) {
+    match.createdAt = {
+      $gte: dateRange.fromInclusive,
+      $lt: dateRange.toExclusive,
+    };
+  }
+  return match;
+}
+
+/** `$multiply` factor for ledger sign (same rules as `meritHistoryLedgerMultiplier`). */
+export function meritHistorySignedAmountMongoExpr(): Record<string, unknown> {
+  const mult: Record<string, unknown> = {
+    $cond: [
+      {
+        $or: [
+          { $eq: ['$referenceType', 'publication_withdrawal'] },
+          { $eq: ['$referenceType', 'comment_withdrawal'] },
+          { $eq: ['$referenceType', 'vote_withdrawal'] },
+        ],
+      },
+      1,
+      { $cond: [{ $eq: ['$type', 'deposit'] }, 1, -1] },
+    ],
+  };
+  return { $multiply: ['$amount', mult] };
+}
+
+const TYPED_CATEGORY_KEYS = Object.keys(FILTER_TO_TYPES) as Array<
+  Exclude<MeritHistoryFilterKey, 'all' | 'other'>
+>;
+
+/**
+ * Mongo expression: document → merit-history bucket (`all` excluded), under `$let` var `rt` = trimmed `referenceType`.
+ */
+export function meritHistoryCategoryMongoExprOnRtVar(): Record<string, unknown> {
+  const branches: Array<{ case: Record<string, unknown>; then: string }> = [];
+  for (const cat of TYPED_CATEGORY_KEYS) {
+    const types = FILTER_TO_TYPES[cat];
+    for (const rt of types) {
+      branches.push({ case: { $eq: ['$$rt', rt] }, then: cat });
+    }
+  }
+  for (const rt of REFERENCE_TYPES.other_explicit) {
+    branches.push({ case: { $eq: ['$$rt', rt] }, then: 'other' });
+  }
+  return {
+    $let: {
+      vars: {
+        rt: {
+          $trim: { input: { $toString: { $ifNull: ['$referenceType', ''] } } },
+        },
+      },
+      in: {
+        $switch: {
+          branches,
+          default: 'other',
+        },
+      },
+    },
+  };
+}
+
 export function meritHistoryCategoryForReferenceType(
   referenceType: string | undefined | null,
 ): Exclude<MeritHistoryFilterKey, 'all'> {

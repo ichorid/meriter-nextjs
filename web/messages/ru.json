@@ -2996,6 +2996,33 @@
     },
     "meritHistory": {
         "pageTitle": "История заслуг",
+        "dashboard": {
+            "title": "Сводка за выбранный период",
+            "periodAriaLabel": "Период для сводки",
+            "period": {
+                "7": "7 дней",
+                "30": "30 дней",
+                "90": "90 дней"
+            },
+            "kpi": {
+                "inflow": "Приток",
+                "outflow": "Отток",
+                "net": "Нетто",
+                "count": "Операций"
+            },
+            "sparklineCaption": "Дневное нетто (календарные сутки UTC)",
+            "sparklineSummaryFlat": "За период нетто без изменений",
+            "sparklineSummaryUp": "За период суммарный приток около {net}",
+            "sparklineSummaryDown": "За период суммарный отток около {net}",
+            "sparklineSummaryMixed": "По дням нетто менялось в разные стороны",
+            "emptyPeriod": "За период нет операций для текущего фильтра.",
+            "breakdown": {
+                "category": "Канал",
+                "net": "Нетто",
+                "gross": "Оборот",
+                "count": "Число"
+            }
+        },
         "openFullHistoryLink": "Полная история операций",
         "missingPermissionContext": "Откройте эту страницу с профиля пользователя — в ссылке указан контекст доступа.",
         "loading": "Загрузка…",

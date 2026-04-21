@@ -1,7 +1,9 @@
 import {
+  buildMeritHistoryTransactionMatch,
   meritHistoryCategoryForReferenceType,
   meritHistoryLedgerMultiplier,
   meritHistoryReferenceTypeMatch,
+  meritHistoryUtcCalendarRange,
 } from '../src/domain/common/helpers/wallet-transaction-history';
 
 describe('wallet-transaction-history', () => {
@@ -53,6 +55,31 @@ describe('wallet-transaction-history', () => {
       expect(meritHistoryLedgerMultiplier({ type: 'deposit', referenceType: 'welcome_merits' })).toBe(
         1,
       );
+    });
+  });
+
+  describe('meritHistoryUtcCalendarRange', () => {
+    it('covers periodDays inclusive UTC days ending on anchor date', () => {
+      const anchor = new Date(Date.UTC(2026, 3, 21, 15, 30, 0));
+      const r = meritHistoryUtcCalendarRange(7, anchor);
+      expect(r.fromInclusive.toISOString()).toBe('2026-04-15T00:00:00.000Z');
+      expect(r.toExclusive.toISOString()).toBe('2026-04-22T00:00:00.000Z');
+    });
+  });
+
+  describe('buildMeritHistoryTransactionMatch', () => {
+    it('merges walletId, category, and createdAt range', () => {
+      const from = new Date('2026-01-01T00:00:00.000Z');
+      const to = new Date('2026-01-08T00:00:00.000Z');
+      expect(buildMeritHistoryTransactionMatch('w1', 'peer_transfer', { fromInclusive: from, toExclusive: to })).toEqual({
+        walletId: 'w1',
+        referenceType: { $in: ['merit_transfer'] },
+        createdAt: { $gte: from, $lt: to },
+      });
+    });
+
+    it('omits reference filter for all', () => {
+      expect(buildMeritHistoryTransactionMatch('w1', 'all')).toEqual({ walletId: 'w1' });
     });
   });
 });

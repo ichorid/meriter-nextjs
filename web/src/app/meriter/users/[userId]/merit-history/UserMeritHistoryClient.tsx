@@ -13,6 +13,10 @@ import {
   MeritHistoryFeed,
   type MeritHistoryFeedRow,
 } from '@/features/merit-transfer/components/MeritHistoryFeed';
+import {
+  MeritHistoryDashboardPanel,
+  type MeritHistoryDashboardPeriod,
+} from '@/features/merit-transfer/components/MeritHistoryDashboardPanel';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { Button } from '@/components/ui/shadcn/button';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
@@ -51,6 +55,7 @@ export default function UserMeritHistoryClient({ userId }: { userId: string }) {
   const permissionCommunityId = searchParams.get('context')?.trim() ?? '';
   const { user: me, isLoading: authLoading, isAuthenticated } = useAuth();
   const [tab, setTab] = useState<MeritHistoryFilterTab>('all');
+  const [dashboardPeriodDays, setDashboardPeriodDays] = useState<MeritHistoryDashboardPeriod>(30);
   const isSuperadmin = me?.globalRole === 'superadmin';
 
   useEffect(() => {
@@ -59,6 +64,10 @@ export default function UserMeritHistoryClient({ userId }: { userId: string }) {
       router.replace(routes.profileMeritTransfers);
     }
   }, [authLoading, isAuthenticated, me?.id, router, userId]);
+
+  const dashboardEnabled = Boolean(
+    userId && me?.id && me.id !== userId && (permissionCommunityId.length > 0 || isSuperadmin),
+  );
 
   const txQuery = trpc.wallets.getTransactions.useInfiniteQuery(
     {
@@ -71,9 +80,7 @@ export default function UserMeritHistoryClient({ userId }: { userId: string }) {
       initialPageParam: 0,
       getNextPageParam: (lastPage) =>
         lastPage.hasMore ? lastPage.skip + lastPage.data.length : undefined,
-      enabled: Boolean(
-        userId && me?.id && me.id !== userId && (permissionCommunityId.length > 0 || isSuperadmin),
-      ),
+      enabled: dashboardEnabled,
     },
   );
 
@@ -144,6 +151,14 @@ export default function UserMeritHistoryClient({ userId }: { userId: string }) {
   return (
     <AdaptiveLayout className="feed" stickyHeader={pageHeader} wallets={wallets}>
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        <MeritHistoryDashboardPanel
+          userId={userId}
+          category={tab}
+          permissionCommunityId={permissionCommunityId || undefined}
+          enabled={dashboardEnabled}
+          periodDays={dashboardPeriodDays}
+          onPeriodDaysChange={setDashboardPeriodDays}
+        />
         <Tabs value={tab} onValueChange={(v) => setTab(v as MeritHistoryFilterTab)} className="w-full">
           <TabsList
             className="flex h-auto w-full flex-wrap gap-1 overflow-x-auto lg:grid lg:grid-cols-5"

@@ -11,7 +11,12 @@ import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
 import {
-  meritHistoryReferenceTypeMatch,
+  MERIT_HISTORY_FILTER_KEYS,
+  buildMeritHistoryTransactionMatch,
+  meritHistoryCategoryMongoExprOnRtVar,
+  meritHistorySignedAmountMongoExpr,
+  meritHistoryUtcCalendarRange,
+  type MeritHistoryDashboardPeriodDays,
   type MeritHistoryFilterKey,
 } from '../common/helpers/wallet-transaction-history';
 
@@ -20,6 +25,28 @@ const DEFAULT_CURRENCY = {
   plural: 'merits',
   genitive: 'merits',
 } as const;
+
+export type MeritHistoryDashboardKpis = {
+  inflow: number;
+  outflow: number;
+  net: number;
+  count: number;
+};
+
+export type MeritHistoryDashboardSeriesPoint = { date: string; net: number };
+
+export type MeritHistoryDashboardBreakdownRow = {
+  category: Exclude<MeritHistoryFilterKey, 'all'>;
+  net: number;
+  grossVolume: number;
+  count: number;
+};
+
+export type MeritHistoryDashboardResult = {
+  kpis: MeritHistoryDashboardKpis;
+  series: MeritHistoryDashboardSeriesPoint[];
+  breakdown?: MeritHistoryDashboardBreakdownRow[];
+};
 
 @Injectable()
 export class WalletService {
@@ -305,9 +332,7 @@ export class WalletService {
     }
 
     const walletId = wallet.getId.getValue();
-    const refClause = meritHistoryReferenceTypeMatch(category);
-    const filter: Record<string, unknown> =
-      refClause === null ? { walletId } : { walletId, ...refClause };
+    const filter = buildMeritHistoryTransactionMatch(walletId, category);
 
     const [total, rows] = await Promise.all([
       this.transactionModel.countDocuments(filter),
@@ -407,5 +432,165 @@ export class WalletService {
       if (r._id) result.set(r._id, r.sum);
     }
     return result;
+  }
+
+  /**
+   * KPIs, daily signed net, and optional per-bucket breakdown for the merit-history dashboard.
+   * Same wallet scope as `getUserTransactions` (global wallet by default).
+   */
+  async getMeritHistoryDashboard(
+    userId: string,
+    category: MeritHistoryFilterKey,
+    periodDays: MeritHistoryDashboardPeriodDays,
+    options?: { communityId?: string },
+  ): Promise<MeritHistoryDashboardResult> {
+    const emptyKpis: MeritHistoryDashboardKpis = {
+      inflow: 0,
+      outflow: 0,
+      net: 0,
+      count: 0,
+    };
+    const communityId = options?.communityId ?? GLOBAL_COMMUNITY_ID;
+    const wallet = await this.getWallet(userId, communityId);
+    if (!wallet) {
+      return { kpis: emptyKpis, series: [] };
+    }
+
+    const walletId = wallet.getId.getValue();
+    const range = meritHistoryUtcCalendarRange(periodDays);
+    const match = buildMeritHistoryTransactionMatch(walletId, category, range);
+    const signedExpr = meritHistorySignedAmountMongoExpr();
+
+    const roundMerits = (n: number) => Math.round(n * 100) / 100;
+
+    const [facetRow] = await this.transactionModel
+      .aggregate<{
+        summary: Array<{
+          inflow: number;
+          outflow: number;
+          net: number;
+          count: number;
+        }>;
+        byDay: Array<{ _id: string; net: number }>;
+      }>([
+        { $match: match },
+        { $addFields: { _signed: signedExpr } },
+        {
+          $facet: {
+            summary: [
+              {
+                $group: {
+                  _id: null,
+                  inflow: {
+                    $sum: { $cond: [{ $gt: ['$_signed', 0] }, '$_signed', 0] },
+                  },
+                  outflow: {
+                    $sum: {
+                      $cond: [
+                        { $lt: ['$_signed', 0] },
+                        { $multiply: ['$_signed', -1] },
+                        0,
+                      ],
+                    },
+                  },
+                  net: { $sum: '$_signed' },
+                  count: { $sum: 1 },
+                },
+              },
+            ],
+            byDay: [
+              {
+                $addFields: {
+                  _day: {
+                    $dateToString: {
+                      format: '%Y-%m-%d',
+                      date: '$createdAt',
+                      timezone: 'UTC',
+                    },
+                  },
+                },
+              },
+              { $group: { _id: '$_day', net: { $sum: '$_signed' } } },
+              { $sort: { _id: 1 } },
+            ],
+          },
+        },
+      ])
+      .exec();
+
+    const summary = facetRow?.summary?.[0];
+    const kpis: MeritHistoryDashboardKpis = summary
+      ? {
+          inflow: roundMerits(summary.inflow ?? 0),
+          outflow: roundMerits(summary.outflow ?? 0),
+          net: roundMerits(summary.net ?? 0),
+          count: Math.trunc(summary.count ?? 0),
+        }
+      : emptyKpis;
+
+    const series: MeritHistoryDashboardSeriesPoint[] = (facetRow?.byDay ?? []).map((d) => ({
+      date: d._id,
+      net: roundMerits(d.net ?? 0),
+    }));
+
+    let breakdown: MeritHistoryDashboardBreakdownRow[] | undefined;
+    if (category === 'all') {
+      const allMatch = buildMeritHistoryTransactionMatch(walletId, 'all', range);
+      const catExpr = meritHistoryCategoryMongoExprOnRtVar();
+      const rows = await this.transactionModel
+        .aggregate<{
+          _id: string;
+          net: number;
+          inPos: number;
+          outNeg: number;
+          count: number;
+        }>([
+          { $match: allMatch },
+          { $addFields: { _signed: signedExpr } },
+          { $addFields: { _bucket: catExpr } },
+          {
+            $group: {
+              _id: '$_bucket',
+              net: { $sum: '$_signed' },
+              inPos: {
+                $sum: { $cond: [{ $gt: ['$_signed', 0] }, '$_signed', 0] },
+              },
+              outNeg: {
+                $sum: {
+                  $cond: [
+                    { $lt: ['$_signed', 0] },
+                    { $multiply: ['$_signed', -1] },
+                    0,
+                  ],
+                },
+              },
+              count: { $sum: 1 },
+            },
+          },
+        ])
+        .exec();
+
+      const byCat = new Map(rows.map((r) => [r._id, r]));
+      const ordered: MeritHistoryDashboardBreakdownRow[] = [];
+      for (const key of MERIT_HISTORY_FILTER_KEYS) {
+        if (key === 'all') continue;
+        const r = byCat.get(key);
+        const net = roundMerits(r?.net ?? 0);
+        const inPos = r?.inPos ?? 0;
+        const outNeg = r?.outNeg ?? 0;
+        const grossVolume = roundMerits(inPos + outNeg);
+        const count = Math.trunc(r?.count ?? 0);
+        if (net === 0 && grossVolume === 0 && count === 0) continue;
+        ordered.push({
+          category: key,
+          net,
+          grossVolume,
+          count,
+        });
+      }
+      breakdown = ordered;
+    }
+
+    return { kpis, series, breakdown };
   }
 }
