@@ -10,7 +10,6 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { useInvitableCommunities } from '@/hooks/api/useTeams';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserIcon, UserPlus } from 'lucide-react';
-import { Separator } from '@/components/ui/shadcn/separator';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { ProfileHero } from '@/components/organisms/Profile/ProfileHero';
 import { InviteToTeamDialog } from '@/components/organisms/Profile/InviteToTeamDialog';
@@ -22,6 +21,8 @@ import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
 import { buildProfileMeritTransferContext } from '@/features/merit-transfer/lib/profile-merit-transfer-context';
 import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
+import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { cn } from '@/lib/utils';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -30,6 +31,7 @@ function isPriorityTypeTag(tag: string | undefined): boolean {
 }
 
 export function UserProfilePageClient({ userId }: { userId: string }) {
+  const sc = useMeriterStitchChrome();
   const router = useRouter();
   const pathname = usePathname();
   const tCommon = useTranslations('common');
@@ -200,18 +202,22 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
 
   const displayName = user.displayName || user.username || tCommon('user');
 
+  const profileHeroFooterBtnClass = sc
+    ? 'inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-white/[0.06] px-3 text-sm font-medium text-stitch-text shadow-none transition-colors hover:bg-white/[0.1] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent/35 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0'
+    : 'inline-flex h-9 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0';
+
   return (
     <AdaptiveLayout
       stickyHeader={
         <SimpleStickyHeader title={tCommon('userProfile')} showBack={true} asStickyHeader={true} showScrollToTop={true} />
       }
     >
-      <div className="space-y-6">
+      <div className={cn('space-y-6', sc && 'text-stitch-text')}>
         <ProfileHero
           user={user}
           showEdit={false}
           userRoles={userRoles}
-            meritsHeroSlot={
+          meritsHeroSlot={
             <ProfileMeritsHeroStrip
               userId={user.id}
               communityIds={communityIds}
@@ -219,11 +225,54 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
               profileActivityScope={viewingOtherProfile ? 'other' : 'self'}
             />
           }
+          meritsHeroFooterSlot={
+            viewingOtherProfile ? (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={profileHeroFooterBtnClass}
+                    aria-label={tProfile('inviteUserProfileButton')}
+                    onClick={() => {
+                      trackMeriterUiEvent({ name: 'profile_invite_open' });
+                      setInviteOpen(true);
+                    }}
+                  >
+                    <UserPlus className="shrink-0" />
+                    {tProfile('inviteUserProfileButton')}
+                  </Button>
+                  {profileMeritTransfer ? (
+                    <MeritTransferButton
+                      receiverId={user.id}
+                      receiverDisplayName={displayName}
+                      profileContext={profileMeritTransfer}
+                      variant="ghost"
+                      size="sm"
+                      onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
+                      className={profileHeroFooterBtnClass}
+                    />
+                  ) : null}
+                </div>
+                <InviteToTeamDialog
+                  open={inviteOpen}
+                  onClose={() => setInviteOpen(false)}
+                  targetUserId={user.id}
+                  communities={invitableCommunities}
+                />
+              </>
+            ) : null
+          }
         />
 
         <div>
-          <Separator className="bg-base-300/70" />
-          <div className="mt-3 overflow-hidden rounded-2xl border border-base-300/45 bg-base-200/15 shadow-sm">
+          <div
+            className={cn(
+              'mt-1 overflow-hidden rounded-2xl border-0',
+              sc ? 'bg-stitch-surface shadow-none' : 'bg-base-200/20 shadow-none',
+            )}
+          >
             <ProfileMeritsActivityPanel
               activitySlot={
                 <ProfileContentCards
@@ -238,46 +287,18 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         </div>
 
         <div>
-          <Separator className="bg-base-300/70" />
-          <div className="mt-3 space-y-5 rounded-2xl border border-base-300/45 bg-base-200/15 p-4 shadow-sm sm:p-5">
-            {viewingOtherProfile && (
-              <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
-                    aria-label={tProfile('inviteUserProfileButton')}
-                    onClick={() => {
-                      trackMeriterUiEvent({ name: 'profile_invite_open' });
-                      setInviteOpen(true);
-                    }}
-                  >
-                    <UserPlus className="h-4 w-4 shrink-0" />
-                    {tProfile('inviteUserProfileButton')}
-                  </Button>
-                  {profileMeritTransfer ? (
-                    <MeritTransferButton
-                      receiverId={user.id}
-                      receiverDisplayName={displayName}
-                      profileContext={profileMeritTransfer}
-                      variant="outline"
-                      size="sm"
-                      onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
-                      className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-base-300/50 bg-base-200/60 px-3 text-sm font-medium text-base-content transition-colors hover:bg-base-300/70 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
-                    />
-                  ) : null}
-                </div>
-                <InviteToTeamDialog
-                  open={inviteOpen}
-                  onClose={() => setInviteOpen(false)}
-                  targetUserId={user.id}
-                  communities={invitableCommunities}
-                />
-              </>
+          <div
+            className={cn(
+              'mt-1 space-y-4 overflow-hidden rounded-2xl border-0 px-0 py-4',
+              sc ? 'bg-stitch-surface shadow-none' : 'bg-base-200/20 shadow-none',
             )}
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+          >
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('administeredCommunities')}
             </p>
             {rolesLoading ? (
@@ -293,16 +314,22 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     communityId={communityId}
                     pathname={pathname}
                     isExpanded={true}
+                    compact={sc}
                   />
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
                 {tCommunities('noAdministeredCommunitiesOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('communitiesIMemberOf')}
             </p>
             {rolesLoading ? (
@@ -317,16 +344,22 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     communityId={communityId}
                     pathname={pathname}
                     isExpanded={true}
+                    compact={sc}
                   />
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
                 {tCommunities('noMemberCommunitiesOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('administeredProjects')}
             </p>
             {rolesLoading ? (
@@ -341,16 +374,22 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     communityId={communityId}
                     pathname={pathname}
                     isExpanded={true}
+                    compact={sc}
                   />
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
                 {tCommunities('noAdministeredProjectsOther', { name: displayName })}
               </p>
             )}
 
-            <p className="text-xs font-medium text-base-content/40 uppercase tracking-wide">
+            <p
+              className={cn(
+                'text-xs font-medium uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/40',
+              )}
+            >
               {tCommunities('memberProjects')}
             </p>
             {rolesLoading ? (
@@ -365,11 +404,12 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     communityId={communityId}
                     pathname={pathname}
                     isExpanded={true}
+                    compact={sc}
                   />
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-base-content/50">
+              <p className={cn('text-sm', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
                 {tCommunities('noMemberProjectsOther', { name: displayName })}
               </p>
             )}

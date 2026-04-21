@@ -26,6 +26,8 @@ interface ProfileHeroProps {
   onEdit?: () => void;
   /** Compact merits / history row to the right of the avatar (same vertical band as `-mt-10`). */
   meritsHeroSlot?: React.ReactNode;
+  /** Placed inside the merits card, under balance/history (e.g. invite + transfer on another user’s profile). */
+  meritsHeroFooterSlot?: React.ReactNode;
 }
 
 function ProfileHeroComponent({
@@ -35,6 +37,7 @@ function ProfileHeroComponent({
   userRoles = [],
   onEdit,
   meritsHeroSlot,
+  meritsHeroFooterSlot,
 }: ProfileHeroProps) {
   const sc = useMeriterStitchChrome();
   const sectionCardClass = sc
@@ -44,7 +47,6 @@ function ProfileHeroComponent({
   const tCommon = useTranslations('common');
   const tShared = useTranslations('shared');
   const router = useRouter();
-  const [aboutExpanded, setAboutExpanded] = useLocalStorage<boolean>('profile.aboutExpanded', true);
   const [contactsExpanded, setContactsExpanded] = useLocalStorage<boolean>('profile.contactsExpanded', true);
 
   if (!user) return null;
@@ -52,7 +54,6 @@ function ProfileHeroComponent({
   const displayName = user.displayName || user.username || tCommon('user');
   const avatarUrl = user.avatarUrl;
   const bio = user.profile?.bio;
-  const location = user.profile?.location;
   const website = user.profile?.website;
   const about = user.profile?.about;
   const educationalInstitution = user.profile?.educationalInstitution;
@@ -113,10 +114,7 @@ function ProfileHeroComponent({
     await shareUrl(getProfileUrl(user.id), tShared('urlCopiedToBuffer'));
   };
 
-  const locationLine =
-    location?.city || location?.region
-      ? [location?.city, location?.region].filter(Boolean).join(', ')
-      : null;
+  const selfSummary = [about?.trim(), bio?.trim()].find(Boolean) ?? '';
 
   const actionBtnClass = sc
     ? 'h-8 rounded-xl border-0 bg-white/[0.06] px-3 text-stitch-text shadow-none backdrop-blur-sm hover:bg-white/[0.1] active:scale-[0.98]'
@@ -249,11 +247,6 @@ function ProfileHeroComponent({
               >
                 {displayName}
               </h1>
-              {locationLine ? (
-                <p className={cn('mt-1 text-sm font-medium', sc ? 'text-stitch-accent' : 'text-base-content/60')}>
-                  {locationLine}
-                </p>
-              ) : null}
               {user.username && (
                 <p className={cn('mt-1 text-sm font-medium', sc ? 'text-stitch-muted' : 'text-base-content/50')}>
                   @{user.username}
@@ -261,82 +254,34 @@ function ProfileHeroComponent({
               )}
             </div>
 
-            {stitchContactRow && !bio && !about ? <div className="mt-2">{stitchContactRow}</div> : null}
+            {stitchContactRow && !selfSummary ? <div className="mt-2">{stitchContactRow}</div> : null}
 
-            {bio && (
-              <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-muted' : 'text-base-content/80')}>{bio}</p>
-            )}
+            {selfSummary ? (
+              <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-muted' : 'text-base-content/80')}>
+                {selfSummary}
+              </p>
+            ) : null}
 
-            {stitchContactRow && bio ? <div className="mt-2">{stitchContactRow}</div> : null}
+            {website ? (
+              <a
+                href={website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  'inline-block text-sm transition-colors hover:underline',
+                  selfSummary ? 'mt-1.5' : null,
+                  sc ? 'text-stitch-accent hover:text-stitch-accent' : 'text-primary/90 hover:text-primary',
+                )}
+              >
+                {website.replace(/^https?:\/\//, '')}
+              </a>
+            ) : null}
 
-            {about && (
-              <>
-                {bio ? (
-                  <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
-                ) : null}
-                <div className={sectionCardClass}>
-                  <button
-                    type="button"
-                    onClick={() => setAboutExpanded(!aboutExpanded)}
-                    className="flex w-full items-center justify-between transition-opacity hover:opacity-90"
-                  >
-                    <p
-                      className={cn(
-                        'text-xs font-semibold uppercase tracking-wide',
-                        sc ? 'text-stitch-muted' : 'text-base-content/45',
-                      )}
-                    >
-                      {t('about')}
-                    </p>
-                    {aboutExpanded ? (
-                      <ChevronUp className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
-                    ) : (
-                      <ChevronDown className={cn('h-4 w-4', sc ? 'text-stitch-muted' : 'text-base-content/40')} />
-                    )}
-                  </button>
-                  {aboutExpanded && (
-                    <div className="animate-in fade-in space-y-3 duration-200">
-                      <p className={cn('text-sm leading-relaxed', sc ? 'text-stitch-text/90' : 'text-base-content/75')}>
-                        {about}
-                      </p>
-                      {stitchContactRow && !bio ? <div className="mt-2">{stitchContactRow}</div> : null}
-                      {(location?.city || website) && (
-                        <div
-                          className={cn(
-                            'flex flex-wrap items-center gap-x-4 gap-y-1 text-sm',
-                            sc ? 'text-stitch-muted' : 'text-base-content/55',
-                          )}
-                        >
-                          {location?.city && location?.region && (
-                            <span className="flex items-center gap-1">
-                              <span className={sc ? 'text-stitch-muted/60' : 'text-base-content/30'}>📍</span>
-                              {location.city}, {location.region}
-                            </span>
-                          )}
-                          {website && (
-                            <a
-                              href={website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={cn(
-                                'transition-colors hover:underline',
-                                sc ? 'text-stitch-accent hover:text-stitch-accent' : 'text-primary/90 hover:text-primary',
-                              )}
-                            >
-                              {website.replace(/^https?:\/\//, '')}
-                            </a>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+            {stitchContactRow && selfSummary ? <div className="mt-2">{stitchContactRow}</div> : null}
 
             {isRepresentativeOrMember && educationalInstitution && (
               <>
-                {(about || bio) ? (
+                {selfSummary ? (
                   <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
                 ) : null}
                 <div className={sectionCardClass}>
@@ -357,7 +302,7 @@ function ProfileHeroComponent({
 
             {showContacts && contacts && (contacts.email || contacts.messenger) && !sc && (
               <>
-                {(about || bio || (isRepresentativeOrMember && educationalInstitution)) ? (
+                {(selfSummary || (isRepresentativeOrMember && educationalInstitution)) ? (
                   <Separator className={cn('my-1', sc ? 'bg-stitch-border' : 'bg-base-300/60')} />
                 ) : null}
                 <div className={sectionCardClass}>
@@ -416,6 +361,7 @@ function ProfileHeroComponent({
               )}
             >
               {meritsHeroSlot}
+              {meritsHeroFooterSlot ? <div className="mt-4 min-w-0">{meritsHeroFooterSlot}</div> : null}
             </div>
           ) : null}
         </div>
