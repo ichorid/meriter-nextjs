@@ -168,25 +168,23 @@ function GlobalMeritBlock({
   const balance = globalWallet?.balance ?? 0;
 
   const body = (
-    <div className="flex gap-2.5 sm:gap-3">
+    <div className="flex items-start gap-2.5 sm:gap-3">
       <div
         className={cn(
-          'flex shrink-0 items-center justify-center bg-primary/10 text-primary',
+          'mt-0.5 flex shrink-0 items-center justify-center bg-primary/10 text-primary',
           flat ? 'h-9 w-9 rounded-md sm:h-10 sm:w-10' : 'h-9 w-9 rounded-lg bg-primary/12 sm:h-10 sm:w-10',
         )}
       >
         <Coins className="h-4 w-4 sm:h-[1.05rem] sm:w-[1.05rem]" aria-hidden />
       </div>
-      <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 sm:gap-x-3">
-          <p className="text-xs font-semibold leading-tight text-base-content sm:text-sm">
-            {tCommon('sharedMerit')}
-          </p>
-          <p className="text-lg font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-xl md:text-2xl">
-            {formatMerits(balance)}
-          </p>
-        </div>
-        <p className="text-[10px] leading-snug text-base-content/55 line-clamp-2 sm:text-[11px]">
+      <div className="min-w-0 flex-1 space-y-1 sm:space-y-1.5">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-base-content/50 sm:text-xs">
+          {tCommon('sharedMerit')}
+        </p>
+        <p className="text-3xl font-bold tabular-nums leading-none tracking-tight text-base-content sm:text-4xl md:text-5xl">
+          {formatMerits(balance)}
+        </p>
+        <p className="max-w-prose text-[10px] leading-snug text-base-content/55 sm:text-[11px]">
           {tCommon('sharedMeritUsedIn')}
         </p>
         {meritHistoryHref ? (
