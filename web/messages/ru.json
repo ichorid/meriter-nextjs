@@ -42,6 +42,8 @@
         "navPolls": "Опросы",
         "navWallet": "Кошелёк",
         "altMeritCurrency": "Заслуги",
+        "sidebarNavMeritsPrefix": "Засл.",
+        "sidebarNavQuotaTitle": "Дневная квота: {remaining} из {max}",
         "sidebarPrimary": "Главное",
         "sidebarCreate": "Создать",
         "futureVisions": "Образы будущего",

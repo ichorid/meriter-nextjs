@@ -42,6 +42,8 @@
         "navPolls": "Polls",
         "navWallet": "Wallet",
         "altMeritCurrency": "Merit currency",
+        "sidebarNavMeritsPrefix": "Mer.",
+        "sidebarNavQuotaTitle": "Daily quota: {remaining} of {max}",
         "sidebarPrimary": "Main",
         "sidebarCreate": "Create",
         "futureVisions": "Future Visions",

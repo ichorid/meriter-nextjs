@@ -124,16 +124,65 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
 
   const href = community.isProject ? `/meriter/projects/${communityId}` : `/meriter/communities/${communityId}`;
 
-  const meritSuffix =
-    wallet && hasMembershipRole ? (
-      <span
+  /** Sidebar / dense lists: quota ring + fraction, and labeled wallet balance (not a notification badge). */
+  const compactIndicators =
+    showQuota || showMerits ? (
+      <div
         className={cn(
-          'shrink-0 text-xs font-semibold tabular-nums',
-          sc ? 'text-stitch-accent' : 'text-primary',
+          'flex shrink-0 flex-col items-end justify-center gap-0.5',
+          showQuota && showMerits ? 'py-0.5' : '',
         )}
       >
-        {formatMerits(wallet.balance || 0)}
-      </span>
+        {showQuota ? (
+          <div
+            className="flex items-center gap-0.5"
+            title={t('sidebarNavQuotaTitle', { remaining: remainingQuota, max: dailyQuota })}
+          >
+            <div className="flex h-5 w-5 shrink-0 items-center justify-center overflow-visible">
+              <div className="origin-center scale-[0.53]">
+                <DailyQuotaRing
+                  remaining={remainingQuota}
+                  max={dailyQuota}
+                  className="h-[30px] w-[30px] flex-shrink-0"
+                  asDiv={true}
+                  variant={isMarathonOfGood ? 'golden' : 'default'}
+                />
+              </div>
+            </div>
+            <span
+              className={cn(
+                'text-[9px] font-medium tabular-nums leading-none tracking-tight',
+                sc ? 'text-stitch-muted' : 'text-base-content/55',
+              )}
+            >
+              {remainingQuota}/{dailyQuota}
+            </span>
+          </div>
+        ) : null}
+        {showMerits ? (
+          <span
+            className="flex min-w-0 max-w-[5.5rem] items-baseline justify-end gap-0.5"
+            title={`${t('yourMerits')}: ${balance}`}
+          >
+            <span
+              className={cn(
+                'shrink-0 text-[9px] font-semibold uppercase tracking-wide',
+                sc ? 'text-stitch-muted' : 'text-base-content/55',
+              )}
+            >
+              {t('sidebarNavMeritsPrefix')}
+            </span>
+            <span
+              className={cn(
+                'truncate text-[11px] font-semibold tabular-nums',
+                sc ? 'text-stitch-accent' : 'text-primary',
+              )}
+            >
+              {balance}
+            </span>
+          </span>
+        ) : null}
+      </div>
     ) : null;
 
   if (isExpanded && compact) {
@@ -167,7 +216,7 @@ export const CommunityCard: React.FC<CommunityCardProps> = ({
           >
             {community.name}
           </span>
-          {meritSuffix}
+          {compactIndicators}
         </div>
       </Link>
     );
