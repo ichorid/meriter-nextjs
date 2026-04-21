@@ -4,10 +4,14 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { History } from 'lucide-react';
 
+import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
+
 type ProfileMeritHistoryLinkProps = {
   href: string;
   /** Defaults to a compact text-style link; pass a class for a stronger pill (e.g. empty merits strip). */
   className?: string;
+  /** For client telemetry only (PRD profile-redesign). */
+  telemetryScope?: 'self' | 'other';
 };
 
 const defaultClassName =
@@ -16,11 +20,24 @@ const defaultClassName =
 /**
  * Link to the global-wallet merit ledger (own or another user with permission).
  */
-export function ProfileMeritHistoryLink({ href, className }: ProfileMeritHistoryLinkProps) {
+export function ProfileMeritHistoryLink({
+  href,
+  className,
+  telemetryScope = 'self',
+}: ProfileMeritHistoryLinkProps) {
   const t = useTranslations('meritHistory');
 
   return (
-    <Link href={href} className={className ?? defaultClassName}>
+    <Link
+      href={href}
+      className={className ?? defaultClassName}
+      onClick={() =>
+        trackMeriterUiEvent({
+          name: 'profile_merit_history_open',
+          payload: { scope: telemetryScope },
+        })
+      }
+    >
       <History className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
       <span className="min-w-0 truncate">{t('openFullHistoryLink')}</span>
     </Link>

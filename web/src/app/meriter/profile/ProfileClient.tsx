@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, memo, useCallback } from 'react';
+import React, { useState, useMemo, memo, useCallback, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/shadcn/separator';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
 import { Loader2, Plus } from 'lucide-react';
+import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 function ProfilePageComponent() {
   const pathname = usePathname();
@@ -126,6 +127,11 @@ function ProfilePageComponent() {
   const handleEdit = useCallback(() => setIsEditing(true), []);
   const handleCancelEdit = useCallback(() => setIsEditing(false), []);
   const handleSuccessEdit = useCallback(() => setIsEditing(false), []);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    trackMeriterUiEvent({ name: 'profile_view_self', payload: { layout: getProfileLayoutBand() } });
+  }, [user?.id]);
 
   if (authLoading) {
     return (

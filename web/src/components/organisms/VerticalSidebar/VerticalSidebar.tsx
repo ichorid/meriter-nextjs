@@ -13,6 +13,7 @@ import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
+import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 export interface VerticalSidebarProps {
   className?: string;
@@ -121,7 +122,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
               </p>
             ) : null}
             <div className={cn('flex flex-col', isExpanded ? 'gap-0.5' : 'gap-1')}>
-              <Link href={routes.futureVisions}>
+              <Link
+                href={routes.futureVisions}
+                onClick={() =>
+                  trackMeriterUiEvent({
+                    name: 'nav_primary_click',
+                    payload: { item: 'future_visions', surface: 'sidebar' },
+                  })
+                }
+              >
                 <button
                   type="button"
                   className={primaryNavBtn(Boolean(pathname?.startsWith(routes.futureVisions)))}
@@ -144,7 +153,16 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 const marathonActive =
                   pathname === marathonHref || Boolean(pathname?.startsWith(`${marathonHref}/`));
                 return (
-                  <Link key="marathon" href={marathonHref}>
+                  <Link
+                    key="marathon"
+                    href={marathonHref}
+                    onClick={() =>
+                      trackMeriterUiEvent({
+                        name: 'nav_primary_click',
+                        payload: { item: 'marathon', surface: 'sidebar' },
+                      })
+                    }
+                  >
                     <button type="button" className={primaryNavBtn(marathonActive)}>
                       {isExpanded ? (
                         <div className="flex w-full min-w-0 items-center">
@@ -159,7 +177,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                 );
               })()}
 
-              <Link href={routes.projects}>
+              <Link
+                href={routes.projects}
+                onClick={() =>
+                  trackMeriterUiEvent({
+                    name: 'nav_primary_click',
+                    payload: { item: 'projects', surface: 'sidebar' },
+                  })
+                }
+              >
                 <button
                   type="button"
                   className={primaryNavBtn(Boolean(pathname?.startsWith(routes.projects)))}
@@ -183,7 +209,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
           {/* Notifications */}
           <div className={paddingClass}>
-            <Link href={routes.notifications}>
+            <Link
+              href={routes.notifications}
+              onClick={() =>
+                trackMeriterUiEvent({
+                  name: 'nav_primary_click',
+                  payload: { item: 'notifications', surface: 'sidebar' },
+                })
+              }
+            >
               <button
                 className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === routes.notifications
                   ? 'bg-base-300 text-base-content'
@@ -232,7 +266,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
           {/* Favorites */}
           <div className={paddingClass}>
-            <Link href={`${routes.profile}/favorites`}>
+            <Link
+              href={`${routes.profile}/favorites`}
+              onClick={() =>
+                trackMeriterUiEvent({
+                  name: 'nav_primary_click',
+                  payload: { item: 'favorites', surface: 'sidebar' },
+                })
+              }
+            >
               <button
                 className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 relative ${pathname === `${routes.profile}/favorites`
                   ? 'bg-base-300 text-base-content'
@@ -283,7 +325,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
 
       {/* My profile (unified nav item) */}
       <div className={paddingClass}>
-        <Link href={routes.profile}>
+        <Link
+          href={routes.profile}
+          onClick={() =>
+            trackMeriterUiEvent({
+              name: 'nav_primary_click',
+              payload: { item: 'profile', surface: 'sidebar' },
+            })
+          }
+        >
           <button
             className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.profile || (pathname?.startsWith(`${routes.profile}/`) && pathname !== `${routes.profile}/favorites`)
               ? 'bg-base-300 text-base-content'
@@ -309,7 +359,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
         const isActive = pathname === routes.community(support.id);
         return (
           <div key="support" className={paddingClass}>
-            <Link href={routes.community(support.id)}>
+            <Link
+              href={routes.community(support.id)}
+              onClick={() =>
+                trackMeriterUiEvent({
+                  name: 'nav_primary_click',
+                  payload: { item: 'support', surface: 'sidebar' },
+                })
+              }
+            >
               <button
                 className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${isActive
                   ? 'bg-base-300 text-base-content'
@@ -333,7 +391,15 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
       {/* About Button */}
       {isAuthenticated && (
         <div className={paddingClass}>
-          <Link href={routes.about}>
+          <Link
+            href={routes.about}
+            onClick={() =>
+              trackMeriterUiEvent({
+                name: 'nav_primary_click',
+                payload: { item: 'about', surface: 'sidebar' },
+              })
+            }
+          >
             <button
               className={`${isExpanded ? 'w-full px-3 justify-start' : 'w-12 justify-center'} ${isExpanded ? 'h-auto py-2' : 'h-12'} rounded-xl flex items-center transition-colors mb-2 ${pathname === routes.about
                 ? 'bg-base-300 text-base-content'

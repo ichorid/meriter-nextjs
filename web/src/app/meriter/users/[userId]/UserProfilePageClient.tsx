@@ -21,6 +21,7 @@ import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { Button } from '@/components/ui/shadcn/button';
 import { MeritTransferButton } from '@/features/merit-transfer';
 import { buildProfileMeritTransferContext } from '@/features/merit-transfer/lib/profile-merit-transfer-context';
+import { getProfileLayoutBand, trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 const PRIORITY_TYPE_TAGS = ['marathon-of-good', 'future-vision', 'team-projects', 'support'] as const;
 
@@ -78,6 +79,18 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
         : null,
     [viewingOtherProfile, viewerRoles, userRoles],
   );
+
+  useEffect(() => {
+    if (!user?.id || isLoading) return;
+    if (viewingOtherProfile) {
+      trackMeriterUiEvent({
+        name: 'profile_view_other',
+        payload: { targetUserId: user.id, layout: getProfileLayoutBand() },
+      });
+    } else {
+      trackMeriterUiEvent({ name: 'profile_view_self', payload: { layout: getProfileLayoutBand() } });
+    }
+  }, [user?.id, isLoading, viewingOtherProfile]);
 
   const administeredCommunityIds = useMemo(() => {
     return Array.from(
@@ -198,11 +211,12 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
           user={user}
           showEdit={false}
           userRoles={userRoles}
-          meritsHeroSlot={
+            meritsHeroSlot={
             <ProfileMeritsHeroStrip
               userId={user.id}
               communityIds={communityIds}
               userRoles={userRolesForMerits}
+              profileActivityScope={viewingOtherProfile ? 'other' : 'self'}
             />
           }
         />
@@ -233,7 +247,10 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                     size="sm"
                     className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
                     aria-label={tProfile('inviteUserProfileButton')}
-                    onClick={() => setInviteOpen(true)}
+                    onClick={() => {
+                      trackMeriterUiEvent({ name: 'profile_invite_open' });
+                      setInviteOpen(true);
+                    }}
                   >
                     <UserPlus className="h-4 w-4 shrink-0" />
                     {tProfile('inviteUserProfileButton')}
@@ -245,6 +262,7 @@ export function UserProfilePageClient({ userId }: { userId: string }) {
                       profileContext={profileMeritTransfer}
                       variant="outline"
                       size="sm"
+                      onOpenDialog={() => trackMeriterUiEvent({ name: 'profile_merit_transfer_open' })}
                       className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-xl border border-input bg-gray-200 px-3 text-sm font-medium text-base-content transition-colors hover:bg-gray-300 focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 dark:bg-gray-700 dark:text-base-content/70 dark:hover:bg-gray-600"
                     />
                   ) : null}

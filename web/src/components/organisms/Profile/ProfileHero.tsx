@@ -13,6 +13,7 @@ import { hapticImpact } from '@shared/lib/utils/haptic-utils';
 
 import type { User } from '@/types/api-v1';
 import { cn } from '@/lib/utils';
+import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 interface ProfileHeroProps {
   user: User | null | undefined;
@@ -62,6 +63,7 @@ function ProfileHeroComponent({
     e.preventDefault();
     e.stopPropagation();
     hapticImpact('light');
+    trackMeriterUiEvent({ name: 'profile_share' });
     await shareUrl(getProfileUrl(user.id), tShared('urlCopiedToBuffer'));
   };
 
@@ -75,7 +77,11 @@ function ProfileHeroComponent({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => (onEdit ? onEdit() : router.push('/meriter/profile/edit'))}
+                onClick={() => {
+                  trackMeriterUiEvent({ name: 'profile_edit_open' });
+                  if (onEdit) onEdit();
+                  else router.push('/meriter/profile/edit');
+                }}
                 className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 px-3"
               >
                 <Edit size={14} className="mr-1.5" />
@@ -84,7 +90,10 @@ function ProfileHeroComponent({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push('/meriter/settings')}
+                onClick={() => {
+                  trackMeriterUiEvent({ name: 'profile_settings_open' });
+                  router.push('/meriter/settings');
+                }}
                 aria-label={tCommon('settings')}
                 className="rounded-xl active:scale-[0.98] bg-base-100/80 backdrop-blur-sm hover:bg-base-100 text-base-content/70 h-8 w-8 p-0"
               >

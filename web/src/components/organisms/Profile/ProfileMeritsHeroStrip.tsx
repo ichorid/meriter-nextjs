@@ -14,12 +14,19 @@ type Props = {
   userId: string;
   communityIds: string[];
   userRoles: ProfileMeritsLedgerRole[];
+  /** Telemetry scope for merit-history link clicks. */
+  profileActivityScope?: 'self' | 'other';
 };
 
 /**
  * Global merits + merit-history in the profile hero (paired with avatar in ProfileHero).
  */
-export function ProfileMeritsHeroStrip({ userId, communityIds, userRoles }: Props) {
+export function ProfileMeritsHeroStrip({
+  userId,
+  communityIds,
+  userRoles,
+  profileActivityScope = 'self',
+}: Props) {
   const tCommon = useTranslations('common');
   const tProfile = useTranslations('profile');
   const { meritHistoryHref, showGlobalMeritBlock, walletCommunityId, showHeroMerits } =
@@ -43,7 +50,11 @@ export function ProfileMeritsHeroStrip({ userId, communityIds, userRoles }: Prop
     return meritHistoryHref ? (
       <div className="flex w-full min-w-0 flex-col items-center gap-3 sm:items-start sm:text-left">
         <p className="text-sm font-semibold text-base-content/70">{tProfile('globalMeritsTitle')}</p>
-        <ProfileMeritHistoryLink href={meritHistoryHref} className={historyClass} />
+        <ProfileMeritHistoryLink
+          href={meritHistoryHref}
+          className={historyClass}
+          telemetryScope={profileActivityScope}
+        />
       </div>
     ) : null;
   }
@@ -65,7 +76,11 @@ export function ProfileMeritsHeroStrip({ userId, communityIds, userRoles }: Prop
       </p>
       {meritHistoryHref ? (
         <div className="pt-1">
-          <ProfileMeritHistoryLink href={meritHistoryHref} className={historyClass} />
+          <ProfileMeritHistoryLink
+            href={meritHistoryHref}
+            className={historyClass}
+            telemetryScope={profileActivityScope}
+          />
         </div>
       ) : null}
     </div>

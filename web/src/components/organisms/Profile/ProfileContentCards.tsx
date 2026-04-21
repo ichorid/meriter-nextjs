@@ -9,6 +9,20 @@ import { cn } from '@/lib/utils';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
 import { useMyInvestmentsCount } from '@/hooks/api/useMyInvestments';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import {
+  trackMeriterUiEvent,
+  type ActivityCardId,
+  type ProfileActivityScope,
+} from '@/lib/telemetry/meriter-ui-telemetry';
+
+function activityCardFromProfileRoute(route: string): ActivityCardId | null {
+  if (route.includes('/publications')) return 'publications';
+  if (route.includes('/comments')) return 'comments';
+  if (route.includes('/polls')) return 'polls';
+  if (route.includes('/favorites')) return 'favorites';
+  if (route.includes('/investments')) return 'investments';
+  return null;
+}
 
 interface ProfileContentCardsProps {
   stats: {
@@ -152,6 +166,11 @@ function ProfileContentCardsComponent({
   ]);
 
   const handleCardClick = (route: string) => {
+    const card = activityCardFromProfileRoute(route);
+    const scope: ProfileActivityScope = activityForUserId ? 'other' : 'self';
+    if (card) {
+      trackMeriterUiEvent({ name: 'profile_activity_card_click', payload: { card, scope } });
+    }
     router.push(route);
   };
 

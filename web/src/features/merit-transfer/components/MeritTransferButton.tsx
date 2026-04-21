@@ -12,6 +12,8 @@ import type { MeritTransferProfileContextConfig } from '../lib/profile-merit-tra
 type MeritTransferButtonBaseProps = {
   receiverId: string;
   receiverDisplayName: string;
+  /** Fires when the transfer dialog is about to open (telemetry / analytics). */
+  onOpenDialog?: () => void;
   onSuccess?: () => void;
   buttonText?: string;
   /** Compact icon button for dense member rows (tooltip = transfer merits). */
@@ -37,6 +39,7 @@ export function MeritTransferButton({
   profileContext,
   eventPostId,
   onSuccess,
+  onOpenDialog,
   buttonText,
   iconOnly = false,
   variant = 'outline',
@@ -71,7 +74,10 @@ export function MeritTransferButton({
         size={iconOnly ? 'icon' : size}
         className={className}
         disabled={disabled}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          onOpenDialog?.();
+          setOpen(true);
+        }}
         title={iconOnly ? label : undefined}
         aria-label={iconOnly ? label : undefined}
       >

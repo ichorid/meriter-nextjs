@@ -13,6 +13,7 @@ import { useCommunity } from '@/hooks/api/useCommunities';
 import { useUserCommunities } from '@/hooks/useUserCommunities';
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { routes } from '@/lib/constants/routes';
+import { trackMeriterUiEvent, type NavPrimaryItem } from '@/lib/telemetry/meriter-ui-telemetry';
 import {
     Dialog,
     DialogContent,
@@ -34,6 +35,15 @@ export interface BottomNavigationProps {
 }
 
 const LONG_PRESS_MS = 500;
+
+function primaryFromBottomPath(path: string): NavPrimaryItem | null {
+    if (path.startsWith('/meriter/future-visions')) return 'future_visions';
+    if (path.startsWith('/meriter/projects')) return 'projects';
+    if (path.startsWith('/meriter/notifications')) return 'notifications';
+    if (path === '/meriter/profile' || path.startsWith('/meriter/profile')) return 'profile';
+    if (path.startsWith('/meriter/communities/')) return 'marathon';
+    return null;
+}
 
 export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     const pathname = usePathname();
@@ -188,6 +198,10 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                 longPressTimerRef.current = null;
             }
             if (!longPressFiredRef.current) {
+                trackMeriterUiEvent({
+                    name: 'nav_primary_click',
+                    payload: { item: 'profile', surface: 'bottom' },
+                });
                 router.push(path);
             }
         },
@@ -218,7 +232,18 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                     return (
                         <button
                             key={tab.name}
-                            onClick={() => { if (!isProfile) router.push(tab.path); }}
+                            onClick={() => {
+                                if (!isProfile) {
+                                    const item = primaryFromBottomPath(tab.path);
+                                    if (item) {
+                                        trackMeriterUiEvent({
+                                            name: 'nav_primary_click',
+                                            payload: { item, surface: 'bottom' },
+                                        });
+                                    }
+                                    router.push(tab.path);
+                                }
+                            }}
                             onPointerDown={isProfile ? handleProfilePointerDown : undefined}
                             onPointerUp={isProfile ? () => handleProfilePointerUp(tab.path) : undefined}
                             onPointerLeave={() => {

@@ -12,6 +12,7 @@ import { useUIStore } from '@/stores/ui.store';
 import { Button } from '@/components/ui/shadcn/button';
 import { Plus } from 'lucide-react';
 import { ENABLE_PROJECT_POSTS } from '@/lib/constants/features';
+import { trackMeriterUiEvent } from '@/lib/telemetry/meriter-ui-telemetry';
 
 const MENU_WIDTH_PX = 224; // w-56
 const FLOAT_GAP_PX = 8;
@@ -163,7 +164,12 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
         <Button
             variant="ghost"
             size="sm"
-            onClick={() => setIsOpen(!isOpen)}
+            onClick={() =>
+                setIsOpen((prev) => {
+                    if (!prev) trackMeriterUiEvent({ name: 'nav_create_click', payload: { surface: 'fab' } });
+                    return !prev;
+                })
+            }
             className="rounded-full active:scale-[0.98] p-0 w-[45px] h-[45px] flex items-center justify-center bg-base-200 dark:bg-base-100 shadow-lg hover:bg-base-300 dark:hover:bg-base-100/90"
             aria-label={isOpen ? tCommon('close') : tCommon('open')}
         >
@@ -179,7 +185,10 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({ communityId, trigger }) 
                       const orig = (trigger as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>).props
                           .onClick;
                       orig?.(e);
-                      setIsOpen(!isOpen);
+                      setIsOpen((prev) => {
+                          if (!prev) trackMeriterUiEvent({ name: 'nav_create_click', payload: { surface: 'fab' } });
+                          return !prev;
+                      });
                   },
               })
             : trigger;
