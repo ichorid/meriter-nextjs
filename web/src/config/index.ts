@@ -247,10 +247,14 @@ export const config = {
     loginInviteForm: env.NEXT_PUBLIC_ENABLE_LOGIN_INVITE_FORM === 'true',
   },
 
-  // Development Mode
+  // Development Mode (Next dev: mock OAuth + fake user unless explicitly `NEXT_PUBLIC_*_MODE=false`)
   development: {
-    fakeDataMode: env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true',
-    testAuthMode: env.NEXT_PUBLIC_TEST_AUTH_MODE === 'true',
+    fakeDataMode:
+      env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true' ||
+      (env.NODE_ENV === 'development' && env.NEXT_PUBLIC_FAKE_DATA_MODE !== 'false'),
+    testAuthMode:
+      env.NEXT_PUBLIC_TEST_AUTH_MODE === 'true' ||
+      (env.NODE_ENV === 'development' && env.NEXT_PUBLIC_TEST_AUTH_MODE !== 'false'),
   },
 
   // Monitoring

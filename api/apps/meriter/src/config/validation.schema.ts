@@ -9,7 +9,9 @@ import { z } from 'zod';
  */
 const validateSync = (config: Record<string, unknown>) => {
   const nodeEnv = (config.NODE_ENV as string) || 'development';
-  const fakeDataMode = config.FAKE_DATA_MODE === 'true';
+  const fakeDataMode =
+    config.FAKE_DATA_MODE === 'true' ||
+    (nodeEnv === 'development' && config.FAKE_DATA_MODE !== 'false');
   
   // DOMAIN is required for cookie domain and site URL. In test/development, default to localhost.
   let domain = config.DOMAIN as string;

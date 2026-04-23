@@ -339,8 +339,13 @@ function createOAuthProviderConfig(
 export default (): AppConfig => {
   const env = process.env;
   const nodeEnv = (env.NODE_ENV || 'development') as 'development' | 'production' | 'test';
-  const fakeDataMode = env.FAKE_DATA_MODE === 'true';
-  const testAuthMode = env.TEST_AUTH_MODE === 'true';
+  /** Local Nest `pnpm dev`: enable fake + mock auth unless explicitly turned off (`*_MODE=false`). */
+  const fakeDataMode =
+    env.FAKE_DATA_MODE === 'true' ||
+    (nodeEnv === 'development' && env.FAKE_DATA_MODE !== 'false');
+  const testAuthMode =
+    env.TEST_AUTH_MODE === 'true' ||
+    (nodeEnv === 'development' && env.TEST_AUTH_MODE !== 'false');
 
   return {
     app: {

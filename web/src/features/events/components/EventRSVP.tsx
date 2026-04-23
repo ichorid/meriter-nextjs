@@ -32,6 +32,8 @@ export interface EventRSVPProps {
   isMember: boolean;
   isAttending: boolean;
   canManageAttendance: boolean;
+  /** Logged-in non-member: opens join + deferred RSVP dialog (same flow as events feed). */
+  onRsvpJoinAsNonMember?: () => void;
 }
 
 export function EventRSVP({
@@ -45,6 +47,7 @@ export function EventRSVP({
   isMember,
   isAttending,
   canManageAttendance,
+  onRsvpJoinAsNonMember,
 }: EventRSVPProps) {
   const t = useTranslations('events');
   const { user } = useAuth();
@@ -150,6 +153,12 @@ export function EventRSVP({
                 {t('showMyCheckInQr')}
               </Button>
             ) : null}
+          </div>
+        ) : user?.id && onRsvpJoinAsNonMember ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="default" disabled={busy} onClick={() => onRsvpJoinAsNonMember()}>
+              {t('rsvpJoin')}
+            </Button>
           </div>
         ) : null}
       </div>

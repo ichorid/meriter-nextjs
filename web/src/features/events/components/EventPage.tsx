@@ -24,6 +24,13 @@ import { PublicationActions } from '@/components/organisms/Publication/Publicati
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
 import { Comment as CommentComponent } from '@features/comments/components/comment';
 import { EventRSVP, type EventAttendeeSummary } from './EventRSVP';
 import { EventInviteDialog } from './EventInviteDialog';
@@ -90,6 +97,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
   const [qrInviteUrl, setQrInviteUrl] = useState<string | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [joinRsvpDialogOpen, setJoinRsvpDialogOpen] = useState(false);
 
   const highlightCommentId = searchParams?.get('highlight');
 
@@ -232,6 +240,21 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
   }, [utils, publicationId]);
 
   const createInviteLink = trpc.events.createInviteLink.useMutation();
+
+  const submitTeam = trpc.teams.submitTeamRequest.useMutation({
+    onSuccess: async () => {
+      setJoinRsvpDialogOpen(false);
+      await utils.events.getEventsByCommunity.invalidate({ communityId: publicationCommunityId });
+      await utils.publications.getById.invalidate({ id: publicationId });
+    },
+  });
+  const joinProject = trpc.project.join.useMutation({
+    onSuccess: async () => {
+      setJoinRsvpDialogOpen(false);
+      await utils.events.getEventsByCommunity.invalidate({ communityId: publicationCommunityId });
+      await utils.publications.getById.invalidate({ id: publicationId });
+    },
+  });
 
   const openQrWithFreshLink = async () => {
     try {
@@ -388,6 +411,33 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
 
   const attendeeIds = Array.isArray(pub.eventAttendees) ? pub.eventAttendees : [];
   const isAttending = Boolean(user?.id && attendeeIds.includes(user.id));
+
+  const canOfferJoinForRsvp = Boolean(
+    user?.id && !isMember && pub.id && eventStatus !== null && eventStatus !== 'past',
+  );
+
+  const joinRsvpBusy = submitTeam.isPending || joinProject.isPending;
+
+  /** Not a hook — must not use `useCallback` after conditional returns above. */
+  const confirmJoinRsvpRequest = () => {
+    if (!user?.id || !pub?.id) return;
+    const title = pub.title?.trim() || tEvents('untitledEvent');
+    const applicantMessage = tEvents('rsvpJoinRequestNote', { title, id: pub.id }).slice(0, 500);
+    const isProjectCommunity = votingContextCommunity?.isProject === true;
+    if (isProjectCommunity) {
+      joinProject.mutate({
+        projectId: publicationCommunityId,
+        applicantMessage,
+        pendingEventPublicationId: pub.id,
+      });
+    } else {
+      submitTeam.mutate({
+        communityId: publicationCommunityId,
+        applicantMessage,
+        pendingEventPublicationId: pub.id,
+      });
+    }
+  };
 
   return (
     <AdaptiveLayout
@@ -615,6 +665,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
           isMember={isMember}
           isAttending={isAttending}
           canManageAttendance={canManageAttendance}
+          onRsvpJoinAsNonMember={canOfferJoinForRsvp ? () => setJoinRsvpDialogOpen(true) : undefined}
         />
 
         {showComments ? (
@@ -720,6 +771,23 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
         publicationId={publicationId}
         communityId={publicationCommunityId}
       />
+
+      <Dialog open={joinRsvpDialogOpen} onOpenChange={(o) => !o && setJoinRsvpDialogOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{tEvents('rsvpNeedMembershipTitle')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-base-content/80">{tEvents('rsvpNeedMembershipBody')}</p>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => setJoinRsvpDialogOpen(false)}>
+              {tEvents('rsvpNeedMembershipCancel')}
+            </Button>
+            <Button type="button" disabled={joinRsvpBusy} onClick={() => confirmJoinRsvpRequest()}>
+              {tEvents('rsvpNeedMembershipConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdaptiveLayout>
   );
 }

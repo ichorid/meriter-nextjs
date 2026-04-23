@@ -19,7 +19,7 @@ import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
 /** Full-width action row under contacts (merit history, invite, transfer); subtle corners in stitch + default. */
 export function profileHeroLeftStackActionClass(sc: boolean) {
   return cn(
-    'inline-flex w-full max-w-full min-w-0 items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 active:scale-[0.99] [&_svg]:shrink-0',
+    'inline-flex w-full min-w-0 max-w-full items-center justify-center gap-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 active:scale-[0.99] [&_svg]:shrink-0',
     sc
       ? 'rounded-xl border border-white/18 bg-white/[0.04] px-4 py-2.5 text-stitch-text/90 shadow-none hover:border-white/28 hover:bg-white/[0.08] hover:text-stitch-text focus-visible:ring-stitch-accent/35 [&_svg]:h-4 [&_svg]:w-4'
       : 'rounded-xl border border-base-300/55 bg-base-200/55 px-4 py-2.5 text-base-content shadow-sm hover:bg-base-300/60 focus-visible:ring-ring [&_svg]:h-4 [&_svg]:w-4',
@@ -218,10 +218,11 @@ function ProfileHeroComponent({
         <div
           className={cn(
             'grid gap-6',
-            meritsHeroSlot ? 'grid-cols-1 lg:grid-cols-12 lg:items-start' : 'grid-cols-1',
+            /* xl: sidebar + padding leaves too little width at lg for col-span-4 merits card */
+            meritsHeroSlot ? 'grid-cols-1 xl:grid-cols-12 xl:items-start' : 'grid-cols-1',
           )}
         >
-          <div className={cn('min-w-0 space-y-4', meritsHeroSlot && 'lg:col-span-8')}>
+          <div className={cn('min-w-0 space-y-4', meritsHeroSlot && 'xl:col-span-8')}>
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-start sm:gap-6">
               <div className="shrink-0">
                 <Avatar
@@ -362,7 +363,7 @@ function ProfileHeroComponent({
           {meritsHeroSlot ? (
             <div
               className={cn(
-                'min-w-0 rounded-xl p-5 lg:sticky lg:top-4 lg:col-span-4 lg:self-start',
+                'min-w-0 overflow-hidden rounded-xl p-5 xl:sticky xl:top-4 xl:col-span-4 xl:self-start',
                 sc
                   ? 'border-0 bg-stitch-surface2/90 shadow-none'
                   : 'border border-base-300/50 bg-base-100/75 shadow-sm backdrop-blur-sm',

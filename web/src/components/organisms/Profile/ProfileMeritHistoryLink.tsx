@@ -15,7 +15,7 @@ type ProfileMeritHistoryLinkProps = {
 };
 
 const defaultClassName =
-  'inline-flex max-w-full items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100';
+  'inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-base-100';
 
 /**
  * Link to the global-wallet merit ledger (own or another user with permission).
