@@ -17,6 +17,7 @@ import { useCommentsByPublication, useCreateComment } from '@/hooks/api/useComme
 import { usePublication } from '@/hooks/api/usePublications';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
+import { PilotThreadCommentRow } from '@/components/organisms/Project/PilotThreadCommentRow';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { useToastStore } from '@/shared/stores/toast.store';
 import type { TicketStatus } from '@meriter/shared-types';
@@ -28,9 +29,12 @@ export interface PilotTicketDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   projectId: string;
   publicationId: string;
-  ticketStatus: TicketStatus;
   fallbackTitle?: string;
   fallbackContent: string;
+  /** `ticket` (default): status badge and task chrome. `discussion`: discussion header only. */
+  threadVariant?: 'ticket' | 'discussion';
+  /** Required for `threadVariant` `ticket` (default). */
+  ticketStatus?: TicketStatus;
 }
 
 export function PilotTicketDetailDialog({
@@ -38,9 +42,10 @@ export function PilotTicketDetailDialog({
   onOpenChange,
   projectId,
   publicationId,
-  ticketStatus,
   fallbackTitle,
   fallbackContent,
+  threadVariant = 'ticket',
+  ticketStatus,
 }: PilotTicketDetailDialogProps) {
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
@@ -57,15 +62,25 @@ export function PilotTicketDetailDialog({
   });
 
   const commentsData = commentsPayload as
-    | { data?: { id: string; content?: string }[]; total?: number }
+    | {
+        data?: Array<{
+          id: string;
+          content?: string | null;
+          authorId?: string;
+          createdAt?: string;
+          meta?: { author?: { name?: string; username?: string } | null };
+        }>;
+        total?: number;
+      }
     | undefined;
   const comments = commentsData?.data ?? [];
   const totalComments = commentsData?.total ?? comments.length;
 
+  const isDiscussion = threadVariant === 'discussion';
   const displayTitle =
     (publication as { title?: string } | undefined)?.title?.trim() ||
     fallbackTitle?.trim() ||
-    t('pilotTicketUntitled');
+    (isDiscussion ? t('discussionUntitled') : t('pilotTicketUntitled'));
 
   const submitComment = () => {
     const body = commentBody.trim();
@@ -92,10 +107,12 @@ export function PilotTicketDetailDialog({
       >
         <DialogHeader className="shrink-0 border-b border-[#334155] px-4 pb-4 pt-4 text-left sm:px-6">
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[#94a3b8]">
-            {t('pilotTicketDetailDialogTitle')}
+            {isDiscussion ? t('pilotDiscussionDetailDialogTitle') : t('pilotTicketDetailDialogTitle')}
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <TicketStatusBadge status={ticketStatus} className="border-white/10 bg-white/10" />
+            {!isDiscussion && ticketStatus ? (
+              <TicketStatusBadge status={ticketStatus} className="border-white/10 bg-white/10" />
+            ) : null}
             <DialogTitle className="text-base font-semibold leading-snug tracking-tight text-white">
               {displayTitle}
             </DialogTitle>
@@ -127,12 +144,7 @@ export function PilotTicketDetailDialog({
             ) : (
               <ul className="mb-3 space-y-2">
                 {comments.map((c) => (
-                  <li
-                    key={c.id}
-                    className="rounded-md bg-[#0f172a]/80 px-3 py-2 text-sm text-[#cbd5e1]"
-                  >
-                    {plainTextExcerpt(c.content ?? '')}
-                  </li>
+                  <PilotThreadCommentRow key={c.id} comment={c} />
                 ))}
               </ul>
             )}

@@ -10,20 +10,9 @@ import { useUserProfile } from '@/hooks/api/useUsers';
 import { useCommunity } from '@/hooks/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/shadcn/dialog';
-import { Label } from '@/components/ui/shadcn/label';
-import { Textarea } from '@/components/ui/shadcn/textarea';
 import { routes } from '@/lib/constants/routes';
-import { trpc } from '@/lib/trpc/client';
-import { useCreateComment } from '@/hooks/api/useComments';
-import { useToastStore } from '@/shared/stores/toast.store';
-import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
+import { PilotTicketDetailDialog } from '@/components/organisms/Project/PilotTicketDetailDialog';
+import { PilotThreadCommentRow } from '@/components/organisms/Project/PilotThreadCommentRow';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
@@ -104,18 +93,35 @@ export function DiscussionList({
   if (uxVariant === 'pilotAccordion') {
     return (
       <ul className="space-y-3">
-        {list.map((post: { id: string; title?: string; content: string; authorId: string }) => (
-          <li key={post.id}>
-            <DiscussionPilotAccordionCard
-              projectId={projectId}
-              postId={post.id}
-              title={post.title}
-              excerpt={plainTextExcerpt(post.content)}
-              authorId={post.authorId}
-              blockMeriterNavigation={blockMeriterNavigation}
-            />
-          </li>
-        ))}
+        {list.map(
+          (post: {
+            id: string;
+            title?: string;
+            content: string;
+            authorId: string;
+            metrics?: { commentCount?: number };
+          }) => (
+            <li key={post.id}>
+              {blockMeriterNavigation ? (
+                <DiscussionPilotCompactCard
+                  projectId={projectId}
+                  postId={post.id}
+                  title={post.title}
+                  content={post.content}
+                  commentCount={post.metrics?.commentCount ?? 0}
+                />
+              ) : (
+                <DiscussionPilotAccordionLegacyCard
+                  projectId={projectId}
+                  postId={post.id}
+                  title={post.title}
+                  excerpt={plainTextExcerpt(post.content)}
+                  authorId={post.authorId}
+                />
+              )}
+            </li>
+          ),
+        )}
       </ul>
     );
   }
@@ -201,92 +207,116 @@ export function DiscussionList({
   );
 }
 
-function DiscussionPilotAccordionCard({
+/** Pilot shell: compact row (title + comment count), full thread in dialog (same pattern as tasks). */
+function DiscussionPilotCompactCard({
+  projectId,
+  postId,
+  title,
+  content,
+  commentCount,
+}: {
+  projectId: string;
+  postId: string;
+  title?: string;
+  content: string;
+  commentCount: number;
+}) {
+  const t = useTranslations('multiObraz');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const heading = title?.trim() ? title : t('discussionUntitled');
+
+  return (
+    <div
+      className={cn(
+        'rounded-xl border border-white/10 bg-white/5 text-card-foreground shadow-none',
+        'transition-colors duration-200 hover:bg-white/[0.07]',
+      )}
+    >
+      <button
+        type="button"
+        className="block w-full p-4 pb-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer"
+        onClick={() => setDetailOpen(true)}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 font-medium text-base-content">{heading}</div>
+          <span
+            className="shrink-0 rounded-md border border-white/10 bg-white/10 px-2 py-0.5 text-xs font-medium tabular-nums text-base-content/80"
+            title={t('pilotDiscussionCommentCountAria', { count: commentCount })}
+          >
+            {commentCount}
+          </span>
+        </div>
+      </button>
+      <PilotTicketDetailDialog
+        threadVariant="discussion"
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        projectId={projectId}
+        publicationId={postId}
+        fallbackTitle={title}
+        fallbackContent={content}
+      />
+    </div>
+  );
+}
+
+/** Non-pilot: accordion preview and link to full Meriter thread. */
+function DiscussionPilotAccordionLegacyCard({
   projectId,
   postId,
   title,
   excerpt,
   authorId,
-  blockMeriterNavigation,
 }: {
   projectId: string;
   postId: string;
   title?: string;
   excerpt: string;
   authorId: string;
-  blockMeriterNavigation?: boolean;
 }) {
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
-  const utils = trpc.useUtils();
   const [open, setOpen] = useState(false);
-  const [commentOpen, setCommentOpen] = useState(false);
-  const [commentBody, setCommentBody] = useState('');
-  const addToast = useToastStore((s) => s.addToast);
-  const createComment = useCreateComment();
   const pageSize = 25;
   const { data, isFetching } = useCommentsByPublication(open ? postId : '', {
     page: 1,
     pageSize,
   });
 
-  const payload = data as { data?: { id: string; content?: string }[]; total?: number } | undefined;
+  const payload = data as
+    | {
+        data?: Array<{
+          id: string;
+          content?: string | null;
+          authorId?: string;
+          createdAt?: string;
+          meta?: { author?: { name?: string; username?: string } | null };
+        }>;
+        total?: number;
+      }
+    | undefined;
   const comments = payload?.data ?? [];
   const total = payload?.total ?? comments.length;
   const threadHref = routes.communityPost(projectId, postId);
   const heading = title?.trim() ? title : t('discussionUntitled');
 
-  const submitPilotComment = () => {
-    const body = commentBody.trim();
-    if (!body) return;
-    createComment.mutate(
-      { targetType: 'publication', targetId: postId, content: body },
-      {
-        onSuccess: async () => {
-          setCommentOpen(false);
-          setCommentBody('');
-          setOpen(true);
-          await utils.comments.getByPublicationId.invalidate({ publicationId: postId });
-          void utils.ticket.getByProject.invalidate();
-          addToast(t('pilotCommentSaved'), 'success');
-        },
-        onError: (err) => addToast(resolveApiErrorToastMessage(err.message), 'error'),
-      },
-    );
-  };
-
   return (
     <div className="rounded-xl border border-[#334155] bg-[#1e293b] p-4 text-[#f1f5f9]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-1">
-          {blockMeriterNavigation ? (
-            <span className="block font-medium text-white">{heading}</span>
-          ) : (
-            <Link href={threadHref} className="block font-medium text-white hover:underline">
-              {heading}
-            </Link>
-          )}
+          <Link href={threadHref} className="block font-medium text-white hover:underline">
+            {heading}
+          </Link>
           <p className="line-clamp-2 text-sm text-[#94a3b8]">{excerpt}</p>
           <AuthorLabel userId={authorId} />
         </div>
-        {blockMeriterNavigation ? (
-          <Button
-            type="button"
-            size="sm"
-            className="h-11 min-w-[132px] shrink-0 self-start rounded-lg bg-[#A855F7] px-4 text-white hover:bg-[#9333ea]"
-            onClick={() => setCommentOpen(true)}
-          >
-            {t('commentCta')}
-          </Button>
-        ) : (
-          <Button
-            asChild
-            size="sm"
-            className="h-11 min-w-[132px] shrink-0 self-start rounded-lg bg-[#A855F7] px-4 text-white hover:bg-[#9333ea]"
-          >
-            <Link href={threadHref}>{t('commentCta')}</Link>
-          </Button>
-        )}
+        <Button
+          asChild
+          size="sm"
+          className="h-11 min-w-[132px] shrink-0 self-start rounded-lg bg-[#A855F7] px-4 text-white hover:bg-[#9333ea]"
+        >
+          <Link href={threadHref}>{t('commentCta')}</Link>
+        </Button>
       </div>
       <button
         type="button"
@@ -308,53 +338,14 @@ function DiscussionPilotAccordionCard({
           ) : (
             <ul className="space-y-2">
               {comments.map((c) => (
-                <li key={c.id} className="rounded-md bg-[#0f172a]/80 px-3 py-2 text-sm text-[#cbd5e1]">
-                  {plainTextExcerpt(c.content ?? '')}
-                </li>
+                <PilotThreadCommentRow key={c.id} comment={c} />
               ))}
             </ul>
           )}
-          {total > pageSize && !blockMeriterNavigation ? (
+          {total > pageSize ? (
             <p className="text-xs text-[#94a3b8]">{t('moreRepliesOnThread')}</p>
           ) : null}
         </div>
-      ) : null}
-
-      {blockMeriterNavigation ? (
-        <Dialog open={commentOpen} onOpenChange={setCommentOpen}>
-          <DialogContent
-            className="border-[#334155] bg-[#1e293b] text-[#f1f5f9]"
-            onCloseAutoFocus={() => setCommentBody('')}
-          >
-            <DialogHeader>
-              <DialogTitle>{t('pilotCommentDialogTitle')}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-2 py-1">
-              <Label htmlFor={`pilot-comment-${postId}`}>{t('pilotCommentDialogLabel')}</Label>
-              <Textarea
-                id={`pilot-comment-${postId}`}
-                value={commentBody}
-                onChange={(e) => setCommentBody(e.target.value)}
-                className="min-h-[120px] border-[#334155] bg-[#0f172a] text-[#f1f5f9]"
-                maxLength={5000}
-                placeholder={t('pilotCommentDialogPlaceholder')}
-              />
-            </div>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <Button type="button" variant="ghost" onClick={() => setCommentOpen(false)}>
-                {tCommon('cancel')}
-              </Button>
-              <Button
-                type="button"
-                className="bg-[#A855F7] text-white hover:bg-[#9333ea]"
-                disabled={!commentBody.trim() || createComment.isPending}
-                onClick={submitPilotComment}
-              >
-                {createComment.isPending ? '…' : t('pilotCommentDialogSubmit')}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       ) : null}
     </div>
   );
