@@ -32,6 +32,8 @@ export {
     SourceEntityTypeSchema,
     CommunityWalletSchema,
     PostTypeSchema,
+    PilotContextSchema,
+    PilotDreamMetaSchema,
     TicketStatusSchema,
     PermissionRuleSchema,
     PermissionRuleConditionsSchema,
@@ -189,6 +191,8 @@ export type {
     SourceEntityType,
     CommunityWallet,
     PostType,
+    PilotContext,
+    PilotDreamMeta,
     TicketStatus,
 } from './schemas';
 

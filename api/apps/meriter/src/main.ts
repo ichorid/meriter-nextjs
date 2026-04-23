@@ -1,6 +1,15 @@
+import { config as dotenvConfig } from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MeriterModule } from './meriter.module';
+
+/** Monorepo root `.env` (PILOT_*, DOMAIN, …). Nest `envFilePath` + cwd в dev/webpack не всегда дают `../.env` до первого чтения `process.env`. */
+const MERITER_REPO_ROOT_ENV = path.resolve(__dirname, '../../../../.env');
+if (fs.existsSync(MERITER_REPO_ROOT_ENV)) {
+  dotenvConfig({ path: MERITER_REPO_ROOT_ENV });
+}
 import * as cookieParser from 'cookie-parser';
 import * as express from 'express';
 import { ConfigService } from '@nestjs/config';

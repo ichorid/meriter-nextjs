@@ -1,11 +1,16 @@
 import { z } from 'zod';
+import { Logger } from '@nestjs/common';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import {
+  PilotContextSchema,
   ProjectDurationSchema,
   ProjectStatusSchema,
 } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+
+const pilotDreamMutationLogger = new Logger('PilotDreamMutations');
 
 const createProjectInputSchema = z
   .object({
@@ -18,6 +23,9 @@ const createProjectInputSchema = z
     parentCommunityId: z.string().optional(),
     personalProject: z.boolean().optional(),
     futureVisionTags: z.array(z.string()).optional(),
+    /** Pilot dream cover (stored as community `coverImageUrl`). */
+    coverImageUrl: z.string().url().max(2048).optional(),
+    pilotContext: PilotContextSchema.optional(),
     newCommunity: z
       .object({
         name: z.string().min(1).max(200),
@@ -29,6 +37,45 @@ const createProjectInputSchema = z
       .optional(),
   })
   .superRefine((data, ctx) => {
+    if (data.pilotContext === 'multi-obraz') {
+      if (data.personalProject || data.newCommunity !== undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'pilotContext cannot be combined with personalProject or newCommunity',
+          path: ['pilotContext'],
+        });
+      }
+      if (data.parentCommunityId?.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'parentCommunityId must not be sent for pilot create (server assigns hub)',
+          path: ['parentCommunityId'],
+        });
+      }
+      if (data.futureVisionTags && data.futureVisionTags.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'futureVisionTags are not allowed for pilot create',
+          path: ['futureVisionTags'],
+        });
+      }
+      const desc = data.description?.trim() ?? '';
+      if (desc.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Description is required',
+          path: ['description'],
+        });
+      }
+      return;
+    }
+    if (data.coverImageUrl?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'coverImageUrl is only supported for pilot dream creation (pilotContext multi-obraz)',
+        path: ['coverImageUrl'],
+      });
+    }
     const hasParent = Boolean(data.parentCommunityId?.trim());
     const hasNew = data.newCommunity !== undefined;
     const personal = data.personalProject === true;
@@ -43,12 +90,49 @@ const createProjectInputSchema = z
     }
   });
 
+async function throwIfPilotDreamBlocksDangerousMutation(params: {
+  communityService: { getCommunity: (id: string) => Promise<{ isProject?: boolean; pilotMeta?: { kind?: string }; parentCommunityId?: string } | null> };
+  configService: { get: (k: 'pilot', opts?: { infer: true }) => { mode: boolean; hubCommunityId?: string } | undefined };
+  projectId: string;
+  mutation: string;
+}): Promise<void> {
+  const project = await params.communityService.getCommunity(params.projectId);
+  const pilotCfg = params.configService.get('pilot', { infer: true }) ?? {
+    mode: false,
+    hubCommunityId: undefined as string | undefined,
+  };
+  if (!project?.isProject || !isMultiObrazPilotDream(project, pilotCfg.hubCommunityId)) {
+    return;
+  }
+  pilotDreamMutationLogger.warn(
+    JSON.stringify({
+      event: 'pilot_server_mutation_rejected',
+      mutation: params.mutation,
+      projectId: params.projectId,
+      pilotContext: 'multi-obraz',
+    }),
+  );
+  throw new TRPCError({
+    code: 'FORBIDDEN',
+    message: 'This action is disabled for pilot dreams',
+  });
+}
+
 export const projectRouter = router({
   create: protectedProcedure
     .input(createProjectInputSchema)
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      if (input.pilotContext === 'multi-obraz') {
+        const pilot = ctx.configService.get('pilot', { infer: true }) ?? { mode: false };
+        if (!pilot.mode) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Pilot dream creation is disabled on this deployment',
+          });
+        }
       }
       const project = await ctx.projectService.createProject(ctx.user.id, {
         name: input.name,
@@ -61,6 +145,8 @@ export const projectRouter = router({
         personalProject: input.personalProject,
         futureVisionTags: input.futureVisionTags,
         newCommunity: input.newCommunity,
+        pilotContext: input.pilotContext,
+        coverImageUrl: input.coverImageUrl?.trim() || undefined,
       });
       return project;
     }),
@@ -87,9 +173,23 @@ export const projectRouter = router({
         search: z.string().optional(),
         page: z.number().int().min(1).optional(),
         pageSize: z.number().int().min(1).max(100).optional(),
+        pilotDreamFeed: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (input.pilotDreamFeed) {
+        const pilotCheck = ctx.configService.get('pilot', { infer: true }) ?? { mode: false };
+        if (!pilotCheck.mode) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Pilot feed is not available on this deployment',
+          });
+        }
+      }
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
       return ctx.projectService.listProjects({
         parentCommunityId: input.parentCommunityId,
         projectStatus: input.projectStatus,
@@ -97,6 +197,9 @@ export const projectRouter = router({
         search: input.search,
         page: input.page,
         pageSize: input.pageSize,
+        pilotDreamFeed: input.pilotDreamFeed === true,
+        pilotHubCommunityId:
+          input.pilotDreamFeed === true ? pilot.hubCommunityId : undefined,
       });
     }),
 
@@ -111,9 +214,23 @@ export const projectRouter = router({
         sort: z.enum(['createdAt', 'score']).optional(),
         page: z.number().int().min(1).optional(),
         pageSize: z.number().int().min(1).max(100).optional(),
+        pilotDreamFeed: z.boolean().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
+      if (input.pilotDreamFeed) {
+        const pilotCheck = ctx.configService.get('pilot', { infer: true }) ?? { mode: false };
+        if (!pilotCheck.mode) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Pilot feed is not available on this deployment',
+          });
+        }
+      }
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
       return ctx.projectService.getGlobalList({
         parentCommunityId: input.parentCommunityId,
         projectStatus: input.projectStatus,
@@ -123,6 +240,9 @@ export const projectRouter = router({
         sort: input.sort,
         page: input.page,
         pageSize: input.pageSize,
+        pilotDreamFeed: input.pilotDreamFeed === true,
+        pilotHubCommunityId:
+          input.pilotDreamFeed === true ? pilot.hubCommunityId : undefined,
       });
     }),
 
@@ -183,6 +303,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'invest_in_project',
+      });
       await ctx.projectService.investInProject(ctx.user.id, input.projectId, input.amount);
       return { success: true as const };
     }),
@@ -207,6 +333,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'project_payout_preview',
+      });
       return ctx.projectService.previewProjectPayout(
         input.projectId,
         input.amount,
@@ -225,6 +357,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'project_payout_execute',
+      });
       return ctx.projectService.executeProjectPayout(
         input.projectId,
         input.amount,
@@ -244,6 +382,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'update_shares',
+      });
       await ctx.projectService.updateShares(
         input.projectId,
         ctx.user.id,
@@ -279,6 +423,7 @@ export const projectRouter = router({
           name: z.string().min(1).max(200).optional(),
           description: z.string().max(5000).optional(),
           projectStatus: ProjectStatusSchema.optional(),
+          coverImageUrl: z.union([z.string().url().max(2048), z.literal(''), z.null()]).optional(),
         }),
       }),
     )
@@ -297,11 +442,20 @@ export const projectRouter = router({
       if (!project || !project.isProject) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
-      const updated = await ctx.communityService.updateCommunity(input.id, {
-        name: input.data.name,
-        description: input.data.description,
-        projectStatus: input.data.projectStatus,
-      });
+      const patch: {
+        name?: string;
+        description?: string;
+        projectStatus?: 'active' | 'closed' | 'archived';
+        coverImageUrl?: string | null;
+      } = {};
+      if (input.data.name !== undefined) patch.name = input.data.name;
+      if (input.data.description !== undefined) patch.description = input.data.description;
+      if (input.data.projectStatus !== undefined) patch.projectStatus = input.data.projectStatus;
+      if (input.data.coverImageUrl !== undefined) {
+        const c = input.data.coverImageUrl;
+        patch.coverImageUrl = c === '' || c === null ? null : c;
+      }
+      const updated = await ctx.communityService.updateCommunity(input.id, patch);
       return updated;
     }),
 
@@ -344,6 +498,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'top_up_project_wallet',
+      });
       return ctx.projectService.topUpWallet(
         ctx.user.id,
         input.projectId,
@@ -434,6 +594,13 @@ export const projectRouter = router({
           message: 'Only a project administrator can publish to Birzha',
         });
       }
+
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'publish_to_birzha',
+      });
 
       const project = await ctx.communityService.getCommunity(input.projectId);
       if (!project?.isProject) {
@@ -559,6 +726,12 @@ export const projectRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
+      await throwIfPilotDreamBlocksDangerousMutation({
+        communityService: ctx.communityService,
+        configService: ctx.configService,
+        projectId: input.projectId,
+        mutation: 'request_parent_change',
+      });
       return ctx.projectService.requestParentChange(
         input.projectId,
         ctx.user.id,

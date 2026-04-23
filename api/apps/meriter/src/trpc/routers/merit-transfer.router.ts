@@ -1,9 +1,13 @@
 import { z } from 'zod';
+import { Logger } from '@nestjs/common';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { MeritTransferCreateProcedureInputSchema } from '@meriter/shared-types';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+
+const pilotMeritTransferLog = new Logger('PilotDreamMutations');
 import type { UserService } from '../../domain/services/user.service';
 import type { CommunityService } from '../../domain/services/community.service';
 import type { Community } from '../../domain/models/community/community.schema';
@@ -117,6 +121,29 @@ export const meritTransferRouter = router({
         throw new TRPCError({
           code: 'FORBIDDEN',
           message: 'You must be a member of this community to transfer merits',
+        });
+      }
+
+      const ctxCommunity = await ctx.communityService.getCommunity(input.communityContextId);
+      const pilotCfg = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
+      if (
+        ctxCommunity?.isProject &&
+        isMultiObrazPilotDream(ctxCommunity, pilotCfg.hubCommunityId)
+      ) {
+        pilotMeritTransferLog.warn(
+          JSON.stringify({
+            event: 'pilot_server_mutation_rejected',
+            mutation: 'merit_transfer_in_pilot_context',
+            projectId: input.communityContextId,
+            pilotContext: 'multi-obraz',
+          }),
+        );
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Merit transfers are disabled for pilot dreams',
         });
       }
 

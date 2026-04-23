@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { ActionType } from '../../common/constants/action-types.constants';
+import type { PilotDreamMeta as PilotDreamMetaShared } from '@meriter/shared-types';
 
 /**
  * Community Mongoose Schema
@@ -231,6 +232,8 @@ export interface Community {
   futureVisionCover?: string;
   /** Cumulative investments in the project (global merits); used for payout investor pool. */
   projectInvestments?: ProjectInvestmentEntry[];
+  /** Pilot fork marker (Multi-Obraz dreams); not set on ordinary projects. */
+  pilotMeta?: PilotDreamMetaShared;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -486,6 +489,14 @@ export class CommunitySchemaClass implements Community {
     default: [],
   })
   projectInvestments?: ProjectInvestmentEntry[];
+
+  @Prop({
+    type: {
+      kind: { type: String, enum: ['multi-obraz'] },
+    },
+    required: false,
+  })
+  pilotMeta?: PilotDreamMetaShared;
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);

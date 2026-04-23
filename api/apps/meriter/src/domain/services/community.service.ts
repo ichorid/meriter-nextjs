@@ -51,6 +51,8 @@ export interface CreateCommunityDto {
   name: string;
   description?: string;
   avatarUrl?: string;
+  /** Banner / cover (projects, hubs). */
+  coverImageUrl?: string;
   typeTag?:
     | 'future-vision'
     | 'marathon-of-good'
@@ -77,6 +79,7 @@ export interface CreateCommunityDto {
     investingEnabled?: boolean;
     investorShareMin?: number;
     investorShareMax?: number;
+    commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
@@ -95,13 +98,16 @@ export interface CreateCommunityDto {
   futureVisionCover?: string;
   /** Set by router: used to create OB post author when futureVisionText is present. */
   creatorUserId?: string;
+  /** Pilot fork: Multi-Obraz dream marker (server-only create path). */
+  pilotMeta?: { kind: 'multi-obraz' };
 }
 
 export interface UpdateCommunityDto {
   name?: string;
   description?: string;
   avatarUrl?: string;
-  coverImageUrl?: string;
+  /** Set to `null` to remove cover image from the community document. */
+  coverImageUrl?: string | null;
   hashtags?: string[];
   hashtagDescriptions?: Record<string, string>;
   settings?: {
@@ -661,6 +667,9 @@ export class CommunityService {
     if (dto.settings?.investorShareMax !== undefined) {
       settings.investorShareMax = dto.settings.investorShareMax;
     }
+    if (dto.settings?.commentMode !== undefined) {
+      settings.commentMode = dto.settings.commentMode;
+    }
     if (dto.typeTag === 'project') {
       settings.allowWithdraw = false;
     }
@@ -682,6 +691,7 @@ export class CommunityService {
     if (dto.futureVisionText !== undefined) community.futureVisionText = dto.futureVisionText;
     if (dto.futureVisionTags !== undefined) community.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) community.futureVisionCover = dto.futureVisionCover;
+    if (dto.coverImageUrl !== undefined) community.coverImageUrl = dto.coverImageUrl;
     if (dto.typeTag === 'project') {
       community.isProject = true;
       community.projectStatus = dto.projectStatus ?? 'active';
@@ -704,6 +714,9 @@ export class CommunityService {
         minRating: 1,
       };
       community.projectInvestments = [];
+    }
+    if (dto.pilotMeta !== undefined) {
+      community.pilotMeta = dto.pilotMeta;
     }
 
     await this.communityModel.create([community]);
@@ -747,7 +760,11 @@ export class CommunityService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
     if (dto.avatarUrl !== undefined) updateData.avatarUrl = dto.avatarUrl;
-    if (dto.coverImageUrl !== undefined) updateData.coverImageUrl = dto.coverImageUrl;
+    if (dto.coverImageUrl === null) {
+      unsetData.coverImageUrl = 1;
+    } else if (dto.coverImageUrl !== undefined) {
+      updateData.coverImageUrl = dto.coverImageUrl;
+    }
     if (dto.hashtags !== undefined) updateData.hashtags = dto.hashtags;
     if (dto.hashtagDescriptions !== undefined) {
       updateData.hashtagDescriptions = dto.hashtagDescriptions;

@@ -270,6 +270,12 @@ export interface AppConfig {
   /** Development mode settings */
   dev: DevConfig;
 
+  /** Multi-Obraz pilot (fork); default off — see docs/prd/multi-obraz-dreams/prd.md */
+  pilot: {
+    mode: boolean;
+    hubCommunityId?: string;
+  };
+
   // Flat environment variables (for backward compatibility and direct access)
   /** Node environment (from NODE_ENV env var) */
   NODE_ENV?: 'development' | 'production' | 'test';
@@ -455,6 +461,12 @@ export default (): AppConfig => {
     dev: {
       fakeDataMode,
       testAuthMode,
+    },
+    pilot: {
+      mode:
+        env.PILOT_MODE?.trim() === 'true' ||
+        env.PILOT_MODE?.trim() === '1',
+      hubCommunityId: env.PILOT_HUB_COMMUNITY_ID?.trim() || undefined,
     },
     // Flat env vars for backward compatibility
     NODE_ENV: nodeEnv,

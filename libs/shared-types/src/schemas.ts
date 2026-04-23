@@ -34,6 +34,15 @@ export const PostTypeSchema = z.enum([
 ]);
 export type PostType = z.infer<typeof PostTypeSchema>;
 
+/** Pilot «Мультиобраз» — see docs/prd/multi-obraz-dreams/prd.md */
+export const PilotContextSchema = z.enum(["multi-obraz"]);
+export type PilotContext = z.infer<typeof PilotContextSchema>;
+
+export const PilotDreamMetaSchema = z.object({
+  kind: PilotContextSchema,
+});
+export type PilotDreamMeta = z.infer<typeof PilotDreamMetaSchema>;
+
 export const TicketStatusSchema = z.enum([
   "open",
   "in_progress",
@@ -377,6 +386,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   futureVisionTags: z.array(z.string()).optional().default([]),
   /** Cover image URL for OB card. */
   futureVisionCover: z.string().url().optional(),
+  /** Fork pilot: marks cooperative project created via Multi-Obraz pilot flow (server-controlled). */
+  pilotMeta: PilotDreamMetaSchema.optional(),
 });
 
 export const PublicationSchema = IdentifiableSchema.merge(
