@@ -120,24 +120,32 @@ export const useCreateComment = () => {
     
     return trpc.comments.create.useMutation({
         onMutate: async (variables) => {
+            const publicationIdForCache =
+                variables.targetType === 'publication'
+                    ? variables.targetId
+                    : 'publicationId' in variables
+                      ? (variables as { publicationId?: string }).publicationId
+                      : undefined;
+
             // Cancel any outgoing refetches to avoid overwriting optimistic update
-            if (variables.publicationId) {
-                await utils.comments.getByPublicationId.cancel({ publicationId: variables.publicationId });
+            if (publicationIdForCache) {
+                await utils.comments.getByPublicationId.cancel({ publicationId: publicationIdForCache });
             } else {
                 await utils.comments.getByPublicationId.cancel();
             }
             
             // Snapshot the previous values
-            const previousComments = variables.publicationId
-                ? utils.comments.getByPublicationId.getData({ publicationId: variables.publicationId })
+            const previousComments = publicationIdForCache
+                ? utils.comments.getByPublicationId.getData({ publicationId: publicationIdForCache })
                 : utils.comments.getByPublicationId.getData();
             
             // Optimistically update the cache with a temporary comment
             const optimisticComment = {
                 id: `temp-${Date.now()}`,
-                publicationId: variables.publicationId,
-                parentId: variables.parentId,
-                userId: '', // Will be filled by server
+                targetType: variables.targetType,
+                targetId: variables.targetId,
+                parentCommentId: variables.parentCommentId,
+                authorId: '',
                 content: variables.content || '',
                 metrics: {
                     score: 0,
@@ -149,9 +157,9 @@ export const useCreateComment = () => {
             };
             
             // Optimistically update lists
-            if (variables.publicationId) {
+            if (publicationIdForCache) {
                 utils.comments.getByPublicationId.setData(
-                    { publicationId: variables.publicationId },
+                    { publicationId: publicationIdForCache },
                     (old: any) => {
                         if (!old) return old;
                         return {
@@ -162,22 +170,35 @@ export const useCreateComment = () => {
                 );
             }
             
-            return { previousComments };
+            return { previousComments, publicationIdForCache };
         },
         onError: (_err, variables, context) => {
+            const publicationIdForCache =
+                variables.targetType === 'publication'
+                    ? variables.targetId
+                    : 'publicationId' in variables
+                      ? (variables as { publicationId?: string }).publicationId
+                      : undefined;
             // Rollback optimistic update on error
-            if (context?.previousComments && variables.publicationId) {
+            if (context?.previousComments && publicationIdForCache) {
                 utils.comments.getByPublicationId.setData(
-                    { publicationId: variables.publicationId },
+                    { publicationId: publicationIdForCache },
                     context.previousComments
                 );
             }
         },
         onSuccess: async (result, variables) => {
+            const publicationIdForCache =
+                variables.targetType === 'publication'
+                    ? variables.targetId
+                    : 'publicationId' in variables
+                      ? (variables as { publicationId?: string }).publicationId
+                      : undefined;
+
             // Invalidate and refetch comments lists to get real data
-            if (variables.publicationId) {
-                await utils.comments.getByPublicationId.invalidate({ publicationId: variables.publicationId });
-                await utils.comments.getByPublicationId.refetch({ publicationId: variables.publicationId });
+            if (publicationIdForCache) {
+                await utils.comments.getByPublicationId.invalidate({ publicationId: publicationIdForCache });
+                await utils.comments.getByPublicationId.refetch({ publicationId: publicationIdForCache });
             } else {
                 await utils.comments.getByPublicationId.invalidate();
                 await utils.comments.getByPublicationId.refetch();
@@ -190,10 +211,10 @@ export const useCreateComment = () => {
             utils.comments.getById.setData({ id: result.id }, result);
             
             // Invalidate publication detail queries (comments count changes)
-            if (variables.publicationId) {
-                await utils.publications.getById.invalidate({ id: variables.publicationId });
-                await utils.publications.getById.refetch({ id: variables.publicationId });
-                const pub = utils.publications.getById.getData({ id: variables.publicationId }) as
+            if (publicationIdForCache) {
+                await utils.publications.getById.invalidate({ id: publicationIdForCache });
+                await utils.publications.getById.refetch({ id: publicationIdForCache });
+                const pub = utils.publications.getById.getData({ id: publicationIdForCache }) as
                     | { communityId?: string }
                     | undefined;
                 if (pub?.communityId) {
