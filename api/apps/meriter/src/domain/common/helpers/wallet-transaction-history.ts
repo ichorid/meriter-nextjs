@@ -161,6 +161,62 @@ export function buildMeritHistoryTransactionMatch(
   return match;
 }
 
+/**
+ * Aggregate merit-history rows for a **team / project** context (`wallets.communityId === context`)
+ * plus **sender-side** wallet lines for `merit_transfer` whose logical record is in this context
+ * (those rows often live on global wallets, not on the community-scoped wallet id list).
+ */
+export function buildCommunityMeritHistoryTransactionMatch(
+  communityWalletIds: string[],
+  contextMeritTransferIds: string[],
+  category: MeritHistoryFilterKey,
+  dateRange?: { fromInclusive: Date; toExclusive: Date },
+): Record<string, unknown> {
+  const refClause = meritHistoryReferenceTypeMatch(category);
+
+  const walletBranch: Record<string, unknown> | null =
+    communityWalletIds.length > 0
+      ? refClause === null
+        ? { walletId: { $in: communityWalletIds } }
+        : { walletId: { $in: communityWalletIds }, ...refClause }
+      : null;
+
+  const includeMeritGlobal =
+    (category === 'all' || category === 'peer_transfer') && contextMeritTransferIds.length > 0;
+
+  const meritBranch: Record<string, unknown> | null = includeMeritGlobal
+    ? {
+        referenceType: 'merit_transfer',
+        referenceId: { $in: contextMeritTransferIds },
+        type: 'withdrawal',
+      }
+    : null;
+
+  const applyDate = (m: Record<string, unknown>): Record<string, unknown> => {
+    if (!dateRange) return m;
+    return {
+      ...m,
+      createdAt: {
+        $gte: dateRange.fromInclusive,
+        $lt: dateRange.toExclusive,
+      },
+    };
+  };
+
+  if (walletBranch && meritBranch) {
+    return {
+      $or: [applyDate(walletBranch), applyDate(meritBranch)],
+    };
+  }
+  if (walletBranch) {
+    return applyDate(walletBranch);
+  }
+  if (meritBranch) {
+    return applyDate(meritBranch);
+  }
+  return { walletId: { $in: [] as string[] } };
+}
+
 /** `$multiply` factor for ledger sign (same rules as `meritHistoryLedgerMultiplier`). */
 export function meritHistorySignedAmountMongoExpr(): Record<string, unknown> {
   const mult: Record<string, unknown> = {

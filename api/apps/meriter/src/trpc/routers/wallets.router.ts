@@ -228,6 +228,127 @@ export const walletsRouter = router({
     }),
 
   /**
+   * Aggregate merit ledger for a **team / project** community: all members' wallets scoped to this
+   * `communityId` plus context `merit_transfer` sender lines (see `WalletService.getCommunityMeritHistoryTransactions`).
+   */
+  getCommunityMeritHistory: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string().min(1),
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+        skip: z.number().int().min(0).optional(),
+        cursor: z.number().int().min(0).optional(),
+        category: z
+          .enum(
+            MERIT_HISTORY_FILTER_KEYS as unknown as [
+              MeritHistoryFilterKey,
+              ...MeritHistoryFilterKey[],
+            ],
+          )
+          .optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      const requester = await ctx.userService.getUserById(ctx.user.id);
+      const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      if (!isSuperadmin) {
+        const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, input.communityId);
+        if (!role) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'You must be a member of this community to view merit history',
+          });
+        }
+      }
+
+      const category = input.category ?? 'all';
+      const pagination = PaginationHelper.parseOptions(input);
+      const limit = pagination.limit || 20;
+      let skip: number;
+      if (typeof input.cursor === 'number') {
+        skip = input.cursor;
+      } else if (typeof input.skip === 'number') {
+        skip = input.skip;
+      } else {
+        skip = PaginationHelper.getSkip(pagination);
+      }
+
+      const result = await ctx.walletService.getCommunityMeritHistoryTransactions(
+        input.communityId,
+        category,
+        limit,
+        skip,
+      );
+
+      const loaded = result.data.length;
+
+      const enrichmentById = await enrichMeritHistoryTransactions(
+        ctx.user.id,
+        result.data.map((tx) => ({
+          id: tx.id,
+          referenceType: tx.referenceType,
+          referenceId: tx.referenceId,
+        })),
+        {
+          db: ctx.connection.db ?? undefined,
+          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+          meritTransferWalletOwnerByTxId: result.walletOwnerByTxId,
+        },
+      );
+
+      const subjectIds = [
+        ...new Set(
+          result.data
+            .map((tx) => result.walletOwnerByTxId.get(tx.id))
+            .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+      const subjectNames = await ctx.userService.getDisplayNamesByUserIds(subjectIds);
+
+      const data = result.data.map((tx) => {
+        const createdAt =
+          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
+        const updatedAt =
+          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
+        const enriched = enrichmentById.get(tx.id);
+        const subjectUserId = result.walletOwnerByTxId.get(tx.id) ?? null;
+        return {
+          ...tx,
+          createdAt,
+          updatedAt,
+          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
+          ledgerMultiplier: meritHistoryLedgerMultiplier({
+            type: tx.type,
+            referenceType: tx.referenceType,
+          }),
+          meritHistoryEnrichment:
+            enriched && Object.keys(enriched).length > 0 ? enriched : null,
+          subjectUserId,
+          subjectDisplayName:
+            subjectUserId != null ? subjectNames.get(subjectUserId) ?? subjectUserId : null,
+        };
+      });
+
+      return {
+        data,
+        total: result.total,
+        skip,
+        limit,
+        hasMore: skip + loaded < result.total,
+      };
+    }),
+
+  /**
    * Merit history dashboard: KPIs, daily net series, optional category breakdown (tab "all" only).
    */
   getMeritHistoryDashboard: protectedProcedure

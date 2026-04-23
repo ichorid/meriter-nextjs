@@ -12,6 +12,7 @@ import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
 import {
   MERIT_HISTORY_FILTER_KEYS,
+  buildCommunityMeritHistoryTransactionMatch,
   buildMeritHistoryTransactionMatch,
   meritHistoryCategoryMongoExprOnRtVar,
   meritHistorySignedAmountMongoExpr,
@@ -593,5 +594,84 @@ export class WalletService {
     }
 
     return { kpis, series, breakdown };
+  }
+
+  /**
+   * Ledger rows for all members' **community-scoped** wallets (`wallets.communityId === contextCommunityId`)
+   * plus sender-side **`merit_transfer`** lines tied to this context (often stored on global wallets).
+   */
+  async getCommunityMeritHistoryTransactions(
+    contextCommunityId: string,
+    category: MeritHistoryFilterKey,
+    limit: number,
+    skip: number,
+  ): Promise<{
+    data: Transaction[];
+    total: number;
+    walletOwnerByTxId: Map<string, string>;
+  }> {
+    const walletRows = await this.walletModel
+      .find({ communityId: contextCommunityId })
+      .select('id userId')
+      .lean()
+      .exec();
+
+    const walletIds = walletRows.map((w) => String((w as { id: string }).id));
+    const walletIdToUserId = new Map<string, string>();
+    for (const w of walletRows) {
+      const row = w as { id: string; userId: string };
+      walletIdToUserId.set(String(row.id), String(row.userId));
+    }
+
+    const db = this.mongoose.db;
+    if (!db) {
+      return { data: [], total: 0, walletOwnerByTxId: new Map() };
+    }
+
+    const meritIds = (await db
+      .collection('merit_transfers')
+      .distinct('id', { communityContextId: contextCommunityId })) as string[];
+
+    const match = buildCommunityMeritHistoryTransactionMatch(walletIds, meritIds, category);
+
+    const [total, rows] = await Promise.all([
+      this.transactionModel.countDocuments(match),
+      this.transactionModel.find(match).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
+    ]);
+
+    const txs = rows as unknown as Transaction[];
+    const walletOwnerByTxId = new Map<string, string>();
+    for (const tx of txs) {
+      const uid = walletIdToUserId.get(tx.walletId);
+      if (uid) {
+        walletOwnerByTxId.set(tx.id, uid);
+      }
+    }
+
+    const missingWalletIds = [
+      ...new Set(
+        txs.filter((tx) => !walletOwnerByTxId.has(tx.id)).map((tx) => String(tx.walletId)),
+      ),
+    ];
+    if (missingWalletIds.length > 0) {
+      const extraRows = await this.walletModel
+        .find({ id: { $in: missingWalletIds } })
+        .select('id userId')
+        .lean()
+        .exec();
+      const extraByWid = new Map<string, string>();
+      for (const r of extraRows) {
+        const row = r as { id: string; userId: string };
+        extraByWid.set(String(row.id), String(row.userId));
+      }
+      for (const tx of txs) {
+        if (!walletOwnerByTxId.has(tx.id)) {
+          const u = extraByWid.get(String(tx.walletId));
+          if (u) walletOwnerByTxId.set(tx.id, u);
+        }
+      }
+    }
+
+    return { data: txs, total, walletOwnerByTxId };
   }
 }

@@ -1,4 +1,5 @@
 import {
+  buildCommunityMeritHistoryTransactionMatch,
   buildMeritHistoryTransactionMatch,
   meritHistoryCategoryForReferenceType,
   meritHistoryLedgerMultiplier,
@@ -64,6 +65,38 @@ describe('wallet-transaction-history', () => {
       const r = meritHistoryUtcCalendarRange(7, anchor);
       expect(r.fromInclusive.toISOString()).toBe('2026-04-15T00:00:00.000Z');
       expect(r.toExclusive.toISOString()).toBe('2026-04-22T00:00:00.000Z');
+    });
+  });
+
+  describe('buildCommunityMeritHistoryTransactionMatch', () => {
+    it('merges community wallets and merit_transfer sender rows for all / peer', () => {
+      const m = buildCommunityMeritHistoryTransactionMatch(['w1', 'w2'], ['mt1', 'mt2'], 'all');
+      expect(m).toEqual({
+        $or: [
+          { walletId: { $in: ['w1', 'w2'] } },
+          {
+            referenceType: 'merit_transfer',
+            referenceId: { $in: ['mt1', 'mt2'] },
+            type: 'withdrawal',
+          },
+        ],
+      });
+    });
+
+    it('omits merit branch for voting-only filter', () => {
+      const m = buildCommunityMeritHistoryTransactionMatch(['w1'], ['mt1'], 'voting');
+      expect(m).toMatchObject({ walletId: { $in: ['w1'] } });
+      expect(m).toHaveProperty('referenceType');
+      expect(m).not.toHaveProperty('$or');
+    });
+
+    it('uses empty wallet $in when no community wallets but merit ids exist (peer)', () => {
+      const m = buildCommunityMeritHistoryTransactionMatch([], ['mt1'], 'peer_transfer');
+      expect(m).toEqual({
+        referenceType: 'merit_transfer',
+        referenceId: { $in: ['mt1'] },
+        type: 'withdrawal',
+      });
     });
   });
 

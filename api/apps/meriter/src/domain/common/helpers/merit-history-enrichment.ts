@@ -121,6 +121,8 @@ export async function enrichMeritHistoryTransactions(
   deps: {
     db: MeritHistoryMongoDb | undefined;
     batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
+    /** Per-transaction wallet owner (sender) for `merit_transfer` counterparty resolution in community aggregate feeds. */
+    meritTransferWalletOwnerByTxId?: ReadonlyMap<string, string>;
   },
 ): Promise<Map<string, MeritHistoryEnrichmentPayload | null>> {
   const out = new Map<string, MeritHistoryEnrichmentPayload | null>();
@@ -128,10 +130,13 @@ export async function enrichMeritHistoryTransactions(
     out.set(tx.id, null);
   }
 
-  const { db, batchFetchUsers } = deps;
+  const { db, batchFetchUsers, meritTransferWalletOwnerByTxId } = deps;
   if (!db || transactions.length === 0) {
     return out;
   }
+
+  const ownerForMeritTx = (txId: string): string =>
+    meritTransferWalletOwnerByTxId?.get(txId) ?? walletOwnerUserId;
 
   const meritTransferIds: string[] = [];
   const publicationDirectByTx = new Map<string, string>();
@@ -292,8 +297,17 @@ export async function enrichMeritHistoryTransactions(
   const counterpartyIds = new Set<string>();
   for (const m of meritDocs) {
     if (!m?.senderId || !m?.receiverId) continue;
-    const cp = m.senderId === walletOwnerUserId ? m.receiverId : m.senderId;
-    counterpartyIds.add(String(cp));
+    const txsForM = transactions.filter(
+      (t) =>
+        t.referenceType === 'merit_transfer' &&
+        t.referenceId != null &&
+        String(t.referenceId) === String(m.id),
+    );
+    for (const t of txsForM) {
+      const owner = ownerForMeritTx(t.id);
+      const cp = m.senderId === owner ? m.receiverId : m.senderId;
+      counterpartyIds.add(String(cp));
+    }
   }
 
   const usersMap =
@@ -328,8 +342,6 @@ export async function enrichMeritHistoryTransactions(
 
   for (const m of meritDocs) {
     if (!m?.id) continue;
-    const cp = m.senderId === walletOwnerUserId ? m.receiverId : m.senderId;
-    const cpName = pickDisplayName(usersMap.get(String(cp)), String(cp));
     const mid = String(m.id);
     const txs = transactions.filter(
       (t) =>
@@ -341,6 +353,9 @@ export async function enrichMeritHistoryTransactions(
     const ctxCid = m.communityContextId ? String(m.communityContextId) : null;
 
     for (const tx of txs) {
+      const owner = ownerForMeritTx(tx.id);
+      const cp = m.senderId === owner ? m.receiverId : m.senderId;
+      const cpName = pickDisplayName(usersMap.get(String(cp)), String(cp));
       const payload: MeritHistoryEnrichmentPayload = {
         meritTransferId: String(m.id),
         counterpartyUserId: String(cp),
