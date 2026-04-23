@@ -41,7 +41,7 @@
 | **Свой профиль**         | `ProfileClient`, состав блоков из текущей логики (герой, мериты, статистика по сообществам, активность, секции сообществ/проектов, создание сообщества).                                                                                                                         |
 | **Чужой профиль**        | `UserProfilePageClient`: те же блоки, кроме редактирования/настроек владельца; плюс **приглашение в команду** и **перевод меритов** при выполнимом контексте.                                                                                                                    |
 | **Глобальная навигация** | `VerticalSidebar`, `BottomNavigation`, при согласовании макета — **дополнительная** desktop-зона (например верхний бар с ссылками), если она **не дублирует** функции без маршрутов и **не удаляет** существующие пункты (см. FR).                                               |
-| **Подстраницы профиля**  | Маршруты под `/meriter/profile/*` (публикации, комментарии, опросы, избранное, инвестиции, merit-transfers и т.д.): **минимально** — единый визуальный язык (отступы, типографика, шапки); при отдельном спринте можно вынести в follow-up, но PRD закладывает **единый стиль**. |
+| **Подстраницы профиля**  | Маршруты под `/meriter/profile/`* (публикации, комментарии, опросы, избранное, инвестиции, merit-transfers и т.д.): **минимально** — единый визуальный язык (отступы, типографика, шапки); при отдельном спринте можно вынести в follow-up, но PRD закладывает **единый стиль**. |
 | **Тема и токены**        | Внедрение палитры/радиусов/типографики в рамках существующего стека (Tailwind + при необходимости CSS variables / расширение темы), согласованных с референсом.                                                                                                                  |
 | **Наблюдаемость**        | Логирование ключевых действий пользователя в профиле и навигации (раздел 9).                                                                                                                                                                                                     |
 | **Документация**         | Обновление business-rules и frontend-rules после стабилизации IA (раздел 10).                                                                                                                                                                                                    |
@@ -59,7 +59,7 @@
 
 - `web/src/app/meriter/profile/ProfileClient.tsx`
 - `web/src/app/meriter/users/[userId]/UserProfilePageClient.tsx`
-- `web/src/components/organisms/Profile/*` (`ProfileHero`, `ProfileMeritsHeroStrip`, `ProfileMeritHistoryLink`, `ProfileStats`, `ProfileContentCards`, `ProfileMeritsActivityPanel`, `ProfileEditForm`, …)
+- `web/src/components/organisms/Profile/`* (`ProfileHero`, `ProfileMeritsHeroStrip`, `ProfileMeritHistoryLink`, `ProfileStats`, `ProfileContentCards`, `ProfileMeritsActivityPanel`, `ProfileEditForm`, …)
 - `web/src/components/organisms/VerticalSidebar/VerticalSidebar.tsx`
 - `web/src/components/organisms/BottomNavigation.tsx`
 - `web/src/components/templates/AdaptiveLayout/*` (при смене chrome)
@@ -174,18 +174,18 @@
   - опционально: `window`/`fetch` к endpoint аналитики при `config.features.analytics === true` (см. `web/src/config/index.ts`).
 2. **События (минимальный набор v1)**:
 
-  | Событие                                       | Когда                                          | Полезная нагрузка (без PII)                                                                                                                      |
-  | --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | `profile_view_self`                           | Успешный mount `/meriter/profile`              | `{ layout: 'sm' | 'lg' }`                                                                                                                        |
-  | `profile_view_other`                          | Mount `/meriter/users/:id`                     | `{ targetUserId }` (id допустим как внутренний идентификатор сущности)                                                                           |
-  | `profile_activity_card_click`                 | Клик по карточке активности                    | `{ card: 'publications'|'comments'|'polls'|'favorites'|'investments', scope: 'self'|'other' }`                                                   |
-  | `profile_merit_history_open`                  | Клик по ссылке полной истории меритов          | `{ scope: 'self'|'other' }`                                                                                                                      |
-  | `profile_share`                               | Успешный share                                 | `{}`                                                                                                                                             |
-  | `profile_edit_open` / `profile_settings_open` | Клик Edit / Settings                           | `{}`                                                                                                                                             |
-  | `nav_primary_click`                           | Клик по пункту первичной навигации             | `{ item: 'future_visions'|'marathon'|'projects'|'notifications'|'favorites'|'profile'|'support'|'about', surface: 'sidebar'|'bottom'|'topbar' }` |
-  | `nav_create_click`                            | Клик «Создать» (любая поверхность)             | `{ surface: 'sidebar'|'fab' }`                                                                                                                   |
-  | `profile_invite_open`                         | Открытие приглашения в команду (чужой профиль) | `{}`                                                                                                                                             |
-  | `profile_merit_transfer_open`                 | Открытие перевода меритов с профиля            | `{}`                                                                                                                                             |
+  | Событие                                       | Когда                                          | Полезная нагрузка (без PII)                                            |
+  | --------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------- |
+  | `profile_view_self`                           | Успешный mount `/meriter/profile`              | `{ layout: 'sm'                                                        |
+  | `profile_view_other`                          | Mount `/meriter/users/:id`                     | `{ targetUserId }` (id допустим как внутренний идентификатор сущности) |
+  | `profile_activity_card_click`                 | Клик по карточке активности                    | `{ card: 'publications'                                                |
+  | `profile_merit_history_open`                  | Клик по ссылке полной истории меритов          | `{ scope: 'self'                                                       |
+  | `profile_share`                               | Успешный share                                 | `{}`                                                                   |
+  | `profile_edit_open` / `profile_settings_open` | Клик Edit / Settings                           | `{}`                                                                   |
+  | `nav_primary_click`                           | Клик по пункту первичной навигации             | `{ item: 'future_visions'                                              |
+  | `nav_create_click`                            | Клик «Создать» (любая поверхность)             | `{ surface: 'sidebar'                                                  |
+  | `profile_invite_open`                         | Открытие приглашения в команду (чужой профиль) | `{}`                                                                   |
+  | `profile_merit_transfer_open`                 | Открытие перевода меритов с профиля            | `{}`                                                                   |
 
 3. **Согласование с Sentry**: не поднимать уровень шума — `category: 'ui.profile'`, `level: 'info'` для breadcrumbs.
 

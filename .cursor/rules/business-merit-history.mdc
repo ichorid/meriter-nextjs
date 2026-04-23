@@ -8,8 +8,11 @@ globs:
   - api/apps/meriter/src/trpc/routers/wallets.router.ts
   - web/src/app/meriter/profile/merit-transfers/**/*.tsx
   - web/src/app/meriter/users/**/merit-history/**/*.tsx
+  - web/src/app/meriter/communities/**/merit-history/**/*.tsx
+  - web/src/app/meriter/projects/**/merit-history/**/*.tsx
   - web/src/features/merit-transfer/components/MeritHistoryFeed.tsx
   - web/src/features/merit-transfer/components/MeritHistoryDashboardPanel.tsx
+  - web/src/features/merit-transfer/pages/CommunityContextMeritHistoryClient.tsx
 ---
 
 # Merit History (История заслуг)
@@ -17,7 +20,8 @@ globs:
 ## Data source
 
 - **Global wallet ledger:** `transactions` for the subject user’s **global** wallet (`GLOBAL_COMMUNITY_ID`) via `WalletService.getUserTransactions` → **`wallets.getTransactions`**, and aggregates via **`wallets.getMeritHistoryDashboard`**. **Self:** `userId` is the caller (or `'me'`). **Another user:** same procedures with **`permissionCommunityId`** (required unless viewer is **superadmin**); enforced in **`assertMeritHistoryTransactionsAccess`** (`wallets.router.ts`, shared with the dashboard).
-- **Peer-only contexts:** `meritTransfer.getByCommunity` on community/project **merit-transfers** pages — **no** merge with wallet lines (single source per surface).
+- **Aggregate team / project context (members + superadmin):** **`wallets.getCommunityMeritHistory`** — union of member **community** wallet `transactions` for `communityId` plus context **`merit_transfer`** sender lines (`WalletService.getCommunityMeritHistoryTransactions`, `buildCommunityMeritHistoryTransactionMatch`). Rows include **`subjectUserId` / `subjectDisplayName`** (wallet owner per line). UI: **`/meriter/communities/[id]/merit-history`**, **`/meriter/projects/[id]/merit-history`** (legacy **`…/merit-transfers`** redirects here).
+- **Peer-only contexts (narrow list):** `meritTransfer.getByCommunity` — still used where a **direct transfers-only** feed is required; **not** the same as aggregate community history above.
 - **Another user’s peer-only list:** **`/meriter/users/[id]/merit-transfers`** → **`meritTransfer.getByUser`** (not the global wallet feed).
 
 ## Categories
@@ -40,7 +44,8 @@ Map: `wallet-transaction-history.ts` (`MERIT_HISTORY_FILTER_KEYS`, `meritHistory
 | Surface | Route | Feed |
 |--------|-------|------|
 | Own merit history | `/meriter/profile/merit-transfers` | `wallets.getTransactions` + filters + dashboard |
-| Context peer list | `/meriter/communities/[id]/merit-transfers`, `/meriter/projects/[id]/merit-transfers` | `meritTransfer.getByCommunity` |
+| Community / project aggregate history | `/meriter/communities/[id]/merit-history`, `/meriter/projects/[id]/merit-history` | `wallets.getCommunityMeritHistory` |
+| Legacy context URLs | `/meriter/communities/[id]/merit-transfers`, `/meriter/projects/[id]/merit-transfers` | **Redirect** to `…/merit-history` |
 | Other user full ledger | `/meriter/users/[id]/merit-history` | `wallets.getTransactions` + dashboard (`context` query) |
 | Other user peer-only | `/meriter/users/[id]/merit-transfers` | `meritTransfer.getByUser` |
 
