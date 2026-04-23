@@ -86,45 +86,55 @@ export const commentsRouter = router({
         limit: input.limit,
       });
       const skip = PaginationHelper.getSkip(pagination);
+      const pageLimit = pagination.limit || 20;
       const sortField = input.sort || 'createdAt';
       const sortOrder = (input.order || 'desc') === 'asc' ? 'asc' : 'desc';
 
-      // Get votes on this publication (votes now contain comments)
-      const votes = await ctx.voteService.getPublicationVotes(
-        input.publicationId,
-        pagination.limit || 20,
-        skip,
-        sortField,
-        sortOrder,
-      );
+      /**
+       * Thread = votes on publication + Comment documents (tRPC `comments.create`) + auto lines.
+       * Historically only votes were listed; user comments were stored but never returned.
+       */
+      const MERGE_CAP = 2000;
+
+      const [votes, userCommentDocs] = await Promise.all([
+        ctx.voteService.getPublicationVotes(
+          input.publicationId,
+          MERGE_CAP,
+          0,
+          sortField,
+          sortOrder,
+        ),
+        ctx.commentService.findPublicationUserComments(
+          input.publicationId,
+          MERGE_CAP,
+          sortField,
+          sortOrder,
+        ),
+      ]);
 
       const autoDocs =
         skip === 0
           ? await ctx.commentService.findPublicationAutoComments(input.publicationId)
           : [];
 
-      // Extract unique user IDs (vote authors + auto-comment authors)
       const userIdsArray = Array.from(
         new Set([
           ...votes.map((v) => v.userId).filter(Boolean),
+          ...userCommentDocs.map((d) => d.authorId).filter(Boolean),
           ...autoDocs.map((d) => d.authorId).filter(Boolean),
         ]),
       );
 
-      // Batch fetch all users using enrichment service
       const usersMap = await ctx.userEnrichmentService.batchFetchUsers(userIdsArray);
 
-      // Get publication to get slug and communityId
       const publication = await ctx.publicationService.getPublication(input.publicationId);
       const publicationSlug = publication?.getId.getValue();
       const communityId = publication?.getCommunityId.getValue();
 
-      // Batch fetch votes on votes (for nested replies)
       const voteIds = votes.map((v) => v.id);
       const votesOnVotesMap = await ctx.voteService.getVotesOnVotes(voteIds);
 
-      // Convert votes to comment-like objects using EntityMappers
-      const enrichedComments = votes.map((vote) => {
+      const voteRows = votes.map((vote) => {
         const baseComment = EntityMappers.mapCommentToApi(
           vote,
           usersMap,
@@ -132,11 +142,9 @@ export const commentsRouter = router({
           communityId,
         );
 
-        // Get votes on this vote (replies)
         const replies = votesOnVotesMap.get(vote.id) || [];
         const replyCount = replies.length;
 
-        // Calculate score from replies (sum of reply vote amounts)
         const score = replies.reduce((sum, r) => {
           const quota = r.amountQuota || 0;
           const wallet = r.amountWallet || 0;
@@ -148,7 +156,6 @@ export const commentsRouter = router({
 
         return {
           ...baseComment,
-          // Metrics from votes on this vote (replies)
           metrics: {
             upvotes,
             downvotes,
@@ -158,51 +165,78 @@ export const commentsRouter = router({
         };
       });
 
-      // Batch calculate permissions for all comments (votes)
-      const commentIds = enrichedComments.map((comment) => comment.id);
-      const permissionsMap = await ctx.permissionsHelperService.batchCalculateCommentPermissions(
-        ctx.user?.id || null,
-        commentIds,
-      );
-
-      // Add permissions to each comment
-      enrichedComments.forEach((comment) => {
-        comment.permissions = permissionsMap.get(comment.id);
+      const userRows = userCommentDocs.map((doc) => {
+        const base = EntityMappers.mapCommentToApi(doc, usersMap, publicationSlug, communityId);
+        return {
+          ...base,
+          metrics: {
+            upvotes: doc.metrics?.upvotes ?? 0,
+            downvotes: doc.metrics?.downvotes ?? 0,
+            score: doc.metrics?.score ?? 0,
+            replyCount: doc.metrics?.replyCount ?? 0,
+          },
+        };
       });
 
-      let mergedComments = enrichedComments;
-      if (skip === 0 && autoDocs.length > 0) {
-        const autoIds = autoDocs.map((d) => d.id);
-        const autoPermMap = await ctx.permissionsHelperService.batchCalculateCommentPermissions(
-          ctx.user?.id || null,
-          autoIds,
-        );
-        const autoEnriched = autoDocs.map((doc) => {
-          const base = EntityMappers.mapCommentToApi(doc, usersMap, publicationSlug, communityId);
-          return {
-            ...base,
-            isAutoComment: true,
-            metrics: {
-              upvotes: 0,
-              downvotes: 0,
-              score: 0,
-              replyCount: 0,
-            },
-            permissions: autoPermMap.get(doc.id) ?? { canVote: false },
-          };
-        });
-        mergedComments = [...autoEnriched, ...enrichedComments];
-      }
+      const autoRows =
+        skip === 0 && autoDocs.length > 0
+          ? autoDocs.map((doc) => {
+              const base = EntityMappers.mapCommentToApi(doc, usersMap, publicationSlug, communityId);
+              return {
+                ...base,
+                isAutoComment: true,
+                metrics: {
+                  upvotes: 0,
+                  downvotes: 0,
+                  score: 0,
+                  replyCount: 0,
+                },
+              };
+            })
+          : [];
 
-      // Get total count for pagination
+      type MergedRow = (typeof voteRows)[number];
+      const mergedPool: MergedRow[] = [...autoRows, ...userRows, ...voteRows];
+
+      const timeKey = (row: { createdAt?: string }) => new Date(row.createdAt ?? 0).getTime();
+      const scoreKey = (row: { metrics?: { score?: number } }) => row.metrics?.score ?? 0;
+
+      mergedPool.sort((a, b) => {
+        if (sortField === 'score') {
+          const sa = scoreKey(a);
+          const sb = scoreKey(b);
+          if (sa !== sb) {
+            return sortOrder === 'asc' ? sa - sb : sb - sa;
+          }
+        }
+        const ta = timeKey(a);
+        const tb = timeKey(b);
+        return sortOrder === 'asc' ? ta - tb : tb - ta;
+      });
+
+      const pageRows = mergedPool.slice(skip, skip + pageLimit);
+
+      const pageIds = pageRows.map((row) => row.id as string);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculateCommentPermissions(
+        ctx.user?.id || null,
+        pageIds,
+      );
+      pageRows.forEach((row) => {
+        row.permissions = permissionsMap.get(row.id as string);
+      });
+
       const totalVotes = await ctx.voteService.getVotesOnPublication(input.publicationId);
-      const total = totalVotes.length + (skip === 0 ? autoDocs.length : 0);
+      const [userCommentTotal, autoCommentTotal] = await Promise.all([
+        ctx.commentService.countPublicationUserComments(input.publicationId),
+        ctx.commentService.countPublicationAutoComments(input.publicationId),
+      ]);
+      const total = totalVotes.length + userCommentTotal + autoCommentTotal;
 
       return {
-        data: mergedComments,
+        data: pageRows,
         total,
         skip,
-        limit: pagination.limit || 20,
+        limit: pageLimit,
       };
     }),
 

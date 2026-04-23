@@ -160,6 +160,42 @@ export class CommentService {
     return rows as ICommentDocument[];
   }
 
+  /** User/system text comments on a publication (excludes merit-transfer / auto lines). */
+  async findPublicationUserComments(
+    publicationId: string,
+    max = 2000,
+    sortField: string = 'createdAt',
+    sortOrder: 'asc' | 'desc' = 'desc',
+  ): Promise<ICommentDocument[]> {
+    const sort = CommentSortingHelpers.buildSortQuery(sortField, sortOrder);
+    const rows = await this.commentModel
+      .find({
+        targetType: 'publication',
+        targetId: publicationId,
+        isAutoComment: { $ne: true },
+      })
+      .sort(sort as Record<string, 1 | -1>)
+      .limit(max)
+      .lean();
+    return rows as ICommentDocument[];
+  }
+
+  async countPublicationUserComments(publicationId: string): Promise<number> {
+    return this.commentModel.countDocuments({
+      targetType: 'publication',
+      targetId: publicationId,
+      isAutoComment: { $ne: true },
+    });
+  }
+
+  async countPublicationAutoComments(publicationId: string): Promise<number> {
+    return this.commentModel.countDocuments({
+      targetType: 'publication',
+      targetId: publicationId,
+      isAutoComment: true,
+    });
+  }
+
   async getComment(id: string): Promise<Comment | null> {
     const doc = await this.commentModel.findOne({ id }).lean();
     return doc ? Comment.fromSnapshot(doc as ICommentDocument) : null;

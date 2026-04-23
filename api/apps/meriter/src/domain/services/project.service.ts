@@ -5,6 +5,12 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../config/configuration';
+import {
+  PILOT_CONTEXT_MULTI_OBRAZ,
+  type PilotContextKind,
+} from '../common/helpers/pilot-dream-policy';
 import { CommunityService } from './community.service';
 import { CommunityWalletService } from './community-wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
@@ -48,6 +54,10 @@ export interface CreateProjectDto {
   };
   /** Stored on the project community (isProject), same rubric as publications / OB. */
   futureVisionTags?: string[];
+  /** Multi-Obraz pilot: server creates dream under `PILOT_HUB_COMMUNITY_ID` (TR-4, PRD §14). */
+  pilotContext?: PilotContextKind;
+  /** Optional dream cover image URL (pilot create only; stored as community `coverImageUrl`). */
+  coverImageUrl?: string;
 }
 
 export interface ListProjectsFilters {
@@ -62,6 +72,9 @@ export interface ListProjectsFilters {
   sort?: 'createdAt' | 'score';
   page?: number;
   pageSize?: number;
+  /** Pilot feed: restrict to dreams with `pilotMeta.kind` under this parent hub id. */
+  pilotDreamFeed?: boolean;
+  pilotHubCommunityId?: string;
 }
 
 export interface ProjectWithDetails {
@@ -93,7 +106,100 @@ export class ProjectService {
     private readonly notificationService: NotificationService,
     private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
     private readonly projectPayoutService: ProjectPayoutService,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
+
+  /**
+   * Multi-Obraz pilot dream: child project of configured hub with `pilotMeta` (PRD §14, TR-4/5).
+   */
+  private async createPilotMultiObrazDream(
+    userId: string,
+    dto: CreateProjectDto,
+  ): Promise<Community> {
+    const pilot = this.configService.get('pilot', { infer: true }) ?? {
+      mode: false,
+      hubCommunityId: undefined as string | undefined,
+    };
+    if (!pilot.mode) {
+      throw new ForbiddenException('Pilot dream creation is disabled on this deployment');
+    }
+    const hubId = pilot.hubCommunityId?.trim();
+    if (!hubId) {
+      throw new BadRequestException('PILOT_HUB_COMMUNITY_ID is not configured');
+    }
+    if (
+      dto.personalProject ||
+      dto.newCommunity ||
+      dto.parentCommunityId ||
+      dto.futureVisionTags?.length ||
+      dto.founderSharePercent !== undefined ||
+      dto.investorSharePercent !== undefined ||
+      dto.investingEnabled === true
+    ) {
+      throw new BadRequestException('Invalid pilot dream payload');
+    }
+    const description = dto.description?.trim() ?? '';
+    if (description.length < 1) {
+      throw new BadRequestException('Description is required');
+    }
+
+    const hub = await this.communityService.getCommunity(hubId);
+    if (!hub) {
+      throw new BadRequestException('Pilot hub community not found');
+    }
+    if (!this.communityService.isLocalMembershipCommunity(hub)) {
+      throw new BadRequestException(
+        'Pilot hub must be a local membership community (e.g. typeTag team)',
+      );
+    }
+
+    const cover = dto.coverImageUrl?.trim();
+    const project = await this.communityService.createCommunity({
+      name: dto.name.trim(),
+      description,
+      typeTag: 'project',
+      settings: {
+        postCost: 0,
+        investingEnabled: false,
+        commentMode: 'neutralOnly',
+      },
+      isProject: true,
+      founderUserId: userId,
+      parentCommunityId: hubId,
+      projectStatus: 'active',
+      founderSharePercent: 0,
+      investorSharePercent: 0,
+      pilotMeta: { kind: PILOT_CONTEXT_MULTI_OBRAZ },
+      ...(cover ? { coverImageUrl: cover } : {}),
+    });
+
+    const wallet = await this.communityWalletService.createWallet(project.id);
+    await this.communityService.updateCommunity(project.id, {
+      communityWalletId: wallet.id,
+      meritSettings: {
+        dailyQuota: 0,
+        quotaRecipients: ['superadmin', 'lead', 'participant'],
+        canEarn: false,
+        canSpend: false,
+        quotaEnabled: false,
+      },
+      votingSettings: {
+        spendsMerits: false,
+        awardsMerits: false,
+        votingRestriction: 'any',
+        currencySource: 'wallet-only',
+      },
+    });
+
+    await this.communityService.addMember(project.id, userId);
+    await this.userService.addCommunityMembership(userId, project.id);
+    await this.userCommunityRoleService.setRole(userId, project.id, 'lead');
+
+    const updated = await this.communityService.getCommunity(project.id);
+    if (!updated) throw new NotFoundException('Project not found after create');
+    this.logger.log(`Pilot dream created: ${updated.id} by user ${userId}`);
+    return updated;
+  }
 
   private async createPersonalProjectAndSetup(
     userId: string,
@@ -136,6 +242,10 @@ export class ProjectService {
    * If newCommunity is provided, creates parent community first; on project creation failure, deletes the new parent (compensation).
    */
   async createProject(userId: string, dto: CreateProjectDto): Promise<Community> {
+    if (dto.pilotContext === PILOT_CONTEXT_MULTI_OBRAZ) {
+      return this.createPilotMultiObrazDream(userId, dto);
+    }
+
     if (dto.personalProject) {
       if (dto.parentCommunityId || dto.newCommunity) {
         throw new BadRequestException(
@@ -333,7 +443,14 @@ export class ProjectService {
     const skip = (page - 1) * pageSize;
 
     const query: Record<string, unknown> = { isProject: true };
-    if (filters.parentCommunityId) {
+    if (filters.pilotDreamFeed === true) {
+      const hubId = filters.pilotHubCommunityId?.trim();
+      if (!hubId) {
+        return { data: [], total: 0, page, pageSize };
+      }
+      query.parentCommunityId = hubId;
+      query['pilotMeta.kind'] = PILOT_CONTEXT_MULTI_OBRAZ;
+    } else if (filters.parentCommunityId) {
       query.parentCommunityId = filters.parentCommunityId;
     }
     if (filters.projectStatus) {
@@ -390,7 +507,7 @@ export class ProjectService {
       project: Community;
       parentCommunityName: string | null;
       parentFutureVisionText: string | null;
-      /** Set for personal projects: founder display label for hub row above the card. */
+      /** Display name for `founderUserId` when present (personal projects, pilot dreams, etc.). */
       founderDisplayName: string | null;
       /** Active members (UserCommunityRole), not legacy `community.members`. */
       memberCount: number;
@@ -421,7 +538,7 @@ export class ProjectService {
     const founderIds = [
       ...new Set(
         result.data
-          .filter((p) => p.isPersonalProject === true && p.founderUserId)
+          .filter((p) => Boolean(p.founderUserId))
           .map((p) => p.founderUserId as string),
       ),
     ];
@@ -442,10 +559,9 @@ export class ProjectService {
       const parent = project.parentCommunityId
         ? parentCommunities.get(project.parentCommunityId)
         : null;
-      const founderDisplayName =
-        project.isPersonalProject === true && project.founderUserId
-          ? founderDisplayById.get(project.founderUserId) ?? null
-          : null;
+      const founderDisplayName = project.founderUserId
+        ? founderDisplayById.get(project.founderUserId) ?? null
+        : null;
       return {
         project,
         parentCommunityName: parent?.name ?? null,
