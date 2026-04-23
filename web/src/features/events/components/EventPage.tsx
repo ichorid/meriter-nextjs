@@ -661,6 +661,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
             Array.isArray(pub.eventParticipants) ? pub.eventParticipants : undefined
           }
           eventStartDate={pub.eventStartDate}
+          eventEndDate={pub.eventEndDate}
           eventTime={pub.eventTime}
           isMember={isMember}
           isAttending={isAttending}

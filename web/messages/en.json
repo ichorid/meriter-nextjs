@@ -2948,7 +2948,7 @@
         "attendanceSetAbsent": "Mark absent",
         "attendanceClear": "Clear",
         "rsvpLockedReasonAttendance": "Attendance is recorded — RSVP cannot be changed.",
-        "rsvpLockedReasonStarted": "The event has started — RSVP cannot be changed.",
+        "rsvpLockedReasonEnded": "The event has ended — RSVP cannot be changed.",
         "checkInQrTitle": "Check-in QR",
         "checkInQrLoading": "Generating code…",
         "checkInQrExpires": "Valid until {time}",

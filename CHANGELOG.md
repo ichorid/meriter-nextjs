@@ -6,7 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) styl
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed (Events)
+
+- RSVP (attend / unattend) and participant check-in QR availability are time-locked at **`eventEndDate`** when present, so users can join or leave while an event is in progress; legacy posts without `eventEndDate` still lock at effective start.
+
 
 ## [web 0.48.39] [api 0.48.5] - 2026-04-23
 

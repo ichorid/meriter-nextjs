@@ -528,7 +528,7 @@ export class EventService {
       throw new ForbiddenException('RSVP as going is required to show a check-in QR');
     }
     if (isParticipantRsvpLocked(d, userId, rows)) {
-      throw new ForbiddenException('Check-in QR is not available (event started or attendance already recorded)');
+      throw new ForbiddenException('Check-in QR is not available (event ended or attendance already recorded)');
     }
     const now = Date.now();
     const endMs = d.eventEndDate ? new Date(d.eventEndDate).getTime() : now + 48 * 3600_000;

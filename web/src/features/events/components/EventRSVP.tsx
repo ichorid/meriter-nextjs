@@ -28,6 +28,7 @@ export interface EventRSVPProps {
   attendeeSummaries?: EventAttendeeSummary[];
   eventParticipants?: EventParticipantLite[];
   eventStartDate?: string | Date | null;
+  eventEndDate?: string | Date | null;
   eventTime?: string | null;
   isMember: boolean;
   isAttending: boolean;
@@ -43,6 +44,7 @@ export function EventRSVP({
   attendeeSummaries,
   eventParticipants,
   eventStartDate,
+  eventEndDate,
   eventTime,
   isMember,
   isAttending,
@@ -114,7 +116,11 @@ export function EventRSVP({
   const busy = attend.isPending || unattend.isPending;
   const rsvpLocked =
     user?.id != null
-      ? isParticipantRsvpLockedClient({ eventStartDate, eventTime }, user.id, eventParticipants)
+      ? isParticipantRsvpLockedClient(
+            { eventStartDate, eventEndDate, eventTime },
+            user.id,
+            eventParticipants,
+        )
       : false;
 
   const attendanceLabel = (uid: string) => {
@@ -169,7 +175,7 @@ export function EventRSVP({
             if (row?.attendance === 'checked_in' || row?.attendance === 'no_show') {
               return t('rsvpLockedReasonAttendance');
             }
-            return t('rsvpLockedReasonStarted');
+            return t('rsvpLockedReasonEnded');
           })()}
         </p>
       ) : null}

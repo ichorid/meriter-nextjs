@@ -2948,7 +2948,7 @@
         "attendanceSetAbsent": "Не пришёл",
         "attendanceClear": "Сбросить",
         "rsvpLockedReasonAttendance": "Участие зафиксировано — изменить запись нельзя.",
-        "rsvpLockedReasonStarted": "Ивент уже начался — изменить запись нельзя.",
+        "rsvpLockedReasonEnded": "Ивент уже закончился — изменить запись нельзя.",
         "checkInQrTitle": "QR для входа",
         "checkInQrLoading": "Генерируем код…",
         "checkInQrExpires": "Действует до {time}",

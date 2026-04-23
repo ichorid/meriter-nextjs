@@ -1,6 +1,7 @@
 /**
  * Client-side RSVP / QR lock (must match server: `event-participant.helper.ts` in API).
  * Effective start: UTC date from `eventStartDate` + optional `eventTime` HH:MM as UTC on that day.
+ * RSVP locks after **`eventEndDate`** when present.
  */
 export function getEffectiveEventStartTimeMs(pub: {
   eventStartDate?: string | Date | null;
@@ -29,6 +30,21 @@ export function isEventStartedClient(pub: Parameters<typeof getEffectiveEventSta
   return Date.now() >= ms;
 }
 
+export function getEffectiveEventEndTimeMs(pub: { eventEndDate?: string | Date | null }): number | null {
+  if (pub.eventEndDate == null) return null;
+  const end = pub.eventEndDate instanceof Date ? pub.eventEndDate : new Date(pub.eventEndDate);
+  if (Number.isNaN(end.getTime())) return null;
+  return end.getTime();
+}
+
+export function isEventEndedClient(
+  pub: Parameters<typeof getEffectiveEventStartTimeMs>[0] & { eventEndDate?: string | Date | null },
+): boolean {
+  const endMs = getEffectiveEventEndTimeMs(pub);
+  if (endMs != null) return Date.now() >= endMs;
+  return isEventStartedClient(pub);
+}
+
 export type EventParticipantLite = {
   userId: string;
   attendance?: 'checked_in' | 'no_show' | null;
@@ -39,11 +55,11 @@ export function findParticipantLite(rows: EventParticipantLite[] | undefined, us
 }
 
 export function isParticipantRsvpLockedClient(
-  pub: Parameters<typeof getEffectiveEventStartTimeMs>[0],
+  pub: Parameters<typeof getEffectiveEventStartTimeMs>[0] & { eventEndDate?: string | Date | null },
   userId: string,
   participants?: EventParticipantLite[],
 ): boolean {
-  if (isEventStartedClient(pub)) return true;
+  if (isEventEndedClient(pub)) return true;
   const row = findParticipantLite(participants, userId);
   if (row?.attendance === 'checked_in' || row?.attendance === 'no_show') return true;
   return false;

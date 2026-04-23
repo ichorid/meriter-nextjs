@@ -3,6 +3,7 @@
  *
  * Effective event start: UTC calendar day from `eventStartDate` + optional `eventTime` (HH:MM)
  * interpreted as UTC wall time on that day (see business-events.mdc).
+ * RSVP time lock uses **`eventEndDate`** when set; otherwise start time (legacy).
  */
 export type EventAttendanceValue = 'checked_in' | 'no_show';
 
@@ -80,6 +81,26 @@ export function isEventStarted(doc: Parameters<typeof getEffectiveEventStartTime
   return now.getTime() >= ms;
 }
 
+/** Instant when the event is considered over for RSVP lock (full datetime from publication). */
+export function getEffectiveEventEndTimeMs(doc: { eventEndDate?: Date | string | null }): number | null {
+  if (doc.eventEndDate == null) return null;
+  const end = doc.eventEndDate instanceof Date ? doc.eventEndDate : new Date(doc.eventEndDate);
+  if (Number.isNaN(end.getTime())) return null;
+  return end.getTime();
+}
+
+/**
+ * After `eventEndDate` when present; otherwise falls back to start time (legacy events without end).
+ */
+export function isEventEnded(
+  doc: Parameters<typeof getEffectiveEventStartTimeMs>[0] & { eventEndDate?: Date | string | null },
+  now = new Date(),
+): boolean {
+  const endMs = getEffectiveEventEndTimeMs(doc);
+  if (endMs != null) return now.getTime() >= endMs;
+  return isEventStarted(doc, now);
+}
+
 export function findParticipantRow(
   rows: EventParticipantRow[],
   userId: string,
@@ -87,14 +108,14 @@ export function findParticipantRow(
   return rows.find((r) => r.userId === userId);
 }
 
-/** User cannot change own RSVP when event started or attendance already set by admin. */
+/** User cannot change own RSVP after the event ends (or after start if no `eventEndDate`), or when attendance is set. */
 export function isParticipantRsvpLocked(
-  doc: Parameters<typeof getEffectiveEventStartTimeMs>[0],
+  doc: Parameters<typeof getEffectiveEventStartTimeMs>[0] & { eventEndDate?: Date | string | null },
   userId: string,
   rows: EventParticipantRow[],
   now = new Date(),
 ): boolean {
-  if (isEventStarted(doc, now)) return true;
+  if (isEventEnded(doc, now)) return true;
   const row = findParticipantRow(rows, userId);
   if (row?.attendance === 'checked_in' || row?.attendance === 'no_show') return true;
   return false;
