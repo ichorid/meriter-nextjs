@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Label } from '@/components/ui/shadcn/label';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
+import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisionCoverDevPlaceholders';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trackPilotProductEvent } from '@/features/multi-obraz-pilot/pilot-telemetry';
@@ -83,25 +84,37 @@ export function CreateDreamForm() {
           className="min-h-[132px] border-[#334155] bg-[#0f172a] text-[#f1f5f9]"
         />
       </div>
-      <div className="space-y-2">
-        <Label className="text-[#f1f5f9]">{t('fieldDreamImage')}</Label>
-        <ImageUploader
-          value={coverImageUrl}
-          onUpload={(url) => setCoverImageUrl(url || undefined)}
-          onRemove={() => setCoverImageUrl(undefined)}
-          compact
-          maxWidth={1920}
-          maxHeight={1080}
-          className="border-[#334155] bg-[#0f172a]"
-          labels={{
-            placeholder: t('dreamImagePlaceholder'),
-            formats: t('dreamImageFormats'),
-            maxSize: t('dreamImageMaxSize'),
-            uploading: t('dreamImageUploading'),
-            invalidType: t('dreamImageInvalidType'),
-            tooLarge: t('dreamImageTooLarge'),
-            uploadFailed: t('dreamImageUploadFailed'),
-          }}
+      <div className="space-y-3 rounded-xl border border-[#334155] bg-[#0f172a]/50 p-4">
+        <div className="space-y-1">
+          <Label className="text-sm font-medium text-[#f1f5f9]">{t('fieldDreamImage')}</Label>
+          <p className="text-xs leading-relaxed text-[#94a3b8]">{t('dreamImageHelper')}</p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-[#334155] bg-[#0f172a] p-1">
+          <ImageUploader
+            value={coverImageUrl}
+            onUpload={(url) => setCoverImageUrl(url || undefined)}
+            onRemove={() => setCoverImageUrl(undefined)}
+            disabled={create.isPending}
+            aspectRatio={16 / 9}
+            maxWidth={1920}
+            maxHeight={1080}
+            allowUrlFallback
+            labels={{
+              placeholder: t('dreamImagePlaceholder'),
+              formats: t('dreamImageFormats'),
+              maxSize: t('dreamImageMaxSize'),
+              uploading: t('dreamImageUploading'),
+              invalidType: t('dreamImageInvalidType'),
+              tooLarge: t('dreamImageTooLarge'),
+              uploadFailed: t('dreamImageUploadFailed'),
+              uploadUnavailableHint: t('dreamImageUploadUnavailableHint'),
+              useUrlButton: t('dreamImageUseUrlButton'),
+            }}
+          />
+        </div>
+        <FutureVisionCoverDevPlaceholders
+          onSelectUrl={(url) => setCoverImageUrl(url)}
+          disabled={create.isPending}
         />
       </div>
       <div className="flex flex-wrap gap-3 pt-1">
