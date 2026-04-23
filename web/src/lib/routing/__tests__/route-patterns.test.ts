@@ -32,10 +32,15 @@ describe('Route Pattern Matching', () => {
       expect(isDynamicRoute('/meriter/communities/123')).toBe(true);
       expect(isDynamicRoute('/meriter/communities/abc')).toBe(true);
       expect(isDynamicRoute('/meriter/communities/abc/merit-transfers')).toBe(true);
+      expect(isDynamicRoute('/meriter/communities/abc/merit-history')).toBe(true);
     });
 
     it('should match project merit-transfers route', () => {
       expect(isDynamicRoute('/meriter/projects/p1/merit-transfers')).toBe(true);
+    });
+
+    it('should match project merit-history route', () => {
+      expect(isDynamicRoute('/meriter/projects/p1/merit-history')).toBe(true);
     });
 
     it('should match dynamic user routes', () => {

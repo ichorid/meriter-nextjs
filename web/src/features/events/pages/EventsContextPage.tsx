@@ -16,9 +16,31 @@ import type { EventCreationMode } from '../lib/event-permissions';
 export interface EventsContextPageProps {
   communityId: string;
   backHref: string;
+  /** No layout / login redirect — used inside community hub tabs. */
+  variant?: 'page' | 'embedded';
+  /** Passed to `EventsFeed` — client-side title/description filter. */
+  listTitleSearch?: string;
+  /** Hub renders «New event» in the chrome toolbar. */
+  hideNewEventButton?: boolean;
+  createDialogOpen?: boolean;
+  onCreateDialogOpenChange?: (open: boolean) => void;
+  /**
+   * Project hub: membership from project APIs (`useProjectMembers`), not `userRoles` keyed by project id.
+   * When set, «New event» visibility uses this (plus superadmin) together with `canUserCreateEvents`.
+   */
+  projectMemberForEvents?: boolean;
 }
 
-export function EventsContextPage({ communityId, backHref }: EventsContextPageProps) {
+export function EventsContextPage({
+  communityId,
+  backHref,
+  variant = 'page',
+  listTitleSearch = '',
+  hideNewEventButton = false,
+  createDialogOpen,
+  onCreateDialogOpenChange,
+  projectMemberForEvents,
+}: EventsContextPageProps) {
   const router = useRouter();
   const t = useTranslations('events');
   const tCommon = useTranslations('common');
@@ -27,10 +49,11 @@ export function EventsContextPage({ communityId, backHref }: EventsContextPagePr
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
   useEffect(() => {
+    if (variant === 'embedded') return;
     if (!authLoading && !user?.id) {
       router.push('/meriter/login?returnTo=' + encodeURIComponent(window.location.pathname));
     }
-  }, [authLoading, user, router]);
+  }, [authLoading, user, router, variant]);
 
   const eventCreation = (community?.settings as { eventCreation?: EventCreationMode } | undefined)
     ?.eventCreation;
@@ -52,6 +75,15 @@ export function EventsContextPage({ communityId, backHref }: EventsContextPagePr
     [user, eventCreation, communityId, userRoles],
   );
 
+  const memberForEventCreateCta = useMemo(() => {
+    if (!user?.id) return false;
+    if (user.globalRole === 'superadmin') return true;
+    if (projectMemberForEvents !== undefined) return Boolean(projectMemberForEvents);
+    return isCommunityMemberRole(communityId, userRoles);
+  }, [user?.id, user?.globalRole, projectMemberForEvents, communityId, userRoles]);
+
+  const showCreateEventToolbar = Boolean(canCreateEvents && memberForEventCreateCta);
+
   const pageHeader = (
     <SimpleStickyHeader
       title={t('feedTitle')}
@@ -63,6 +95,13 @@ export function EventsContextPage({ communityId, backHref }: EventsContextPagePr
   );
 
   if (authLoading || communityLoading) {
+    if (variant === 'embedded') {
+      return (
+        <div className="flex min-h-[160px] items-center justify-center py-6">
+          <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+        </div>
+      );
+    }
     return (
       <AdaptiveLayout className="feed" communityId={communityId} myId={user?.id} stickyHeader={pageHeader}>
         <div className="flex min-h-[240px] items-center justify-center">
@@ -73,6 +112,9 @@ export function EventsContextPage({ communityId, backHref }: EventsContextPagePr
   }
 
   if (!community) {
+    if (variant === 'embedded') {
+      return <p className="text-sm text-base-content/70">{tCommon('error')}</p>;
+    }
     return (
       <AdaptiveLayout className="feed" communityId={communityId} myId={user?.id} stickyHeader={pageHeader}>
         <p className="text-sm text-base-content/70">{tCommon('error')}</p>
@@ -80,11 +122,28 @@ export function EventsContextPage({ communityId, backHref }: EventsContextPagePr
     );
   }
 
+  const feed = (
+    <div className={variant === 'embedded' ? 'mx-auto w-full max-w-4xl pb-8' : 'mx-auto max-w-4xl px-4 pb-24'}>
+      <EventsFeed
+        communityId={communityId}
+        isMember={isMember}
+        canCreateEvents={canCreateEvents}
+        showCreateEventToolbar={showCreateEventToolbar}
+        titleSearch={listTitleSearch}
+        hideNewEventButton={hideNewEventButton}
+        createDialogOpen={createDialogOpen}
+        onCreateDialogOpenChange={onCreateDialogOpenChange}
+      />
+    </div>
+  );
+
+  if (variant === 'embedded') {
+    return feed;
+  }
+
   return (
     <AdaptiveLayout className="feed" communityId={communityId} myId={user?.id} stickyHeader={pageHeader}>
-      <div className="mx-auto max-w-4xl px-4 pb-24">
-        <EventsFeed communityId={communityId} isMember={isMember} canCreateEvents={canCreateEvents} />
-      </div>
+      {feed}
     </AdaptiveLayout>
   );
 }

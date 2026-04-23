@@ -14,6 +14,7 @@ export function SourceBirzhaPostsList({
   variant = 'default',
   enabled = true,
   pageSize = 20,
+  titleSearch = '',
 }: {
   sourceEntityType: 'project' | 'community';
   sourceEntityId: string;
@@ -21,6 +22,8 @@ export function SourceBirzhaPostsList({
   enabled?: boolean;
   /** Page list size (default 20; use 100 on dedicated Birzha posts page). */
   pageSize?: number;
+  /** Client-side filter on publication title (hub toolbar). */
+  titleSearch?: string;
 }) {
   const t = useTranslations('birzhaSource');
   const router = useRouter();
@@ -38,7 +41,9 @@ export function SourceBirzhaPostsList({
     return (tag: string) => {
       const params = new URLSearchParams();
       params.set('vt', tag);
-      router.push(`/meriter/communities/${birzhaCommunityId}?${params.toString()}`);
+      router.push(`/meriter/communities/${birzhaCommunityId}?${params.toString()}`, {
+        scroll: false,
+      });
     };
   }, [birzhaCommunityId, router]);
 
@@ -46,6 +51,18 @@ export function SourceBirzhaPostsList({
     return <p className="text-sm text-base-content/60">{t('postsLoading')}</p>;
   }
   if (isError || !data?.data?.length) {
+    return <p className="text-sm text-base-content/50">{t('postsEmpty')}</p>;
+  }
+
+  const q = (titleSearch ?? '').trim().toLowerCase();
+  const rows = !q
+    ? data.data
+    : data.data.filter((pub) => {
+        const title = String((pub as { title?: string }).title ?? '').toLowerCase();
+        return title.includes(q);
+      });
+
+  if (!rows.length) {
     return <p className="text-sm text-base-content/50">{t('postsEmpty')}</p>;
   }
 
@@ -62,7 +79,7 @@ export function SourceBirzhaPostsList({
         </p>
       ) : null}
       <div className={gapClass}>
-        {data.data.map((pub) => (
+        {rows.map((pub) => (
           <div
             key={pub.id}
             id={`post-${pub.id}`}

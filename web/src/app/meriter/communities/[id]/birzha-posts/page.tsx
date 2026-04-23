@@ -1,4 +1,5 @@
-import { CommunityBirzhaPostsPageClient } from './CommunityBirzhaPostsPageClient';
+import { redirect } from 'next/navigation';
+import { routes } from '@/lib/constants/routes';
 import { metadataTitle } from '@/lib/i18n/metadata-title';
 
 interface PageProps {
@@ -11,5 +12,5 @@ export async function generateMetadata() {
 
 export default async function CommunityBirzhaPostsPage({ params }: PageProps) {
   const { id } = await params;
-  return <CommunityBirzhaPostsPageClient communityId={id} />;
+  redirect(`${routes.community(id)}?feedTab=birzha`);
 }

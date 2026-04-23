@@ -65,7 +65,7 @@ export function ProjectDashboard({
   readOnly = false,
 }: ProjectDashboardProps) {
   const t = useTranslations('projects');
-  const tMerit = useTranslations('meritTransfer');
+  const tPagesCommunities = useTranslations('pages.communities');
   const [payoutOpen, setPayoutOpen] = useState(false);
   const [investorsOpen, setInvestorsOpen] = useState(false);
   const { data: wallet } = useProjectWallet(projectId);
@@ -120,9 +120,9 @@ export function ProjectDashboard({
               className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
               asChild
             >
-              <Link href={routes.projectMeritTransfers(projectId)} className="gap-2">
+              <Link href={routes.projectMeritHistory(projectId)} className="gap-2">
                 <ArrowLeftRight className="h-4 w-4 shrink-0" aria-hidden />
-                {tMerit('navMeritTransfers')}
+                {tPagesCommunities('meritHistoryInCommunity')}
               </Link>
             </Button>
           ) : null}

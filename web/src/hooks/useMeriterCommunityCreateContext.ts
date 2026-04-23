@@ -9,7 +9,10 @@ import { usePathname } from 'next/navigation';
  */
 export function useMeriterCommunityCreateContext(): {
   communityContextId: string | null;
+  /** Desktop sidebar: show community CreateMenu when URL allows (hub root included). */
   shouldShowCreateMenu: boolean;
+  /** Bottom-nav FAB: hidden on `/meriter/communities/[id]` hub where the feed toolbar exposes create. */
+  shouldShowFabCreateMenu: boolean;
 } {
   const pathname = usePathname();
 
@@ -18,6 +21,10 @@ export function useMeriterCommunityCreateContext(): {
     const match = pathname.match(/\/meriter\/communities\/([^/]+)/);
     return match ? match[1] : null;
   }, [pathname]);
+
+  const isCommunityHubRoot = Boolean(
+    pathname && /^\/meriter\/communities\/[^/]+$/.test(pathname),
+  );
 
   const shouldShowCreateMenu = useMemo(() => {
     if (!pathname || !communityContextId) return false;
@@ -28,5 +35,10 @@ export function useMeriterCommunityCreateContext(): {
     return !isMembersPage && !isSettingsPage && !isCreatePage && !isEventsPage;
   }, [pathname, communityContextId]);
 
-  return { communityContextId, shouldShowCreateMenu };
+  const shouldShowFabCreateMenu = useMemo(
+    () => Boolean(shouldShowCreateMenu && !isCommunityHubRoot),
+    [shouldShowCreateMenu, isCommunityHubRoot],
+  );
+
+  return { communityContextId, shouldShowCreateMenu, shouldShowFabCreateMenu };
 }

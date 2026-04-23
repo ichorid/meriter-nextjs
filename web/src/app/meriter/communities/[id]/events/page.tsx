@@ -1,5 +1,4 @@
-import { Suspense } from 'react';
-import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
+import { redirect } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 
 interface PageProps {
@@ -12,15 +11,6 @@ export async function generateMetadata() {
 
 export default async function CommunityEventsPage({ params }: PageProps) {
   const { id } = await params;
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[40vh] items-center justify-center text-sm text-base-content/60">
-          Loading…
-        </div>
-      }
-    >
-      <EventsContextPage communityId={id} backHref={routes.community(id)} />
-    </Suspense>
-  );
+  const base = routes.community(id);
+  redirect(`${base}?feedTab=events`);
 }

@@ -17,10 +17,12 @@ interface FeedQueryParams {
 
 export function useCommunityFeed(
   communityId: string,
-  params: FeedQueryParams = {}
+  params: FeedQueryParams = {},
+  options?: { enabled?: boolean },
 ) {
   const { pageSize = 5, sort = 'score', tag, search, impactArea, stage, beneficiaries, methods, helpNeeded, categories, valueTags } = params;
-  
+  const enabled = options?.enabled !== false;
+
   return trpc.communities.getFeed.useInfiniteQuery(
     {
       communityId,
@@ -45,7 +47,7 @@ export function useCommunityFeed(
         return undefined;
       },
       initialPageParam: 1,
-      enabled: !!communityId,
+      enabled: enabled && !!communityId,
     },
   );
 }

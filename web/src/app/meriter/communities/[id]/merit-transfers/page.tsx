@@ -1,4 +1,4 @@
-import { MeritTransfersByContextPage } from '@/features/merit-transfer/pages/MeritTransfersByContextPage';
+import { redirect } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 
 interface PageProps {
@@ -7,17 +7,11 @@ interface PageProps {
 
 export async function generateMetadata() {
   return {
-    title: 'Merit transfers',
+    title: 'Merit history',
   };
 }
 
 export default async function CommunityMeritTransfersPage({ params }: PageProps) {
   const { id } = await params;
-  return (
-    <MeritTransfersByContextPage
-      communityContextId={id}
-      backHref={routes.community(id)}
-      titleKey="pageTitleCommunity"
-    />
-  );
+  redirect(routes.communityMeritHistory(id));
 }

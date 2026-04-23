@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -22,9 +22,23 @@ import { Plus, FolderKanban } from 'lucide-react';
 
 interface CommunityProjectsPageClientProps {
   communityId: string;
+  /** Embedded in community hub tabs — no page chrome. */
+  variant?: 'page' | 'embedded';
+  /** When `variant="embedded"`, used as `returnTo` after creating a project (default: hub projects tab). */
+  embeddedReturnTo?: string;
+  /** Client-side filter on project name/description (hub toolbar). */
+  listSearchQuery?: string;
+  /** Hide the inner «Create project» strip — parent hub renders the action. */
+  suppressInlineCreateToolbar?: boolean;
 }
 
-export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPageClientProps) {
+export function CommunityProjectsPageClient({
+  communityId,
+  variant = 'page',
+  embeddedReturnTo,
+  listSearchQuery = '',
+  suppressInlineCreateToolbar = false,
+}: CommunityProjectsPageClientProps) {
   const router = useRouter();
   const tCommunities = useTranslations('pages.communities');
   const t = useTranslations('projects');
@@ -45,6 +59,12 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
   );
 
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
+  const isCommunityParticipant = userRoles.some(
+    (r) => r.communityId === communityId && (r.role === 'lead' || r.role === 'participant'),
+  );
+  const canUseCommunityProjectActions = Boolean(
+    user && (isCommunityParticipant || user.globalRole === 'superadmin'),
+  );
   const isParentModerator = Boolean(
     user &&
       (user.globalRole === 'superadmin' ||
@@ -71,6 +91,16 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
 
   const items = data?.data ?? [];
 
+  const filteredItems = useMemo(() => {
+    const q = listSearchQuery.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter(({ project }) => {
+      const name = (project.name ?? '').toLowerCase();
+      const desc = (project.description ?? '').toLowerCase();
+      return name.includes(q) || desc.includes(q);
+    });
+  }, [items, listSearchQuery]);
+
   const pageHeader = (
     <SimpleStickyHeader
       title={tCommunities('communityProjects')}
@@ -84,7 +114,17 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
   const showBootstrapLoading =
     communityLoading || (!!community && community.typeTag === 'marathon-of-good');
 
+  const embeddedReturnToResolved =
+    embeddedReturnTo ?? `${routes.community(communityId)}?feedTab=projects`;
+
   if (showBootstrapLoading) {
+    if (variant === 'embedded') {
+      return (
+        <div className="py-2">
+          <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
+        </div>
+      );
+    }
     return (
       <AdaptiveLayout
         className="community-projects"
@@ -99,34 +139,32 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
     );
   }
 
-  return (
-    <AdaptiveLayout
-      className="community-projects"
-      communityId={communityId}
-      myId={user?.id}
-      stickyHeader={pageHeader}
-    >
-      <div className="flex flex-col gap-4 p-4">
-        <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
-              onClick={() =>
-                router.push(
-                  `/meriter/projects/create?returnTo=${encodeURIComponent(
-                    routes.communityProjects(communityId),
-                  )}`,
-                )
-              }
-              aria-label={t('create')}
-            >
-              <Plus size={16} />
-              {t('create')}
-            </Button>
+  const inner = (
+      <div className={variant === 'embedded' ? 'flex flex-col gap-4' : 'flex flex-col gap-4 p-4'}>
+        {!suppressInlineCreateToolbar && canUseCommunityProjectActions ? (
+          <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                className="h-9 rounded-xl px-3 gap-2"
+                onClick={() =>
+                  router.push(
+                    `/meriter/projects/create?returnTo=${encodeURIComponent(
+                      variant === 'embedded'
+                        ? embeddedReturnToResolved
+                        : routes.communityProjects(communityId),
+                    )}`,
+                  )
+                }
+                aria-label={t('create')}
+              >
+                <Plus size={16} />
+                {t('create')}
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         {isParentModerator && (linkRequestsLoading || linkRequests.length > 0) && (
           <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-4 space-y-3">
@@ -190,14 +228,14 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
 
         {isLoading ? (
           <p className="text-sm text-base-content/60">{tCommon('loading')}</p>
-        ) : items.length === 0 ? (
+        ) : filteredItems.length === 0 ? (
           <div className="rounded-xl bg-base-100 py-12 px-4 text-center">
             <FolderKanban className="mx-auto h-12 w-12 text-base-content/30" />
             <p className="mt-3 text-sm font-medium text-base-content/70">{t('noProjects')}</p>
           </div>
         ) : (
           <ul className="flex flex-col gap-4 list-none p-0 m-0">
-            {items.map(({ project, memberCount }) => (
+            {filteredItems.map(({ project, memberCount }) => (
               <li key={project.id}>
                 <ProjectCard project={project} memberCount={memberCount} />
               </li>
@@ -205,6 +243,20 @@ export function CommunityProjectsPageClient({ communityId }: CommunityProjectsPa
           </ul>
         )}
       </div>
+  );
+
+  if (variant === 'embedded') {
+    return inner;
+  }
+
+  return (
+    <AdaptiveLayout
+      className="community-projects"
+      communityId={communityId}
+      myId={user?.id}
+      stickyHeader={pageHeader}
+    >
+      {inner}
     </AdaptiveLayout>
   );
 }

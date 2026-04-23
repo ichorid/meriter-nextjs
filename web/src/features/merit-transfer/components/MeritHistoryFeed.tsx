@@ -30,6 +30,9 @@ export type MeritHistoryFeedRow = {
   meritHistoryCategory: string;
   ledgerMultiplier: 1 | -1;
   meritHistoryEnrichment?: MeritHistoryEnrichmentFields | null;
+  /** Wallet owner for this ledger line (e.g. community aggregate history). */
+  subjectUserId?: string | null;
+  subjectDisplayName?: string | null;
 };
 
 export interface MeritHistoryFeedProps {
@@ -160,6 +163,14 @@ export function MeritHistoryFeed({ items, isLoading = false, className }: MeritH
             ? routes.eventView(commId, en.eventPublicationId)
             : null;
 
+        const subjectHref =
+          row.subjectUserId != null && row.subjectUserId !== ''
+            ? routes.userProfile(row.subjectUserId)
+            : null;
+        const subjectLabel =
+          row.subjectDisplayName?.trim() ||
+          (row.subjectUserId && row.subjectUserId.length > 0 ? row.subjectUserId : null);
+
         return (
           <li
             key={row.id}
@@ -169,6 +180,18 @@ export function MeritHistoryFeed({ items, isLoading = false, className }: MeritH
               <div className="min-w-0 flex-1 space-y-1.5">
                 <p className="text-xs text-base-content/60">{t(categoryKey)}</p>
                 <p className="text-sm leading-snug text-base-content">{lineDescription}</p>
+
+                {subjectHref && subjectLabel ? (
+                  <p className="text-xs text-base-content/70">
+                    <span className="text-base-content/50">{t('participantLabel')}: </span>
+                    <Link
+                      href={subjectHref}
+                      className="font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      {subjectLabel}
+                    </Link>
+                  </p>
+                ) : null}
 
                 {en ? (
                   <div className="flex flex-col gap-1 text-xs text-base-content/70">

@@ -51,11 +51,11 @@ export function CommunityWalletCard({
           </p>
         )}
         {footer}
-        <div className="mt-auto flex w-full shrink-0 flex-col gap-2">
+        <div className="mt-auto flex w-full shrink-0 flex-row flex-wrap gap-2">
           <Button
             size="sm"
             variant="outline"
-            className="h-9 min-h-9 w-full rounded-xl px-3 sm:w-auto"
+            className="h-9 min-h-9 min-w-0 flex-1 rounded-xl px-3 sm:flex-1"
             onClick={() => setTopUpOpen(true)}
           >
             {tProjects('topUp')}
@@ -65,10 +65,10 @@ export function CommunityWalletCard({
               type="button"
               size="sm"
               variant="secondary"
-              className="h-9 min-h-9 w-full rounded-xl px-3 sm:w-auto"
+              className="h-9 min-h-9 min-w-0 flex-1 rounded-xl px-3 sm:flex-1"
               onClick={() => onPayoutClick?.()}
             >
-              {tProjects('payoutMerits')}
+              {tProjects('payoutMeritsShort')}
             </Button>
           )}
         </div>

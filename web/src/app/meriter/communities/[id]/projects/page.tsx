@@ -1,4 +1,5 @@
-import { CommunityProjectsPageClient } from './CommunityProjectsPageClient';
+import { redirect } from 'next/navigation';
+import { routes } from '@/lib/constants/routes';
 
 interface CommunityProjectsPageProps {
   params: Promise<{ id: string }>;
@@ -6,5 +7,5 @@ interface CommunityProjectsPageProps {
 
 export default async function CommunityProjectsPage({ params }: CommunityProjectsPageProps) {
   const { id } = await params;
-  return <CommunityProjectsPageClient communityId={id} />;
+  redirect(`${routes.community(id)}?feedTab=projects`);
 }

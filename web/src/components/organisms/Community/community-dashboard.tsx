@@ -19,6 +19,8 @@ export interface CommunityDashboardProps {
   totalMembers: number;
   canPayout?: boolean;
   readOnly?: boolean;
+  /** When true, show merit history entry (members only). */
+  isCommunityMember?: boolean;
 }
 
 export function CommunityDashboard({
@@ -26,6 +28,7 @@ export function CommunityDashboard({
   totalMembers,
   canPayout = false,
   readOnly = false,
+  isCommunityMember = false,
 }: CommunityDashboardProps) {
   const tCommunities = useTranslations('pages.communities');
   const [payoutOpen, setPayoutOpen] = useState(false);
@@ -57,14 +60,28 @@ export function CommunityDashboard({
             )}
             <div className="mt-auto flex w-full flex-col gap-2">
               <CommunityJoinRequestPanel communityId={communityId} layout="compact" />
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 min-h-9 w-full shrink-0 rounded-xl px-3 sm:w-auto"
-                asChild
-              >
-                <Link href={routes.communityMembers(communityId)}>{tCommunities('viewTeamMembers')}</Link>
-              </Button>
+              <div className="flex w-full flex-row flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 min-h-9 min-w-0 flex-1 shrink-0 rounded-xl px-3"
+                  asChild
+                >
+                  <Link href={routes.communityMembers(communityId)}>{tCommunities('viewTeamMembers')}</Link>
+                </Button>
+                {isCommunityMember ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 min-h-9 min-w-0 flex-1 shrink-0 rounded-xl px-3"
+                    asChild
+                  >
+                    <Link href={routes.communityMeritHistory(communityId)}>
+                      {tCommunities('meritHistoryInCommunity')}
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

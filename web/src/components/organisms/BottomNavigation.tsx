@@ -65,7 +65,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
     // Calculate total merits balance (permanent and daily)
     const { totalWalletBalance, totalDailyQuota, wallets } = useUserMeritsBalance();
 
-    const { communityContextId, shouldShowCreateMenu } = useMeriterCommunityCreateContext();
+    const { communityContextId, shouldShowFabCreateMenu } = useMeriterCommunityCreateContext();
 
     // Get marathon-of-good quota for global context
     const { remaining: marathonQuotaRemaining, max: marathonQuotaMax, isLoading: marathonQuotaLoading } = useMarathonOfGoodQuota();
@@ -295,7 +295,7 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                 {/* Create Menu - centered overlay, 50% overlap with nav bar, 50% protruding upward */}
                 {/* Nav bar height is 64px (h-16), so bottom = 64 - 16 = 48px */}
                 {/* Only show CreateMenu when inside a community and not on excluded pages */}
-                {isInCommunityContext && communityContextId && shouldShowCreateMenu && (
+                {isInCommunityContext && communityContextId && shouldShowFabCreateMenu && (
                     <div className="absolute left-1/2 -translate-x-1/2 bottom-12 z-[100]">
                         <CreateMenu communityId={communityContextId} />
                     </div>

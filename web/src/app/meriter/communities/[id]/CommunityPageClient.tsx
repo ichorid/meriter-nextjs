@@ -72,8 +72,15 @@ import {
     isLocalMembershipHubCommunity,
 } from '@/lib/constants/birzha-source';
 import { CommunityDashboard } from '@/components/organisms/Community/community-dashboard';
-import { BirzhaSourcePostsEntryRow } from '@/components/organisms/Birzha/BirzhaSourcePostsEntryRow';
+import {
+    CommunityHubFeedTabBar,
+    type CommunityHubFeedTab,
+} from '@/features/communities/components/CommunityHubFeedTabBar';
+import { CommunityProjectsPageClient } from '@/app/meriter/communities/[id]/projects/CommunityProjectsPageClient';
+import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
+import { CommunityBirzhaPostsPageClient } from '@/app/meriter/communities/[id]/birzha-posts/CommunityBirzhaPostsPageClient';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import { canUserCreateEvents, type EventCreationMode } from '@/features/events/lib/event-permissions';
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 
@@ -87,6 +94,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const pathname = usePathname();
     const t = useTranslations('pages');
     const tCommunities = useTranslations('pages.communities');
+    const tProjects = useTranslations('projects');
+    const tEvents = useTranslations('events');
+    const tBirzhaSource = useTranslations('birzhaSource');
     const tMerit = useTranslations('meritTransfer');
     const tTaxonomy = useTranslations('publications.create.taxonomy');
     const tValues = useTranslations('valuesRubricator');
@@ -123,7 +133,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
         const q = params.toString();
         const base = pathname ?? '';
-        router.push(q ? `${base}?${q}` : base);
+        router.push(q ? `${base}?${q}` : base, { scroll: false });
     };
 
     const toggleMdValueTag = (tag: string) => {
@@ -138,6 +148,10 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [showTappalkaModal, setShowTappalkaModal] = useState(false);
     const [showBirzhaEarnModal, setShowBirzhaEarnModal] = useState(false);
+    const [hubSearchProjects, setHubSearchProjects] = useState('');
+    const [hubSearchEvents, setHubSearchEvents] = useState('');
+    const [hubSearchBirzha, setHubSearchBirzha] = useState('');
+    const [hubEventCreateOpen, setHubEventCreateOpen] = useState(false);
     const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
     const handleSearchDraftChange = (value: string) => {
@@ -155,7 +169,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         } else {
             params.delete('q');
         }
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
         setShowSearchModal(false);
     };
 
@@ -176,9 +190,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         // Update URL
         const params = new URLSearchParams(searchParams?.toString() ?? '');
         params.set('sort', sort);
-        router.push(`?${params.toString()}`);
+        router.push(`?${params.toString()}`, { scroll: false });
     };
-    
+
     // Save sort to localStorage when URL changes (if user navigates with URL params)
     useEffect(() => {
         if (urlSort && urlSort !== savedSort) {
@@ -387,6 +401,23 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const showBirzhaSourceDashboard =
         !!comms && !isMarathonOfGood && canCommunityPublishToBirzhaAsSource(comms);
 
+    const communityHubVisibleFeedTabs = useMemo((): readonly CommunityHubFeedTab[] => {
+        if (!comms) return ['posts'];
+        const tabs: CommunityHubFeedTab[] = ['posts'];
+        if (!isMarathonOfGood) tabs.push('projects');
+        if (user?.id) tabs.push('events');
+        if (showBirzhaSourceDashboard) tabs.push('birzha');
+        return tabs;
+    }, [comms, isMarathonOfGood, user?.id, showBirzhaSourceDashboard]);
+
+    const showHubFeedTabChrome = communityHubVisibleFeedTabs.length > 1;
+
+    const communityHubFeedTab = useMemo(() => {
+        const v = searchParams?.get('feedTab');
+        if (v === 'projects' || v === 'events' || v === 'birzha') return v;
+        return 'posts' as const;
+    }, [searchParams]);
+
     // Find the future-vision community ID when on marathon-of-good
     // This must be calculated before useCommunityFeed that uses it
     const futureVisionCommunityId =
@@ -445,6 +476,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             comms?.typeTag === 'marathon-of-good' && selectedValueTags.length > 0
                 ? selectedValueTags
                 : undefined,
+    }, {
+        enabled: communityHubFeedTab === 'posts',
     });
 
 
@@ -640,6 +673,24 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             (r.role === 'lead' || r.role === 'participant'),
     );
 
+    /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
+    const canUseCommunityHubWriteActions = Boolean(
+        user && (isCommunityMember || user.globalRole === 'superadmin'),
+    );
+
+    const eventCreationMode = (comms?.settings as { eventCreation?: EventCreationMode } | undefined)
+        ?.eventCreation;
+    const canCreateEventsInHub = Boolean(
+        user?.id &&
+            comms &&
+            canUseCommunityHubWriteActions &&
+            canUserCreateEvents(eventCreationMode, {
+                communityId: chatId,
+                userRoles,
+                isSuperadmin: user.globalRole === 'superadmin',
+            }),
+    );
+
     // Determine eligibility for permanent merits and quota
     const canEarnPermanentMerits =
         comms?.meritSettings?.canEarn === true && balance !== undefined;
@@ -657,13 +708,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const quotaRemaining = quotaData?.remainingToday ?? 0;
     const quotaMax = quotaData?.dailyQuota ?? 0;
     const currencyIconUrl = comms?.settings?.iconUrl;
-
-    const canPublishBirzhaFromCommunity =
-        Boolean(user) &&
-        (userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin');
-
-    const dashboardOutlineBtnClass =
-        'inline-flex w-full items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2 sm:w-auto';
 
     // Get user's team community (community with typeTag: 'team' where user has a role)
     const _userTeamCommunityId = null;
@@ -776,7 +820,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 </div>
             )}
 
-            {/* Birzha-source: row 1 = wallet + members + shares; row 2 = projects + Birzha + publish */}
+            {/* Birzha-source: wallet + members; projects / events / Birzha live in feed tabs below */}
             {showBirzhaSourceDashboard && comms ? (
                 <div className="mb-6 flex flex-col gap-4">
                     <div className="min-w-0">
@@ -787,112 +831,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 userRoleInCommunity === 'lead' || user?.globalRole === 'superadmin'
                             }
                             readOnly={false}
+                            isCommunityMember={Boolean(user && isCommunityMember)}
                         />
-                    </div>
-                    {user && isCommunityMember ? (
-                        <Link
-                            href={routes.communityMeritTransfers(chatId)}
-                            className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <ArrowLeftRight className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                <span className="truncate font-medium text-base-content">
-                                    {tMerit('navMeritTransfers')}
-                                </span>
-                            </div>
-                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                {tCommunities('all')}
-                                <ChevronRight size={14} />
-                            </span>
-                        </Link>
-                    ) : null}
-                    {user ? (
-                        <Link
-                            href={routes.communityEvents(chatId)}
-                            className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                <span className="truncate font-medium text-base-content">
-                                    {tCommunities('communityEvents')}
-                                </span>
-                            </div>
-                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                {tCommunities('all')}
-                                <ChevronRight size={14} />
-                            </span>
-                        </Link>
-                    ) : null}
-                    <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-stretch">
-                        <div className="flex min-w-0 flex-1 flex-col gap-2">
-                            <Link
-                                href={routes.communityProjects(chatId)}
-                                className="flex min-h-[52px] min-w-0 flex-1 items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                            >
-                                <div className="flex min-w-0 items-center gap-3">
-                                    <FolderKanban className="h-5 w-5 shrink-0 text-base-content/70" />
-                                    <div className="flex min-w-0 items-baseline gap-2">
-                                        <span className="truncate font-medium text-base-content">
-                                            {tCommunities('communityProjects')}
-                                        </span>
-                                        <span className="shrink-0 tabular-nums text-sm text-base-content/60">
-                                            {communityProjectsCountPending
-                                                ? '…'
-                                                : (communityProjectsSummary?.total ?? 0)}
-                                        </span>
-                                    </div>
-                                </div>
-                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                    {tCommunities('all')}
-                                    <ChevronRight size={14} />
-                                </span>
-                            </Link>
-                            {user ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className={dashboardOutlineBtnClass}
-                                    onClick={() =>
-                                        router.push(
-                                            `/meriter/projects/create?returnTo=${encodeURIComponent(
-                                                routes.community(chatId),
-                                            )}`,
-                                        )
-                                    }
-                                    aria-label={tCommunities('dashboardCreateProject')}
-                                >
-                                    <Plus size={16} aria-hidden />
-                                    {tCommunities('dashboardCreateProject')}
-                                </Button>
-                            ) : null}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <BirzhaSourcePostsEntryRow
-                                variant="community"
-                                sourceEntityType="community"
-                                sourceEntityId={chatId}
-                                listHref={routes.communityBirzhaPosts(chatId)}
-                                className="mb-0"
-                                footerSlot={
-                                    canPublishBirzhaFromCommunity ? (
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className={dashboardOutlineBtnClass}
-                                            onClick={() =>
-                                                router.push(routes.communityBirzhaPublish(chatId))
-                                            }
-                                            aria-label={tCommunities('dashboardCreateBirzhaPost')}
-                                        >
-                                            <Plus size={16} aria-hidden />
-                                            {tCommunities('dashboardCreateBirzhaPost')}
-                                        </Button>
-                                    ) : null
-                                }
-                            />
-                        </div>
                     </div>
                 </div>
             ) : comms ? (
@@ -900,7 +840,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     <div
                         className={cn(
                             'grid gap-3',
-                            isMarathonOfGood ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2',
+                            isMarathonOfGood || showHubFeedTabChrome
+                                ? 'grid-cols-1'
+                                : 'grid-cols-1 sm:grid-cols-2',
                         )}
                     >
                         <Link
@@ -923,7 +865,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 <ChevronRight size={14} />
                             </span>
                         </Link>
-                        {!isMarathonOfGood ? (
+                        {!showHubFeedTabChrome && !isMarathonOfGood ? (
                             <Link
                                 href={routes.communityProjects(chatId)}
                                 className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
@@ -948,7 +890,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </Link>
                         ) : null}
                     </div>
-                    {user ? (
+                    {!showHubFeedTabChrome && user ? (
                         <Link
                             href={routes.communityEvents(chatId)}
                             className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
@@ -965,7 +907,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </span>
                         </Link>
                     ) : null}
-                    {user && isCommunityMember ? (
+                    {!showHubFeedTabChrome && user && isCommunityMember ? (
                         <Link
                             href={routes.communityMeritTransfers(chatId)}
                             className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
@@ -1030,43 +972,28 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
             {/* Publications Content */}
             <div className="space-y-4 pb-24">
+                {comms ? (
+                    <div className="overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800/50 shadow-[0_2px_8px_rgba(0,0,0,0.08)]">
+                        {showHubFeedTabChrome ? (
+                            <CommunityHubFeedTabBar
+                                communityId={chatId}
+                                visibleTabs={communityHubVisibleFeedTabs}
+                            />
+                        ) : null}
+                        <div
+                            className={cn(
+                                'space-y-4 p-5',
+                                showHubFeedTabChrome &&
+                                    'border-t border-base-300/25 dark:border-base-content/10',
+                            )}
+                        >
+                            {communityHubFeedTab === 'posts' ? (
+                                <>
                 {/* Taxonomy Filters */}
-                <div className="rounded-xl bg-gray-100 dark:bg-gray-800/50 p-5 shadow-[0_2px_8px_rgba(0,0,0,0.08)] space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-3">
-                            {/* Create Menu - desktop only, shows dropdown with "Create Post" and "Create Poll" */}
-                            {canCreatePost.canCreate && (
-                                <div className="hidden lg:block">
-                                    <CreateMenu
-                                        communityId={chatId}
-                                        trigger={
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
-                                                aria-label={tCommunities('createPost')}
-                                            >
-                                                <Plus size={16} />
-                                                {tCommunities('createPost')}
-                                            </Button>
-                                        }
-                                    />
-                                </div>
-                            )}
-                            {/* Tappalka on desktop: feed row for most communities; Birzha uses sticky header only (global wallet) */}
-                            {comms?.tappalkaSettings?.enabled && !isMarathonOfGood && (
-                                <Button
-                                    onClick={() => setShowTappalkaModal(true)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
-                                    aria-label={tCommunities('tappalka')}
-                                >
-                                    <Scale size={16} />
-                                    {tCommunities('tappalka')}
-                                </Button>
-                            )}
-                            {/* Search Button */}
+                <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:gap-3">
+                            {/* Search */}
                             <Button
                                 variant="ghost"
                                 size="sm"
@@ -1090,8 +1017,21 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 />
                             </div>
 
-                        </div>
-                        <div className="flex items-center gap-2">
+                            {/* Tappalka on desktop: feed row for most communities; Birzha uses sticky header only (global wallet) */}
+                            {comms?.tappalkaSettings?.enabled && !isMarathonOfGood && (
+                                <Button
+                                    onClick={() => setShowTappalkaModal(true)}
+                                    variant="outline"
+                                    size="sm"
+                                    className="hidden lg:inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 border border-input bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 hover:text-base-content text-base-content dark:text-base-content/70 h-9 rounded-xl px-3 gap-2"
+                                    aria-label={tCommunities('tappalka')}
+                                >
+                                    <Scale size={16} />
+                                    {tCommunities('tappalka')}
+                                </Button>
+                            )}
+
+                            {/* Filters + reset (after sort); primary create stays on the right */}
                             {isMarathonOfGood ? (
                                 <>
                                     {selectedValueTags.length > 0 && (
@@ -1130,7 +1070,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                 // Update URL
                                                 const params = new URLSearchParams(searchParams?.toString() ?? '');
                                                 params.delete('categories');
-                                                router.push(`${pathname}?${params.toString()}`);
+                                                router.push(`${pathname}?${params.toString()}`, { scroll: false });
                                             }}
                                             className="gap-2"
                                         >
@@ -1168,6 +1108,24 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     </Button>
                                 </>
                             )}
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                            {canCreatePost.canCreate && canUseCommunityHubWriteActions ? (
+                                <CreateMenu
+                                    communityId={chatId}
+                                    trigger={
+                                        <Button
+                                            variant="default"
+                                            size="sm"
+                                            className="h-9 gap-2 rounded-xl px-3"
+                                            aria-label={tCommunities('createPost')}
+                                        >
+                                            <Plus size={16} />
+                                            {tCommunities('createPost')}
+                                        </Button>
+                                    }
+                                />
+                            ) : null}
                         </div>
                     </div>
 
@@ -1384,7 +1342,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                                     } else {
                                                                         params.delete('categories');
                                                                     }
-                                                                    router.push(`${pathname}?${params.toString()}`);
+                                                                    router.push(`${pathname}?${params.toString()}`, { scroll: false });
                                                                 }}
                                                                 className={cn(
                                                                     'px-3 py-2 rounded-lg border transition-colors text-sm font-medium',
@@ -1409,8 +1367,83 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         </>
                     )}
                 </div>
+                                </>
+                            ) : null}
+                            {communityHubFeedTab === 'projects' ? (
+                                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                    <Input
+                                        value={hubSearchProjects}
+                                        onChange={(e) => setHubSearchProjects(e.target.value)}
+                                        placeholder={tCommunities('hubSearchProjectsPlaceholder')}
+                                        className="h-9 min-w-0 flex-1 rounded-lg border-base-300 bg-base-100 sm:max-w-md dark:border-base-content/15"
+                                        aria-label={tCommunities('hubSearchProjectsPlaceholder')}
+                                    />
+                                    {canUseCommunityHubWriteActions ? (
+                                        <Button
+                                            type="button"
+                                            variant="default"
+                                            size="sm"
+                                            className="h-9 shrink-0 gap-2 rounded-xl px-3"
+                                            onClick={() =>
+                                                router.push(
+                                                    `/meriter/projects/create?returnTo=${encodeURIComponent(
+                                                        `${routes.community(chatId)}?feedTab=projects`,
+                                                    )}`,
+                                                    { scroll: false },
+                                                )
+                                            }
+                                        >
+                                            <Plus size={16} className="shrink-0" aria-hidden />
+                                            {tProjects('create')}
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            {communityHubFeedTab === 'events' && user?.id ? (
+                                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                    <Input
+                                        value={hubSearchEvents}
+                                        onChange={(e) => setHubSearchEvents(e.target.value)}
+                                        placeholder={tCommunities('hubSearchEventsPlaceholder')}
+                                        className="h-9 min-w-0 flex-1 rounded-lg border-base-300 bg-base-100 sm:max-w-md dark:border-base-content/15"
+                                        aria-label={tCommunities('hubSearchEventsPlaceholder')}
+                                    />
+                                    {canCreateEventsInHub ? (
+                                        <Button
+                                            type="button"
+                                            variant="default"
+                                            size="sm"
+                                            className="h-9 shrink-0 rounded-xl px-3"
+                                            onClick={() => setHubEventCreateOpen(true)}
+                                        >
+                                            {tEvents('newEvent')}
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                            {communityHubFeedTab === 'birzha' ? (
+                                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                                    <Input
+                                        value={hubSearchBirzha}
+                                        onChange={(e) => setHubSearchBirzha(e.target.value)}
+                                        placeholder={tCommunities('hubSearchBirzhaPlaceholder')}
+                                        className="h-9 min-w-0 flex-1 rounded-lg border-base-300 bg-base-100 sm:max-w-md dark:border-base-content/15"
+                                        aria-label={tCommunities('hubSearchBirzhaPlaceholder')}
+                                    />
+                                    {canUseCommunityHubWriteActions ? (
+                                        <Button asChild variant="default" size="sm" className="h-9 shrink-0 rounded-xl">
+                                            <Link href={routes.communityBirzhaPublish(chatId)}>
+                                                {tBirzhaSource('publishCta')}
+                                            </Link>
+                                        </Button>
+                                    ) : null}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
 
-                {isAuthenticated &&
+                {communityHubFeedTab === 'posts' && isAuthenticated &&
                     filteredPublications
                         .filter((p: FeedItem) => {
                             if (p.type === 'publication') {
@@ -1472,7 +1505,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                                       setSelectedCategories(newCategories);
                                                       const params = new URLSearchParams(searchParams?.toString() ?? '');
                                                       params.set('categories', categoryId);
-                                                      router.push(`${pathname}?${params.toString()}`);
+                                                      router.push(`${pathname}?${params.toString()}`, { scroll: false });
                                                   }
                                         }
                                         onValueTagClick={
@@ -1488,14 +1521,47 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             );
                         })}
 
-                {/* Infinite scroll trigger */}
-                <div ref={observerTarget} className="h-4" />
+                {communityHubFeedTab === 'posts' ? (
+                    <>
+                        {/* Infinite scroll trigger */}
+                        <div ref={observerTarget} className="h-4" />
 
-                {isFetchingNextPage && (
-                    <div className="flex justify-center py-4">
-                        <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                        {isFetchingNextPage && (
+                            <div className="flex justify-center py-4">
+                                <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+                            </div>
+                        )}
+                    </>
+                ) : null}
+                {communityHubFeedTab === 'projects' ? (
+                    <div className="min-w-0">
+                        <CommunityProjectsPageClient
+                            communityId={chatId}
+                            variant="embedded"
+                            listSearchQuery={hubSearchProjects}
+                            suppressInlineCreateToolbar
+                        />
                     </div>
-                )}
+                ) : null}
+                {communityHubFeedTab === 'events' && user?.id ? (
+                    <EventsContextPage
+                        communityId={chatId}
+                        variant="embedded"
+                        backHref={routes.community(chatId)}
+                        listTitleSearch={hubSearchEvents}
+                        hideNewEventButton
+                        createDialogOpen={hubEventCreateOpen}
+                        onCreateDialogOpenChange={setHubEventCreateOpen}
+                    />
+                ) : null}
+                {communityHubFeedTab === 'birzha' ? (
+                    <CommunityBirzhaPostsPageClient
+                        communityId={chatId}
+                        variant="embedded"
+                        listTitleSearch={hubSearchBirzha}
+                        suppressPublishToolbar
+                    />
+                ) : null}
             </div>
 
             {/* Search Modal */}

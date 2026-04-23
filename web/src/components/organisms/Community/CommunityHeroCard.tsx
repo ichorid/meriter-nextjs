@@ -246,8 +246,10 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
             </div>
           ) : null}
         </div>
+      </div>
 
-        {/* Community Info */}
+      {/* Title + description: same horizontal inset as avatar row */}
+      <div className="px-4">
         <div className="pb-4 relative z-0">
           {/* Name and currency icon */}
           <div className="flex items-center gap-2 mb-1">
@@ -269,16 +271,18 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
               {community.description}
             </p>
           )}
+        </div>
+      </div>
 
-          {/* Future vision: single inset card (members count is on the cover toolbar) */}
-          {showFutureVisionSubsection && (
-            <div className="mt-4">
-              <div
-                className={cn(
-                  'rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 sm:px-5 relative',
-                  isFutureVisionSectionOpen ? 'py-4 sm:py-4 space-y-3' : 'py-3 sm:py-3',
-                )}
-              >
+      {/* Future vision: not nested under avatar px-4 so the card spans the same width as feed chrome below */}
+      {showFutureVisionSubsection && (
+        <div className="mt-1 pb-4">
+          <div
+            className={cn(
+              'rounded-xl border border-base-300/70 bg-base-200/35 dark:bg-base-300/25 px-4 sm:px-5 relative',
+              isFutureVisionSectionOpen ? 'py-4 sm:py-4 space-y-3' : 'py-3 sm:py-3',
+            )}
+          >
                 <div className="flex min-w-0 items-center gap-2 pr-0">
                   <button
                     type="button"
@@ -324,7 +328,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                 </div>
 
                 {isFutureVisionSectionOpen && obCover && !obCoverUsedInHeader && (
-                  <div className="aspect-video w-full max-w-xl rounded-lg overflow-hidden bg-base-300/80">
+                  <div className="aspect-video w-full rounded-lg overflow-hidden bg-base-300/80">
                     <img
                       src={obCover}
                       alt=""
@@ -412,11 +416,9 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     </Button>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
