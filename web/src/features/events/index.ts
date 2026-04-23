@@ -10,5 +10,7 @@ export * from './components/EventInviteDialog';
 export * from './components/EventInviteLanding';
 export * from './components/EventPage';
 export * from './components/EventQRDisplay';
+export * from './components/EventParticipantCheckInQRDialog';
+export * from './components/EventCheckInScannerDialog';
 export * from './components/EventRSVP';
 export * from './components/EventsFeed';

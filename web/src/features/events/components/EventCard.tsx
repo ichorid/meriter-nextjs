@@ -22,6 +22,8 @@ export interface EventCardProps {
   isAttending?: boolean;
   onToggleRsvp?: () => void;
   rsvpBusy?: boolean;
+  /** Logged-in non-member: opens join flow with deferred RSVP (feed). */
+  onRsvpJoinAsNonMember?: () => void;
 }
 
 export function EventCard({
@@ -32,6 +34,7 @@ export function EventCard({
   isAttending,
   onToggleRsvp,
   rsvpBusy,
+  onRsvpJoinAsNonMember,
 }: EventCardProps) {
   const t = useTranslations('events');
   const start = new Date(event.eventStartDate);
@@ -127,6 +130,18 @@ export function EventCard({
               onClick={() => onToggleRsvp()}
             >
               {isAttending ? t('rsvpLeave') : t('rsvpJoin')}
+            </Button>
+          ) : null}
+          {!isMember && onRsvpJoinAsNonMember && variant !== 'past' && status !== 'past' ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-lg px-2.5 text-xs shrink-0"
+              variant="default"
+              disabled={rsvpBusy}
+              onClick={() => onRsvpJoinAsNonMember()}
+            >
+              {t('rsvpJoin')}
             </Button>
           ) : null}
         </div>

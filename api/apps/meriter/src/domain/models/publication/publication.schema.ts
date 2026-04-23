@@ -60,6 +60,14 @@ export type PublicationTicketStatus =
   | 'done'
   | 'closed';
 
+/** RSVP + optional attendance for `postType === 'event'`. */
+export interface PublicationEventParticipant {
+  userId: string;
+  attendance?: 'checked_in' | 'no_show' | null;
+  attendanceUpdatedAt?: Date | null;
+  attendanceUpdatedByUserId?: string | null;
+}
+
 export interface Publication {
   id: string;
   communityId: string;
@@ -144,8 +152,10 @@ export interface Publication {
   eventEndDate?: Date;
   eventTime?: string;
   eventLocation?: string;
-  /** RSVP user ids for event posts. */
+  /** @deprecated Prefer `eventParticipants`; kept for legacy documents. */
   eventAttendees?: string[];
+  /** RSVP + attendance rows for event posts. */
+  eventParticipants?: PublicationEventParticipant[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -427,6 +437,23 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop({ type: [String], default: [] })
   eventAttendees?: string[];
+
+  @Prop({
+    type: [
+      {
+        userId: { type: String, required: true },
+        attendance: {
+          type: String,
+          enum: ['checked_in', 'no_show'],
+          default: null,
+        },
+        attendanceUpdatedAt: { type: Date, default: null },
+        attendanceUpdatedByUserId: { type: String, default: null },
+      },
+    ],
+    default: [],
+  })
+  eventParticipants?: PublicationEventParticipant[];
 
   @Prop({ required: true })
   createdAt!: Date;

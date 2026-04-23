@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { MapPin, Users, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { Button } from '@/components/ui/shadcn/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
@@ -13,6 +14,7 @@ import { routes } from '@/lib/constants/routes';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { getEventStatus } from '../lib/event-status';
+import { isCommunityMemberRole } from '../lib/event-permissions';
 
 export interface EventInviteLandingProps {
   token: string;
@@ -26,10 +28,22 @@ export function EventInviteLanding({ token }: EventInviteLandingProps) {
   const utils = trpc.useUtils();
 
   const preview = trpc.events.getInvitePreview.useQuery({ token });
+  const data = preview.data;
+  const { data: userRoles = [] } = useUserRoles(user?.id || '');
+  const isMember = Boolean(
+    data && user?.id && isCommunityMemberRole(data.communityId, userRoles),
+  );
+
+  const joinWorkspaceHref = data
+    ? data.isProject
+      ? routes.project(data.communityId)
+      : routes.community(data.communityId)
+    : routes.home;
+
   const attend = trpc.events.attendViaInvite.useMutation({
     onSuccess: async () => {
       addToast(t('inviteConfirmSuccess'), 'success');
-      if (preview.data) {
+      if (data) {
         await utils.events.getInvitePreview.invalidate({ token });
       }
     },
@@ -38,7 +52,6 @@ export function EventInviteLanding({ token }: EventInviteLandingProps) {
     },
   });
 
-  const data = preview.data;
   const start = data?.eventStartDate ? new Date(data.eventStartDate) : null;
   const end = data?.eventEndDate ? new Date(data.eventEndDate) : null;
   const status = start && end ? getEventStatus(start, end) : null;
@@ -53,7 +66,7 @@ export function EventInviteLanding({ token }: EventInviteLandingProps) {
 
   const returnTo = typeof window !== 'undefined' ? window.location.pathname : routes.home;
 
-  const onConfirm = async () => {
+  const onConfirmMember = async () => {
     try {
       await attend.mutateAsync({ token });
       if (data?.communityId && data.publicationId) {
@@ -121,14 +134,32 @@ export function EventInviteLanding({ token }: EventInviteLandingProps) {
       </Card>
 
       {user?.id ? (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" disabled={attend.isPending} onClick={() => void onConfirm()}>
-            {attend.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t('inviteConfirmAttend')}
-          </Button>
-          <Button type="button" variant="outline" asChild>
-            <Link href={routes.eventView(data.communityId, data.publicationId)}>{t('inviteOpenEventPage')}</Link>
-          </Button>
-        </div>
+        isMember ? (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" disabled={attend.isPending} onClick={() => void onConfirmMember()}>
+              {attend.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : t('inviteConfirmAttend')}
+            </Button>
+            <Button type="button" variant="outline" asChild>
+              <Link href={routes.eventView(data.communityId, data.publicationId)}>
+                {t('inviteOpenEventPage')}
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-base-content/80">{t('inviteNeedMembershipBody')}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" asChild>
+                <Link href={joinWorkspaceHref}>{t('inviteGoToWorkspace')}</Link>
+              </Button>
+              <Button type="button" variant="outline" asChild>
+                <Link href={routes.eventView(data.communityId, data.publicationId)}>
+                  {t('inviteOpenEventPage')}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )
       ) : (
         <div className="space-y-2">
           <p className="text-sm text-base-content/70">{t('inviteLoginToConfirm')}</p>

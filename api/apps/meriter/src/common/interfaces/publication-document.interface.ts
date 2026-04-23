@@ -99,6 +99,12 @@ export interface PublicationDocument {
   eventTime?: string;
   eventLocation?: string;
   eventAttendees?: string[];
+  eventParticipants?: Array<{
+    userId: string;
+    attendance?: 'checked_in' | 'no_show' | null;
+    attendanceUpdatedAt?: Date | null;
+    attendanceUpdatedByUserId?: string | null;
+  }>;
 }
 
 /**

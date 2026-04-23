@@ -4,11 +4,14 @@ import {
   EventCreateInputSchema,
   EventUpdateInputSchema,
   EventsAttendViaInviteInputSchema,
+  EventsCheckInByTokenInputSchema,
   EventsCreateInviteLinkInputSchema,
   EventsDeleteInputSchema,
   EventsGetByCommunityInputSchema,
+  EventsGetMyCheckInTokenInputSchema,
   EventsInvitePreviewInputSchema,
   EventsInviteUserInputSchema,
+  EventsSetParticipantAttendanceInputSchema,
   EventsTransferMeritInEventInputSchema,
 } from '@meriter/shared-types';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
@@ -16,22 +19,13 @@ import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { getRemainingQuotaForPublicationCreate } from '../helpers/publication-creation-quota';
 
-async function assertCanViewEventsInCommunity(
-  ctx: { user: { id: string }; communityService: { getCommunity(id: string): Promise<{ typeTag?: string; isProject?: boolean } | null> }; userCommunityRoleService: { getRole(userId: string, communityId: string): Promise<{ role: string } | null> } },
+async function assertCommunityExistsForEvents(
+  ctx: { communityService: { getCommunity(id: string): Promise<unknown | null> } },
   communityId: string,
 ): Promise<void> {
   const community = await ctx.communityService.getCommunity(communityId);
   if (!community) {
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
-  }
-  if (community.isProject || community.typeTag === 'team') {
-    const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, communityId);
-    if (!role) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You do not have access to events in this community',
-      });
-    }
   }
 }
 
@@ -202,7 +196,7 @@ export const eventsRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      await assertCanViewEventsInCommunity(ctx, input.communityId);
+      await assertCommunityExistsForEvents(ctx, input.communityId);
       return ctx.eventService.getEventsByCommunity(input.communityId);
     }),
 
@@ -223,6 +217,39 @@ export const eventsRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
       await ctx.eventService.unattendEvent(ctx.user.id, input.publicationId);
+      return { success: true as const };
+    }),
+
+  issueMyCheckInToken: protectedProcedure
+    .input(EventsGetMyCheckInTokenInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.eventService.getMyCheckInToken(ctx.user.id, input.publicationId);
+    }),
+
+  checkInByToken: protectedProcedure
+    .input(EventsCheckInByTokenInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      return ctx.eventService.checkInByToken(ctx.user.id, input.token);
+    }),
+
+  setParticipantAttendance: protectedProcedure
+    .input(EventsSetParticipantAttendanceInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
+      }
+      await ctx.eventService.setParticipantAttendance(
+        ctx.user.id,
+        input.publicationId,
+        input.targetUserId,
+        input.attendance,
+      );
       return { success: true as const };
     }),
 

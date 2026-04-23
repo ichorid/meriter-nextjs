@@ -111,9 +111,13 @@ export class PlatformDemoEventsSeedService {
 
           const attendees = await this.pickAttendeeUserIds(communityId, spec.attendeeCount);
           if (attendees.length > 0) {
+            const eventParticipants = attendees.map((userId) => ({
+              userId,
+              attendance: null as null,
+            }));
             await this.publicationModel.updateOne(
               { id: publicationId },
-              { $set: { eventAttendees: attendees } },
+              { $set: { eventParticipants, eventAttendees: attendees } },
             );
           }
 

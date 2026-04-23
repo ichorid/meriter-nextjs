@@ -2,6 +2,7 @@
 
 > PRD: `docs/prd/events/prd.md`  
 > Бизнес-документ: `docs/specs/Meriter_Ивенты_v2.md`  
+> **Публичная афиша / явка / QR (апрель 2026):** [`agent-brief.md`](./agent-brief.md), [`public-rsvp-attendance-prd.md`](./public-rsvp-attendance-prd.md), корневой [`CHANGELOG.md`](../../../CHANGELOG.md)  
 > Отчёты: `docs/prd/events/reports/`  
 > **Зависимость**: Фича «Передача заслуг» должна быть реализована до начала.
 
@@ -34,7 +35,7 @@
 
 - [x] **BE-6**: Создать сервис или расширить существующий для event-постов: `createEvent`, `updateEvent`, `getEventsByCommunity` (сортировка: предстоящие по дате asc, прошедшие по дате desc).
 - [x] **BE-7**: RSVP-логика: `attendEvent(userId, postId)` — добавить в eventAttendees, `unattendEvent` — убрать. Валидация: пользователь — участник сообщества/проекта.
-- [x] **BE-7a**: Инвайт-ссылка: `createInviteLink(eventId, { maxUses?, oneTime? })` — генерация уникального токена, сохранение в `EventInvite`. `attendViaInvite(token, userId)` — валидация токена (существует, не исчерпан, не просрочен), RSVP пользователя **без проверки** участия в сообществе.
+- [x] **BE-7a**: Инвайт-ссылка: `createInviteLink` + `attendViaInvite` — валидация токена; **обновление 2026-04-23:** RSVP по инвайту **только при членстве** в `communityId` ивента (см. [`agent-brief.md`](./agent-brief.md) §1.5). Старый текст «без проверки участия» — исторический; новые состояния «в списке без роли» не создаются.
 - [x] **BE-7b**: Прямое приглашение: `inviteUser(eventId, targetUserId, senderId)` — создание уведомления целевому пользователю со ссылкой на ивент.
 - [x] **BE-8**: Интеграция начисления заслуг в контексте ивента: метод, который вызывает `MeritTransferService.create()` с `eventPostId`, затем создаёт автокомментарий через CommentService. Автокомментарий: `isAutoComment: true`, `meritTransferId`, текст генерируется автоматически.
 - [x] **BE-9**: Роутер (новый или расширение существующего): процедуры `createEvent`, `updateEvent`, `deleteEvent`, `getEventsByCommunity`, `attend`, `unattend`, `transferMeritInEvent`. Permission checks: создание по `eventCreation` настройке, RSVP — member, редактирование/удаление — автор или admin.
@@ -93,10 +94,10 @@
 - [ ] **QA-8a**: Удаление ивента: автор удаляет → ивент исчезает из ленты. Админ удаляет чужой ивент — аналогично.
 - [ ] **QA-8b**: При создании ивента участники сообщества/проекта получают уведомление.
 - [ ] **QA-9**: Многодневный ивент: создать с диапазоном дат, проверить отображение и переходы статуса.
-- [ ] **QA-10**: Инвайт-ссылка: сгенерировать, перейти из-под другого пользователя (не участника сообщества) — RSVP работает, пользователь в списке.
+- [ ] **QA-10**: Инвайт-ссылка: сгенерировать, перейти из-под другого пользователя (не участника сообщества) — **ожидаемое поведение (2026-04-23):** превью + CTA вступить; RSVP **после** получения роли (или кнопка «Подтвердить участие» только для уже участника). Старый сценарий «RSVP без членства» снят.
 - [ ] **QA-11**: Одноразовая инвайт-ссылка: после первого использования — повторный переход даёт ошибку/сообщение «ссылка использована».
 - [ ] **QA-12**: Ссылка с лимитом (например, maxUses=3): после 3-го использования — перестаёт работать.
-- [ ] **QA-13**: QR-код: сгенерировать, отсканировать (или перейти по URL из QR) — RSVP работает.
+- [ ] **QA-13**: **Инвайт-QR** (URL приглашения): по-прежнему ведёт на лендинг инвайта. **Check-in QR участника:** участник с RSVP открывает «Мой QR», админ сканирует → `checked_in` (см. `issueMyCheckInToken` / `checkInByToken`).
 - [ ] **QA-14**: Прямое приглашение: пригласить пользователя → он получает уведомление → по клику переходит на ивент → может нажать «Пойду».
 - [x] **QA-15**: `pnpm lint && pnpm build` — весь проект собирается.
 
@@ -112,6 +113,40 @@
 - [x] **DOC-4**: Проверить и обновить `.cursor/rules/business-merit-transfer.mdc` — убедиться, что связь с ивентами (автокомментарий, eventPostId) описана.
 - [x] **DOC-5**: Проверить и обновить `.cursor/rules/index.mdc` — добавить `business-events.mdc` в список правил.
 - [x] **DOC-6**: Написать финальный отчёт `reports/07-final.md` по шаблону (см. ниже).
+
+---
+
+## Этап 7: Публичная афиша, RSVP через членство, явка, QR (апрель 2026)
+
+> Нормативный бриф: [`agent-brief.md`](./agent-brief.md). Развёрнутое ТЗ: [`public-rsvp-attendance-prd.md`](./public-rsvp-attendance-prd.md). Журнал: [`CHANGELOG.md`](../../../CHANGELOG.md).
+
+### Backend
+
+- [x] **EV2-BE-1**: `getEventsByCommunity` — только существование сообщества + авторизация (без роли).
+- [x] **EV2-BE-2**: `eventParticipants` + синхронизация `eventAttendees`; хелперы RSVP/lock/QR (HMAC).
+- [x] **EV2-BE-3**: Блокировки `attend` / `unattend`; `assertEventAttendanceAdmin` (автор \| lead); `issueMyCheckInToken`, `checkInByToken`, `setParticipantAttendance`.
+- [x] **EV2-BE-4**: `attendViaInvite` — только при членстве; `getInvitePreview` + `isProject`.
+- [x] **EV2-BE-5**: `TeamJoinRequest.pendingEventPublicationId` + auto-RSVP при `approveRequest`; `project.join` с тем же полем.
+- [x] **EV2-BE-6**: Merit transfer: получатель всегда участник контекста при `eventPostId`.
+
+### Web
+
+- [x] **EV2-FE-1**: Навигация «Ивенты» для всех залогиненных (`CommunityPageClient`, `ProjectPageClient`).
+- [x] **EV2-FE-2**: `EventsFeed` / `EventCard` — диалог заявки + `pendingEventPublicationId`.
+- [x] **EV2-FE-3**: `EventPage` / `EventRSVP` — явка, QR участника, сканер; `publicationCommunityId` для лида.
+- [x] **EV2-FE-4**: `EventInviteLanding` — без RSVP до вступления.
+- [x] **EV2-FE-5**: i18n `events.*` (RU/EN).
+
+### Документация и качество
+
+- [x] **EV2-DOC-1**: `business-events.mdc`, `business-merit-transfer.mdc`.
+- [x] **EV2-DOC-2**: Перенос брифа и PRD в `docs/prd/events/`; корневой `CHANGELOG.md`.
+- [x] **EV2-QA-1**: `pnpm lint`, `pnpm lint:fix`, `pnpm test`, `pnpm build` с корня.
+
+### Открыто / вне релиза
+
+- [ ] **EV2-OPS-1**: Одноразовая миграция или скрипт для старых «RSVP без членства» в БД (по необходимости ops).
+- [ ] **EV2-QA-2**: Ручной прогон обновлённых QA-10 / QA-13 в разделе «Этап 5» выше.
 
 ---
 

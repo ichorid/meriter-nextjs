@@ -107,6 +107,7 @@ export {
     EventCreateInputSchema,
     EventUpdateInputSchema,
     EventPublicationViewSchema,
+    EventParticipantViewSchema,
     EventInviteCreateOptionsSchema,
     EventInviteRecordSchema,
     EventsGetByCommunityInputSchema,
@@ -116,6 +117,9 @@ export {
     EventsAttendViaInviteInputSchema,
     EventsInviteUserInputSchema,
     EventsTransferMeritInEventInputSchema,
+    EventsSetParticipantAttendanceInputSchema,
+    EventsCheckInByTokenInputSchema,
+    EventsGetMyCheckInTokenInputSchema,
 } from './events';
 
 // Export taxonomy constants
@@ -212,9 +216,11 @@ export type {
     EventCreateInput,
     EventUpdateInput,
     EventPublicationView,
+    EventParticipantView,
     EventInviteCreateOptions,
     EventInviteRecord,
     EventsTransferMeritInEventInput,
+    EventsSetParticipantAttendanceInput,
 } from './events';
 
 export {

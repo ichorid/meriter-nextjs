@@ -15,10 +15,12 @@ alwaysApply: false
 
 ## Concept
 
-- **Event post** shares the same `publications` collection as other posts but uses dedicated fields: `eventStartDate`, `eventEndDate`, optional `eventTime`, `eventLocation`, `eventAttendees` (user ids).
-- **RSVP**: members of the event’s **`communityId`** (team or `isProject` community) can attend/unattend; list is `eventAttendees`.
-- **Invites**: tokenized **`EventInvite`** records; **`attendViaInvite`** adds the user to `eventAttendees` **without** requiring community membership (invite-only guests).
-- **Merit transfer in event context**: optional **`eventPostId`** on `meritTransfer` / `events.transferMeritInEvent` — creates a **`merit_transfer`** row and an **auto `Comment`** on the event thread (`isAutoComment: true`, `meritTransferId`). See @business-merit-transfer.mdc.
+- **Event post** shares the same `publications` collection as other posts but uses dedicated fields: `eventStartDate`, `eventEndDate`, optional `eventTime`, `eventLocation`, **`eventParticipants`** (user id + optional attendance metadata) and legacy **`eventAttendees`** (ids kept in sync for reads).
+- **RSVP**: only **members** of the event’s **`communityId`** (team or `isProject` community) can attend/unattend. **`getEventsByCommunity`** is readable for any logged-in user (list is not member-gated); RSVP actions stay member-only.
+- **Invites**: tokenized **`EventInvite`** records; public **`getInvitePreview`** includes `isProject` for correct join links. **`attendViaInvite`** only RSVPs users who **already have a role** in that community (same as `attend`); non-members are directed to join the team/project first.
+- **Attendance**: event **author** or community **lead** may set **`checked_in` / `no_show`** (manual or via **QR check-in** token scanned by an admin). RSVP is **locked** after the event starts (effective start = date + optional `eventTime`) or once attendance is set for that participant.
+- **Deferred RSVP**: team **`submitTeamRequest`** / project **`join`** may pass **`pendingEventPublicationId`**; on **approve**, the user is auto-added to the event RSVP list if still eligible.
+- **Merit transfer in event context**: optional **`eventPostId`** — receiver must be **both** on the RSVP list **and** a **member** of `communityContextId` (see @business-merit-transfer.mdc). Creates **`merit_transfer`** + optional auto **`Comment`** on the event thread.
 
 ---
 
@@ -40,8 +42,8 @@ Typical procedures (see `api/apps/meriter/src/trpc/routers/events.router.ts`):
 | Area | Procedures |
 |------|------------|
 | CRUD | `createEvent`, `updateEvent`, `deleteEvent`, `getEventsByCommunity` |
-| RSVP | `attend`, `unattend`, `attendViaInvite` |
-| Invites | `createInviteLink`, `getInvitePreview` (public), `inviteUser` |
+| RSVP | `attend`, `unattend`, `attendViaInvite` (member-only), `issueMyCheckInToken`, `checkInByToken`, `setParticipantAttendance` |
+| Invites | `createInviteLink`, `getInvitePreview` (public; includes `isProject`), `inviteUser` |
 | Economy | `transferMeritInEvent` (wallet + auto-comment) |
 
 **Payment:** `createEvent` uses the same publication cost path as normal posts (quota/wallet per community `postCost` / helpers).

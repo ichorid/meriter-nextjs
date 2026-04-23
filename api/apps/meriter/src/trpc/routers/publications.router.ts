@@ -17,6 +17,10 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { getRemainingQuotaForPublicationCreate } from '../helpers/publication-creation-quota';
+import {
+  attendeeIdsFromParticipants,
+  parseEventParticipantsFromDoc,
+} from '../../domain/common/helpers/event-participant.helper';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -270,6 +274,12 @@ export const publicationsRouter = router({
           eventTime?: string;
           eventLocation?: string;
           eventAttendees?: string[];
+          eventParticipants?: Array<{
+            userId: string;
+            attendance?: 'checked_in' | 'no_show' | null;
+            attendanceUpdatedAt?: Date | string;
+            attendanceUpdatedByUserId?: string;
+          }>;
         };
         const toIso = (v: Date | string | undefined): string | undefined => {
           if (v == null) return undefined;
@@ -280,9 +290,16 @@ export const publicationsRouter = router({
         mappedPublication.eventEndDate = toIso(raw.eventEndDate);
         mappedPublication.eventTime = raw.eventTime;
         mappedPublication.eventLocation = raw.eventLocation;
-        mappedPublication.eventAttendees = Array.isArray(raw.eventAttendees)
-          ? [...raw.eventAttendees]
-          : [];
+        const participantRows = parseEventParticipantsFromDoc(raw);
+        mappedPublication.eventParticipants = participantRows.map((r) => ({
+          userId: r.userId,
+          attendance: r.attendance ?? null,
+          attendanceUpdatedAt: r.attendanceUpdatedAt
+            ? toIso(r.attendanceUpdatedAt instanceof Date ? r.attendanceUpdatedAt : new Date(r.attendanceUpdatedAt))
+            : undefined,
+          attendanceUpdatedByUserId: r.attendanceUpdatedByUserId,
+        }));
+        mappedPublication.eventAttendees = attendeeIdsFromParticipants(participantRows);
 
         const attendeeIdsList = mappedPublication.eventAttendees as string[];
         if (attendeeIdsList.length > 0) {

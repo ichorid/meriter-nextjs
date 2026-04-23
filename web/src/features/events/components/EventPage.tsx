@@ -28,6 +28,7 @@ import { Comment as CommentComponent } from '@features/comments/components/comme
 import { EventRSVP, type EventAttendeeSummary } from './EventRSVP';
 import { EventInviteDialog } from './EventInviteDialog';
 import { EventQRDisplay } from './EventQRDisplay';
+import { EventCheckInScannerDialog } from './EventCheckInScannerDialog';
 import { EventDirectInvite } from './EventDirectInvite';
 import { EventEditDialog, type EventEditDialogInitial } from './EventEditDialog';
 import { routes } from '@/lib/constants/routes';
@@ -55,6 +56,7 @@ type PublicationDetail = Record<string, unknown> & {
   eventTime?: string;
   eventLocation?: string;
   eventAttendees?: string[];
+  eventParticipants?: Array<{ userId: string; attendance?: 'checked_in' | 'no_show' | null }>;
   eventAttendeeSummaries?: EventAttendeeSummary[];
   createdAt?: string;
   meta?: {
@@ -86,6 +88,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
   const [directOpen, setDirectOpen] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
   const [qrInviteUrl, setQrInviteUrl] = useState<string | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
   const highlightCommentId = searchParams?.get('highlight');
@@ -111,13 +114,19 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
 
   const isLeadInCommunity = userRoles.some(
     (r: { communityId: string; role: string }) =>
-      r.communityId === communityId && r.role === 'lead',
+      r.communityId === publicationCommunityId && r.role === 'lead',
   );
 
   const isMember = userRoles.some(
     (r: { communityId: string; role: string }) =>
       r.communityId === publicationCommunityId &&
       (r.role === 'lead' || r.role === 'participant'),
+  );
+
+  const canManageAttendance = Boolean(
+    user?.id &&
+      pub?.authorId &&
+      (user.id === pub.authorId || isLeadInCommunity || user.globalRole === 'superadmin'),
   );
 
   const { data: balance = 0 } = useWalletBalance(communityId);
@@ -505,6 +514,17 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
                   >
                     {tEvents('actionDirectInvite')}
                   </Button>
+                  {canManageAttendance ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-lg px-2.5 text-xs"
+                      onClick={() => setScannerOpen(true)}
+                    >
+                      {tEvents('actionScanCheckIn')}
+                    </Button>
+                  ) : null}
                 </>
               ) : null}
             </div>
@@ -587,8 +607,14 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
           attendeeSummaries={
             Array.isArray(pub.eventAttendeeSummaries) ? pub.eventAttendeeSummaries : undefined
           }
+          eventParticipants={
+            Array.isArray(pub.eventParticipants) ? pub.eventParticipants : undefined
+          }
+          eventStartDate={pub.eventStartDate}
+          eventTime={pub.eventTime}
           isMember={isMember}
           isAttending={isAttending}
+          canManageAttendance={canManageAttendance}
         />
 
         {showComments ? (
@@ -687,6 +713,12 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
         communityId={publicationCommunityId}
         initial={editInitial}
         onSaved={handleSaved}
+      />
+      <EventCheckInScannerDialog
+        open={scannerOpen}
+        onOpenChange={setScannerOpen}
+        publicationId={publicationId}
+        communityId={publicationCommunityId}
       />
     </AdaptiveLayout>
   );

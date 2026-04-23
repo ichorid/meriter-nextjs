@@ -11,6 +11,7 @@ export const teamsRouter = router({
     .input(z.object({
       communityId: z.string(),
       applicantMessage: z.string().max(500).optional(),
+      pendingEventPublicationId: z.string().min(1).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {
@@ -25,6 +26,9 @@ export const teamsRouter = router({
           ctx.user.id,
           input.communityId,
           input.applicantMessage,
+          input.pendingEventPublicationId
+            ? { pendingEventPublicationId: input.pendingEventPublicationId }
+            : undefined,
         );
         return request;
       } catch (error: any) {

@@ -27,6 +27,8 @@ export interface TeamJoinRequest {
   processedBy?: string; // User ID who processed the request
   /** Short note from applicant (who they are / why join), shown to leads */
   applicantMessage?: string;
+  /** When set, user is auto-RSVP'd to this event publication after the join request is approved. */
+  pendingEventPublicationId?: string;
 }
 
 @Schema({ collection: 'team_join_requests', timestamps: true })
@@ -59,6 +61,9 @@ export class TeamJoinRequestSchemaClass implements TeamJoinRequest {
 
   @Prop({ maxlength: 500 })
   applicantMessage?: string;
+
+  @Prop({ type: String, default: undefined })
+  pendingEventPublicationId?: string;
 
   @Prop({ required: true })
   createdAt!: Date;

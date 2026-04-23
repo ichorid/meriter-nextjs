@@ -806,7 +806,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </span>
                         </Link>
                     ) : null}
-                    {user && isCommunityMember ? (
+                    {user ? (
                         <Link
                             href={routes.communityEvents(chatId)}
                             className="flex min-h-[48px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
@@ -948,7 +948,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </Link>
                         ) : null}
                     </div>
-                    {user && isCommunityMember ? (
+                    {user ? (
                         <Link
                             href={routes.communityEvents(chatId)}
                             className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"

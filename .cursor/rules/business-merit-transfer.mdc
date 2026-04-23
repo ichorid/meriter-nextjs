@@ -15,7 +15,7 @@ alwaysApply: false
 
 ## Concept
 
-- **Sender** must have a **role** in `communityContextId` (team community or `isProject` community). **Receiver** must have a role there **unless** the transfer is an **event-linked** payout (see **Events** below).
+- **Sender** must have a **role** in `communityContextId` (team community or `isProject` community). **Receiver** must have a role there (including when **`eventPostId`** is set — see **Events** below).
 - **Receiver** with role: same as before — wallet paths per Zod (`sourceWalletType` / `targetWalletType` and context ids).
 - **Amount** is a **positive integer** taken from the sender’s resolved **wallet** balance only. **Quota is not used.**
 - **No platform fee** is burned on this path in the current implementation: one debit and one credit for the same amount inside a **MongoDB transaction**.
@@ -90,9 +90,9 @@ Canonical event product rules (create, RSVP, invites, notifications, routes): **
 
 - When **`eventPostId`** is omitted: **receiver** must be a **member** of `communityContextId` (unchanged).
 - When **`eventPostId`** is set:
-  - Publication must exist, have `postType === 'event'`, `communityId === communityContextId`, and **`receiverId` must appear in `eventAttendees`** (RSVP list).
-  - If the receiver **is not** a community member (invite-only attendee), **both** `sourceWalletType` and `targetWalletType` must be **`global`** — merits move sender global → receiver global (PRD: non-members cannot hold local community/project bucket for that context).
-  - If the receiver **is** a member, existing wallet combinations apply (e.g. global → community wallet for local bucket credit).
+  - Publication must exist, have `postType === 'event'`, `communityId === communityContextId`, and **`receiverId` must appear on the event RSVP list** (normalized from `eventParticipants` / legacy `eventAttendees`).
+  - **Receiver must still be a community member** (`userCommunityRoleService.getRole`); there is no global→global bypass for non-members.
+  - Wallet path rules are unchanged once membership holds (per `sourceWalletType` / `targetWalletType` Zod).
 - Implementation: `MeritTransferService.validateEventLinkedTransfer` + `publication` read by id.
 
 ---

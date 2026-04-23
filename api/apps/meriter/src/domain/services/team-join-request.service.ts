@@ -22,6 +22,7 @@ import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
 import { NotificationService } from './notification.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
+import { EventService } from './event.service';
 
 @Injectable()
 export class TeamJoinRequestService {
@@ -35,6 +36,7 @@ export class TeamJoinRequestService {
     private readonly userService: UserService,
     private readonly walletService: WalletService,
     private readonly notificationService: NotificationService,
+    private readonly eventService: EventService,
   ) {}
 
   /**
@@ -44,6 +46,7 @@ export class TeamJoinRequestService {
     userId: string,
     communityId: string,
     applicantMessage?: string,
+    options?: { pendingEventPublicationId?: string },
   ): Promise<TeamJoinRequest> {
     this.logger.log(
       `User ${userId} submitting request to join team ${communityId}`,
@@ -111,6 +114,9 @@ export class TeamJoinRequestService {
       createdAt: new Date(),
       updatedAt: new Date(),
       ...(trimmedNote ? { applicantMessage: trimmedNote } : {}),
+      ...(options?.pendingEventPublicationId
+        ? { pendingEventPublicationId: options.pendingEventPublicationId }
+        : {}),
     });
 
     // 6. Notify all members (leads get actionable team_join_request; participants get FYI)
@@ -397,6 +403,19 @@ export class TeamJoinRequestService {
       request.userId,
       request.communityId,
     );
+
+    if (request.pendingEventPublicationId) {
+      try {
+        await this.eventService.attendAfterJoinApproved(
+          request.userId,
+          request.pendingEventPublicationId,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Deferred event RSVP after approve failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
 
     // 5. Update request status
     request.status = 'approved';

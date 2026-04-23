@@ -485,6 +485,17 @@ export const PublicationSchema = IdentifiableSchema.merge(
   eventTime: z.string().max(500).optional(),
   eventLocation: z.string().max(2000).optional(),
   eventAttendees: z.array(z.string()).optional().default([]),
+  eventParticipants: z
+    .array(
+      z.object({
+        userId: z.string(),
+        attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
+        attendanceUpdatedAt: z.coerce.date().optional(),
+        attendanceUpdatedByUserId: z.string().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
 })
   .superRefine((data, ctx) => {
     if (data.postType === "event") {

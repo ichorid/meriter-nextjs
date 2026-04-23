@@ -25,6 +25,10 @@ import {
 import { WalletService } from './wallet.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import {
+  attendeeIdsFromParticipants,
+  parseEventParticipantsFromDoc,
+} from '../common/helpers/event-participant.helper';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -139,8 +143,7 @@ export class MeritTransferService {
   }
 
   /**
-   * When `eventPostId` is set, the receiver must appear on the event post's RSVP list.
-   * Invitees who are not community members may only receive a global→global transfer (PRD).
+   * When `eventPostId` is set, the receiver must appear on the event RSVP list and be a community member.
    */
   private async validateEventLinkedTransfer(input: MeritTransferCreateInput): Promise<void> {
     if (!input.eventPostId) {
@@ -156,22 +159,14 @@ export class MeritTransferService {
     if (pub.postType !== 'event') {
       throw new BadRequestException('eventPostId must reference a post with postType event');
     }
-    const attendees = pub.eventAttendees ?? [];
+    const rows = parseEventParticipantsFromDoc(
+      pub as { eventParticipants?: unknown; eventAttendees?: string[] },
+    );
+    const attendees = attendeeIdsFromParticipants(rows);
     if (!attendees.includes(input.receiverId)) {
       throw new BadRequestException(
         'When eventPostId is set, the receiver must be listed in the event attendees',
       );
-    }
-    const receiverRole = await this.userCommunityRoleService.getRole(
-      input.receiverId,
-      input.communityContextId,
-    );
-    if (!receiverRole) {
-      if (input.sourceWalletType !== 'global' || input.targetWalletType !== 'global') {
-        throw new BadRequestException(
-          'Merits to non-member event attendees must use global wallet for both source and target',
-        );
-      }
     }
   }
 
@@ -197,11 +192,11 @@ export class MeritTransferService {
     if (!senderRole) {
       throw new BadRequestException('Sender is not a member of this community context');
     }
+    if (!receiverRole) {
+      throw new BadRequestException('Receiver is not a member of this community context');
+    }
     if (input.eventPostId) {
       await this.validateEventLinkedTransfer(input);
-    }
-    if (!receiverRole && !input.eventPostId) {
-      throw new BadRequestException('Receiver is not a member of this community context');
     }
 
     const sourceWalletId = await this.resolveSourceWalletId(input);

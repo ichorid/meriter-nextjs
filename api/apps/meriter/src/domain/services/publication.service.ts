@@ -66,6 +66,12 @@ export interface CreatePublicationDto {
   eventTime?: string;
   eventLocation?: string;
   eventAttendees?: string[];
+  eventParticipants?: Array<{
+    userId: string;
+    attendance?: 'checked_in' | 'no_show' | null;
+    attendanceUpdatedAt?: Date | null;
+    attendanceUpdatedByUserId?: string | null;
+  }>;
 }
 
 @Injectable()
@@ -212,7 +218,8 @@ export class PublicationService {
             eventEndDate: dto.eventEndDate,
             eventTime: dto.eventTime,
             eventLocation: dto.eventLocation,
-            eventAttendees: dto.eventAttendees ?? [],
+            eventParticipants: dto.eventParticipants ?? [],
+            eventAttendees: [],
           }
         : {}),
     });

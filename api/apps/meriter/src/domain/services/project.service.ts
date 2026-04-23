@@ -470,11 +470,13 @@ export class ProjectService {
     userId: string,
     projectId: string,
     applicantMessage?: string,
+    options?: { pendingEventPublicationId?: string },
   ): Promise<{ status: string }> {
     await this.teamJoinRequestService.submitRequest(
       userId,
       projectId,
       applicantMessage,
+      options,
     );
     return { status: 'pending' };
   }

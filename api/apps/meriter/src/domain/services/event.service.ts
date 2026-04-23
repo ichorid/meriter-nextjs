@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { randomBytes } from 'crypto';
@@ -34,9 +36,23 @@ import type { CreatePublicationDto } from './publication.service';
 import { PublicationService } from './publication.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
+import {
+  attendeeIdsFromParticipants,
+  findParticipantRow,
+  isParticipantRsvpLocked,
+  parseEventParticipantsFromDoc,
+  type EventParticipantRow,
+} from '../common/helpers/event-participant.helper';
+import {
+  signEventCheckInToken,
+  verifyEventCheckInToken,
+  type EventCheckInPayload,
+} from '../common/helpers/event-checkin-token';
 
 @Injectable()
 export class EventService {
+  private readonly logger = new Logger(EventService.name);
+
   constructor(
     private readonly publicationService: PublicationService,
     private readonly communityService: CommunityService,
@@ -45,11 +61,71 @@ export class EventService {
     private readonly meritTransferService: MeritTransferService,
     private readonly commentService: CommentService,
     private readonly userService: UserService,
+    private readonly configService: ConfigService,
     @InjectModel(EventInviteSchemaClass.name)
     private readonly eventInviteModel: Model<EventInviteDocument>,
     @InjectModel(PublicationSchemaClass.name)
     private readonly publicationModel: Model<PublicationDocument>,
   ) {}
+
+  private getCheckInSecret(): string {
+    return this.configService.get<string>('jwt.secret') || 'fake-dev-secret';
+  }
+
+  private participantViewsFromRows(
+    rows: EventParticipantRow[],
+  ): NonNullable<EventPublicationView['eventParticipants']> {
+    return rows.map((r) => ({
+      userId: r.userId,
+      attendance: r.attendance ?? null,
+      attendanceUpdatedAt: r.attendanceUpdatedAt,
+      attendanceUpdatedByUserId: r.attendanceUpdatedByUserId,
+    }));
+  }
+
+  private async persistEventParticipants(
+    publicationId: string,
+    rows: EventParticipantRow[],
+  ): Promise<void> {
+    const ids = attendeeIdsFromParticipants(rows);
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      { $set: { eventParticipants: rows, eventAttendees: ids } },
+    );
+  }
+
+  /** Author or community lead may manage attendance / QR check-in. */
+  async assertEventAttendanceAdmin(actorUserId: string, doc: IPublicationDocument): Promise<void> {
+    if (doc.postType !== 'event') {
+      throw new BadRequestException('Not an event publication');
+    }
+    if (actorUserId === doc.authorId) {
+      return;
+    }
+    const role = await this.userCommunityRoleService.getRole(actorUserId, doc.communityId);
+    if (role?.role === 'lead') {
+      return;
+    }
+    throw new ForbiddenException('Only the event author or a community lead can manage attendance');
+  }
+
+  async attendAfterJoinApproved(userId: string, publicationId: string): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc || doc.deleted || doc.postType !== 'event') {
+      this.logger.warn(`Deferred event RSVP skipped: publication ${publicationId} missing or not event`);
+      return;
+    }
+    const role = await this.userCommunityRoleService.getRole(userId, doc.communityId);
+    if (!role) {
+      return;
+    }
+    const rows = parseEventParticipantsFromDoc(doc as IPublicationDocument);
+    if (findParticipantRow(rows, userId)) {
+      return;
+    }
+    rows.push({ userId, attendance: null });
+    await this.persistEventParticipants(publicationId, rows);
+  }
 
   async assertCanCreateEvent(userId: string, communityId: string): Promise<void> {
     const community = await this.communityService.getCommunity(communityId);
@@ -90,7 +166,7 @@ export class EventService {
       eventEndDate: input.eventEndDate,
       eventTime: input.eventTime,
       eventLocation: input.eventLocation,
-      eventAttendees: [],
+      eventParticipants: [],
     };
 
     const publication = await this.publicationService.createPublication(userId, dto);
@@ -201,6 +277,7 @@ export class EventService {
   }
 
   private toEventView(doc: IPublicationDocument): EventPublicationView {
+    const rows = parseEventParticipantsFromDoc(doc);
     return {
       id: doc.id,
       communityId: doc.communityId,
@@ -214,7 +291,8 @@ export class EventService {
       eventEndDate: doc.eventEndDate ?? new Date(0),
       eventTime: doc.eventTime,
       eventLocation: doc.eventLocation,
-      eventAttendees: doc.eventAttendees ?? [],
+      eventAttendees: attendeeIdsFromParticipants(rows),
+      eventParticipants: this.participantViewsFromRows(rows),
       createdAt: doc.createdAt instanceof Date ? doc.createdAt : new Date(doc.createdAt),
       updatedAt: doc.updatedAt instanceof Date ? doc.updatedAt : new Date(doc.updatedAt),
     };
@@ -269,6 +347,7 @@ export class EventService {
   async getInvitePreview(token: string): Promise<{
     publicationId: string;
     communityId: string;
+    isProject: boolean;
     title?: string;
     description?: string;
     content: string;
@@ -294,9 +373,11 @@ export class EventService {
       throw new NotFoundException('Event not found');
     }
     const d = pub as IPublicationDocument;
+    const comm = await this.communityService.getCommunity(d.communityId);
     return {
       publicationId: d.id,
       communityId: d.communityId,
+      isProject: comm?.isProject === true,
       title: d.title,
       description: d.description,
       content: d.content,
@@ -304,7 +385,7 @@ export class EventService {
       eventEndDate: d.eventEndDate ? new Date(d.eventEndDate) : new Date(0),
       eventTime: d.eventTime,
       eventLocation: d.eventLocation,
-      attendeeCount: (d.eventAttendees ?? []).length,
+      attendeeCount: parseEventParticipantsFromDoc(d).length,
     };
   }
 
@@ -320,10 +401,16 @@ export class EventService {
     if (!role) {
       throw new ForbiddenException('Only community members can RSVP to this event');
     }
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      { $addToSet: { eventAttendees: userId } },
-    );
+    const d = doc as IPublicationDocument;
+    const rows = parseEventParticipantsFromDoc(d);
+    if (isParticipantRsvpLocked(d, userId, rows)) {
+      throw new ForbiddenException('RSVP is locked for this event');
+    }
+    if (findParticipantRow(rows, userId)) {
+      return;
+    }
+    rows.push({ userId, attendance: null });
+    await this.persistEventParticipants(publicationId, rows);
   }
 
   async unattendEvent(userId: string, publicationId: string): Promise<void> {
@@ -338,10 +425,13 @@ export class EventService {
     if (!role) {
       throw new ForbiddenException('Only community members can change RSVP for this event');
     }
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      { $pull: { eventAttendees: userId } },
-    );
+    const d = doc as IPublicationDocument;
+    const rows = parseEventParticipantsFromDoc(d);
+    if (isParticipantRsvpLocked(d, userId, rows)) {
+      throw new ForbiddenException('RSVP is locked for this event');
+    }
+    const next = rows.filter((r) => r.userId !== userId);
+    await this.persistEventParticipants(publicationId, next);
   }
 
   private async assertCanManageEventInvites(userId: string, eventPostId: string): Promise<{
@@ -411,26 +501,93 @@ export class EventService {
       throw new BadRequestException('This invite link has expired');
     }
 
-    const maxUses = invite.maxUses;
-    const filter =
-      maxUses == null
-        ? { id: invite.id }
-        : { id: invite.id, usedCount: { $lt: maxUses } };
-
-    const inc = await this.eventInviteModel.updateOne(filter, { $inc: { usedCount: 1 } });
-    if (inc.modifiedCount !== 1) {
-      throw new BadRequestException('This invite link is no longer valid');
-    }
-
     const pub = await this.publicationModel.findOne({ id: invite.eventPostId }).lean();
     if (!pub || pub.deleted || pub.postType !== 'event') {
       throw new NotFoundException('Event not found');
     }
+    const role = await this.userCommunityRoleService.getRole(userId, pub.communityId);
+    if (!role) {
+      throw new ForbiddenException(
+        'Join this community first to RSVP. Open the community page and submit a join request.',
+      );
+    }
+    await this.attendEvent(userId, invite.eventPostId);
+  }
 
-    await this.publicationModel.updateOne(
-      { id: invite.eventPostId },
-      { $addToSet: { eventAttendees: userId } },
-    );
+  async getMyCheckInToken(
+    userId: string,
+    publicationId: string,
+  ): Promise<{ token: string; expiresAt: Date }> {
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc || doc.deleted || doc.postType !== 'event') {
+      throw new NotFoundException('Publication not found');
+    }
+    const d = doc as IPublicationDocument;
+    const rows = parseEventParticipantsFromDoc(d);
+    if (!findParticipantRow(rows, userId)) {
+      throw new ForbiddenException('RSVP as going is required to show a check-in QR');
+    }
+    if (isParticipantRsvpLocked(d, userId, rows)) {
+      throw new ForbiddenException('Check-in QR is not available (event started or attendance already recorded)');
+    }
+    const now = Date.now();
+    const endMs = d.eventEndDate ? new Date(d.eventEndDate).getTime() : now + 48 * 3600_000;
+    const exp = Math.min(now + 48 * 60 * 60 * 1000, endMs + 24 * 60 * 60 * 1000);
+    const payload: EventCheckInPayload = { publicationId, userId, exp };
+    const token = signEventCheckInToken(this.getCheckInSecret(), payload);
+    return { token, expiresAt: new Date(exp) };
+  }
+
+  async checkInByToken(actorUserId: string, token: string): Promise<{ userId: string }> {
+    const payload = verifyEventCheckInToken(this.getCheckInSecret(), token, Date.now());
+    if (!payload) {
+      throw new BadRequestException('Invalid or expired check-in token');
+    }
+    const doc = await this.publicationModel.findOne({ id: payload.publicationId }).lean();
+    if (!doc || doc.deleted || doc.postType !== 'event') {
+      throw new NotFoundException('Event not found');
+    }
+    const d = doc as IPublicationDocument;
+    await this.assertEventAttendanceAdmin(actorUserId, d);
+    const rows = parseEventParticipantsFromDoc(d);
+    const row = findParticipantRow(rows, payload.userId);
+    if (!row) {
+      throw new BadRequestException('User is not on the RSVP list for this event');
+    }
+    row.attendance = 'checked_in';
+    row.attendanceUpdatedAt = new Date();
+    row.attendanceUpdatedByUserId = actorUserId;
+    await this.persistEventParticipants(payload.publicationId, rows);
+    return { userId: payload.userId };
+  }
+
+  async setParticipantAttendance(
+    actorUserId: string,
+    publicationId: string,
+    targetUserId: string,
+    attendance: 'checked_in' | 'no_show' | null,
+  ): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    if (!doc || doc.deleted || doc.postType !== 'event') {
+      throw new NotFoundException('Publication not found');
+    }
+    const d = doc as IPublicationDocument;
+    await this.assertEventAttendanceAdmin(actorUserId, d);
+    const rows = parseEventParticipantsFromDoc(d);
+    const row = findParticipantRow(rows, targetUserId);
+    if (!row) {
+      throw new BadRequestException('User is not on the RSVP list for this event');
+    }
+    if (attendance === null) {
+      row.attendance = null;
+      row.attendanceUpdatedAt = undefined;
+      row.attendanceUpdatedByUserId = undefined;
+    } else {
+      row.attendance = attendance;
+      row.attendanceUpdatedAt = new Date();
+      row.attendanceUpdatedByUserId = actorUserId;
+    }
+    await this.persistEventParticipants(publicationId, rows);
   }
 
   async inviteUser(senderId: string, eventPostId: string, targetUserId: string): Promise<void> {

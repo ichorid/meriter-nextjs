@@ -131,6 +131,7 @@ export const projectRouter = router({
       z.object({
         projectId: z.string(),
         applicantMessage: z.string().max(500).optional(),
+        pendingEventPublicationId: z.string().min(1).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -141,6 +142,9 @@ export const projectRouter = router({
         ctx.user.id,
         input.projectId,
         input.applicantMessage,
+        input.pendingEventPublicationId
+          ? { pendingEventPublicationId: input.pendingEventPublicationId }
+          : undefined,
       );
     }),
 

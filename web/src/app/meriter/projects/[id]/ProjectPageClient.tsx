@@ -261,7 +261,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           readOnly={isArchived}
         />
 
-        {user && isMember ? (
+        {user ? (
           <Link
             href={routes.projectEvents(projectId)}
             className="flex min-h-[52px] items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"

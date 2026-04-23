@@ -280,13 +280,21 @@ describe('MeritTransferService (integration)', () => {
     expect(outgoing.data[0].senderId).toBe(senderId);
   });
 
-  it('QA-7: event invitee (not a community member) receives global→global transfer when eventPostId + RSVP', async () => {
+  it('QA-7: event participant (community member) receives global→global transfer when eventPostId + RSVP', async () => {
     const outsiderId = uid();
     await userModel.create({
       id: outsiderId,
       authProvider: 'telegram',
       authId: `tg-${outsiderId}`,
       displayName: 'Invitee',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await userCommunityRoleModel.create({
+      id: uid(),
+      userId: outsiderId,
+      communityId: teamId,
+      role: 'participant',
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -336,7 +344,7 @@ describe('MeritTransferService (integration)', () => {
     expect(outsiderGlobal).toBe(5);
   });
 
-  it('QA-7b: non-member invitee cannot use community target wallet', async () => {
+  it('QA-7b: non-member cannot receive event-linked transfer even if listed on legacy RSVP', async () => {
     const outsiderId = uid();
     await userModel.create({
       id: outsiderId,
@@ -379,11 +387,10 @@ describe('MeritTransferService (integration)', () => {
         receiverId: outsiderId,
         amount: 3,
         sourceWalletType: 'global',
-        targetWalletType: 'community',
-        targetContextId: teamId,
+        targetWalletType: 'global',
         communityContextId: teamId,
         eventPostId,
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow(/Receiver is not a member/);
   });
 });

@@ -49,6 +49,15 @@ export const EventUpdateInputSchema = z
 
 export type EventUpdateInput = z.infer<typeof EventUpdateInputSchema>;
 
+export const EventParticipantViewSchema = z.object({
+  userId: z.string(),
+  attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
+  attendanceUpdatedAt: z.coerce.date().optional(),
+  attendanceUpdatedByUserId: z.string().optional(),
+});
+
+export type EventParticipantView = z.infer<typeof EventParticipantViewSchema>;
+
 /** API view of an event post (subset + RSVP). */
 export const EventPublicationViewSchema = z.object({
   id: z.string(),
@@ -63,7 +72,9 @@ export const EventPublicationViewSchema = z.object({
   eventEndDate: z.coerce.date(),
   eventTime: z.string().optional(),
   eventLocation: z.string().optional(),
+  /** Derived: user ids in participant list (RSVP + attendance rows). */
   eventAttendees: z.array(z.string()),
+  eventParticipants: z.array(EventParticipantViewSchema).optional().default([]),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });
@@ -112,6 +123,24 @@ export const EventsInvitePreviewInputSchema = z.object({
 
 export const EventsAttendViaInviteInputSchema = z.object({
   token: z.string().min(1),
+});
+
+export const EventsSetParticipantAttendanceInputSchema = z.object({
+  publicationId: z.string().min(1),
+  targetUserId: z.string().min(1),
+  attendance: z.enum(["checked_in", "no_show"]).nullable(),
+});
+
+export type EventsSetParticipantAttendanceInput = z.infer<
+  typeof EventsSetParticipantAttendanceInputSchema
+>;
+
+export const EventsCheckInByTokenInputSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const EventsGetMyCheckInTokenInputSchema = z.object({
+  publicationId: z.string().min(1),
 });
 
 export const EventsInviteUserInputSchema = z.object({
