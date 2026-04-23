@@ -373,8 +373,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         }
     }, [tappalkaParam, comms?.tappalkaSettings?.enabled, pathname, router, searchParams]);
 
-    // Enable periodic polling for this community (refresh content and quota every 30s)
-    useCommunityPolling(chatId);
+    // Poll only after community exists — avoids invalidating wallet/feed for bad IDs every 30s
+    useCommunityPolling(chatId, Boolean(comms));
 
     // Fetch all communities to find the future-vision community when on marathon-of-good
     // This must be called before calculating futureVisionCommunityId

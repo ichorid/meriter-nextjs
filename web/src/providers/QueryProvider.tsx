@@ -8,6 +8,7 @@ import { setQueryClient } from '@/lib/utils/query-client-cache';
 import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { trpc, getTrpcClient } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { isNonRetryableTrpcQueryError } from '@/lib/utils/trpc-query-errors';
 
 // Global error handler for toast notifications
 // This will be set after QueryProvider mounts
@@ -56,13 +57,15 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             staleTime: 60 * 1000, // 1 minute
             // Time before unused data is garbage collected
             gcTime: 5 * 60 * 1000, // 5 minutes (was cacheTime)
-            // Always refetch on mount after invalidation, even if data is fresh
-            // This ensures mutations trigger immediate refetches when components mount
-            refetchOnMount: 'always',
-            // Retry failed requests, but not for 401 errors
-            retry: (failureCount, error: any) => {
-              // Don't retry on 401 Unauthorized errors
+            // Refetch on mount only when data is stale (not 'always') to avoid request storms
+            // when many children mount or when queries are in error state (e.g. missing community id).
+            refetchOnMount: true,
+            // Retry failed requests, but not for 401 or permanent client errors (NOT_FOUND, etc.)
+            retry: (failureCount, error: unknown) => {
               if (isUnauthorizedError(error)) {
+                return false;
+              }
+              if (isNonRetryableTrpcQueryError(error)) {
                 return false;
               }
               return failureCount < 1;
@@ -71,8 +74,10 @@ export function QueryProvider({ children }: { children: ReactNode }) {
             refetchOnWindowFocus: false,
             // Refetch on reconnect, but not for queries that failed with 401
             refetchOnReconnect: (query) => {
-              // Don't refetch if last error was 401
-              return !isUnauthorizedError(query.state.error);
+              const err = query.state.error;
+              if (isUnauthorizedError(err)) return false;
+              if (err && isNonRetryableTrpcQueryError(err)) return false;
+              return true;
             },
             // Global error handler for queries (optional - usually handled in UI)
             // onError: handleQueryError,
