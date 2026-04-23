@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { getPilotHubCommunityId, isPilotClientMode } from '@/config/pilot';
 
 /** Matches API project.getById payload shape for placeholderData when list already has Community */
 export type ProjectGetByIdPlaceholder = {
@@ -40,6 +41,35 @@ export function useProjects(params: {
       pageSize: params.pageSize,
     },
     { staleTime: STALE_TIME.VERY_SHORT },
+  );
+}
+
+export function usePilotDreamsFeed(params?: { page?: number; pageSize?: number }) {
+  return trpc.project.getGlobalList.useQuery(
+    {
+      pilotDreamFeed: true,
+      sort: 'createdAt',
+      page: params?.page,
+      pageSize: params?.pageSize ?? 20,
+    },
+    { staleTime: STALE_TIME.SHORT, enabled: isPilotClientMode() },
+  );
+}
+
+/** Pilot hub projects where the user has a team role (lead or participant). */
+export function usePilotUserDreams(userId: string | undefined) {
+  const hubId = getPilotHubCommunityId();
+  return trpc.project.list.useQuery(
+    {
+      parentCommunityId: hubId,
+      memberId: userId,
+      page: 1,
+      pageSize: 100,
+    },
+    {
+      staleTime: STALE_TIME.SHORT,
+      enabled: Boolean(isPilotClientMode() && userId && hubId),
+    },
   );
 }
 

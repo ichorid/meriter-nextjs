@@ -10,6 +10,8 @@ import { TicketList } from './TicketList';
 import { DiscussionList } from './DiscussionList';
 import { CreateTicketForm } from './CreateTicketForm';
 import { Button } from '@/components/ui/shadcn/button';
+import { PublicationCreateForm } from '@/features/publications/components/PublicationCreateForm';
+import { trpc } from '@/lib/trpc/client';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +30,12 @@ export interface ProjectWorkAreaProps {
   canModerateTickets: boolean;
   isMember: boolean;
   readOnly?: boolean;
+  /** Pilot: discussion list UX (FR-18…21). */
+  discussionUxVariant?: 'default' | 'pilotAccordion';
+  /** Pilot: «Задачи» / «Обсуждения» instead of default project tab copy (AC-6 partial). */
+  usePilotTerms?: boolean;
+  /** Pilot shell: no links to full Meriter community/post pages; discussions created in-dialog. */
+  blockMeriterNavigation?: boolean;
 }
 
 export function ProjectWorkArea({
@@ -36,12 +44,18 @@ export function ProjectWorkArea({
   canModerateTickets,
   isMember,
   readOnly = false,
+  discussionUxVariant = 'default',
+  usePilotTerms = false,
+  blockMeriterNavigation = false,
 }: ProjectWorkAreaProps) {
   const t = useTranslations('projects');
+  const tPilot = useTranslations('multiObraz');
+  const utils = trpc.useUtils();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabId>('tickets');
   const [statusFilter, setStatusFilter] = useState<TicketStatus | 'all'>('all');
   const [createTicketOpen, setCreateTicketOpen] = useState(false);
+  const [createDiscussionOpen, setCreateDiscussionOpen] = useState(false);
 
   const tabFromUrl = searchParams.get('tab');
   const highlightTicketId = searchParams.get('highlight');
@@ -65,7 +79,7 @@ export function ProjectWorkArea({
   return (
     <section aria-labelledby="project-work-area-heading" className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-4">
       <h2 id="project-work-area-heading" className="sr-only">
-        {t('tabs.tickets')} / {t('tabs.discussions')}
+        {usePilotTerms ? `${tPilot('tabTasks')} / ${tPilot('tabDiscussions')}` : `${t('tabs.tickets')} / ${t('tabs.discussions')}`}
       </h2>
 
       <div className="flex flex-wrap gap-4 border-b border-white/10">
@@ -79,7 +93,7 @@ export function ProjectWorkArea({
               : 'border-transparent text-base-content/50 hover:text-base-content/80',
           )}
         >
-          {t('tabs.tickets')}
+          {usePilotTerms ? tPilot('tabTasks') : t('tabs.tickets')}
         </button>
         <button
           type="button"
@@ -91,7 +105,7 @@ export function ProjectWorkArea({
               : 'border-transparent text-base-content/50 hover:text-base-content/80',
           )}
         >
-          {t('tabs.discussions')}
+          {usePilotTerms ? tPilot('tabDiscussions') : t('tabs.discussions')}
         </button>
       </div>
 
@@ -135,9 +149,15 @@ export function ProjectWorkArea({
 
       {activeTab === 'discussions' && !readOnly && (
         <div className="flex justify-end">
-          <Button size="sm" variant="outline" asChild>
-            <Link href={routes.projectDiscussionCreate(projectId)}>{t('createDiscussion')}</Link>
-          </Button>
+          {blockMeriterNavigation ? (
+            <Button size="sm" variant="outline" type="button" onClick={() => setCreateDiscussionOpen(true)}>
+              {t('createDiscussion')}
+            </Button>
+          ) : (
+            <Button size="sm" variant="outline" asChild>
+              <Link href={routes.projectDiscussionCreate(projectId)}>{t('createDiscussion')}</Link>
+            </Button>
+          )}
         </div>
       )}
 
@@ -148,12 +168,43 @@ export function ProjectWorkArea({
           canModerateTickets={canModerateTickets}
           statusFilter={statusFilter}
           highlightTicketId={highlightTicketId}
+          blockMeriterNavigation={blockMeriterNavigation}
           onOpenCreateTask={
             canModerateTickets && !readOnly ? () => setCreateTicketOpen(true) : undefined
           }
         />
       )}
-      {activeTab === 'discussions' && <DiscussionList projectId={projectId} />}
+      {activeTab === 'discussions' && (
+        <DiscussionList
+          projectId={projectId}
+          uxVariant={discussionUxVariant}
+          blockMeriterNavigation={blockMeriterNavigation}
+          onPilotCreateDiscussion={
+            blockMeriterNavigation && !readOnly ? () => setCreateDiscussionOpen(true) : undefined
+          }
+        />
+      )}
+
+      {blockMeriterNavigation && !readOnly && (
+        <Dialog open={createDiscussionOpen} onOpenChange={setCreateDiscussionOpen}>
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+            <DialogHeader>
+              <DialogTitle>{t('createDiscussion')}</DialogTitle>
+            </DialogHeader>
+            <PublicationCreateForm
+              communityId={projectId}
+              defaultPostType="discussion"
+              isProjectCommunity
+              showContextSwitcher={false}
+              onCancel={() => setCreateDiscussionOpen(false)}
+              onSuccess={() => {
+                setCreateDiscussionOpen(false);
+                void utils.ticket.getByProject.invalidate({ projectId });
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </section>
   );
 }

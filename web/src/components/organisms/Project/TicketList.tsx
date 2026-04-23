@@ -17,6 +17,8 @@ interface TicketListProps {
   /** Publication id of the ticket to scroll to / highlight (from ?highlight=). */
   highlightTicketId?: string | null;
   onOpenCreateTask?: () => void;
+  /** Pilot: do not link task cards to full Meriter post URLs. */
+  blockMeriterNavigation?: boolean;
 }
 
 export function TicketList({
@@ -26,6 +28,7 @@ export function TicketList({
   statusFilter,
   highlightTicketId,
   onOpenCreateTask,
+  blockMeriterNavigation = false,
 }: TicketListProps) {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
@@ -107,6 +110,7 @@ export function TicketList({
               currentUserId={currentUserId}
               canModerateTickets={canModerateTickets}
               highlighted={Boolean(highlightTicketId && ticket.id === highlightTicketId)}
+              blockMeriterNavigation={blockMeriterNavigation}
             />
           </li>
         ),

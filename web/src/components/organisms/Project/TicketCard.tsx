@@ -27,6 +27,7 @@ import {
 import { Label } from '@/components/ui/shadcn/label';
 import { Textarea } from '@/components/ui/shadcn/textarea';
 import { ApplicantsPanel } from './ApplicantsPanel';
+import { PilotTicketDetailDialog } from './PilotTicketDetailDialog';
 import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
@@ -54,6 +55,8 @@ interface TicketCardProps {
     ticketActivityLog?: Array<{ action?: string }>;
   };
   currentUserId: string;
+  /** Pilot: card body is not a link to `/meriter/communities/.../posts/...`. */
+  blockMeriterNavigation?: boolean;
 }
 
 export function TicketCard({
@@ -62,6 +65,7 @@ export function TicketCard({
   currentUserId,
   canModerateTickets,
   highlighted = false,
+  blockMeriterNavigation = false,
 }: TicketCardProps) {
   const t = useTranslations('projects');
   const tComments = useTranslations('comments');
@@ -77,6 +81,7 @@ export function TicketCard({
   const [declineReason, setDeclineReason] = useState('');
   const [returnRevisionOpen, setReturnRevisionOpen] = useState(false);
   const [returnRevisionReason, setReturnRevisionReason] = useState('');
+  const [pilotDetailOpen, setPilotDetailOpen] = useState(false);
 
   const status = (ticket.ticketStatus ?? 'in_progress') as TicketStatus;
   const beneficiaryId = ticket.beneficiaryId ?? ticket.authorId;
@@ -151,24 +156,46 @@ export function TicketCard({
         highlighted && 'ring-2 ring-blue-500/80 ring-offset-2 ring-offset-background',
       )}
     >
-      <Link
-        href={routes.communityPost(projectId, ticket.id)}
-        className="block p-4 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
-              {ticket.title && <span className="font-medium text-base-content">{ticket.title}</span>}
+      {blockMeriterNavigation ? (
+        <button
+          type="button"
+          className="block w-full p-4 pb-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer"
+          onClick={() => setPilotDetailOpen(true)}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
+                {ticket.title && <span className="font-medium text-base-content">{ticket.title}</span>}
+              </div>
+              <p className="text-sm text-base-content/70 line-clamp-2">
+                {plainTextExcerpt(ticket.content)}
+              </p>
+              {!isOpenNeutral && <BeneficiaryLabel userId={beneficiaryId} />}
             </div>
-            <p className="text-sm text-base-content/70 line-clamp-2">
-              {plainTextExcerpt(ticket.content)}
-            </p>
-            {!isOpenNeutral && <BeneficiaryLabel userId={beneficiaryId} />}
+            <BeneficiaryAvatar userId={beneficiaryId} isOpenNeutral={isOpenNeutral} />
           </div>
-          <BeneficiaryAvatar userId={beneficiaryId} isOpenNeutral={isOpenNeutral} />
-        </div>
-      </Link>
+        </button>
+      ) : (
+        <Link
+          href={routes.communityPost(projectId, ticket.id)}
+          className="block p-4 pb-3 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
+                {ticket.title && <span className="font-medium text-base-content">{ticket.title}</span>}
+              </div>
+              <p className="text-sm text-base-content/70 line-clamp-2">
+                {plainTextExcerpt(ticket.content)}
+              </p>
+              {!isOpenNeutral && <BeneficiaryLabel userId={beneficiaryId} />}
+            </div>
+            <BeneficiaryAvatar userId={beneficiaryId} isOpenNeutral={isOpenNeutral} />
+          </div>
+        </Link>
+      )}
       <div
         className={cn(
           'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-4',
@@ -349,6 +376,18 @@ export function TicketCard({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {blockMeriterNavigation ? (
+        <PilotTicketDetailDialog
+          open={pilotDetailOpen}
+          onOpenChange={setPilotDetailOpen}
+          projectId={projectId}
+          publicationId={ticket.id}
+          ticketStatus={status}
+          fallbackTitle={ticket.title}
+          fallbackContent={ticket.content}
+        />
+      ) : null}
 
       <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
         <DialogContent className="sm:max-w-md" onCloseAutoFocus={() => setDeclineReason('')}>
