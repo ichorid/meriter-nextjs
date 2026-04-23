@@ -55,6 +55,9 @@ services:
       dockerfile: web/Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=
+        - NEXT_PUBLIC_PILOT_MODE=${NEXT_PUBLIC_PILOT_MODE:-}
+        - NEXT_PUBLIC_PILOT_STANDALONE=${NEXT_PUBLIC_PILOT_STANDALONE:-}
+        - NEXT_PUBLIC_PILOT_HUB_COMMUNITY_ID=${NEXT_PUBLIC_PILOT_HUB_COMMUNITY_ID:-}
     container_name: meriter-web
     restart: unless-stopped
     # Load ALL variables from .env file
@@ -150,6 +153,9 @@ services:
       - S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY:-minioadmin}
       - S3_ENDPOINT=${S3_ENDPOINT:-http://minio:9000}
       - S3_REGION=${S3_REGION:-us-east-1}
+      # Multi-Obraz pilot (API; must match web NEXT_PUBLIC_* and hub id)
+      - PILOT_MODE=${PILOT_MODE:-}
+      - PILOT_HUB_COMMUNITY_ID=${PILOT_HUB_COMMUNITY_ID:-}
       # Other variables
       - FAKE_DATA_MODE=${FAKE_DATA_MODE:-false}
       - LOG_LEVEL=${LOG_LEVEL:-info}

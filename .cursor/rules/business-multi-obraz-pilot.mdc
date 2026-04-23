@@ -1,0 +1,63 @@
+---
+description: Delta business rules for Multi-Obraz pilot (fork); do not replace business-projects.mdc.
+globs:
+  - "web/src/features/multi-obraz-pilot/**"
+  - "web/src/app/pilot/**"
+  - "api/apps/meriter/src/domain/**/pilot-dream*.ts"
+  - "api/apps/meriter/src/trpc/routers/project.router.ts"
+alwaysApply: false
+---
+
+# Multi-Obraz pilot — business delta (fork)
+
+Base rules (read-only): `@.cursor/rules/business-projects.mdc`, `@.cursor/rules/business-content.mdc`, `@.cursor/rules/business-merits.mdc`.
+
+## 1. Scope
+
+Applies only when **`PILOT_MODE` / `NEXT_PUBLIC_PILOT_MODE`** are enabled **and** the cooperative project (`isProject`) is a pilot **dream**: `pilotMeta.kind === 'multi-obraz'` and/or `parentCommunityId === PILOT_HUB_COMMUNITY_ID` (defense in depth — see `api/.../pilot-dream-policy.ts`).
+
+## 2. Mapping «мечта» → data
+
+| PRD / UI | Code |
+|----------|------|
+| Мечта | `Community` with `isProject === true`, `typeTag === 'project'`, `parentCommunityId = env PILOT_HUB_COMMUNITY_ID`, `pilotMeta: { kind: 'multi-obraz' }` |
+| Лента пилота | `project.getGlobalList` / `project.list` with `pilotDreamFeed: true` (server requires `PILOT_MODE`) |
+| Создание | `project.create` with `pilotContext: 'multi-obraz'` (server assigns hub parent; client must not send `parentCommunityId`) |
+| Web при `NEXT_PUBLIC_PILOT_MODE` | Главная **`/`** = витрина, **`/create`** = мастер; `/pilot/multi-obraz*` → редирект на `/` и `/create` (middleware) |
+| `NEXT_PUBLIC_PILOT_STANDALONE=true` | Опционально: скрыть DevTools bar на демо-стенде |
+
+## 3. Запрещённые действия (TR-14) — сервер
+
+Константа `PILOT_FORBIDDEN_MUTATIONS` в `pilot-dream-policy.ts`. Для мечты пилота **отклоняются** (tRPC `FORBIDDEN`, лог `pilot_server_mutation_rejected`):
+
+- `project.publishToBirzha`
+- `project.requestParentChange`
+- `project.updateShares`
+- `project.investInProject`, `project.payoutPreview`, `project.payoutExecute`
+- `project.topUpWallet`
+- `meritTransfer.create` когда `communityContextId` — пилот-мечта
+
+## 4. Права и шаблон при создании мечты
+
+| Область | Значение при create (сервер) |
+|---------|------------------------------|
+| `settings.commentMode` | `neutralOnly` — нейтральные ответы без взвешенных «голосов-меритов» в UX пилота |
+| `settings.investingEnabled` | `false` |
+| `meritSettings.quotaEnabled` | `false`, `canEarn`/`canSpend`/`dailyQuota` приглушены |
+| `votingSettings` | `spendsMerits: false`, `awardsMerits: false`, `currencySource: wallet-only` (как team-projects «без экономики») |
+| `permissionRules` | Базовые правила проекта (`typeTag === 'project'`) — участники могут `POST_PUBLICATION` (обсуждения), `VOTE`/`COMMENT` по `commentMode` |
+
+## 5. Обсуждения vs задачи
+
+| Модуль | UI пилота |
+|--------|-----------|
+| `postType === 'ticket'` | «Задачи» |
+| `postType === 'discussion'` | «Обсуждения» — аккордеон ответов + CTA «Комментировать» |
+
+## 6. События (`postType === 'event'`)
+
+В пилоте v1 **не** добавлять отдельный продуктовый поток событий (PRD §13.2).
+
+## 7. События телеметрии (TR-12)
+
+Клиент: `trackPilotProductEvent` → Sentry breadcrumb `ui.pilot` (ids только). Имена: `pilot_dream_created`, `pilot_dream_viewed`, и т.д.

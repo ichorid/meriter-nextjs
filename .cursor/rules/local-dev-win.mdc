@@ -30,6 +30,8 @@ MONGO_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0
 
 ## Start Servers
 
+**Docker (Windows):** из корня `.\scripts\windows\run-docker-local.ps1` — ветка **`dev`** выключает пилот для этого запуска, **`pilot`** / **`feat/multi-obraz-pilot`** включает Multi-Obraz (см. `@local-dev-branch-stack.mdc`).
+
 Use two terminals for full local stack: API and Web, **после** того как MongoDB запущена в режиме replica set (см. выше).
 
 From the **repository root**, you can use `pnpm dev:api` and `pnpm dev:web` in separate terminals (set the same env vars in the shell or in `api/.env` / `web/.env` as below). Or `cd` into each package:

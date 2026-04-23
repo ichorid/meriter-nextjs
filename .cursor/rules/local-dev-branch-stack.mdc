@@ -1,0 +1,24 @@
+---
+description: When building/running the local stack, choose Meriter vs Multi-Obraz pilot by git branch.
+globs: []
+alwaysApply: false
+---
+
+# Local stack: branch → Meriter vs Multi-Obraz
+
+When the user asks to **build and run the servers** (or equivalent: поднять стек, docker local, `docker compose`, full local stack):
+
+1. **Detect git branch** (repo root): `git rev-parse --abbrev-ref HEAD`.
+
+2. **`dev`** (or they want **full Meriter**): ensure pilot is **off** for that run:
+   - Prefer **`.\scripts\windows\run-docker-local.ps1`** on Windows (it forces pilot env **off** for compose substitution even if `.env` still has pilot keys).
+   - Or document: set `NEXT_PUBLIC_PILOT_MODE=false`, `PILOT_MODE=false`, clear hub ids for that session before `docker compose -f docker-compose.local.yml up --build`.
+   - Same idea for **`pnpm dev:api` / `pnpm dev:web`**: use `api/.env` + `web/.env.local` **without** pilot flags (or `false`).
+
+3. **`pilot`** or **`feat/multi-obraz-pilot`**: **Multi-Obraz** pilot:
+   - Prefer **`.\scripts\windows\run-docker-local.ps1`** (forces pilot **on** for compose; hub ids must be in root `.env`).
+   - Env contract: `docs/prd/multi-obraz-dreams/SETUP-FORK.md` and `docs/prd/multi-obraz-dreams/DEPLOY-REMOTE-RU.md`.
+
+4. **Other branches**: do **not** auto-toggle pilot; use whatever is in `.env` / package dev scripts.
+
+**Compose note:** `docker-compose.local.yml` passes `NEXT_PUBLIC_PILOT_*` as **web build args** and `PILOT_*` into **api** — changing branch requires **rebuild** web when toggling pilot (`--build`).
