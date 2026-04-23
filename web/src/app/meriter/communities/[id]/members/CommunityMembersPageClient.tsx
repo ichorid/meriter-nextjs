@@ -72,17 +72,24 @@ interface CommunityMembersPageClientProps {
   returnTo?: string;
   /** When opened from project UI: copy and back behavior stay project-centric */
   membersContext?: 'project';
+  /** Multi-Obraz pilot: hide peer merit transfer and admin «add merits» on member rows. */
+  hideMeritActions?: boolean;
+  /** Pilot: use «Участники» / invite-later copy where applicable. */
+  pilotParticipantsCopy?: boolean;
 }
 
 export function CommunityMembersPageClient({
   communityId,
   returnTo,
   membersContext,
+  hideMeritActions = false,
+  pilotParticipantsCopy = false,
 }: CommunityMembersPageClientProps) {
     const router = useRouter();
     const t = useTranslations('pages.communities');
     const tLeadActions = useTranslations('pages.communities.members.leadActions');
     const tProjects = useTranslations('projects');
+    const tPilot = useTranslations('multiObraz');
     const tSearch = useTranslations('search');
     const tCommon = useTranslations('common');
     const { user } = useAuth();
@@ -270,7 +277,7 @@ export function CommunityMembersPageClient({
                             )}
                         </button>
                     )}
-                    {isAdmin && (
+                    {isAdmin && !hideMeritActions && (
                     <button
                         type="button"
                         onClick={(e) => {
@@ -287,7 +294,7 @@ export function CommunityMembersPageClient({
                         <Coins className="h-4 w-4" />
                     </button>
                     )}
-                    {isCurrentUserMember && member.id !== user?.id ? (
+                    {isCurrentUserMember && member.id !== user?.id && !hideMeritActions ? (
                         <div
                             className="flex items-center"
                             onClick={(e) => e.stopPropagation()}
@@ -373,7 +380,7 @@ export function CommunityMembersPageClient({
 
     const pageHeader = (
         <SimpleStickyHeader
-            title={t('members.title')}
+            title={pilotParticipantsCopy ? tPilot('membersPageTitle') : t('members.title')}
             showBack={true}
             onBack={() => router.push(backTarget)}
             asStickyHeader={true}

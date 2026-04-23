@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
@@ -32,6 +33,10 @@ import {
 } from '@/features/communities/components/CommunityHubFeedTabBar';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient';
+import { isPilotClientMode, isPilotDreamProject } from '@/config/pilot';
+import { pilotHomeHref } from '@/lib/constants/pilot-routes';
+import { PilotMinimalNav } from '@/features/multi-obraz-pilot/PilotMinimalNav';
+import { ProjectPilotDreamShell } from '@/features/multi-obraz-pilot/ProjectPilotDreamShell';
 
 const PROJECT_HUB_FEED_TABS: readonly CommunityHubFeedTab[] = ['posts', 'events', 'birzha'];
 
@@ -43,6 +48,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations('projects');
+  const tPilot = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
   const { user } = useAuth();
   const { data, isLoading } = useProject(projectId);
@@ -125,6 +131,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   }
 
   const { project, parentCommunity } = data;
+
   const status = project.projectStatus ?? 'active';
   const statusLabel = status === 'active' ? t('active') : status === 'closed' ? t('closed') : t('archived');
   const isLead = meInProjectMembers?.role === 'lead';
@@ -135,6 +142,34 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
         meInProjectMembers?.role === 'participant'),
   );
   const isArchived = status === 'archived';
+
+  if (isPilotClientMode()) {
+    if (!isPilotDreamProject(project)) {
+      return (
+        <div className="min-h-dvh bg-[#0f172a] text-[#f1f5f9]">
+          <PilotMinimalNav />
+          <div className="mx-auto max-w-lg px-4 py-16 text-center">
+            <p className="text-lg font-semibold text-white">{tPilot('dreamNotFoundTitle')}</p>
+            <p className="mt-2 text-sm text-[#94a3b8]">{tPilot('dreamNotFoundBody')}</p>
+            <Button className="mt-6 bg-[#A855F7] text-white" asChild>
+              <Link href={pilotHomeHref()}>{tPilot('backToPilotFeed')}</Link>
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <ProjectPilotDreamShell
+        projectId={projectId}
+        project={project}
+        currentUserId={user?.id ?? ''}
+        isMember={isMember}
+        canModerateTickets={canModerateTickets}
+        readOnly={isArchived}
+        canEditDream={Boolean(!isArchived && (isLead || user?.globalRole === 'superadmin'))}
+      />
+    );
+  }
 
   const heroStatus: 'active' | 'closed' | 'archived' =
     status === 'closed' ? 'closed' : status === 'archived' ? 'archived' : 'active';

@@ -1,5 +1,4 @@
-import { CommunityMembersPageClient } from '@/app/meriter/communities/[id]/members/CommunityMembersPageClient';
-import { routes } from '@/lib/constants/routes';
+import { ProjectMembersPilotWrapper } from '@/app/meriter/projects/[id]/members/ProjectMembersPilotWrapper';
 
 interface ProjectMembersPageProps {
   params: Promise<{ id: string }>;
@@ -13,11 +12,5 @@ export async function generateMetadata() {
 
 export default async function ProjectMembersPage({ params }: ProjectMembersPageProps) {
   const { id } = await params;
-  return (
-    <CommunityMembersPageClient
-      communityId={id}
-      returnTo={routes.project(id)}
-      membersContext="project"
-    />
-  );
+  return <ProjectMembersPilotWrapper projectId={id} />;
 }

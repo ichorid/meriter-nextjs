@@ -3,6 +3,7 @@
  * Handles redirect logic, route matching, and route validation
  */
 
+import { isPilotClientMode } from '@/config/pilot';
 import type { RedirectResult, RouteRedirectOptions } from './types';
 import { isStaticRoute, isDynamicRoute } from './route-patterns';
 
@@ -21,6 +22,15 @@ function hasJwtCookie(): boolean {
  */
 function handleRootRedirect(options: RouteRedirectOptions): RedirectResult {
   const { tgWebAppStartParam } = options;
+
+  /** Pilot home is server-rendered at `/`; do not override with Meriter root redirects (JWT → profile). */
+  if (isPilotClientMode()) {
+    return {
+      shouldRedirect: false,
+      targetPath: null,
+      reason: 'pilot_root',
+    };
+  }
 
   if (tgWebAppStartParam) {
     return {

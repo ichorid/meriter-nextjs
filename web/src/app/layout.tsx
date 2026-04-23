@@ -1,6 +1,6 @@
 import type { Viewport } from 'next';
 import './globals.css';
-import { detectBrowserLanguage, type Locale } from '@/i18n/request';
+import { detectBrowserLanguage, type Locale } from '@/i18n/locale';
 import ClientRootLayout from './ClientRootLayout';
 import { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';

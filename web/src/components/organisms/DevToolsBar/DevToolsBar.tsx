@@ -9,7 +9,7 @@ import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useLogout } from '@/hooks/api/useAuth';
 import { cn } from '@/lib/utils';
-import { type Locale, DEFAULT_LOCALE } from '@/i18n/request';
+import { type Locale, DEFAULT_LOCALE } from '@/i18n/locale';
 
 interface DevToolsBarProps {
   className?: string;

@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import type { Locale } from '@/i18n/request';
+import type { Locale } from '@/i18n/locale';
 import en from '../../../messages/en.json';
 import ru from '../../../messages/ru.json';
 

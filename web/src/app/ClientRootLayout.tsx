@@ -2,7 +2,7 @@
 
 import { NextIntlClientProvider } from 'next-intl';
 import { useEffect, useState, useRef, Suspense, startTransition } from 'react';
-import { DEFAULT_LOCALE, type Locale } from '@/i18n/request';
+import { DEFAULT_LOCALE, type Locale } from '@/i18n/locale';
 import { Root } from '@/components/Root';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -14,6 +14,7 @@ import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
+import { isPilotStandaloneMode } from '@/config/pilot';
 import { TelegramHint } from '@/components/TelegramHint';
 import { CaptiveBrowserProvider } from '@/lib/captive-browser';
 // Import auth debug utilities (only active in development)
@@ -123,14 +124,18 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
                 <ClientRouter />
               </Suspense>
               <AuthProvider>
-                {isTestAuthMode() && <DevToolsBar />}
+                {isTestAuthMode() && !isPilotStandaloneMode() && <DevToolsBar />}
                 <RuntimeConfigProvider
                   fallbackEnabledProviders={fallbackEnabledProviders}
                   fallbackAuthnEnabled={fallbackAuthnEnabled}
                 >
                   <div
-                  className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
-                  style={isTestAuthMode() ? { ['--dev-tools-bar-height' as string]: '60px' } : undefined}
+                  className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() && !isPilotStandaloneMode() ? 'pt-[60px]' : ''}`}
+                  style={
+                    isTestAuthMode() && !isPilotStandaloneMode()
+                      ? { ['--dev-tools-bar-height' as string]: '60px' }
+                      : undefined
+                  }
                 >
                     <Root>{children}</Root>
                   </div>

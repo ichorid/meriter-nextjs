@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Locale } from '@/i18n/request';
+import type { Locale } from '@/i18n/locale';
 
 // Initial messages so portaled content has translations before ClientRootLayout effect runs
 import enMessages from '../../messages/en.json';
