@@ -73,7 +73,12 @@ export function resolveMeritHistoryLineDescription(row: RowSlice): MeritHistoryL
   }
 
   if (rt === 'publication_creation') {
-    if (desc.includes('Birzha') || desc.includes('Бирж')) {
+    // Match EN label or RU «Биржа» fragments without Cyrillic literals (scan-translations).
+    const mentionsBirzha =
+      /birzha/i.test(desc) ||
+      desc.includes('\u0411\u0438\u0440\u0436') ||
+      desc.includes('\u0431\u0438\u0440\u0436');
+    if (mentionsBirzha) {
       return { kind: 'i18n', messageKey: 'publication_creation_birzha' };
     }
     return { kind: 'i18n', messageKey: 'publication_creation' };

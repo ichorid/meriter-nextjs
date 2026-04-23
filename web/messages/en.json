@@ -67,6 +67,7 @@
         "find": "Find",
         "searchPlaceholder": "Search...",
         "open": "Open",
+        "topBarActions": "Account and tools",
         "openPostPage": "Open post page",
         "comingSoon": "Coming soon",
         "noPermission": "You don't have permission to perform this action",
