@@ -178,6 +178,7 @@ class SmsRuProvider implements SmsProvider {
 export class SmsProviderService {
     private readonly logger = new Logger(SmsProviderService.name);
     private readonly provider: SmsProvider;
+    private readonly enabled: boolean;
     private readonly otpLength: number;
     private readonly otpExpiryMinutes: number;
     private readonly maxAttemptsPerOtp: number;
@@ -191,13 +192,23 @@ export class SmsProviderService {
         private readonly authMagicLinkService: AuthMagicLinkService,
     ) {
         const smsConfig = this.configService.get('sms');
+        this.enabled = smsConfig?.enabled === true;
         const providerName = smsConfig?.provider || 'smsru';
 
-        // Initialize provider based on config
-        if (providerName === 'smsru') {
-            this.provider = new SmsRuProvider(this.configService);
+        if (!this.enabled) {
+            // SMS is optional; when disabled we must not require provider env config at bootstrap.
+            this.provider = {
+                async sendSms() {
+                    throw new Error('SMS is disabled');
+                },
+            };
         } else {
-            throw new Error(`Unknown SMS provider: ${providerName}`);
+            // Initialize provider based on config
+            if (providerName === 'smsru') {
+                this.provider = new SmsRuProvider(this.configService);
+            } else {
+                throw new Error(`Unknown SMS provider: ${providerName}`);
+            }
         }
 
         this.otpLength = smsConfig?.otpLength ?? 6;
@@ -206,7 +217,11 @@ export class SmsProviderService {
         this.rateLimitPerHour = smsConfig?.rateLimitPerHour ?? 3;
         this.resendCooldownSeconds = smsConfig?.resendCooldownSeconds ?? 60;
 
-        this.logger.log(`SMS Provider initialized: ${providerName}`);
+        this.logger.log(
+            this.enabled
+                ? `SMS Provider initialized: ${providerName}`
+                : 'SMS Provider disabled (skipping provider init)',
+        );
     }
 
     /**
@@ -260,6 +275,9 @@ export class SmsProviderService {
         expiresIn: number;
         canResendAt: Date;
     }> {
+        if (!this.enabled) {
+            throw new Error('SMS is disabled');
+        }
         // Check rate limiting
         await this.checkRateLimit(phoneNumber);
 
@@ -347,6 +365,9 @@ export class SmsProviderService {
         callPhonePretty: string;
         expiresIn: number;
     }> {
+        if (!this.enabled) {
+            throw new Error('SMS is disabled');
+        }
         if (!this.provider.initCallCheck) {
             throw new Error('Call verification is not supported by the current SMS provider');
         }
@@ -371,6 +392,9 @@ export class SmsProviderService {
      * Check status of Call Check verification
      */
     async verifyCallStatus(checkId: string): Promise<{ status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'ERROR' }> {
+        if (!this.enabled) {
+            throw new Error('SMS is disabled');
+        }
         if (!this.provider.checkCallStatus) {
             throw new Error('Call verification is not supported by the current SMS provider');
         }

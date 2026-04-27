@@ -38,6 +38,8 @@ RUN mkdir -p /out && \
     cp -R libs /out/libs && \
     cp -R web/patches /out/web/ && \
     cp api/package.json /out/package.json && \
+    # Runtime scripts used by init containers (bot webhook, S3 CORS)
+    cp -R api/scripts /out/scripts && \
     # Copy root node_modules (with --shamefully-hoist, packages are at root level)
     cp -R node_modules /out/node_modules && \
     # Copy shared-types built output
