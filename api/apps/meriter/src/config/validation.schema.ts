@@ -94,6 +94,26 @@ const validateSync = (config: Record<string, unknown>) => {
     RP_ID: (config.RP_ID as string) || undefined,
     RP_ORIGIN: (config.RP_ORIGIN as string) || undefined,
     RP_NAME: (config.RP_NAME as string) || undefined,
+
+    // SMS / phone / email auth (must appear in validated output or Nest never copies them to process.env)
+    SMS_ENABLED: (config.SMS_ENABLED as string) || 'false',
+    SMS_PROVIDER: (config.SMS_PROVIDER as string) || 'smsru',
+    SMS_API_URL: (config.SMS_API_URL as string) || 'https://sms.ru/sms',
+    SMS_API_ID: (config.SMS_API_ID as string) || undefined,
+    SMS_FROM: (config.SMS_FROM as string) || undefined,
+    SMS_TEST_MODE: (config.SMS_TEST_MODE as string) || 'false',
+    PHONE_ENABLED: (config.PHONE_ENABLED as string) || 'false',
+    EMAIL_ENABLED: (config.EMAIL_ENABLED as string) || 'false',
+    EMAIL_API_URL: (config.EMAIL_API_URL as string) || undefined,
+    EMAIL_API_KEY: (config.EMAIL_API_KEY as string) || '',
+    EMAIL_FROM: (config.EMAIL_FROM as string) || undefined,
+    EMAIL_FROM_NAME: (config.EMAIL_FROM_NAME as string) || undefined,
+    EMAIL_TRACK_LINKS: (config.EMAIL_TRACK_LINKS as string) || '1',
+    EMAIL_TRACK_READ: (config.EMAIL_TRACK_READ as string) || '1',
+    EMAIL_LANGUAGE: (config.EMAIL_LANGUAGE as string) || 'ru',
+    EMAIL_SKIP_UNSUBSCRIBE: (config.EMAIL_SKIP_UNSUBSCRIBE as string) || '0',
+
+    TEST_AUTH_MODE: (config.TEST_AUTH_MODE as string) || 'false',
     
     // S3 Storage
     S3_ENDPOINT: (config.S3_ENDPOINT as string) || undefined,
@@ -197,7 +217,27 @@ const validateSync = (config: Record<string, unknown>) => {
     RP_ID: z.string().optional(),
     RP_ORIGIN: urlValidator.optional(),
     RP_NAME: z.string().optional(),
-    
+
+    // SMS / phone / email auth
+    SMS_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    SMS_PROVIDER: z.string().optional().default('smsru'),
+    SMS_API_URL: urlValidator.optional().default('https://sms.ru/sms'),
+    SMS_API_ID: z.string().optional(),
+    SMS_FROM: z.string().optional(),
+    SMS_TEST_MODE: z.enum(['true', 'false']).optional().default('false'),
+    PHONE_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    EMAIL_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    EMAIL_API_URL: urlValidator.optional(),
+    EMAIL_API_KEY: z.string().optional().default(''),
+    EMAIL_FROM: z.string().optional(),
+    EMAIL_FROM_NAME: z.string().optional(),
+    EMAIL_TRACK_LINKS: z.string().optional().default('1'),
+    EMAIL_TRACK_READ: z.string().optional().default('1'),
+    EMAIL_LANGUAGE: z.string().optional().default('ru'),
+    EMAIL_SKIP_UNSUBSCRIBE: z.string().optional().default('0'),
+
+    TEST_AUTH_MODE: z.enum(['true', 'false']).optional().default('false'),
+
     // S3 Storage
     S3_ENDPOINT: urlValidator.optional(),
     S3_BUCKET_NAME: z.string().optional(),
