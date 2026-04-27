@@ -55,16 +55,11 @@ RUN mkdir -p /out && \
 # --- run ---
 FROM node:22.11-alpine AS runner
 WORKDIR /app
-RUN addgroup -S nodejs && adduser -S -G nodejs nestjs && \
-    npm install -g pnpm@10.24.0
+RUN addgroup -S nodejs && adduser -S -G nodejs nestjs
 ENV NODE_ENV=production
 ENV CI=true
 # Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
-
-# Install production dependencies
-RUN pnpm install --prod && \
-    rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml
 
 USER nestjs
 EXPOSE 8002
