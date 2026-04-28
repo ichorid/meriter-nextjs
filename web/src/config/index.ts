@@ -13,6 +13,23 @@
 import { z } from 'zod';
 
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-export';
+const isBrowser = typeof window !== 'undefined';
+
+function detectNodeEnv(): 'development' | 'production' | 'test' {
+  // In the browser, `process` may not exist at all depending on bundling/runtime.
+  // Treat non-localhost as production unless explicitly overridden by NEXT_PUBLIC_* flags.
+  if (isBrowser) {
+    const hostname = window.location?.hostname;
+    const isLocal =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1';
+    return isLocal ? 'development' : 'production';
+  }
+
+  const raw = process.env.NODE_ENV;
+  if (raw === 'development' || raw === 'production' || raw === 'test') return raw;
+  return 'development';
+}
 
 /**
  * Derive application URL from DOMAIN.
@@ -49,7 +66,9 @@ const optionalString = z.preprocess((value) => {
 
 const envSchema = z.object({
   // Application
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // In the browser `process.env.NODE_ENV` can be missing, so defaulting to "development"
+  // would unintentionally enable dev-only behavior on real domains.
+  NODE_ENV: z.enum(['development', 'production', 'test']),
 
   // API Configuration - optional, defaults to relative URLs in production
   NEXT_PUBLIC_API_URL: z.string().optional(),
@@ -85,7 +104,7 @@ const envSchema = z.object({
 
 // Validate and parse environment variables
 const env = envSchema.parse({
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV: detectNodeEnv(),
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   BOT_TOKEN: process.env.BOT_TOKEN,
   NEXT_PUBLIC_TELEGRAM_API_URL: process.env.NEXT_PUBLIC_TELEGRAM_API_URL,
