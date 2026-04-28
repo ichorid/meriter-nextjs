@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { usePilotUserDreams } from '@/hooks/api/useProjects';
 import { isPilotDreamProject } from '@/config/pilot';
+import { pilotCreateHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
 
 const dreamRowClass =
@@ -124,7 +125,12 @@ export function PilotProfilePageClient() {
             {myDreams.length > 0 ? (
               <PilotDreamRows projects={myDreams} />
             ) : (
-              <p className="mt-2 text-sm text-[#94a3b8]">{t('pilotProfileNoDreamsCreated')}</p>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm text-[#94a3b8]">{t('pilotProfileNoDreamsCreated')}</p>
+                <Button asChild className="w-full sm:w-auto">
+                  <Link href={pilotCreateHref()}>{t('navCreate')}</Link>
+                </Button>
+              </div>
             )}
           </section>
 
