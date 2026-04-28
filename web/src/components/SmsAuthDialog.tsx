@@ -30,6 +30,7 @@ interface SmsAuthDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: { isNewUser: boolean; user: any }) => void;
     onError: (message: string) => void;
+    rememberMe?: boolean;
 }
 
 type Step = "phone" | "otp";
@@ -39,6 +40,7 @@ export function SmsAuthDialog({
     onOpenChange,
     onSuccess,
     onError,
+    rememberMe = false,
 }: SmsAuthDialogProps) {
     const t = useTranslations("login.smsDialog");
     const tCommon = useTranslations("common");
@@ -168,7 +170,7 @@ export function SmsAuthDialog({
                 const result = await mockSmsAuth(phoneNumber);
                 
                 // Set JWT cookie manually
-                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                document.cookie = `jwt=${result.jwt}; path=/; ${rememberMe ? `max-age=${365 * 24 * 60 * 60}; ` : ''}SameSite=Lax`;
                 
                 onSuccess({
                     isNewUser: result.isNewUser,
@@ -182,7 +184,7 @@ export function SmsAuthDialog({
             const response = await fetch("/api/v1/auth/sms/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phoneNumber, otpCode }),
+                body: JSON.stringify({ phoneNumber, otpCode, rememberMe }),
                 credentials: "include", // Important for cookies
             });
 

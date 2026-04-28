@@ -30,6 +30,7 @@ interface EmailAuthDialogProps {
     onOpenChange: (open: boolean) => void;
     onSuccess: (result: { isNewUser: boolean; user: any }) => void;
     onError: (message: string) => void;
+    rememberMe?: boolean;
 }
 
 type Step = "email" | "otp";
@@ -39,6 +40,7 @@ export function EmailAuthDialog({
     onOpenChange,
     onSuccess,
     onError,
+    rememberMe = false,
 }: EmailAuthDialogProps) {
     // Using a new namespace - keys need to be added to en.json/ru.json
     const t = useTranslations("login.emailDialog");
@@ -148,7 +150,7 @@ export function EmailAuthDialog({
                 const result = await mockEmailAuth(email);
                 
                 // Set JWT cookie manually
-                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                document.cookie = `jwt=${result.jwt}; path=/; ${rememberMe ? `max-age=${365 * 24 * 60 * 60}; ` : ''}SameSite=Lax`;
                 
                 onSuccess({
                     isNewUser: result.isNewUser,
@@ -162,7 +164,7 @@ export function EmailAuthDialog({
             const response = await fetch("/api/v1/auth/email/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, otpCode }),
+                body: JSON.stringify({ email, otpCode, rememberMe }),
                 credentials: "include",
             });
 

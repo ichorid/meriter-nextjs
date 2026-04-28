@@ -44,6 +44,7 @@ import { OAuthButton } from "./OAuthButton";
 import { SmsAuthDialog } from "./SmsAuthDialog";
 import { CallCheckAuthDialog } from "./CallCheckAuthDialog";
 import { EmailAuthDialog } from "./EmailAuthDialog";
+import { pilotProfileHref } from "@/lib/constants/pilot-routes";
 
 interface LoginFormProps {
     className?: string;
@@ -82,6 +83,7 @@ export function LoginForm({
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
     const [callDialogOpen, setCallDialogOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -120,7 +122,7 @@ export function LoginForm({
 
     // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
-        return returnTo || "/meriter/profile";
+        return returnTo || pilotProfileHref();
     };
 
     // Handle fake authentication
@@ -161,7 +163,7 @@ export function LoginForm({
                 const result = await mockOAuthAuth(providerId);
                 
                 // Set JWT cookie manually (in test mode, backend will accept mock tokens)
-                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                document.cookie = `jwt=${result.jwt}; path=/; ${rememberMe ? `max-age=${365 * 24 * 60 * 60}; ` : ''}SameSite=Lax`;
                 
                 // Redirect based on isNewUser
                 let redirectUrl = buildRedirectUrl();
@@ -432,6 +434,20 @@ export function LoginForm({
                                         </div>
                                     )}
                                 </div>
+
+                                <div className="flex items-center gap-2 pt-2">
+                                    <input
+                                        id="rememberMe"
+                                        type="checkbox"
+                                        className="checkbox checkbox-sm"
+                                        checked={rememberMe}
+                                        onChange={(e) => setRememberMe(e.target.checked)}
+                                        disabled={isLoading || isOAuthLoading}
+                                    />
+                                    <label htmlFor="rememberMe" className="text-sm text-muted-foreground select-none">
+                                        Запомнить меня
+                                    </label>
+                                </div>
                         </>
                     )}
                 </CardContent>
@@ -461,6 +477,7 @@ export function LoginForm({
                 <SmsAuthDialog
                     open={smsDialogOpen}
                     onOpenChange={setSmsDialogOpen}
+                    rememberMe={rememberMe}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
 
@@ -500,6 +517,7 @@ export function LoginForm({
                 <EmailAuthDialog
                     open={emailDialogOpen}
                     onOpenChange={setEmailDialogOpen}
+                    rememberMe={rememberMe}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
                         if (result?.isNewUser) redirectUrl = welcomeUrlForNewUser();

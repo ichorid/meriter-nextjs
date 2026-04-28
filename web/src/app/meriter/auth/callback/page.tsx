@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { useMe } from '@/hooks/api/useAuth';
 import { Loader2 } from 'lucide-react';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
+import { isPilotClientMode } from '@/config/pilot';
+import { pilotProfileHref } from '@/lib/constants/pilot-routes';
 
 /**
  * OAuth Callback Loading Page
@@ -30,12 +32,24 @@ export default function OAuthCallbackPage() {
   const hasRedirectedRef = useRef(false);
   
   // Get returnTo from URL params, default from translations
-  const returnTo = searchParams?.get('returnTo') || t('defaultReturnPath');
+  const defaultReturnPath = isPilotClientMode() ? pilotProfileHref() : t('defaultReturnPath');
+  const returnTo = searchParams?.get('returnTo') || defaultReturnPath;
   
   // Validate returnTo to prevent open redirects
   const sanitizedReturnTo = returnTo.startsWith('/meriter/') || returnTo.startsWith('/')
     ? returnTo
-    : t('defaultReturnPath');
+    : defaultReturnPath;
+
+  const finalReturnTo = (() => {
+    if (!isPilotClientMode()) return sanitizedReturnTo;
+    if (sanitizedReturnTo === '/meriter/profile' || sanitizedReturnTo.startsWith('/meriter/profile/')) {
+      return '/profile';
+    }
+    if (sanitizedReturnTo === '/meriter/projects/create' || sanitizedReturnTo === '/meriter/projects/create/') {
+      return '/create';
+    }
+    return sanitizedReturnTo;
+  })();
 
   // Maximum retry attempts (10-15 as per plan)
   const MAX_RETRIES = 12;
@@ -64,10 +78,10 @@ export default function OAuthCallbackPage() {
       hasRedirectedRef.current = true;
       // Authentication successful, redirect to final destination
       if (mountedRef.current) {
-        router.replace(sanitizedReturnTo);
+        router.replace(finalReturnTo);
       }
     }
-  }, [user, userError, router, sanitizedReturnTo]);
+  }, [user, userError, router, finalReturnTo]);
 
   // Retry logic with exponential backoff
   useEffect(() => {

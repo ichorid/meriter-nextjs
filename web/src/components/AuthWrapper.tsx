@@ -6,6 +6,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCaptiveBrowser } from "@/lib/captive-browser";
 import { LoginForm } from "@/components/LoginForm";
 import { LoadingState } from "@/components/atoms/LoadingState";
+import { isPilotClientMode } from "@/config/pilot";
+import { pilotProfileHref } from "@/lib/constants/pilot-routes";
 
 interface AuthWrapperProps {
     children: React.ReactNode;
@@ -38,11 +40,25 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEna
     const { isCaptive: captiveBrowser } = useCaptiveBrowser();
     const redirectAttemptedRef = useRef<{ pathname: string; isAuthenticated: boolean } | null>(null);
 
+    const pilotMode = isPilotClientMode();
+
+    const requiresAuth = (path?: string | null): boolean => {
+        if (!path) return true;
+        if (!pilotMode) return true; // preserve legacy behavior outside pilot
+
+        // In pilot, allow guest browsing; require auth only for user-specific or mutating pages.
+        if (path === "/create") return true;
+        if (path === "/profile" || path.startsWith("/profile/")) return true;
+        if (path === "/meriter/login" || path.startsWith("/meriter/login/")) return true;
+
+        return false;
+    };
+
     // If authenticated and on login page, redirect to home
     // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
     // Use ref to prevent multiple redirect attempts by tracking both pathname AND isAuthenticated state
     useEffect(() => {
-        const targetPath = "/meriter/profile";
+        const targetPath = pilotProfileHref();
 
         // Only redirect if authenticated and on login page
         if (isAuthenticated && pathname === "/meriter/login") {
@@ -91,7 +107,7 @@ function AuthWrapperComponent({ children, enabledProviders, authnEnabled, smsEna
     }
 
     // If not authenticated, show login page (regardless of route, unless it's a public API)
-    if (!isAuthenticated && !pathname?.startsWith("/api")) {
+    if (!isAuthenticated && !pathname?.startsWith("/api") && requiresAuth(pathname)) {
         return (
             <div className="min-h-screen bg-base-100 px-4 py-8 flex items-center justify-between flex-col min-h-screen">
                 <LoginForm

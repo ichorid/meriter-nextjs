@@ -894,9 +894,13 @@ export class AuthController {
    * POST /api/v1/auth/sms/verify
    */
   @Post('sms/verify')
-  async verifySmsOtp(@Body() body: { phoneNumber: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+  async verifySmsOtp(
+    @Body() body: { phoneNumber: string; otpCode: string; rememberMe?: boolean },
+    @Req() req: any,
+    @Res() res: any,
+  ) {
     try {
-      const { phoneNumber, otpCode } = body;
+      const { phoneNumber, otpCode, rememberMe } = body;
 
       if (!phoneNumber || !otpCode) {
         throw new Error('Phone number and OTP code are required');
@@ -928,7 +932,9 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req, {
+        rememberMe: rememberMe === true,
+      });
 
       this.logger.log(`SMS authentication successful for ${phoneNumber}, isNewUser: ${result.isNewUser}`);
 
@@ -960,7 +966,10 @@ export class AuthController {
   ) {
     const appUrl = this.configService.get('app')?.url ?? 'http://localhost';
     const loginUrl = `${appUrl}/meriter/login?error=link_expired`;
-    const profileUrl = `${appUrl}/meriter/profile`;
+    const pilotMode =
+      (this.configService.get('pilot', { infer: true }) as { mode?: boolean } | undefined)?.mode ??
+      false;
+    const profileUrl = pilotMode ? `${appUrl}/profile` : `${appUrl}/meriter/profile`;
 
     if (this.isMagicLinkRedeemRateLimited(req)) {
       this.logger.warn('Magic link redeem rate limit exceeded');
@@ -1108,9 +1117,13 @@ export class AuthController {
   }
 
   @Post('email/verify')
-  async verifyEmailOtp(@Body() body: { email: string; otpCode: string }, @Req() req: any, @Res() res: any) {
+  async verifyEmailOtp(
+    @Body() body: { email: string; otpCode: string; rememberMe?: boolean },
+    @Req() req: any,
+    @Res() res: any,
+  ) {
     try {
-      const { email, otpCode } = body;
+      const { email, otpCode, rememberMe } = body;
       if (!email || !otpCode) throw new Error('Email and Code are required');
 
       const enabled = this.configService.get('email')?.enabled ?? false;
@@ -1129,7 +1142,9 @@ export class AuthController {
       const isProduction = nodeEnv === 'production' || isSecure;
 
       this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req, {
+        rememberMe: rememberMe === true,
+      });
 
       return res.json({
         success: true,

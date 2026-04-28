@@ -9,6 +9,7 @@ import { extractErrorMessage } from '@/shared/lib/utils/error-utils';
 import { trpc, getTrpcClient } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils/auth-errors';
 import { isNonRetryableTrpcQueryError } from '@/lib/utils/trpc-query-errors';
+import { redirectToLogin } from '@/lib/utils/auth';
 
 // Global error handler for toast notifications
 // This will be set after QueryProvider mounts
@@ -19,9 +20,14 @@ export function setGlobalToastHandler(handler: (message: string, type: 'error' |
 }
 
 function handleQueryError(error: any, isMutation = false) {
-  // Don't show toast for 401 errors - they are handled in AuthContext
   if (isUnauthorizedError(error)) {
-    return; // Don't show toast for 401 errors - they're expected when not authenticated
+    // Queries: 401 is expected for guests (especially in pilot), avoid noise.
+    // Mutations: treat as an auth-required action → send user to login.
+    if (isMutation && typeof window !== 'undefined') {
+      const returnTo = `${window.location.pathname}${window.location.search || ''}`;
+      redirectToLogin(returnTo);
+    }
+    return;
   }
 
   // Extract error message

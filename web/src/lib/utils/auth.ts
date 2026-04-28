@@ -210,13 +210,22 @@ export function redirectToLogin(returnTo?: string): void {
 /**
  * Handles authentication redirect after successful login
  * Uses hard redirect to ensure cookies are properly set before next requests
- * Always redirects to /meriter/profile if no returnTo is specified
+ * Always redirects to profile if no returnTo is specified
  */
-export function handleAuthRedirect(returnTo?: string | null, fallbackUrl: string = '/meriter/profile'): void {
+export function handleAuthRedirect(
+  returnTo?: string | null,
+  fallbackUrl: string = '/meriter/profile',
+): void {
   if (typeof window === 'undefined') return;
 
-  // Always use fallbackUrl (/meriter/profile) if returnTo is not specified or is login page
-  const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : fallbackUrl;
+  // In pilot mode, the profile hub is `/profile` (not `/meriter/profile`).
+  // Keep backward compatibility for non-pilot builds by using the existing default.
+   
+  const { pilotProfileHref } = require('@/lib/constants/pilot-routes') as typeof import('@/lib/constants/pilot-routes');
+  const computedFallbackUrl = pilotProfileHref() || fallbackUrl;
+
+  // Always use fallbackUrl if returnTo is not specified or is login page
+  const redirectUrl = returnTo && returnTo !== '/meriter/login' ? returnTo : computedFallbackUrl;
   window.location.href = redirectUrl;
 }
 

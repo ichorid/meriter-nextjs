@@ -264,7 +264,8 @@ export class CookieManager {
     jwtToken: string,
     cookieDomain?: string | undefined,
     isProduction?: boolean,
-    request?: any
+    request?: any,
+    options?: { rememberMe?: boolean }
   ): void {
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
     // Prefer host-only cookies for reliability.
@@ -290,15 +291,25 @@ export class CookieManager {
     const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
     const secure = shouldForceSecure ? true : (isSecure || production);
     
+    const pilotMode =
+      (this.configService.get('pilot', { infer: true }) as { mode?: boolean } | undefined)?.mode ??
+      false;
+    const rememberMe = options?.rememberMe === true;
+
     const cookieOptions: any = {
       httpOnly: true,
       secure,
       // For localhost in dev, use 'lax' (sameSite='none' requires secure=true in modern browsers)
       // 'lax' works fine for same-origin requests (Next.js rewrites proxy to same origin)
       sameSite,
-      maxAge: 365 * 24 * 60 * 60 * 1000, // 1 year
       path: '/',
     };
+    
+    // In the Multi-Obraz pilot, \"remember me\" is explicit: without it we prefer a session cookie.
+    // For non-pilot builds, keep the existing default (persistent cookie) for backward compatibility.
+    if (!pilotMode || rememberMe) {
+      cookieOptions.maxAge = 365 * 24 * 60 * 60 * 1000; // 1 year
+    }
 
     this.logger.debug(
       `[COOKIE-DEBUG] Setting JWT cookie: domain=${normalizedConfiguredDomain || 'none (host-only)'}, secure=${secure}, sameSite=${sameSite}, requestHost=${requestHost || 'none'}, isProduction=${production}, tokenLength=${jwtToken.length}`

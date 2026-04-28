@@ -16,6 +16,13 @@ export function middleware(request: NextRequest) {
   }
 
   if (pilotRoutesEnabled()) {
+    // Prevent falling into the full Meriter chrome in pilot builds.
+    if (path === '/meriter/profile' || path.startsWith('/meriter/profile/')) {
+      return NextResponse.redirect(new URL('/profile', request.url));
+    }
+    if (path === '/meriter/projects/create' || path === '/meriter/projects/create/') {
+      return NextResponse.redirect(new URL('/create', request.url));
+    }
     if (path === '/pilot/multi-obraz' || path === '/pilot/multi-obraz/') {
       return NextResponse.redirect(new URL('/', request.url));
     }
@@ -28,5 +35,13 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/create', '/pilot/multi-obraz', '/pilot/multi-obraz/:path*'],
+  matcher: [
+    '/create',
+    '/profile',
+    '/meriter/profile',
+    '/meriter/profile/:path*',
+    '/meriter/projects/create',
+    '/pilot/multi-obraz',
+    '/pilot/multi-obraz/:path*',
+  ],
 };
