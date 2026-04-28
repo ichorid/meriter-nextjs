@@ -756,6 +756,7 @@ export class CommunityService {
     const updateData: any = {
       updatedAt: new Date(),
     };
+    const unsetData: Record<string, 1> = {};
 
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.description !== undefined) updateData.description = dto.description;
@@ -777,8 +778,6 @@ export class CommunityService {
     if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
     if (dto.futureVisionTags !== undefined) updateData.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) updateData.futureVisionCover = dto.futureVisionCover;
-
-    const unsetData: Record<string, 1> = {};
     if (dto.parentCommunityId === null) {
       unsetData.parentCommunityId = 1;
       if (dto.isPersonalProject === undefined) {
