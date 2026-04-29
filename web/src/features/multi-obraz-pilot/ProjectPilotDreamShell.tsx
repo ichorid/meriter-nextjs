@@ -71,12 +71,15 @@ export function ProjectPilotDreamShell({
   const dailyQuota = stats?.quota?.dailyQuota ?? 10;
   const walletBalance = stats?.walletBalance ?? 0;
   const maxAvailable = Math.max(0, quotaRemaining + walletBalance);
+  const supportIsOwnDream = project.founderUserId === currentUserId;
+  const quotaRemainingForSupport = supportIsOwnDream ? 0 : quotaRemaining;
+  const maxAvailableForSupport = Math.max(0, quotaRemainingForSupport + walletBalance);
 
   const clampAmount = (raw: number) => {
     if (!Number.isFinite(raw)) return 1;
     const n = Math.floor(raw);
     const min = 1;
-    const max = Math.max(1, maxAvailable);
+    const max = Math.max(1, maxAvailableForSupport);
     return Math.min(max, Math.max(min, n));
   };
 
@@ -106,7 +109,7 @@ export function ProjectPilotDreamShell({
   useEffect(() => {
     if (!supportOpen) return;
     setSupportAmountClamped(supportAmount || 1);
-  }, [supportOpen, maxAvailable]);
+  }, [supportOpen, maxAvailableForSupport]);
 
   useEffect(() => {
     trackPilotProductEvent('pilot_dream_viewed', { projectId, pilotContext: 'multi-obraz' });
@@ -404,14 +407,14 @@ export function ProjectPilotDreamShell({
 
             {stats ? (
               <div className="flex gap-2">
-                {quotaRemaining > 0 ? (
+                {quotaRemainingForSupport > 0 ? (
                   <div className="flex-[1] space-y-1">
                     <div className="text-xs font-medium text-[#94a3b8]">{t('quotaLabel')}</div>
                     <div className="relative h-3 overflow-hidden rounded-full bg-[#0f172a] ring-1 ring-[#334155]">
                       {(() => {
                         const amt = getAmountFromInput(supportAmountInput);
-                        const usedQuota = Math.min(amt, quotaRemaining);
-                        const fillPercent = Math.min(100, (usedQuota / Math.max(1, quotaRemaining)) * 100);
+                        const usedQuota = Math.min(amt, quotaRemainingForSupport);
+                        const fillPercent = Math.min(100, (usedQuota / Math.max(1, quotaRemainingForSupport)) * 100);
                         return fillPercent > 0 ? (
                           <div
                             className="absolute inset-y-0 left-0 bg-[#A855F7]"
@@ -421,18 +424,18 @@ export function ProjectPilotDreamShell({
                       })()}
                     </div>
                     <div className="text-[11px] tabular-nums text-[#94a3b8]">
-                      {Math.min(getAmountFromInput(supportAmountInput), quotaRemaining)}/{quotaRemaining}
+                      {Math.min(getAmountFromInput(supportAmountInput), quotaRemainingForSupport)}/{quotaRemainingForSupport}
                     </div>
                   </div>
                 ) : null}
 
                 {walletBalance > 0 ? (
-                  <div className={quotaRemaining > 0 ? 'flex-[3] space-y-1' : 'flex-1 space-y-1'}>
+                  <div className={quotaRemainingForSupport > 0 ? 'flex-[3] space-y-1' : 'flex-1 space-y-1'}>
                     <div className="text-xs font-medium text-[#94a3b8]">{t('walletLabel')}</div>
                     <div className="relative h-3 overflow-hidden rounded-full bg-[#0f172a] ring-1 ring-[#334155]">
                       {(() => {
                         const amt = getAmountFromInput(supportAmountInput);
-                        const usedWallet = Math.max(0, amt - quotaRemaining);
+                        const usedWallet = Math.max(0, amt - quotaRemainingForSupport);
                         const fillPercent = Math.min(100, (usedWallet / Math.max(1, walletBalance)) * 100);
                         return fillPercent > 0 ? (
                           <div
@@ -443,7 +446,7 @@ export function ProjectPilotDreamShell({
                       })()}
                     </div>
                     <div className="text-[11px] tabular-nums text-[#94a3b8]">
-                      {Math.max(0, getAmountFromInput(supportAmountInput) - quotaRemaining)}/{walletBalance}
+                      {Math.max(0, getAmountFromInput(supportAmountInput) - quotaRemainingForSupport)}/{walletBalance}
                     </div>
                   </div>
                 ) : null}
@@ -467,7 +470,7 @@ export function ProjectPilotDreamShell({
                   type="text"
                   inputMode="numeric"
                   min={1}
-                  max={Math.max(1, maxAvailable)}
+                  max={Math.max(1, maxAvailableForSupport)}
                   value={supportAmountInput}
                   onChange={(e) => setSupportAmountFromInput(e.target.value)}
                   onBlur={() => {
@@ -483,7 +486,7 @@ export function ProjectPilotDreamShell({
                 onClick={() => setSupportAmountClamped(getAmountFromInput(supportAmountInput) + 1)}
                 disabled={
                   upvoteDream.isPending ||
-                  getAmountFromInput(supportAmountInput) >= Math.max(1, maxAvailable)
+                  getAmountFromInput(supportAmountInput) >= Math.max(1, maxAvailableForSupport)
                 }
                 aria-label={t('increase')}
               >
@@ -493,7 +496,7 @@ export function ProjectPilotDreamShell({
 
             {stats ? (
               <div className="pt-1 text-xs text-[#94a3b8]">
-                {t('supportAvailable', { quota: quotaRemaining, wallet: walletBalance })}
+                {t('supportAvailable', { quota: quotaRemainingForSupport, wallet: walletBalance })}
               </div>
             ) : null}
           </div>
@@ -528,7 +531,7 @@ export function ProjectPilotDreamShell({
                   },
                 );
               }}
-              disabled={upvoteDream.isPending || maxAvailable <= 0}
+              disabled={upvoteDream.isPending || maxAvailableForSupport <= 0}
             >
               {t('supportSubmit')}
             </Button>

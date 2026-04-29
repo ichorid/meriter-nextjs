@@ -46,6 +46,7 @@ export function PilotMultiObrazHomeClient() {
 
   const [supportOpen, setSupportOpen] = React.useState(false);
   const [supportDreamId, setSupportDreamId] = React.useState<string | null>(null);
+  const [supportIsOwnDream, setSupportIsOwnDream] = React.useState(false);
   const [supportAmount, setSupportAmount] = React.useState<number>(1);
   const [supportAmountInput, setSupportAmountInput] = React.useState<string>('1');
 
@@ -53,14 +54,16 @@ export function PilotMultiObrazHomeClient() {
   const [loreText, setLoreText] = React.useState<string | null>(null);
   const [loreLoading, setLoreLoading] = React.useState(false);
 
-  const openSupport = (dreamId: string) => {
+  const openSupport = (dreamId: string, isOwn: boolean) => {
     setSupportDreamId(dreamId);
+    setSupportIsOwnDream(isOwn);
     setSupportAmount(1);
     setSupportAmountInput('1');
     setSupportOpen(true);
   };
 
-  const quotaRemaining = stats?.quota?.remaining ?? 0;
+  const quotaRemainingRaw = stats?.quota?.remaining ?? 0;
+  const quotaRemaining = supportIsOwnDream ? 0 : quotaRemainingRaw;
   const dailyQuota = stats?.quota?.dailyQuota ?? 10;
   const walletBalance = stats?.walletBalance ?? 0;
   const maxAvailable = Math.max(0, quotaRemaining + walletBalance);
@@ -230,7 +233,7 @@ export function PilotMultiObrazHomeClient() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              openSupport(row.project.id);
+                              openSupport(row.project.id, Boolean(user?.id && row.project.founderUserId === user.id));
                             }}
                             disabled={upvoteDream.isPending}
                             className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"

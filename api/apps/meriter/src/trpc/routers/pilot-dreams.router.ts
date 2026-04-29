@@ -136,12 +136,10 @@ export const pilotDreamsRouter = router({
       if (dream.projectStatus && dream.projectStatus !== 'active') {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечта должна быть активной' });
       }
-      if (dream.founderUserId && dream.founderUserId === ctx.user.id) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нельзя голосовать за свою мечту' });
-      }
+      const isOwnDream = Boolean(dream.founderUserId && dream.founderUserId === ctx.user.id);
 
       const requested = Math.max(1, Math.floor(input.amount ?? 1));
-      const remainingQuota = await getPilotGlobalRemainingQuota(ctx, 10);
+      const remainingQuota = isOwnDream ? 0 : await getPilotGlobalRemainingQuota(ctx, 10);
       const quotaAmount = Math.min(requested, remainingQuota);
       const walletAmount = requested - quotaAmount;
 
