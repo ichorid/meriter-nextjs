@@ -13,9 +13,9 @@ import { usePilotPendingJoinRequests, usePilotUserDreams } from '@/hooks/api/use
 import { isPilotDreamProject } from '@/config/pilot';
 import { pilotCreateHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
-import { WalletQuotaBlock } from '@/components/molecules/WalletQuotaBlock/WalletQuotaBlock';
 import { usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
+import { formatMerits } from '@/lib/utils/currency';
 
 const dreamRowClass =
   'block rounded-xl border border-[#334155] bg-[#0f172a] transition-colors hover:border-[#A855F7]/50 hover:bg-[#0f172a]/90';
@@ -113,18 +113,15 @@ export function PilotProfilePageClient() {
           {user.username ? (
             <p className="text-sm font-medium text-[#94a3b8]">@{user.username}</p>
           ) : null}
+          {stats ? (
+            <p className="text-sm font-medium text-white">
+              Заслуги: <span className="tabular-nums">{formatMerits(stats.walletBalance ?? 0)}</span>
+            </p>
+          ) : null}
           {aboutSelf ? (
             <p className="max-w-prose whitespace-pre-wrap text-sm leading-relaxed text-[#94a3b8]">{aboutSelf}</p>
           ) : null}
         </div>
-        {stats ? (
-          <WalletQuotaBlock
-            balance={stats.walletBalance ?? 0}
-            remainingQuota={stats.quota?.remaining ?? 0}
-            dailyQuota={stats.quota?.dailyQuota ?? 10}
-            className="self-start"
-          />
-        ) : null}
       </div>
 
       {dreamsLoading ? (
