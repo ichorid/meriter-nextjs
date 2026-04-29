@@ -231,7 +231,9 @@ function shouldUseProjectInstantAppreciation(
   }
   const pt = publicationDoc.postType;
   if (pt === 'discussion') {
-    return (publicationDoc.status ?? 'active') !== 'closed';
+    // Pilot requirement: only allow appreciation votes for completed discussions.
+    // We treat `status === 'closed'` as the completion marker.
+    return (publicationDoc.status ?? 'active') === 'closed';
   }
   if (pt === 'ticket') {
     return (
@@ -632,6 +634,20 @@ export async function createVoteLogic(
       direction,
       totalMeritVoteAmount,
     );
+
+  // Pilot: weighted merits are allowed only for completed tickets/discussions (instant appreciation path).
+  // Everything else is view-only / text-only in the Multi-Obraz pilot build.
+  if (
+    isPilotDreamCommunity &&
+    input.targetType === 'publication' &&
+    totalMeritVoteAmount > 0 &&
+    !useProjectInstantAppreciation
+  ) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'In Multi-Obraz pilot you can upvote only completed tasks and discussions',
+    });
+  }
 
   if (community.isProject === true && totalMeritVoteAmount > 0) {
     const actor = await ctx.userService.getUserById(ctx.user.id);
