@@ -163,52 +163,49 @@ export function PilotMultiObrazHomeClient() {
                       />
                     ) : null}
                     <div className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="font-semibold text-white">{row.project.name}</div>
-                          {author || published ? (
-                            <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
-                              {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
-                              {author && published ? (
-                                <span className="text-[#64748b]" aria-hidden>
-                                  ·
-                                </span>
-                              ) : null}
-                              {published ? (
-                                <time dateTime={row.project.createdAt}>{published}</time>
-                              ) : null}
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <div className="flex shrink-0 flex-col items-end gap-2">
-                          <div className="flex items-center gap-1 text-sm text-[#cbd5e1]">
-                            <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
-                            <span className="tabular-nums">
-                              {row.project.pilotDreamRating?.score ?? 0}
+                      <div className="font-semibold text-white">{row.project.name}</div>
+                      {author || published ? (
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
+                          {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
+                          {author && published ? (
+                            <span className="text-[#64748b]" aria-hidden>
+                              ·
                             </span>
-                          </div>
-                          {user ? (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="secondary"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                openSupport(row.project.id);
-                              }}
-                              disabled={upvoteDream.isPending}
-                              className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
-                            >
-                              {t('upvoteDream')}
-                            </Button>
+                          ) : null}
+                          {published ? (
+                            <time dateTime={row.project.createdAt}>{published}</time>
                           ) : null}
                         </div>
-                      </div>
+                      ) : null}
                       {row.project.description ? (
                         <p className="mt-2 line-clamp-2 text-sm text-[#94a3b8]">{row.project.description}</p>
                       ) : null}
+                    </div>
+
+                    <div className="flex items-center gap-2 border-t border-[#334155] px-4 py-3">
+                      <div className="w-10" aria-hidden />
+                      <div className="flex flex-1 items-center justify-center gap-1 text-sm text-[#cbd5e1]">
+                        <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
+                        <span className="tabular-nums">{row.project.pilotDreamRating?.score ?? 0}</span>
+                      </div>
+                      <div className="flex w-28 justify-end">
+                        {user ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              openSupport(row.project.id);
+                            }}
+                            disabled={upvoteDream.isPending}
+                            className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
+                          >
+                            {t('upvoteDream')}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </Link>
                 </li>
