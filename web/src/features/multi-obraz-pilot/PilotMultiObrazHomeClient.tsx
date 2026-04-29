@@ -63,7 +63,7 @@ export function PilotMultiObrazHomeClient() {
   const quotaRemaining = stats?.quota?.remaining ?? 0;
   const dailyQuota = stats?.quota?.dailyQuota ?? 10;
   const walletBalance = stats?.walletBalance ?? 0;
-  const maxAvailable = Math.min(100, Math.max(0, quotaRemaining + walletBalance));
+  const maxAvailable = Math.max(0, quotaRemaining + walletBalance);
 
   const clampAmount = (raw: number) => {
     if (!Number.isFinite(raw)) return 1;
@@ -73,6 +73,22 @@ export function PilotMultiObrazHomeClient() {
     return Math.min(max, Math.max(min, n));
   };
 
+  const getAmountFromInput = React.useCallback((): number => {
+    const digitsOnly = (supportAmountInput ?? '').replace(/\D/g, '');
+    if (!digitsOnly) return clampAmount(supportAmount || 1);
+    const parsed = Number.parseInt(digitsOnly, 10);
+    return clampAmount(parsed);
+  }, [supportAmountInput, supportAmount, maxAvailable]);
+
+  const setSupportAmountClamped = React.useCallback(
+    (raw: number) => {
+      const next = clampAmount(raw);
+      setSupportAmount(next);
+      setSupportAmountInput(String(next));
+    },
+    [maxAvailable],
+  );
+
   const setSupportAmountFromInput = (raw: string) => {
     const digitsOnly = raw.replace(/\D/g, '');
     if (!digitsOnly) {
@@ -80,16 +96,12 @@ export function PilotMultiObrazHomeClient() {
       return;
     }
     const parsed = Number.parseInt(digitsOnly, 10);
-    const next = clampAmount(parsed);
-    setSupportAmount(next);
-    setSupportAmountInput(String(next));
+    setSupportAmountClamped(parsed);
   };
 
   React.useEffect(() => {
     if (!supportOpen) return;
-    const next = clampAmount(supportAmount || 1);
-    if (next !== supportAmount) setSupportAmount(next);
-    if (supportAmountInput !== String(next)) setSupportAmountInput(String(next));
+    setSupportAmountClamped(supportAmount || 1);
   }, [supportOpen, maxAvailable]);
 
   const submitSupport = () => {
@@ -246,65 +258,68 @@ export function PilotMultiObrazHomeClient() {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="support-amount">{t('supportAmountLabel')}</Label>
+
+            {stats ? (
+              <div className="flex gap-2">
+                {quotaRemaining > 0 ? (
+                  <div className="flex-[1] space-y-1">
+                    <div className="text-xs font-medium text-[#94a3b8]">{t('quotaLabel')}</div>
+                    <div className="relative h-3 overflow-hidden rounded-full bg-[#0f172a] ring-1 ring-[#334155]">
+                      {(() => {
+                        const amt = getAmountFromInput();
+                        const usedQuota = Math.min(amt, quotaRemaining);
+                        const fillPercent = Math.min(100, (usedQuota / Math.max(1, quotaRemaining)) * 100);
+                        return fillPercent > 0 ? (
+                          <div
+                            className="absolute inset-y-0 left-0 bg-[#A855F7]"
+                            style={{ width: `${fillPercent}%` }}
+                          />
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="text-[11px] tabular-nums text-[#94a3b8]">
+                      {Math.min(getAmountFromInput(), quotaRemaining)}/{quotaRemaining}
+                    </div>
+                  </div>
+                ) : null}
+
+                {walletBalance > 0 ? (
+                  <div className={quotaRemaining > 0 ? 'flex-[3] space-y-1' : 'flex-1 space-y-1'}>
+                    <div className="text-xs font-medium text-[#94a3b8]">{t('walletLabel')}</div>
+                    <div className="relative h-3 overflow-hidden rounded-full bg-[#0f172a] ring-1 ring-[#334155]">
+                      {(() => {
+                        const amt = getAmountFromInput();
+                        const usedWallet = Math.max(0, amt - quotaRemaining);
+                        const fillPercent = Math.min(100, (usedWallet / Math.max(1, walletBalance)) * 100);
+                        return fillPercent > 0 ? (
+                          <div
+                            className="absolute inset-y-0 left-0 bg-[#7C3AED]"
+                            style={{ width: `${fillPercent}%` }}
+                          />
+                        ) : null;
+                      })()}
+                    </div>
+                    <div className="text-[11px] tabular-nums text-[#94a3b8]">
+                      {Math.max(0, getAmountFromInput() - quotaRemaining)}/{walletBalance}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="flex items-stretch gap-2">
               <Button
                 type="button"
                 variant="outline"
                 className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
-                onClick={() => setSupportAmount((v) => clampAmount((v || 1) - 1))}
-                disabled={upvoteDream.isPending || clampAmount(supportAmount) <= 1}
+                onClick={() => setSupportAmountClamped(getAmountFromInput() - 1)}
+                disabled={upvoteDream.isPending || getAmountFromInput() <= 1}
                 aria-label={t('decrease')}
               >
                 <Minus className="h-5 w-5" aria-hidden />
               </Button>
 
               <div className="relative h-12 w-full overflow-hidden rounded-xl border border-[#334155] bg-[#0f172a]">
-                {/* Fill layers inside the input */}
-                {maxAvailable > 0 ? (
-                  <>
-                    {(() => {
-                      const amt = clampAmount(supportAmount);
-                      const totalPct = Math.max(0, Math.min(100, (amt / maxAvailable) * 100));
-                      const quotaPart = Math.min(amt, quotaRemaining);
-                      const quotaPct = Math.max(0, Math.min(100, (quotaPart / maxAvailable) * 100));
-                      const walletPct = Math.max(0, totalPct - quotaPct);
-                      const hasBoth = quotaPart > 0 && amt > quotaPart;
-                      return (
-                        <>
-                          {/* Total fill: vivid purple gradient */}
-                          <div
-                            className="absolute inset-y-0 left-0"
-                            style={{
-                              width: `${totalPct}%`,
-                              background: 'linear-gradient(90deg, #A855F7 0%, #9333EA 100%)',
-                              opacity: 0.55,
-                            }}
-                          />
-                          {/* Wallet part overlay: slightly darker tint (still purple) */}
-                          {walletPct > 0 ? (
-                            <div
-                              className="absolute inset-y-0"
-                              style={{
-                                left: `${quotaPct}%`,
-                                width: `${walletPct}%`,
-                                background: 'linear-gradient(90deg, #7C3AED 0%, #6D28D9 100%)',
-                                opacity: 0.55,
-                              }}
-                            />
-                          ) : null}
-                          {/* Divider when both quota and wallet are used */}
-                          {hasBoth ? (
-                            <div
-                              className="absolute inset-y-2 w-px bg-white/30"
-                              style={{ left: `${quotaPct}%` }}
-                            />
-                          ) : null}
-                        </>
-                      );
-                    })()}
-                  </>
-                ) : null}
-
                 <input
                   id="support-amount"
                   type="text"
@@ -314,9 +329,7 @@ export function PilotMultiObrazHomeClient() {
                   value={supportAmountInput}
                   onChange={(e) => setSupportAmountFromInput(e.target.value)}
                   onBlur={() => {
-                    const next = clampAmount(supportAmount || 1);
-                    setSupportAmount(next);
-                    setSupportAmountInput(String(next));
+                    setSupportAmountClamped(getAmountFromInput());
                   }}
                   className="relative z-10 h-full w-full bg-transparent px-3 text-center text-lg font-semibold tabular-nums text-white outline-none"
                 />
@@ -326,8 +339,8 @@ export function PilotMultiObrazHomeClient() {
                 type="button"
                 variant="outline"
                 className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
-                onClick={() => setSupportAmount((v) => clampAmount((v || 1) + 1))}
-                disabled={upvoteDream.isPending || clampAmount(supportAmount) >= Math.max(1, maxAvailable)}
+                onClick={() => setSupportAmountClamped(getAmountFromInput() + 1)}
+                disabled={upvoteDream.isPending || getAmountFromInput() >= Math.max(1, maxAvailable)}
                 aria-label={t('increase')}
               >
                 <Plus className="h-5 w-5" aria-hidden />
