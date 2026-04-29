@@ -105,24 +105,24 @@ export function PilotMultiObrazHomeClient() {
       <section className="rounded-2xl border border-[#334155] bg-[#1e293b] p-6 sm:p-8">
         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t('heroTitle')}</h1>
         <p className="mt-3 max-w-prose text-sm leading-relaxed text-[#94a3b8] sm:text-base">{t('heroBody')}</p>
-        <div className="mt-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="border-[#334155] text-white hover:bg-white/5"
-            onClick={openLore}
-          >
-            {t('aboutMeriterra')}
-          </Button>
-        </div>
         <div className="mt-6">
           {user ? (
-            <Button
-              asChild
-              className="h-12 min-w-[200px] rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea]"
-            >
-              <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Button
+                asChild
+                className="h-12 min-w-[200px] rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea]"
+              >
+                <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 min-w-[200px] rounded-lg border-[#334155] bg-[#0f172a] px-6 text-base font-semibold text-white hover:bg-[#0f172a]/80"
+                onClick={openLore}
+              >
+                {t('aboutMeriterra')}
+              </Button>
+            </div>
           ) : (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button asChild className="h-12 rounded-lg bg-[#A855F7] px-6 text-white hover:bg-[#9333ea]">
