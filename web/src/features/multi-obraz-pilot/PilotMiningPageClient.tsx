@@ -12,6 +12,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { TappalkaMeritIcon } from '@/features/tappalka/components/TappalkaMeritIcon';
 import { formatMerits } from '@/lib/utils/currency';
+import { invalidatePilotMerits } from '@/hooks/api/pilot-invalidate';
 
 function DreamCard({
   dream,
@@ -161,6 +162,7 @@ export function PilotMiningPageClient() {
 
   const submit = trpc.pilotMining.submitChoice.useMutation({
     onSuccess: (result) => {
+      invalidatePilotMerits(utils);
       void utils.project.getGlobalList.invalidate();
       void progressQuery.refetch();
       void pairQuery.refetch();

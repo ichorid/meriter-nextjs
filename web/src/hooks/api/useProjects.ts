@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { getPilotHubCommunityId, isPilotClientMode } from '@/config/pilot';
+import { invalidatePilotMerits } from './pilot-invalidate';
 
 /** Matches API project.getById payload shape for placeholderData when list already has Community */
 export type ProjectGetByIdPlaceholder = {
@@ -80,6 +81,7 @@ export function usePilotDreamUpvote() {
 
   return trpc.pilotDreams.upvote.useMutation({
     onSuccess: (_data, variables) => {
+      invalidatePilotMerits(utils);
       void utils.project.getGlobalList.invalidate();
       void utils.project.list.invalidate();
       void utils.project.getById.invalidate({ id: variables.dreamId });

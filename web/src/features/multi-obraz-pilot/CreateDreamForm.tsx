@@ -14,6 +14,7 @@ import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trackPilotProductEvent } from '@/features/multi-obraz-pilot/pilot-telemetry';
 import { pilotHomeHref } from '@/lib/constants/pilot-routes';
+import { invalidatePilotMerits } from '@/hooks/api/pilot-invalidate';
 
 export function CreateDreamForm() {
   const t = useTranslations('multiObraz');
@@ -26,6 +27,7 @@ export function CreateDreamForm() {
 
   const create = trpc.project.create.useMutation({
     onSuccess: (project) => {
+      invalidatePilotMerits(utils);
       void utils.project.getGlobalList.invalidate();
       void utils.project.list.invalidate();
       addToast(t('createSuccess'), 'success');
