@@ -73,6 +73,24 @@ export function usePilotUserDreams(userId: string | undefined) {
   );
 }
 
+export function usePilotDreamUpvote() {
+  const utils = trpc.useUtils();
+  const addToast = useToastStore((state) => state.addToast);
+  const t = useTranslations('multiObraz');
+
+  return trpc.pilotDreams.upvote.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.project.getGlobalList.invalidate();
+      void utils.project.list.invalidate();
+      void utils.project.getById.invalidate({ id: variables.dreamId });
+      addToast(t('dreamUpvoted'), 'success');
+    },
+    onError: (error) => {
+      addToast(resolveApiErrorToastMessage(error.message), 'error');
+    },
+  });
+}
+
 export function useGlobalProjectsList(
   params: {
     parentCommunityId?: string;

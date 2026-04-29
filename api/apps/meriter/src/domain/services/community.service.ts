@@ -1086,6 +1086,28 @@ export class CommunityService {
     );
   }
 
+  async incrementPilotDreamRating(args: {
+    dreamId: string;
+    incUpvotes?: number;
+    incMiningWins?: number;
+  }): Promise<void> {
+    const incUpvotes = Math.max(0, Math.floor(args.incUpvotes ?? 0));
+    const incMiningWins = Math.max(0, Math.floor(args.incMiningWins ?? 0));
+    const total = incUpvotes + incMiningWins;
+    if (total <= 0) return;
+
+    await this.communityModel.updateOne(
+      { id: args.dreamId },
+      {
+        $inc: {
+          'pilotDreamRating.upvotes': incUpvotes,
+          'pilotDreamRating.miningWins': incMiningWins,
+          'pilotDreamRating.score': total,
+        },
+      },
+    );
+  }
+
   /**
    * Participant leaves a non-project local community (team/custom). Not allowed for priority hubs or leads.
    * Community-scoped wallet and its transactions are removed (merits lost).

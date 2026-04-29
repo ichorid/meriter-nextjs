@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePilotDreamsFeed } from '@/hooks/api/useProjects';
+import { usePilotDreamUpvote, usePilotDreamsFeed } from '@/hooks/api/useProjects';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { pilotCreateHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
+import { TrendingUp } from 'lucide-react';
 
 function formatPublishedAt(iso: string | undefined, locale: string): string | null {
   if (!iso) return null;
@@ -27,6 +28,7 @@ export function PilotMultiObrazHomeClient() {
   const locale = useLocale();
   const { user } = useAuth();
   const { data, isLoading } = usePilotDreamsFeed({ page: 1, pageSize: 20 });
+  const upvoteDream = usePilotDreamUpvote();
 
   return (
     <div className="space-y-8">
@@ -81,20 +83,49 @@ export function PilotMultiObrazHomeClient() {
                       />
                     ) : null}
                     <div className="p-4">
-                      <div className="font-semibold text-white">{row.project.name}</div>
-                      {author || published ? (
-                        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
-                          {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
-                          {author && published ? (
-                            <span className="text-[#64748b]" aria-hidden>
-                              ·
-                            </span>
-                          ) : null}
-                          {published ? (
-                            <time dateTime={row.project.createdAt}>{published}</time>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-white">{row.project.name}</div>
+                          {author || published ? (
+                            <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
+                              {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
+                              {author && published ? (
+                                <span className="text-[#64748b]" aria-hidden>
+                                  ·
+                                </span>
+                              ) : null}
+                              {published ? (
+                                <time dateTime={row.project.createdAt}>{published}</time>
+                              ) : null}
+                            </div>
                           ) : null}
                         </div>
-                      ) : null}
+
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <div className="flex items-center gap-1 text-sm text-[#cbd5e1]">
+                            <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
+                            <span className="tabular-nums">
+                              {row.project.pilotDreamRating?.score ?? 0}
+                            </span>
+                          </div>
+                          {user ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                upvoteDream.mutate({ dreamId: row.project.id, amount: 1 });
+                              }}
+                              disabled={upvoteDream.isPending}
+                              className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
+                            >
+                              {t('upvoteDream')}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
                       {row.project.description ? (
                         <p className="mt-2 line-clamp-2 text-sm text-[#94a3b8]">{row.project.description}</p>
                       ) : null}
