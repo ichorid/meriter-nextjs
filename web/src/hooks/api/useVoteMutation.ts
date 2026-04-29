@@ -8,6 +8,8 @@ import {
   invalidateFeedWalletQuotaForCommunity,
   invalidateFutureVisionsList,
 } from './invalidate-community-session-caches';
+import { isPilotClientMode } from '@/config/pilot';
+import { invalidatePilotMerits } from './pilot-invalidate';
 
 export interface VoteMutationConfig {
   mutationFn: (variables: any) => Promise<any>;
@@ -109,6 +111,11 @@ export function createVoteMutationConfig(config: VoteMutationConfig) {
         // Invalidate and refetch wallet list first (used by sidebars etc.)
         await utils.wallets.getAll.invalidate();
         await utils.wallets.getAll.refetch();
+
+        // Pilot top bar counters (wallet/quota) come from pilotDreams.getStats, so refresh after any vote.
+        if (isPilotClientMode()) {
+          invalidatePilotMerits(utils);
+        }
 
         // Community feed + tRPC balance/quota (useUserQuota uses userId: 'me')
         if (communityId) {
