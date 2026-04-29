@@ -7,6 +7,7 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
+import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -162,6 +163,35 @@ async function getRemainingQuota(
   const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
   const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
   const used = votesTotal + quotaUsageTotal;
+  return Math.max(0, dailyQuota - used);
+}
+
+function getUtcDayStart(): Date {
+  const d = new Date();
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+async function getPilotGlobalRemainingQuota(ctx: any, dailyQuota: number): Promise<number> {
+  if (!ctx.connection?.db) {
+    throw new Error('Database connection not available');
+  }
+  if (dailyQuota <= 0) return 0;
+  const since = getUtcDayStart();
+  const usedAgg = await ctx.connection.db
+    .collection('quota_usage')
+    .aggregate([
+      {
+        $match: {
+          userId: ctx.user.id,
+          communityId: GLOBAL_COMMUNITY_ID,
+          createdAt: { $gte: since },
+        },
+      },
+      { $group: { _id: null, total: { $sum: '$amountQuota' } } },
+    ])
+    .toArray();
+  const used = usedAgg.length > 0 && usedAgg[0] ? (usedAgg[0].total as number) : 0;
   return Math.max(0, dailyQuota - used);
 }
 
@@ -333,6 +363,13 @@ export async function createVoteLogic(
   const requestedQuotaAmount = input.quotaAmount ?? 0;
   const requestedWalletAmount = input.walletAmount ?? 0;
   const requestedTotalAmount = requestedQuotaAmount + requestedWalletAmount;
+  const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+    mode: false,
+    hubCommunityId: undefined as string | undefined,
+  };
+  const isPilotDreamCommunity =
+    pilot.mode === true &&
+    isMultiObrazPilotDream(community, pilot.hubCommunityId?.trim() || undefined);
 
   // Author top-up: when post author adds merits to their own post (direct top-up to rating),
   // this bypasses commentMode — it is not a vote/comment, just a transfer.
@@ -458,6 +495,14 @@ export async function createVoteLogic(
     });
   }
 
+  // Pilot: disable downvotes entirely (simple future enable via config/flag).
+  if (isPilotDreamCommunity && direction === 'down') {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Downvotes are disabled in Multi-Obraz pilot',
+    });
+  }
+
   // Role-specific and community-specific voting rules should be enforced BEFORE balance/quota checks
   // so we don't mask the real reason with "Insufficient quota/balance" errors.
   const _userRole = await ctx.permissionService.getUserRoleInCommunity(
@@ -516,13 +561,15 @@ export async function createVoteLogic(
 
     let remainingQuota = 0;
     if (canUseQuota) {
-      remainingQuota = await getRemainingQuota(
-        ctx.user.id,
-        communityId,
-        community,
-        ctx.communityService,
-        ctx.connection,
-      );
+      remainingQuota = isPilotDreamCommunity
+        ? await getPilotGlobalRemainingQuota(ctx, 10)
+        : await getRemainingQuota(
+            ctx.user.id,
+            communityId,
+            community,
+            ctx.communityService,
+            ctx.connection,
+          );
     }
 
     quotaAmount = Math.min(requestedTotalAmount, remainingQuota);
@@ -538,13 +585,15 @@ export async function createVoteLogic(
 
   // Check quota availability
   if (quotaAmount > 0) {
-    const remainingQuota = await getRemainingQuota(
-      ctx.user.id,
-      communityId,
-      community,
-      ctx.communityService,
-      ctx.connection,
-    );
+    const remainingQuota = isPilotDreamCommunity
+      ? await getPilotGlobalRemainingQuota(ctx, 10)
+      : await getRemainingQuota(
+          ctx.user.id,
+          communityId,
+          community,
+          ctx.communityService,
+          ctx.connection,
+        );
 
     if (quotaAmount > remainingQuota) {
       throw new TRPCError({
@@ -620,6 +669,17 @@ export async function createVoteLogic(
     input.images,
   );
 
+  // Pilot: quota is global across all dreams and is tracked in quota_usage under GLOBAL_COMMUNITY_ID (UTC-day).
+  if (isPilotDreamCommunity && quotaAmount > 0) {
+    await ctx.quotaUsageService.consumeQuota(
+      ctx.user.id,
+      GLOBAL_COMMUNITY_ID,
+      quotaAmount,
+      'vote',
+      vote.id,
+    );
+  }
+
   // Update publication metrics if voting on a publication.
   // Project instant appreciation: credit beneficiary wallet AND update publication metrics (rating UI / lists).
   if (input.targetType === 'publication') {
@@ -634,9 +694,13 @@ export async function createVoteLogic(
         plural: 'merits',
         genitive: 'merits',
       };
+      const beneficiaryWalletCommunityId = ctx.meritResolverService.getWalletCommunityId(
+        community,
+        'voting',
+      );
       await ctx.walletService.addTransaction(
         beneficiaryId,
-        communityId,
+        beneficiaryWalletCommunityId,
         'credit',
         totalAmount,
         'personal',
