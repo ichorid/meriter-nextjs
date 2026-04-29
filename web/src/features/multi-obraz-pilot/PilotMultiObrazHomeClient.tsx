@@ -241,31 +241,46 @@ export function PilotMultiObrazHomeClient() {
                 {/* Fill layers inside the input */}
                 {maxAvailable > 0 ? (
                   <>
-                    <div
-                      className="absolute inset-y-0 left-0 bg-[#A855F7]/30"
-                      style={{
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, (Math.min(clampAmount(supportAmount), quotaRemaining) / maxAvailable) * 100),
-                        )}%`,
-                      }}
-                    />
-                    <div
-                      className="absolute inset-y-0 bg-white/10"
-                      style={{
-                        left: `${Math.max(
-                          0,
-                          Math.min(100, (Math.min(clampAmount(supportAmount), quotaRemaining) / maxAvailable) * 100),
-                        )}%`,
-                        width: `${Math.max(
-                          0,
-                          Math.min(
-                            100,
-                            (Math.max(0, clampAmount(supportAmount) - quotaRemaining) / maxAvailable) * 100,
-                          ),
-                        )}%`,
-                      }}
-                    />
+                    {(() => {
+                      const amt = clampAmount(supportAmount);
+                      const totalPct = Math.max(0, Math.min(100, (amt / maxAvailable) * 100));
+                      const quotaPart = Math.min(amt, quotaRemaining);
+                      const quotaPct = Math.max(0, Math.min(100, (quotaPart / maxAvailable) * 100));
+                      const walletPct = Math.max(0, totalPct - quotaPct);
+                      const hasBoth = quotaPart > 0 && amt > quotaPart;
+                      return (
+                        <>
+                          {/* Total fill: vivid purple gradient */}
+                          <div
+                            className="absolute inset-y-0 left-0"
+                            style={{
+                              width: `${totalPct}%`,
+                              background: 'linear-gradient(90deg, #A855F7 0%, #9333EA 100%)',
+                              opacity: 0.55,
+                            }}
+                          />
+                          {/* Wallet part overlay: slightly darker tint (still purple) */}
+                          {walletPct > 0 ? (
+                            <div
+                              className="absolute inset-y-0"
+                              style={{
+                                left: `${quotaPct}%`,
+                                width: `${walletPct}%`,
+                                background: 'linear-gradient(90deg, #7C3AED 0%, #6D28D9 100%)',
+                                opacity: 0.55,
+                              }}
+                            />
+                          ) : null}
+                          {/* Divider when both quota and wallet are used */}
+                          {hasBoth ? (
+                            <div
+                              className="absolute inset-y-2 w-px bg-white/30"
+                              style={{ left: `${quotaPct}%` }}
+                            />
+                          ) : null}
+                        </>
+                      );
+                    })()}
                   </>
                 ) : null}
 
