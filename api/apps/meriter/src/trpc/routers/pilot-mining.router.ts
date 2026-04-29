@@ -67,22 +67,20 @@ async function listEligibleDreamIds(ctx: any): Promise<string[]> {
   }
   const hubId = pilot.hubCommunityId?.trim() || undefined;
 
-  // Keep it simple and consistent with the rest of the pilot: only active dreams.
+  // Mining should work on all published pilot dreams (no "active" concept in the pilot UI).
   const docs = await ctx.connection.db
     .collection('communities')
     .find(
       {
         isProject: true,
-        isActive: { $ne: false },
-        projectStatus: { $ne: 'archived' },
         $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
       },
-      { projection: { id: 1, founderUserId: 1, pilotMeta: 1, parentCommunityId: 1 } },
+      { projection: { id: 1, pilotMeta: 1, parentCommunityId: 1 } },
     )
     .toArray();
 
-  return (docs as Array<{ id: string; founderUserId?: string; pilotMeta?: any; parentCommunityId?: string }>)
-    .filter((d) => d.id && d.founderUserId !== ctx.user.id)
+  return (docs as Array<{ id: string; pilotMeta?: any; parentCommunityId?: string }>)
+    .filter((d) => d.id)
     .filter((d) => isMultiObrazPilotDream(d, hubId))
     .map((d) => d.id);
 }
@@ -222,15 +220,6 @@ export const pilotMiningRouter = router({
       const hubId = pilot.hubCommunityId?.trim() || undefined;
       if (!isMultiObrazPilotDream(aDream, hubId) || !isMultiObrazPilotDream(bDream, hubId)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Пара не относится к мечтам пилота «Мультиобраз»' });
-      }
-      if (
-        aDream.projectStatus === 'archived' ||
-        bDream.projectStatus === 'archived'
-      ) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечты должны быть активными' });
-      }
-      if (aDream.founderUserId === ctx.user.id || bDream.founderUserId === ctx.user.id) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нельзя сравнивать свою мечту' });
       }
 
       const key = pairKey(aDreamId, bDreamId);

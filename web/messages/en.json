@@ -3190,7 +3190,7 @@
         "miningBody": "Compare dreams. The winner gets +1 score. Viewing is free.",
         "miningGuestHint": "You can browse pairs without logging in, but you must log in to choose.",
         "miningChoose": "Choose",
-        "miningEmpty": "Nothing to compare yet — need at least two active dreams.",
+        "miningEmpty": "Nothing to compare yet — need at least two dreams.",
         "joinDream": "Join the dream",
         "adminJoinRequestsTitle": "Join requests",
         "adminJoinRequestsEmpty": "No requests yet.",
