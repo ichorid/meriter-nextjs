@@ -16,6 +16,24 @@ export function middleware(request: NextRequest) {
   }
 
   if (pilotRoutesEnabled()) {
+    // Pilot hard guard: do not allow falling into the full Meriter UI.
+    // Whitelist only routes that are intentionally reused by the pilot shell.
+    if (path.startsWith('/meriter/')) {
+      const allow =
+        path === '/meriter/login' ||
+        path.startsWith('/meriter/login/') ||
+        path === '/meriter/auth/callback' ||
+        path.startsWith('/meriter/auth/callback/') ||
+        path === '/meriter/about' ||
+        path.startsWith('/meriter/about/') ||
+        path === '/meriter/projects' ||
+        path.startsWith('/meriter/projects/');
+
+      if (!allow) {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    }
+
     // Prevent falling into the full Meriter chrome in pilot builds.
     if (path === '/meriter/profile' || path.startsWith('/meriter/profile/')) {
       return NextResponse.redirect(new URL('/profile', request.url));
@@ -38,9 +56,11 @@ export const config = {
   matcher: [
     '/create',
     '/profile',
+    '/mining',
     '/meriter/profile',
     '/meriter/profile/:path*',
     '/meriter/projects/create',
+    '/meriter/:path*',
     '/pilot/multi-obraz',
     '/pilot/multi-obraz/:path*',
   ],
