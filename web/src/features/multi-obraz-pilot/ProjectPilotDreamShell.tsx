@@ -152,6 +152,7 @@ export function ProjectPilotDreamShell({
                 layout="inline"
                 className="max-w-full"
                 entityKind="project"
+                ctaOpenOverride={t('joinDream')}
               />
             ) : null}
           </div>

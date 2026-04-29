@@ -3,12 +3,24 @@
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePilotDreamUpvote, usePilotDreamsFeed } from '@/hooks/api/useProjects';
+import { usePilotDreamUpvote, usePilotDreamsFeed, usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { pilotCreateHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
 import { TrendingUp } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
+import { Input } from '@/components/ui/shadcn/input';
+import { Label } from '@/components/ui/shadcn/label';
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
 
 function formatPublishedAt(iso: string | undefined, locale: string): string | null {
   if (!iso) return null;
@@ -29,12 +41,66 @@ export function PilotMultiObrazHomeClient() {
   const { user } = useAuth();
   const { data, isLoading } = usePilotDreamsFeed({ page: 1, pageSize: 20 });
   const upvoteDream = usePilotDreamUpvote();
+  const { data: stats } = usePilotMeritsStats();
+
+  const [supportOpen, setSupportOpen] = React.useState(false);
+  const [supportDreamId, setSupportDreamId] = React.useState<string | null>(null);
+  const [supportAmount, setSupportAmount] = React.useState<number>(1);
+
+  const [loreOpen, setLoreOpen] = React.useState(false);
+  const [loreText, setLoreText] = React.useState<string | null>(null);
+  const [loreLoading, setLoreLoading] = React.useState(false);
+
+  const openSupport = (dreamId: string) => {
+    setSupportDreamId(dreamId);
+    setSupportAmount(1);
+    setSupportOpen(true);
+  };
+
+  const submitSupport = () => {
+    if (!supportDreamId) return;
+    const amt = Math.max(1, Math.min(100, Math.floor(supportAmount || 1)));
+    upvoteDream.mutate(
+      { dreamId: supportDreamId, amount: amt },
+      {
+        onSuccess: () => {
+          setSupportOpen(false);
+          setSupportDreamId(null);
+        },
+      },
+    );
+  };
+
+  const openLore = async () => {
+    setLoreOpen(true);
+    if (loreText != null || loreLoading) return;
+    setLoreLoading(true);
+    try {
+      const res = await fetch('/api/pilot/lore');
+      const txt = await res.text();
+      setLoreText(txt);
+    } catch {
+      setLoreText(t('loreLoadFailed'));
+    } finally {
+      setLoreLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-8">
       <section className="rounded-2xl border border-[#334155] bg-[#1e293b] p-6 sm:p-8">
         <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t('heroTitle')}</h1>
         <p className="mt-3 max-w-prose text-sm leading-relaxed text-[#94a3b8] sm:text-base">{t('heroBody')}</p>
+        <div className="mt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="border-[#334155] text-white hover:bg-white/5"
+            onClick={openLore}
+          >
+            {t('aboutMeriterra')}
+          </Button>
+        </div>
         <div className="mt-6">
           {user ? (
             <Button
@@ -116,7 +182,7 @@ export function PilotMultiObrazHomeClient() {
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                upvoteDream.mutate({ dreamId: row.project.id, amount: 1 });
+                                openSupport(row.project.id);
                               }}
                               disabled={upvoteDream.isPending}
                               className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
@@ -137,6 +203,73 @@ export function PilotMultiObrazHomeClient() {
           </ul>
         )}
       </section>
+
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent className="border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+          <DialogHeader>
+            <DialogTitle>{t('supportDialogTitle')}</DialogTitle>
+            <DialogDescription className="text-[#94a3b8]">
+              {t('supportDialogBody')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="support-amount">{t('supportAmountLabel')}</Label>
+            <Input
+              id="support-amount"
+              type="number"
+              min={1}
+              max={100}
+              value={supportAmount}
+              onChange={(e) => setSupportAmount(Number(e.target.value))}
+              className="border-[#334155] bg-[#0f172a] text-white"
+            />
+            {stats ? (
+              <p className="text-xs text-[#94a3b8]">
+                {t('supportAvailable', {
+                  quota: stats.quota?.remaining ?? 0,
+                  wallet: stats.walletBalance ?? 0,
+                })}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#334155] text-white"
+              onClick={() => setSupportOpen(false)}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#A855F7] text-white hover:bg-[#9333ea]"
+              onClick={submitSupport}
+              disabled={!supportDreamId || upvoteDream.isPending}
+            >
+              {t('supportSubmit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={loreOpen} onOpenChange={setLoreOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+          <DialogHeader>
+            <DialogTitle>{t('aboutMeriterra')}</DialogTitle>
+            <DialogDescription className="text-[#94a3b8]">
+              {t('loreSubtitle')}
+            </DialogDescription>
+          </DialogHeader>
+          {loreLoading ? (
+            <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
+          ) : (
+            <article className="prose prose-invert max-w-none prose-p:text-[#cbd5e1] prose-strong:text-white prose-headings:text-white">
+              <ReactMarkdown>{loreText ?? ''}</ReactMarkdown>
+            </article>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

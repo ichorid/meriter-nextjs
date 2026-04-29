@@ -141,6 +141,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
         meInProjectMembers?.role === 'lead' ||
         meInProjectMembers?.role === 'participant'),
   );
+  const isSuperadmin = user?.globalRole === 'superadmin';
   const isArchived = status === 'archived';
 
   if (isPilotClientMode()) {
@@ -163,8 +164,8 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
         projectId={projectId}
         project={project}
         currentUserId={user?.id ?? ''}
-        isMember={isMember}
-        canModerateTickets={canModerateTickets}
+        isMember={isMember || isSuperadmin}
+        canModerateTickets={canModerateTickets || isSuperadmin}
         readOnly={isArchived}
         canEditDream={Boolean(!isArchived && (isLead || user?.globalRole === 'superadmin'))}
       />

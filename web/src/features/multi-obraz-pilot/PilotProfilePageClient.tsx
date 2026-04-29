@@ -9,10 +9,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { routes } from '@/lib/constants/routes';
 import { Button } from '@/components/ui/shadcn/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
-import { usePilotUserDreams } from '@/hooks/api/useProjects';
+import { usePilotPendingJoinRequests, usePilotUserDreams } from '@/hooks/api/useProjects';
 import { isPilotDreamProject } from '@/config/pilot';
 import { pilotCreateHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
+import { WalletQuotaBlock } from '@/components/molecules/WalletQuotaBlock/WalletQuotaBlock';
+import { usePilotMeritsStats } from '@/hooks/api/useProjects';
+import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
 
 const dreamRowClass =
   'block rounded-xl border border-[#334155] bg-[#0f172a] transition-colors hover:border-[#A855F7]/50 hover:bg-[#0f172a]/90';
@@ -47,6 +50,11 @@ export function PilotProfilePageClient() {
   const { user, isLoading } = useAuth();
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
+  const { data: stats } = usePilotMeritsStats();
+  const isSuperadmin = user?.globalRole === 'superadmin';
+  const { data: pendingRequests } = usePilotPendingJoinRequests(Boolean(isSuperadmin));
+  const approve = useApproveTeamRequest();
+  const reject = useRejectTeamRequest();
 
   const { data: dreamsPayload, isLoading: dreamsLoading } = usePilotUserDreams(user?.id);
 
@@ -109,12 +117,78 @@ export function PilotProfilePageClient() {
             <p className="max-w-prose whitespace-pre-wrap text-sm leading-relaxed text-[#94a3b8]">{aboutSelf}</p>
           ) : null}
         </div>
+        {stats ? (
+          <WalletQuotaBlock
+            balance={stats.walletBalance ?? 0}
+            remainingQuota={stats.quota?.remaining ?? 0}
+            dailyQuota={stats.quota?.dailyQuota ?? 10}
+            className="self-start"
+          />
+        ) : null}
       </div>
 
       {dreamsLoading ? (
         <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
       ) : (
         <>
+          {isSuperadmin ? (
+            <section aria-labelledby="pilot-profile-join-requests" className="space-y-3">
+              <p
+                id="pilot-profile-join-requests"
+                className="text-xs font-medium uppercase tracking-wide text-[#94a3b8]"
+              >
+                {t('adminJoinRequestsTitle')}
+              </p>
+              {!pendingRequests?.length ? (
+                <p className="text-sm text-[#94a3b8]">{t('adminJoinRequestsEmpty')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {pendingRequests.map((r: any) => (
+                    <li key={r.id} className="rounded-xl border border-[#334155] bg-[#0f172a] p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-white">
+                            {t('adminJoinRequestsDream', { id: r.communityId })}
+                          </div>
+                          <div className="mt-1 text-xs text-[#94a3b8]">
+                            {t('adminJoinRequestsUser', { id: r.userId })}
+                          </div>
+                          {r.applicantMessage ? (
+                            <p className="mt-2 whitespace-pre-wrap break-words text-sm text-[#cbd5e1]">
+                              {r.applicantMessage}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-[#334155] text-white"
+                            onClick={() => approve.mutate({ requestId: r.id })}
+                            disabled={approve.isPending || reject.isPending}
+                          >
+                            {t('adminApprove')}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="border-[#334155] text-white hover:bg-red-500/10"
+                            onClick={() => reject.mutate({ requestId: r.id })}
+                            disabled={approve.isPending || reject.isPending}
+                          >
+                            {t('adminReject')}
+                          </Button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
+
           <section aria-labelledby="pilot-profile-my-dreams">
             <p
               id="pilot-profile-my-dreams"

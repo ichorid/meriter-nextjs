@@ -73,8 +73,8 @@ async function listEligibleDreamIds(ctx: any): Promise<string[]> {
     .find(
       {
         isProject: true,
-        isActive: true,
-        projectStatus: 'active',
+        isActive: { $ne: false },
+        projectStatus: { $ne: 'archived' },
         $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
       },
       { projection: { id: 1, founderUserId: 1, pilotMeta: 1, parentCommunityId: 1 } },
@@ -224,8 +224,8 @@ export const pilotMiningRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Пара не относится к мечтам пилота «Мультиобраз»' });
       }
       if (
-        (aDream.projectStatus && aDream.projectStatus !== 'active') ||
-        (bDream.projectStatus && bDream.projectStatus !== 'active')
+        aDream.projectStatus === 'archived' ||
+        bDream.projectStatus === 'archived'
       ) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечты должны быть активными' });
       }

@@ -91,6 +91,23 @@ export function usePilotDreamUpvote() {
   });
 }
 
+export function usePilotMeritsStats() {
+  return trpc.pilotDreams.getStats.useQuery(undefined, {
+    staleTime: STALE_TIME.VERY_SHORT,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+}
+
+export function usePilotPendingJoinRequests(enabled: boolean) {
+  return trpc.pilotDreams.getPendingJoinRequests.useQuery(undefined, {
+    enabled,
+    staleTime: STALE_TIME.VERY_SHORT,
+    refetchOnWindowFocus: false,
+    retry: false,
+  });
+}
+
 export function useGlobalProjectsList(
   params: {
     parentCommunityId?: string;

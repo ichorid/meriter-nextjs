@@ -35,6 +35,8 @@ interface CommunityJoinRequestPanelProps {
   className?: string;
   /** Project pages: copy says "project"; membership also uses community.members / isAdmin. */
   entityKind?: 'community' | 'project';
+  /** Override CTA label (e.g. pilot: "Присоединиться к мечте"). */
+  ctaOpenOverride?: string;
 }
 
 export function CommunityJoinRequestPanel({
@@ -42,6 +44,7 @@ export function CommunityJoinRequestPanel({
   layout,
   className,
   entityKind = 'community',
+  ctaOpenOverride,
 }: CommunityJoinRequestPanelProps) {
   const { user } = useAuth();
   const t = useTranslations('pages.communities.joinCommunity');
@@ -126,7 +129,7 @@ export function CommunityJoinRequestPanel({
   const isProject = entityKind === 'project';
   const heroTitle = isProject ? t('heroTitleProject') : t('heroTitle');
   const heroSubtitle = isProject ? t('heroSubtitleProject') : t('heroSubtitle');
-  const ctaOpen = isProject ? t('ctaOpenProject') : t('ctaOpen');
+  const ctaOpen = ctaOpenOverride ?? (isProject ? t('ctaOpenProject') : t('ctaOpen'));
   const dialogTitle = isProject ? t('dialogTitleProject') : t('dialogTitle');
   const dialogDescription = isProject ? t('dialogDescriptionProject') : t('dialogDescription');
 

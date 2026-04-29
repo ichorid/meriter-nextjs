@@ -33,6 +33,77 @@ async function getPilotGlobalRemainingQuota(ctx: any, dailyQuota: number): Promi
 }
 
 export const pilotDreamsRouter = router({
+  getStats: protectedProcedure.query(async ({ ctx }) => {
+    const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+      mode: false,
+    };
+    if (!pilot.mode) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
+    }
+
+    if (!ctx.connection?.db) {
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database connection not available' });
+    }
+
+    const dailyQuota = 10;
+    const remainingQuota = await getPilotGlobalRemainingQuota(ctx, dailyQuota);
+    const resetAt = (() => {
+      const next = getUtcDayStart();
+      next.setUTCDate(next.getUTCDate() + 1);
+      return next.toISOString();
+    })();
+
+    const wallet = await ctx.walletService.getWallet(ctx.user.id, GLOBAL_COMMUNITY_ID);
+    const walletBalance = wallet ? wallet.getBalance() : 0;
+
+    return { walletBalance, quota: { dailyQuota, remaining: remainingQuota, resetAt } };
+  }),
+
+  getPendingJoinRequests: protectedProcedure.query(async ({ ctx }) => {
+    const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+      mode: false,
+      hubCommunityId: undefined as string | undefined,
+    };
+    if (!pilot.mode) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
+    }
+    const isSuperadmin = ctx.user?.globalRole === 'superadmin';
+    if (!isSuperadmin) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Недостаточно прав' });
+    }
+    if (!ctx.connection?.db) {
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database connection not available' });
+    }
+
+    const hubId = pilot.hubCommunityId?.trim() || undefined;
+    const dreams = await ctx.connection.db
+      .collection('communities')
+      .find(
+        {
+          isProject: true,
+          $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
+        },
+        { projection: { id: 1, pilotMeta: 1, parentCommunityId: 1, name: 1 } },
+      )
+      .toArray();
+
+    const dreamIds = (dreams as Array<{ id: string; pilotMeta?: any; parentCommunityId?: string }>)
+      .filter((d) => isMultiObrazPilotDream(d, hubId))
+      .map((d) => d.id);
+
+    if (dreamIds.length === 0) return [];
+
+    const requests = await ctx.connection.db
+      .collection('team_join_requests')
+      .find(
+        { status: 'pending', communityId: { $in: dreamIds } },
+        { sort: { createdAt: -1 }, limit: 200 },
+      )
+      .toArray();
+
+    return requests;
+  }),
+
   upvote: protectedProcedure
     .input(
       z.object({
