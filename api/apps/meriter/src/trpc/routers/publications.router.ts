@@ -916,7 +916,8 @@ export const publicationsRouter = router({
       // stopLoss >= 0 is enforced by CreatePublicationDtoSchema; no extra check needed
 
       // Get post cost from community settings (default to 1 if not set)
-      const postCost = community.settings?.postCost ?? 1;
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? { mode: false };
+      const postCost = pilot.mode ? 0 : (community.settings?.postCost ?? 1);
       const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
 
       // Calculate payment breakdown and validate if cost > 0
@@ -1888,7 +1889,8 @@ export const publicationsRouter = router({
       }
 
       // Check wallet balance (forward cost always from global)
-      const forwardCost = sourceCommunity.settings?.forwardCost ?? 1;
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? { mode: false };
+      const forwardCost = pilot.mode ? 0 : (sourceCommunity.settings?.forwardCost ?? 1);
       if (forwardCost > 0) {
         const wallet = await ctx.walletService.getWallet(userId, GLOBAL_COMMUNITY_ID);
         const walletBalance = wallet ? wallet.getBalance() : 0;
