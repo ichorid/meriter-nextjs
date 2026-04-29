@@ -8,14 +8,11 @@ import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { pilotCreateHref, pilotHomeHref, pilotProfileHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
-import { WalletQuotaBlock } from '@/components/molecules/WalletQuotaBlock/WalletQuotaBlock';
-import { usePilotMeritsStats } from '@/hooks/api/useProjects';
 
 export function PilotMinimalNav() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const t = useTranslations('multiObraz');
-  const { data: stats } = usePilotMeritsStats();
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#334155] bg-[#020617]/95 backdrop-blur">
@@ -27,14 +24,6 @@ export function PilotMinimalNav() {
           {t('brand')}
         </Link>
         <nav className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-          {user && stats ? (
-            <WalletQuotaBlock
-              balance={stats.walletBalance ?? 0}
-              remainingQuota={stats.quota?.remaining ?? 0}
-              dailyQuota={stats.quota?.dailyQuota ?? 10}
-              className="hidden sm:flex pr-1"
-            />
-          ) : null}
           <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
             <Link href={pilotHomeHref()}>{t('navFeed')}</Link>
           </Button>

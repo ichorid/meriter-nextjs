@@ -17,10 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Minus, Plus } from 'lucide-react';
+import { formatMerits } from '@/lib/utils/currency';
 
 function formatPublishedAt(iso: string | undefined, locale: string): string | null {
   if (!iso) return null;
@@ -57,9 +58,22 @@ export function PilotMultiObrazHomeClient() {
     setSupportOpen(true);
   };
 
+  const quotaRemaining = stats?.quota?.remaining ?? 0;
+  const dailyQuota = stats?.quota?.dailyQuota ?? 10;
+  const walletBalance = stats?.walletBalance ?? 0;
+  const maxAvailable = Math.min(100, Math.max(0, quotaRemaining + walletBalance));
+
+  const clampAmount = (raw: number) => {
+    if (!Number.isFinite(raw)) return 1;
+    const n = Math.floor(raw);
+    const min = 1;
+    const max = Math.max(1, maxAvailable);
+    return Math.min(max, Math.max(min, n));
+  };
+
   const submitSupport = () => {
     if (!supportDreamId) return;
-    const amt = Math.max(1, Math.min(100, Math.floor(supportAmount || 1)));
+    const amt = clampAmount(supportAmount || 1);
     upvoteDream.mutate(
       { dreamId: supportDreamId, amount: amt },
       {
@@ -214,22 +228,78 @@ export function PilotMultiObrazHomeClient() {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="support-amount">{t('supportAmountLabel')}</Label>
-            <Input
-              id="support-amount"
-              type="number"
-              min={1}
-              max={100}
-              value={supportAmount}
-              onChange={(e) => setSupportAmount(Number(e.target.value))}
-              className="border-[#334155] bg-[#0f172a] text-white"
-            />
+            <div className="flex items-stretch gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
+                onClick={() => setSupportAmount((v) => clampAmount((v || 1) - 1))}
+                disabled={upvoteDream.isPending || clampAmount(supportAmount) <= 1}
+                aria-label={t('decrease')}
+              >
+                <Minus className="h-5 w-5" aria-hidden />
+              </Button>
+
+              <input
+                id="support-amount"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={Math.max(1, maxAvailable)}
+                value={supportAmount}
+                onChange={(e) => setSupportAmount(Number(e.target.value))}
+                onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
+                className="h-12 w-full rounded-xl border border-[#334155] bg-[#0f172a] px-3 text-base text-white outline-none focus:border-[#A855F7]/70"
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
+                onClick={() => setSupportAmount((v) => clampAmount((v || 1) + 1))}
+                disabled={upvoteDream.isPending || clampAmount(supportAmount) >= Math.max(1, maxAvailable)}
+                aria-label={t('increase')}
+              >
+                <Plus className="h-5 w-5" aria-hidden />
+              </Button>
+            </div>
+
             {stats ? (
-              <p className="text-xs text-[#94a3b8]">
-                {t('supportAvailable', {
-                  quota: stats.quota?.remaining ?? 0,
-                  wallet: stats.walletBalance ?? 0,
-                })}
-              </p>
+              <div className="space-y-2 pt-2">
+                {quotaRemaining > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+                      <span>{t('quotaLabel')}</span>
+                      <span className="tabular-nums">
+                        {quotaRemaining} / {dailyQuota}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
+                      <div
+                        className="h-full rounded-full bg-[#A855F7]"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, (quotaRemaining / Math.max(1, dailyQuota)) * 100))}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+                    <span>{t('walletLabel')}</span>
+                    <span className="tabular-nums">{formatMerits(walletBalance)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
+                    <div
+                      className="h-full rounded-full bg-white/40"
+                      style={{
+                        width: `${Math.max(0, Math.min(100, (walletBalance / Math.max(1, maxAvailable)) * 100))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             ) : null}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -245,7 +315,7 @@ export function PilotMultiObrazHomeClient() {
               type="button"
               className="bg-[#A855F7] text-white hover:bg-[#9333ea]"
               onClick={submitSupport}
-              disabled={!supportDreamId || upvoteDream.isPending}
+              disabled={!supportDreamId || upvoteDream.isPending || maxAvailable <= 0}
             >
               {t('supportSubmit')}
             </Button>
