@@ -75,12 +75,13 @@ async function listEligibleDreamIds(ctx: any): Promise<string[]> {
         isProject: true,
         $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
       },
-      { projection: { id: 1, pilotMeta: 1, parentCommunityId: 1 } },
+      { projection: { id: 1, isProject: 1, founderUserId: 1, pilotMeta: 1, parentCommunityId: 1 } },
     )
     .toArray();
 
-  return (docs as Array<{ id: string; pilotMeta?: any; parentCommunityId?: string }>)
+  return (docs as Array<{ id: string; isProject?: boolean; founderUserId?: string; pilotMeta?: any; parentCommunityId?: string }>)
     .filter((d) => d.id)
+    .filter((d) => d.founderUserId !== ctx.user.id)
     .filter((d) => isMultiObrazPilotDream(d, hubId))
     .map((d) => d.id);
 }
