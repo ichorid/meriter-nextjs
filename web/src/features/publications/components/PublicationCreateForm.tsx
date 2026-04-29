@@ -50,6 +50,7 @@ import { ContextSwitcher } from '@/components/molecules/ContextSwitcher';
 import config from '@/config';
 import { usePlatformValueRubricatorSections } from '@/shared/hooks/usePlatformValueRubricator';
 import { ValuesFormPickerFields } from '@/shared/components/value-rubricator/ValuesFormPickerFields';
+import { isPilotDreamProject } from '@/config/pilot';
 import {
   usePublishToBirzhaSource,
   useCommunityWalletForSource,
@@ -156,6 +157,9 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const isProject = ENABLE_PROJECT_POSTS && (postType === 'project' || initialData?.isProject || false);
   const isProjectDiscussion = isProjectCommunity && postType === 'discussion';
   const effectiveActingAsCommunityId = isProjectDiscussion ? null : actingAsCommunityId;
+  const isPilotDreamDiscussion = Boolean(
+    postType === 'discussion' && community && isPilotDreamProject(community),
+  );
 
   useEffect(() => {
     if (isProjectDiscussion) setActingAs(null);
@@ -881,7 +885,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             />
           ) : null}
 
-          {isGoodDeedsMarathon && ENABLE_HASHTAGS && (
+          {!isPilotDreamDiscussion && isGoodDeedsMarathon && ENABLE_HASHTAGS && (
             <ValuesFormPickerFields
               decree809Tags={valueRubricatorSections.decree809}
               adminExtrasTags={valueRubricatorSections.adminExtras}
@@ -1271,6 +1275,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               helperText={t('fields.hashtagsHelp')}
             />
           ) : (
+            !isPilotDreamDiscussion ? (
             <ValuesFormPickerFields
               decree809Tags={valueRubricatorSections.decree809}
               adminExtrasTags={valueRubricatorSections.adminExtras}
@@ -1278,6 +1283,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               onChange={setValueTags}
               disabled={isSubmitting}
             />
+            ) : null
           )}
 
           {errors.submit && (
