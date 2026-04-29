@@ -63,7 +63,7 @@ async function listEligibleDreamIds(ctx: any): Promise<string[]> {
     hubCommunityId: undefined as string | undefined,
   };
   if (!pilot.mode) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'Pilot mode is disabled' });
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
   }
   const hubId = pilot.hubCommunityId?.trim() || undefined;
 
@@ -171,7 +171,7 @@ export const pilotMiningRouter = router({
       ctx.communityService.getCommunity(bId),
     ]);
     if (!aDream || !bDream) {
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to load mining dreams' });
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Не удалось загрузить мечты для майнинга' });
     }
 
     return {
@@ -198,10 +198,10 @@ export const pilotMiningRouter = router({
       }
       const { aDreamId, bDreamId, winnerDreamId } = input;
       if (aDreamId === bDreamId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid pair' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Некорректная пара' });
       }
       if (winnerDreamId !== aDreamId && winnerDreamId !== bDreamId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Winner must be one of the pair dreams' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Победитель должен быть одним из двух вариантов' });
       }
 
       const [aDream, bDream] = await Promise.all([
@@ -209,7 +209,7 @@ export const pilotMiningRouter = router({
         ctx.communityService.getCommunity(bDreamId),
       ]);
       if (!aDream || !bDream) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Dream not found' });
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Мечта не найдена' });
       }
 
       const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
@@ -217,20 +217,20 @@ export const pilotMiningRouter = router({
         hubCommunityId: undefined as string | undefined,
       };
       if (!pilot.mode) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Pilot mode is disabled' });
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
       }
       const hubId = pilot.hubCommunityId?.trim() || undefined;
       if (!isMultiObrazPilotDream(aDream, hubId) || !isMultiObrazPilotDream(bDream, hubId)) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Pair is not a pilot dream pair' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Пара не относится к мечтам пилота «Мультиобраз»' });
       }
       if (
         (aDream.projectStatus && aDream.projectStatus !== 'active') ||
         (bDream.projectStatus && bDream.projectStatus !== 'active')
       ) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Dream is not active' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечты должны быть активными' });
       }
       if (aDream.founderUserId === ctx.user.id || bDream.founderUserId === ctx.user.id) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot mine your own dream' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нельзя сравнивать свою мечту' });
       }
 
       const key = pairKey(aDreamId, bDreamId);
@@ -243,7 +243,7 @@ export const pilotMiningRouter = router({
         ],
       });
       if (existing) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Pair already compared in this cycle' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Эта пара уже сравнивалась в текущем цикле' });
       }
 
       const doc: MiningComparisonDoc = {

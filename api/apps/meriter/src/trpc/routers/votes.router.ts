@@ -501,7 +501,7 @@ export async function createVoteLogic(
   if (isPilotDreamCommunity && direction === 'down') {
     throw new TRPCError({
       code: 'BAD_REQUEST',
-      message: 'Downvotes are disabled in Multi-Obraz pilot',
+      message: 'В пилоте «Мультиобраз» минусовать нельзя',
     });
   }
 
@@ -645,7 +645,7 @@ export async function createVoteLogic(
   ) {
     throw new TRPCError({
       code: 'FORBIDDEN',
-      message: 'In Multi-Obraz pilot you can upvote only completed tasks and discussions',
+      message: 'В пилоте «Мультиобраз» можно поддерживать заслугами только выполненные задачи и завершённые обсуждения',
     });
   }
 

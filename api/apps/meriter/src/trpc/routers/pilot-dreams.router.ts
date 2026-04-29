@@ -46,22 +46,22 @@ export const pilotDreamsRouter = router({
         hubCommunityId: undefined as string | undefined,
       };
       if (!pilot.mode) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Pilot mode is disabled' });
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
       }
 
       const dream = await ctx.communityService.getCommunity(input.dreamId);
       if (!dream) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Dream not found' });
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Мечта не найдена' });
       }
       const hubId = pilot.hubCommunityId?.trim() || undefined;
       if (!isMultiObrazPilotDream(dream, hubId)) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Target is not a pilot dream' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Это не мечта пилота «Мультиобраз»' });
       }
       if (dream.projectStatus && dream.projectStatus !== 'active') {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Dream is not active' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечта должна быть активной' });
       }
       if (dream.founderUserId && dream.founderUserId === ctx.user.id) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot upvote your own dream' });
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Нельзя голосовать за свою мечту' });
       }
 
       const requested = Math.max(1, Math.floor(input.amount ?? 1));
@@ -75,7 +75,7 @@ export const pilotDreamsRouter = router({
         if (bal < walletAmount) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
-            message: `Insufficient wallet balance. Available: ${bal}, Requested: ${walletAmount}`,
+            message: `Недостаточно заслуг в кошельке. Доступно: ${bal}, нужно: ${walletAmount}`,
           });
         }
       }
