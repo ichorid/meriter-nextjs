@@ -237,17 +237,50 @@ export function PilotMultiObrazHomeClient() {
                 <Minus className="h-5 w-5" aria-hidden />
               </Button>
 
-              <input
-                id="support-amount"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={Math.max(1, maxAvailable)}
-                value={supportAmount}
-                onChange={(e) => setSupportAmount(Number(e.target.value))}
-                onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
-                className="h-12 w-full rounded-xl border border-[#334155] bg-[#0f172a] px-3 text-base text-white outline-none focus:border-[#A855F7]/70"
-              />
+              <div className="relative h-12 w-full overflow-hidden rounded-xl border border-[#334155] bg-[#0f172a]">
+                {/* Fill layers inside the input */}
+                {maxAvailable > 0 ? (
+                  <>
+                    <div
+                      className="absolute inset-y-0 left-0 bg-[#A855F7]/30"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (Math.min(clampAmount(supportAmount), quotaRemaining) / maxAvailable) * 100),
+                        )}%`,
+                      }}
+                    />
+                    <div
+                      className="absolute inset-y-0 bg-white/10"
+                      style={{
+                        left: `${Math.max(
+                          0,
+                          Math.min(100, (Math.min(clampAmount(supportAmount), quotaRemaining) / maxAvailable) * 100),
+                        )}%`,
+                        width: `${Math.max(
+                          0,
+                          Math.min(
+                            100,
+                            (Math.max(0, clampAmount(supportAmount) - quotaRemaining) / maxAvailable) * 100,
+                          ),
+                        )}%`,
+                      }}
+                    />
+                  </>
+                ) : null}
+
+                <input
+                  id="support-amount"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={Math.max(1, maxAvailable)}
+                  value={supportAmount}
+                  onChange={(e) => setSupportAmount(Number(e.target.value))}
+                  onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
+                  className="relative z-10 h-full w-full bg-transparent px-3 text-center text-lg font-semibold tabular-nums text-white outline-none"
+                />
+              </div>
 
               <Button
                 type="button"
@@ -262,40 +295,8 @@ export function PilotMultiObrazHomeClient() {
             </div>
 
             {stats ? (
-              <div className="space-y-2 pt-2">
-                {quotaRemaining > 0 ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                      <span>{t('quotaLabel')}</span>
-                      <span className="tabular-nums">
-                        {quotaRemaining} / {dailyQuota}
-                      </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
-                      <div
-                        className="h-full rounded-full bg-[#A855F7]"
-                        style={{
-                          width: `${Math.max(0, Math.min(100, (quotaRemaining / Math.max(1, dailyQuota)) * 100))}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between text-xs text-[#94a3b8]">
-                    <span>{t('walletLabel')}</span>
-                    <span className="tabular-nums">{formatMerits(walletBalance)}</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
-                    <div
-                      className="h-full rounded-full bg-white/40"
-                      style={{
-                        width: `${Math.max(0, Math.min(100, (walletBalance / Math.max(1, maxAvailable)) * 100))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
+              <div className="pt-1 text-xs text-[#94a3b8]">
+                {t('supportAvailable', { quota: quotaRemaining, wallet: walletBalance })}
               </div>
             ) : null}
           </div>
