@@ -4,6 +4,13 @@ import { router, protectedProcedure } from '../trpc';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
 
+type DreamListItem = {
+  id: string;
+  pilotMeta?: unknown;
+  parentCommunityId?: string;
+  name?: string;
+};
+
 function getUtcDayStart(): Date {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -77,7 +84,7 @@ export const pilotDreamsRouter = router({
 
     const hubId = pilot.hubCommunityId?.trim() || undefined;
     const dreams = await ctx.connection.db
-      .collection('communities')
+      .collection<DreamListItem>('communities')
       .find(
         {
           isProject: true,
@@ -87,9 +94,7 @@ export const pilotDreamsRouter = router({
       )
       .toArray();
 
-    const dreamIds = (dreams as Array<{ id: string; pilotMeta?: any; parentCommunityId?: string }>)
-      .filter((d) => isMultiObrazPilotDream(d, hubId))
-      .map((d) => d.id);
+    const dreamIds = dreams.filter((d) => isMultiObrazPilotDream(d, hubId)).map((d) => d.id);
 
     if (dreamIds.length === 0) return [];
 

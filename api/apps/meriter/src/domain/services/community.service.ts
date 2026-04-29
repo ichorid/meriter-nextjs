@@ -100,6 +100,8 @@ export interface CreateCommunityDto {
   creatorUserId?: string;
   /** Pilot fork: Multi-Obraz dream marker (server-only create path). */
   pilotMeta?: { kind: 'multi-obraz' };
+  /** Pilot fork: server-controlled dream rating counters. */
+  pilotDreamRating?: { upvotes: number; miningWins: number; score: number };
 }
 
 export interface UpdateCommunityDto {
