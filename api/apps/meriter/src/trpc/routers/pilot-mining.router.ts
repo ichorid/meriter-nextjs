@@ -3,6 +3,7 @@ import { TRPCError } from '@trpc/server';
 import { uid } from 'uid';
 import { router, protectedProcedure } from '../trpc';
 import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 
 type MiningCycleDoc = { id: string; userId: string; createdAt: Date };
 type MiningComparisonDoc = {
@@ -14,6 +15,19 @@ type MiningComparisonDoc = {
   winnerDreamId: string;
   createdAt: Date;
 };
+
+type MiningProgressDoc = {
+  id: string;
+  userId: string;
+  comparisonCount: number;
+  totalComparisons: number;
+  totalRewardsEarned: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const MINING_COMPARISONS_REQUIRED = 10;
+const MINING_USER_REWARD = 1;
 
 function pairKey(a: string, b: string): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
@@ -113,7 +127,39 @@ async function ensureCycleHasRemainingPairs(ctx: any, cycle: MiningCycleDoc, eli
   return cycle;
 }
 
+async function getOrCreateProgress(ctx: any): Promise<MiningProgressDoc> {
+  if (!ctx.connection?.db) {
+    throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database connection not available' });
+  }
+  const col = ctx.connection.db.collection('pilot_mining_progress');
+  const existing = (await col.findOne({ userId: ctx.user.id })) as MiningProgressDoc | null;
+  if (existing) return existing;
+
+  const now = new Date();
+  const doc: MiningProgressDoc = {
+    id: uid(),
+    userId: ctx.user.id,
+    comparisonCount: 0,
+    totalComparisons: 0,
+    totalRewardsEarned: 0,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await col.insertOne(doc);
+  return doc;
+}
+
 export const pilotMiningRouter = router({
+  getProgress: protectedProcedure.query(async ({ ctx }) => {
+    const progress = await getOrCreateProgress(ctx);
+    return {
+      comparisonCount: progress.comparisonCount ?? 0,
+      comparisonsRequired: MINING_COMPARISONS_REQUIRED,
+      totalComparisons: progress.totalComparisons ?? 0,
+      totalRewardsEarned: progress.totalRewardsEarned ?? 0,
+    };
+  }),
+
   getPair: protectedProcedure.query(async ({ ctx }) => {
     if (!ctx.connection?.db) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database connection not available' });
@@ -254,10 +300,54 @@ export const pilotMiningRouter = router({
 
       const updatedWinner = await ctx.communityService.getCommunity(winnerDreamId);
 
+      // User mining progress + reward: every 10 comparisons -> +1 merit to global wallet.
+      const progressCol = ctx.connection.db.collection('pilot_mining_progress');
+      const currentProgress = await getOrCreateProgress(ctx);
+      const nextComparisonCount = Number(currentProgress.comparisonCount ?? 0) + 1;
+      const rewardEarned = nextComparisonCount >= MINING_COMPARISONS_REQUIRED;
+
+      if (rewardEarned) {
+        await progressCol.updateOne(
+          { userId: ctx.user.id },
+          {
+            $set: { comparisonCount: 0, updatedAt: new Date() },
+            $inc: { totalComparisons: 1, totalRewardsEarned: 1 },
+          },
+        );
+
+        const globalCommunity = await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
+        const currency = globalCommunity?.settings?.currencyNames;
+        await ctx.walletService.addTransaction(
+          ctx.user.id,
+          GLOBAL_COMMUNITY_ID,
+          'credit',
+          MINING_USER_REWARD,
+          'personal',
+          'pilot_mining_reward',
+          GLOBAL_COMMUNITY_ID,
+          currency,
+          `Pilot mining reward for ${MINING_COMPARISONS_REQUIRED} comparisons`,
+        );
+      } else {
+        await progressCol.updateOne(
+          { userId: ctx.user.id },
+          {
+            $set: { comparisonCount: nextComparisonCount, updatedAt: new Date() },
+            $inc: { totalComparisons: 1 },
+          },
+        );
+      }
+
       return {
         pairKey: key,
         winnerDreamId,
         winnerRating: updatedWinner?.pilotDreamRating ?? { upvotes: 0, miningWins: 0, score: 0 },
+        rewardEarned,
+        userMeritsEarned: rewardEarned ? MINING_USER_REWARD : 0,
+        progress: {
+          comparisonCount: rewardEarned ? 0 : nextComparisonCount,
+          comparisonsRequired: MINING_COMPARISONS_REQUIRED,
+        },
       };
     }),
 });
