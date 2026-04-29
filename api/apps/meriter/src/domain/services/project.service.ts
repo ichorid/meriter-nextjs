@@ -160,8 +160,13 @@ export class ProjectService {
       typeTag: 'project',
       settings: {
         postCost: 0,
+        // Pilot build: keep creation and comments free (no fixed comment fee exists),
+        // but allow weighted votes where appropriate (completed tickets/discussions).
+        commentMode: 'all',
+        // Quota in this dream should be treated as global in vote logic (see votes router),
+        // but wallet/quota endpoints still rely on dailyEmission in some paths.
+        dailyEmission: 10,
         investingEnabled: false,
-        commentMode: 'neutralOnly',
       },
       isProject: true,
       founderUserId: userId,
@@ -177,17 +182,17 @@ export class ProjectService {
     await this.communityService.updateCommunity(project.id, {
       communityWalletId: wallet.id,
       meritSettings: {
-        dailyQuota: 0,
+        dailyQuota: 10,
         quotaRecipients: ['superadmin', 'lead', 'participant'],
-        canEarn: false,
-        canSpend: false,
-        quotaEnabled: false,
+        canEarn: true,
+        canSpend: true,
+        quotaEnabled: true,
       },
       votingSettings: {
-        spendsMerits: false,
-        awardsMerits: false,
+        spendsMerits: true,
+        awardsMerits: true,
         votingRestriction: 'any',
-        currencySource: 'wallet-only',
+        currencySource: 'quota-and-wallet',
       },
     });
 
