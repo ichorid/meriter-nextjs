@@ -30,6 +30,9 @@ export function PilotMinimalNav() {
           <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
             <Link href={pilotCreateHref()}>{t('navCreate')}</Link>
           </Button>
+          <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
+            <Link href="/mining">{t('navMining')}</Link>
+          </Button>
           {user ? (
             <>
               <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
