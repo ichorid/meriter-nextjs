@@ -175,6 +175,7 @@ export class ProjectService {
       founderSharePercent: 0,
       investorSharePercent: 0,
       pilotMeta: { kind: PILOT_CONTEXT_MULTI_OBRAZ },
+      pilotDreamRating: { upvotes: 0, miningWins: 0, score: 0 },
       ...(cover ? { coverImageUrl: cover } : {}),
     });
 

@@ -388,6 +388,17 @@ export const CommunitySchema = IdentifiableSchema.merge(
   futureVisionCover: z.string().url().optional(),
   /** Fork pilot: marks cooperative project created via Multi-Obraz pilot flow (server-controlled). */
   pilotMeta: PilotDreamMetaSchema.optional(),
+  /** Multi-Obraz pilot: dream rating is an aggregate (dream upvotes + mining wins). */
+  pilotDreamRating: z
+    .object({
+      /** Total number of upvotes for the dream (no downvotes in pilot). */
+      upvotes: z.number().int().min(0).default(0),
+      /** Total points gained from mining wins (+1 per win). */
+      miningWins: z.number().int().min(0).default(0),
+      /** Total dream score shown in feeds (upvotes + miningWins). */
+      score: z.number().int().min(0).default(0),
+    })
+    .optional(),
 });
 
 export const PublicationSchema = IdentifiableSchema.merge(

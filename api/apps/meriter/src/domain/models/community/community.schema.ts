@@ -234,6 +234,11 @@ export interface Community {
   projectInvestments?: ProjectInvestmentEntry[];
   /** Pilot fork marker (Multi-Obraz dreams); not set on ordinary projects. */
   pilotMeta?: PilotDreamMetaShared;
+  /**
+   * Multi-Obraz pilot: dream rating aggregate (dream upvotes + mining wins).
+   * Does not pay out to the author; it only affects ranking/feeds.
+   */
+  pilotDreamRating?: { upvotes: number; miningWins: number; score: number };
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -497,6 +502,16 @@ export class CommunitySchemaClass implements Community {
     required: false,
   })
   pilotMeta?: PilotDreamMetaShared;
+
+  @Prop({
+    type: {
+      upvotes: { type: Number, required: true, default: 0, min: 0 },
+      miningWins: { type: Number, required: true, default: 0, min: 0 },
+      score: { type: Number, required: true, default: 0, min: 0 },
+    },
+    required: false,
+  })
+  pilotDreamRating?: { upvotes: number; miningWins: number; score: number };
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);
