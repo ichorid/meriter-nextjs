@@ -26,6 +26,9 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Label } from '@/components/ui/shadcn/label';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import { Minus, Plus, TrendingUp } from 'lucide-react';
+import { usePilotDreamUpvote, usePilotMeritsStats } from '@/hooks/api/useProjects';
+import { formatMerits } from '@/lib/utils/currency';
 
 export interface ProjectPilotDreamShellProps {
   projectId: string;
@@ -49,15 +52,32 @@ export function ProjectPilotDreamShell({
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
   const addToast = useToastStore((s) => s.addToast);
+  const upvoteDream = usePilotDreamUpvote();
+  const { data: stats } = usePilotMeritsStats();
   const utils = trpc.useUtils();
   const [storyBannerVisible, setStoryBannerVisible] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [supportAmount, setSupportAmount] = useState<number>(1);
   const [editName, setEditName] = useState(project.name);
   const [editDescription, setEditDescription] = useState(project.description ?? '');
   const [editCover, setEditCover] = useState<string | null>(project.coverImageUrl ?? null);
 
   const storageKey = useMemo(() => `pilotDreamStoryDismissed:${projectId}`, [projectId]);
+
+  const quotaRemaining = stats?.quota?.remaining ?? 0;
+  const dailyQuota = stats?.quota?.dailyQuota ?? 10;
+  const walletBalance = stats?.walletBalance ?? 0;
+  const maxAvailable = Math.min(100, Math.max(0, quotaRemaining + walletBalance));
+
+  const clampAmount = (raw: number) => {
+    if (!Number.isFinite(raw)) return 1;
+    const n = Math.floor(raw);
+    const min = 1;
+    const max = Math.max(1, maxAvailable);
+    return Math.min(max, Math.max(min, n));
+  };
 
   useEffect(() => {
     trackPilotProductEvent('pilot_dream_viewed', { projectId, pilotContext: 'multi-obraz' });
@@ -155,6 +175,27 @@ export function ProjectPilotDreamShell({
                 ctaOpenOverride={t('joinDream')}
               />
             ) : null}
+
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-xl border border-[#334155] bg-[#0f172a] px-3 py-1.5 text-sm text-[#cbd5e1]">
+                <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
+                <span className="tabular-nums font-semibold text-white">
+                  {project.pilotDreamRating?.score ?? 0}
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-[#334155] bg-[#0f172a] text-white hover:bg-[#0f172a]/80"
+                onClick={() => {
+                  setSupportAmount(1);
+                  setSupportOpen(true);
+                }}
+              >
+                {t('upvoteDream')}
+              </Button>
+            </div>
           </div>
         </header>
 
@@ -319,6 +360,132 @@ export function ProjectPilotDreamShell({
               }}
             >
               {t('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent className="border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+          <DialogHeader>
+            <DialogTitle>{t('supportDialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="support-amount-dream">{t('supportAmountLabel')}</Label>
+            <div className="flex items-stretch gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
+                onClick={() => setSupportAmount((v) => clampAmount((v || 1) - 1))}
+                disabled={upvoteDream.isPending || clampAmount(supportAmount) <= 1}
+                aria-label={t('decrease')}
+              >
+                <Minus className="h-5 w-5" aria-hidden />
+              </Button>
+              <input
+                id="support-amount-dream"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={Math.max(1, maxAvailable)}
+                value={supportAmount}
+                onChange={(e) => setSupportAmount(Number(e.target.value))}
+                onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
+                className="h-12 w-full rounded-xl border border-[#334155] bg-[#0f172a] px-3 text-base text-white outline-none focus:border-[#A855F7]/70"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-12 shrink-0 rounded-xl border-[#334155] bg-[#0f172a] p-0 text-white"
+                onClick={() => setSupportAmount((v) => clampAmount((v || 1) + 1))}
+                disabled={
+                  upvoteDream.isPending ||
+                  clampAmount(supportAmount) >= Math.max(1, maxAvailable)
+                }
+                aria-label={t('increase')}
+              >
+                <Plus className="h-5 w-5" aria-hidden />
+              </Button>
+            </div>
+
+            {stats ? (
+              <div className="space-y-2 pt-2">
+                {quotaRemaining > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+                      <span>{t('quotaLabel')}</span>
+                      <span className="tabular-nums">
+                        {quotaRemaining} / {dailyQuota}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
+                      <div
+                        className="h-full rounded-full bg-[#A855F7]"
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, (quotaRemaining / Math.max(1, dailyQuota)) * 100),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-[#94a3b8]">
+                    <span>{t('walletLabel')}</span>
+                    <span className="tabular-nums">{formatMerits(walletBalance)}</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#0b1220]">
+                    <div
+                      className="h-full rounded-full bg-white/40"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (walletBalance / Math.max(1, maxAvailable)) * 100),
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-[#334155] text-white"
+              onClick={() => setSupportOpen(false)}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#A855F7] text-white hover:bg-[#9333ea]"
+              onClick={() => {
+                const amt = clampAmount(supportAmount || 1);
+                upvoteDream.mutate(
+                  { dreamId: projectId, amount: amt },
+                  {
+                    onSuccess: () => setSupportOpen(false),
+                    onError: (e) => {
+                      const msg =
+                        e instanceof Error
+                          ? e.message
+                          : typeof (e as any)?.message === 'string'
+                            ? (e as any).message
+                            : '';
+                      addToast(resolveApiErrorToastMessage(msg), 'error');
+                    },
+                  },
+                );
+              }}
+              disabled={upvoteDream.isPending || maxAvailable <= 0}
+            >
+              {t('supportSubmit')}
             </Button>
           </DialogFooter>
         </DialogContent>
