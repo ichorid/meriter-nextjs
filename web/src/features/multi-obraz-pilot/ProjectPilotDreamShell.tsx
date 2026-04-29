@@ -60,6 +60,7 @@ export function ProjectPilotDreamShell({
   const [editOpen, setEditOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
   const [supportAmount, setSupportAmount] = useState<number>(1);
+  const [supportAmountInput, setSupportAmountInput] = useState<string>('1');
   const [editName, setEditName] = useState(project.name);
   const [editDescription, setEditDescription] = useState(project.description ?? '');
   const [editCover, setEditCover] = useState<string | null>(project.coverImageUrl ?? null);
@@ -78,6 +79,25 @@ export function ProjectPilotDreamShell({
     const max = Math.max(1, maxAvailable);
     return Math.min(max, Math.max(min, n));
   };
+
+  const setSupportAmountFromInput = (raw: string) => {
+    const digitsOnly = raw.replace(/\D/g, '');
+    if (!digitsOnly) {
+      setSupportAmountInput('');
+      return;
+    }
+    const parsed = Number.parseInt(digitsOnly, 10);
+    const next = clampAmount(parsed);
+    setSupportAmount(next);
+    setSupportAmountInput(String(next));
+  };
+
+  useEffect(() => {
+    if (!supportOpen) return;
+    const next = clampAmount(supportAmount || 1);
+    if (next !== supportAmount) setSupportAmount(next);
+    if (supportAmountInput !== String(next)) setSupportAmountInput(String(next));
+  }, [supportOpen, maxAvailable]);
 
   useEffect(() => {
     trackPilotProductEvent('pilot_dream_viewed', { projectId, pilotContext: 'multi-obraz' });
@@ -425,13 +445,17 @@ export function ProjectPilotDreamShell({
 
                 <input
                   id="support-amount-dream"
-                  type="number"
+                  type="text"
                   inputMode="numeric"
                   min={1}
                   max={Math.max(1, maxAvailable)}
-                  value={supportAmount}
-                  onChange={(e) => setSupportAmount(Number(e.target.value))}
-                  onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
+                  value={supportAmountInput}
+                  onChange={(e) => setSupportAmountFromInput(e.target.value)}
+                  onBlur={() => {
+                    const next = clampAmount(supportAmount || 1);
+                    setSupportAmount(next);
+                    setSupportAmountInput(String(next));
+                  }}
                   className="relative z-10 h-full w-full bg-transparent px-3 text-center text-lg font-semibold tabular-nums text-white outline-none"
                 />
               </div>

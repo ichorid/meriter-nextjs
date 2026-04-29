@@ -47,6 +47,7 @@ export function PilotMultiObrazHomeClient() {
   const [supportOpen, setSupportOpen] = React.useState(false);
   const [supportDreamId, setSupportDreamId] = React.useState<string | null>(null);
   const [supportAmount, setSupportAmount] = React.useState<number>(1);
+  const [supportAmountInput, setSupportAmountInput] = React.useState<string>('1');
 
   const [loreOpen, setLoreOpen] = React.useState(false);
   const [loreText, setLoreText] = React.useState<string | null>(null);
@@ -55,6 +56,7 @@ export function PilotMultiObrazHomeClient() {
   const openSupport = (dreamId: string) => {
     setSupportDreamId(dreamId);
     setSupportAmount(1);
+    setSupportAmountInput('1');
     setSupportOpen(true);
   };
 
@@ -70,6 +72,25 @@ export function PilotMultiObrazHomeClient() {
     const max = Math.max(1, maxAvailable);
     return Math.min(max, Math.max(min, n));
   };
+
+  const setSupportAmountFromInput = (raw: string) => {
+    const digitsOnly = raw.replace(/\D/g, '');
+    if (!digitsOnly) {
+      setSupportAmountInput('');
+      return;
+    }
+    const parsed = Number.parseInt(digitsOnly, 10);
+    const next = clampAmount(parsed);
+    setSupportAmount(next);
+    setSupportAmountInput(String(next));
+  };
+
+  React.useEffect(() => {
+    if (!supportOpen) return;
+    const next = clampAmount(supportAmount || 1);
+    if (next !== supportAmount) setSupportAmount(next);
+    if (supportAmountInput !== String(next)) setSupportAmountInput(String(next));
+  }, [supportOpen, maxAvailable]);
 
   const submitSupport = () => {
     if (!supportDreamId) return;
@@ -286,13 +307,17 @@ export function PilotMultiObrazHomeClient() {
 
                 <input
                   id="support-amount"
-                  type="number"
+                  type="text"
                   inputMode="numeric"
                   min={1}
                   max={Math.max(1, maxAvailable)}
-                  value={supportAmount}
-                  onChange={(e) => setSupportAmount(Number(e.target.value))}
-                  onBlur={() => setSupportAmount((v) => clampAmount(v || 1))}
+                  value={supportAmountInput}
+                  onChange={(e) => setSupportAmountFromInput(e.target.value)}
+                  onBlur={() => {
+                    const next = clampAmount(supportAmount || 1);
+                    setSupportAmount(next);
+                    setSupportAmountInput(String(next));
+                  }}
                   className="relative z-10 h-full w-full bg-transparent px-3 text-center text-lg font-semibold tabular-nums text-white outline-none"
                 />
               </div>
