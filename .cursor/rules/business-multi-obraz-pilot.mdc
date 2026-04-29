@@ -41,10 +41,12 @@ Applies only when **`PILOT_MODE` / `NEXT_PUBLIC_PILOT_MODE`** are enabled **and*
 
 | Область | Значение при create (сервер) |
 |---------|------------------------------|
-| `settings.commentMode` | `neutralOnly` — нейтральные ответы без взвешенных «голосов-меритов» в UX пилота |
+| `settings.postCost` | `0` — создание постов/тасков/обсуждений в пилоте бесплатное |
+| `settings.commentMode` | `all` — разрешены нейтральные комментарии (0 заслуг) и взвешенные апвоты там, где это разрешено правилами пилота |
+| `settings.dailyEmission` | `10` — используется некоторыми эндпоинтами квоты как дневной лимит (см. квоту ниже) |
 | `settings.investingEnabled` | `false` |
-| `meritSettings.quotaEnabled` | `false`, `canEarn`/`canSpend`/`dailyQuota` приглушены |
-| `votingSettings` | `spendsMerits: false`, `awardsMerits: false`, `currencySource: wallet-only` (как team-projects «без экономики») |
+| `meritSettings` | `quotaEnabled: true`, `dailyQuota: 10`, `canEarn: true`, `canSpend: true` |
+| `votingSettings` | `spendsMerits: true`, `awardsMerits: true`, `currencySource: quota-and-wallet` |
 | `permissionRules` | Базовые правила проекта (`typeTag === 'project'`) — участники могут `POST_PUBLICATION` (обсуждения), `VOTE`/`COMMENT` по `commentMode` |
 
 ## 5. Обсуждения vs задачи
@@ -61,3 +63,75 @@ Applies only when **`PILOT_MODE` / `NEXT_PUBLIC_PILOT_MODE`** are enabled **and*
 ## 7. События телеметрии (TR-12)
 
 Клиент: `trackPilotProductEvent` → Sentry breadcrumb `ui.pilot` (ids только). Имена: `pilot_dream_created`, `pilot_dream_viewed`, и т.д.
+
+---
+
+## 8. Рейтинг мечты (dream rating)
+
+**Мечта имеет рейтинг, но автор НЕ получает заслуги в кошелёк.** Рейтинг нужен только для выдачи/ранжирования.
+
+Данные: `Community.pilotDreamRating`:
+- `upvotes`: сколько заслуг пришло от голосов «за мечту»
+- `miningWins`: сколько очков получено в майнинге (+1 за победу)
+- `score`: итоговый рейтинг мечты (`upvotes + miningWins`)
+
+Источники изменения рейтинга:
+- `pilotDreams.upvote` → увеличивает `upvotes` и `score`
+- `pilotMining.submitChoice` → увеличивает `miningWins` и `score`
+
+---
+
+## 9. Глобальная квота (pilot)
+
+**Квота = 10 заслуг на UTC‑день.** Это единая квота для всего пилота (не “по мечте”).
+
+Технически квота пилота учитывается в `quota_usage` под `communityId = GLOBAL_COMMUNITY_ID`:
+- апвот мечты (`pilotDreams.upvote`)
+- апвоты за выполненные задачи/обсуждения внутри мечты (`votes.create` / `votes.createWithComment`, пилотный режим)
+
+Правило расходования: **quota → wallet**.
+
+---
+
+## 10. Голос «за мечту» (upvote only)
+
+API: `pilotDreams.upvote(dreamId, amount=1)`
+- Только **плюс**, минусы отсутствуют.
+- Нельзя голосовать за **свою** мечту.
+- Тратится глобальная квота (UTC) → затем глобальный кошелёк.
+- Рейтинг мечты растёт, но **кошелёк автора не пополняется**.
+
+---
+
+## 11. Майнинг мечт (тапалка, showCost=0)
+
+UI: `/mining`, кнопка «Майнинг» в пилотной навигации.
+
+API: `pilotMining.getPair` / `pilotMining.submitChoice`
+- Сравниваются **только активные** мечты (`projectStatus='active'`, `isActive=true`), и **не свои**.
+- Пары **не повторяются**, пока не закончатся все возможные пары для пользователя; затем стартует новый цикл.
+- Показ бесплатный: **никаких списаний** (showCost=0).
+- Победитель получает **+1 к рейтингу** (`miningWins` и `score`).
+
+---
+
+## 12. Голосование за выполненные задачи/обсуждения (глобальные заслуги)
+
+Цель: участники могут **зарабатывать заслуги** внутри мечт.
+
+Правила:
+- Только **апвот** (минусов нет).
+- Разрешено **только** для “выполненного” контента:
+  - задачи (`postType='ticket'`) — `ticketStatus='closed'` и есть `work_accepted`
+  - обсуждения (`postType='discussion'`) — `status='closed'` (считаем завершением)
+- Источник оплаты: **глобальная квота (UTC) → глобальный кошелёк**.
+- Получатель: заслуги **сразу зачисляются** в глобальный кошелёк бенефициара (исполнитель задачи / автор обсуждения).
+- Эти голоса **НЕ влияют** на рейтинг мечты.
+
+---
+
+## 13. Защита от ухода в «обычный Meriter»
+
+В пилотной сборке включён “hard guard” в `web/src/middleware.ts`:
+- Любые `/meriter/*` редиректятся в пилот (`/` / `/profile` / `/create`) **кроме** whitelist маршрутов,
+  которые используются пилот‑шеллом (`/meriter/projects/*`, `/meriter/login`, `/meriter/auth/callback`, `/meriter/about`).
