@@ -64,7 +64,7 @@ export function PilotMultiObrazHomeClient() {
 
   const quotaRemainingRaw = stats?.quota?.remaining ?? 0;
   const quotaRemaining = supportIsOwnDream ? 0 : quotaRemainingRaw;
-  const dailyQuota = stats?.quota?.dailyQuota ?? 10;
+  const dailyQuota = stats?.quota?.dailyQuota ?? 100;
   const walletBalance = stats?.walletBalance ?? 0;
   const maxAvailable = Math.max(0, quotaRemaining + walletBalance);
 

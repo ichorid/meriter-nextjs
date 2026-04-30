@@ -9,6 +9,8 @@ import { isPriorityCommunity } from '../../domain/common/helpers/community.helpe
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
 import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
 
+const PILOT_GLOBAL_DAILY_QUOTA = 100;
+
 /**
  * Helper function to process withdrawal and credit wallet.
  * Uses MeritResolver: credits to global wallet for priority communities, community wallet for local.
@@ -564,7 +566,7 @@ export async function createVoteLogic(
     let remainingQuota = 0;
     if (canUseQuota) {
       remainingQuota = isPilotDreamCommunity
-        ? await getPilotGlobalRemainingQuota(ctx, 10)
+        ? await getPilotGlobalRemainingQuota(ctx, PILOT_GLOBAL_DAILY_QUOTA)
         : await getRemainingQuota(
             ctx.user.id,
             communityId,
@@ -588,7 +590,7 @@ export async function createVoteLogic(
   // Check quota availability
   if (quotaAmount > 0) {
     const remainingQuota = isPilotDreamCommunity
-      ? await getPilotGlobalRemainingQuota(ctx, 10)
+      ? await getPilotGlobalRemainingQuota(ctx, PILOT_GLOBAL_DAILY_QUOTA)
       : await getRemainingQuota(
           ctx.user.id,
           communityId,

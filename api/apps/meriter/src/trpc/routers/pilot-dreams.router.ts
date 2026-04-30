@@ -11,6 +11,8 @@ type DreamListItem = {
   name?: string;
 };
 
+const PILOT_GLOBAL_DAILY_QUOTA = 100;
+
 function getUtcDayStart(): Date {
   const d = new Date();
   d.setUTCHours(0, 0, 0, 0);
@@ -52,7 +54,7 @@ export const pilotDreamsRouter = router({
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Database connection not available' });
     }
 
-    const dailyQuota = 10;
+    const dailyQuota = PILOT_GLOBAL_DAILY_QUOTA;
     const remainingQuota = await getPilotGlobalRemainingQuota(ctx, dailyQuota);
     const resetAt = (() => {
       const next = getUtcDayStart();
@@ -139,7 +141,7 @@ export const pilotDreamsRouter = router({
       const isOwnDream = Boolean(dream.founderUserId && dream.founderUserId === ctx.user.id);
 
       const requested = Math.max(1, Math.floor(input.amount ?? 1));
-      const remainingQuota = isOwnDream ? 0 : await getPilotGlobalRemainingQuota(ctx, 10);
+      const remainingQuota = isOwnDream ? 0 : await getPilotGlobalRemainingQuota(ctx, PILOT_GLOBAL_DAILY_QUOTA);
       const quotaAmount = Math.min(requested, remainingQuota);
       const walletAmount = requested - quotaAmount;
 

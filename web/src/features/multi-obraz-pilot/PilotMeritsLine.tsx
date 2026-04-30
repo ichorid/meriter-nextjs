@@ -17,7 +17,7 @@ export function PilotMeritsLine() {
   if (!stats) return null;
 
   const quotaRemaining = stats.quota?.remaining ?? 0;
-  const dailyQuota = stats.quota?.dailyQuota ?? 10;
+  const dailyQuota = stats.quota?.dailyQuota ?? 100;
   const walletBalance = stats.walletBalance ?? 0;
 
   return (

@@ -68,7 +68,7 @@ export function ProjectPilotDreamShell({
   const storageKey = useMemo(() => `pilotDreamStoryDismissed:${projectId}`, [projectId]);
 
   const quotaRemaining = stats?.quota?.remaining ?? 0;
-  const dailyQuota = stats?.quota?.dailyQuota ?? 10;
+  const dailyQuota = stats?.quota?.dailyQuota ?? 100;
   const walletBalance = stats?.walletBalance ?? 0;
   const maxAvailable = Math.max(0, quotaRemaining + walletBalance);
   const supportIsOwnDream = project.founderUserId === currentUserId;
