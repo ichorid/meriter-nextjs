@@ -11,7 +11,7 @@ async function readFirstExisting(paths: string[]): Promise<string> {
       // try next
     }
   }
-  throw new Error('Pilot myth text file not found');
+  return '';
 }
 
 @Controller('api/pilot')
@@ -22,6 +22,8 @@ export class PilotController {
     // so we expose a backend endpoint for the pilot myth text.
     const cwd = process.cwd();
     const candidates = [
+      // packaged runtime (api Docker image copies this into /app/public)
+      path.join(cwd, 'public', 'meriterra-lore.md'),
       // repo root (common in docker / production)
       path.join(cwd, 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
       // when running from api/ as cwd
@@ -31,7 +33,11 @@ export class PilotController {
     ];
 
     const text = await readFirstExisting(candidates);
-    return ApiResponseHelper.successResponse(text);
+    // Avoid 500 in prod if the file wasn't bundled correctly.
+    // UI can still show the title and a short message.
+    const fallback =
+      '## Миф и правила\n\nТекст временно недоступен. Попробуйте обновить страницу чуть позже.';
+    return ApiResponseHelper.successResponse(text.trim().length > 0 ? text : fallback);
   }
 }
 

@@ -48,6 +48,8 @@ RUN mkdir -p /out && \
     cp libs/shared-types/package.json /out/libs/shared-types/package.json && \
     # Copy public directory (favicon)
     cp -R api/apps/meriter/public /out/public && \
+    # Pilot myth text (served by /api/pilot/lore)
+    cp web/src/features/multi-obraz-pilot/meriterra-lore.md /out/public/meriterra-lore.md && \
     # Demo seed TSV (webpack bundle does not include these; platformDemo.seedDemoWorld reads from here)
     mkdir -p /out/dist/apps/meriter/seed-data && \
     cp -R api/apps/meriter/seed-data/. /out/dist/apps/meriter/seed-data/

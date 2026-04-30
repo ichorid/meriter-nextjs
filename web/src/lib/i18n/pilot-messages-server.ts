@@ -6,12 +6,9 @@ import ruMessages from '../../../messages/ru.json';
 export type MultiObrazMessageShape = (typeof ruMessages)['multiObraz'];
 
 export async function getPilotServerLocale(): Promise<Locale> {
-  const cookieVal = (await cookies()).get('NEXT_LOCALE')?.value;
-  if (cookieVal === 'ru' || cookieVal === 'en') {
-    return cookieVal;
-  }
-  const acceptLang = (await headers()).get('accept-language') ?? undefined;
-  return detectBrowserLanguage(acceptLang);
+  // Pilot is Russian-only by product requirement.
+  // Keep EN messages for development, but do not auto-select them at runtime.
+  return 'ru';
 }
 
 export function getMultiObrazMessages(locale: Locale): MultiObrazMessageShape {
