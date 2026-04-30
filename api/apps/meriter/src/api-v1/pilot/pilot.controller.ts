@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
-import fs from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 
 async function readFirstExisting(paths: string[]): Promise<string> {
   for (const p of paths) {
     try {
-      return await fs.readFile(p, 'utf8');
+      return await readFile(p, 'utf8');
     } catch {
       // try next
     }
@@ -40,7 +40,7 @@ export class PilotController {
     // (In practice we saw cases where cwd-based paths drift.)
     let text = '';
     try {
-      text = await fs.readFile(primary, 'utf8');
+      text = await readFile(primary, 'utf8');
     } catch {
       text = await readFirstExisting(candidates);
     }
