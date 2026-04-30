@@ -67,6 +67,20 @@ export function EmailAuthDialog({
         }
     }, [open]);
 
+    // Prefill email when dialog opens (if user asked to be remembered before).
+    useEffect(() => {
+        if (!open) return;
+        if (!rememberMe) return;
+        try {
+            const saved = localStorage.getItem("login_remembered_email") || "";
+            if (saved && step === "email") {
+                setEmail(saved);
+            }
+        } catch {
+            // ignore
+        }
+    }, [open, rememberMe, step]);
+
     // Countdown timer for resend button
     useEffect(() => {
         if (!canResendAt) return;
@@ -158,6 +172,14 @@ export function EmailAuthDialog({
                 });
                 onOpenChange(false);
                 setIsLoading(false);
+
+                if (rememberMe) {
+                    try {
+                        localStorage.setItem("login_remembered_email", email);
+                    } catch {
+                        // ignore
+                    }
+                }
                 return;
             }
 
@@ -179,6 +201,14 @@ export function EmailAuthDialog({
                 user: data.user,
             });
             onOpenChange(false);
+
+            if (rememberMe) {
+                try {
+                    localStorage.setItem("login_remembered_email", email);
+                } catch {
+                    // ignore
+                }
+            }
         } catch (err: any) {
             const message = err.message || t("verifyFailed");
             setError(message);

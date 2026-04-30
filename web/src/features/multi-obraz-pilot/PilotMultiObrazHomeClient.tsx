@@ -127,8 +127,18 @@ export function PilotMultiObrazHomeClient() {
     setLoreLoading(true);
     try {
       const res = await fetch('/api/pilot/lore');
-      const txt = await res.text();
-      setLoreText(txt);
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json = (await res.json()) as { success?: boolean; data?: string; error?: { message?: string } };
+        if (!res.ok || json?.success === false) {
+          setLoreText(json?.error?.message || t('loreLoadFailed'));
+        } else {
+          setLoreText(json?.data ?? '');
+        }
+      } else {
+        const txt = await res.text();
+        setLoreText(txt);
+      }
     } catch {
       setLoreText(t('loreLoadFailed'));
     } finally {

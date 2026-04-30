@@ -85,6 +85,24 @@ export function LoginForm({
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
 
+    // Persist remember-me choice across sessions (also used to prefill email in dialogs).
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("login_remember_me");
+            if (saved === "1") setRememberMe(true);
+        } catch {
+            // ignore
+        }
+    }, []);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem("login_remember_me", rememberMe ? "1" : "0");
+        } catch {
+            // ignore
+        }
+    }, [rememberMe]);
+
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
 
