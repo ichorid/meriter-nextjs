@@ -66,7 +66,6 @@ export function ProjectPilotDreamShell({
   const upvoteDream = usePilotDreamUpvote();
   const { data: stats } = usePilotMeritsStats();
   const utils = trpc.useUtils();
-  const [storyBannerVisible, setStoryBannerVisible] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -76,8 +75,6 @@ export function ProjectPilotDreamShell({
   const [editDescription, setEditDescription] = useState(project.description ?? '');
   const [editCover, setEditCover] = useState<string | null>(project.coverImageUrl ?? null);
 
-  const storageKey = useMemo(() => `pilotDreamStoryDismissed:${projectId}`, [projectId]);
-
   const quotaRemaining = stats?.quota?.remaining ?? 0;
   const dailyQuota = stats?.quota?.dailyQuota ?? 100;
   const walletBalance = stats?.walletBalance ?? 0;
@@ -85,6 +82,7 @@ export function ProjectPilotDreamShell({
   const supportIsOwnDream = project.founderUserId === currentUserId;
   const quotaRemainingForSupport = supportIsOwnDream ? 0 : quotaRemaining;
   const maxAvailableForSupport = Math.max(0, quotaRemainingForSupport + walletBalance);
+  const canAccessDreamWorkspace = isMember || user?.globalRole === 'superadmin';
 
   const clampAmount = (raw: number) => {
     if (!Number.isFinite(raw)) return 1;
@@ -126,14 +124,6 @@ export function ProjectPilotDreamShell({
     trackPilotProductEvent('pilot_dream_viewed', { projectId, pilotContext: 'multi-obraz' });
   }, [projectId]);
 
-  useEffect(() => {
-    try {
-      setStoryBannerVisible(!localStorage.getItem(storageKey));
-    } catch {
-      setStoryBannerVisible(true);
-    }
-  }, [storageKey]);
-
   const updateProject = trpc.project.update.useMutation({
     onSuccess: () => {
       void utils.project.getById.invalidate({ id: projectId });
@@ -144,15 +134,6 @@ export function ProjectPilotDreamShell({
     },
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
-
-  const dismissStory = () => {
-    try {
-      localStorage.setItem(storageKey, '1');
-    } catch {
-      /* ignore */
-    }
-    setStoryBannerVisible(false);
-  };
 
   const { data: membersPayload, isLoading: membersLoading, isError: membersError } = useProjectMembers(
     membersOpen ? projectId : null,
@@ -364,24 +345,9 @@ export function ProjectPilotDreamShell({
           </div>
         </header>
 
-        {storyBannerVisible && isMember ? (
-          <section
-            className="rounded-xl border border-[#334155] bg-[#1e293b] p-4"
-            aria-label={t('storyBannerAria')}
-          >
-            <p className="text-sm text-[#e2e8f0]">{t('storyBanner')}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button asChild size="sm" className="bg-[#A855F7] text-white hover:bg-[#9333ea]">
-                <Link href={`${routes.project(projectId)}?tab=discussions`}>{t('storyBannerCta')}</Link>
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={dismissStory}>
-                {t('storyBannerDismiss')}
-              </Button>
-            </div>
-          </section>
-        ) : null}
+        {/* Pilot: remove "Tell the story of your dream" banner */}
 
-        {isMember ? (
+        {canAccessDreamWorkspace ? (
           <ProjectWorkArea
             projectId={projectId}
             currentUserId={currentUserId}
@@ -566,6 +532,9 @@ export function ProjectPilotDreamShell({
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="support-amount-dream">{t('supportAmountLabel')}</Label>
+            {supportIsOwnDream ? (
+              <p className="text-xs text-[#94a3b8]">{t('supportOwnDreamHint')}</p>
+            ) : null}
 
             {stats ? (
               <div className="flex gap-2">
@@ -658,7 +627,9 @@ export function ProjectPilotDreamShell({
 
             {stats ? (
               <div className="pt-1 text-xs text-[#94a3b8]">
-                {t('supportAvailable', { quota: quotaRemainingForSupport, wallet: walletBalance })}
+                {supportIsOwnDream
+                  ? t('supportAvailableWalletOnly', { wallet: walletBalance })
+                  : t('supportAvailable', { quota: quotaRemainingForSupport, wallet: walletBalance })}
               </div>
             ) : null}
           </div>

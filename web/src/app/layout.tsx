@@ -32,6 +32,17 @@ export const viewport: Viewport = {
 };
 
 async function resolveServerLocale(): Promise<Locale> {
+  // Pilot deploy on cw.ru must be RU-only, regardless of cookie or browser language.
+  const host = (await headers()).get('host') ?? '';
+  const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+  if (
+    process.env.NEXT_PUBLIC_PILOT_STANDALONE === 'true' ||
+    process.env.NEXT_PUBLIC_PILOT_MODE === 'true' ||
+    isPilotHost
+  ) {
+    return 'ru';
+  }
+
   const cookieVal = (await cookies()).get('NEXT_LOCALE')?.value;
   if (cookieVal === 'ru' || cookieVal === 'en') return cookieVal;
 
@@ -54,6 +65,13 @@ export default async function RootLayout({
             __html: `
 (function() {
   try {
+    // Pilot on cw.ru must be dark and consistent across browsers.
+    if (location.hostname === 'cw.ru' || location.hostname.endsWith('.cw.ru')) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('theme', 'dark');
+      return;
+    }
+
     const stored = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     let theme = 'light';

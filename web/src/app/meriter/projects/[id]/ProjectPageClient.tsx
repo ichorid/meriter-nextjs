@@ -164,7 +164,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
         projectId={projectId}
         project={project}
         currentUserId={user?.id ?? ''}
-        isMember={isMember || isSuperadmin}
+        isMember={isMember}
         canModerateTickets={canModerateTickets || isSuperadmin}
         readOnly={isArchived}
         canEditDream={Boolean(!isArchived && (isLead || user?.globalRole === 'superadmin'))}

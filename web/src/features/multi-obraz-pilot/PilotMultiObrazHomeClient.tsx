@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePilotDreamUpvote, usePilotDreamsFeed, usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
-import { pilotCreateHref } from '@/lib/constants/pilot-routes';
+import { pilotCreateHref, pilotDreamHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
 import { TrendingUp } from 'lucide-react';
 import {
@@ -196,7 +196,7 @@ export function PilotMultiObrazHomeClient() {
               return (
                 <li key={row.project.id}>
                   <Link
-                    href={routes.project(row.project.id)}
+                    href={pilotDreamHref(row.project.id)}
                     className={cn(
                       'block overflow-hidden rounded-xl border border-[#334155] bg-[#1e293b] transition-colors hover:border-[#A855F7]/50 hover:bg-[#1e293b]/90',
                     )}
@@ -266,11 +266,14 @@ export function PilotMultiObrazHomeClient() {
           <DialogHeader>
             <DialogTitle>{t('supportDialogTitle')}</DialogTitle>
             <DialogDescription className="text-[#94a3b8]">
-              {t('supportDialogBody')}
+              {supportIsOwnDream ? t('supportDialogBodyOwnDream') : t('supportDialogBody')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="support-amount">{t('supportAmountLabel')}</Label>
+            {supportIsOwnDream ? (
+              <p className="text-xs text-[#94a3b8]">{t('supportOwnDreamHint')}</p>
+            ) : null}
 
             {stats ? (
               <div className="flex gap-2">
@@ -362,7 +365,9 @@ export function PilotMultiObrazHomeClient() {
 
             {stats ? (
               <div className="pt-1 text-xs text-[#94a3b8]">
-                {t('supportAvailable', { quota: quotaRemaining, wallet: walletBalance })}
+                {supportIsOwnDream
+                  ? t('supportAvailableWalletOnly', { wallet: walletBalance })
+                  : t('supportAvailable', { quota: quotaRemaining, wallet: walletBalance })}
               </div>
             ) : null}
           </div>

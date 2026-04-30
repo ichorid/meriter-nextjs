@@ -20,3 +20,9 @@ export function pilotProfileHref(): string {
   if (!isPilotClientMode()) return routes.profile;
   return '/profile';
 }
+
+/** Pilot canonical dream route (avoids flashing full Meriter layouts). */
+export function pilotDreamHref(projectId: string): string {
+  if (!isPilotClientMode()) return routes.project(projectId);
+  return `/dreams/${projectId}`;
+}

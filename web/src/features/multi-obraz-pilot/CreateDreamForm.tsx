@@ -13,7 +13,7 @@ import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisi
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trackPilotProductEvent } from '@/features/multi-obraz-pilot/pilot-telemetry';
-import { pilotHomeHref } from '@/lib/constants/pilot-routes';
+import { pilotDreamHref, pilotHomeHref } from '@/lib/constants/pilot-routes';
 import { invalidatePilotMerits } from '@/hooks/api/pilot-invalidate';
 
 export function CreateDreamForm() {
@@ -35,7 +35,7 @@ export function CreateDreamForm() {
         projectId: project.id,
         pilotContext: 'multi-obraz',
       });
-      router.push(`/meriter/projects/${project.id}`);
+      router.push(pilotDreamHref(project.id));
     },
     onError: (err) => {
       addToast(resolveApiErrorToastMessage(err.message), 'error');

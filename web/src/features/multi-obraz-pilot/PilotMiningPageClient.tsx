@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { routes } from '@/lib/constants/routes';
+import { pilotDreamHref } from '@/lib/constants/pilot-routes';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
@@ -123,7 +124,7 @@ function DreamCard({
         </div>
         <div className="mt-4 flex items-center justify-between gap-3">
           <Button asChild variant="ghost" className="shrink-0 text-[#94a3b8] hover:text-white">
-            <Link href={routes.project(dream.id)}>{t('openDream')}</Link>
+            <Link href={pilotDreamHref(dream.id)}>{t('openDream')}</Link>
           </Button>
         </div>
         {(isTokenHovered || isDragging) && !disabled ? (

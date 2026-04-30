@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { usePilotPendingJoinRequests, usePilotUserDreams } from '@/hooks/api/useProjects';
 import { isPilotDreamProject } from '@/config/pilot';
-import { pilotCreateHref } from '@/lib/constants/pilot-routes';
+import { pilotCreateHref, pilotDreamHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
 import { usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
@@ -25,7 +25,7 @@ function PilotDreamRows({ projects }: { projects: Community[] }) {
     <ul className="mt-2 flex flex-col gap-2">
       {projects.map((project) => (
         <li key={project.id}>
-          <Link href={routes.project(project.id)} className={cn(dreamRowClass, 'overflow-hidden p-0')}>
+          <Link href={pilotDreamHref(project.id)} className={cn(dreamRowClass, 'overflow-hidden p-0')}>
             {project.coverImageUrl ? (
               <img
                 src={project.coverImageUrl}

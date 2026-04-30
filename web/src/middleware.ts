@@ -16,6 +16,12 @@ export function middleware(request: NextRequest) {
   }
 
   if (pilotRoutesEnabled()) {
+    // Canonical pilot dream route: avoid /meriter/projects/:id to prevent full-Meriter layout flash.
+    if (path.startsWith('/meriter/projects/') && path.split('/').length === 4) {
+      const id = path.split('/')[3];
+      return NextResponse.redirect(new URL(`/dreams/${id}`, request.url));
+    }
+
     // Pilot hard guard: do not allow falling into the full Meriter UI.
     // Whitelist only routes that are intentionally reused by the pilot shell.
     if (path.startsWith('/meriter/')) {
@@ -55,6 +61,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/create',
+    '/dreams/:path*',
     '/profile',
     '/mining',
     '/meriter/profile',
