@@ -62,6 +62,10 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
     // Only treat actual error statuses (4xx, 5xx) as errors
     const isErrorStatus = response.status >= 400 && response.status < 600;
     const is401 = response.status === 401;
+    const isExpected403 =
+      response.status === 403 &&
+      typeof url === 'string' &&
+      url.includes('/trpc/ticket.getByProject');
     
     if (isErrorStatus) {
       const clonedResponse = response.clone();
@@ -104,10 +108,12 @@ async function enhancedFetch(input: RequestInfo | URL, init?: RequestInit): Prom
         return createTrpcBatchErrorResponse(message, response.status, batchSize);
       }
 
-      if (is401) {
-        // Use console.debug for expected 401s (won't show in Next.js error overlay)
+      if (is401 || isExpected403) {
+        // Use console.debug for expected auth/permission failures (won't show in Next.js error overlay).
+        // - 401: unauthenticated user
+        // - 403 ticket.getByProject: non-member trying to view project discussions/tasks
         if (process.env.NODE_ENV === 'development') {
-          console.debug('tRPC 401 (expected when not authenticated):', url);
+          console.debug(`tRPC ${response.status} (expected):`, url);
         }
       } else {
         // Log actual errors at error level

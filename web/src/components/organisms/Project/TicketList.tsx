@@ -31,6 +31,7 @@ export function TicketList({
   blockMeriterNavigation = false,
 }: TicketListProps) {
   const t = useTranslations('projects');
+  const tPilot = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
   const router = useRouter();
   const pathname = usePathname();
@@ -41,7 +42,7 @@ export function TicketList({
     clearedHighlightRef.current = false;
   }, [highlightTicketId]);
 
-  const { data: tickets, isLoading } = useTickets(projectId, {
+  const { data: tickets, isLoading, error } = useTickets(projectId, {
     postType: 'ticket',
     ticketStatus: statusFilter === 'all' ? undefined : statusFilter,
   });
@@ -71,6 +72,11 @@ export function TicketList({
 
   if (isLoading) {
     return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
+  }
+
+  const forbiddenMessage = (error as { message?: string } | null)?.message || '';
+  if (forbiddenMessage.includes('Only project members can view tickets')) {
+    return <p className="text-sm text-[#94a3b8]">{tPilot('joinToParticipate')}</p>;
   }
 
   if (list.length === 0) {

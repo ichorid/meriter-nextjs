@@ -39,6 +39,8 @@ export function useTickets(
     {
       enabled: !!projectId,
       staleTime: STALE_TIME.VERY_SHORT,
+      refetchOnWindowFocus: false,
+      retry: false,
     },
   );
 }

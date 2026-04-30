@@ -56,9 +56,10 @@ export function DiscussionList({
   onPilotCreateDiscussion,
 }: DiscussionListProps) {
   const t = useTranslations('projects');
+  const tPilot = useTranslations('multiObraz');
   const tComments = useTranslations('comments');
   const { user } = useAuth();
-  const { data: discussions, isLoading } = useTickets(projectId, { postType: 'discussion' });
+  const { data: discussions, isLoading, error } = useTickets(projectId, { postType: 'discussion' });
   const { data: community } = useCommunity(projectId);
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
 
@@ -66,6 +67,12 @@ export function DiscussionList({
 
   if (isLoading) {
     return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
+  }
+
+  // Pilot UX: if user is not a member, backend returns 403. Treat as "join to participate" state.
+  const forbiddenMessage = (error as { message?: string } | null)?.message || '';
+  if (forbiddenMessage.includes('Only project members can view tickets')) {
+    return <p className="text-sm text-[#94a3b8]">{tPilot('joinToParticipate')}</p>;
   }
 
   const list = discussions ?? [];
