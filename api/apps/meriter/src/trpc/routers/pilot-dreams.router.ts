@@ -115,7 +115,9 @@ export const pilotDreamsRouter = router({
     .input(
       z.object({
         dreamId: z.string().min(1),
-        amount: z.number().int().min(1).max(100).optional(),
+        // Pilot: allow supporting with any amount up to available quota+wallet (validated in handler).
+        // Keep a high safety cap to avoid abuse / accidental huge payloads.
+        amount: z.number().int().min(1).max(1_000_000).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
