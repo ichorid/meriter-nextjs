@@ -271,9 +271,6 @@ export function PilotMultiObrazHomeClient() {
           </DialogHeader>
           <div className="space-y-2">
             <Label htmlFor="support-amount">{t('supportAmountLabel')}</Label>
-            {supportIsOwnDream ? (
-              <p className="text-xs text-[#94a3b8]">{t('supportOwnDreamHint')}</p>
-            ) : null}
 
             {stats ? (
               <div className="flex gap-2">

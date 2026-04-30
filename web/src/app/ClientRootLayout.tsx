@@ -43,6 +43,17 @@ function detectLocale(): Locale {
     return DEFAULT_LOCALE;
   }
 
+  // Pilot deploy on cw.ru must be RU-only, regardless of cookie or browser language.
+  try {
+    const host = window.location.hostname;
+    const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+    if (process.env.NEXT_PUBLIC_PILOT_STANDALONE === 'true' || process.env.NEXT_PUBLIC_PILOT_MODE === 'true' || isPilotHost) {
+      return 'ru';
+    }
+  } catch {
+    // ignore
+  }
+
   try {
     const cookieLocale = document.cookie
       .split('; ')

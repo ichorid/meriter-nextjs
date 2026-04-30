@@ -16,6 +16,11 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 function getInitialTheme(): Theme {
     if (typeof window === 'undefined') return 'auto';
     try {
+        const host = window.location.hostname;
+        const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+        if (isPilotHost) {
+            return 'dark';
+        }
         const stored = localStorage.getItem('theme') as Theme | null;
         if (stored && (stored === 'light' || stored === 'dark' || stored === 'auto')) {
             return stored;
@@ -76,6 +81,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     // Update resolved theme based on theme setting and system preference
     useEffect(() => {
+        const host = window.location.hostname;
+        const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+        if (isPilotHost) {
+            setResolvedTheme('dark');
+            setThemeState('dark');
+            try {
+                localStorage.setItem('theme', 'dark');
+            } catch {
+                // ignore
+            }
+            return;
+        }
+
         // Check if Telegram theme is being used
         const tgWebApp = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
         if (tgWebApp?.themeParams) {
@@ -112,12 +130,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }, [resolvedTheme]);
 
     const setTheme = (newTheme: Theme) => {
-        console.log('🎨 Setting theme:', newTheme);
-        
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+        if (isPilotHost) {
+            // Pilot on cw.ru is dark-only.
+            return;
+        }
+
         // Check if Telegram theme is active
         const tgWebApp = typeof window !== 'undefined' ? (window as any).Telegram?.WebApp : null;
         if (tgWebApp?.themeParams) {
-            console.log('🎨 In Telegram Web App - theme follows Telegram settings');
             return;
         }
         
