@@ -9,9 +9,16 @@ import { DEFAULT_LOCALE, detectBrowserLanguage, type Locale } from './locale';
  * Locale helpers live in `./locale` (safe for client imports — no `next/headers`).
  */
 export default getRequestConfig(async ({ requestLocale }) => {
-  // Multi-Obraz pilot standalone: lock locale to Russian.
-  // Even if system/browser language is English, pilot UI must stay RU.
-  if (process.env.NEXT_PUBLIC_PILOT_STANDALONE === 'true') {
+  // Multi-Obraz pilot: lock locale to Russian.
+  // Even if system/browser language is English (or NEXT_LOCALE cookie is 'en'),
+  // pilot UI must stay RU on the pilot host/deploy.
+  const host = (await headers()).get('host') ?? '';
+  const isPilotHost = host === 'cw.ru' || host.endsWith('.cw.ru');
+  if (
+    process.env.NEXT_PUBLIC_PILOT_STANDALONE === 'true' ||
+    process.env.NEXT_PUBLIC_PILOT_MODE === 'true' ||
+    isPilotHost
+  ) {
     const messages = (await import('../../messages/ru.json')).default;
     return { locale: 'ru', messages, timeZone: 'UTC' };
   }

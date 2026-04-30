@@ -21,9 +21,9 @@ export class PilotController {
     // NOTE: `/api/*` is routed to the backend in most environments (Caddy),
     // so we expose a backend endpoint for the pilot myth text.
     const cwd = process.cwd();
+    const primary = '/app/public/meriterra-lore.md';
     const candidates = [
-      // absolute runtime path (Docker image)
-      '/app/public/meriterra-lore.md',
+      primary,
       // packaged runtime (api Docker image copies this into /app/public)
       join(cwd, 'public', 'meriterra-lore.md'),
       // when cwd is inside dist/apps/meriter (common for Nest prod)
@@ -36,7 +36,14 @@ export class PilotController {
       resolvePath(__dirname, '../../../../../../web/src/features/multi-obraz-pilot/meriterra-lore.md'),
     ];
 
-    const text = await readFirstExisting(candidates);
+    // Prefer the canonical Docker runtime path first.
+    // (In practice we saw cases where cwd-based paths drift.)
+    let text = '';
+    try {
+      text = await fs.readFile(primary, 'utf8');
+    } catch {
+      text = await readFirstExisting(candidates);
+    }
     // Avoid 500 in prod if the file wasn't bundled correctly.
     // UI can still show the title and a short message.
     const fallback =

@@ -15,6 +15,7 @@ import { Loader2 } from 'lucide-react';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
+import { isPilotDreamProject } from '@/config/pilot';
 import {
   Dialog,
   DialogContent,
@@ -59,7 +60,9 @@ export function CommunityJoinRequestPanel({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [note, setNote] = useState('');
 
-  const allowsJoin = community ? isLocalMembershipHubCommunity(community) : false;
+  const allowsJoin = community
+    ? isPilotDreamProject(community) || isLocalMembershipHubCommunity(community)
+    : false;
   const isRoleMember = userRoles.some(
     (role) =>
       role.communityId === communityId &&
