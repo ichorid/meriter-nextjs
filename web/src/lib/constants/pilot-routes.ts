@@ -26,3 +26,9 @@ export function pilotDreamHref(projectId: string): string {
   if (!isPilotClientMode()) return routes.project(projectId);
   return `/dreams/${projectId}`;
 }
+
+/** Superadmin-only: soft-deleted pilot dreams (restore). */
+export function pilotDeletedDreamsHref(): string {
+  if (!isPilotClientMode()) return '/';
+  return '/dreams/deleted';
+}

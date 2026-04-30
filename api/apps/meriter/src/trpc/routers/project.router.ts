@@ -8,7 +8,7 @@ import {
   ProjectStatusSchema,
 } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+import { isMultiObrazPilotDream, isPilotDreamSoftDeleted } from '../../domain/common/helpers/pilot-dream-policy';
 
 const pilotDreamMutationLogger = new Logger('PilotDreamMutations');
 
@@ -155,6 +155,19 @@ export const projectRouter = router({
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const result = await ctx.projectService.getProjectById(input.id);
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
+      const hubId = pilot.hubCommunityId?.trim() || undefined;
+      if (
+        pilot.mode &&
+        isMultiObrazPilotDream(result.project, hubId) &&
+        isPilotDreamSoftDeleted(result.project) &&
+        ctx.user?.globalRole !== 'superadmin'
+      ) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
+      }
       return result;
     }),
 

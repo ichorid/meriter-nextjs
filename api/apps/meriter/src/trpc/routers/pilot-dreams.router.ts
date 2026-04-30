@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+import { isMultiObrazPilotDream, isPilotDreamSoftDeleted } from '../../domain/common/helpers/pilot-dream-policy';
 
 type DreamListItem = {
   id: string;
@@ -90,7 +90,17 @@ export const pilotDreamsRouter = router({
       .find(
         {
           isProject: true,
-          $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
+          $and: [
+            {
+              $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
+            },
+            {
+              $or: [
+                { pilotDreamSoftDeletedAt: { $exists: false } },
+                { pilotDreamSoftDeletedAt: null },
+              ],
+            },
+          ],
         },
         { projection: { id: 1, pilotMeta: 1, parentCommunityId: 1, name: 1 } },
       )
@@ -136,6 +146,9 @@ export const pilotDreamsRouter = router({
       const hubId = pilot.hubCommunityId?.trim() || undefined;
       if (!isMultiObrazPilotDream(dream, hubId)) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Это не мечта пилота «Мультиобраз»' });
+      }
+      if (isPilotDreamSoftDeleted(dream)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечта удалена' });
       }
       if (dream.projectStatus && dream.projectStatus !== 'active') {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Мечта должна быть активной' });
@@ -199,6 +212,108 @@ export const pilotDreamsRouter = router({
         rating: updated?.pilotDreamRating ?? { upvotes: 0, miningWins: 0, score: 0 },
         spent: { quota: quotaAmount, wallet: walletAmount },
       };
+    }),
+
+  /** Superadmin: dreams removed from feeds (soft-delete); listed here for restore. */
+  listSoftDeleted: protectedProcedure.query(async ({ ctx }) => {
+    const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+      mode: false,
+      hubCommunityId: undefined as string | undefined,
+    };
+    if (!pilot.mode) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
+    }
+    if (ctx.user?.globalRole !== 'superadmin') {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'Недостаточно прав' });
+    }
+    const hubId = pilot.hubCommunityId?.trim();
+    if (!hubId || !ctx.connection?.db) {
+      return [];
+    }
+
+    const rows = await ctx.connection.db
+      .collection('communities')
+      .find({
+        isProject: true,
+        parentCommunityId: hubId,
+        'pilotMeta.kind': 'multi-obraz',
+        pilotDreamSoftDeletedAt: { $ne: null, $exists: true },
+      })
+      .sort({ pilotDreamSoftDeletedAt: -1 })
+      .limit(200)
+      .project({
+        id: 1,
+        name: 1,
+        description: 1,
+        coverImageUrl: 1,
+        founderUserId: 1,
+        pilotDreamSoftDeletedAt: 1,
+        createdAt: 1,
+      })
+      .toArray();
+
+    return rows.map((r: Record<string, unknown>) => ({
+      id: r.id as string,
+      name: r.name as string,
+      description: typeof r.description === 'string' ? r.description : null,
+      coverImageUrl: typeof r.coverImageUrl === 'string' ? r.coverImageUrl : null,
+      founderUserId: typeof r.founderUserId === 'string' ? r.founderUserId : null,
+      pilotDreamSoftDeletedAt: r.pilotDreamSoftDeletedAt as Date,
+      createdAt: r.createdAt as Date,
+    }));
+  }),
+
+  softDeleteDream: protectedProcedure
+    .input(z.object({ dreamId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
+      if (!pilot.mode) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
+      }
+      if (ctx.user?.globalRole !== 'superadmin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Недостаточно прав' });
+      }
+      const hubId = pilot.hubCommunityId?.trim() || undefined;
+      const dream = await ctx.communityService.getCommunity(input.dreamId);
+      if (!dream) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Мечта не найдена' });
+      }
+      if (!isMultiObrazPilotDream(dream, hubId)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Это не мечта пилота «Мультиобраз»' });
+      }
+      if (isPilotDreamSoftDeleted(dream)) {
+        return { dreamId: input.dreamId };
+      }
+      await ctx.communityService.setPilotDreamSoftDeletedAt(input.dreamId, new Date());
+      return { dreamId: input.dreamId };
+    }),
+
+  restoreDream: protectedProcedure
+    .input(z.object({ dreamId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const pilot = ctx.configService.get('pilot', { infer: true }) ?? {
+        mode: false,
+        hubCommunityId: undefined as string | undefined,
+      };
+      if (!pilot.mode) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Режим пилота отключён' });
+      }
+      if (ctx.user?.globalRole !== 'superadmin') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Недостаточно прав' });
+      }
+      const hubId = pilot.hubCommunityId?.trim() || undefined;
+      const dream = await ctx.communityService.getCommunity(input.dreamId);
+      if (!dream) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Мечта не найдена' });
+      }
+      if (!isMultiObrazPilotDream(dream, hubId)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Это не мечта пилота «Мультиобраз»' });
+      }
+      await ctx.communityService.setPilotDreamSoftDeletedAt(input.dreamId, null);
+      return { dreamId: input.dreamId };
     }),
 });
 

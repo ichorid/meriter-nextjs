@@ -6,13 +6,14 @@ import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
-import { pilotCreateHref, pilotHomeHref, pilotProfileHref } from '@/lib/constants/pilot-routes';
+import { pilotCreateHref, pilotDeletedDreamsHref, pilotHomeHref, pilotProfileHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
 
 export function PilotMinimalNav() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const t = useTranslations('multiObraz');
+  const isSuperadmin = user?.globalRole === 'superadmin';
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#334155] bg-[#020617]/95 backdrop-blur">
@@ -38,6 +39,11 @@ export function PilotMinimalNav() {
               <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
                 <Link href={pilotProfileHref()}>{t('navProfile')}</Link>
               </Button>
+              {isSuperadmin ? (
+                <Button variant="ghost" size="sm" className="text-xs sm:text-sm" asChild>
+                  <Link href={pilotDeletedDreamsHref()}>{t('navDeletedDreams')}</Link>
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"

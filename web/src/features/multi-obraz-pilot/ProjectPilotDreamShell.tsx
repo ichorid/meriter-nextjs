@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { Community } from '@meriter/shared-types';
 import { PilotMinimalNav } from '@/features/multi-obraz-pilot/PilotMinimalNav';
@@ -38,6 +39,7 @@ import { formatMerits } from '@/lib/utils/currency';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { invalidatePilotDreamFeeds } from '@/hooks/api/pilot-invalidate';
 
 export interface ProjectPilotDreamShellProps {
   projectId: string;
@@ -83,6 +85,7 @@ export function ProjectPilotDreamShell({
   const quotaRemainingForSupport = supportIsOwnDream ? 0 : quotaRemaining;
   const maxAvailableForSupport = Math.max(0, quotaRemainingForSupport + walletBalance);
   const canAccessDreamWorkspace = isMember || user?.globalRole === 'superadmin';
+  const isSuperadmin = user?.globalRole === 'superadmin';
 
   const clampAmount = (raw: number) => {
     if (!Number.isFinite(raw)) return 1;
@@ -131,6 +134,14 @@ export function ProjectPilotDreamShell({
       void utils.project.list.invalidate();
       addToast(t('editSaved'), 'success');
       setEditOpen(false);
+    },
+    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
+  });
+
+  const softDeleteDream = trpc.pilotDreams.softDeleteDream.useMutation({
+    onSuccess: () => {
+      invalidatePilotDreamFeeds(utils, projectId);
+      addToast(t('deletedDreamToast'), 'success');
     },
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
@@ -263,10 +274,13 @@ export function ProjectPilotDreamShell({
     );
   };
 
+  const pathname = usePathname();
+  const embeddedInPilotChrome = Boolean(pathname && pathname.startsWith('/dreams/'));
+
   return (
-    <div className="min-h-dvh bg-[#0f172a] text-[#f1f5f9]">
-      <PilotMinimalNav />
-      <div className="mx-auto max-w-3xl space-y-6 px-4 py-6">
+    <div className={embeddedInPilotChrome ? undefined : 'min-h-dvh bg-[#0f172a] text-[#f1f5f9]'}>
+      {!embeddedInPilotChrome ? <PilotMinimalNav /> : null}
+      <div className={embeddedInPilotChrome ? 'space-y-6' : 'mx-auto max-w-3xl space-y-6 px-4 py-6'}>
         <header className="space-y-2">
           {project.coverImageUrl ? (
             <img
@@ -295,6 +309,21 @@ export function ProjectPilotDreamShell({
             >
               {t('editDream')}
             </Button>
+            ) : null}
+            {isSuperadmin ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-red-500/40 text-red-200 hover:bg-red-500/10 hover:text-red-100"
+                disabled={softDeleteDream.isPending}
+                onClick={() => {
+                  if (!window.confirm(t('deletedDreamConfirm'))) return;
+                  softDeleteDream.mutate({ dreamId: projectId });
+                }}
+              >
+                {t('deletedDreamDelete')}
+              </Button>
             ) : null}
             <Button
               type="button"

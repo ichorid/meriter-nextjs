@@ -26,6 +26,10 @@ export function isMultiObrazPilotDream(
   return false;
 }
 
+export function isPilotDreamSoftDeleted(community: { pilotDreamSoftDeletedAt?: Date | null } | null | undefined): boolean {
+  return community?.pilotDreamSoftDeletedAt != null;
+}
+
 /** Reject dangerous mutations for pilot dreams (TR-14). */
 export const PILOT_FORBIDDEN_MUTATIONS = [
   'publish_to_birzha',

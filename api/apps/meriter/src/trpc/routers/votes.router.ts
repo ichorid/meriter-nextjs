@@ -7,7 +7,7 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
-import { isMultiObrazPilotDream } from '../../domain/common/helpers/pilot-dream-policy';
+import { isMultiObrazPilotDream, isPilotDreamSoftDeleted } from '../../domain/common/helpers/pilot-dream-policy';
 
 const PILOT_GLOBAL_DAILY_QUOTA = 100;
 
@@ -374,6 +374,13 @@ export async function createVoteLogic(
   const isPilotDreamCommunity =
     pilot.mode === true &&
     isMultiObrazPilotDream(community, pilot.hubCommunityId?.trim() || undefined);
+
+  if (isPilotDreamCommunity && isPilotDreamSoftDeleted(community) && ctx.user?.globalRole !== 'superadmin') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Мечта недоступна',
+    });
+  }
 
   // Author top-up: when post author adds merits to their own post (direct top-up to rating),
   // this bypasses commentMode — it is not a vote/comment, just a transfer.

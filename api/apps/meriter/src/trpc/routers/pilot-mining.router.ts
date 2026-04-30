@@ -87,7 +87,17 @@ async function listEligibleDreamIds(ctx: any): Promise<string[]> {
     .find(
       {
         isProject: true,
-        $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
+        $and: [
+          {
+            $or: [{ 'pilotMeta.kind': 'multi-obraz' }, ...(hubId ? [{ parentCommunityId: hubId }] : [])],
+          },
+          {
+            $or: [
+              { pilotDreamSoftDeletedAt: { $exists: false } },
+              { pilotDreamSoftDeletedAt: null },
+            ],
+          },
+        ],
       },
       { projection: { id: 1, isProject: 1, founderUserId: 1, pilotMeta: 1, parentCommunityId: 1 } },
     )

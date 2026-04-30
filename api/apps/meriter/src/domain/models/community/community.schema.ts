@@ -239,6 +239,8 @@ export interface Community {
    * Does not pay out to the author; it only affects ranking/feeds.
    */
   pilotDreamRating?: { upvotes: number; miningWins: number; score: number };
+  /** Multi-Obraz pilot: superadmin soft-delete (hidden from feeds; can restore). */
+  pilotDreamSoftDeletedAt?: Date;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -512,6 +514,9 @@ export class CommunitySchemaClass implements Community {
     required: false,
   })
   pilotDreamRating?: { upvotes: number; miningWins: number; score: number };
+
+  @Prop({ type: Date })
+  pilotDreamSoftDeletedAt?: Date;
 }
 
 export const CommunitySchema = SchemaFactory.createForClass(CommunitySchemaClass);

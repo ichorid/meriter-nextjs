@@ -14,3 +14,14 @@ export function invalidatePilotMerits(utils: TrpcUtils) {
   void utils.wallets.getAll.invalidate();
 }
 
+/** After pilot dream soft-delete / restore (superadmin). */
+export function invalidatePilotDreamFeeds(utils: TrpcUtils, dreamId?: string) {
+  void utils.pilotDreams.listSoftDeleted.invalidate();
+  void utils.project.getGlobalList.invalidate();
+  void utils.project.list.invalidate();
+  void utils.pilotDreams.getPendingJoinRequests.invalidate();
+  if (dreamId) {
+    void utils.project.getById.invalidate({ id: dreamId });
+  }
+}
+

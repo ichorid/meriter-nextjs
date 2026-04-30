@@ -226,6 +226,24 @@ export class CommunityService {
     return doc ? (doc as unknown as Community) : null;
   }
 
+  /**
+   * Pilot Multi-Obraz only: mark dream as removed from public feeds (superadmin).
+   * Pass `null` to restore.
+   */
+  async setPilotDreamSoftDeletedAt(communityId: string, deletedAt: Date | null): Promise<void> {
+    const now = new Date();
+    if (deletedAt === null) {
+      await this.communityModel.updateOne(
+        { id: communityId },
+        { $unset: { pilotDreamSoftDeletedAt: 1 }, $set: { updatedAt: now } },
+      );
+      return;
+    }
+    await this.communityModel.updateOne(
+      { id: communityId },
+      { $set: { pilotDreamSoftDeletedAt: deletedAt, updatedAt: now } },
+    );
+  }
 
   /**
    * Get effective permission rules (defaults merged with custom overrides)

@@ -496,6 +496,18 @@ export class ProjectService {
         ? ({ createdAt: -1 } as Record<string, 1 | -1>)
         : { createdAt: -1 };
 
+    const notSoftDeleted: Record<string, unknown> = {
+      $or: [
+        { pilotDreamSoftDeletedAt: { $exists: false } },
+        { pilotDreamSoftDeletedAt: null },
+      ],
+    };
+    if (Array.isArray(query.$and)) {
+      (query.$and as object[]).push(notSoftDeleted);
+    } else {
+      query.$and = [notSoftDeleted];
+    }
+
     const [data, total] = await Promise.all([
       this.communityService.listCommunitiesByQuery(query, pageSize, skip, sortOrder),
       this.communityService.countCommunitiesByQuery(query),

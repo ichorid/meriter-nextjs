@@ -399,6 +399,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
       score: z.number().int().min(0).default(0),
     })
     .optional(),
+  /** Pilot: superadmin soft-remove timestamp (hidden from feeds until restored). */
+  pilotDreamSoftDeletedAt: z.coerce.date().optional(),
 });
 
 export const PublicationSchema = IdentifiableSchema.merge(
