@@ -115,7 +115,7 @@ export function TicketCard({
     e.preventDefault();
     e.stopPropagation();
     openVotingPopup(ticket.id, 'publication', 'standard', {
-      publicationIsTask: false,
+      publicationIsTask: true,
       taskAllowWeightedMerits: true,
     });
   };

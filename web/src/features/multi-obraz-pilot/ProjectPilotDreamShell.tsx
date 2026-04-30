@@ -36,6 +36,8 @@ import { Minus, Plus, TrendingUp } from 'lucide-react';
 import { usePilotDreamUpvote, usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { formatMerits } from '@/lib/utils/currency';
 import { useUserProfile } from '@/hooks/api/useUsers';
+import { VotingPopup } from '@/components/organisms/VotingPopup';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 
 export interface ProjectPilotDreamShellProps {
   projectId: string;
@@ -698,6 +700,9 @@ export function ProjectPilotDreamShell({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Needed for pilot shell: tasks/discussions use global Meriter voting popup (not rendered via AdaptiveLayout). */}
+      <VotingPopup communityId={GLOBAL_COMMUNITY_ID} />
     </div>
   );
 }

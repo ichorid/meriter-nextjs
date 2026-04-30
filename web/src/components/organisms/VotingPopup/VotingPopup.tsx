@@ -20,6 +20,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { canUseWalletForVoting } from './voting-utils';
 import { isPublicationEntitySourced } from '@/lib/publication-source';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 
 interface VotingPopupProps {
   communityId?: string;
@@ -53,10 +54,16 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   const voteContextCommunityId = useMemo(() => {
     if (votingTargetType === 'publication' && publication?.communityId) {
+      const isTicketPost = (publication as { postType?: string } | undefined)?.postType === 'ticket';
+      // Pilot shell uses VotingPopup outside AdaptiveLayout. For task appreciation we spend global merits
+      // (same as dreams) even though the ticket's community is the dream project.
+      if (votingPublicationIsTask === true && isTicketPost && communityId === GLOBAL_COMMUNITY_ID) {
+        return GLOBAL_COMMUNITY_ID;
+      }
       return publication.communityId;
     }
     return communityId;
-  }, [votingTargetType, publication?.communityId, communityId]);
+  }, [votingTargetType, publication, communityId, votingPublicationIsTask]);
 
   // Wallet / quota context: publication's community when voting on a post (e.g. OB in future-vision)
   const { targetCommunityId, currencyIconUrl, walletBalance } =
