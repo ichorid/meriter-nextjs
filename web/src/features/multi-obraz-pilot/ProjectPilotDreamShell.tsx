@@ -14,6 +14,7 @@ import { useProjectMembers } from '@/hooks/api/useProjects';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { trackPilotProductEvent } from '@/features/multi-obraz-pilot/pilot-telemetry';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog,
   DialogContent,
@@ -26,9 +27,15 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { Label } from '@/components/ui/shadcn/label';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import {
+  useApproveTeamRequest,
+  useRejectTeamRequest,
+  useTeamRequestsForLead,
+} from '@/hooks/api/useTeamRequests';
 import { Minus, Plus, TrendingUp } from 'lucide-react';
 import { usePilotDreamUpvote, usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { formatMerits } from '@/lib/utils/currency';
+import { useUserProfile } from '@/hooks/api/useUsers';
 
 export interface ProjectPilotDreamShellProps {
   projectId: string;
@@ -51,7 +58,9 @@ export function ProjectPilotDreamShell({
 }: ProjectPilotDreamShellProps) {
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
+  const tCommunities = useTranslations('pages.communities');
   const addToast = useToastStore((s) => s.addToast);
+  const { user } = useAuth();
   const upvoteDream = usePilotDreamUpvote();
   const { data: stats } = usePilotMeritsStats();
   const utils = trpc.useUtils();
@@ -156,6 +165,121 @@ export function ProjectPilotDreamShell({
     return '';
   };
 
+  const canModerateMembers = Boolean(canEditDream || user?.globalRole === 'superadmin');
+  const {
+    data: joinRequestsRaw,
+    isLoading: joinRequestsLoading,
+  } = useTeamRequestsForLead(canModerateMembers ? projectId : '');
+  const joinRequests = Array.isArray(joinRequestsRaw) ? joinRequestsRaw : [];
+  const pendingJoinRequests = joinRequests.filter((r) => r.status === 'pending');
+  const pendingCount = pendingJoinRequests.length;
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+  const approveJoinRequest = useApproveTeamRequest();
+  const rejectJoinRequest = useRejectTeamRequest();
+
+  const handleApproveJoinRequest = (requestId: string) => {
+    setProcessingRequestId(requestId);
+    approveJoinRequest.mutate(
+      { requestId },
+      {
+        onSuccess: () => {
+          addToast(tCommunities('teamRequests.approved'), 'success');
+          void utils.project.getMembers.invalidate({ projectId });
+          void utils.teams.getTeamRequestsForLead.invalidate({ communityId: projectId });
+        },
+        onError: (error: unknown) => {
+          const raw = error instanceof Error ? error.message : undefined;
+          addToast(
+            raw?.trim()
+              ? resolveApiErrorToastMessage(raw)
+              : tCommunities('teamRequests.approveFailed'),
+            'error',
+          );
+        },
+        onSettled: () => setProcessingRequestId(null),
+      },
+    );
+  };
+
+  const handleRejectJoinRequest = (requestId: string) => {
+    if (!confirm(tCommunities('teamRequests.confirmReject'))) return;
+    setProcessingRequestId(requestId);
+    rejectJoinRequest.mutate(
+      { requestId },
+      {
+        onSuccess: () => {
+          addToast(tCommunities('teamRequests.rejected'), 'success');
+          void utils.teams.getTeamRequestsForLead.invalidate({ communityId: projectId });
+        },
+        onError: (error: unknown) => {
+          const raw = error instanceof Error ? error.message : undefined;
+          addToast(
+            raw?.trim()
+              ? resolveApiErrorToastMessage(raw)
+              : tCommunities('teamRequests.rejectFailed'),
+            'error',
+          );
+        },
+        onSettled: () => setProcessingRequestId(null),
+      },
+    );
+  };
+
+  const JoinRequestRow = ({ requestId, userId, applicantMessage }: { requestId: string; userId: string; applicantMessage?: string }) => {
+    const { data: profile } = useUserProfile(userId);
+    const display = profile?.displayName?.trim() || profile?.username || userId.slice(0, 8);
+    const handle = profile?.username ? `@${profile.username}` : null;
+    const note = typeof applicantMessage === 'string' ? applicantMessage.trim() : '';
+    const isApproving = approveJoinRequest.isPending && processingRequestId === requestId;
+    const isRejecting = rejectJoinRequest.isPending && processingRequestId === requestId;
+
+    return (
+      <div className="flex flex-col gap-3 rounded-xl border border-[#334155] bg-[#0f172a] p-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 flex-1 gap-3">
+          <Avatar className="h-10 w-10 shrink-0 rounded-lg border border-[#334155]">
+            {profile?.avatarUrl ? <AvatarImage src={profile.avatarUrl} alt="" /> : null}
+            <AvatarFallback userId={userId} className="rounded-lg text-xs font-medium uppercase">
+              {display.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-white">{display}</p>
+            {handle ? <p className="truncate text-xs text-[#94a3b8]">{handle}</p> : null}
+            {note ? (
+              <div className="mt-2 rounded-lg border border-[#334155] bg-white/[0.03] px-2.5 py-2 text-xs text-[#e2e8f0]">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-[#94a3b8]">
+                  {tCommunities('teamRequests.applicantMessageLabel')}
+                </p>
+                <p className="mt-1 whitespace-pre-wrap break-words">{note}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-row items-center gap-2 sm:flex-col sm:items-stretch">
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 flex-1 bg-[#A855F7] text-white hover:bg-[#9333ea] sm:flex-none"
+            disabled={isApproving || isRejecting}
+            onClick={() => handleApproveJoinRequest(requestId)}
+          >
+            {isApproving ? tCommunities('teamRequests.approving') : tCommunities('teamRequests.approve')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-9 flex-1 border-[#334155] text-[#e2e8f0] hover:bg-white/[0.06] hover:text-white sm:flex-none"
+            disabled={isApproving || isRejecting}
+            onClick={() => handleRejectJoinRequest(requestId)}
+          >
+            {isRejecting ? tCommunities('teamRequests.rejecting') : tCommunities('teamRequests.reject')}
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-dvh bg-[#0f172a] text-[#f1f5f9]">
       <PilotMinimalNav />
@@ -196,7 +320,14 @@ export function ProjectPilotDreamShell({
               className="border-[#334155] text-[#e2e8f0]"
               onClick={() => setMembersOpen(true)}
             >
-              {t('membersLink')}
+              <span className="relative inline-flex items-center">
+                {t('membersLink')}
+                {canModerateMembers && pendingCount > 0 ? (
+                  <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[#A855F7] px-1.5 text-[11px] font-semibold tabular-nums leading-5 text-white">
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </span>
+                ) : null}
+              </span>
             </Button>
             {!isMember && !readOnly ? (
               <CommunityJoinRequestPanel
@@ -269,7 +400,36 @@ export function ProjectPilotDreamShell({
           <DialogHeader>
             <DialogTitle>{t('membersPageTitle')}</DialogTitle>
           </DialogHeader>
-          <div className="max-h-[min(60vh,420px)] overflow-y-auto pr-1">
+          <div className="max-h-[min(60vh,420px)] overflow-y-auto pr-1 space-y-4">
+            {canModerateMembers ? (
+              <section className="rounded-xl border border-[#334155] bg-[#0f172a] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">{tCommunities('teamRequests.title')}</p>
+                  {pendingCount > 0 ? (
+                    <span className="rounded-full bg-white/5 px-2 py-0.5 text-xs tabular-nums text-[#cbd5e1]">
+                      {pendingCount}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3 space-y-2">
+                  {joinRequestsLoading ? (
+                    <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
+                  ) : pendingJoinRequests.length === 0 ? (
+                    <p className="text-sm text-[#94a3b8]">{t('membersRequestsEmpty')}</p>
+                  ) : (
+                    pendingJoinRequests.map((req) => (
+                      <JoinRequestRow
+                        key={req.id}
+                        requestId={req.id}
+                        userId={req.userId}
+                        applicantMessage={req.applicantMessage}
+                      />
+                    ))
+                  )}
+                </div>
+              </section>
+            ) : null}
+
             {membersLoading ? (
               <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
             ) : membersError ? (

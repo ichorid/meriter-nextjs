@@ -3227,6 +3227,7 @@
         "membersPageTitle": "Участники",
         "membersDialogEmpty": "Пока никого нет в этой мечте.",
         "membersDialogError": "Не удалось загрузить список участников.",
+        "membersRequestsEmpty": "Пока нет заявок на вступление.",
         "editDream": "Изменить мечту",
         "editDreamTitle": "Изменить мечту",
         "editSaved": "Сохранено",

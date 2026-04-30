@@ -3227,6 +3227,7 @@
         "membersPageTitle": "Participants",
         "membersDialogEmpty": "No one is in this dream yet.",
         "membersDialogError": "Could not load participants.",
+        "membersRequestsEmpty": "No join requests yet.",
         "editDream": "Edit dream",
         "editDreamTitle": "Edit dream",
         "editSaved": "Saved",
