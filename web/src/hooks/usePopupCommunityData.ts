@@ -8,7 +8,7 @@ import { useWallets, useCommunity, useWalletBalance } from '@/hooks/api';
  * useWalletBalance(communityId) resolves to global balance when community is priority.
  */
 export function usePopupCommunityData(communityId?: string) {
-  const { data: wallets = [] } = useWallets();
+  const { data: wallets = [] } = useWallets({ enabled: !communityId });
 
   // Determine which community to use - prefer prop, otherwise derive from wallets
   const targetCommunityId = communityId || (wallets[0]?.communityId);

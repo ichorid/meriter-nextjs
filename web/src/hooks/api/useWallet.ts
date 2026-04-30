@@ -12,9 +12,11 @@ import type { Wallet } from '@meriter/shared-types';
 export type { Wallet };
 
 // Get user wallets
-export function useWallets() {
+export function useWallets(options?: { enabled?: boolean }) {
   return trpc.wallets.getAll.useQuery(undefined, {
     staleTime: STALE_TIME.MEDIUM,
+    enabled: options?.enabled ?? true,
+    retry: false,
   });
 }
 
