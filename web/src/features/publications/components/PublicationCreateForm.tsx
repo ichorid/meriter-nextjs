@@ -1333,7 +1333,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       </div>
 
       {/* Sticky footer with action buttons */}
-      <div className="sticky bottom-0 z-10 pb-24 bg-base-100 border-t border-brand-border mt-auto">
+      <div className="sticky bottom-0 z-10 bg-base-100 border-t border-brand-border mt-auto">
         <div className="px-4 py-4 safe-area-inset-bottom">
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-2">
