@@ -11,6 +11,16 @@ export const metadata: Metadata = {
     default: 'Meriter',
   },
   description: 'Meriter - Community Governance Platform',
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [{ url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Meriter',
+    statusBarStyle: 'black-translucent',
+  },
 };
 
 export const viewport: Viewport = {
@@ -18,6 +28,7 @@ export const viewport: Viewport = {
   initialScale: 1.0,
   maximumScale: 1.0,
   userScalable: false,
+  themeColor: '#0f172a',
 };
 
 async function resolveServerLocale(): Promise<Locale> {
