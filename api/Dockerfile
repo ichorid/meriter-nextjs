@@ -14,6 +14,8 @@ COPY libs/shared-types ./libs/shared-types
 COPY api/package.json ./api/
 # Copy patches directory before install so pnpm can apply them (required for patchedDependencies in root package.json)
 COPY web/patches ./web/patches/
+## Pilot: myth markdown is served by the API container in production
+COPY web/src/features/multi-obraz-pilot/meriterra-lore.md ./web/src/features/multi-obraz-pilot/meriterra-lore.md
 
 # Install all dependencies first
 RUN --mount=type=cache,target=/pnpm/store \
