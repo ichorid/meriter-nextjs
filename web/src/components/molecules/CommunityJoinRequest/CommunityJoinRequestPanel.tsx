@@ -68,7 +68,8 @@ export function CommunityJoinRequestPanel({
   const isOnMembersList = Boolean(user && community?.members?.includes(user.id));
   // Do not treat platform/community admin flag as membership — superadmin may manage settings
   // without being a member; they should still be able to submit a join request.
-  const isMember = isRoleMember || isOnMembersList;
+  const isPlatformSuperadmin = user?.globalRole === 'superadmin';
+  const isMember = isRoleMember || (!isPlatformSuperadmin && isOnMembersList);
 
   if (!allowsJoin || isMember || !user) {
     return null;
