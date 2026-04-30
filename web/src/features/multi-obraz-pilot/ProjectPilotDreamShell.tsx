@@ -701,6 +701,9 @@ export function ProjectPilotDreamShell({
         </DialogContent>
       </Dialog>
 
+      {/* Bottom Widget Area - for BottomPortal (VotingPopup uses it) */}
+      <div className="bottom-widget-area fixed inset-0 z-50 pointer-events-none touch-none" />
+
       {/* Needed for pilot shell: tasks/discussions use global Meriter voting popup (not rendered via AdaptiveLayout). */}
       <VotingPopup communityId={GLOBAL_COMMUNITY_ID} />
     </div>
