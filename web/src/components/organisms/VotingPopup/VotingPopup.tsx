@@ -30,6 +30,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   communityId,
 }) => {
   const t = useTranslations('comments');
+  const tPilot = useTranslations('multiObraz');
   const tShared = useTranslations('shared');
   const features = useFeaturesConfig();
   const enableCommentVoting = features.commentVoting;
@@ -51,6 +52,16 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const { data: publication } = usePublication(
     votingTargetType === 'publication' && activeVotingTarget ? activeVotingTarget : '',
   );
+
+  const pilotTaskAppreciation = useMemo(() => {
+    const isTicketPost = (publication as { postType?: string } | undefined)?.postType === 'ticket';
+    return (
+      communityId === GLOBAL_COMMUNITY_ID &&
+      votingPublicationIsTask === true &&
+      votingTaskAllowWeightedMerits === true &&
+      isTicketPost
+    );
+  }, [communityId, votingPublicationIsTask, votingTaskAllowWeightedMerits, publication]);
 
   const voteContextCommunityId = useMemo(() => {
     if (votingTargetType === 'publication' && publication?.communityId) {
@@ -80,9 +91,15 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     if (!user?.id || !publication || votingTargetType !== 'publication') return false;
     const authorId = publication.authorId;
     const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
+    const isTicketPost = (publication as { postType?: string } | undefined)?.postType === 'ticket';
     const entitySourced = isPublicationEntitySourced(
       publication as { authorKind?: 'user' | 'community'; sourceEntityType?: 'project' | 'community' },
     );
+    // Tickets: do NOT treat task creator as "own post" when they are rewarding someone else.
+    // Own-post restrictions still apply when user is the beneficiary/assignee.
+    if (isTicketPost && beneficiaryId && beneficiaryId !== authorId && user.id === authorId) {
+      return false;
+    }
     const isPersonalAuthor = !!(authorId && user.id === authorId && !entitySourced);
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = !!(hasBeneficiary && beneficiaryId && user.id === beneficiaryId);
@@ -266,6 +283,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const delta = formData.delta;
     if (delta === 0) {
+      if (pilotTaskAppreciation) {
+        updateVotingFormData({ error: t('pleaseAdjustSlider') });
+        return;
+      }
       if (effectiveCommentModeForSubmit === 'weightedOnly') {
         updateVotingFormData({ error: t('weightRequired') });
         return;
@@ -286,7 +307,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const isUpvote = directionPlus;
 
     // Check if comment is required and provided (only for positive votes; neutral already validated above)
-    if (isUpvote && delta !== 0 && !formData.comment?.trim()) {
+    if (!pilotTaskAppreciation && isUpvote && delta !== 0 && !formData.comment?.trim()) {
       updateVotingFormData({ error: t('reasonRequired') });
       return;
     }
@@ -355,7 +376,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     // Close popup immediately to prevent flash of updated progress bars
     // The optimistic updates will happen in onMutate, but the popup will already be closed
     const targetId = activeVotingTarget;
-    const commentText = formData.comment.trim();
+    const commentText = pilotTaskAppreciation ? '' : formData.comment.trim();
     const imagesToSubmit = enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined;
     
     // Close popup and reset form immediately
@@ -456,15 +477,21 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
           commentMode={ticketFreeCommentOnlyUi ? 'neutralOnly' : effectiveCommentMode}
+          title={pilotTaskAppreciation ? tPilot('taskThanksTitle') : undefined}
+          mechanicsTextOverride={pilotTaskAppreciation ? tPilot('taskThanksHint') : undefined}
+          hideComment={pilotTaskAppreciation ? true : undefined}
+          hideDirectionToggle={pilotTaskAppreciation ? true : undefined}
           hideQuota={
             ticketFreeCommentOnlyUi ||
             (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
           }
           submitButtonLabel={
-            ticketFreeCommentOnlyUi ||
-            (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
-              ? t('commentButton')
-              : undefined
+            pilotTaskAppreciation
+              ? tPilot('taskThanksSubmit')
+              : ticketFreeCommentOnlyUi ||
+                  (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
+                ? t('commentButton')
+                : undefined
           }
           isOwnPost={ticketFreeCommentOnlyUi ? false : isOwnPost}
           neutralHelperText={ticketFreeCommentOnlyUi ? t('taskCommentFreeHint') : undefined}

@@ -40,6 +40,8 @@ interface VotingPanelProps {
     title?: string;
     /** When set and hideQuota, used as submit button label instead of withdrawButton */
     submitButtonLabel?: string;
+    /** Override helper text under title (pilot task thanks, etc.) */
+    mechanicsTextOverride?: string;
     onSubmitSimple?: () => void;
     /** Community comment mode: all (0 or weighted), neutralOnly (text only), weightedOnly (weight required) */
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
@@ -76,6 +78,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     hideImages = false,
     title,
     submitButtonLabel,
+    mechanicsTextOverride,
     onSubmitSimple,
     commentMode,
     neutralHelperText,
@@ -576,7 +579,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                 {/* Explanation - only for weighted communities */}
                 {!hideQuota && commentMode !== 'neutralOnly' && (
                     <p className="text-xs text-base-content/50 leading-relaxed whitespace-pre-line">
-                        {votingMechanicsText}
+                        {mechanicsTextOverride ?? votingMechanicsText}
                     </p>
                 )}
             </div>
@@ -866,7 +869,9 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("voteTitle")}
+                    {hideQuota
+                      ? (submitButtonLabel ?? tShared("withdrawButton"))
+                      : (submitButtonLabel ?? t("voteTitle"))}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
