@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiResponseHelper } from '../common/helpers/api-response.helper';
 import fs from 'node:fs/promises';
-import path from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 
 async function readFirstExisting(paths: string[]): Promise<string> {
   for (const p of paths) {
@@ -23,13 +23,13 @@ export class PilotController {
     const cwd = process.cwd();
     const candidates = [
       // packaged runtime (api Docker image copies this into /app/public)
-      path.join(cwd, 'public', 'meriterra-lore.md'),
+      join(cwd, 'public', 'meriterra-lore.md'),
       // repo root (common in docker / production)
-      path.join(cwd, 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
+      join(cwd, 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
       // when running from api/ as cwd
-      path.join(cwd, '..', 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
+      join(cwd, '..', 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
       // compiled dist (fallback)
-      path.resolve(__dirname, '../../../../../../web/src/features/multi-obraz-pilot/meriterra-lore.md'),
+      resolvePath(__dirname, '../../../../../../web/src/features/multi-obraz-pilot/meriterra-lore.md'),
     ];
 
     const text = await readFirstExisting(candidates);
