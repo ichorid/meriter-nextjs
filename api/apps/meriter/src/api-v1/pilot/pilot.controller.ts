@@ -22,8 +22,12 @@ export class PilotController {
     // so we expose a backend endpoint for the pilot myth text.
     const cwd = process.cwd();
     const candidates = [
+      // absolute runtime path (Docker image)
+      '/app/public/meriterra-lore.md',
       // packaged runtime (api Docker image copies this into /app/public)
       join(cwd, 'public', 'meriterra-lore.md'),
+      // when cwd is inside dist/apps/meriter (common for Nest prod)
+      join(cwd, '..', '..', '..', 'public', 'meriterra-lore.md'),
       // repo root (common in docker / production)
       join(cwd, 'web', 'src', 'features', 'multi-obraz-pilot', 'meriterra-lore.md'),
       // when running from api/ as cwd
