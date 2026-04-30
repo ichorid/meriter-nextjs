@@ -1333,19 +1333,29 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       </div>
 
       {/* Sticky footer with action buttons */}
-      <div className="sticky bottom-0 z-10 bg-base-100 border-t border-brand-border mt-auto">
-        <div className="px-4 py-4 safe-area-inset-bottom">
+      <div className="sticky bottom-0 z-10 mt-auto pointer-events-none">
+        <div className="px-4 py-4 safe-area-inset-bottom pointer-events-auto">
           <div className="flex items-center justify-between gap-4">
             <div className="flex gap-2">
               {hasDraft && (
-                <Button variant="outline" onClick={clearDraft} disabled={isSubmitting} className="rounded-xl active:scale-[0.98]">
+                <Button
+                  variant="outline"
+                  onClick={clearDraft}
+                  disabled={isSubmitting}
+                  className="rounded-xl active:scale-[0.98]"
+                >
                   {t('clearDraft')}
                 </Button>
               )}
             </div>
             <div className="flex gap-2">
               {onCancel && (
-                <Button variant="outline" onClick={onCancel} disabled={isSubmitting} className="rounded-xl active:scale-[0.98]">
+                <Button
+                  variant="outline"
+                  onClick={onCancel}
+                  disabled={isSubmitting}
+                  className="rounded-xl active:scale-[0.98]"
+                >
                   {t('cancel')}
                 </Button>
               )}
