@@ -1,6 +1,6 @@
 {
     "name": "@meriter/web",
-    "version": "0.49.2",
+    "version": "0.49.4",
     "main": "index.js",
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {
@@ -16,7 +16,8 @@
         "check:render-loops": "node scripts/check-render-loops.js",
         "scan:translations": "node scripts/scan-translations.js",
         "validate:translations": "node scripts/validate-translations.js",
-        "prebuild": "node scripts/generate-build-info.js && pnpm check:render-loops"
+        "prebuild": "node scripts/generate-build-info.js && pnpm check:render-loops",
+        "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs"
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.940.0",

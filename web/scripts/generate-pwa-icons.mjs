@@ -1,22 +1,25 @@
 /**
- * Generates PWA / favicon PNGs from meriter/merit.svg on Obsidian canvas (#0f172a).
+ * Generates PWA / favicon PNGs from scripts/assets/eyecon.png on Obsidian canvas (#0f172a).
  * Run from repo root: pnpm --filter @meriter/web exec node scripts/generate-pwa-icons.mjs
  */
 import sharp from 'sharp';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, '..', 'public');
-const svgPath = join(publicDir, 'meriter', 'merit.svg');
+const pngPath = join(__dirname, 'assets', 'eyecon.png');
 
 const CANVAS = '#0f172a';
 
 async function iconWithBg(size, relPath, scale = 0.68) {
-  const svg = readFileSync(svgPath);
+  if (!existsSync(pngPath)) {
+    throw new Error(`Missing source PNG: ${pngPath}`);
+  }
+  const png = readFileSync(pngPath);
   const inner = Math.max(16, Math.round(size * scale));
-  const meritBuf = await sharp(svg)
+  const innerBuf = await sharp(png)
     .resize({
       width: inner,
       height: inner,
@@ -26,7 +29,7 @@ async function iconWithBg(size, relPath, scale = 0.68) {
     .png()
     .toBuffer();
 
-  const { width: w = inner, height: h = inner } = await sharp(meritBuf).metadata();
+  const { width: w = inner, height: h = inner } = await sharp(innerBuf).metadata();
   const left = Math.max(0, Math.round((size - w) / 2));
   const top = Math.max(0, Math.round((size - h) / 2));
 
@@ -38,7 +41,7 @@ async function iconWithBg(size, relPath, scale = 0.68) {
       background: CANVAS,
     },
   })
-    .composite([{ input: meritBuf, left, top }])
+    .composite([{ input: innerBuf, left, top }])
     .png()
     .toFile(join(publicDir, relPath));
 
