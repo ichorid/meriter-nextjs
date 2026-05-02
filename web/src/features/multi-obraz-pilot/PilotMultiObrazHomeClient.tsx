@@ -85,10 +85,8 @@ export function PilotMultiObrazHomeClient() {
   const [supportAmount, setSupportAmount] = React.useState<number>(1);
   const [supportAmountInput, setSupportAmountInput] = React.useState<string>('1');
 
-  const [loreOpen, setLoreOpen] = React.useState(false);
-  const [loreText, setLoreText] = React.useState<string | null>(null);
-  const [loreLoading, setLoreLoading] = React.useState(false);
   const [coverLightboxUrl, setCoverLightboxUrl] = React.useState<string | null>(null);
+  const { welcomeDismissed, dismissWelcome, openLore } = usePilotObrazUi();
 
   const openSupport = (dreamId: string, isOwn: boolean) => {
     setSupportDreamId(dreamId);
