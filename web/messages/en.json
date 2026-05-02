@@ -3165,6 +3165,7 @@
         "heroTitle": "Multi-Obraz",
         "heroBody": "This is the Multi-Obraz pilot: dreams, steps, and support through merits.",
         "heroCta": "Dream",
+        "welcomeDismissAria": "Close welcome banner",
         "aboutMeriterra": "About Meriterra",
         "loreSubtitle": "Myth and rules",
         "loreLoadFailed": "Failed to load text.",

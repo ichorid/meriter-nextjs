@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { routes } from '@/lib/constants/routes';
 import { pilotCreateHref, pilotDreamHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
-import { CalendarDays, Minus, Plus, TrendingUp } from 'lucide-react';
+import { CalendarDays, Minus, Plus, TrendingUp, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,10 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { Label } from '@/components/ui/shadcn/label';
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
 import { formatMerits } from '@/lib/utils/currency';
 import { ImageLightbox } from '@/shared/components/image-lightbox';
 import { PilotDreamCoverImage } from '@/features/multi-obraz-pilot/PilotDreamCoverImage';
+import { usePilotObrazUi } from '@/features/multi-obraz-pilot/PilotObrazUiContext';
 
 function formatPublishedAt(iso: string | undefined, locale: string): string | null {
   if (!iso) return null;
@@ -157,69 +157,76 @@ export function PilotMultiObrazHomeClient() {
     );
   };
 
-  const openLore = async () => {
-    setLoreOpen(true);
-    if (loreText != null || loreLoading) return;
-    setLoreLoading(true);
-    try {
-      const res = await fetch('/api/pilot/lore');
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const json = (await res.json()) as { success?: boolean; data?: string; error?: { message?: string } };
-        if (!res.ok || json?.success === false) {
-          setLoreText(json?.error?.message || t('loreLoadFailed'));
-        } else {
-          setLoreText(json?.data ?? '');
-        }
-      } else {
-        const txt = await res.text();
-        setLoreText(txt);
-      }
-    } catch {
-      setLoreText(t('loreLoadFailed'));
-    } finally {
-      setLoreLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl border border-[#334155] bg-[#1e293b] p-6 sm:p-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t('heroTitle')}</h1>
-        <p className="mt-3 max-w-prose text-sm leading-relaxed text-[#94a3b8] sm:text-base">{t('heroBody')}</p>
-        <div className="mt-6">
-          {user ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      {!welcomeDismissed ? (
+        <section className="relative rounded-2xl border border-[#334155] bg-[#1e293b] p-6 pr-12 sm:p-8 sm:pr-14">
+          <button
+            type="button"
+            onClick={dismissWelcome}
+            className="absolute right-3 top-3 rounded-lg p-2 text-[#94a3b8] transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A855F7]"
+            aria-label={t('welcomeDismissAria')}
+          >
+            <X className="size-5" aria-hidden />
+          </button>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{t('heroTitle')}</h1>
+          <p className="mt-3 max-w-prose text-sm leading-relaxed text-[#94a3b8] sm:text-base">{t('heroBody')}</p>
+          <div className="mt-6">
+            {user ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  asChild
+                  className="h-12 min-w-[200px] rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea]"
+                >
+                  <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-12 min-w-[200px] rounded-lg border-[#334155] bg-[#0f172a] px-6 text-base font-semibold text-white hover:bg-[#0f172a]/80"
+                  onClick={() => void openLore()}
+                >
+                  {t('aboutMeriterra')}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button asChild className="h-12 rounded-lg bg-[#A855F7] px-6 text-white hover:bg-[#9333ea]">
+                  <Link href={routes.login}>{t('navLogin')}</Link>
+                </Button>
+                <p className="text-sm text-[#94a3b8]">{t('guestCtaHint')}</p>
+              </div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      <section aria-labelledby="pilot-feed-title" className="space-y-4">
+        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-2 sm:gap-3">
+          <h2
+            id="pilot-feed-title"
+            className="min-w-0 flex-1 truncate text-lg font-bold leading-tight text-white sm:text-lg"
+          >
+            {t('feedTitle')}
+          </h2>
+          {welcomeDismissed ? (
+            user ? (
               <Button
                 asChild
-                className="h-12 min-w-[200px] rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea]"
+                className="h-10 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:h-11 sm:px-5 sm:text-base"
               >
                 <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
               </Button>
+            ) : (
               <Button
-                type="button"
-                variant="outline"
-                className="h-12 min-w-[200px] rounded-lg border-[#334155] bg-[#0f172a] px-6 text-base font-semibold text-white hover:bg-[#0f172a]/80"
-                onClick={openLore}
+                asChild
+                className="h-10 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:h-11 sm:px-5 sm:text-base"
               >
-                {t('aboutMeriterra')}
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <Button asChild className="h-12 rounded-lg bg-[#A855F7] px-6 text-white hover:bg-[#9333ea]">
                 <Link href={routes.login}>{t('navLogin')}</Link>
               </Button>
-              <p className="text-sm text-[#94a3b8]">{t('guestCtaHint')}</p>
-            </div>
-          )}
+            )
+          ) : null}
         </div>
-      </section>
-
-      <section aria-labelledby="pilot-feed-title" className="space-y-4">
-        <h2 id="pilot-feed-title" className="text-lg font-bold text-white">
-          {t('feedTitle')}
-        </h2>
 
         <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
           <div
@@ -492,24 +499,6 @@ export function PilotMultiObrazHomeClient() {
               {t('supportSubmit')}
             </Button>
           </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={loreOpen} onOpenChange={setLoreOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
-          <DialogHeader>
-            <DialogTitle>{t('aboutMeriterra')}</DialogTitle>
-            <DialogDescription className="text-[#94a3b8]">
-              {t('loreSubtitle')}
-            </DialogDescription>
-          </DialogHeader>
-          {loreLoading ? (
-            <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
-          ) : (
-            <article className="prose prose-invert max-w-none prose-p:text-[#cbd5e1] prose-strong:text-white prose-headings:text-white">
-              <ReactMarkdown>{loreText ?? ''}</ReactMarkdown>
-            </article>
-          )}
         </DialogContent>
       </Dialog>
 
