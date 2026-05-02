@@ -3159,6 +3159,8 @@
         "navFeed": "Мечты",
         "navCreate": "Помечтать",
         "navMining": "Майнинг",
+        "navMiningAuthTitle": "Майнинг",
+        "navMiningAuthBody": "Майнинг доступен только зарегистрированным пользователям, пожалуйста, авторизуйтесь",
         "navProfile": "Профиль",
         "navDeletedDreams": "Удалённые",
         "navLogin": "Вход",

@@ -3159,6 +3159,8 @@
         "navFeed": "Dreams",
         "navCreate": "Dream",
         "navMining": "Mining",
+        "navMiningAuthTitle": "Mining",
+        "navMiningAuthBody": "Mining is only available to registered users. Please sign in.",
         "navProfile": "Profile",
         "navLogin": "Log in",
         "navLogout": "Log out",

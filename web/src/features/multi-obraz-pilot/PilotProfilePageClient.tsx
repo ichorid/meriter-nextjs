@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { User as UserIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -58,7 +59,8 @@ function PilotDreamRows({
 }
 
 export function PilotProfilePageClient() {
-  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const { user, isLoading, logout } = useAuth();
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
   const [coverLightboxUrl, setCoverLightboxUrl] = useState<string | null>(null);
@@ -239,6 +241,22 @@ export function PilotProfilePageClient() {
         onClose={() => setCoverLightboxUrl(null)}
         altPrefix={t('dreamCoverAlt')}
       />
+
+      <section
+        aria-label={t('navLogout')}
+        className="mt-10 border-t border-[#334155] pt-8"
+      >
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full border-[#334155] bg-[#0f172a] text-[#e2e8f0] hover:bg-[#1e293b] hover:text-white"
+          onClick={() => {
+            void logout().then(() => router.push(pilotHomeHref()));
+          }}
+        >
+          {t('navLogout')}
+        </Button>
+      </section>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { Community } from '@meriter/shared-types';
 import { PilotMinimalNav } from '@/features/multi-obraz-pilot/PilotMinimalNav';
+import { PilotObrazUiProvider } from '@/features/multi-obraz-pilot/PilotObrazUiContext';
 import { ProjectWorkArea } from '@/components/organisms/Project/project-work-area';
 import { Button } from '@/components/ui/shadcn/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
@@ -279,7 +280,7 @@ export function ProjectPilotDreamShell({
   const pathname = usePathname();
   const embeddedInPilotChrome = Boolean(pathname && pathname.startsWith('/dreams/'));
 
-  return (
+  const shell = (
     <div className={embeddedInPilotChrome ? undefined : 'min-h-dvh bg-[#0f172a] text-[#f1f5f9]'}>
       {!embeddedInPilotChrome ? <PilotMinimalNav /> : null}
       <div className={embeddedInPilotChrome ? 'space-y-6' : 'mx-auto max-w-3xl space-y-6 px-4 py-6'}>
@@ -717,4 +718,6 @@ export function ProjectPilotDreamShell({
       <VotingPopup communityId={GLOBAL_COMMUNITY_ID} />
     </div>
   );
+
+  return embeddedInPilotChrome ? shell : <PilotObrazUiProvider>{shell}</PilotObrazUiProvider>;
 }

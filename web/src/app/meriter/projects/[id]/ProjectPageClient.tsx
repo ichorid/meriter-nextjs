@@ -36,6 +36,7 @@ import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha
 import { isPilotClientMode, isPilotDreamProject } from '@/config/pilot';
 import { pilotHomeHref } from '@/lib/constants/pilot-routes';
 import { PilotMinimalNav } from '@/features/multi-obraz-pilot/PilotMinimalNav';
+import { PilotObrazUiProvider } from '@/features/multi-obraz-pilot/PilotObrazUiContext';
 import { ProjectPilotDreamShell } from '@/features/multi-obraz-pilot/ProjectPilotDreamShell';
 
 const PROJECT_HUB_FEED_TABS: readonly CommunityHubFeedTab[] = ['posts', 'events', 'birzha'];
@@ -147,16 +148,18 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   if (isPilotClientMode()) {
     if (!isPilotDreamProject(project)) {
       return (
-        <div className="min-h-dvh bg-[#0f172a] text-[#f1f5f9]">
-          <PilotMinimalNav />
-          <div className="mx-auto max-w-lg px-4 py-16 text-center">
-            <p className="text-lg font-semibold text-white">{tPilot('dreamNotFoundTitle')}</p>
-            <p className="mt-2 text-sm text-[#94a3b8]">{tPilot('dreamNotFoundBody')}</p>
-            <Button className="mt-6 bg-[#A855F7] text-white" asChild>
-              <Link href={pilotHomeHref()}>{tPilot('backToPilotFeed')}</Link>
-            </Button>
+        <PilotObrazUiProvider>
+          <div className="min-h-dvh bg-[#0f172a] text-[#f1f5f9]">
+            <PilotMinimalNav />
+            <div className="mx-auto max-w-lg px-4 py-16 text-center">
+              <p className="text-lg font-semibold text-white">{tPilot('dreamNotFoundTitle')}</p>
+              <p className="mt-2 text-sm text-[#94a3b8]">{tPilot('dreamNotFoundBody')}</p>
+              <Button className="mt-6 bg-[#A855F7] text-white" asChild>
+                <Link href={pilotHomeHref()}>{tPilot('backToPilotFeed')}</Link>
+              </Button>
+            </div>
           </div>
-        </div>
+        </PilotObrazUiProvider>
       );
     }
     return (
