@@ -48,11 +48,11 @@ export function useProjects(params: {
 export function usePilotDreamsFeed(params?: {
   page?: number;
   pageSize?: number;
-  /** Default on API/UI: rating first */
+  /** Default: newest first (`createdAt`). */
   sort?: 'score' | 'createdAt';
   search?: string;
 }) {
-  const sort = params?.sort ?? 'score';
+  const sort = params?.sort ?? 'createdAt';
   const searchTrimmed = params?.search?.trim() ?? '';
 
   return trpc.project.getGlobalList.useQuery(

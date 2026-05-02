@@ -51,7 +51,7 @@ export function PilotMultiObrazHomeClient() {
   const searchParams = useSearchParams();
 
   const [sortMode, setSortMode] = React.useState<'score' | 'createdAt'>(() =>
-    searchParams.get('sort') === 'createdAt' ? 'createdAt' : 'score',
+    searchParams.get('sort') === 'score' ? 'score' : 'createdAt',
   );
   const [searchInput, setSearchInput] = React.useState(() => searchParams.get('q') ?? '');
   const debouncedSearch = useDebounce(searchInput, FEED_SEARCH_DEBOUNCE_MS);
@@ -67,7 +67,7 @@ export function PilotMultiObrazHomeClient() {
 
   React.useEffect(() => {
     const params = new URLSearchParams();
-    if (sortMode !== 'score') {
+    if (sortMode !== 'createdAt') {
       params.set('sort', sortMode);
     }
     const q = debouncedSearch.trim();
