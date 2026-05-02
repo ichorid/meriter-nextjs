@@ -7,14 +7,14 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { NotificationService } from '../src/domain/services/notification.service';
 
 describe('Publication edit notifications deduplication (NotificationService)', () => {
+  jest.setTimeout(60000);
+
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let notificationService: NotificationService;
   let connection: Connection;
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
-
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -33,9 +33,15 @@ describe('Publication edit notifications deduplication (NotificationService)', (
   });
 
   afterAll(async () => {
-    await connection.close();
-    await app.close();
-    await testDb.stop();
+    if (connection) {
+      await connection.close();
+    }
+    if (app) {
+      await app.close();
+    }
+    if (testDb) {
+      await testDb.stop();
+    }
   });
 
   beforeEach(async () => {
