@@ -28,6 +28,7 @@ export const useSubmitTeamRequest = () => {
       utils.communities.getMembers.invalidate();
       utils.project.getById.invalidate({ id: variables.communityId });
       utils.project.list.invalidate();
+      utils.ticket.getByProject.invalidate({ projectId: variables.communityId });
       utils.notifications.getAll.invalidate();
     },
   });

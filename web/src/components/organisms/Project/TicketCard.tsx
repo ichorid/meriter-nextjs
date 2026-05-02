@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { usePathname } from 'next/navigation';
 import { TrendingUp } from 'lucide-react';
 import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
@@ -35,6 +36,9 @@ import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
 import { useUIStore } from '@/stores/ui.store';
 import type { TicketStatus } from '@meriter/shared-types';
+import { useSubmitTeamRequest } from '@/hooks/api/useTeamRequests';
+import { useToastStore } from '@/shared/stores/toast.store';
+import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 
 interface TicketCardProps {
   projectId: string;
@@ -57,6 +61,9 @@ interface TicketCardProps {
   currentUserId: string;
   /** Pilot: card body is not a link to `/meriter/communities/.../posts/...`. */
   blockMeriterNavigation?: boolean;
+  isAuthenticated?: boolean;
+  isProjectMember?: boolean;
+  pilotPublicTakeFlow?: boolean;
 }
 
 export function TicketCard({
@@ -66,10 +73,17 @@ export function TicketCard({
   canModerateTickets,
   highlighted = false,
   blockMeriterNavigation = false,
+  isAuthenticated = true,
+  isProjectMember = true,
+  pilotPublicTakeFlow = false,
 }: TicketCardProps) {
   const t = useTranslations('projects');
+  const tPilot = useTranslations('multiObraz');
   const tComments = useTranslations('comments');
   const locale = useLocale();
+  const pathname = usePathname();
+  const addToast = useToastStore((s) => s.addToast);
+  const submitTeamJoin = useSubmitTeamRequest();
   const updateStatus = useUpdateTicketStatus();
   const acceptWork = useAcceptWork();
   const returnWorkForRevision = useReturnWorkForRevision();
@@ -82,6 +96,8 @@ export function TicketCard({
   const [returnRevisionOpen, setReturnRevisionOpen] = useState(false);
   const [returnRevisionReason, setReturnRevisionReason] = useState('');
   const [pilotDetailOpen, setPilotDetailOpen] = useState(false);
+  const [takeGuestOpen, setTakeGuestOpen] = useState(false);
+  const [takeJoinDreamOpen, setTakeJoinDreamOpen] = useState(false);
 
   const status = (ticket.ticketStatus ?? 'in_progress') as TicketStatus;
   const beneficiaryId = ticket.beneficiaryId ?? ticket.authorId;
@@ -90,7 +106,47 @@ export function TicketCard({
   const applicants = ticket.applicants ?? [];
   const canTakeOpenNeutralAsModerator = isOpenNeutral && canModerateTickets;
   const canTakeOpenNeutralAsMember =
-    isOpenNeutral && !canModerateTickets && !applicants.includes(currentUserId);
+    isOpenNeutral &&
+    !canModerateTickets &&
+    isProjectMember &&
+    isAuthenticated &&
+    !applicants.includes(currentUserId);
+  const canTakeOpenNeutralAsGuest =
+    pilotPublicTakeFlow &&
+    isOpenNeutral &&
+    !canModerateTickets &&
+    !isAuthenticated;
+  const canTakeOpenNeutralJoinDream =
+    pilotPublicTakeFlow &&
+    isOpenNeutral &&
+    !canModerateTickets &&
+    isAuthenticated &&
+    !isProjectMember;
+
+  const loginReturnTo = `${pathname}?tab=tickets&highlight=${encodeURIComponent(ticket.id)}`;
+  const loginHref = `${routes.login}?returnTo=${encodeURIComponent(loginReturnTo)}`;
+
+  const confirmJoinToTakeTask = () => {
+    const titlePart = ticket.title?.trim() || tPilot('pilotTicketUntitled');
+    submitTeamJoin.mutate(
+      {
+        communityId: projectId,
+        applicantMessage: tPilot('takeTaskJoinMessage', {
+          title: titlePart,
+        }),
+        intentTicketId: ticket.id,
+      },
+      {
+        onSuccess: () => {
+          setTakeJoinDreamOpen(false);
+          addToast(tPilot('takeTaskJoinSuccess'), 'success');
+        },
+        onError: (err) => {
+          addToast(resolveApiErrorToastMessage(err.message), 'error');
+        },
+      },
+    );
+  };
   const hasAppliedForOpenNeutral =
     isOpenNeutral && !canModerateTickets && applicants.includes(currentUserId);
 
@@ -256,6 +312,27 @@ export function TicketCard({
               {applyForTicket.isPending ? '…' : t('takeTask')}
             </Button>
           )}
+          {canTakeOpenNeutralJoinDream && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setTakeJoinDreamOpen(true)}
+              disabled={submitTeamJoin.isPending}
+            >
+              {submitTeamJoin.isPending ? '…' : t('takeTask')}
+            </Button>
+          )}
+          {canTakeOpenNeutralAsGuest && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setTakeGuestOpen(true)}
+            >
+              {t('takeTask')}
+            </Button>
+          )}
           {hasAppliedForOpenNeutral && (
             <span className="text-xs text-base-content/60">{t('alreadyApplied')}</span>
           )}
@@ -388,6 +465,51 @@ export function TicketCard({
           fallbackContent={ticket.content}
         />
       ) : null}
+
+      <Dialog open={takeGuestOpen} onOpenChange={setTakeGuestOpen}>
+        <DialogContent className="sm:max-w-md border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+          <DialogHeader>
+            <DialogTitle>{tPilot('takeTaskLoginTitle')}</DialogTitle>
+            <DialogDescription className="text-[#94a3b8]">
+              {tPilot('takeTaskLoginBody')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setTakeGuestOpen(false)}>
+              {tPilot('cancel')}
+            </Button>
+            <Button type="button" className="bg-[#A855F7] text-white hover:bg-[#A855F7]/90" asChild>
+              <Link href={loginHref} onClick={() => setTakeGuestOpen(false)}>
+                {tPilot('takeTaskLoginCta')}
+              </Link>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={takeJoinDreamOpen} onOpenChange={setTakeJoinDreamOpen}>
+        <DialogContent className="sm:max-w-md border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
+          <DialogHeader>
+            <DialogTitle>{tPilot('takeTaskJoinTitle')}</DialogTitle>
+            <DialogDescription className="text-[#94a3b8]">
+              {tPilot('takeTaskJoinBody')}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button type="button" variant="outline" onClick={() => setTakeJoinDreamOpen(false)}>
+              {tPilot('cancel')}
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#A855F7] text-white hover:bg-[#A855F7]/90"
+              onClick={confirmJoinToTakeTask}
+              disabled={submitTeamJoin.isPending}
+            >
+              {submitTeamJoin.isPending ? '…' : tPilot('takeTaskJoinConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={declineOpen} onOpenChange={setDeclineOpen}>
         <DialogContent className="sm:max-w-md" onCloseAutoFocus={() => setDeclineReason('')}>

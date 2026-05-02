@@ -36,6 +36,8 @@ export interface ProjectWorkAreaProps {
   usePilotTerms?: boolean;
   /** Pilot shell: no links to full Meriter community/post pages; discussions created in-dialog. */
   blockMeriterNavigation?: boolean;
+  /** Pilot Multi-Obraz: show task list to guests/non-members; discussions remain member-only. */
+  pilotAllowNonMemberTaskList?: boolean;
 }
 
 export function ProjectWorkArea({
@@ -47,6 +49,7 @@ export function ProjectWorkArea({
   discussionUxVariant = 'default',
   usePilotTerms = false,
   blockMeriterNavigation = false,
+  pilotAllowNonMemberTaskList = false,
 }: ProjectWorkAreaProps) {
   const t = useTranslations('projects');
   const tPilot = useTranslations('multiObraz');
@@ -59,11 +62,13 @@ export function ProjectWorkArea({
 
   const tabFromUrl = searchParams.get('tab');
   const highlightTicketId = searchParams.get('highlight');
+  const discussionsAllowed = isMember;
+
   useEffect(() => {
-    if (tabFromUrl === 'discussions') {
+    if (tabFromUrl === 'discussions' && discussionsAllowed) {
       setActiveTab('discussions');
     }
-  }, [tabFromUrl]);
+  }, [tabFromUrl, discussionsAllowed]);
 
   useEffect(() => {
     if (highlightTicketId) {
@@ -72,42 +77,64 @@ export function ProjectWorkArea({
     }
   }, [highlightTicketId]);
 
-  if (!isMember) {
+  useEffect(() => {
+    if (!discussionsAllowed && activeTab === 'discussions') {
+      setActiveTab('tickets');
+    }
+  }, [discussionsAllowed, activeTab]);
+
+  if (!isMember && !pilotAllowNonMemberTaskList) {
     return null;
   }
+
+  const pilotPublicTakeFlow = Boolean(
+    pilotAllowNonMemberTaskList && usePilotTerms,
+  );
 
   return (
     <section aria-labelledby="project-work-area-heading" className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-4">
       <h2 id="project-work-area-heading" className="sr-only">
-        {usePilotTerms ? `${tPilot('tabTasks')} / ${tPilot('tabDiscussions')}` : `${t('tabs.tickets')} / ${t('tabs.discussions')}`}
+        {discussionsAllowed
+          ? usePilotTerms
+            ? `${tPilot('tabTasks')} / ${tPilot('tabDiscussions')}`
+            : `${t('tabs.tickets')} / ${t('tabs.discussions')}`
+          : usePilotTerms
+            ? tPilot('tabTasks')
+            : t('tabs.tickets')}
       </h2>
 
-      <div className="flex flex-wrap gap-4 border-b border-white/10">
-        <button
-          type="button"
-          onClick={() => setActiveTab('tickets')}
-          className={cn(
-            'border-b-2 px-1 pb-2 text-sm font-medium transition-colors -mb-px',
-            activeTab === 'tickets'
-              ? 'border-blue-500 text-base-content'
-              : 'border-transparent text-base-content/50 hover:text-base-content/80',
-          )}
-        >
-          {usePilotTerms ? tPilot('tabTasks') : t('tabs.tickets')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('discussions')}
-          className={cn(
-            'border-b-2 px-1 pb-2 text-sm font-medium transition-colors -mb-px',
-            activeTab === 'discussions'
-              ? 'border-blue-500 text-base-content'
-              : 'border-transparent text-base-content/50 hover:text-base-content/80',
-          )}
-        >
-          {usePilotTerms ? tPilot('tabDiscussions') : t('tabs.discussions')}
-        </button>
-      </div>
+      {discussionsAllowed ? (
+        <div className="flex flex-wrap gap-4 border-b border-white/10">
+          <button
+            type="button"
+            onClick={() => setActiveTab('tickets')}
+            className={cn(
+              'border-b-2 px-1 pb-2 text-sm font-medium transition-colors -mb-px',
+              activeTab === 'tickets'
+                ? 'border-blue-500 text-base-content'
+                : 'border-transparent text-base-content/50 hover:text-base-content/80',
+            )}
+          >
+            {usePilotTerms ? tPilot('tabTasks') : t('tabs.tickets')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('discussions')}
+            className={cn(
+              'border-b-2 px-1 pb-2 text-sm font-medium transition-colors -mb-px',
+              activeTab === 'discussions'
+                ? 'border-blue-500 text-base-content'
+                : 'border-transparent text-base-content/50 hover:text-base-content/80',
+            )}
+          >
+            {usePilotTerms ? tPilot('tabDiscussions') : t('tabs.discussions')}
+          </button>
+        </div>
+      ) : pilotAllowNonMemberTaskList && usePilotTerms ? (
+        <div className="border-b border-white/10 pb-2">
+          <p className="text-sm font-semibold text-[#f1f5f9]">{tPilot('tabTasks')}</p>
+        </div>
+      ) : null}
 
       {activeTab === 'tickets' && (
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
@@ -147,7 +174,7 @@ export function ProjectWorkArea({
         </div>
       )}
 
-      {activeTab === 'discussions' && !readOnly && (
+      {activeTab === 'discussions' && discussionsAllowed && !readOnly && (
         <div className="flex justify-end">
           {blockMeriterNavigation ? (
             <Button size="sm" variant="outline" type="button" onClick={() => setCreateDiscussionOpen(true)}>
@@ -166,15 +193,17 @@ export function ProjectWorkArea({
           projectId={projectId}
           currentUserId={currentUserId}
           canModerateTickets={canModerateTickets}
+          isProjectMember={isMember}
           statusFilter={statusFilter}
           highlightTicketId={highlightTicketId}
           blockMeriterNavigation={blockMeriterNavigation}
+          pilotPublicTakeFlow={pilotPublicTakeFlow}
           onOpenCreateTask={
             canModerateTickets && !readOnly ? () => setCreateTicketOpen(true) : undefined
           }
         />
       )}
-      {activeTab === 'discussions' && (
+      {activeTab === 'discussions' && discussionsAllowed && (
         <DiscussionList
           projectId={projectId}
           uxVariant={discussionUxVariant}
@@ -185,7 +214,7 @@ export function ProjectWorkArea({
         />
       )}
 
-      {blockMeriterNavigation && !readOnly && (
+      {blockMeriterNavigation && !readOnly && discussionsAllowed && (
         <Dialog open={createDiscussionOpen} onOpenChange={setCreateDiscussionOpen}>
           <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto border-[#334155] bg-[#1e293b] text-[#f1f5f9]">
             <DialogHeader>

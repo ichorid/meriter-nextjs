@@ -84,7 +84,6 @@ export function ProjectPilotDreamShell({
   const supportIsOwnDream = project.founderUserId === currentUserId;
   const quotaRemainingForSupport = supportIsOwnDream ? 0 : quotaRemaining;
   const maxAvailableForSupport = Math.max(0, quotaRemainingForSupport + walletBalance);
-  const canAccessDreamWorkspace = isMember || user?.globalRole === 'superadmin';
   const isSuperadmin = user?.globalRole === 'superadmin';
 
   const clampAmount = (raw: number) => {
@@ -376,20 +375,17 @@ export function ProjectPilotDreamShell({
 
         {/* Pilot: remove "Tell the story of your dream" banner */}
 
-        {canAccessDreamWorkspace ? (
-          <ProjectWorkArea
-            projectId={projectId}
-            currentUserId={currentUserId}
-            canModerateTickets={canModerateTickets}
-            isMember={isMember}
-            readOnly={readOnly}
-            discussionUxVariant="pilotAccordion"
-            usePilotTerms
-            blockMeriterNavigation
-          />
-        ) : (
-          <p className="text-sm text-[#94a3b8]">{t('joinToParticipate')}</p>
-        )}
+        <ProjectWorkArea
+          projectId={projectId}
+          currentUserId={currentUserId}
+          canModerateTickets={canModerateTickets}
+          isMember={isMember}
+          readOnly={readOnly}
+          discussionUxVariant="pilotAccordion"
+          usePilotTerms
+          blockMeriterNavigation
+          pilotAllowNonMemberTaskList
+        />
       </div>
 
       <Dialog open={membersOpen} onOpenChange={setMembersOpen}>

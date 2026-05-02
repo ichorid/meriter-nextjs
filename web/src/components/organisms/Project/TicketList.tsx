@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTickets } from '@/hooks/api/useTickets';
 import { TicketCard } from './TicketCard';
 import { Button } from '@/components/ui/shadcn/button';
@@ -19,6 +20,9 @@ interface TicketListProps {
   onOpenCreateTask?: () => void;
   /** Pilot: do not link task cards to full Meriter post URLs. */
   blockMeriterNavigation?: boolean;
+  isProjectMember?: boolean;
+  /** Pilot Multi-Obraz: guest / non-member «take task» flows. */
+  pilotPublicTakeFlow?: boolean;
 }
 
 export function TicketList({
@@ -29,10 +33,13 @@ export function TicketList({
   highlightTicketId,
   onOpenCreateTask,
   blockMeriterNavigation = false,
+  isProjectMember = true,
+  pilotPublicTakeFlow = false,
 }: TicketListProps) {
   const t = useTranslations('projects');
   const tPilot = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -75,7 +82,10 @@ export function TicketList({
   }
 
   const forbiddenMessage = (error as { message?: string } | null)?.message || '';
-  if (forbiddenMessage.includes('Only project members can view tickets')) {
+  if (
+    forbiddenMessage.includes('Only project members can view tickets') ||
+    forbiddenMessage.includes('Only project members can view this content')
+  ) {
     return <p className="text-sm text-[#94a3b8]">{tPilot('joinToParticipate')}</p>;
   }
 
@@ -117,6 +127,9 @@ export function TicketList({
               canModerateTickets={canModerateTickets}
               highlighted={Boolean(highlightTicketId && ticket.id === highlightTicketId)}
               blockMeriterNavigation={blockMeriterNavigation}
+              isAuthenticated={Boolean(user)}
+              isProjectMember={isProjectMember}
+              pilotPublicTakeFlow={pilotPublicTakeFlow}
             />
           </li>
         ),
