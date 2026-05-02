@@ -493,7 +493,7 @@ export class ProjectService {
 
     const sortOrder: Record<string, 1 | -1> =
       filters.sort === 'score'
-        ? ({ createdAt: -1 } as Record<string, 1 | -1>)
+        ? { 'pilotDreamRating.score': -1, createdAt: -1 }
         : { createdAt: -1 };
 
     const notSoftDeleted: Record<string, unknown> = {
