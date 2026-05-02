@@ -529,6 +529,8 @@ export class ProjectService {
       founderDisplayName: string | null;
       /** Active members (UserCommunityRole), not legacy `community.members`. */
       memberCount: number;
+      /** Pilot dream feed: open neutral tasks preview for the card. */
+      openNeutralTickets?: { tickets: { id: string; title?: string }[]; total: number };
     }>;
     total: number;
     page: number;
@@ -573,6 +575,17 @@ export class ProjectService {
       }
     }
 
+    let openTicketsByProject: Record<
+      string,
+      { tickets: { id: string; title?: string }[]; total: number }
+    > = {};
+    if (filters.pilotDreamFeed === true && result.data.length > 0) {
+      openTicketsByProject = await this.ticketService.getOpenNeutralTicketsPreviewForProjects(
+        result.data.map((p) => p.id),
+        15,
+      );
+    }
+
     const data = result.data.map((project) => {
       const parent = project.parentCommunityId
         ? parentCommunities.get(project.parentCommunityId)
@@ -580,12 +593,14 @@ export class ProjectService {
       const founderDisplayName = project.founderUserId
         ? founderDisplayById.get(project.founderUserId) ?? null
         : null;
+      const ot = openTicketsByProject[project.id];
       return {
         project,
         parentCommunityName: parent?.name ?? null,
         parentFutureVisionText: parent?.futureVisionText ?? null,
         founderDisplayName,
         memberCount: memberCountById.get(project.id) ?? 0,
+        ...(ot && ot.total > 0 ? { openNeutralTickets: ot } : {}),
       };
     });
 

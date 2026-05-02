@@ -760,6 +760,58 @@ export class TicketService {
   }
 
   /**
+   * Batch: open neutral tickets per project for pilot feed cards (preview + total count).
+   */
+  async getOpenNeutralTicketsPreviewForProjects(
+    projectIds: string[],
+    previewLimit: number,
+  ): Promise<Record<string, { tickets: { id: string; title?: string }[]; total: number }>> {
+    const out: Record<string, { tickets: { id: string; title?: string }[]; total: number }> = {};
+    if (projectIds.length === 0) {
+      return out;
+    }
+
+    const rows = await this.publicationModel
+      .find({
+        communityId: { $in: projectIds },
+        postType: 'ticket',
+        isNeutralTicket: true,
+        ticketStatus: 'open',
+        deleted: { $ne: true },
+      })
+      .select('id title communityId createdAt')
+      .lean()
+      .exec();
+
+    type Row = (typeof rows)[number];
+    const perProject = new Map<string, Row[]>();
+    for (const r of rows) {
+      const cid = String(r.communityId);
+      const list = perProject.get(cid) ?? [];
+      list.push(r);
+      perProject.set(cid, list);
+    }
+
+    for (const list of perProject.values()) {
+      list.sort((a, b) => {
+        const tb = new Date(b.createdAt ?? 0).getTime();
+        const ta = new Date(a.createdAt ?? 0).getTime();
+        return tb - ta;
+      });
+    }
+
+    for (const pid of projectIds) {
+      const list = perProject.get(pid);
+      if (!list?.length) continue;
+      const total = list.length;
+      const tickets = list.slice(0, previewLimit).map((d) => ({ id: d.id, title: d.title }));
+      out[pid] = { tickets, total };
+    }
+
+    return out;
+  }
+
+  /**
    * Get applicants for a neutral ticket. Lead only.
    */
   async getApplicants(ticketId: string, leadUserId: string): Promise<string[]> {
