@@ -200,31 +200,27 @@ export function PilotMultiObrazHomeClient() {
       ) : null}
 
       <section aria-labelledby="pilot-feed-title" className="space-y-4">
-        <div className="flex min-w-0 flex-nowrap items-center justify-between gap-2 sm:gap-3">
-          <h2
-            id="pilot-feed-title"
-            className="min-w-0 flex-1 truncate text-lg font-bold leading-tight text-white sm:text-lg"
-          >
-            {t('feedTitle')}
-          </h2>
-          {welcomeDismissed ? (
-            user ? (
-              <Button
-                asChild
-                className="h-10 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:h-11 sm:px-5 sm:text-base"
-              >
-                <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
-              </Button>
-            ) : (
-              <Button
-                asChild
-                className="h-10 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:h-11 sm:px-5 sm:text-base"
-              >
-                <Link href={routes.login}>{t('navLogin')}</Link>
-              </Button>
-            )
-          ) : null}
-        </div>
+        <h2 id="pilot-feed-title" className="sr-only">
+          {t('feedTitle')}
+        </h2>
+
+        {welcomeDismissed ? (
+          user ? (
+            <Button
+              asChild
+              className="flex h-12 w-full rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea] sm:hidden"
+            >
+              <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="flex h-12 w-full rounded-lg bg-[#A855F7] px-6 text-base font-semibold text-white hover:bg-[#9333ea] sm:hidden"
+            >
+              <Link href={routes.login}>{t('navLogin')}</Link>
+            </Button>
+          )
+        ) : null}
 
         <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
           <div
@@ -273,6 +269,23 @@ export function PilotMultiObrazHomeClient() {
               className="h-11 rounded-xl border-[#334155] bg-[#0f172a] text-[#f1f5f9] placeholder:text-[#64748b] focus-visible:ring-[#A855F7]"
             />
           </div>
+          {welcomeDismissed ? (
+            user ? (
+              <Button
+                asChild
+                className="hidden h-11 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:inline-flex sm:px-5 sm:text-base"
+              >
+                <Link href={pilotCreateHref()}>{t('heroCta')}</Link>
+              </Button>
+            ) : (
+              <Button
+                asChild
+                className="hidden h-11 shrink-0 rounded-lg bg-[#A855F7] px-4 text-sm font-semibold text-white hover:bg-[#9333ea] sm:inline-flex sm:px-5 sm:text-base"
+              >
+                <Link href={routes.login}>{t('navLogin')}</Link>
+              </Button>
+            )
+          ) : null}
         </div>
 
         {isFetching && !isLoading ? (
