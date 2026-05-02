@@ -23,6 +23,7 @@ import { WalletService } from './wallet.service';
 import { NotificationService } from './notification.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { EventService } from './event.service';
+import { TicketService } from './ticket.service';
 
 @Injectable()
 export class TeamJoinRequestService {
@@ -37,6 +38,7 @@ export class TeamJoinRequestService {
     private readonly walletService: WalletService,
     private readonly notificationService: NotificationService,
     private readonly eventService: EventService,
+    private readonly ticketService: TicketService,
   ) {}
 
   /**
@@ -46,7 +48,7 @@ export class TeamJoinRequestService {
     userId: string,
     communityId: string,
     applicantMessage?: string,
-    options?: { pendingEventPublicationId?: string },
+    options?: { pendingEventPublicationId?: string; intentTicketId?: string },
   ): Promise<TeamJoinRequest> {
     this.logger.log(
       `User ${userId} submitting request to join team ${communityId}`,
@@ -65,6 +67,14 @@ export class TeamJoinRequestService {
     if (!this.communityService.isLocalMembershipCommunity(community)) {
       throw new BadRequestException(
         'Can only request to join local communities (team, project, custom, etc.)',
+      );
+    }
+
+    const intentTicketId = options?.intentTicketId?.trim();
+    if (intentTicketId) {
+      await this.ticketService.validatePilotJoinIntentTicket(
+        intentTicketId,
+        communityId,
       );
     }
 
@@ -117,6 +127,7 @@ export class TeamJoinRequestService {
       ...(options?.pendingEventPublicationId
         ? { pendingEventPublicationId: options.pendingEventPublicationId }
         : {}),
+      ...(intentTicketId ? { intentTicketId } : {}),
     });
 
     // 6. Notify all members (leads get actionable team_join_request; participants get FYI)
@@ -413,6 +424,22 @@ export class TeamJoinRequestService {
       } catch (err) {
         this.logger.warn(
           `Deferred event RSVP after approve failed: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    const intentAfterJoin = request.intentTicketId?.trim();
+    if (intentAfterJoin) {
+      try {
+        await this.ticketService.assignOpenNeutralFromJoinIntent(
+          intentAfterJoin,
+          request.userId,
+          request.communityId,
+          leadId,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Intent ticket assign after join failed: ${err instanceof Error ? err.message : err}`,
         );
       }
     }

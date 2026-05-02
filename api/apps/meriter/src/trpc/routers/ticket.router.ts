@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc';
+import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { TicketStatusSchema } from '@meriter/shared-types';
 
@@ -238,13 +238,10 @@ export const ticketRouter = router({
       return { success: true };
     }),
 
-  getByProject: protectedProcedure
+  getByProject: publicProcedure
     .input(getByProjectInputSchema)
     .query(async ({ ctx, input }) => {
-      if (!ctx.user) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
-      }
-      return ctx.ticketService.getByProject(input.projectId, ctx.user.id, {
+      return ctx.ticketService.getByProject(input.projectId, ctx.user?.id, {
         postType: input.postType,
         ticketStatus: input.ticketStatus,
       });

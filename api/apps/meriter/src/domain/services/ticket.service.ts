@@ -5,8 +5,14 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AppConfig } from '../../config/configuration';
+import {
+  isMultiObrazPilotDream,
+  isPilotDreamSoftDeleted,
+} from '../common/helpers/pilot-dream-policy';
 import {
   PublicationSchemaClass,
   PublicationDocument,
@@ -120,6 +126,7 @@ export class TicketService {
     private notificationService: NotificationService,
     private voteService: VoteService,
     private eventBus: EventBus,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   private assigneeDeclinePublicationComment(locale: string | undefined, reason: string): string {
@@ -305,7 +312,7 @@ export class TicketService {
   }
 
   /**
-   * Apply for a neutral ticket. Any authenticated user. Adds to applicants[], notifies lead.
+   * Apply for a neutral ticket. Project members (or superadmin). Adds to applicants[], notifies lead.
    */
   async applyForTicket(ticketId: string, userId: string): Promise<void> {
     const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
@@ -319,6 +326,15 @@ export class TicketService {
       throw new BadRequestException('Ticket is not an open neutral ticket');
     }
 
+    const projectId = doc.communityId;
+    const memberRole = await this.userCommunityRoleService.getRole(userId, projectId);
+    if (!memberRole) {
+      const u = await this.userService.getUserById(userId);
+      if (u?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new ForbiddenException('Only project members can apply for tasks');
+      }
+    }
+
     const applicants = doc.applicants ?? [];
     if (applicants.includes(userId)) {
       throw new BadRequestException('You have already applied for this ticket');
@@ -329,7 +345,6 @@ export class TicketService {
     doc.updatedAt = new Date();
     await doc.save();
 
-    const projectId = doc.communityId;
     const applicant = await this.userService.getUserById(userId);
     const applicantName = applicant?.displayName || applicant?.username || '';
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
@@ -440,6 +455,144 @@ export class TicketService {
     }
 
     this.logger.log(`Applicant ${applicantUserId} approved for ticket ${ticketId}`);
+  }
+
+  /**
+   * Validate join request `intentTicketId` for a Multi-Obraz pilot project.
+   */
+  async validatePilotJoinIntentTicket(
+    ticketId: string,
+    projectId: string,
+  ): Promise<void> {
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+    const pilot =
+      this.configService.get('pilot', { infer: true }) ?? {
+        hubCommunityId: undefined as string | undefined,
+      };
+    if (!isMultiObrazPilotDream(project, pilot.hubCommunityId?.trim() || undefined)) {
+      throw new BadRequestException('Task intent is only for pilot dreams');
+    }
+    if (isPilotDreamSoftDeleted(project)) {
+      throw new BadRequestException('Dream is not available');
+    }
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc || doc.communityId !== projectId) {
+      throw new BadRequestException('Task not found');
+    }
+    if (doc.postType !== 'ticket') {
+      throw new BadRequestException('Not a task');
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      throw new BadRequestException('Task is not available to take');
+    }
+  }
+
+  /**
+   * After a team join is approved: assign the new member to the open neutral ticket if still assignable.
+   * User is already a project member; does not re-run membership side effects from {@link approveApplicant}.
+   */
+  async assignOpenNeutralFromJoinIntent(
+    ticketId: string,
+    newMemberUserId: string,
+    projectId: string,
+    leadUserId: string,
+  ): Promise<void> {
+    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    if (!doc) {
+      this.logger.warn(`assignOpenNeutralFromJoinIntent: ticket ${ticketId} not found`);
+      return;
+    }
+    if (doc.communityId !== projectId) {
+      this.logger.warn('assignOpenNeutralFromJoinIntent: ticket community mismatch');
+      return;
+    }
+    if (doc.postType !== 'ticket') {
+      return;
+    }
+    if (!doc.isNeutralTicket || doc.ticketStatus !== 'open') {
+      this.logger.log(
+        `assignOpenNeutralFromJoinIntent: ticket ${ticketId} not open neutral, skip assign`,
+      );
+      return;
+    }
+    if (doc.beneficiaryId) {
+      return;
+    }
+
+    await this.assertProjectLeadOrSuperadmin(leadUserId, projectId);
+
+    const memberRole = await this.userCommunityRoleService.getRole(
+      newMemberUserId,
+      projectId,
+    );
+    if (!memberRole) {
+      this.logger.warn(
+        `assignOpenNeutralFromJoinIntent: user ${newMemberUserId} not in project`,
+      );
+      return;
+    }
+
+    const applicants = doc.applicants ?? [];
+
+    doc.beneficiaryId = newMemberUserId;
+    doc.ticketStatus = 'in_progress';
+    doc.isNeutralTicket = false;
+    doc.applicants = [];
+    doc.updatedAt = new Date();
+    await doc.save();
+
+    await this.appendTicketActivity(ticketId, leadUserId, 'assignee_set', {
+      beneficiaryId: newMemberUserId,
+      fromOpenNeutral: true,
+      fromJoinIntent: true,
+      status: 'in_progress',
+    });
+
+    try {
+      await this.notificationService.createNotification({
+        userId: newMemberUserId,
+        type: 'ticket_assigned',
+        source: 'system',
+        sourceId: leadUserId,
+        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+          leadUserId,
+        }),
+        title: 'Ticket assigned',
+        message: 'You were assigned a ticket in the project.',
+      });
+    } catch (err) {
+      this.logger.warn(`Failed to notify assignee after join intent: ${err}`);
+    }
+
+    const project = await this.communityService.getCommunity(projectId);
+    const rejectionMessage =
+      (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
+
+    for (const otherUserId of applicants) {
+      if (otherUserId === newMemberUserId) continue;
+      try {
+        await this.notificationService.createNotification({
+          userId: otherUserId,
+          type: 'ticket_rejection',
+          source: 'system',
+          sourceId: leadUserId,
+          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
+            rejectionMessage,
+          }),
+          title: 'Application not selected',
+          message: rejectionMessage,
+        });
+      } catch (err) {
+        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
+      }
+    }
+
+    this.logger.log(
+      `assignOpenNeutralFromJoinIntent: user ${newMemberUserId} assigned to ${ticketId}`,
+    );
   }
 
   /**
@@ -1110,10 +1263,11 @@ export class TicketService {
 
   /**
    * List tickets and discussions by project with optional status filter.
+   * Multi-Obraz pilot dreams: anyone may list **tickets** (postType `ticket`); discussions stay member-only.
    */
   async getByProject(
     projectId: string,
-    userId: string,
+    userId: string | undefined,
     options: { postType?: 'ticket' | 'discussion'; ticketStatus?: TicketStatus } = {},
   ): Promise<PublicationDocument[]> {
     const project = await this.communityService.getCommunity(projectId);
@@ -1121,9 +1275,37 @@ export class TicketService {
       throw new NotFoundException('Project not found');
     }
 
-    const role = await this.userCommunityRoleService.getRole(userId, projectId);
-    if (!role) {
-      throw new ForbiddenException('Only project members can view tickets');
+    const pilot =
+      this.configService.get('pilot', { infer: true }) ?? {
+        hubCommunityId: undefined as string | undefined,
+      };
+    const hubId = pilot.hubCommunityId?.trim() || undefined;
+    const isPilotDream = isMultiObrazPilotDream(project, hubId);
+    const isSoftDeleted = isPilotDreamSoftDeleted(project);
+
+    const effectiveUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : undefined;
+    let isSuperadmin = false;
+    if (effectiveUserId) {
+      const u = await this.userService.getUserById(effectiveUserId);
+      isSuperadmin = u?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+    }
+
+    const role = effectiveUserId
+      ? await this.userCommunityRoleService.getRole(effectiveUserId, projectId)
+      : null;
+    const isMember = Boolean(role);
+
+    if (isSoftDeleted && !isSuperadmin) {
+      throw new ForbiddenException('Dream is not available');
+    }
+
+    if (!isMember && !isSuperadmin) {
+      if (!isPilotDream) {
+        throw new ForbiddenException('Only project members can view tickets');
+      }
+      if (options.postType !== 'ticket') {
+        throw new ForbiddenException('Only project members can view this content');
+      }
     }
 
     const filter: Record<string, unknown> = {

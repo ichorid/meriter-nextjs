@@ -29,6 +29,8 @@ export interface TeamJoinRequest {
   applicantMessage?: string;
   /** When set, user is auto-RSVP'd to this event publication after the join request is approved. */
   pendingEventPublicationId?: string;
+  /** Multi-Obraz pilot: after join approval, assign this open neutral task if still available. */
+  intentTicketId?: string;
 }
 
 @Schema({ collection: 'team_join_requests', timestamps: true })
@@ -64,6 +66,9 @@ export class TeamJoinRequestSchemaClass implements TeamJoinRequest {
 
   @Prop({ type: String, default: undefined })
   pendingEventPublicationId?: string;
+
+  @Prop({ type: String, default: undefined })
+  intentTicketId?: string;
 
   @Prop({ required: true })
   createdAt!: Date;

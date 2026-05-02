@@ -12,6 +12,7 @@ export const teamsRouter = router({
       communityId: z.string(),
       applicantMessage: z.string().max(500).optional(),
       pendingEventPublicationId: z.string().min(1).optional(),
+      intentTicketId: z.string().min(1).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       if (!ctx.user) {
@@ -26,18 +27,22 @@ export const teamsRouter = router({
           ctx.user.id,
           input.communityId,
           input.applicantMessage,
-          input.pendingEventPublicationId
-            ? { pendingEventPublicationId: input.pendingEventPublicationId }
+          input.pendingEventPublicationId || input.intentTicketId
+            ? {
+                pendingEventPublicationId: input.pendingEventPublicationId,
+                intentTicketId: input.intentTicketId,
+              }
             : undefined,
         );
         return request;
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error instanceof TRPCError) {
           throw error;
         }
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: error.message || 'Failed to submit team join request',
+          message:
+            error instanceof Error ? error.message : 'Failed to submit team join request',
         });
       }
     }),
