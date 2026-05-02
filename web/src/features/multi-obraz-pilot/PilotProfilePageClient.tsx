@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { User as UserIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { Community } from '@meriter/shared-types';
@@ -12,34 +12,45 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avat
 import { usePilotPendingJoinRequests, usePilotUserDreams } from '@/hooks/api/useProjects';
 import { isPilotDreamProject } from '@/config/pilot';
 import { pilotCreateHref, pilotDreamHref } from '@/lib/constants/pilot-routes';
-import { cn } from '@/lib/utils';
 import { usePilotMeritsStats } from '@/hooks/api/useProjects';
 import { useApproveTeamRequest, useRejectTeamRequest } from '@/hooks/api/useTeamRequests';
 import { formatMerits } from '@/lib/utils/currency';
+import { ImageLightbox } from '@/shared/components/image-lightbox';
+import { PilotDreamCoverImage } from '@/features/multi-obraz-pilot/PilotDreamCoverImage';
 
-const dreamRowClass =
-  'block rounded-xl border border-[#334155] bg-[#0f172a] transition-colors hover:border-[#A855F7]/50 hover:bg-[#0f172a]/90';
+const dreamCardShell =
+  'overflow-hidden rounded-xl border border-[#334155] bg-[#0f172a] transition-colors hover:border-[#A855F7]/50 hover:bg-[#0f172a]/90';
 
-function PilotDreamRows({ projects }: { projects: Community[] }) {
+function PilotDreamRows({
+  projects,
+  onOpenCover,
+}: {
+  projects: Community[];
+  onOpenCover: (imageUrl: string) => void;
+}) {
+  const t = useTranslations('multiObraz');
   return (
     <ul className="mt-2 flex flex-col gap-2">
       {projects.map((project) => (
         <li key={project.id}>
-          <Link href={pilotDreamHref(project.id)} className={cn(dreamRowClass, 'overflow-hidden p-0')}>
+          <div className={dreamCardShell}>
             {project.coverImageUrl ? (
-              <img
-                src={project.coverImageUrl}
-                alt=""
-                className="h-28 w-full object-cover"
-              />
+              <button
+                type="button"
+                onClick={() => onOpenCover(project.coverImageUrl!)}
+                className="relative block w-full text-left"
+                aria-label={t('dreamCoverOpenLightbox')}
+              >
+                <PilotDreamCoverImage src={project.coverImageUrl} className="bg-[#0f172a]" />
+              </button>
             ) : null}
-            <div className="p-4">
+            <Link href={pilotDreamHref(project.id)} className="block p-4">
               <div className="font-semibold text-white">{project.name}</div>
               {project.description ? (
                 <p className="mt-1 line-clamp-2 text-sm text-[#94a3b8]">{project.description}</p>
               ) : null}
-            </div>
-          </Link>
+            </Link>
+          </div>
         </li>
       ))}
     </ul>
@@ -50,6 +61,7 @@ export function PilotProfilePageClient() {
   const { user, isLoading } = useAuth();
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
+  const [coverLightboxUrl, setCoverLightboxUrl] = useState<string | null>(null);
   const { data: stats } = usePilotMeritsStats();
   const isSuperadmin = user?.globalRole === 'superadmin';
   const { data: pendingRequests } = usePilotPendingJoinRequests(Boolean(isSuperadmin));
@@ -194,7 +206,7 @@ export function PilotProfilePageClient() {
               {t('pilotProfileDreamsCreated')}
             </p>
             {myDreams.length > 0 ? (
-              <PilotDreamRows projects={myDreams} />
+              <PilotDreamRows projects={myDreams} onOpenCover={setCoverLightboxUrl} />
             ) : (
               <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-[#94a3b8]">{t('pilotProfileNoDreamsCreated')}</p>
@@ -213,13 +225,20 @@ export function PilotProfilePageClient() {
               {t('pilotProfileDreamsJoined')}
             </p>
             {joinedDreams.length > 0 ? (
-              <PilotDreamRows projects={joinedDreams} />
+              <PilotDreamRows projects={joinedDreams} onOpenCover={setCoverLightboxUrl} />
             ) : (
               <p className="mt-2 text-sm text-[#94a3b8]">{t('pilotProfileNoDreamsJoined')}</p>
             )}
           </section>
         </>
       )}
+
+      <ImageLightbox
+        images={coverLightboxUrl ? [coverLightboxUrl] : []}
+        isOpen={Boolean(coverLightboxUrl)}
+        onClose={() => setCoverLightboxUrl(null)}
+        altPrefix={t('dreamCoverAlt')}
+      />
     </div>
   );
 }

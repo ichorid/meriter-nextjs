@@ -14,12 +14,15 @@ import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { TappalkaMeritIcon } from '@/features/tappalka/components/TappalkaMeritIcon';
 import { formatMerits } from '@/lib/utils/currency';
 import { invalidatePilotMerits } from '@/hooks/api/pilot-invalidate';
+import { ImageLightbox } from '@/shared/components/image-lightbox';
+import { PilotDreamCoverImage } from '@/features/multi-obraz-pilot/PilotDreamCoverImage';
 
 function DreamCard({
   dream,
   onDropMerit,
   onDragEnter,
   onDragLeave,
+  onOpenCover,
   isDropTarget,
   isSelected,
   disabled,
@@ -30,6 +33,7 @@ function DreamCard({
   onDropMerit: () => void;
   onDragEnter: () => void;
   onDragLeave: () => void;
+  onOpenCover: (imageUrl: string) => void;
   isDropTarget: boolean;
   isSelected: boolean;
   disabled: boolean;
@@ -103,7 +107,21 @@ function DreamCard({
       onDragLeave={handleDragLeaveInner}
     >
       {dream.coverImageUrl ? (
-        <img src={dream.coverImageUrl} alt="" className="h-44 w-full object-cover" />
+        <button
+          type="button"
+          className="relative block w-full text-left"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenCover(dream.coverImageUrl);
+          }}
+          aria-label={t('dreamCoverOpenLightbox')}
+        >
+          <PilotDreamCoverImage
+            src={dream.coverImageUrl}
+            className="bg-[#1e293b]"
+            classNameImage="pointer-events-none"
+          />
+        </button>
       ) : null}
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
@@ -160,6 +178,7 @@ export function PilotMiningPageClient() {
   const [selectedDreamId, setSelectedDreamId] = React.useState<string | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
   const [isTokenHovered, setIsTokenHovered] = React.useState(false);
+  const [coverLightboxUrl, setCoverLightboxUrl] = React.useState<string | null>(null);
 
   const submit = trpc.pilotMining.submitChoice.useMutation({
     onSuccess: (result) => {
@@ -325,6 +344,7 @@ export function PilotMiningPageClient() {
             onDropMerit={() => void handleDropOnDream(aId)}
             onDragEnter={() => setDropTargetDreamId(aId)}
             onDragLeave={() => setDropTargetDreamId(null)}
+            onOpenCover={setCoverLightboxUrl}
             isDropTarget={dropTargetDreamId === aId}
             isSelected={selectedDreamId === aId}
             isTokenHovered={isTokenHovered}
@@ -353,6 +373,7 @@ export function PilotMiningPageClient() {
             onDropMerit={() => void handleDropOnDream(bId)}
             onDragEnter={() => setDropTargetDreamId(bId)}
             onDragLeave={() => setDropTargetDreamId(null)}
+            onOpenCover={setCoverLightboxUrl}
             isDropTarget={dropTargetDreamId === bId}
             isSelected={selectedDreamId === bId}
             isTokenHovered={isTokenHovered}
@@ -360,6 +381,13 @@ export function PilotMiningPageClient() {
           />
         </div>
       </div>
+
+      <ImageLightbox
+        images={coverLightboxUrl ? [coverLightboxUrl] : []}
+        isOpen={Boolean(coverLightboxUrl)}
+        onClose={() => setCoverLightboxUrl(null)}
+        altPrefix={t('dreamCoverAlt')}
+      />
     </div>
   );
 }

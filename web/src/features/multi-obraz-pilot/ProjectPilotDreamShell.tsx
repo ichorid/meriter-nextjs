@@ -38,6 +38,8 @@ import { usePilotDreamUpvote, usePilotMeritsStats } from '@/hooks/api/useProject
 import { formatMerits } from '@/lib/utils/currency';
 import { useUserProfile } from '@/hooks/api/useUsers';
 import { VotingPopup } from '@/components/organisms/VotingPopup';
+import { ImageLightbox } from '@/shared/components/image-lightbox';
+import { PilotDreamCoverImage } from '@/features/multi-obraz-pilot/PilotDreamCoverImage';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { invalidatePilotDreamFeeds } from '@/hooks/api/pilot-invalidate';
 
@@ -76,6 +78,7 @@ export function ProjectPilotDreamShell({
   const [editName, setEditName] = useState(project.name);
   const [editDescription, setEditDescription] = useState(project.description ?? '');
   const [editCover, setEditCover] = useState<string | null>(project.coverImageUrl ?? null);
+  const [coverLightboxUrl, setCoverLightboxUrl] = useState<string | null>(null);
 
   const quotaRemaining = stats?.quota?.remaining ?? 0;
   const dailyQuota = stats?.quota?.dailyQuota ?? 100;
@@ -282,11 +285,14 @@ export function ProjectPilotDreamShell({
       <div className={embeddedInPilotChrome ? 'space-y-6' : 'mx-auto max-w-3xl space-y-6 px-4 py-6'}>
         <header className="space-y-2">
           {project.coverImageUrl ? (
-            <img
-              src={project.coverImageUrl}
-              alt=""
-              className="max-h-56 w-full rounded-xl border border-[#334155] object-cover"
-            />
+            <button
+              type="button"
+              onClick={() => setCoverLightboxUrl(project.coverImageUrl ?? null)}
+              className="relative block w-full overflow-hidden rounded-xl border border-[#334155] text-left ring-offset-[#0f172a] transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#A855F7]"
+              aria-label={t('dreamCoverOpenLightbox')}
+            >
+              <PilotDreamCoverImage src={project.coverImageUrl} className="bg-[#0f172a]" />
+            </button>
           ) : null}
           <h1 className="text-2xl font-extrabold tracking-tight text-white">{project.name}</h1>
           {project.description ? (
@@ -696,6 +702,13 @@ export function ProjectPilotDreamShell({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ImageLightbox
+        images={coverLightboxUrl ? [coverLightboxUrl] : []}
+        isOpen={Boolean(coverLightboxUrl)}
+        onClose={() => setCoverLightboxUrl(null)}
+        altPrefix={t('dreamCoverAlt')}
+      />
 
       {/* Bottom Widget Area - for BottomPortal (VotingPopup uses it) */}
       <div className="bottom-widget-area fixed inset-0 z-50 pointer-events-none touch-none" />

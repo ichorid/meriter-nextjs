@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePilotDreamUpvote, usePilotDreamsFeed, usePilotMeritsStats } from '@/hooks/api/useProjects';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button } from '@/components/ui/shadcn/button';
+import { Input } from '@/components/ui/shadcn/input';
 import { routes } from '@/lib/constants/routes';
 import { pilotCreateHref, pilotDreamHref } from '@/lib/constants/pilot-routes';
 import { cn } from '@/lib/utils';
-import { TrendingUp } from 'lucide-react';
+import { CalendarDays, Minus, Plus, TrendingUp } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -20,8 +23,9 @@ import {
 import { Label } from '@/components/ui/shadcn/label';
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import { Minus, Plus } from 'lucide-react';
 import { formatMerits } from '@/lib/utils/currency';
+import { ImageLightbox } from '@/shared/components/image-lightbox';
+import { PilotDreamCoverImage } from '@/features/multi-obraz-pilot/PilotDreamCoverImage';
 
 function formatPublishedAt(iso: string | undefined, locale: string): string | null {
   if (!iso) return null;
@@ -35,14 +39,45 @@ function formatPublishedAt(iso: string | undefined, locale: string): string | nu
   }
 }
 
+const FEED_SEARCH_DEBOUNCE_MS = 300;
+
 export function PilotMultiObrazHomeClient() {
   const t = useTranslations('multiObraz');
   const tCommon = useTranslations('common');
   const locale = useLocale();
   const { user } = useAuth();
-  const { data, isLoading } = usePilotDreamsFeed({ page: 1, pageSize: 20 });
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [sortMode, setSortMode] = React.useState<'score' | 'createdAt'>(() =>
+    searchParams.get('sort') === 'createdAt' ? 'createdAt' : 'score',
+  );
+  const [searchInput, setSearchInput] = React.useState(() => searchParams.get('q') ?? '');
+  const debouncedSearch = useDebounce(searchInput, FEED_SEARCH_DEBOUNCE_MS);
+
+  const { data, isLoading, isFetching } = usePilotDreamsFeed({
+    page: 1,
+    pageSize: 20,
+    sort: sortMode,
+    search: debouncedSearch,
+  });
   const upvoteDream = usePilotDreamUpvote();
   const { data: stats } = usePilotMeritsStats();
+
+  React.useEffect(() => {
+    const params = new URLSearchParams();
+    if (sortMode !== 'score') {
+      params.set('sort', sortMode);
+    }
+    const q = debouncedSearch.trim();
+    if (q) {
+      params.set('q', q);
+    }
+    const qs = params.toString();
+    const next = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(next, { scroll: false });
+  }, [sortMode, debouncedSearch, pathname, router]);
 
   const [supportOpen, setSupportOpen] = React.useState(false);
   const [supportDreamId, setSupportDreamId] = React.useState<string | null>(null);
@@ -53,6 +88,7 @@ export function PilotMultiObrazHomeClient() {
   const [loreOpen, setLoreOpen] = React.useState(false);
   const [loreText, setLoreText] = React.useState<string | null>(null);
   const [loreLoading, setLoreLoading] = React.useState(false);
+  const [coverLightboxUrl, setCoverLightboxUrl] = React.useState<string | null>(null);
 
   const openSupport = (dreamId: string, isOwn: boolean) => {
     setSupportDreamId(dreamId);
@@ -184,76 +220,146 @@ export function PilotMultiObrazHomeClient() {
         <h2 id="pilot-feed-title" className="text-lg font-bold text-white">
           {t('feedTitle')}
         </h2>
+
+        <div className="flex flex-nowrap items-center gap-2 sm:gap-3">
+          <div
+            className="flex h-11 shrink-0 items-center gap-0.5 rounded-xl border border-[#334155] bg-[#0f172a] p-0.5"
+            role="group"
+            aria-label={t('feedSortLabel')}
+          >
+            <button
+              type="button"
+              onClick={() => setSortMode('score')}
+              aria-label={t('feedSortRating')}
+              aria-pressed={sortMode === 'score'}
+              title={t('feedSortRating')}
+              className={cn(
+                'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors',
+                sortMode === 'score'
+                  ? 'bg-[#A855F7] text-white shadow-sm'
+                  : 'text-[#94a3b8] hover:bg-white/5 hover:text-[#e2e8f0]',
+              )}
+            >
+              <TrendingUp className="size-5" strokeWidth={2} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('createdAt')}
+              aria-label={t('feedSortDate')}
+              aria-pressed={sortMode === 'createdAt'}
+              title={t('feedSortDate')}
+              className={cn(
+                'inline-flex size-10 shrink-0 items-center justify-center rounded-lg transition-colors',
+                sortMode === 'createdAt'
+                  ? 'bg-[#A855F7] text-white shadow-sm'
+                  : 'text-[#94a3b8] hover:bg-white/5 hover:text-[#e2e8f0]',
+              )}
+            >
+              <CalendarDays className="size-5" strokeWidth={2} aria-hidden />
+            </button>
+          </div>
+          <div className="min-w-0 flex-1">
+            <Input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder={t('feedSearchPlaceholder')}
+              aria-label={t('feedSearchPlaceholder')}
+              className="h-11 rounded-xl border-[#334155] bg-[#0f172a] text-[#f1f5f9] placeholder:text-[#64748b] focus-visible:ring-[#A855F7]"
+            />
+          </div>
+        </div>
+
+        {isFetching && !isLoading ? (
+          <p className="text-xs text-[#64748b]" aria-live="polite">
+            {t('feedUpdating')}
+          </p>
+        ) : null}
+
         {isLoading ? (
           <p className="text-sm text-[#94a3b8]">{tCommon('loading')}</p>
         ) : !data?.data?.length ? (
-          <p className="text-sm text-[#94a3b8]">{t('feedEmpty')}</p>
+          <p className="text-sm text-[#94a3b8]">
+            {debouncedSearch.trim() ? t('feedSearchEmpty') : t('feedEmpty')}
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul
+            className={cn(
+              'space-y-3 transition-opacity duration-150',
+              isFetching && !isLoading ? 'opacity-75' : 'opacity-100',
+            )}
+          >
             {data.data.map((row) => {
               const published = formatPublishedAt(row.project.createdAt, locale);
               const author = row.founderDisplayName?.trim() || null;
               return (
                 <li key={row.project.id}>
-                  <Link
-                    href={pilotDreamHref(row.project.id)}
+                  <div
                     className={cn(
-                      'block overflow-hidden rounded-xl border border-[#334155] bg-[#1e293b] transition-colors hover:border-[#A855F7]/50 hover:bg-[#1e293b]/90',
+                      'overflow-hidden rounded-xl border border-[#334155] bg-[#1e293b] transition-colors hover:border-[#A855F7]/50 hover:bg-[#1e293b]/90',
                     )}
                   >
                     {row.project.coverImageUrl ? (
-                      <img
-                        src={row.project.coverImageUrl}
-                        alt=""
-                        className="h-36 w-full object-cover"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => setCoverLightboxUrl(row.project.coverImageUrl ?? null)}
+                        className="relative block w-full text-left"
+                        aria-label={t('dreamCoverOpenLightbox')}
+                      >
+                        <PilotDreamCoverImage
+                          src={row.project.coverImageUrl}
+                          className="bg-[#1e293b]"
+                        />
+                      </button>
                     ) : null}
-                    <div className="p-4">
-                      <div className="font-semibold text-white">{row.project.name}</div>
-                      {author || published ? (
-                        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
-                          {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
-                          {author && published ? (
-                            <span className="text-[#64748b]" aria-hidden>
-                              ·
-                            </span>
-                          ) : null}
-                          {published ? (
-                            <time dateTime={row.project.createdAt}>{published}</time>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {row.project.description ? (
-                        <p className="mt-2 line-clamp-2 text-sm text-[#94a3b8]">{row.project.description}</p>
-                      ) : null}
-                    </div>
-
-                    <div className="flex items-center gap-2 border-t border-[#334155] px-4 py-3">
-                      <div className="w-10" aria-hidden />
-                      <div className="flex flex-1 items-center justify-center gap-1 text-sm text-[#cbd5e1]">
-                        <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
-                        <span className="tabular-nums">{row.project.pilotDreamRating?.score ?? 0}</span>
-                      </div>
-                      <div className="flex w-28 justify-end">
-                        {user ? (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              openSupport(row.project.id, Boolean(user?.id && row.project.founderUserId === user.id));
-                            }}
-                            disabled={upvoteDream.isPending}
-                            className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
-                          >
-                            {t('upvoteDream')}
-                          </Button>
+                    <Link href={pilotDreamHref(row.project.id)} className="block">
+                      <div className="p-4">
+                        <div className="font-semibold text-white">{row.project.name}</div>
+                        {author || published ? (
+                          <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-xs text-[#94a3b8]">
+                            {author ? <span className="text-[#cbd5e1]">{author}</span> : null}
+                            {author && published ? (
+                              <span className="text-[#64748b]" aria-hidden>
+                                ·
+                              </span>
+                            ) : null}
+                            {published ? (
+                              <time dateTime={row.project.createdAt}>{published}</time>
+                            ) : null}
+                          </div>
+                        ) : null}
+                        {row.project.description ? (
+                          <p className="mt-2 line-clamp-2 text-sm text-[#94a3b8]">{row.project.description}</p>
                         ) : null}
                       </div>
-                    </div>
-                  </Link>
+
+                      <div className="flex items-center gap-2 border-t border-[#334155] px-4 py-3">
+                        <div className="w-10" aria-hidden />
+                        <div className="flex flex-1 items-center justify-center gap-1 text-sm text-[#cbd5e1]">
+                          <TrendingUp className="h-4 w-4 text-[#94a3b8]" aria-hidden />
+                          <span className="tabular-nums">{row.project.pilotDreamRating?.score ?? 0}</span>
+                        </div>
+                        <div className="flex w-28 justify-end">
+                          {user ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openSupport(row.project.id, Boolean(user?.id && row.project.founderUserId === user.id));
+                              }}
+                              disabled={upvoteDream.isPending}
+                              className="h-8 rounded-lg border border-[#334155] bg-[#0f172a] px-3 text-xs text-white hover:bg-[#0f172a]/80"
+                            >
+                              {t('upvoteDream')}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </Link>
+                  </div>
                 </li>
               );
             })}
@@ -406,6 +512,13 @@ export function PilotMultiObrazHomeClient() {
           )}
         </DialogContent>
       </Dialog>
+
+      <ImageLightbox
+        images={coverLightboxUrl ? [coverLightboxUrl] : []}
+        isOpen={Boolean(coverLightboxUrl)}
+        onClose={() => setCoverLightboxUrl(null)}
+        altPrefix={t('dreamCoverAlt')}
+      />
     </div>
   );
 }

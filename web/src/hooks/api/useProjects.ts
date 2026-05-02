@@ -45,15 +45,29 @@ export function useProjects(params: {
   );
 }
 
-export function usePilotDreamsFeed(params?: { page?: number; pageSize?: number }) {
+export function usePilotDreamsFeed(params?: {
+  page?: number;
+  pageSize?: number;
+  /** Default on API/UI: rating first */
+  sort?: 'score' | 'createdAt';
+  search?: string;
+}) {
+  const sort = params?.sort ?? 'score';
+  const searchTrimmed = params?.search?.trim() ?? '';
+
   return trpc.project.getGlobalList.useQuery(
     {
       pilotDreamFeed: true,
-      sort: 'createdAt',
+      sort,
+      search: searchTrimmed.length > 0 ? searchTrimmed : undefined,
       page: params?.page,
       pageSize: params?.pageSize ?? 20,
     },
-    { staleTime: STALE_TIME.SHORT, enabled: isPilotClientMode() },
+    {
+      staleTime: STALE_TIME.SHORT,
+      enabled: isPilotClientMode(),
+      placeholderData: keepPreviousData,
+    },
   );
 }
 
