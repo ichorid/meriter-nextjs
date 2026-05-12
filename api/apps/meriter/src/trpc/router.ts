@@ -23,6 +23,8 @@ import { ticketRouter } from './routers/ticket.router';
 import { platformDevRouter } from './routers/platform-dev.router';
 import { meritTransferRouter } from './routers/merit-transfer.router';
 import { eventsRouter } from './routers/events.router';
+import { documentsRouter } from './routers/documents.router';
+import { documentVariantsRouter } from './routers/document-variants.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -53,6 +55,8 @@ export const appRouter = router({
   platformDev: platformDevRouter,
   meritTransfer: meritTransferRouter,
   events: eventsRouter,
+  documents: documentsRouter,
+  documentVariants: documentVariantsRouter,
 });
 
 export type AppRouter = typeof appRouter;

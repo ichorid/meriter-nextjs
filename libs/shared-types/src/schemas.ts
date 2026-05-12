@@ -177,6 +177,17 @@ export const CommunitySettingsSchema = z.object({
   distributeAllByContractOnClose: z.boolean().default(true),
   /** Who may create event posts in this community/project. */
   eventCreation: z.enum(["admin", "members"]).default("admin"),
+  /** Collaborative documents hub mode (OB/description/custom docs). */
+  documentsMode: z
+    .enum(["off", "visionOrDescriptionOnly", "all"])
+    .default("visionOrDescriptionOnly"),
+  /** Who may create custom documents when documentsMode === 'all'. */
+  documentCreators: z.enum(["admins", "members"]).default("admins"),
+  /** Override variant propose cost; null = use settings.postCost. */
+  documentVariantCost: z.number().int().min(0).nullable().optional(),
+  documentVotingDurationHours: z.number().int().min(1).default(48),
+  documentDefaultMode: z.enum(["manual", "auto"]).default("manual"),
+  documentAutoApplyTimerHours: z.number().int().min(1).default(48),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -870,6 +881,12 @@ export const UpdateCommunityDtoSchema = z.object({
     tappalkaOnlyMode: z.boolean().optional(),
     commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
     eventCreation: z.enum(['admin', 'members']).optional(),
+    documentsMode: z.enum(['off', 'visionOrDescriptionOnly', 'all']).optional(),
+    documentCreators: z.enum(['admins', 'members']).optional(),
+    documentVariantCost: z.number().int().min(0).nullable().optional(),
+    documentVotingDurationHours: z.number().int().min(1).optional(),
+    documentDefaultMode: z.enum(['manual', 'auto']).optional(),
+    documentAutoApplyTimerHours: z.number().int().min(1).optional(),
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
@@ -988,7 +1005,9 @@ export const WithdrawAmountDtoSchema = z.object({
 });
 
 export const VoteWithCommentDtoSchema = z.object({
-  targetType: z.enum(["publication", "comment", "vote"]).optional(),
+  targetType: z
+    .enum(["publication", "comment", "vote", "document-variant"])
+    .optional(),
   targetId: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),

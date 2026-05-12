@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar, FileText } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -891,21 +891,38 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         ) : null}
                     </div>
                     {!showHubFeedTabChrome && user ? (
-                        <Link
-                            href={routes.communityEvents(chatId)}
-                            className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                <span className="truncate font-medium text-base-content">
-                                    {tCommunities('communityEvents')}
+                        <>
+                            <Link
+                                href={routes.communityEvents(chatId)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityEvents')}
+                                    </span>
+                                </div>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
                                 </span>
-                            </div>
-                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                {tCommunities('all')}
-                                <ChevronRight size={14} />
-                            </span>
-                        </Link>
+                            </Link>
+                            <Link
+                                href={routes.communityDocuments(chatId)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <FileText className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityDocuments')}
+                                    </span>
+                                </div>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
+                                </span>
+                            </Link>
+                        </>
                     ) : null}
                     {!showHubFeedTabChrome && user && isCommunityMember ? (
                         <Link

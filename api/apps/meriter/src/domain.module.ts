@@ -88,6 +88,14 @@ import {
   EventInviteSchemaClass,
   EventInviteSchema,
 } from './domain/models/event-invite/event-invite.schema';
+import {
+  MeriterDocumentSchemaClass,
+  MeriterDocumentSchema,
+} from './domain/models/meriter-document/meriter-document.schema';
+import {
+  DocumentBlockVariantSchemaClass,
+  DocumentBlockVariantSchema,
+} from './domain/models/document-block-variant/document-block-variant.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -137,6 +145,8 @@ import { PlatformDatabaseDumpService } from './domain/services/platform-database
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
 import { EventService } from './domain/services/event.service';
+import { DocumentService } from './domain/services/document.service';
+import { DocumentVariantService } from './domain/services/document-variant.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -181,6 +191,11 @@ import { EventBus } from './domain/events/event-bus';
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
       { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
       { name: EventInviteSchemaClass.name, schema: EventInviteSchema },
+      { name: MeriterDocumentSchemaClass.name, schema: MeriterDocumentSchema },
+      {
+        name: DocumentBlockVariantSchemaClass.name,
+        schema: DocumentBlockVariantSchema,
+      },
     ]),
   ],
   providers: [
@@ -232,6 +247,8 @@ import { EventBus } from './domain/events/event-bus';
     Decree809TagMigrationService,
     MeritTransferService,
     EventService,
+    DocumentService,
+    DocumentVariantService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -290,6 +307,8 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
+    DocumentService,
+    DocumentVariantService,
 
     // Export vote factor services
     RoleHierarchyFactor,

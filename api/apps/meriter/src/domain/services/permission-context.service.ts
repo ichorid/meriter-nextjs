@@ -8,6 +8,7 @@ import { VoteService } from './vote.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { PermissionService } from './permission.service';
+import { DocumentService } from './document.service';
 import { isPublicationEntitySourced } from '../common/helpers/publication-source.helper';
 
 /**
@@ -34,6 +35,8 @@ export class PermissionContextService {
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
+    @Inject(forwardRef(() => DocumentService))
+    private documentService: DocumentService,
   ) {}
 
   /**
@@ -126,6 +129,76 @@ export class PermissionContextService {
       hasComments,
       minutesSinceCreation,
     };
+  }
+
+  /**
+   * Voting on a proposed document block variant (beneficiary = variant author).
+   */
+  async buildContextForDocumentVariant(
+    userId: string,
+    variantId: string,
+  ): Promise<{ context: PermissionContext; communityId: string } | null> {
+    const variant = await this.documentService.getVariantById(variantId);
+    if (!variant || variant.deleted || variant.status !== 'open') {
+      return null;
+    }
+    const doc = await this.documentService.getById(variant.documentId);
+    if (!doc || doc.deleted) {
+      return null;
+    }
+    const communityId = doc.communityId;
+    const authorId = variant.proposedBy;
+    const effectiveBeneficiaryId = variant.proposedBy;
+
+    const authorIdStr = String(authorId).trim().toLowerCase();
+    const userIdStr = String(userId).trim().toLowerCase();
+    const isAuthor = authorIdStr === userIdStr;
+    const isEffectiveBeneficiary = isAuthor;
+
+    const community = await this.communityService.getCommunity(communityId);
+    const isTeamCommunity = community?.typeTag === 'team';
+
+    const authorRole = await this.permissionService.getUserRoleInCommunity(
+      authorId,
+      communityId,
+    );
+
+    const isTeamMember = isTeamCommunity
+      ? await this.isUserTeamMember(userId, communityId)
+      : false;
+
+    const hasTeamMembership = await this.userHasTeamMembership(userId);
+
+    const sharedTeamCommunities = await this.getSharedTeamCommunities(
+      userId,
+      effectiveBeneficiaryId,
+    );
+
+    const proposedAt =
+      variant.proposedAt instanceof Date
+        ? variant.proposedAt
+        : new Date(variant.proposedAt);
+    const minutesSinceCreation = Math.floor(
+      (Date.now() - proposedAt.getTime()) / (1000 * 60),
+    );
+
+    const context: PermissionContext = {
+      resourceId: variantId,
+      authorId,
+      effectiveBeneficiaryId,
+      isAuthor,
+      isEffectiveBeneficiary,
+      isTeamMember,
+      hasTeamMembership,
+      isTeamCommunity,
+      authorRole,
+      sharedTeamCommunities,
+      hasVotes: false,
+      hasComments: false,
+      minutesSinceCreation,
+    };
+
+    return { context, communityId };
   }
 
   /**

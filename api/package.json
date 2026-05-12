@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.48.7",
+  "version": "0.48.12",
   "description": "",
   "author": "",
   "private": true,
@@ -10,6 +10,8 @@
     "build": "nest build",
     "migrate:comment-mode": "ts-node scripts/migrate-comment-mode.ts",
     "migrate:comment-mode:dry": "ts-node scripts/migrate-comment-mode.ts --dry-run",
+    "migrate:collaborative-documents": "ts-node scripts/migrate-collaborative-documents.ts",
+    "migrate:collaborative-documents:dry": "ts-node scripts/migrate-collaborative-documents.ts --dry-run",
     "migrate:global-merit": "ts-node scripts/migrate-to-global-merit.ts",
     "migrate:global-merit:dry": "ts-node scripts/migrate-to-global-merit.ts --dry-run",
     "migrate:translate-content-en": "ts-node scripts/mongodb-translate-content-to-en.ts",

@@ -12,6 +12,7 @@ import { VoteFactorService } from './vote-factor.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 import { NotificationService } from './notification.service';
+import { DocumentService } from './document.service';
 
 @Injectable()
 export class VoteService {
@@ -27,6 +28,8 @@ export class VoteService {
     private voteFactorService: VoteFactorService,
     private eventBus: EventBus,
     private notificationService: NotificationService,
+    @Inject(forwardRef(() => DocumentService))
+    private documentService: DocumentService,
   ) {}
 
   /**
@@ -34,7 +37,14 @@ export class VoteService {
    * - For publications: beneficiaryId if set, otherwise authorId
    * - For votes: userId of the vote being voted on
    */
-  private async getEffectiveBeneficiary(targetType: 'publication' | 'vote', targetId: string): Promise<string | null> {
+  private async getEffectiveBeneficiary(
+    targetType: 'publication' | 'vote' | 'document-variant',
+    targetId: string,
+  ): Promise<string | null> {
+    if (targetType === 'document-variant') {
+      const variant = await this.documentService.getVariantById(targetId);
+      return variant ? variant.proposedBy : null;
+    }
     if (targetType === 'publication') {
       const publication = await this.publicationService.getPublication(targetId);
       if (!publication) {
@@ -42,14 +52,13 @@ export class VoteService {
       }
       const effectiveBeneficiary = publication.getEffectiveBeneficiary();
       return effectiveBeneficiary ? effectiveBeneficiary.getValue() : null;
-    } else {
-      // targetId is a vote ID
-      const vote = await this.getVoteById(targetId);
-      if (!vote) {
-        return null;
-      }
-      return vote.userId;
     }
+    // targetId is a vote ID
+    const vote = await this.getVoteById(targetId);
+    if (!vote) {
+      return null;
+    }
+    return vote.userId;
   }
 
   /**
@@ -70,7 +79,7 @@ export class VoteService {
 
   async createVote(
     userId: string,
-    targetType: 'publication' | 'vote',
+    targetType: 'publication' | 'vote' | 'document-variant',
     targetId: string,
     amountQuota: number,
     amountWallet: number,
@@ -114,9 +123,11 @@ export class VoteService {
     if (!effectiveBeneficiaryId) {
       if (targetType === 'publication') {
         throw new NotFoundException('Publication not found');
-      } else {
-        throw new NotFoundException('Vote not found');
       }
+      if (targetType === 'document-variant') {
+        throw new NotFoundException('Document variant not found');
+      }
+      throw new NotFoundException('Vote not found');
     }
 
     // Get user role for context currency mode factor
@@ -247,8 +258,7 @@ export class VoteService {
           `ob_vote_join_offer check failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
         );
       }
-    } else {
-      // Vote on vote = comment vote
+    } else if (targetType === 'vote') {
       await this.eventBus.publish(
         new CommentVotedEvent(vote.id, userId, totalAmount, direction),
       );
@@ -257,7 +267,11 @@ export class VoteService {
     return vote;
   }
 
-  async removeVote(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
+  async removeVote(
+    userId: string,
+    targetType: 'publication' | 'vote' | 'document-variant',
+    targetId: string,
+  ): Promise<boolean> {
     this.logger.log(`Removing vote: user=${userId}, target=${targetType}:${targetId}`);
 
     const result = await this.voteModel.deleteOne(
@@ -384,7 +398,11 @@ export class VoteService {
     return vote !== null;
   }
 
-  async hasVoted(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
+  async hasVoted(
+    userId: string,
+    targetType: 'publication' | 'vote' | 'document-variant',
+    targetId: string,
+  ): Promise<boolean> {
     return this.hasUserVoted(userId, targetType, targetId);
   }
 

@@ -266,6 +266,29 @@ export class PermissionService {
   }
 
   /**
+   * Vote on a collaborative document block variant (targetType document-variant).
+   */
+  async canVoteOnDocumentVariant(userId: string, variantId: string): Promise<boolean> {
+    const built = await this.permissionContextService.buildContextForDocumentVariant(
+      userId,
+      variantId,
+    );
+    if (!built) {
+      return false;
+    }
+    const community = await this.communityService.getCommunity(built.communityId);
+    if (community?.isProject && community.projectStatus === 'archived') {
+      return false;
+    }
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      built.communityId,
+      ActionType.VOTE,
+      built.context,
+    );
+  }
+
+  /**
    * Check if user can comment on a publication
    * Uses permission rule engine
    */

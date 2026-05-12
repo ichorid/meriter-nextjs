@@ -26,6 +26,7 @@ const REFERENCE_TYPES = {
     'vote_vote',
     'vote',
     'comment_vote',
+    'document_variant_vote',
     'project_appreciation',
   ] as const,
 
@@ -39,6 +40,7 @@ const REFERENCE_TYPES = {
     'poll_creation',
     'poll_cast',
     'forward_proposal',
+    'document_variant_proposal',
   ] as const,
 
   withdrawals: ['publication_withdrawal', 'comment_withdrawal', 'vote_withdrawal'] as const,

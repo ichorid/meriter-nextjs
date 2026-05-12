@@ -79,6 +79,13 @@ export interface CommunitySettings {
   commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
   /** Who may create event posts (`postType === 'event'`). Default: admin/lead only. */
   eventCreation?: 'admin' | 'members';
+  /** Collaborative documents: off | OB+description only | all (custom docs + tab). */
+  documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
+  documentCreators?: 'admins' | 'members';
+  documentVariantCost?: number | null;
+  documentVotingDurationHours?: number;
+  documentDefaultMode?: 'manual' | 'auto';
+  documentAutoApplyTimerHours?: number;
 }
 
 export interface CommunityMeritConversion {
@@ -405,6 +412,16 @@ export class CommunitySchemaClass implements Community {
         default: 'all',
       },
       eventCreation: { type: String, enum: ['admin', 'members'], default: 'admin' },
+      documentsMode: {
+        type: String,
+        enum: ['off', 'visionOrDescriptionOnly', 'all'],
+        default: 'visionOrDescriptionOnly',
+      },
+      documentCreators: { type: String, enum: ['admins', 'members'], default: 'admins' },
+      documentVariantCost: { type: Number, default: null },
+      documentVotingDurationHours: { type: Number, default: 48 },
+      documentDefaultMode: { type: String, enum: ['manual', 'auto'], default: 'manual' },
+      documentAutoApplyTimerHours: { type: Number, default: 48 },
     },
     default: {},
   })

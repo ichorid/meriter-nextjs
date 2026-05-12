@@ -42,6 +42,10 @@ export const routes = {
     /** Aggregate merit ledger for members in this community context. */
     communityMeritHistory: (id: string) => `/meriter/communities/${id}/merit-history`,
     communityEvents: (id: string) => `/meriter/communities/${id}/events`,
+    /** Collaborative documents (WYSIWYG hub). */
+    communityDocuments: (id: string) => `/meriter/communities/${id}/documents`,
+    communityDocument: (communityId: string, documentId: string) =>
+        `/meriter/communities/${communityId}/documents/${documentId}`,
     /** @deprecated Use projectMembers — canonical URL is under /meriter/projects/:id/members */
     projectMembersManage: (projectCommunityId: string) =>
       `/meriter/projects/${projectCommunityId}/members`,

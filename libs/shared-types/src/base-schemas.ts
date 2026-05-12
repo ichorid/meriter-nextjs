@@ -40,7 +40,7 @@ export const VotableMetricsSchema = z.object({
  * Used for votes that can target either publications or other votes
  */
 export const PolymorphicReferenceSchema = z.object({
-  targetType: z.enum(['publication', 'vote']),
+  targetType: z.enum(['publication', 'vote', 'document-variant']),
   targetId: z.string().min(1),
 });
 

@@ -49,6 +49,8 @@ import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
+import { DocumentService } from '../domain/services/document.service';
+import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -102,6 +104,8 @@ export class TrpcService {
     private platformDatabaseDumpService: PlatformDatabaseDumpService,
     private meritTransferService: MeritTransferService,
     private eventService: EventService,
+    private documentService: DocumentService,
+    private documentVariantService: DocumentVariantService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -161,6 +165,8 @@ export class TrpcService {
       platformDatabaseDumpService: this.platformDatabaseDumpService,
       meritTransferService: this.meritTransferService,
       eventService: this.eventService,
+      documentService: this.documentService,
+      documentVariantService: this.documentVariantService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

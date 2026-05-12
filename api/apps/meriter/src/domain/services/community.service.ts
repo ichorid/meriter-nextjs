@@ -28,6 +28,7 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
 import { PublicationService } from './publication.service';
+import { DocumentService } from './document.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import {
@@ -133,6 +134,12 @@ export interface UpdateCommunityDto {
     tappalkaOnlyMode?: boolean;
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
     eventCreation?: 'admin' | 'members';
+    documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
+    documentCreators?: 'admins' | 'members';
+    documentVariantCost?: number | null;
+    documentVotingDurationHours?: number;
+    documentDefaultMode?: 'manual' | 'auto';
+    documentAutoApplyTimerHours?: number;
   };
   votingSettings?: {
     votingRestriction?: 'any' | 'not-same-team';
@@ -210,6 +217,7 @@ export class CommunityService {
     @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,
     private communityWalletService: CommunityWalletService,
+    private documentService: DocumentService,
   ) {}
 
   async getCommunity(communityId: string): Promise<Community | null> {
@@ -645,6 +653,11 @@ export class CommunityService {
         genitive: 'merits',
       },
       dailyEmission: dto.settings?.dailyEmission ?? 10,
+      documentsMode: 'visionOrDescriptionOnly',
+      documentCreators: 'admins',
+      documentVotingDurationHours: 48,
+      documentDefaultMode: 'manual',
+      documentAutoApplyTimerHours: 48,
     };
     if (dto.settings?.postCost !== undefined) {
       settings.postCost = dto.settings.postCost;
@@ -710,6 +723,21 @@ export class CommunityService {
     this.logger.log(
       `Community created: ${community.id}${dto.typeTag ? ` (typeTag: ${dto.typeTag})` : ''}`,
     );
+
+    try {
+      await this.documentService.bootstrapForNewCommunity({
+        communityId: community.id as string,
+        typeTag: dto.typeTag,
+        isProject: Boolean((community as Record<string, unknown>).isProject),
+        createdByUserId: dto.creatorUserId ?? dto.founderUserId ?? 'system',
+        futureVisionText: dto.futureVisionText,
+        description: dto.description,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to bootstrap collaborative documents for ${String(community.id)}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
 
     if (
       dto.futureVisionText &&
@@ -859,6 +887,26 @@ export class CommunityService {
       }
       if (dto.settings.eventCreation !== undefined) {
         settingsUpdate['settings.eventCreation'] = dto.settings.eventCreation;
+      }
+      if (dto.settings.documentsMode !== undefined) {
+        settingsUpdate['settings.documentsMode'] = dto.settings.documentsMode;
+      }
+      if (dto.settings.documentCreators !== undefined) {
+        settingsUpdate['settings.documentCreators'] = dto.settings.documentCreators;
+      }
+      if ('documentVariantCost' in dto.settings) {
+        settingsUpdate['settings.documentVariantCost'] = dto.settings.documentVariantCost;
+      }
+      if (dto.settings.documentVotingDurationHours !== undefined) {
+        settingsUpdate['settings.documentVotingDurationHours'] =
+          dto.settings.documentVotingDurationHours;
+      }
+      if (dto.settings.documentDefaultMode !== undefined) {
+        settingsUpdate['settings.documentDefaultMode'] = dto.settings.documentDefaultMode;
+      }
+      if (dto.settings.documentAutoApplyTimerHours !== undefined) {
+        settingsUpdate['settings.documentAutoApplyTimerHours'] =
+          dto.settings.documentAutoApplyTimerHours;
       }
       // Deprecated: still accept tappalkaOnlyMode; map to commentMode when true
       if ('tappalkaOnlyMode' in dto.settings) {

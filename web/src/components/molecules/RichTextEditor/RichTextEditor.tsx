@@ -1,12 +1,13 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import type { Editor } from '@tiptap/core';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
-import { Bold, Italic, List, ListOrdered, Link as LinkIcon, Heading1, Heading2, Quote, Code } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming this exists, or I'll use classNames
+import { Bold, Italic, List, ListOrdered, Link as LinkIcon, Heading1, Quote } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RichTextEditorProps {
     content: string;
@@ -16,7 +17,7 @@ interface RichTextEditorProps {
     editable?: boolean;
 }
 
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
     const tProfile = useTranslations('profile');
     
     if (!editor) {
@@ -137,7 +138,7 @@ export const RichTextEditor = ({ content, onChange, placeholder, className, edit
                 emptyEditorClass: 'is-editor-empty before:content-[attr(data-placeholder)] before:text-base-content/50 before:float-left before:pointer-events-none',
             }),
         ],
-        content,
+        content: content || '',
         editable,
         immediatelyRender: false,
         onUpdate: ({ editor }) => {
