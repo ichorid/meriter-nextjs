@@ -20,6 +20,11 @@ const DEFAULT_CURRENCY = {
   genitive: 'merits',
 } as const;
 
+/** Lean community docs must expose string `id`; legacy/broken rows may omit it and would break Wallet.create(CommunityId.fromString). */
+function hasStableCommunityId(community: { id?: unknown }): boolean {
+  return typeof community.id === 'string' && community.id.length > 0;
+}
+
 async function assertMeritHistoryTransactionsAccess(
   ctx: {
     user: { id: string };
@@ -692,6 +697,8 @@ export const walletsRouter = router({
           (community) => userCommunityIds.includes(community.id) && community.isActive === true
         );
       }
+
+      userCommunities = userCommunities.filter(hasStableCommunityId);
 
       // G-11: For priority communities, show one global wallet instead of MD/OB/Projects/Support
       const nonPriorityCommunities = userCommunities.filter(

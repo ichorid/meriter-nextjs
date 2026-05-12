@@ -61,6 +61,7 @@ export {
     UpdateCommunityDtoSchema,
     UpdatePublicationDtoSchema,
     CreateCommunityDtoSchema,
+    plainTextFromRichCommunityInput,
     VoteDirectionDtoSchema,
     TelegramAuthDataSchema,
     TelegramWebAppDataSchema,

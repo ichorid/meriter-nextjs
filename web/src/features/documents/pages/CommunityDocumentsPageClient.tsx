@@ -7,8 +7,10 @@ import { Loader2 } from 'lucide-react';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRoles } from '@/hooks/api/useProfile';
 import { trpc } from '@/lib/trpc/client';
 import { routes } from '@/lib/constants/routes';
+import { Button } from '@/components/ui/shadcn/button';
 
 export interface CommunityDocumentsPageClientProps {
   communityId: string;
@@ -18,6 +20,11 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
   const router = useRouter();
   const t = useTranslations('pages.documents');
   const { user, isLoading: authLoading } = useAuth();
+  const { data: roles = [] } = useUserRoles(user?.id ?? '');
+
+  const canManageDocsSettings =
+    user?.globalRole === 'superadmin' ||
+    roles.some((r) => r.communityId === communityId && r.role === 'lead');
 
   const listQuery = trpc.documents.listByCommunity.useQuery(
     { communityId },
@@ -65,6 +72,14 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
       stickyHeader={pageHeader}
     >
       <div className="mx-auto w-full max-w-4xl space-y-4 p-4">
+        {canManageDocsSettings ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-base-300/60 bg-base-200/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-base-content/70">{t('customDocumentsHint')}</p>
+            <Button variant="outline" size="sm" className="shrink-0 rounded-xl" asChild>
+              <Link href={routes.communitySettings(communityId)}>{t('documentSettingsLink')}</Link>
+            </Button>
+          </div>
+        ) : null}
         {listQuery.isLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />

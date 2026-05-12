@@ -405,7 +405,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         if (!comms) return ['posts'];
         const tabs: CommunityHubFeedTab[] = ['posts'];
         if (!isMarathonOfGood) tabs.push('projects');
-        if (user?.id) tabs.push('events');
+        /** Meta hub «Биржа» (marathon-of-good): no Events tab — events/documents live elsewhere */
+        if (user?.id && !isMarathonOfGood) tabs.push('events');
         if (showBirzhaSourceDashboard) tabs.push('birzha');
         return tabs;
     }, [comms, isMarathonOfGood, user?.id, showBirzhaSourceDashboard]);
@@ -673,6 +674,40 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             (r.role === 'lead' || r.role === 'participant'),
     );
 
+    const documentsMode =
+        (comms?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
+        'visionOrDescriptionOnly';
+    const documentCreators =
+        (comms?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
+            ?.documentCreators ?? 'admins';
+
+    const docsListForHeroQuery = trpc.documents.listByCommunity.useQuery(
+        { communityId: chatId },
+        {
+            enabled: Boolean(
+                comms && user?.id && comms.typeTag !== 'future-vision' && documentsMode !== 'off',
+            ),
+        },
+    );
+
+    const obDocForHero = docsListForHeroQuery.data?.find((d) => d.type === 'imageOfFuture');
+
+    const canEditFutureVisionDocument =
+        Boolean(user?.id) &&
+        documentsMode !== 'off' &&
+        (user?.globalRole === 'superadmin' ||
+            userRoleInCommunity === 'lead' ||
+            (isCommunityMember &&
+                documentCreators === 'members' &&
+                userRoleInCommunity === 'participant'));
+
+    const futureVisionDocumentEditHref =
+        canEditFutureVisionDocument && obDocForHero?.id
+            ? routes.communityDocument(chatId, obDocForHero.id)
+            : canEditFutureVisionDocument
+              ? routes.communityDocuments(chatId)
+              : undefined;
+
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(
         user && (isCommunityMember || user.globalRole === 'superadmin'),
@@ -786,6 +821,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             ...comms,
                             id: comms.id || chatId,
                         }}
+                        futureVisionDocumentEditHref={futureVisionDocumentEditHref}
                         avatarRowEndSlot={
                             user &&
                             isCommunityMember &&
@@ -890,7 +926,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </Link>
                         ) : null}
                     </div>
-                    {!showHubFeedTabChrome && user ? (
+                    {user && !isMarathonOfGood ? (
                         <>
                             <Link
                                 href={routes.communityEvents(chatId)}

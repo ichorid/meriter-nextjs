@@ -92,6 +92,34 @@ export class DocumentService {
     return chunks.join('').trim();
   }
 
+  /**
+   * Backfill official ОБ / описание documents for communities created before collaborative docs
+   * or when rows were never inserted. Idempotent (ensureOfficialDocument skips if exists).
+   */
+  async ensureOfficialDocumentsForCommunity(communityId: string): Promise<void> {
+    if (!communityId || communityId === GLOBAL_COMMUNITY_ID) {
+      return;
+    }
+    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    if (!community) {
+      return;
+    }
+    const c = community as Record<string, unknown>;
+    const typeTag = c.typeTag as string | undefined;
+    if (typeTag === 'global') {
+      return;
+    }
+    await this.bootstrapForNewCommunity({
+      communityId,
+      typeTag,
+      isProject: Boolean(c.isProject),
+      createdByUserId: typeof c.createdByUserId === 'string' ? c.createdByUserId : 'system',
+      futureVisionText:
+        typeof c.futureVisionText === 'string' ? c.futureVisionText : undefined,
+      description: typeof c.description === 'string' ? c.description : undefined,
+    });
+  }
+
   async bootstrapForNewCommunity(params: {
     communityId: string;
     typeTag?: string;
@@ -225,11 +253,27 @@ export class DocumentService {
   async listActiveByCommunity(
     communityId: string,
   ): Promise<MeriterDocumentSchemaClass[]> {
-    return this.documentModel
-      .find({ communityId, deleted: false, status: 'active' })
+    const docs = (await this.documentModel
+      .find({
+        communityId,
+        deleted: false,
+        /** Legacy rows may omit `status`; treat as active unless archived */
+        $nor: [{ status: 'archived' }],
+      })
       .sort({ createdAt: -1 })
       .lean()
-      .exec() as Promise<MeriterDocumentSchemaClass[]>;
+      .exec()) as MeriterDocumentSchemaClass[];
+    const typeOrder: Record<string, number> = {
+      imageOfFuture: 0,
+      description: 1,
+      custom: 2,
+    };
+    return [...docs].sort(
+      (a, b) =>
+        (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99) ||
+        (new Date(b.createdAt as Date).getTime() ?? 0) -
+          (new Date(a.createdAt as Date).getTime() ?? 0),
+    );
   }
 
   async getById(

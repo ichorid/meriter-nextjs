@@ -939,6 +939,16 @@ export const UpdatePublicationDtoSchema = z.object({
     },
   ); // Strict mode prevents postType and isProject from being included
 
+/** Strip HTML for required-field checks (ОБ / описание из WYSIWYG). */
+export function plainTextFromRichCommunityInput(s: string | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export const CreateCommunityDtoSchema = z
   .object({
     name: z.string().min(1),
@@ -965,14 +975,23 @@ export const CreateCommunityDtoSchema = z
   .superRefine((data, ctx) => {
     const typeTag = data.typeTag;
     const requiresFutureVisionText = typeTag !== "project" && typeTag !== "global";
-    const futureVisionText = (data.futureVisionText ?? "").trim();
-
-    if (requiresFutureVisionText && futureVisionText.length === 0) {
+    const fvPlain = plainTextFromRichCommunityInput(data.futureVisionText);
+    if (requiresFutureVisionText && fvPlain.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["futureVisionText"],
         message: "futureVisionText is required when creating a community",
       });
+    }
+    if (typeTag === "project") {
+      const descPlain = plainTextFromRichCommunityInput(data.description);
+      if (descPlain.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["description"],
+          message: "description is required when creating a project community",
+        });
+      }
     }
   });
 

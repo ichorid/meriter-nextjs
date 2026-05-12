@@ -66,7 +66,7 @@ export const routes = {
     /** Create a Birzha publication on behalf of this source community (lead). */
     communityBirzhaPublish: (id: string) => `/meriter/communities/${id}/birzha-publish`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
-    /** Opens General tab with future vision textarea focused (lead/superadmin settings). */
+    /** Legacy: settings used to focus OB textarea; now redirects to collaborative documents hub. */
     communitySettingsEditFutureVision: (id: string) =>
         `/meriter/communities/${id}/settings?edit=futureVision`,
     setupCommunity: "/meriter/setup-community",

@@ -677,6 +677,12 @@ export class CommunityService {
     if (dto.typeTag === 'project') {
       settings.allowWithdraw = false;
     }
+    if (dto.settings?.documentsMode !== undefined) {
+      settings.documentsMode = dto.settings.documentsMode;
+    }
+    if (dto.settings?.documentCreators !== undefined) {
+      settings.documentCreators = dto.settings.documentCreators;
+    }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,

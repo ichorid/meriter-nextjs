@@ -42,6 +42,8 @@ interface CommunityHeroCardProps {
   onClick?: () => void;
   /** Placed in the avatar row: bottom-right on sm+, stacked under the avatar on narrow screens */
   avatarRowEndSlot?: ReactNode;
+  /** Opens collaborative OB document (WYSIWYG). When omitted, no edit pen on future vision block. */
+  futureVisionDocumentEditHref?: string;
 }
 
 /**
@@ -53,6 +55,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   isCompact = false,
   onClick,
   avatarRowEndSlot,
+  futureVisionDocumentEditHref,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -310,13 +313,13 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                       aria-hidden
                     />
                   </button>
-                  {community.isAdmin && (
+                  {futureVisionDocumentEditHref ? (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        router.push(routes.communitySettingsEditFutureVision(community.id));
+                        router.push(futureVisionDocumentEditHref);
                       }}
                       className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-300/60 dark:hover:bg-base-300/40 transition-colors"
                       title={tCommon('edit')}
@@ -324,7 +327,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     >
                       <SquarePen className="h-5 w-5" aria-hidden />
                     </button>
-                  )}
+                  ) : null}
                 </div>
 
                 {isFutureVisionSectionOpen && obCover && !obCoverUsedInHeader && (

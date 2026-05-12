@@ -6,6 +6,7 @@ export const documentsRouter = router({
   listByCommunity: protectedProcedure
     .input(z.object({ communityId: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      await ctx.documentService.ensureOfficialDocumentsForCommunity(input.communityId);
       return ctx.documentService.listActiveByCommunity(input.communityId);
     }),
 
