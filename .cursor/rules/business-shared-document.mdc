@@ -1,0 +1,91 @@
+---
+description: Collaborative documents (ОБ / description / custom), block variants, merit voting, apply modes. Apply when working with documents, document variants, or document UI.
+globs:
+  - "**/document*.ts"
+  - "**/document-*.ts"
+  - "**/meriter-document/**"
+  - "**/document-block-variant/**"
+  - "**/documents/**/*.tsx"
+  - "**/documentVariants*.ts"
+alwaysApply: false
+---
+
+# Collaborative documents (shared-document)
+
+> Merit-based collaborative editing: official block text, proposed variants, voting with заслуги, manual vs auto apply. Canonical product/architecture: `docs/prd/shared-document/business-approved-tz.md`; PRD folder: `docs/prd/shared-document/`.
+
+---
+
+## Concept
+
+- **Document** (`documents` collection): belongs to a **community** (`communityId`). Types: `imageOfFuture` (one per community — ОБ), `description` (one per project community), `custom` (only when `documentsMode === 'all'`).
+- **Sections → blocks**: embedded in the document. Each **block** has stable `id`, `officialContent`, optional voting anchor `currentWaveStartedAt`, edit metadata (`officialContentReason`: `initial` | `vote` | `admin`).
+- **Variant** (`document_block_variants`): proposed alternative text for one block; `status`: `open` → `closed-winner` / `closed-not-winner` → optional `applied`; `withdrawn` if author retracts.
+- **Votes**: reuse **`Vote`** with **`targetType === 'document-variant'`** and `targetId` = variant id (same quota/wallet/community rules as other weighted votes; Future Vision may require comment text — see `votes.router` / @business-future-vision.mdc).
+
+---
+
+## Community settings (documents hub)
+
+- **`Community.settings.documentsMode`**: `'off'` | `'visionOrDescriptionOnly'` | `'all'` — controls whether only seeded OB/description docs exist vs arbitrary custom documents.
+- **`documentCreators`**, **`documentVariantCost`**, **`documentVotingDurationHours`**, **`documentDefaultMode`**, **`documentAutoApplyTimerHours`** — economy and defaults for variants/waves (see `community.schema` / shared-types).
+
+---
+
+## Apply modes (`MeriterDocument.mode`)
+
+| Mode | Behaviour |
+|------|-------------|
+| **`manual`** | After a wave closes, a **`closed-winner`** variant must be **applied** by author/admin via **`documentVariants.applyVotingWinner`** (or **applyOpenAsAdmin** for override). |
+| **`auto`** | After **`finalizeExpiredWaveOnBlock`**, if there is a **`closed-winner`** with **positive rating**, **`applyVariantToOfficial`** runs automatically with synthetic actor **`MERITER_DOCUMENT_AUTO_APPLY_USER_ID`** (`meriter-actors.constant.ts`). |
+
+Manual UI apply is rejected when `mode !== 'manual'` for **`applyVotingWinner`**.
+
+---
+
+## Voting waves and cron
+
+- **Wave open**: while **`DocumentVariantService`/document helpers** consider the block’s voting window open (`currentWaveStartedAt` + `votingDurationHours`), finalize does nothing.
+- **Finalize**: **`finalizeExpiredWaveOnBlock(documentId, blockId)`** — ranks open variants by rating (tie-break `proposedAt`), assigns `closed-winner` / `closed-not-winner`, clears wave anchor; then **`tryAutoApplyWinner`** if `mode === 'auto'`.
+- **Periodic sweep**: **`DocumentWaveCronService`** (`*/5 * * * *`) calls **`runPeriodicWaveSweep()`** — discovers `(documentId, blockId)` pairs with **`open`** variants, skips blocks still voting, otherwise **`finalizeExpiredWaveOnBlock`**.
+- **Trigger on propose**: proposing a variant also calls **`finalizeExpiredWaveOnBlock`** first so elapsed waves close before a new open variant is added.
+
+---
+
+## Economics
+
+- **Propose variant**: fee via **`document_variant_proposal`** (quota/wallet rules in **`DocumentVariantService`**); aligns with global burn for fees (see @business-merits.mdc / fees).
+- **Max variant body length**: **5000** characters (API trim); rich HTML from WYSIWYG counts toward the limit.
+
+---
+
+## Mirror to legacy community fields (§5.3)
+
+- OB (`type === 'imageOfFuture'`) and project description (`type === 'description'`): **`mirrorOfficialTextToCommunityIfApplicable`** updates **`futureVisionText`** / **`description`** on **`Community`**.
+- **`concatOfficialPlainText`** builds plain text from block **`officialContent`**; **HTML is stripped** for mirror (**`stripHtmlForMirror`**) so legacy fields stay readable plain text while the document stores rich content.
+
+---
+
+## tRPC (high level)
+
+| Namespace | Procedures |
+|-------------|------------|
+| **`documents`** | `listByCommunity`, `getById`, `getOfficialByType` |
+| **`documentVariants`** | `listByBlock`, `propose`, `withdraw`, `applyVotingWinner`, `applyOpenAsAdmin` |
+| **`votes`** | `create` / `createWithComment` with **`document-variant`** |
+
+---
+
+## Web routes
+
+- Community hub link + **`/meriter/communities/[id]/documents`** (list), **`/meriter/communities/[id]/documents/[documentId]`** (detail).
+- Proposal/editor: TipTap **`RichTextEditor`**; display: **`DocumentRichContent`** (sanitize); legacy plain variants still render safely.
+
+---
+
+## Related rules
+
+- **ОБ hub / cards**: @business-future-vision.mdc (community **`futureVisionText`** is mirrored from OB document).
+- **Projects / description**: @business-projects.mdc.
+- **Voting merit flow**: @business-content.mdc, @business-merits.mdc.
+- **Permissions**: document author, community **lead** / admin checks in **`DocumentVariantService`** (`assertCanManageDocument`, proposal gates).
