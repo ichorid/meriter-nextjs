@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, forwardRef, Inject } from '@nestjs/common';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection } from 'mongoose';
+import { Model, Connection, type ClientSession } from 'mongoose';
 import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
 import type { Vote } from '../models/vote/vote.schema';
 import { uid } from 'uid';
@@ -86,7 +86,8 @@ export class VoteService {
     direction: 'up' | 'down',
     comment: string,
     communityId: string,
-    images?: string[]
+    images?: string[],
+    session?: ClientSession,
   ): Promise<Vote> {
     const commentPreview = (comment ?? '').substring(0, 50);
     this.logger.log(
@@ -196,19 +197,24 @@ export class VoteService {
     // Users can vote multiple times on the same publication/vote
 
     // Create vote with explicit direction
-    const voteArray = await this.voteModel.create([{
-      id: uid(),
-      targetType,
-      targetId,
-      userId,
-      amountQuota,
-      amountWallet,
-      direction,
-      communityId,
-      comment: comment.trim(),
-      images: images || [],
-      createdAt: new Date(),
-    }]);
+    const voteArray = await this.voteModel.create(
+      [
+        {
+          id: uid(),
+          targetType,
+          targetId,
+          userId,
+          amountQuota,
+          amountWallet,
+          direction,
+          communityId,
+          comment: comment.trim(),
+          images: images || [],
+          createdAt: new Date(),
+        },
+      ],
+      session ? { session } : undefined,
+    );
 
     const vote = voteArray[0];
     this.logger.log(`Vote created successfully: ${vote.id}`);

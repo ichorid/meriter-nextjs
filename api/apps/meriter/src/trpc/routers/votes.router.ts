@@ -520,12 +520,17 @@ export async function createVoteLogic(
   // Default to "up" when not specified. Downvotes must be explicit.
   const direction: 'up' | 'down' = input.direction ?? 'up';
 
+  if (input.targetType === 'document-variant' && !input.comment?.trim()) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Comment is required when voting on document variants',
+    });
+  }
+
   // Future Vision (OB): wallet-only on posts/comments; comment required for weighted votes
   if (
     community?.typeTag === 'future-vision' &&
-    (input.targetType === 'publication' ||
-      input.targetType === 'vote' ||
-      input.targetType === 'document-variant')
+    (input.targetType === 'publication' || input.targetType === 'vote')
   ) {
     if (!input.comment?.trim()) {
       throw new TRPCError({
@@ -715,18 +720,44 @@ export async function createVoteLogic(
     }
   }
 
-  // Create vote
-  const vote = await ctx.voteService.createVote(
-    ctx.user.id,
-    input.targetType,
-    input.targetId,
-    quotaAmount,
-    walletAmount,
-    direction,
-    input.comment || '',
-    communityId,
-    input.images,
-  );
+  // Create vote (document-variant rating is updated in the same transaction)
+  let vote: Awaited<ReturnType<typeof ctx.voteService.createVote>>;
+  if (input.targetType === 'document-variant') {
+    const totalAmount = quotaAmount + walletAmount;
+    const delta = direction === 'up' ? totalAmount : -totalAmount;
+    const session = await ctx.connection.startSession();
+    try {
+      await session.withTransaction(async () => {
+        vote = await ctx.voteService.createVote(
+          ctx.user.id,
+          input.targetType,
+          input.targetId,
+          quotaAmount,
+          walletAmount,
+          direction,
+          input.comment || '',
+          communityId,
+          input.images,
+          session,
+        );
+        await ctx.documentService.applyRatingDelta(input.targetId, delta, session);
+      });
+    } finally {
+      await session.endSession();
+    }
+  } else {
+    vote = await ctx.voteService.createVote(
+      ctx.user.id,
+      input.targetType,
+      input.targetId,
+      quotaAmount,
+      walletAmount,
+      direction,
+      input.comment || '',
+      communityId,
+      input.images,
+    );
+  }
 
   // Update publication metrics if voting on a publication.
   // Project instant appreciation: credit beneficiary wallet AND update publication metrics (rating UI / lists).
@@ -767,12 +798,6 @@ export async function createVoteLogic(
         direction,
       );
     }
-  }
-
-  if (input.targetType === 'document-variant') {
-    const totalAmount = quotaAmount + walletAmount;
-    const delta = direction === 'up' ? totalAmount : -totalAmount;
-    await ctx.documentService.applyRatingDelta(input.targetId, delta);
   }
 
   // Deduct from wallet if wallet amount was used (global for priority, community for local)

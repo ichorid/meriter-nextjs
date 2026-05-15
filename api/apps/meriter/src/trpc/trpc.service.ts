@@ -51,6 +51,7 @@ import { MeritTransferService } from '../domain/services/merit-transfer.service'
 import { EventService } from '../domain/services/event.service';
 import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
+import { DocumentStructureService } from '../domain/services/document-structure.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -106,6 +107,7 @@ export class TrpcService {
     private eventService: EventService,
     private documentService: DocumentService,
     private documentVariantService: DocumentVariantService,
+    private documentStructureService: DocumentStructureService,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -167,6 +169,7 @@ export class TrpcService {
       eventService: this.eventService,
       documentService: this.documentService,
       documentVariantService: this.documentVariantService,
+      documentStructureService: this.documentStructureService,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

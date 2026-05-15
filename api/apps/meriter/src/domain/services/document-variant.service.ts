@@ -6,8 +6,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
-import { randomUUID } from 'crypto';
+import { Connection, Model, type MongoServerError } from 'mongoose';
+import {
+  DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION,
+  documentWaveFinalizeLockId,
+} from '../common/constants/document-wave-lock.constants';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
@@ -22,21 +25,22 @@ import {
 } from '../models/meriter-document/meriter-document.schema';
 import { CommunityService } from './community.service';
 import { DocumentService } from './document.service';
+import { NotificationService } from './notification.service';
+import { PermissionService } from './permission.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
 import { getRemainingQuotaForPublicationCreate } from '../../trpc/helpers/publication-creation-quota';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
+import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
+import {
+  normalizeDocumentVariantReferences,
+  type DocumentVariantReferenceInput,
+} from '../common/document-variant-references.util';
+
+export type { DocumentVariantReferenceInput };
 
 const MAX_VARIANT_CONTENT = 5000;
-const MAX_REFERENCE_SUMMARY = 280;
-
-export interface DocumentVariantReferenceInput {
-  id?: string;
-  url: string;
-  summary: string;
-  stance?: 'pro' | 'con';
-}
 
 @Injectable()
 export class DocumentVariantService {
@@ -50,8 +54,19 @@ export class DocumentVariantService {
     private readonly walletService: WalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
+    private readonly notificationService: NotificationService,
+    private readonly permissionService: PermissionService,
     @InjectConnection() private readonly connection: Connection,
   ) {}
+
+  private isDuplicateKeyError(err: unknown): boolean {
+    return (
+      typeof err === 'object' &&
+      err !== null &&
+      'code' in err &&
+      (err as MongoServerError).code === 11000
+    );
+  }
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
     return this.variantModel
@@ -69,12 +84,45 @@ export class DocumentVariantService {
    * When wave time elapsed: pick winner, reset wave anchor on block.
    * For `document.mode === 'auto'`, applies winning variant (§12.2).
    */
-  async finalizeExpiredWaveOnBlock(documentId: string, blockId: string): Promise<void> {
+  async finalizeExpiredWaveOnBlock(
+    documentId: string,
+    blockId: string,
+    options?: { force?: boolean },
+  ): Promise<void> {
+    const lockId = documentWaveFinalizeLockId(documentId, blockId);
+    const locks = this.connection.db?.collection(DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION);
+    if (!locks) {
+      await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
+      return;
+    }
+    try {
+      await locks.insertOne({ _id: lockId, createdAt: new Date() });
+    } catch (err) {
+      if (this.isDuplicateKeyError(err)) {
+        return;
+      }
+      throw err;
+    }
+    try {
+      await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
+    } finally {
+      await locks.deleteOne({ _id: lockId }).catch(() => undefined);
+    }
+  }
+
+  private async finalizeExpiredWaveOnBlockCore(
+    documentId: string,
+    blockId: string,
+    options?: { force?: boolean },
+  ): Promise<void> {
     const docLean = await this.documentService.getById(documentId);
     if (!docLean) {
       return;
     }
-    if (this.documentService.isDocumentBlockVotingOpen(docLean, blockId)) {
+    if (
+      !options?.force &&
+      this.documentService.isDocumentBlockVotingOpen(docLean, blockId)
+    ) {
       return;
     }
 
@@ -124,6 +172,14 @@ export class DocumentVariantService {
       delete b.currentWaveStartedAt;
     });
 
+    if (topRated && docLean.mode !== 'auto') {
+      await this.notifyVariantWon(top, docLean).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variant winner ${top.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
+
     await this.tryAutoApplyWinner(documentId, blockId);
   }
 
@@ -167,7 +223,7 @@ export class DocumentVariantService {
       references?: DocumentVariantReferenceInput[];
     },
   ): Promise<DocumentBlockVariantSchemaClass> {
-    const content = input.content?.trim() ?? '';
+    const content = sanitizeDocumentHtml(input.content ?? '');
     if (!content) {
       throw new BadRequestException('Variant content is required');
     }
@@ -215,7 +271,7 @@ export class DocumentVariantService {
       variantCost,
     );
 
-    const refs = this.normalizeReferences(input.references);
+    const refs = normalizeDocumentVariantReferences(input.references);
 
     const variantId = uid();
     const now = new Date();
@@ -321,6 +377,133 @@ export class DocumentVariantService {
     await this.applyVariantToOfficial(actorUserId, v, doc, 'admin');
   }
 
+  /** §12.3 — arbitrary official text without a variant (lead / document author). */
+  async applyAdminOverride(
+    actorUserId: string,
+    documentId: string,
+    blockId: string,
+    newContent: string,
+  ): Promise<void> {
+    const content = sanitizeDocumentHtml(newContent);
+    if (!content) {
+      throw new BadRequestException('Official content is required');
+    }
+    if (content.length > MAX_VARIANT_CONTENT) {
+      throw new BadRequestException(`Content must be at most ${MAX_VARIANT_CONTENT} characters`);
+    }
+
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted || doc.status !== 'active') {
+      throw new NotFoundException('Document not found');
+    }
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    this.assertDocumentsModeAllowsDocument(community, doc.type);
+    await this.assertCanManageDocument(actorUserId, doc);
+
+    const block = this.documentService.findBlock(doc, blockId);
+    if (!block) {
+      throw new NotFoundException('Block not found');
+    }
+
+    const openVariantsBeforeOverride = await this.variantModel
+      .find({
+        documentId: doc.id,
+        blockId,
+        status: 'open',
+        deleted: false,
+      })
+      .lean()
+      .exec();
+
+    const now = new Date();
+    const ok = await this.documentService.updateDocumentBlock(doc.id, blockId, (b) => {
+      const previousContent = String(b.officialContent ?? '');
+      this.documentService.appendBlockEditHistory(b, {
+        changedAt: now,
+        changedBy: actorUserId,
+        reason: 'admin',
+        previousContent,
+      });
+      b.officialContent = content;
+      b.officialContentSetAt = now;
+      b.officialContentSetBy = actorUserId;
+      b.officialContentReason = 'admin';
+      delete b.officialContentVariantId;
+      delete b.currentWaveStartedAt;
+    });
+    if (!ok) {
+      throw new BadRequestException('Failed to update block');
+    }
+
+    await this.variantModel.updateMany(
+      {
+        documentId: doc.id,
+        blockId,
+        status: 'open',
+        deleted: false,
+      },
+      { $set: { status: 'closed-not-winner', updatedAt: now } },
+    );
+
+    await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
+
+    await this.notifyBlockAdminOverride(
+      doc,
+      community,
+      blockId,
+      actorUserId,
+      openVariantsBeforeOverride,
+    ).catch((err) => {
+      this.logger.warn(
+        `Failed to notify open variant authors about admin override: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+  }
+
+  /** §13.4 — force-close voting wave on a block (admin / document author). */
+  async closeVotingWaveOnBlock(
+    actorUserId: string,
+    documentId: string,
+    blockId: string,
+  ): Promise<void> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      throw new NotFoundException('Document not found');
+    }
+    await this.assertCanManageDocument(actorUserId, doc);
+    const block = this.documentService.findBlock(doc, blockId);
+    if (!block) {
+      throw new NotFoundException('Block not found');
+    }
+    await this.finalizeExpiredWaveOnBlock(documentId, blockId, { force: true });
+  }
+
+  /** §7.3 — soft-delete a variant (admin / document author). */
+  async deleteVariantAsAdmin(actorUserId: string, variantId: string): Promise<void> {
+    const v = await this.documentService.getVariantById(variantId);
+    if (!v || v.deleted) {
+      throw new NotFoundException('Variant not found');
+    }
+    const doc = await this.documentService.getById(v.documentId);
+    if (!doc || doc.deleted) {
+      throw new NotFoundException('Document not found');
+    }
+    await this.assertCanManageDocument(actorUserId, doc);
+    if (v.status === 'applied') {
+      throw new BadRequestException('Cannot delete an applied variant');
+    }
+    await this.variantModel.updateOne(
+      { id: variantId },
+      { $set: { deleted: true, updatedAt: new Date() } },
+    );
+  }
+
   private async applyVariantToOfficial(
     actorUserId: string,
     v: DocumentBlockVariantSchemaClass,
@@ -329,6 +512,14 @@ export class DocumentVariantService {
   ): Promise<void> {
     const now = new Date();
     const ok = await this.documentService.updateDocumentBlock(doc.id, v.blockId, (b) => {
+      const previousContent = String(b.officialContent ?? '');
+      this.documentService.appendBlockEditHistory(b, {
+        changedAt: now,
+        changedBy: actorUserId,
+        reason,
+        ...(reason === 'vote' ? { variantId: v.id } : {}),
+        previousContent,
+      });
       b.officialContent = v.content;
       b.officialContentSetAt = now;
       b.officialContentSetBy = actorUserId;
@@ -338,6 +529,7 @@ export class DocumentVariantService {
       } else {
         delete b.officialContentVariantId;
       }
+      delete b.currentWaveStartedAt;
     });
     if (!ok) {
       throw new BadRequestException('Failed to update block');
@@ -367,6 +559,15 @@ export class DocumentVariantService {
     );
 
     await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (community) {
+      await this.notifyVariantApplied(v, doc, community).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variant applied ${v.id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
   }
 
   /** Auto-apply closed winner when document is in auto mode (§12.2). */
@@ -429,6 +630,14 @@ export class DocumentVariantService {
       throw new ForbiddenException('You must be a community member to propose a variant');
     }
 
+    const canPropose = await this.permissionService.canProposeDocumentVariant(
+      userId,
+      doc.id,
+    );
+    if (!canPropose) {
+      throw new ForbiddenException('You are not allowed to propose a variant on this document');
+    }
+
     if (doc.type !== 'custom') {
       return;
     }
@@ -444,52 +653,27 @@ export class DocumentVariantService {
     }
   }
 
-  private async assertCanManageDocument(
+  async assertCanManageDocument(
     userId: string,
     doc: MeriterDocumentSchemaClass,
   ): Promise<void> {
-    const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-      return;
-    }
-    if (doc.createdBy === userId) {
-      return;
-    }
-    const admin = await this.communityService.isUserAdmin(doc.communityId, userId);
-    if (!admin) {
+    const canManage = await this.permissionService.canManageCollaborativeDocument(
+      userId,
+      doc.id,
+    );
+    if (!canManage) {
       throw new ForbiddenException('Only the document author or a community admin can apply variants');
     }
   }
 
-  private normalizeReferences(
-    refs: DocumentVariantReferenceInput[] | undefined,
-  ): Array<{ id: string; url: string; summary: string; stance?: 'pro' | 'con' }> {
-    if (!refs?.length) {
-      return [];
+  async assertCanEditDocumentStructure(
+    userId: string,
+    doc: MeriterDocumentSchemaClass,
+  ): Promise<void> {
+    const canEdit = await this.permissionService.canEditDocumentStructure(userId, doc.id);
+    if (!canEdit) {
+      throw new ForbiddenException('You cannot edit this document structure');
     }
-    const out: Array<{ id: string; url: string; summary: string; stance?: 'pro' | 'con' }> = [];
-    for (const r of refs.slice(0, 10)) {
-      let url: URL;
-      try {
-        url = new URL(r.url);
-      } catch {
-        throw new BadRequestException(`Invalid reference URL: ${r.url}`);
-      }
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new BadRequestException('Reference URL must be http(s)');
-      }
-      const summary = (r.summary ?? '').trim();
-      if (summary.length > MAX_REFERENCE_SUMMARY) {
-        throw new BadRequestException(`Reference summary must be at most ${MAX_REFERENCE_SUMMARY} characters`);
-      }
-      out.push({
-        id: r.id ?? randomUUID(),
-        url: r.url.trim(),
-        summary,
-        stance: r.stance,
-      });
-    }
-    return out;
   }
 
   private async collectVariantProposalFee(
@@ -589,6 +773,89 @@ export class DocumentVariantService {
         feeCurrency,
         'Fee for proposing a document variant',
       );
+    }
+  }
+
+  private buildDocumentNotificationMetadata(
+    doc: MeriterDocumentSchemaClass,
+    community: Community,
+    blockId: string,
+  ): Record<string, unknown> {
+    return {
+      communityId: doc.communityId,
+      communityName: community.name,
+      documentId: doc.id,
+      documentTitle: doc.title,
+      blockId,
+      inviteTargetIsProject: community.isProject === true,
+    };
+  }
+
+  private async notifyVariantWon(
+    variant: { id: string; proposedBy: string; documentId: string; blockId: string },
+    doc: MeriterDocumentSchemaClass,
+  ): Promise<void> {
+    if (!variant.proposedBy) {
+      return;
+    }
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      return;
+    }
+    const title = doc.title?.trim() || 'Document';
+    await this.notificationService.createNotification({
+      userId: variant.proposedBy,
+      type: 'document_variant_won',
+      source: 'system',
+      metadata: this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+      title: 'Your variant won the vote',
+      message: `Your proposed text won voting on "${title}".`,
+    });
+  }
+
+  private async notifyVariantApplied(
+    variant: { id: string; proposedBy: string; blockId: string },
+    doc: MeriterDocumentSchemaClass,
+    community: Community,
+  ): Promise<void> {
+    if (!variant.proposedBy) {
+      return;
+    }
+    const title = doc.title?.trim() || 'Document';
+    await this.notificationService.createNotification({
+      userId: variant.proposedBy,
+      type: 'document_variant_applied',
+      source: 'system',
+      metadata: this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+      title: 'Your variant is now official',
+      message: `Your proposed text was applied as the official text of "${title}".`,
+    });
+  }
+
+  private async notifyBlockAdminOverride(
+    doc: MeriterDocumentSchemaClass,
+    community: Community,
+    blockId: string,
+    actorUserId: string,
+    openVariants: Array<{ proposedBy?: string }>,
+  ): Promise<void> {
+    const title = doc.title?.trim() || 'Document';
+    const metadata = this.buildDocumentNotificationMetadata(doc, community, blockId);
+    const recipientIds = new Set(
+      openVariants
+        .map((v) => v.proposedBy)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0 && id !== actorUserId),
+    );
+    for (const userId of recipientIds) {
+      await this.notificationService.createNotification({
+        userId,
+        type: 'document_block_admin_override',
+        source: 'system',
+        sourceId: actorUserId,
+        metadata,
+        title: 'Voting closed by administrator',
+        message: `An administrator set new official text on "${title}"; your open variant was not selected.`,
+      });
     }
   }
 }

@@ -98,6 +98,12 @@ export class CommunityDefaultsService {
       { role: 'lead', action: ActionType.EDIT_POLL, allowed: true },
       { role: 'lead', action: ActionType.DELETE_POLL, allowed: true },
       { role: 'lead', action: ActionType.VIEW_COMMUNITY, allowed: true },
+      { role: 'lead', action: ActionType.PROPOSE_DOCUMENT_VARIANT, allowed: true },
+      { role: 'lead', action: ActionType.VOTE_DOCUMENT_VARIANT, allowed: true },
+      { role: 'lead', action: ActionType.APPLY_DOCUMENT_VARIANT, allowed: true },
+      { role: 'lead', action: ActionType.EDIT_DOCUMENT_STRUCTURE, allowed: true },
+      { role: 'lead', action: ActionType.CREATE_DOCUMENT, allowed: true },
+      { role: 'lead', action: ActionType.MANAGE_DOCUMENT, allowed: true },
     );
 
     // Participant permissions (base - can be overridden by type)
@@ -136,6 +142,8 @@ export class CommunityDefaultsService {
       { role: 'participant', action: ActionType.EDIT_POLL, allowed: true },
       { role: 'participant', action: ActionType.DELETE_POLL, allowed: true },
       { role: 'participant', action: ActionType.VIEW_COMMUNITY, allowed: true },
+      { role: 'participant', action: ActionType.PROPOSE_DOCUMENT_VARIANT, allowed: true },
+      { role: 'participant', action: ActionType.VOTE_DOCUMENT_VARIANT, allowed: true },
     );
 
     // Note: Viewer role has been removed. All users are now participants by default.

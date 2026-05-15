@@ -1,9 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type ClientSession } from 'mongoose';
 import { randomUUID } from 'crypto';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import { shouldBootstrapImageOfFutureDocument } from '../common/constants/collaborative-documents.constants';
 import {
   CommunitySchemaClass,
   CommunityDocument,
@@ -12,12 +20,15 @@ import type { CommunitySettings } from '../models/community/community.schema';
 import {
   MeriterDocumentSchemaClass,
   MeriterDocumentDocument,
+  MeriterDocApplyMode,
   MeriterDocType,
+  OfficialContentReason,
 } from '../models/meriter-document/meriter-document.schema';
 import {
   DocumentBlockVariantSchemaClass,
   DocumentBlockVariantDocument,
 } from '../models/document-block-variant/document-block-variant.schema';
+import { PublicationService } from './publication.service';
 
 type MirrorField = 'futureVisionText' | 'description';
 
@@ -30,6 +41,14 @@ interface SectionLike {
 interface BlockLike {
   order: number;
   officialContent?: string;
+}
+
+export interface BlockEditHistoryEntry {
+  changedAt: Date;
+  changedBy: string;
+  reason: OfficialContentReason;
+  variantId?: string;
+  previousContent: string;
 }
 
 /**
@@ -47,6 +66,8 @@ export class DocumentService {
     private readonly communityModel: Model<CommunityDocument>,
     @InjectModel(DocumentBlockVariantSchemaClass.name)
     private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    @Inject(forwardRef(() => PublicationService))
+    private readonly publicationService: PublicationService,
   ) {}
 
   /**
@@ -127,39 +148,51 @@ export class DocumentService {
     createdByUserId: string;
     futureVisionText?: string;
     description?: string;
-  }): Promise<void> {
+  }): Promise<{ documentsCreated: number }> {
+    let documentsCreated = 0;
     if (
       params.communityId === GLOBAL_COMMUNITY_ID ||
       params.typeTag === 'global'
     ) {
-      return;
+      return { documentsCreated: 0 };
     }
 
     try {
-      await this.ensureOfficialDocument({
-        communityId: params.communityId,
-        type: 'imageOfFuture',
-        title: 'Образ будущего',
-        createdBy: params.createdByUserId,
-        initialParagraph: params.futureVisionText ?? '',
-        mirrorField: 'futureVisionText',
-      });
+      if (shouldBootstrapImageOfFutureDocument(params.typeTag)) {
+        if (
+          await this.ensureOfficialDocument({
+            communityId: params.communityId,
+            type: 'imageOfFuture',
+            title: 'Образ будущего',
+            createdBy: params.createdByUserId,
+            initialParagraph: params.futureVisionText ?? '',
+            mirrorField: 'futureVisionText',
+          })
+        ) {
+          documentsCreated += 1;
+        }
+      }
 
       if (params.isProject) {
-        await this.ensureOfficialDocument({
-          communityId: params.communityId,
-          type: 'description',
-          title: 'Описание проекта',
-          createdBy: params.createdByUserId,
-          initialParagraph: params.description ?? '',
-          mirrorField: 'description',
-        });
+        if (
+          await this.ensureOfficialDocument({
+            communityId: params.communityId,
+            type: 'description',
+            title: 'Описание проекта',
+            createdBy: params.createdByUserId,
+            initialParagraph: params.description ?? '',
+            mirrorField: 'description',
+          })
+        ) {
+          documentsCreated += 1;
+        }
       }
     } catch (error) {
       this.logger.error(
         `bootstrapForNewCommunity failed for ${params.communityId}: ${error instanceof Error ? error.message : error}`,
       );
     }
+    return { documentsCreated };
   }
 
   private async ensureOfficialDocument(args: {
@@ -169,7 +202,7 @@ export class DocumentService {
     createdBy: string;
     initialParagraph: string;
     mirrorField: MirrorField;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const existing = await this.documentModel
       .findOne({
         communityId: args.communityId,
@@ -178,7 +211,7 @@ export class DocumentService {
       })
       .lean();
     if (existing) {
-      return;
+      return false;
     }
 
     const community = await this.communityModel
@@ -199,8 +232,9 @@ export class DocumentService {
     const blockId = randomUUID();
     const now = new Date();
 
+    const documentId = uid();
     const docPayload = {
-      id: uid(),
+      id: documentId,
       communityId: args.communityId,
       type: args.type,
       title: args.title,
@@ -248,6 +282,8 @@ export class DocumentService {
       { id: args.communityId },
       { $set: { [args.mirrorField]: plain, updatedAt: new Date() } },
     );
+    await this.mirrorOfficialTextToCommunityIfApplicable(documentId);
+    return true;
   }
 
   async listActiveByCommunity(
@@ -308,13 +344,18 @@ export class DocumentService {
   /**
    * Rating delta from weighted votes (+up / −down). Neutral (0) votes do not change rating.
    */
-  async applyRatingDelta(variantId: string, delta: number): Promise<void> {
+  async applyRatingDelta(
+    variantId: string,
+    delta: number,
+    session?: ClientSession,
+  ): Promise<void> {
     if (!delta) {
       return;
     }
     await this.variantModel.updateOne(
       { id: variantId },
       { $inc: { rating: delta }, $set: { updatedAt: new Date() } },
+      session ? { session } : undefined,
     );
   }
 
@@ -350,6 +391,98 @@ export class DocumentService {
       start instanceof Date ? start.getTime() : new Date(start as string).getTime();
     const endMs = startMs + hours * 3600 * 1000;
     return Date.now() <= endMs;
+  }
+
+  /** Append §19 editHistory entry before mutating `officialContent`. */
+  appendBlockEditHistory(
+    block: Record<string, unknown>,
+    entry: BlockEditHistoryEntry,
+  ): void {
+    const existing = Array.isArray(block.editHistory)
+      ? [...(block.editHistory as BlockEditHistoryEntry[])]
+      : [];
+    existing.push(entry);
+    block.editHistory = existing;
+  }
+
+  /** §7.1 — document metadata (caller must enforce `assertCanManageDocument`). */
+  async updateMeta(
+    documentId: string,
+    input: {
+      title?: string;
+      mode?: MeriterDocApplyMode;
+      votingDurationHours?: number;
+      variantCost?: number;
+      allowDownvotes?: boolean;
+    },
+  ): Promise<MeriterDocumentSchemaClass> {
+    const doc = await this.getById(documentId);
+    if (!doc || doc.deleted || doc.status !== 'active') {
+      throw new NotFoundException('Document not found');
+    }
+
+    const $set: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (input.title !== undefined) {
+      if (doc.type !== 'custom') {
+        throw new BadRequestException('Title can only be changed for custom documents');
+      }
+      const title = input.title.trim();
+      if (!title) {
+        throw new BadRequestException('Title is required');
+      }
+      $set.title = title;
+    }
+    if (input.mode !== undefined) {
+      $set.mode = input.mode;
+    }
+    if (input.votingDurationHours !== undefined) {
+      $set.votingDurationHours = Math.max(1, Math.min(720, input.votingDurationHours));
+    }
+    if (input.variantCost !== undefined) {
+      $set.variantCost = Math.max(0, Math.min(1000, input.variantCost));
+    }
+    if (input.allowDownvotes !== undefined) {
+      $set.allowDownvotes = input.allowDownvotes;
+    }
+
+    if (Object.keys($set).length <= 1) {
+      return doc;
+    }
+
+    const result = await this.documentModel.updateOne(
+      { id: documentId, deleted: false },
+      { $set },
+    );
+    if (result.matchedCount === 0) {
+      throw new NotFoundException('Document not found');
+    }
+
+    const updated = await this.getById(documentId);
+    if (!updated) {
+      throw new NotFoundException('Document not found');
+    }
+    return updated;
+  }
+
+  /** Replace full `sections` tree (structure edits §7.4). */
+  async updateSections(
+    documentId: string,
+    sections: unknown[],
+    options?: { expectedUpdatedAt?: Date },
+  ): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'conflict' }> {
+    const filter: Record<string, unknown> = { id: documentId, deleted: false };
+    if (options?.expectedUpdatedAt) {
+      filter.updatedAt = options.expectedUpdatedAt;
+    }
+    const result = await this.documentModel.updateOne(filter, {
+      $set: { sections, updatedAt: new Date() },
+    });
+    if (result.matchedCount > 0) {
+      return { ok: true };
+    }
+    const exists = await this.documentModel.exists({ id: documentId, deleted: false });
+    return { ok: false, reason: exists ? 'conflict' : 'not_found' };
   }
 
   /**
@@ -405,5 +538,62 @@ export class DocumentService {
       { id: doc.communityId },
       { $set: { [field]: plain, updatedAt: new Date() } },
     );
+
+    if (field === 'futureVisionText') {
+      const futureVisionHub = await this.communityModel
+        .findOne({ typeTag: 'future-vision' })
+        .lean()
+        .exec();
+      if (futureVisionHub?.id) {
+        try {
+          const updated = await this.publicationService.updateFutureVisionPostContent(
+            futureVisionHub.id,
+            doc.communityId,
+            plain,
+          );
+          if (!updated) {
+            const authorId = await this.resolveFutureVisionPostAuthorId(
+              doc.communityId,
+              doc.createdBy,
+            );
+            if (authorId) {
+              await this.publicationService.createFutureVisionPost({
+                futureVisionCommunityId: futureVisionHub.id,
+                authorId,
+                content: plain,
+                sourceEntityId: doc.communityId,
+              });
+            }
+          }
+        } catch (err) {
+          this.logger.warn(
+            `Failed to sync OB publication for community ${doc.communityId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        }
+      }
+    }
+  }
+
+  private async resolveFutureVisionPostAuthorId(
+    communityId: string,
+    docCreatedBy?: string,
+  ): Promise<string | null> {
+    if (docCreatedBy) {
+      return docCreatedBy;
+    }
+    const community = await this.communityModel
+      .findOne({ id: communityId })
+      .select({ createdByUserId: 1, founderUserId: 1 })
+      .lean()
+      .exec();
+    if (community?.createdByUserId) {
+      return community.createdByUserId;
+    }
+    if (community?.founderUserId) {
+      return community.founderUserId;
+    }
+    return null;
   }
 }

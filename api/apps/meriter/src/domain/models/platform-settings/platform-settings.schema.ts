@@ -14,6 +14,8 @@ export interface PlatformSettings {
   decree809Tags?: string[];
   /** Bumped by migration when canonical list / legacy mappings change; see `DECREE_809_TAGS_REVISION`. */
   decree809TagsRevision?: number;
+  /** Bumped when collaborative-documents migration runs; see `COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION`. */
+  collaborativeDocumentsMigrationRevision?: number;
   /** Minimum entity count to show a tag in suggested list (default 5). */
   popularValueTagsThreshold?: number;
   /** Set after demo seed; cleared on platform wipe. */
@@ -40,6 +42,9 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ type: Number, required: false })
   decree809TagsRevision?: number;
+
+  @Prop({ type: Number, required: false })
+  collaborativeDocumentsMigrationRevision?: number;
 
   @Prop({ type: Number, default: 5 })
   popularValueTagsThreshold?: number;

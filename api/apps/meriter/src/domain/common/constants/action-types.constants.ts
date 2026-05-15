@@ -26,5 +26,13 @@ export enum ActionType {
   
   // Visibility actions
   VIEW_COMMUNITY = 'view_community',
+
+  // Collaborative documents (§16 business-approved-tz)
+  PROPOSE_DOCUMENT_VARIANT = 'propose_document_variant',
+  VOTE_DOCUMENT_VARIANT = 'vote_document_variant',
+  APPLY_DOCUMENT_VARIANT = 'apply_document_variant',
+  EDIT_DOCUMENT_STRUCTURE = 'edit_document_structure',
+  CREATE_DOCUMENT = 'create_document',
+  MANAGE_DOCUMENT = 'manage_document',
 }
 

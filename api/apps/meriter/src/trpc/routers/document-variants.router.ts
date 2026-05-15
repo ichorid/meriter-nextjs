@@ -9,8 +9,8 @@ import { router, protectedProcedure } from '../trpc';
 
 const ReferenceSchema = z.object({
   id: z.string().optional(),
-  url: z.string().url(),
-  summary: z.string().max(280),
+  url: z.string().url().max(2000),
+  summary: z.string().trim().min(1).max(280),
   stance: z.enum(['pro', 'con']).optional(),
 });
 
@@ -91,6 +91,37 @@ export const documentVariantsRouter = router({
           ctx.user.id,
           input.variantId,
         );
+        return { ok: true as const };
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
+  closeVotingWaveOnBlock: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        blockId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await ctx.documentVariantService.closeVotingWaveOnBlock(
+          ctx.user.id,
+          input.documentId,
+          input.blockId,
+        );
+        return { ok: true as const };
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
+  deleteVariant: protectedProcedure
+    .input(z.object({ variantId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await ctx.documentVariantService.deleteVariantAsAdmin(ctx.user.id, input.variantId);
         return { ok: true as const };
       } catch (err) {
         mapNestToTrpc(err);

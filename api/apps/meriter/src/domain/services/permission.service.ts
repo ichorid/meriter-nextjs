@@ -12,6 +12,7 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { CommentService } from './comment.service';
 import { PollService } from './poll.service';
 import { VoteService } from './vote.service';
+import { DocumentService } from './document.service';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_PARTICIPANT } from '../common/constants/roles.constants';
 import { ActionType } from '../common/constants/action-types.constants';
 import { PermissionRuleEngine } from './permission-rule-engine.service';
@@ -39,6 +40,8 @@ export class PermissionService {
     private pollService: PollService,
     @Inject(forwardRef(() => VoteService))
     private voteService: VoteService,
+    @Inject(forwardRef(() => DocumentService))
+    private documentService: DocumentService,
     private permissionRuleEngine: PermissionRuleEngine,
     private permissionContextService: PermissionContextService,
   ) { }
@@ -283,8 +286,73 @@ export class PermissionService {
     return this.permissionRuleEngine.canPerformAction(
       userId,
       built.communityId,
-      ActionType.VOTE,
+      ActionType.VOTE_DOCUMENT_VARIANT,
       built.context,
+    );
+  }
+
+  async canProposeDocumentVariant(userId: string, documentId: string): Promise<boolean> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      return false;
+    }
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      return false;
+    }
+    if (community.settings?.documentsMode === 'off') {
+      return false;
+    }
+    const role = await this.getUserRoleInCommunity(userId, doc.communityId);
+    if (!role) {
+      return false;
+    }
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      doc.communityId,
+      ActionType.PROPOSE_DOCUMENT_VARIANT,
+    );
+  }
+
+  async canManageCollaborativeDocument(
+    userId: string,
+    documentId: string,
+  ): Promise<boolean> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      return false;
+    }
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === 'superadmin') {
+      return true;
+    }
+    if (doc.createdBy === userId) {
+      return true;
+    }
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      doc.communityId,
+      ActionType.MANAGE_DOCUMENT,
+    );
+  }
+
+  async canEditDocumentStructure(userId: string, documentId: string): Promise<boolean> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      return false;
+    }
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === 'superadmin' || doc.createdBy === userId) {
+      return true;
+    }
+    const admin = await this.communityService.isUserAdmin(doc.communityId, userId);
+    if (admin) {
+      return true;
+    }
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      doc.communityId,
+      ActionType.EDIT_DOCUMENT_STRUCTURE,
     );
   }
 
