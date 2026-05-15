@@ -27,8 +27,9 @@ const PURIFY: DOMPurify.Config = {
     'code',
     'pre',
     'span',
+    'img',
   ],
-  ALLOWED_ATTR: ['href', 'class', 'target', 'rel'],
+  ALLOWED_ATTR: ['href', 'class', 'target', 'rel', 'src', 'alt', 'style'],
 };
 
 function looksLikeHtml(s: string): boolean {
@@ -81,7 +82,7 @@ export function DocumentRichContent({ html, className }: DocumentRichContentProp
   return (
     <div
       className={cn(
-        'prose prose-sm dark:prose-invert max-w-none text-base-content [&_a]:text-brand-primary [&_a]:underline',
+        'prose prose-sm dark:prose-invert max-w-none text-base-content [&_a]:text-brand-primary [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg',
         className,
       )}
        

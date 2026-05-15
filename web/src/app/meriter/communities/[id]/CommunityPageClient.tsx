@@ -701,12 +701,21 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 documentCreators === 'members' &&
                 userRoleInCommunity === 'participant'));
 
+    const canOpenObCollaborativeDocument = Boolean(
+        user?.id &&
+            documentsMode !== 'off' &&
+            isCommunityMember &&
+            obDocForHero?.id,
+    );
+
+    const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
+        ? routes.communityDocument(chatId, obDocForHero!.id)
+        : undefined;
+
     const futureVisionDocumentEditHref =
-        canEditFutureVisionDocument && obDocForHero?.id
-            ? routes.communityDocument(chatId, obDocForHero.id)
-            : canEditFutureVisionDocument
-              ? routes.communityDocuments(chatId)
-              : undefined;
+        canEditFutureVisionDocument && !obDocForHero?.id
+            ? routes.communityDocuments(chatId)
+            : undefined;
 
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(
@@ -821,6 +830,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             ...comms,
                             id: comms.id || chatId,
                         }}
+                        futureVisionCollaborativeDocumentHref={
+                            futureVisionCollaborativeDocumentHref
+                        }
                         futureVisionDocumentEditHref={futureVisionDocumentEditHref}
                         avatarRowEndSlot={
                             user &&

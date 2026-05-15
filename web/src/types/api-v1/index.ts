@@ -299,7 +299,10 @@ export type NotificationType =
     | "project_parent_link_rejected"
     | "community_member_removed"
     | "event_created"
-    | "event_invitation";
+    | "event_invitation"
+    | "document_variant_won"
+    | "document_variant_applied"
+    | "document_block_admin_override";
 
 export interface Notification {
     id: string;

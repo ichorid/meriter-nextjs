@@ -92,9 +92,14 @@ export const CommunityForm = ({
     const [eventCreation, setEventCreation] = useState<"admin" | "members">("admin");
     const [documentsMode, setDocumentsMode] = useState<
         "off" | "visionOrDescriptionOnly" | "all"
-    >("off");
+    >("visionOrDescriptionOnly");
     const [documentCreators, setDocumentCreators] = useState<"admins" | "members">(
         "admins",
+    );
+    const [documentVariantCost, setDocumentVariantCost] = useState("");
+    const [documentVotingDurationHours, setDocumentVotingDurationHours] = useState("48");
+    const [documentDefaultMode, setDocumentDefaultMode] = useState<"manual" | "auto">(
+        "manual",
     );
     /** HTML for mandatory OB document at create time (seeded into collaborative document). */
     const [futureVisionRichHtml, setFutureVisionRichHtml] = useState("<p></p>");
@@ -127,6 +132,16 @@ export const CommunityForm = ({
                     : "visionOrDescriptionOnly",
             );
             setDocumentCreators(c.settings?.documentCreators === "members" ? "members" : "admins");
+            const dvc = c.settings?.documentVariantCost;
+            setDocumentVariantCost(
+                dvc === null || dvc === undefined ? "" : String(dvc),
+            );
+            setDocumentVotingDurationHours(
+                String(c.settings?.documentVotingDurationHours ?? 48),
+            );
+            setDocumentDefaultMode(
+                c.settings?.documentDefaultMode === "auto" ? "auto" : "manual",
+            );
         }
     }, [community, isEditMode]);
 
@@ -162,7 +177,26 @@ export const CommunityForm = ({
                         ? { eventCreation }
                         : {}),
                     ...(!isEditMode || isUserLead || isSuperadmin
-                        ? { documentsMode, documentCreators }
+                        ? {
+                              documentsMode,
+                              documentCreators,
+                              ...(documentsMode !== "off"
+                                  ? {
+                                        documentVariantCost:
+                                            documentVariantCost.trim() === ""
+                                                ? null
+                                                : Math.max(
+                                                      0,
+                                                      parseInt(documentVariantCost, 10) || 0,
+                                                  ),
+                                        documentVotingDurationHours: Math.max(
+                                            1,
+                                            parseInt(documentVotingDurationHours, 10) || 48,
+                                        ),
+                                        documentDefaultMode,
+                                    }
+                                  : {}),
+                          }
                         : {}),
                 },
             };
@@ -481,23 +515,76 @@ export const CommunityForm = ({
                             </Select>
                         </BrandFormControl>
                         {documentsMode !== "off" ? (
-                            <BrandFormControl label={t("documentCreatorsLabel")}>
-                                <Select
-                                    value={documentCreators}
-                                    onValueChange={(v) =>
-                                        setDocumentCreators(v as "admins" | "members")
-                                    }
-                                    disabled={isPending}
+                            <>
+                                <BrandFormControl label={t("documentCreatorsLabel")}>
+                                    <Select
+                                        value={documentCreators}
+                                        onValueChange={(v) =>
+                                            setDocumentCreators(v as "admins" | "members")
+                                        }
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="admins">
+                                                {t("documentCreatorsAdmins")}
+                                            </SelectItem>
+                                            <SelectItem value="members">
+                                                {t("documentCreatorsMembers")}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </BrandFormControl>
+                                <BrandFormControl
+                                    label={t("documentVariantCostLabel")}
+                                    helperText={t("documentVariantCostHelp")}
                                 >
-                                    <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="admins">{t("documentCreatorsAdmins")}</SelectItem>
-                                        <SelectItem value="members">{t("documentCreatorsMembers")}</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </BrandFormControl>
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        className="h-11 max-w-md rounded-xl"
+                                        value={documentVariantCost}
+                                        onChange={(e) => setDocumentVariantCost(e.target.value)}
+                                        disabled={isPending}
+                                        placeholder="1"
+                                    />
+                                </BrandFormControl>
+                                <BrandFormControl label={t("documentVotingDurationLabel")}>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        className="h-11 max-w-md rounded-xl"
+                                        value={documentVotingDurationHours}
+                                        onChange={(e) =>
+                                            setDocumentVotingDurationHours(e.target.value)
+                                        }
+                                        disabled={isPending}
+                                    />
+                                </BrandFormControl>
+                                <BrandFormControl label={t("documentDefaultModeLabel")}>
+                                    <Select
+                                        value={documentDefaultMode}
+                                        onValueChange={(v) =>
+                                            setDocumentDefaultMode(v as "manual" | "auto")
+                                        }
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">
+                                                {t("documentDefaultModeManual")}
+                                            </SelectItem>
+                                            <SelectItem value="auto">
+                                                {t("documentDefaultModeAuto")}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </BrandFormControl>
+                            </>
                         ) : null}
                     </div>
                     <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">

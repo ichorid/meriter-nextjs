@@ -4,6 +4,7 @@ import React, { useState, type ReactNode } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { User, ChevronDown, ChevronUp } from 'lucide-react';
 import { Users, Settings, Trash2, TrendingUp, ArrowUp, SquarePen } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
@@ -42,7 +43,9 @@ interface CommunityHeroCardProps {
   onClick?: () => void;
   /** Placed in the avatar row: bottom-right on sm+, stacked under the avatar on narrow screens */
   avatarRowEndSlot?: ReactNode;
-  /** Opens collaborative OB document (WYSIWYG). When omitted, no edit pen on future vision block. */
+  /** Collaborative OB document — all members who can vote/propose. */
+  futureVisionCollaborativeDocumentHref?: string;
+  /** Opens documents list when lead can edit but OB doc is not provisioned yet. */
   futureVisionDocumentEditHref?: string;
 }
 
@@ -55,6 +58,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   isCompact = false,
   onClick,
   avatarRowEndSlot,
+  futureVisionCollaborativeDocumentHref,
   futureVisionDocumentEditHref,
 }) => {
   const router = useRouter();
@@ -368,6 +372,15 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                         )}
                       </button>
                     )}
+                    {futureVisionCollaborativeDocumentHref ? (
+                      <Link
+                        href={futureVisionCollaborativeDocumentHref}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                      >
+                        {tCommunities('openCollaborativeDocument')}
+                      </Link>
+                    ) : null}
                   </>
                 )}
                 {isFutureVisionSectionOpen && community.futureVisionTags && community.futureVisionTags.length > 0 && (
