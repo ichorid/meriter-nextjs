@@ -8,6 +8,8 @@
 
 Полное ТЗ (принято бизнесом): **[`business-approved-tz.md`](./business-approved-tz.md)**.
 
+UX страницы документа (canvas, Google Docs–style): **[`document-canvas-ux-spec.md`](./document-canvas-ux-spec.md)** — задачи **FE-UX-*** в [`tasklist.md`](./tasklist.md).
+
 Этот PRD не дублирует все поля модели — он задаёт границы релиза и привязку к репозиторию.
 
 ## Скоуп релиза (кратко)

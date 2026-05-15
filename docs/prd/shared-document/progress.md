@@ -74,10 +74,17 @@
 - **QA:** формальный прогон AC §24  
 - **Ops:** миграция на старте API (`CollaborativeDocumentsMigrationService`); ручной dry-run: `pnpm --filter @meriter/api migrate:collaborative-documents`
 
+### Step 12: Document Canvas UX — spec and task breakdown
+
+- **Status:** Done (planning)  
+- **Файлы:** [`document-canvas-ux-spec.md`](./document-canvas-ux-spec.md), [`tasklist.md`](./tasklist.md) (Phase UX: FE-UX-1 … FE-UX-4)  
+- **Что сделано:** зафиксирован north star (content-first, Google Docs–like canvas), режимы Reading / Suggesting / Structure / Settings, визуал Obsidian Nocturne, декомпозиция компонентов, фазы поставки с AC.  
+- **Next implementation:** **FE-UX-1** (reading canvas) — см. tasklist.
+
 ---
 
 ## Session handoff — 2026-05-15
 
-- **Completed:** Phases A–C, project entry, settings, Step 10 (OB sync + notifications + narrow MVP UX).  
-- **Next up:** Phase D (custom docs hub) or AC §24 QA.  
+- **Completed:** Phases A–C, project entry, settings, Step 10 (OB sync + notifications + narrow MVP UX); Step 12 UX spec.  
+- **Next up:** **FE-UX-1** reading canvas, then FE-UX-2 structure mode; parallel backlog: Phase D (custom docs hub), AC §24 QA.  
 - **Open questions:** `documentsMode=off` legacy editor.

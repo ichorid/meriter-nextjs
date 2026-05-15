@@ -106,6 +106,7 @@ Manual UI apply is rejected when `mode !== 'manual'` for **`applyVotingWinner`**
 - Community hub link + **`/meriter/communities/[id]/documents`** (list), **`/meriter/communities/[id]/documents/[documentId]`** (detail).
 - Proposal/editor: TipTap **`RichTextEditor`**; display: **`DocumentRichContent`** (client DOMPurify); API sanitizes on save.
 - Document page (lead): official reason badge, wave timer, collapse variants, admin override dialog, block history, apply open variant, delete variant, close voting wave.
+- **UX redesign (in progress):** [`docs/prd/shared-document/document-canvas-ux-spec.md`](../../docs/prd/shared-document/document-canvas-ux-spec.md) — reading canvas, structure mode, rail; tasks **FE-UX-*** in `tasklist.md`.
 
 ---
 
