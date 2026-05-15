@@ -62,16 +62,41 @@ Manual UI apply is rejected when `mode !== 'manual'` for **`applyVotingWinner`**
 ## Mirror to legacy community fields (§5.3)
 
 - OB (`type === 'imageOfFuture'`) and project description (`type === 'description'`): **`mirrorOfficialTextToCommunityIfApplicable`** updates **`futureVisionText`** / **`description`** on **`Community`**.
+- For **OB**, mirror also calls **`PublicationService.updateFutureVisionPostContent`** on the **`future-vision`** hub so feed cards stay aligned with the document (same path as direct `Community.futureVisionText` edits in **`CommunityService.updateCommunity`**).
+- **No `imageOfFuture` document** on hub communities (`typeTag`: `future-vision`, `marathon-of-good`, `team-projects`). Bootstrap + startup migration skip them; stray hub OB rows are soft-deleted on migration.
+- **Startup migration:** `CollaborativeDocumentsMigrationService` (`onModuleInit`), revision in `platform_settings.collaborativeDocumentsMigrationRevision` (`COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION`). Manual: `pnpm --filter @meriter/api migrate:collaborative-documents`.
 - **`concatOfficialPlainText`** builds plain text from block **`officialContent`**; **HTML is stripped** for mirror (**`stripHtmlForMirror`**) so legacy fields stay readable plain text while the document stores rich content.
 
 ---
+
+## Variant references (§17)
+
+- Up to **10** links per variant: `url` (http/https, ≤2000 chars), `summary` (required, ≤280), optional `stance` (`pro` | `con`).
+- API: `normalizeDocumentVariantReferences` in `domain/common/document-variant-references.util.ts`; passed via `documentVariants.propose` `references` array.
+- Web: `DocumentVariantReferencesEditor` on propose form; `DocumentVariantReferencesList` on variant cards. References stay on the variant record after apply (not copied to official block).
+
+## Block history (§19)
+
+- Each change to **`officialContent`** appends **`block.editHistory`**: `previousContent`, `changedBy`, `changedAt`, `reason` (`initial` | `vote` | `admin`), optional `variantId` when `reason === 'vote'`.
+- Populated on **`applyVariantToOfficial`** and **`applyAdminOverride`** (not retroactively for pre-migration blocks).
+
+## Document structure (§7.4, §20.2)
+
+- **Who**: community **lead**, document **author**, or **superadmin** (`assertCanManageDocument`).
+- **tRPC** (`documents`): `addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`.
+- **Guards**: cannot remove the only section or the only block in the document; removing block/section with non-empty **`officialContent`** requires **`confirmLossOfOfficial: true`**; open variants on removed blocks → **`withdrawn`**; OB/description docs re-mirror community plain text after structure change.
+- **Web**: document toolbar (add section / add block to last section); per-block `DocumentBlockStructureControls` (section title, block type, remove with confirm).
+
+## Server HTML (§24.9)
+
+- **`sanitizeDocumentHtml`** (`api/.../common/utils/sanitize-document-html.ts`) runs on **`propose`** and **`applyAdminOverride`**; allowlist aligned with web **`DocumentRichContent`**.
 
 ## tRPC (high level)
 
 | Namespace | Procedures |
 |-------------|------------|
-| **`documents`** | `listByCommunity`, `getById`, `getOfficialByType` |
-| **`documentVariants`** | `listByBlock`, `propose`, `withdraw`, `applyVotingWinner`, `applyOpenAsAdmin` |
+| **`documents`** | `listByCommunity`, `getById`, `getOfficialByType`, **`updateMeta`**, **`applyAdminOverride`**, structure mutations (`addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`) |
+| **`documentVariants`** | `listByBlock`, `propose`, `withdraw`, `applyVotingWinner`, `applyOpenAsAdmin`, **`closeVotingWaveOnBlock`**, **`deleteVariant`** |
 | **`votes`** | `create` / `createWithComment` with **`document-variant`** |
 
 ---
@@ -79,7 +104,24 @@ Manual UI apply is rejected when `mode !== 'manual'` for **`applyVotingWinner`**
 ## Web routes
 
 - Community hub link + **`/meriter/communities/[id]/documents`** (list), **`/meriter/communities/[id]/documents/[documentId]`** (detail).
-- Proposal/editor: TipTap **`RichTextEditor`**; display: **`DocumentRichContent`** (sanitize); legacy plain variants still render safely.
+- Proposal/editor: TipTap **`RichTextEditor`**; display: **`DocumentRichContent`** (client DOMPurify); API sanitizes on save.
+- Document page (lead): official reason badge, wave timer, collapse variants, admin override dialog, block history, apply open variant, delete variant, close voting wave.
+
+---
+
+## Notifications (§20.7, MVP)
+
+Emitted from **`DocumentVariantService`** via **`NotificationService`**:
+
+| Type | When |
+|------|------|
+| **`document_variant_won`** | Variant becomes **`closed-winner`** after wave finalize (positive rating) |
+| **`document_variant_applied`** | Variant applied to **`officialContent`** |
+| **`document_block_admin_override`** | **`applyAdminOverride`** closes open variants on the block (authors notified, not the actor) |
+
+Redirect: **`/meriter/communities/{communityId}/documents/{documentId}`**. Metadata: `communityId`, `documentId`, `documentTitle`, `blockId`, `communityName`, `inviteTargetIsProject`.
+
+**Votes on variants:** comment required in **all** communities (`votes` router); not only **`future-vision`**.
 
 ---
 

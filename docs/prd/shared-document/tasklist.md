@@ -2,101 +2,73 @@
 
 > **Нормативное ТЗ:** [`business-approved-tz.md`](./business-approved-tz.md)  
 > **PRD:** [`prd.md`](./prd.md)  
-> **Бриф агента:** [`agent-brief.md`](./agent-brief.md)  
+> **Прогресс:** [`progress.md`](./progress.md)  
 > **Отчёты:** `reports/`
 
 ---
 
 ## Подготовка
 
-- [ ] **PREP-1**: Ветка `feat/shared-document`
-- [x] **PREP-2**: Прочитать `business-approved-tz.md` целиком
-- [x] **PREP-3**: Прочитать [`reports/01-analysis.md`](./reports/01-analysis.md) (привязка к файлам)
+- [x] **PREP-2**: Прочитать `business-approved-tz.md`
+- [x] **PREP-3**: [`reports/01-analysis.md`](./reports/01-analysis.md)
 
 ---
 
-## Phase 1: Data model + настройки сообщества
+## Phase 1–2: Data model + чтение
 
-- [x] **BE-1**: `libs/shared-types` — расширить `CommunitySettingsSchema` полями документов (**§5 ТЗ**)
-- [x] **BE-2**: `community.schema.ts` (mongoose) — те же поля в embedded `settings`
-- [x] **BE-3**: Mongoose-схемы **`MeriterDocument`** (коллекция `documents`) и **`DocumentBlockVariant`** (`document_block_variants`)
-- [x] **BE-4**: Индексы по ТЗ **§4.4** (частичный unique для `imageOfFuture`/`description`; индексы variants)
-- [x] **BE-5**: `DocumentService`: bootstrap при создании сообщества (**§8.1**), зеркало ОБ/описания (**§5.3**)
-- [ ] **BE-6**: Миграция существующих сообществ/проектов (**§5.1**) — скрипт в `api/migrations/` или `api/scripts/`
+- [x] **BE-1 … BE-9**: shared-types, mongoose, bootstrap, `documents` read router, community settings merge
+- [x] **BE-6**: `migrate:collaborative-documents` script
 
 ---
 
-## Phase 2: tRPC documents + чтение
+## Phase 3–5: Варианты, голосование, волны
 
-- [x] **BE-7**: `documentsRouter`: `listByCommunity`, `getById`, `getOfficialByType` (имена процедур см. реализацию)
-- [x] **BE-8**: Регистрация роутера в `trpc/router.ts`, контекст в `context.ts` / `trpc.service.ts`
-- [x] **BE-9**: `CommunityService.updateCommunity` — мерж новых ключей `settings.*` документов
-
----
-
-## Phase 3: Варианты и оплата
-
-- [ ] **BE-10**: `documentVariants.propose` — списание комиссии (**§10, §14**)
-- [ ] **BE-11**: Валидация лимитов и антиспама (**§10, §17**)
+- [x] **BE-10 … BE-16**: propose fee, `document-variant` votes, waves, cron, manual/auto apply
+- [x] **BE-17** (partial): `applyOpenAsAdmin`, `applyAdminOverride`, `closeVotingWaveOnBlock`, `deleteVariant`
+- [x] **BE-18**: `editHistory` on apply — [`reports/02-phase-a-core.md`](./reports/02-phase-a-core.md)
+- [x] **BE-18b**: server HTML sanitize — `sanitize-document-html.ts`
 
 ---
 
-## Phase 4: Голосование (Vote)
+## Phase 6–7: Notifications + Permissions
 
-- [ ] **BE-12**: Расширить `Vote.targetType` значением **`document-variant`** (Zod + mongoose + типы процедур)
-- [ ] **BE-13**: `VoteService` / `votes.cast` — обязательный `comment`, запрет self-vote, `allowDownvotes`, пересчёт `variant.rating`
-- [ ] **BE-14**: Withdraw голоса до закрытия волны (**§15.5**)
-
----
-
-## Phase 5: Волны, cron, применение
-
-- [ ] **BE-15**: Поля волны на блоке (**§13.3**) — `currentWaveStartedAt`
-- [ ] **BE-16**: Cron-сервис закрытия волн + auto-apply (**§12.2, §13**)
-- [ ] **BE-17**: Manual apply + admin override (**§12.1, §12.3**)
-- [ ] **BE-18**: История блока `editHistory` (**§19**)
-
----
-
-## Phase 6: Notifications (минимум)
-
-- [ ] **BE-19**: Типы из **§20.7** — по необходимости MVP
-
----
-
-## Phase 7: Permissions
-
-- [ ] **BE-20**: Новые `ActionType` + дефолты в `CommunityDefaultsService`
-- [ ] **BE-21**: Проверки в сервисах документов / вариантов
+- [x] **BE-19**: Notifications §20.7 — [`reports/06-mvp-notifications-ob-sync.md`](./reports/06-mvp-notifications-ob-sync.md)
+- [ ] **BE-20 … BE-21**: `ActionType` + defaults
 
 ---
 
 ## Phase 8: Frontend
 
-- [ ] **FE-1**: Настройки сообщества — секция «Совместные документы» (**§18 ТЗ**)
-- [ ] **FE-2**: Вкладка «Документы» при `documentsMode === 'all'` (**§6**)
-- [ ] **FE-3**: Entry «Открыть совместный режим» для ОБ/Описания при `visionOrDescriptionOnly` (**§6.5**)
-- [ ] **FE-4**: Страница документа — блоки, варианты, голосование (**§7**)
-- [ ] **FE-5**: WYSIWYG-компонент (**§22**)
+- [x] **FE-1** (partial): `CommunityForm` — mode, creators, variant cost, voting hours, default mode
+- [ ] **FE-2**: Вкладка «Документы» (`documentsMode === 'all'`)
+- [x] **FE-3** (partial): ссылки на документы с хаба
+- [x] **FE-4** (partial): страница документа — Phase A UX (badges, timer, admin actions, history)
+- [x] **FE-5**: WYSIWYG + `DocumentRichContent`
+
+### Phase B — References (§17)
+
+- [x] **BE-11b**: `normalizeDocumentVariantReferences` + tests (URL ≤2000, summary required)
+- [x] **FE-4b**: references editor on propose + list on variant card
+
+### Phase 8 follow-ups
+
+- [x] **FE-4b**: references UI (§17) — see Phase B report
+- [x] **FE-4c**: structure toolbar wired to API (§7.4) — [`reports/04-phase-c-structure.md`](./reports/04-phase-c-structure.md)
+- [x] **FE-4d**: document settings dialog on document page (§7.1) — [`reports/05-project-entry-and-settings.md`](./reports/05-project-entry-and-settings.md)
+- [ ] **FE-4e**: enriched list cards + create custom document
 
 ---
 
-## Phase 9: QA и правила
+## Phase 9: QA
 
-- [ ] **QA-1**: Ручной прогон AC из **§24 ТЗ**
-- [ ] **DOC-1**: `.cursor/rules/business-shared-document.mdc` (или обновления `business-communities` / `business-content`)
-- [ ] **DOC-2**: Версии `api/package.json` / `web/package.json` по значимости изменений
-
----
-
-## Формат отчётов `reports/`
-
-Как в `docs/prd/events/tasklist.md`: `01-analysis.md` … `07-final.md`.
+- [ ] **QA-1**: AC §24 manual pass
+- [x] **DOC-1** (partial): `business-shared-document.mdc` updated
+- [ ] **DOC-2**: version bumps when releasing
 
 ---
 
 ## Коммиты
 
 ```
-feat(shared-document): [phase] — [кратко]
+feat(shared-document): [phase] — [summary]
 ```
