@@ -725,6 +725,26 @@ export class PublicationService {
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
+  /** Hub «Посты» tab: non-project publications with body text in a community feed. */
+  async countHubFeedPublicationsByCommunity(communityId: string): Promise<number> {
+    return this.publicationModel.countDocuments({
+      communityId,
+      deleted: { $ne: true },
+      content: { $exists: true, $nin: [null, ''] },
+      postType: { $nin: ['project', 'event'] },
+      isProject: { $ne: true },
+    });
+  }
+
+  /** Cooperative project hub «Посты» tab: tickets + discussions. */
+  async countProjectHubPosts(projectId: string): Promise<number> {
+    return this.publicationModel.countDocuments({
+      communityId: projectId,
+      deleted: { $ne: true },
+      postType: { $in: ['ticket', 'discussion'] },
+    });
+  }
+
   /** Count active Birzha posts for a source entity (same filter as {@link getBirzhaPostsBySourceEntity}). */
   async countBirzhaPostsBySourceEntity(
     birzhaCommunityId: string,

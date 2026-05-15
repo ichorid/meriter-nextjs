@@ -11,6 +11,9 @@ export type CommunitySessionCacheUtils = {
       invalidate: (input: { communityId: string }) => Promise<unknown>;
       refetch: (input: { communityId: string }) => Promise<unknown>;
     };
+    getHubFeedTabCounts: {
+      invalidate: () => Promise<unknown>;
+    };
   };
   wallets: {
     getBalance: {
@@ -33,6 +36,7 @@ export async function refetchCommunityFeed(
 ): Promise<void> {
   await utils.communities.getFeed.invalidate({ communityId });
   await utils.communities.getFeed.refetch({ communityId });
+  await utils.communities.getHubFeedTabCounts.invalidate();
 }
 
 /**

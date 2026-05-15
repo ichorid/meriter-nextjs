@@ -273,7 +273,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           readOnly={isArchived}
         />
 
-        <CommunityHubFeedTabBar communityId={projectId} visibleTabs={PROJECT_HUB_FEED_TABS} />
+        <CommunityHubFeedTabBar
+          communityId={projectId}
+          visibleTabs={PROJECT_HUB_FEED_TABS}
+          hubKind="project"
+        />
 
         {projectHubFeedTab === 'posts' && isMember && user ? (
           <ProjectWorkArea
