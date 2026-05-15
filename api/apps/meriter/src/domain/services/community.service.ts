@@ -78,6 +78,8 @@ export interface CreateCommunityDto {
     investingEnabled?: boolean;
     investorShareMin?: number;
     investorShareMax?: number;
+    documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
+    documentCreators?: 'admins' | 'members';
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
