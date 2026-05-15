@@ -833,6 +833,20 @@
   color: var(--base-content);
 }
 
+/* TipTap placeholder: gray hint in empty blocks; disappears when typing (not fake content). */
+@layer components {
+  .ProseMirror p.is-editor-empty:first-child::before,
+  .ProseMirror p.is-empty::before,
+  .ProseMirror h2.is-empty::before,
+  .ProseMirror h3.is-empty::before {
+    color: color-mix(in srgb, var(--base-content) 50%, transparent);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
 /* App Shell Layout Styles */
 @layer components {
 

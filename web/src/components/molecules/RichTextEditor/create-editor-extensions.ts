@@ -32,9 +32,9 @@ export function createEditorExtensions(options: CreateEditorExtensionsOptions = 
       },
     }),
     Placeholder.configure({
-      placeholder: placeholder || '',
-      emptyEditorClass:
-        'is-editor-empty before:content-[attr(data-placeholder)] before:text-base-content/50 before:float-left before:pointer-events-none',
+      placeholder: placeholder ?? '',
+      showOnlyCurrent: true,
+      showOnlyWhenEditable: true,
     }),
   ];
 
