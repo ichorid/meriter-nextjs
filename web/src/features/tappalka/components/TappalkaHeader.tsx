@@ -39,23 +39,28 @@ export const TappalkaHeader: React.FC<TappalkaHeaderProps> = ({
       )}
     >
       {/* Top row: Back button (if shown) and title */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         {showBackButton && onBack && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="h-8 w-8 p-0 rounded-full hover:bg-base-200 dark:hover:bg-base-800"
+            className="mt-0.5 h-8 w-8 shrink-0 p-0 rounded-full hover:bg-base-200 dark:hover:bg-base-800"
             aria-label={tAria('back')}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
         )}
-        <h1 className="text-lg font-semibold text-base-content flex-1">
-          {t('comparePostsTitle')}
-        </h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg font-semibold leading-tight text-base-content">
+            {t('comparePostsTitle')}
+          </h1>
+          <p className="mt-1 text-xs leading-snug text-base-content/60 sm:text-sm">
+            {t('comparePostsSubtitle')}
+          </p>
+        </div>
         {/* Balance on the right - with padding to avoid overlap with close button */}
-        <div className="flex items-center gap-1.5 text-sm pr-12">
+        <div className="flex shrink-0 items-center gap-1.5 pt-0.5 text-sm pr-12">
           <span className="text-base-content/60">{t('balanceLabel')}</span>
           <span className="font-semibold text-base-content">
             {meritBalance > 0 ? `+${formatMerits(meritBalance)}` : formatMerits(meritBalance)}
