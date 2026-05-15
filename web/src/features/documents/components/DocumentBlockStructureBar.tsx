@@ -23,7 +23,7 @@ const BLOCK_TYPES: MeriterBlockType[] = [
   'quote',
 ];
 
-export interface DocumentBlockGutterProps {
+export interface DocumentBlockStructureBarProps {
   sectionId: string;
   blockId: string;
   blockType: string;
@@ -32,14 +32,14 @@ export interface DocumentBlockGutterProps {
   showRemoveSection: boolean;
 }
 
-export function DocumentBlockGutter({
+export function DocumentBlockStructureBar({
   sectionId,
   blockId,
   blockType,
   blockHasOfficial,
   sectionHasOfficial,
   showRemoveSection,
-}: DocumentBlockGutterProps) {
+}: DocumentBlockStructureBarProps) {
   const t = useTranslations('pages.documents.structure');
   const structure = useDocumentStructure();
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -72,54 +72,61 @@ export function DocumentBlockGutter({
   };
 
   return (
-    <aside
-      className="flex w-28 shrink-0 flex-col gap-1.5 pt-0.5"
-      aria-label={t('structureLabel')}
-    >
-      <Select
-        value={blockType}
-        onValueChange={(v) => structure.onBlockTypeChange(blockId, v as MeriterBlockType)}
-        disabled={structureBusy}
+    <>
+      <div
+        className="mb-3 flex flex-wrap items-center gap-2"
+        role="toolbar"
+        aria-label={t('structureLabel')}
+        onClick={(e) => e.stopPropagation()}
       >
-        <SelectTrigger className="h-8 rounded-lg text-[11px]" aria-label={t('blockType')}>
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {BLOCK_TYPES.map((bt) => (
-            <SelectItem key={bt} value={bt} className="text-xs">
-              {t(`blockType_${bt}`)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {canRemoveBlock ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 justify-start rounded-lg px-2 text-[11px] text-error"
+        <Select
+          value={blockType}
+          onValueChange={(v) => structure.onBlockTypeChange(blockId, v as MeriterBlockType)}
           disabled={structureBusy}
-          onClick={() => openConfirm('block')}
         >
-          <Trash2 size={12} className="mr-1 shrink-0" />
-          {t('removeBlock')}
-        </Button>
-      ) : null}
+          <SelectTrigger
+            className="h-8 w-[9.5rem] max-w-full rounded-lg text-xs"
+            aria-label={t('blockType')}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {BLOCK_TYPES.map((bt) => (
+              <SelectItem key={bt} value={bt} className="text-xs">
+                {t(`blockType_${bt}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {showRemoveSection && canRemoveSection ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 justify-start rounded-lg px-2 text-[11px] text-error/90"
-          disabled={structureBusy}
-          onClick={() => openConfirm('section')}
-        >
-          <Trash2 size={12} className="mr-1 shrink-0" />
-          {t('removeSection')}
-        </Button>
-      ) : null}
+        {canRemoveBlock ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-lg px-2.5 text-xs text-error"
+            disabled={structureBusy}
+            onClick={() => openConfirm('block')}
+          >
+            <Trash2 size={12} className="mr-1 shrink-0" />
+            {t('removeBlock')}
+          </Button>
+        ) : null}
+
+        {showRemoveSection && canRemoveSection ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-lg px-2.5 text-xs text-error/90"
+            disabled={structureBusy}
+            onClick={() => openConfirm('section')}
+          >
+            <Trash2 size={12} className="mr-1 shrink-0" />
+            {t('removeSection')}
+          </Button>
+        ) : null}
+      </div>
 
       <DocumentStructureDeleteDialog
         open={confirmOpen}
@@ -130,6 +137,6 @@ export function DocumentBlockGutter({
           }
         }}
       />
-    </aside>
+    </>
   );
 }

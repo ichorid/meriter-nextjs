@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
 import { DocumentCanvasBlock } from '@/features/documents/components/DocumentCanvasBlock';
 import { DocumentBlockInsertSlot } from '@/features/documents/components/DocumentBlockInsertSlot';
+import { DocumentSectionStructureActions } from '@/features/documents/components/DocumentSectionStructureActions';
 import { DocumentSectionTitle } from '@/features/documents/components/DocumentSectionTitle';
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
 import {
@@ -72,7 +73,10 @@ export function DocumentCanvasBody({
             <DocumentSectionTitle sectionId={section.id} title={section.title} />
 
             {blocks.length === 0 && structureMode ? (
-              <DocumentBlockInsertSlot sectionId={section.id} afterOrder={0} />
+              <DocumentSectionStructureActions
+                sectionId={section.id}
+                sectionHasOfficial={sectionHasOfficial}
+              />
             ) : null}
 
             <div className="space-y-2">

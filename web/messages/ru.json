@@ -1136,6 +1136,7 @@
                 "structureModeOn": "Режим структуры",
                 "structureModeHint": "Редактирование структуры",
                 "addSection": "Добавить раздел",
+                "addBlock": "Добавить блок",
                 "addBlockAfter": "Добавить блок",
                 "railLabel": "Панель блока",
                 "railSelectBlock": "Выберите блок в документе",

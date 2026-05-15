@@ -1136,6 +1136,7 @@
                 "structureModeOn": "Structure mode",
                 "structureModeHint": "Editing structure",
                 "addSection": "Add section",
+                "addBlock": "Add block",
                 "addBlockAfter": "Add block",
                 "railLabel": "Block panel",
                 "railSelectBlock": "Select a block in the document",

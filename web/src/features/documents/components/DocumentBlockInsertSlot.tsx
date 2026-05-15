@@ -10,12 +10,15 @@ export interface DocumentBlockInsertSlotProps {
   sectionId: string;
   afterOrder: number;
   className?: string;
+  /** Always show the add control (not only on hover). */
+  alwaysVisible?: boolean;
 }
 
 export function DocumentBlockInsertSlot({
   sectionId,
   afterOrder,
   className,
+  alwaysVisible = false,
 }: DocumentBlockInsertSlotProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const structure = useDocumentStructure();
@@ -27,18 +30,23 @@ export function DocumentBlockInsertSlot({
   return (
     <div
       className={cn(
-        'group/insert relative flex h-5 items-center justify-center',
+        'group/insert relative flex items-center justify-center',
+        alwaysVisible ? 'py-1' : 'h-5',
         className,
       )}
     >
-      <div className="absolute inset-x-0 top-1/2 h-px bg-primary/0 transition-colors group-hover/insert:bg-primary/25" />
+      {!alwaysVisible ? (
+        <div className="absolute inset-x-0 top-1/2 h-px bg-primary/0 transition-colors group-hover/insert:bg-primary/25" />
+      ) : null}
       <Button
         type="button"
         variant="outline"
         size="sm"
         className={cn(
-          'relative z-10 h-6 gap-1 rounded-full border-primary/40 px-2 text-[10px] opacity-0',
-          'transition-opacity group-hover/insert:opacity-100 focus-visible:opacity-100',
+          'relative z-10 gap-1 border-primary/40 text-xs',
+          alwaysVisible
+            ? 'h-8 rounded-lg px-3 opacity-100'
+            : 'h-6 rounded-full px-2 text-[10px] opacity-0 transition-opacity group-hover/insert:opacity-100 focus-visible:opacity-100',
         )}
         disabled={structure.structureBusy}
         aria-label={tCanvas('addBlockAfter')}
@@ -50,4 +58,3 @@ export function DocumentBlockInsertSlot({
     </div>
   );
 }
-

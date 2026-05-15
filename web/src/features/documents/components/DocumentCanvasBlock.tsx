@@ -23,7 +23,7 @@ import {
   type DocTranslate,
 } from '@/features/documents/lib/document-canvas-shared';
 import { parseVariantReferencesFromApi } from '@/features/documents/types/document-variant-reference';
-import { DocumentBlockGutter } from '@/features/documents/components/DocumentBlockGutter';
+import { DocumentBlockStructureBar } from '@/features/documents/components/DocumentBlockStructureBar';
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
 import { cn } from '@/lib/utils';
 
@@ -159,24 +159,24 @@ export function DocumentCanvasBlock({
       }}
       className={cn(
         'group/block relative grid cursor-pointer gap-3 rounded-lg outline-none transition-shadow',
-        structureMode ? 'grid-cols-[auto_1fr]' : 'grid-cols-1',
+        'grid-cols-1',
         waveActive && !structureMode && 'border-l-2 border-primary pl-3 -ml-0.5',
         waveActive && structureMode && 'border-l-2 border-primary',
         isFocused && isDesktop && 'ring-1 ring-primary/35',
       )}
     >
-      {structureMode ? (
-        <DocumentBlockGutter
-          sectionId={sectionId}
-          blockId={block.id}
-          blockType={block.blockType}
-          blockHasOfficial={hasOfficialContent}
-          sectionHasOfficial={sectionHasOfficial}
-          showRemoveSection={showRemoveSection}
-        />
-      ) : null}
-
       <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
+        {structureMode ? (
+          <DocumentBlockStructureBar
+            sectionId={sectionId}
+            blockId={block.id}
+            blockType={block.blockType}
+            blockHasOfficial={hasOfficialContent}
+            sectionHasOfficial={sectionHasOfficial}
+            showRemoveSection={showRemoveSection}
+          />
+        ) : null}
+
         <div className="mb-1 flex items-start justify-end gap-2 opacity-0 transition-opacity group-hover/block:opacity-100 focus-within:opacity-100">
           {reasonKey ? (
             <Badge
