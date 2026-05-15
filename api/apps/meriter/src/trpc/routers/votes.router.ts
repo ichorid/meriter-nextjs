@@ -388,12 +388,6 @@ export async function createVoteLogic(
         message: 'Collaborative documents are disabled in this community',
       });
     }
-    if (documentVoteCtx.variant.proposedBy === ctx.user.id) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'You cannot vote on your own document variant',
-      });
-    }
     if (
       !ctx.documentService.isDocumentBlockVotingOpen(
         documentVoteCtx.doc,
