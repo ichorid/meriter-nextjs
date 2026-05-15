@@ -149,7 +149,7 @@ export class DocumentStructureService {
     actorUserId: string,
     documentId: string,
     blockId: string,
-    input: { blockType?: MeriterBlockType; order?: number },
+    input: { blockType?: MeriterBlockType; order?: number } & StructureWriteInput,
   ): Promise<MeriterDocumentSchemaClass> {
     const doc = await this.requireManageableDocument(actorUserId, documentId);
     const sections = this.cloneSections(doc);

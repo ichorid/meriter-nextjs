@@ -1,9 +1,11 @@
-import * as sanitizeHtmlModule from 'sanitize-html';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const sanitizeHtmlPkg: unknown = require('sanitize-html');
 
 const sanitizeHtml =
-  typeof sanitizeHtmlModule === 'function'
-    ? (sanitizeHtmlModule as unknown as typeof sanitizeHtmlModule.default)
-    : sanitizeHtmlModule.default;
+  typeof sanitizeHtmlPkg === 'function'
+    ? (sanitizeHtmlPkg as (dirty: string, options?: Record<string, unknown>) => string)
+    : (sanitizeHtmlPkg as { default: (dirty: string, options?: Record<string, unknown>) => string })
+        .default;
 
 /** Align with web `DocumentRichContent` / TipTap output (§22, §24.9). */
 const ALLOWED_TAGS = [

@@ -585,12 +585,9 @@ export class DocumentService {
     }
     const community = await this.communityModel
       .findOne({ id: communityId })
-      .select({ createdByUserId: 1, founderUserId: 1 })
+      .select({ founderUserId: 1 })
       .lean()
       .exec();
-    if (community?.createdByUserId) {
-      return community.createdByUserId;
-    }
     if (community?.founderUserId) {
       return community.founderUserId;
     }

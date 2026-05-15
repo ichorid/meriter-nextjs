@@ -277,7 +277,6 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
   private async resolveCreatedBy(
     communityId: string,
     community?: {
-      createdByUserId?: string;
       founderUserId?: string;
     },
   ): Promise<string | null> {
@@ -287,9 +286,6 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
       .exec();
     if (lead?.userId) {
       return lead.userId;
-    }
-    if (community?.createdByUserId) {
-      return community.createdByUserId;
     }
     if (community?.founderUserId) {
       return community.founderUserId;

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, type MongoServerError } from 'mongoose';
+import { Connection, Model } from 'mongoose';
 import {
   DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION,
   documentWaveFinalizeLockId,
@@ -59,15 +59,6 @@ export class DocumentVariantService {
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
-  private isDuplicateKeyError(err: unknown): boolean {
-    return (
-      typeof err === 'object' &&
-      err !== null &&
-      'code' in err &&
-      (err as MongoServerError).code === 11000
-    );
-  }
-
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
     return this.variantModel
       .find({
@@ -95,18 +86,18 @@ export class DocumentVariantService {
       await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
       return;
     }
-    try {
-      await locks.insertOne({ _id: lockId, createdAt: new Date() });
-    } catch (err) {
-      if (this.isDuplicateKeyError(err)) {
-        return;
-      }
-      throw err;
+    const acquired = await locks.updateOne(
+      { lockId },
+      { $setOnInsert: { lockId, createdAt: new Date() } },
+      { upsert: true },
+    );
+    if (!acquired.upsertedCount) {
+      return;
     }
     try {
       await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
     } finally {
-      await locks.deleteOne({ _id: lockId }).catch(() => undefined);
+      await locks.deleteOne({ lockId }).catch(() => undefined);
     }
   }
 
