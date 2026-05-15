@@ -61,6 +61,10 @@ import {
   TappalkaProgressSchema,
 } from './domain/models/tappalka/tappalka-progress.schema';
 import {
+  TappalkaSessionSchemaClass,
+  TappalkaSessionSchema,
+} from './domain/models/tappalka/tappalka-session.schema';
+import {
   TeamJoinRequestSchemaClass,
   TeamJoinRequestSchema,
 } from './domain/models/team-join-request/team-join-request.schema';
@@ -181,6 +185,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: AboutCategorySchemaClass.name, schema: AboutCategorySchema },
       { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
       { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
+      { name: TappalkaSessionSchemaClass.name, schema: TappalkaSessionSchema },
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
       {
         name: ProjectParentLinkRequestSchemaClass.name,
