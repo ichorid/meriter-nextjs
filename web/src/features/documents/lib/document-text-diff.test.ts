@@ -1,4 +1,6 @@
 import {
+  buildRevisionTokens,
+  hasOfficialText,
   htmlToPlainText,
   liteWordDiff,
   variantDiffersFromOfficial,
@@ -10,22 +12,30 @@ describe('document-text-diff', () => {
   });
 
   it('detects when variant differs from official', () => {
-    expect(variantDiffersFromOfficial('<p>Official</p>', '<p>Official changed</p>')).toBe(true);
-    expect(variantDiffersFromOfficial('<p>Same</p>', '<p>Same</p>')).toBe(false);
+    expect(variantDiffersFromOfficial('one two', 'one two three')).toBe(true);
+    expect(variantDiffersFromOfficial('same', 'same')).toBe(false);
   });
 
-  it('marks new words in lite diff', () => {
-    const tokens = liteWordDiff('one two', 'one two three');
+  it('builds revision tokens with insertions', () => {
+    const tokens = buildRevisionTokens('one two', 'one two three');
     expect(tokens).not.toBeNull();
-    expect(tokens?.filter((t) => t.kind === 'add').map((t) => t.value)).toEqual(['three']);
+    expect(tokens?.some((t) => t.kind === 'insert' && t.value === 'three')).toBe(true);
   });
 
-  it('skips diff when official text is empty', () => {
-    expect(liteWordDiff('', 'new proposal text')).toBeNull();
-    expect(liteWordDiff('<p></p>', 'hello')).toBeNull();
+  it('treats empty official as full insertion in compare mode', () => {
+    expect(buildRevisionTokens('', 'new proposal text')).toEqual([
+      { kind: 'insert', value: 'new proposal text' },
+    ]);
   });
 
-  it('returns null when only word order changes', () => {
-    expect(liteWordDiff('alpha beta', 'beta alpha')).toBeNull();
+  it('shows reorder as delete/insert in compare mode', () => {
+    const tokens = buildRevisionTokens('two one', 'one two');
+    expect(tokens?.some((t) => t.kind === 'delete')).toBe(true);
+    expect(tokens?.some((t) => t.kind === 'insert')).toBe(true);
+  });
+
+  it('marks deletions from official', () => {
+    const tokens = buildRevisionTokens('alpha beta gamma', 'alpha gamma');
+    expect(tokens?.some((t) => t.kind === 'delete' && t.value === 'beta')).toBe(true);
   });
 });

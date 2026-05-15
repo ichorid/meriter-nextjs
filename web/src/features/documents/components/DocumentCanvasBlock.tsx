@@ -231,7 +231,7 @@ export function DocumentCanvasBlock({
                 <>
                   <ul
                     className={cn(
-                      'flex flex-col gap-2',
+                      'flex flex-col gap-3',
                       displayedVariants.length > VARIANT_LIST_SCROLL_THRESHOLD &&
                         'max-h-[min(32rem,70vh)] overflow-y-auto overscroll-contain pr-1',
                     )}
@@ -296,6 +296,7 @@ export function DocumentCanvasBlock({
             proposeOpen ? (
               <DocumentProposeComposer
                 blockId={block.id}
+                initialContent={block.officialContent ?? ''}
                 showCancel
                 onCancel={() => setProposeOpen(false)}
                 onSuccess={() => {

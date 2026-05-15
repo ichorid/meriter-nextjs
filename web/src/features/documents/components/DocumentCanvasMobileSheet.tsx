@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
-import { DocumentVariantVoteForm } from '@/features/documents/components/DocumentVariantVoteForm';
+import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import { trpc } from '@/lib/trpc/client';
 
 export function DocumentCanvasMobileSheet() {
@@ -140,6 +140,7 @@ export function DocumentCanvasMobileSheet() {
       {mobileSheet.kind === 'propose' && blockId ? (
         <DocumentProposeComposer
           blockId={blockId}
+          initialContent={block?.officialContent ?? ''}
           showCancel
           onCancel={closeMobileSheet}
           onSuccess={closeMobileSheet}
@@ -147,11 +148,25 @@ export function DocumentCanvasMobileSheet() {
       ) : null}
 
       {mobileSheet.kind === 'vote' && blockId && voteVariant ? (
-        <DocumentVariantVoteForm
-          variantId={mobileSheet.variantId}
-          blockId={blockId}
-          onSuccess={closeMobileSheet}
-        />
+        <Button
+          type="button"
+          className="h-10 w-full rounded-lg"
+          onClick={() => {
+            const cid = focus.community?.id ?? '';
+            closeMobileSheet();
+            if (!cid) return;
+            openDocumentVariantVoting({
+              variantId: voteVariant.id,
+              communityId: cid,
+              proposedBy: voteVariant.proposedBy,
+              userId: focus.userId,
+              docAllowDownvotes: focus.docAllowDownvotes,
+              community: focus.community,
+            });
+          }}
+        >
+          {tCanvas('sheetVote')}
+        </Button>
       ) : null}
     </BottomActionSheet>
   );

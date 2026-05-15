@@ -22,6 +22,8 @@ import { useDocumentCanvasFocusRequired } from '@/features/documents/context/Doc
 
 export interface DocumentProposeComposerProps {
   blockId: string;
+  /** Current official block HTML — preloaded in the editor when proposing an edit. */
+  initialContent?: string;
   onSuccess?: () => void;
   showCancel?: boolean;
   onCancel?: () => void;
@@ -29,6 +31,7 @@ export interface DocumentProposeComposerProps {
 
 export function DocumentProposeComposer({
   blockId,
+  initialContent = '',
   onSuccess,
   showCancel,
   onCancel,
@@ -38,7 +41,7 @@ export function DocumentProposeComposer({
   const tCanvas = useTranslations('pages.documents.canvas');
   const utils = trpc.useUtils();
 
-  const proposalBodyRef = useRef('');
+  const proposalBodyRef = useRef(initialContent);
   const [referenceDrafts, setReferenceDrafts] = useState<DocumentVariantReferenceDraft[]>([]);
   const [resetKey, setResetKey] = useState(0);
 
@@ -147,7 +150,7 @@ export function DocumentProposeComposer({
       <p className="text-[10px] text-base-content/40">{tCanvas('proposeShortcut')}</p>
       <RichTextEditor
         key={`propose-${blockId}-${resetKey}`}
-        content=""
+        content={initialContent}
         onChange={(html) => {
           proposalBodyRef.current = html;
         }}

@@ -22,6 +22,7 @@ import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
 import { DocumentCanvasBody } from '@/features/documents/components/DocumentCanvasBody';
 import { DocumentCanvasRail } from '@/features/documents/components/DocumentCanvasRail';
+import { DocumentCanvasFocusHint } from '@/features/documents/components/DocumentCanvasFocusHint';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
@@ -164,7 +165,7 @@ export function CommunityDocumentDetailPageClient({
       myId={user.id}
       stickyHeader={pageHeader}
     >
-      <div className="mx-auto w-full max-w-6xl p-4">
+      <div className="relative mx-auto w-full max-w-3xl p-4">
         {canManageDocument ? (
           <DocumentSettingsDialog
             open={settingsOpen}
@@ -192,8 +193,9 @@ export function CommunityDocumentDetailPageClient({
           addToast={addToast}
         >
           <DocumentCanvasFocusProvider {...focusProps}>
-            <div className="lg:flex lg:items-start lg:gap-6">
-              <DocumentCanvas className="min-w-0 flex-1">
+            <>
+              <DocumentCanvas>
+                <DocumentCanvasFocusHint />
                 <DocumentCanvasHeader
                   title={doc.title}
                   docType={doc.type}
@@ -224,10 +226,9 @@ export function CommunityDocumentDetailPageClient({
               </DocumentCanvas>
 
               <DocumentCanvasRail />
-            </div>
-
-            <DocumentCanvasMobileSheet />
-            <DocumentBlockAdminDialogs />
+              <DocumentCanvasMobileSheet />
+              <DocumentBlockAdminDialogs />
+            </>
           </DocumentCanvasFocusProvider>
         </DocumentStructureProvider>
       </div>

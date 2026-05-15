@@ -103,6 +103,22 @@ export function variantStatusLabelKey(
   }
 }
 
+export function variantStatusToneClass(
+  status: 'open' | 'closed-winner' | 'closed-not-winner' | 'applied' | 'withdrawn',
+): string {
+  switch (status) {
+    case 'closed-winner':
+      return 'bg-primary';
+    case 'applied':
+      return 'bg-emerald-400/80';
+    case 'closed-not-winner':
+    case 'withdrawn':
+      return 'bg-base-content/30';
+    default:
+      return 'bg-primary/70';
+  }
+}
+
 export function computeVariantProposalFeeSplit(
   variantCost: number,
   quotaRemaining: number,

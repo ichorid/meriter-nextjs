@@ -1151,7 +1151,13 @@
                 "variantsScrollRegion": "Suggestions list",
                 "voteInRail": "Vote in panel",
                 "votingInRail": "Voting in the right panel",
-                "railVotePanel": "Vote"
+                "railVotePanel": "Vote",
+                "focusHint": "Click a document block to open the side panel with voting and admin actions.",
+                "dontShowAgain": "Don't show again",
+                "closePanel": "Close panel",
+                "variantSelectForVote": "Click to vote in the side panel",
+                "viewCompare": "View edits",
+                "viewClean": "Hide edits"
             }
         },
         "spaces": {

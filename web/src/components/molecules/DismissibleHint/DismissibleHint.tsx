@@ -12,6 +12,8 @@ interface DismissibleHintProps {
   children: React.ReactNode;
   /** Additional CSS classes */
   className?: string;
+  /** Override dismiss button label (defaults to communities.dontShowAgain) */
+  dismissText?: string;
 }
 
 /**
@@ -19,9 +21,15 @@ interface DismissibleHintProps {
  * Shows a hint with a "Don't show again" button
  * Uses localStorage to remember dismissal state
  */
-export function DismissibleHint({ storageKey, children, className }: DismissibleHintProps) {
+export function DismissibleHint({
+  storageKey,
+  children,
+  className,
+  dismissText,
+}: DismissibleHintProps) {
   const [isDismissed, setIsDismissed] = useLocalStorage<boolean>(`dismissibleHint.${storageKey}`, false);
   const t = useTranslations('communities');
+  const dismissLabel = dismissText ?? t('dontShowAgain');
 
   if (isDismissed) {
     return null;
@@ -43,7 +51,7 @@ export function DismissibleHint({ storageKey, children, className }: Dismissible
         onClick={handleDismiss}
         className="absolute bottom-2 right-2 text-xs text-base-content/50 hover:text-base-content/70 transition-colors underline"
       >
-        {t('dontShowAgain')}
+        {dismissLabel}
       </button>
     </div>
   );

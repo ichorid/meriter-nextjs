@@ -2,19 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { History, Loader2 } from 'lucide-react';
+import { History, Loader2, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
-import { DocumentVariantDiffHighlight } from '@/features/documents/components/DocumentVariantDiffHighlight';
+import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
+import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import {
   formatWaveRemaining,
   officialReasonLabelKey,
   parseDateMs,
   variantStatusLabelKey,
 } from '@/features/documents/lib/document-canvas-shared';
-import { DocumentVariantVoteForm } from '@/features/documents/components/DocumentVariantVoteForm';
 import type { DocumentCanvasFocusContextValue } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { cn } from '@/lib/utils';
 
@@ -35,12 +35,16 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
   const {
     focusedBlockId,
     focusedVariantId,
+    setFocusedBlockId,
     setFocusedVariantId,
     getBlock,
     documentId,
     docMode,
+    docAllowDownvotes,
     votingDurationHours,
     canManageDocument,
+    community,
+    userId,
     openAdminDialog,
     addToast,
     t: tDoc,
@@ -48,9 +52,14 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
 
   const block = focusedBlockId ? getBlock(focusedBlockId) : null;
 
+  const closePanel = () => {
+    setFocusedBlockId(null);
+    setFocusedVariantId(null);
+  };
+
   const variantsQuery = trpc.documentVariants.listByBlock.useQuery(
-    { documentId, blockId: focusedBlockId ?? '' },
-    { enabled: !!documentId && !!focusedBlockId },
+    { documentId, blockId: block?.id ?? '' },
+    { enabled: !!documentId && !!block },
   );
 
   const variants = useMemo(() => variantsQuery.data ?? [], [variantsQuery.data]);
@@ -134,22 +143,23 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
     [variants],
   );
 
-  const reasonKey = block ? officialReasonLabelKey(block.officialContentReason) : null;
+  if (!block) {
+    return null;
+  }
+
+  const reasonKey = officialReasonLabelKey(block.officialContentReason);
 
   return (
     <aside
       className={cn(
-        'sticky top-20 hidden self-start overflow-y-auto rounded-lg border border-base-300/40',
-        'bg-base-200/60 lg:block lg:w-[17.5rem] lg:shrink-0',
-        !block ? 'px-3 py-2' : 'max-h-[calc(100vh-6rem)] p-3',
+        'fixed right-4 top-20 z-40 hidden max-h-[calc(100vh-6rem)] w-[17.5rem] overflow-y-auto',
+        'rounded-xl border border-base-300/50 bg-base-200/95 p-3 shadow-lg backdrop-blur-sm lg:block',
       )}
       aria-label={tCanvas('railLabel')}
     >
-      {!focusedBlockId || !block ? (
-        <p className="m-0 text-[11px] leading-snug text-base-content/50">{tCanvas('railSelectBlock')}</p>
-      ) : (
-        <div className="space-y-4">
-          <div>
+      <div className="space-y-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
             <p className="text-[10px] font-medium uppercase tracking-wide text-base-content/45">
               {tCanvas('railBlockPanel')}
             </p>
@@ -159,6 +169,17 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
               </Badge>
             ) : null}
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 shrink-0 rounded-lg p-0"
+            aria-label={tCanvas('closePanel')}
+            onClick={closePanel}
+          >
+            <X size={14} />
+          </Button>
+        </div>
 
           {waveActive ? (
             <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
@@ -248,7 +269,7 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
                       </span>
                     </div>
                     <div className="max-h-24 overflow-y-auto">
-                      <DocumentVariantDiffHighlight
+                      <DocumentVariantRevisionView
                         officialHtml={block.officialContent ?? ''}
                         variantHtml={v.content}
                         contentClassName="text-xs"
@@ -315,18 +336,27 @@ function DocumentCanvasRailPanel({ focus }: { focus: DocumentCanvasFocusContextV
 
           {focusedVariantId &&
           variants.some((v) => v.id === focusedVariantId && v.status === 'open') ? (
-            <div className="rounded-lg border border-base-300/50 bg-base-300/20 p-2">
-              <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-base-content/45">
-                {tCanvas('railVotePanel')}
-              </p>
-              <DocumentVariantVoteForm
-                variantId={focusedVariantId}
-                blockId={block.id}
-              />
-            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 w-full rounded-lg text-xs"
+              onClick={() => {
+                const v = variants.find((x) => x.id === focusedVariantId);
+                if (!v || !community?.id) return;
+                openDocumentVariantVoting({
+                  variantId: v.id,
+                  communityId: community.id,
+                  proposedBy: v.proposedBy,
+                  userId,
+                  docAllowDownvotes,
+                  community,
+                });
+              }}
+            >
+              {tCanvas('sheetVote')}
+            </Button>
           ) : null}
-        </div>
-      )}
+      </div>
     </aside>
   );
 }
