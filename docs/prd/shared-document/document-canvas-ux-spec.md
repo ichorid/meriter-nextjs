@@ -223,7 +223,7 @@ Title
 | 1 | **FE-UX-1** | Reading canvas | No top structure bar; prose official; variants collapsed; inline propose CTA |
 | 2 | **FE-UX-2** | Structure mode | Gutter `+`, menus, inline section title; no dashed structure form |
 | 3 | **FE-UX-3** | Rail and admin polish | Desktop rail; history drawer; no duplicate admin buttons |
-| 4 | **FE-UX-4** | Optional polish | Diff hint variant vs official; shortcuts — backlog |
+| 4 | **FE-UX-4** | Optional polish | Diff hint variant vs official; Ctrl+Enter propose/vote; scroll region for long variant lists |
 
 **Out of scope v1:** whole-document single editor, cross-section drag-and-drop, real-time co-editing, margin comments.
 

@@ -79,12 +79,19 @@
 - **Status:** Done (planning)  
 - **Файлы:** [`document-canvas-ux-spec.md`](./document-canvas-ux-spec.md), [`tasklist.md`](./tasklist.md) (Phase UX: FE-UX-1 … FE-UX-4)  
 - **Что сделано:** зафиксирован north star (content-first, Google Docs–like canvas), режимы Reading / Suggesting / Structure / Settings, визуал Obsidian Nocturne, декомпозиция компонентов, фазы поставки с AC.  
-- **Next implementation:** **FE-UX-1** (reading canvas) — см. tasklist.
+
+### Step 13: Document Canvas UX — implementation (FE-UX-1 … FE-UX-4)
+
+- **Status:** Done  
+- **Web:** `0.48.63`  
+- **Отчёты:** [`07-phase-ux1-reading-canvas.md`](./reports/07-phase-ux1-reading-canvas.md) · [`08-phase-ux2-structure-mode.md`](./reports/08-phase-ux2-structure-mode.md) · [`09-phase-ux3-admin-rail.md`](./reports/09-phase-ux3-admin-rail.md) · [`10-phase-ux4-polish.md`](./reports/10-phase-ux4-polish.md)  
+- **Кратко:** prose canvas; structure mode; desktop rail + mobile sheet; diff highlight, Ctrl+Enter, scroll для длинных списков вариантов.  
+- **Next:** Phase 9 **QA-1** (AC §24); backlog **Phase D** (custom docs hub).
 
 ---
 
 ## Session handoff — 2026-05-15
 
-- **Completed:** Phases A–C, project entry, settings, Step 10 (OB sync + notifications + narrow MVP UX); Step 12 UX spec.  
-- **Next up:** **FE-UX-1** reading canvas, then FE-UX-2 structure mode; parallel backlog: Phase D (custom docs hub), AC §24 QA.  
+- **Completed:** Phases A–C; Step 10; **FE-UX-1 … FE-UX-4** (document canvas).  
+- **Next up:** **QA-1** manual pass; Phase D (`FE-4e` custom docs hub).  
 - **Open questions:** `documentsMode=off` legacy editor.

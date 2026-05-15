@@ -67,36 +67,36 @@
 
 ### FE-UX-1 — Reading canvas (ship first)
 
-- [ ] **FE-UX-1a**: Replace per-block nested cards with single `DocumentCanvas` prose sheet (`max-w-3xl`, Obsidian surface).
-- [ ] **FE-UX-1b**: Remove permanent `DocumentStructureToolbar` («ДОКУМЕНТ» bar) from reading view.
-- [ ] **FE-UX-1c**: Hide inline `DocumentBlockStructureControls` dashed form in reading mode (structure comes in FE-UX-2).
-- [ ] **FE-UX-1d**: Official text in reading flow — no large «Согласованный текст» label; small reason chip only.
-- [ ] **FE-UX-1e**: Do not render raw `blockType` (`heading`, etc.) in reading mode.
-- [ ] **FE-UX-1f**: Variants: collapsed by default; compact stack (border-l accent); max 2 + «ещё N».
-- [ ] **FE-UX-1g**: Propose: ghost CTA «Предложить правку» → inline composer (TipTap + refs + cost); remove bottom-heavy propose card per block.
-- [ ] **FE-UX-1h**: Compact document header (meta chips + settings); i18n `pages.documents.canvas.*` (EN/RU).
-- [ ] **FE-UX-1i**: Report `reports/07-phase-ux1-reading-canvas.md` + AC check in spec §11.
+- [x] **FE-UX-1a**: Replace per-block nested cards with single `DocumentCanvas` prose sheet (`max-w-3xl`, Obsidian surface).
+- [x] **FE-UX-1b**: Remove permanent `DocumentStructureToolbar` («ДОКУМЕНТ» bar) from reading view.
+- [x] **FE-UX-1c**: Hide inline `DocumentBlockStructureControls` dashed form in reading mode (structure comes in FE-UX-2).
+- [x] **FE-UX-1d**: Official text in reading flow — no large «Согласованный текст» label; small reason chip only.
+- [x] **FE-UX-1e**: Do not render raw `blockType` (`heading`, etc.) in reading mode.
+- [x] **FE-UX-1f**: Variants: collapsed by default; compact stack (border-l accent); max 2 + «ещё N».
+- [x] **FE-UX-1g**: Propose: ghost CTA «Предложить правку» → inline composer (TipTap + refs + cost); remove bottom-heavy propose card per block.
+- [x] **FE-UX-1h**: Compact document header (meta chips + settings); i18n `pages.documents.canvas.*` (EN/RU).
+- [x] **FE-UX-1i**: Report `reports/07-phase-ux1-reading-canvas.md` + AC check in spec §11.
 
 ### FE-UX-2 — Structure mode
 
-- [ ] **FE-UX-2a**: Header toggle «Режим структуры» (manage role only); `DocumentStructureModeContext` or extend `DocumentStructureContext`.
-- [ ] **FE-UX-2b**: Between-block `+` insert block (structure mode on); end-of-canvas «+ Раздел».
-- [ ] **FE-UX-2c**: Block gutter / overflow: type change (paragraph, heading, lists, quote), delete block/section with existing confirm dialog.
-- [ ] **FE-UX-2d**: Inline section title edit (blur → `updateSection`); remove `DocumentBlockStructureControls` Select/form UI.
-- [ ] **FE-UX-2e**: Report `reports/08-phase-ux2-structure-mode.md`.
+- [x] **FE-UX-2a**: Header toggle «Режим структуры» (manage role only); `DocumentStructureModeContext` or extend `DocumentStructureContext`.
+- [x] **FE-UX-2b**: Between-block `+` insert block (structure mode on); end-of-canvas «+ Раздел».
+- [x] **FE-UX-2c**: Block gutter / overflow: type change (paragraph, heading, lists, quote), delete block/section with existing confirm dialog.
+- [x] **FE-UX-2d**: Inline section title edit (blur → `updateSection`); remove `DocumentBlockStructureControls` Select/form UI.
+- [x] **FE-UX-2e**: Report `reports/08-phase-ux2-structure-mode.md`.
 
 ### FE-UX-3 — Rail and admin polish
 
-- [ ] **FE-UX-3a**: Desktop right rail (≥lg): wave status, apply winner, manage shortcuts — no duplicate per-block admin row.
-- [ ] **FE-UX-3b**: Admin override, close voting, history → overflow menu + dialogs/drawer (not toolbar duplicates).
-- [ ] **FE-UX-3c**: Mobile: `BottomActionSheet` for propose, vote, block overflow.
-- [ ] **FE-UX-3d**: Report `reports/09-phase-ux3-admin-rail.md`.
+- [x] **FE-UX-3a**: Desktop right rail (≥lg): wave status, apply winner, manage shortcuts — no duplicate per-block admin row.
+- [x] **FE-UX-3b**: Admin override, close voting, history → overflow menu + dialogs/drawer (not toolbar duplicates).
+- [x] **FE-UX-3c**: Mobile: `BottomActionSheet` for propose, vote, block overflow.
+- [x] **FE-UX-3d**: Report `reports/09-phase-ux3-admin-rail.md`.
 
 ### FE-UX-4 — Optional (backlog)
 
-- [ ] **FE-UX-4a**: Lite diff highlight (variant vs official).
-- [ ] **FE-UX-4b**: Keyboard: ⌘/Ctrl+Enter submit propose.
-- [ ] **FE-UX-4c**: Virtualize long variant lists if needed.
+- [x] **FE-UX-4a**: Lite diff highlight (variant vs official).
+- [x] **FE-UX-4b**: Keyboard: ⌘/Ctrl+Enter submit propose.
+- [x] **FE-UX-4c**: Virtualize long variant lists if needed.
 
 ---
 
