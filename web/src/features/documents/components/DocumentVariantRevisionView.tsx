@@ -56,11 +56,12 @@ export function DocumentVariantRevisionView({
       )}
 
       {canCompare ? (
+        <div className="mt-2 flex justify-end">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          className="mt-2 h-7 rounded-lg px-2.5 text-xs"
+          className="h-7 rounded-lg px-2.5 text-xs"
           onClick={(e) => {
             e.stopPropagation();
             setCompareMode((v) => !v);
@@ -68,6 +69,7 @@ export function DocumentVariantRevisionView({
         >
           {showCompare ? tCanvas('viewClean') : tCanvas('viewCompare')}
         </Button>
+        </div>
       ) : null}
     </div>
   );
