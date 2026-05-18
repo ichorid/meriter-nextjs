@@ -147,6 +147,17 @@ export class DocumentService {
     isProject?: boolean;
     createdByUserId: string;
     futureVisionText?: string;
+    futureVisionDocumentSeed?: {
+      sections: Array<{
+        title?: string;
+        order: number;
+        blocks: Array<{
+          order: number;
+          blockType: string;
+          officialContent: string;
+        }>;
+      }>;
+    };
     description?: string;
   }): Promise<{ documentsCreated: number }> {
     let documentsCreated = 0;
@@ -166,6 +177,7 @@ export class DocumentService {
             title: 'Образ будущего',
             createdBy: params.createdByUserId,
             initialParagraph: params.futureVisionText ?? '',
+            initialSections: params.futureVisionDocumentSeed?.sections,
             mirrorField: 'futureVisionText',
           })
         ) {
@@ -201,6 +213,15 @@ export class DocumentService {
     title: string;
     createdBy: string;
     initialParagraph: string;
+    initialSections?: Array<{
+      title?: string;
+      order: number;
+      blocks: Array<{
+        order: number;
+        blockType: string;
+        officialContent: string;
+      }>;
+    }>;
     mirrorField: MirrorField;
   }): Promise<boolean> {
     const existing = await this.documentModel
@@ -228,35 +249,55 @@ export class DocumentService {
     const mode = settings.documentDefaultMode ?? 'manual';
     const allowDownvotes = true;
 
-    const sectionId = randomUUID();
-    const blockId = randomUUID();
     const now = new Date();
-
     const documentId = uid();
+
+    const sectionsPayload = args.initialSections?.length
+      ? [...args.initialSections]
+          .sort((a, b) => a.order - b.order)
+          .map((sec) => ({
+            id: randomUUID(),
+            title: sec.title?.trim() ?? '',
+            order: sec.order,
+            blocks: [...sec.blocks]
+              .sort((a, b) => a.order - b.order)
+              .map((block) => ({
+                id: randomUUID(),
+                order: block.order,
+                blockType: block.blockType,
+                officialContent: block.officialContent,
+                officialContentSetAt: now,
+                officialContentSetBy: args.createdBy,
+                officialContentReason: 'initial' as const,
+                editHistory: [],
+              })),
+          }))
+      : [
+          {
+            id: randomUUID(),
+            title: '',
+            order: 0,
+            blocks: [
+              {
+                id: randomUUID(),
+                order: 0,
+                blockType: 'paragraph',
+                officialContent: args.initialParagraph,
+                officialContentSetAt: now,
+                officialContentSetBy: args.createdBy,
+                officialContentReason: 'initial' as const,
+                editHistory: [],
+              },
+            ],
+          },
+        ];
+
     const docPayload = {
       id: documentId,
       communityId: args.communityId,
       type: args.type,
       title: args.title,
-      sections: [
-        {
-          id: sectionId,
-          title: '',
-          order: 0,
-          blocks: [
-            {
-              id: blockId,
-              order: 0,
-              blockType: 'paragraph',
-              officialContent: args.initialParagraph,
-              officialContentSetAt: now,
-              officialContentSetBy: args.createdBy,
-              officialContentReason: 'initial' as const,
-              editHistory: [],
-            },
-          ],
-        },
-      ],
+      sections: sectionsPayload,
       mode,
       votingDurationHours,
       variantCost,

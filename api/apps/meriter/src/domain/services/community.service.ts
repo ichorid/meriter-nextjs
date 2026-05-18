@@ -94,6 +94,17 @@ export interface CreateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   communityWalletId?: string;
   futureVisionText?: string;
+  futureVisionDocumentSeed?: {
+    sections: Array<{
+      title?: string;
+      order: number;
+      blocks: Array<{
+        order: number;
+        blockType: string;
+        officialContent: string;
+      }>;
+    }>;
+  };
   futureVisionTags?: string[];
   futureVisionCover?: string;
   /** Set by router: used to create OB post author when futureVisionText is present. */
@@ -739,6 +750,7 @@ export class CommunityService {
         isProject: Boolean((community as Record<string, unknown>).isProject),
         createdByUserId: dto.creatorUserId ?? dto.founderUserId ?? 'system',
         futureVisionText: dto.futureVisionText,
+        futureVisionDocumentSeed: dto.futureVisionDocumentSeed,
         description: dto.description,
       });
     } catch (err) {

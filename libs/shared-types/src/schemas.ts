@@ -949,6 +949,32 @@ export function plainTextFromRichCommunityInput(s: string | undefined): string {
     .trim();
 }
 
+export const MeriterBlockTypeSchema = z.enum([
+  "paragraph",
+  "heading",
+  "list-bullet",
+  "list-numbered",
+  "quote",
+]);
+
+export const DocumentSeedBlockSchema = z.object({
+  order: z.number().int().min(0),
+  blockType: MeriterBlockTypeSchema,
+  officialContent: z.string().max(50_000),
+});
+
+export const DocumentSeedSectionSchema = z.object({
+  title: z.string().max(500).optional(),
+  order: z.number().int().min(0),
+  blocks: z.array(DocumentSeedBlockSchema).min(1),
+});
+
+export const FutureVisionDocumentSeedSchema = z.object({
+  sections: z.array(DocumentSeedSectionSchema).min(1),
+});
+
+export type FutureVisionDocumentSeed = z.infer<typeof FutureVisionDocumentSeedSchema>;
+
 export const CreateCommunityDtoSchema = z
   .object({
     name: z.string().min(1),
@@ -959,6 +985,7 @@ export const CreateCommunityDtoSchema = z
     isPriority: z.boolean().optional(),
 
     futureVisionText: z.string().optional(),
+    futureVisionDocumentSeed: FutureVisionDocumentSeedSchema.optional(),
     futureVisionTags: z.array(z.string()).optional(),
     futureVisionCover: z.string().url().optional(),
 

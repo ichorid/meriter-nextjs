@@ -401,6 +401,7 @@ export const communitiesRouter = router({
         linkedCurrencies: input.linkedCurrencies,
         typeTag: input.typeTag,
         futureVisionText: input.futureVisionText,
+        futureVisionDocumentSeed: input.futureVisionDocumentSeed,
         futureVisionTags: input.futureVisionTags,
         futureVisionCover: input.futureVisionCover,
       };
