@@ -236,6 +236,18 @@ export interface Community {
   futureVisionTags?: string[];
   /** Cover image URL for OB card. */
   futureVisionCover?: string;
+  /** Last submitted OB document seed (used to (re)bootstrap collaborative document). */
+  futureVisionDocumentSeed?: {
+    sections: Array<{
+      title?: string;
+      order: number;
+      blocks: Array<{
+        order: number;
+        blockType: string;
+        officialContent: string;
+      }>;
+    }>;
+  };
   /** Cumulative investments in the project (global merits); used for payout investor pool. */
   projectInvestments?: ProjectInvestmentEntry[];
 }
@@ -489,6 +501,19 @@ export class CommunitySchemaClass implements Community {
 
   @Prop({ type: String })
   futureVisionCover?: string;
+
+  @Prop({ type: Object })
+  futureVisionDocumentSeed?: {
+    sections: Array<{
+      title?: string;
+      order: number;
+      blocks: Array<{
+        order: number;
+        blockType: string;
+        officialContent: string;
+      }>;
+    }>;
+  };
 
   @Prop({
     type: [

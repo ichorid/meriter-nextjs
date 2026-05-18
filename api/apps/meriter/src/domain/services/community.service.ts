@@ -701,7 +701,7 @@ export class CommunityService {
       name: dto.name,
       description: dto.description,
       avatarUrl: dto.avatarUrl,
-      typeTag: dto.typeTag,
+      typeTag: dto.typeTag ?? 'team',
       members: [],
       settings,
       hashtags: [],
@@ -712,6 +712,9 @@ export class CommunityService {
       updatedAt: new Date(),
     };
     if (dto.futureVisionText !== undefined) community.futureVisionText = dto.futureVisionText;
+    if (dto.futureVisionDocumentSeed !== undefined) {
+      community.futureVisionDocumentSeed = dto.futureVisionDocumentSeed;
+    }
     if (dto.futureVisionTags !== undefined) community.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) community.futureVisionCover = dto.futureVisionCover;
     if (dto.typeTag === 'project') {

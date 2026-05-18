@@ -29,8 +29,12 @@ export function isPriorityHubWithoutObDocument(typeTag?: string): boolean {
 }
 
 export function shouldBootstrapImageOfFutureDocument(typeTag?: string): boolean {
-  if (!typeTag || typeTag === 'global') {
+  if (typeTag === 'global') {
     return false;
+  }
+  if (!typeTag) {
+    /** User-created communities often omit typeTag; they still need an ОБ document. */
+    return true;
   }
   return !isPriorityHubWithoutObDocument(typeTag);
 }

@@ -65,16 +65,13 @@ export const documentsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      await ctx.documentService.ensureOfficialDocumentsForCommunity(
+        input.communityId,
+      );
       const doc = await ctx.documentService.getOfficialByType(
         input.communityId,
         input.type,
       );
-      if (!doc) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Document not found',
-        });
-      }
       return doc;
     }),
 

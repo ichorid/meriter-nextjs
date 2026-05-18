@@ -17,6 +17,6 @@ describe('collaborative-documents.constants', () => {
     expect(shouldBootstrapImageOfFutureDocument('marathon-of-good')).toBe(false);
     expect(shouldBootstrapImageOfFutureDocument('team-projects')).toBe(false);
     expect(shouldBootstrapImageOfFutureDocument('global')).toBe(false);
-    expect(shouldBootstrapImageOfFutureDocument(undefined)).toBe(false);
+    expect(shouldBootstrapImageOfFutureDocument(undefined)).toBe(true);
   });
 });

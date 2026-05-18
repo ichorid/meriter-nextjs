@@ -12,6 +12,7 @@ import { randomUUID } from 'crypto';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { shouldBootstrapImageOfFutureDocument } from '../common/constants/collaborative-documents.constants';
+import { parseFutureVisionMirrorToInitialSections } from '../common/parse-future-vision-mirror';
 import {
   CommunitySchemaClass,
   CommunityDocument,
@@ -130,15 +131,122 @@ export class DocumentService {
     if (typeTag === 'global') {
       return;
     }
+    const seed = c.futureVisionDocumentSeed as
+      | {
+          sections: Array<{
+            title?: string;
+            order: number;
+            blocks: Array<{
+              order: number;
+              blockType: string;
+              officialContent: string;
+            }>;
+          }>;
+        }
+      | undefined;
+
+    const createdByUserId =
+      typeof c.createdByUserId === 'string' ? c.createdByUserId : 'system';
+
     await this.bootstrapForNewCommunity({
       communityId,
       typeTag,
       isProject: Boolean(c.isProject),
-      createdByUserId: typeof c.createdByUserId === 'string' ? c.createdByUserId : 'system',
+      createdByUserId,
       futureVisionText:
         typeof c.futureVisionText === 'string' ? c.futureVisionText : undefined,
+      futureVisionDocumentSeed: seed?.sections?.length ? seed : undefined,
       description: typeof c.description === 'string' ? c.description : undefined,
     });
+
+    if (seed?.sections?.length) {
+      await this.upgradeImageOfFutureFromStoredSeedIfNeeded(
+        communityId,
+        seed,
+        createdByUserId,
+      );
+    }
+  }
+
+  private seedHasStructuredBlocks(seed: {
+    sections: Array<{
+      blocks: Array<{ blockType: string }>;
+    }>;
+  }): boolean {
+    return seed.sections.some((sec) =>
+      sec.blocks.some((b) => b.blockType && b.blockType !== 'paragraph'),
+    );
+  }
+
+  private documentIsParagraphOnlyBackfill(
+    doc: MeriterDocumentSchemaClass,
+  ): boolean {
+    const sections = doc.sections as Array<{
+      blocks?: Array<{ blockType?: string }>;
+    }>;
+    for (const sec of sections ?? []) {
+      for (const block of sec.blocks ?? []) {
+        if (block.blockType && block.blockType !== 'paragraph') {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  /**
+   * When a mirror backfill created paragraph-only ОБ but the community still has the original seed
+   * (lists, headings, quotes), replace document sections from the seed.
+   */
+  private async upgradeImageOfFutureFromStoredSeedIfNeeded(
+    communityId: string,
+    seed: {
+      sections: Array<{
+        title?: string;
+        order: number;
+        blocks: Array<{
+          order: number;
+          blockType: string;
+          officialContent: string;
+        }>;
+      }>;
+    },
+    createdByUserId: string,
+  ): Promise<void> {
+    if (!this.seedHasStructuredBlocks(seed)) {
+      return;
+    }
+    const doc = await this.getOfficialByType(communityId, 'imageOfFuture');
+    if (!doc || !this.documentIsParagraphOnlyBackfill(doc)) {
+      return;
+    }
+
+    const now = new Date();
+    const sections = [...seed.sections]
+      .sort((a, b) => a.order - b.order)
+      .map((sec) => ({
+        id: randomUUID(),
+        title: sec.title?.trim() ?? '',
+        order: sec.order,
+        blocks: [...sec.blocks]
+          .sort((a, b) => a.order - b.order)
+          .map((block) => ({
+            id: randomUUID(),
+            order: block.order,
+            blockType: block.blockType,
+            officialContent: block.officialContent,
+            officialContentSetAt: now,
+            officialContentSetBy: createdByUserId,
+            officialContentReason: 'initial' as const,
+            editHistory: [],
+          })),
+      }));
+
+    await this.documentModel.updateOne(
+      { id: doc.id },
+      { $set: { sections, updatedAt: now } },
+    );
+    await this.mirrorOfficialTextToCommunityIfApplicable(doc.id);
   }
 
   async bootstrapForNewCommunity(params: {
@@ -252,45 +360,69 @@ export class DocumentService {
     const now = new Date();
     const documentId = uid();
 
-    const sectionsPayload = args.initialSections?.length
-      ? [...args.initialSections]
-          .sort((a, b) => a.order - b.order)
-          .map((sec) => ({
-            id: randomUUID(),
-            title: sec.title?.trim() ?? '',
-            order: sec.order,
-            blocks: [...sec.blocks]
-              .sort((a, b) => a.order - b.order)
-              .map((block) => ({
-                id: randomUUID(),
-                order: block.order,
-                blockType: block.blockType,
-                officialContent: block.officialContent,
-                officialContentSetAt: now,
-                officialContentSetBy: args.createdBy,
-                officialContentReason: 'initial' as const,
-                editHistory: [],
-              })),
-          }))
-      : [
-          {
-            id: randomUUID(),
-            title: '',
-            order: 0,
-            blocks: [
-              {
-                id: randomUUID(),
-                order: 0,
-                blockType: 'paragraph',
-                officialContent: args.initialParagraph,
-                officialContentSetAt: now,
-                officialContentSetBy: args.createdBy,
-                officialContentReason: 'initial' as const,
-                editHistory: [],
-              },
-            ],
-          },
-        ];
+    const mapInitialSections = (
+      sections: Array<{
+        title?: string;
+        order: number;
+        blocks: Array<{
+          order: number;
+          blockType: string;
+          officialContent: string;
+        }>;
+      }>,
+    ) =>
+      [...sections]
+        .sort((a, b) => a.order - b.order)
+        .map((sec) => ({
+          id: randomUUID(),
+          title: sec.title?.trim() ?? '',
+          order: sec.order,
+          blocks: [...sec.blocks]
+            .sort((a, b) => a.order - b.order)
+            .map((block) => ({
+              id: randomUUID(),
+              order: block.order,
+              blockType: block.blockType,
+              officialContent: block.officialContent,
+              officialContentSetAt: now,
+              officialContentSetBy: args.createdBy,
+              officialContentReason: 'initial' as const,
+              editHistory: [],
+            })),
+        }));
+
+    const fromSeed = args.initialSections?.length
+      ? mapInitialSections(args.initialSections)
+      : undefined;
+    const fromMirror =
+      !fromSeed && args.initialParagraph?.trim()
+        ? parseFutureVisionMirrorToInitialSections(args.initialParagraph)
+        : undefined;
+    const mappedMirror = fromMirror?.length ? mapInitialSections(fromMirror) : undefined;
+
+    const sectionsPayload = fromSeed?.length
+      ? fromSeed
+      : mappedMirror?.length
+        ? mappedMirror
+        : [
+            {
+              id: randomUUID(),
+              title: '',
+              order: 0,
+              blocks: [
+                {
+                  id: randomUUID(),
+                  order: 0,
+                  blockType: 'paragraph',
+                  officialContent: args.initialParagraph,
+                  officialContentSetAt: now,
+                  officialContentSetBy: args.createdBy,
+                  officialContentReason: 'initial' as const,
+                  editHistory: [],
+                },
+              ],
+            },
+          ];
 
     const docPayload = {
       id: documentId,
