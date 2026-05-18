@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
+import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
 import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar, FileText } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
@@ -681,16 +682,19 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         (comms?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
             ?.documentCreators ?? 'admins';
 
-    const docsListForHeroQuery = trpc.documents.listByCommunity.useQuery(
-        { communityId: chatId },
+    const obOfficialDocQuery = trpc.documents.getOfficialByType.useQuery(
+        { communityId: chatId, type: 'imageOfFuture' },
         {
             enabled: Boolean(
-                comms && user?.id && comms.typeTag !== 'future-vision' && documentsMode !== 'off',
+                comms &&
+                    user?.id &&
+                    documentsMode !== 'off' &&
+                    communityMayHaveOfficialObDocument(comms.typeTag),
             ),
         },
     );
 
-    const obDocForHero = docsListForHeroQuery.data?.find((d) => d.type === 'imageOfFuture');
+    const obDocForHero = obOfficialDocQuery.data ?? null;
 
     const canEditFutureVisionDocument =
         Boolean(user?.id) &&
@@ -711,11 +715,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
         ? routes.communityDocument(chatId, obDocForHero!.id)
         : undefined;
-
-    const futureVisionDocumentEditHref =
-        canEditFutureVisionDocument && !obDocForHero?.id
-            ? routes.communityDocuments(chatId)
-            : undefined;
 
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(
@@ -833,7 +832,11 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         futureVisionCollaborativeDocumentHref={
                             futureVisionCollaborativeDocumentHref
                         }
-                        futureVisionDocumentEditHref={futureVisionDocumentEditHref}
+                        obDocument={obDocForHero}
+                        obDocumentLoading={obOfficialDocQuery.isLoading}
+                        obDocumentFetched={obOfficialDocQuery.isFetched}
+                        canEditFutureVisionDocument={canEditFutureVisionDocument}
+                        documentsMode={documentsMode}
                         avatarRowEndSlot={
                             user &&
                             isCommunityMember &&

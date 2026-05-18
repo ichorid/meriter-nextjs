@@ -227,6 +227,7 @@ export const CommunityForm = ({
                 const futureVisionPlain = concatOfficialPlainTextFromDraft(futureVisionDraft);
                 const createData = {
                     ...data,
+                    typeTag: "team",
                     ...(isSuperadmin && { isPriority }),
                     futureVisionText: futureVisionPlain,
                     futureVisionDocumentSeed: serializeDraftForApi(futureVisionDraft),
