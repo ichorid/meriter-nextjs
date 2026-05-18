@@ -1,6 +1,6 @@
 'use client';
 
-import { RichTextEditor } from '@/components/molecules/RichTextEditor';
+import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
 import { DocumentBlockStructureBar } from '@/features/documents/components/DocumentBlockStructureBar';
 import { useDocumentDraft } from '@/features/documents/context/DocumentDraftStructureContext';
 import type { DocBlock } from '@/features/documents/lib/document-canvas-shared';
@@ -38,14 +38,12 @@ export function DocumentDraftBlock({
           sectionHasOfficial={sectionHasOfficial}
           showRemoveSection={showRemoveSection}
         />
-        <RichTextEditor
+        <DocumentBlockEditor
+          blockType={block.blockType}
           content={block.officialContent ?? '<p></p>'}
           onChange={(html) => onBlockContentChange(block.id, html)}
           placeholder={blockPlaceholder}
-          editable={!disabled}
-          toolbar="default"
-          className="min-h-[140px] rounded-xl border border-input bg-background"
-          minEditorHeight="120px"
+          disabled={disabled}
         />
       </div>
     </div>

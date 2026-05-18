@@ -85,7 +85,7 @@ export function DocumentBlockStructureBar({
           disabled={structureBusy}
         >
           <SelectTrigger
-            className="h-8 w-[9.5rem] max-w-full rounded-lg text-xs"
+            className="h-8 min-w-[12rem] max-w-full rounded-lg text-xs"
             aria-label={t('blockType')}
           >
             <SelectValue />

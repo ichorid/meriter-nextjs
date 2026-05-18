@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Layers, SquarePlus } from 'lucide-react';
-import { Button } from '@/components/ui/shadcn/button';
+import { Layers } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { DocumentBlockInsertSlot } from '@/features/documents/components/DocumentBlockInsertSlot';
 import { DocumentDraftBlock } from '@/features/documents/components/DocumentDraftBlock';
 import { DocumentSectionStructureActions } from '@/features/documents/components/DocumentSectionStructureActions';
@@ -58,41 +58,21 @@ export function DocumentDraftCanvasBody() {
       })}
 
       {structure ? (
-        <div className="flex flex-wrap gap-2 pt-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 rounded-lg border-dashed text-xs"
-            disabled={disabled || structure.structureBusy}
-            onClick={() => structure.onAddSection()}
-          >
-            <Layers size={14} />
-            {tEditor('addSection')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 gap-1 rounded-lg border-dashed text-xs"
-            disabled={disabled || structure.structureBusy}
-            onClick={() => {
-              const sorted = [...draft.sections].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-              const target = sorted[sorted.length - 1];
-              if (!target) {
-                structure.onAddSection();
-                return;
-              }
-              const blocks = target.blocks ?? [];
-              const maxOrder =
-                blocks.length > 0 ? Math.max(...blocks.map((b) => b.order ?? 0)) : -1;
-              structure.onAddBlockAfter(target.id, maxOrder + 1);
-            }}
-          >
-            <SquarePlus size={14} />
-            {tEditor('addBlock')}
-          </Button>
-        </div>
+        <button
+          type="button"
+          disabled={disabled || structure.structureBusy}
+          onClick={() => structure.onAddSection()}
+          className={cn(
+            'flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-3.5',
+            'border-primary/35 bg-stitch-surface/40 text-sm font-medium text-base-content/75',
+            'transition-colors hover:border-primary/55 hover:bg-primary/5 hover:text-base-content',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+            'disabled:pointer-events-none disabled:opacity-50',
+          )}
+        >
+          <Layers size={18} className="shrink-0 text-primary/80" aria-hidden />
+          {tEditor('addSection')}
+        </button>
       ) : null}
     </>
   );

@@ -200,6 +200,7 @@ export function DocumentCanvasBlock({
         {official ? (
           <DocumentRichContent
             html={block.officialContent ?? ''}
+            blockType={block.blockType}
             className={officialTypographyClass(block.blockType)}
           />
         ) : (

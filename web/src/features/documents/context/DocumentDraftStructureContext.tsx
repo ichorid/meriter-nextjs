@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { MeriterBlockType } from '@/features/documents/types/document-block';
+import { convertBlockContent } from '@/features/documents/lib/block-content-format';
 import type { DocBlock, DocSection } from '@/features/documents/lib/document-canvas-shared';
 import type { DocumentDraft } from '@/features/documents/lib/document-draft';
 import {
@@ -147,9 +148,18 @@ export function DocumentDraftStructureProvider({
         updateSections((prev) =>
           prev.map((sec) => ({
             ...sec,
-            blocks: (sec.blocks ?? []).map((b) =>
-              b.id === blockId ? { ...b, blockType } : b,
-            ),
+            blocks: (sec.blocks ?? []).map((b) => {
+              if (b.id !== blockId) {
+                return b;
+              }
+              const previousType = b.blockType ?? 'paragraph';
+              const officialContent = convertBlockContent(
+                b.officialContent ?? '',
+                previousType,
+                blockType,
+              );
+              return { ...b, blockType, officialContent };
+            }),
           })),
         );
       },
