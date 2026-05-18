@@ -34,8 +34,14 @@ import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
 import { routes } from "@/lib/constants/routes";
-import { RichTextEditor } from "@/components/molecules/RichTextEditor/RichTextEditor";
-import { plainTextFromRichCommunityInput } from "@meriter/shared-types";
+import { MeriterEditor } from "@/components/molecules/RichTextEditor";
+import {
+    createEmptyDocumentDraft,
+    concatOfficialPlainTextFromDraft,
+    documentDraftHasOfficialText,
+    serializeDraftForApi,
+    type DocumentDraft,
+} from "@/features/documents/lib/document-draft";
 
 interface CommunityFormProps {
     communityId?: string; // Если нет - создание, если есть - редактирование
@@ -101,8 +107,10 @@ export const CommunityForm = ({
     const [documentDefaultMode, setDocumentDefaultMode] = useState<"manual" | "auto">(
         "manual",
     );
-    /** HTML for mandatory OB document at create time (seeded into collaborative document). */
-    const [futureVisionRichHtml, setFutureVisionRichHtml] = useState("<p></p>");
+    /** Draft collaborative OB document at create time (seeded into imageOfFuture document). */
+    const [futureVisionDraft, setFutureVisionDraft] = useState<DocumentDraft>(() =>
+        createEmptyDocumentDraft(),
+    );
 
     useFutureVisionTags();
     const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
@@ -216,10 +224,12 @@ export const CommunityForm = ({
                 });
                 router.push(`/meriter/communities/${communityId}`);
             } else {
+                const futureVisionPlain = concatOfficialPlainTextFromDraft(futureVisionDraft);
                 const createData = {
                     ...data,
                     ...(isSuperadmin && { isPriority }),
-                    futureVisionText: futureVisionRichHtml.trim(),
+                    futureVisionText: futureVisionPlain,
+                    futureVisionDocumentSeed: serializeDraftForApi(futureVisionDraft),
                     futureVisionTags: futureVisionTags.length > 0 ? futureVisionTags : undefined,
                     futureVisionCover: futureVisionCover.trim() || undefined,
                 };
@@ -369,34 +379,33 @@ export const CommunityForm = ({
             </BrandFormControl>
 
             {!isFutureVisionHub && (
-                <div className="border-t border-base-300 pt-6">
-                    <h2 className="text-lg font-semibold text-brand-text-primary mb-2">
-                        {isProjectCommunity ? t("projectDocumentSection") : t("futureVisionSection")}
-                    </h2>
-                    <p className="text-sm text-base-content/70 mb-4">
-                        {isProjectCommunity ? t("projectDocumentHelp") : t("futureVisionDocumentHelp")}
-                    </p>
+                <div className="border-t border-base-300 pt-6 space-y-6">
                     {isEditMode && communityId ? (
-                        <Button variant="outline" className="mb-6 rounded-xl active:scale-[0.98]" asChild>
+                        <>
+                            <h2 className="text-lg font-semibold text-brand-text-primary">
+                                {isProjectCommunity ? t("projectDocumentSection") : t("futureVisionSection")}
+                            </h2>
+                            <Button variant="outline" className="rounded-xl active:scale-[0.98]" asChild>
                             <Link href={routes.communityDocuments(communityId)}>
                                 {t("openCollaborativeDocument")}
                             </Link>
                         </Button>
+                        </>
                     ) : (
                         <BrandFormControl
-                            label={t("futureVisionRichLabel")}
+                            label={t("futureVisionSection")}
                             required
-                            helperText={t("futureVisionRichHelp")}
                         >
-                            <RichTextEditor
-                                content={futureVisionRichHtml}
-                                onChange={setFutureVisionRichHtml}
+                            <MeriterEditor
+                                mode="collaborative-document"
+                                value={futureVisionDraft}
+                                onChange={setFutureVisionDraft}
                                 placeholder={t("futureVisionPlaceholder")}
-                                className="min-h-[220px] rounded-xl border border-input bg-background"
+                                disabled={isPending}
                             />
                         </BrandFormControl>
                     )}
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-4">
                         <ValuesFormPickerFields
                             decree809Tags={rubricatorSections.decree809}
                             adminExtrasTags={rubricatorSections.adminExtras}
@@ -619,7 +628,7 @@ export const CommunityForm = ({
                         isPending ||
                         (!isEditMode &&
                             !isFutureVisionHub &&
-                            plainTextFromRichCommunityInput(futureVisionRichHtml).length === 0)
+                            !documentDraftHasOfficialText(futureVisionDraft))
                     }
                     className="rounded-xl active:scale-[0.98]"
                 >

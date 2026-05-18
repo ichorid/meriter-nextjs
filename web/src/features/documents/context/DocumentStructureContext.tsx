@@ -37,7 +37,7 @@ export interface DocumentStructureContextValue {
   onRemoveBlock: (blockId: string, confirmLossOfOfficial: boolean) => void;
 }
 
-const DocumentStructureContext = createContext<DocumentStructureContextValue | null>(null);
+export const DocumentStructureContext = createContext<DocumentStructureContextValue | null>(null);
 
 export function useDocumentStructure(): DocumentStructureContextValue | null {
   return useContext(DocumentStructureContext);
