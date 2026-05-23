@@ -50,6 +50,7 @@ module.exports = {
       "^@/hooks/(.*)$": "<rootDir>/src/hooks/$1",
       "^@/types/(.*)$": "<rootDir>/src/types/$1",
       "^@/lib/(.*)$": "<rootDir>/src/lib/$1",
+      "^@/i18n/(.*)$": "<rootDir>/src/i18n/$1",
       "^@/shared/(.*)$": "<rootDir>/src/shared/$1",
       "^@/config/(.*)$": "<rootDir>/src/config/$1",
       "^@/config$": "<rootDir>/src/config/index.ts",

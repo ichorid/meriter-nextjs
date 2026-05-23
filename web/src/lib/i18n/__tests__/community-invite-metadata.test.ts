@@ -12,7 +12,7 @@ describe('community-invite-metadata', () => {
       canonicalPath: '/meriter/join/short-token',
     });
 
-    expect(metadata.title).toBeTruthy();
+    expect(metadata.title).toBe('Join community');
     global.fetch = originalFetch;
   });
 
