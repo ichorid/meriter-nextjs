@@ -1,13 +1,18 @@
 import { Suspense } from 'react';
 import { JoinCommunityPageClient } from '../JoinCommunityPageClient';
-import { metadataTitle } from '@/lib/i18n/metadata-title';
+import { buildCommunityInviteMetadata } from '@/lib/i18n/community-invite-metadata';
+import { routes } from '@/lib/constants/routes';
 
 interface PageProps {
   params: Promise<{ id: string; token: string }>;
 }
 
-export async function generateMetadata() {
-  return metadataTitle('metadata.joinCommunity');
+export async function generateMetadata({ params }: PageProps) {
+  const { id, token } = await params;
+  return buildCommunityInviteMetadata({
+    token,
+    canonicalPath: routes.communityInviteLegacyLink(id, token),
+  });
 }
 
 export default async function CommunityJoinWithTokenPage({ params }: PageProps) {

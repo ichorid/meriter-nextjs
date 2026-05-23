@@ -31,6 +31,7 @@ export interface CommunityInvitePreview {
   communityId: string;
   communityName: string;
   isProject: boolean;
+  avatarUrl?: string;
 }
 
 @Injectable()
@@ -88,10 +89,15 @@ export class CommunityInviteService {
     if (!this.communityService.isLocalMembershipCommunity(community)) {
       throw new BadRequestException('Invalid invite');
     }
+    const avatarUrl =
+      typeof community.avatarUrl === 'string' && community.avatarUrl.trim().length > 0
+        ? community.avatarUrl.trim()
+        : undefined;
     return {
       communityId: invite.communityId,
       communityName: community.name,
       isProject: community.isProject === true,
+      avatarUrl,
     };
   }
 }

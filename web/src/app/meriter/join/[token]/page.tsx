@@ -1,13 +1,18 @@
 import { Suspense } from 'react';
 import { JoinCommunityPageClient } from '@/app/meriter/communities/[id]/join/JoinCommunityPageClient';
-import { metadataTitle } from '@/lib/i18n/metadata-title';
+import { buildCommunityInviteMetadata } from '@/lib/i18n/community-invite-metadata';
+import { routes } from '@/lib/constants/routes';
 
 interface PageProps {
   params: Promise<{ token: string }>;
 }
 
-export async function generateMetadata() {
-  return metadataTitle('metadata.joinCommunity');
+export async function generateMetadata({ params }: PageProps) {
+  const { token } = await params;
+  return buildCommunityInviteMetadata({
+    token,
+    canonicalPath: routes.communityInviteLink(token),
+  });
 }
 
 export default async function CommunityShortInvitePage({ params }: PageProps) {

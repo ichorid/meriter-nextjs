@@ -105,6 +105,7 @@ describe('CommunityInviteService', () => {
       communityId,
       communityName: 'Preview Team',
       isProject: false,
+      avatarUrl: undefined,
     });
   });
 });
