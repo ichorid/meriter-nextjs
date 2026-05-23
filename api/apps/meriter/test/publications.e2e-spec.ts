@@ -171,14 +171,13 @@ describe('Publications E2E (happy path)', () => {
 
     (global as any).testUserId = userId;
 
-    // Create publications with different tag combinations
+    // Create publications with different tag combinations (basic posts — hub «Posts» feed)
     // Pub 1: Has "Direct service" method only
     const pub1 = await publicationService.createPublication(userId, {
       communityId,
       content: 'Publication 1 - Direct service only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       methods: ['Direct service'],
     });
     const pub1Id = pub1.getId.getValue();
@@ -188,8 +187,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 2 - Emergency response only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       methods: ['Emergency response'],
     });
     const pub2Id = pub2.getId.getValue();
@@ -199,8 +197,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 3 - Both methods',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       methods: ['Direct service', 'Emergency response'],
     });
     const pub3Id = pub3.getId.getValue();
@@ -210,8 +207,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 4 - Different method',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       methods: ['Education & training'],
     });
     const pub4Id = pub4.getId.getValue();
@@ -245,8 +241,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 5 - Children only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       beneficiaries: ['Children & teens'],
     });
     const pub5Id = pub5.getId.getValue();
@@ -255,8 +250,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 6 - Elderly only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       beneficiaries: ['Elderly'],
     });
     const pub6Id = pub6.getId.getValue();
@@ -265,8 +259,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 7 - Different beneficiary',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       beneficiaries: ['Low-income families'],
     });
     const pub7Id = pub7.getId.getValue();
@@ -293,8 +286,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 8 - Money only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       helpNeeded: ['Money'],
     });
     const pub8Id = pub8.getId.getValue();
@@ -303,8 +295,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 9 - Volunteers only',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       helpNeeded: ['Volunteers (time)'],
     });
     const pub9Id = pub9.getId.getValue();
@@ -313,8 +304,7 @@ describe('Publications E2E (happy path)', () => {
       communityId,
       content: 'Publication 10 - Different help',
       type: 'text',
-      postType: 'project',
-      isProject: true,
+      postType: 'basic',
       helpNeeded: ['Expertise'],
     });
     const pub10Id = pub10.getId.getValue();

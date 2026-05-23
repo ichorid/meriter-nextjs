@@ -149,6 +149,7 @@ export class CommunityFeedService {
           valueTags,
         },
         search,
+        true,
       ),
       // Don't fetch polls for future-vision communities or when category filters are active
       isFutureVision || hasCategoryFilters

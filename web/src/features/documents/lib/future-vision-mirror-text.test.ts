@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { futureVisionMirrorPlainTextToHtml } from './future-vision-mirror-text';
 
 describe('futureVisionMirrorPlainTextToHtml', () => {

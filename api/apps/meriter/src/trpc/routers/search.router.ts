@@ -74,6 +74,11 @@ export const searchRouter = router({
               communityId,
               pagination.limit || 100, // Get more to filter
               skip,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              true,
             );
             publications = result.map((p) => p.toSnapshot());
           } else {
@@ -84,7 +89,16 @@ export const searchRouter = router({
             // Get publications from all user's communities
             const allPublications = await Promise.all(
               userCommunityIds.map((cid) =>
-                ctx.publicationService.getPublicationsByCommunity(cid, 50, 0),
+                ctx.publicationService.getPublicationsByCommunity(
+                  cid,
+                  50,
+                  0,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  true,
+                ),
               ),
             );
             publications = allPublications.flat().map((p) => p.toSnapshot());
