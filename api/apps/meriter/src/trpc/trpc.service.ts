@@ -49,6 +49,7 @@ import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
+import { CommunityInviteService } from '../domain/services/community-invite.service';
 import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
@@ -105,6 +106,7 @@ export class TrpcService {
     private platformDatabaseDumpService: PlatformDatabaseDumpService,
     private meritTransferService: MeritTransferService,
     private eventService: EventService,
+    private communityInviteService: CommunityInviteService,
     private documentService: DocumentService,
     private documentVariantService: DocumentVariantService,
     private documentStructureService: DocumentStructureService,
@@ -167,6 +169,7 @@ export class TrpcService {
       platformDatabaseDumpService: this.platformDatabaseDumpService,
       meritTransferService: this.meritTransferService,
       eventService: this.eventService,
+      communityInviteService: this.communityInviteService,
       documentService: this.documentService,
       documentVariantService: this.documentVariantService,
       documentStructureService: this.documentStructureService,

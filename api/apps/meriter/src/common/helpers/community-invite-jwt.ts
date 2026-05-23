@@ -2,6 +2,12 @@ import * as jwt from 'jsonwebtoken';
 
 export const COMMUNITY_INVITE_JWT_TYP = 'community_invite_v1';
 
+/** Detect legacy signed JWT invite tokens (three base64url segments). */
+export function isLegacyCommunityInviteJwtToken(token: string): boolean {
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every((part) => part.length > 0);
+}
+
 export interface VerifiedCommunityInvite {
   communityId: string;
   /** When set, accept flow also adds the user to this parent community (project + team). */
