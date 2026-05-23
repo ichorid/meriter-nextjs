@@ -108,7 +108,7 @@ export const communitiesRouter = router({
 
   /**
    * Create a signed invite token (any member). Lead/superadmin → direct join on accept; participant → pending request.
-   * Client builds URL: /meriter/communities/{id}/join?t=...
+   * Client builds URL: /meriter/communities/{id}/join/{token} (legacy: ?t=...)
    */
   createCommunityInviteLink: protectedProcedure
     .input(z.object({ communityId: z.string().min(1) }))

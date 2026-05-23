@@ -57,8 +57,11 @@ export const routes = {
       });
       return `/meriter/communities/${projectCommunityId}/create?${q.toString()}`;
     },
-    /** Invite accept flow; append ?t=<jwt> */
+    /** Invite landing without token (join request fallback). */
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
+    /** Signed invite link (token in path — reliable when sharing in messengers). Legacy: ?t= query. */
+    communityInviteLink: (id: string, token: string) =>
+        `/meriter/communities/${id}/join/${encodeURIComponent(token)}`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     /** Birzha posts published on behalf of this community (lead/admin). */

@@ -1505,7 +1505,7 @@ export default function NotificationsPage() {
                                 e.stopPropagation();
                                 const cid = notification.metadata?.communityId;
                                 if (typeof cid === 'string') {
-                                  router.push(`/meriter/communities/${cid}/join`);
+                                  router.push(routes.communityJoin(cid));
                                   markAsRead.mutate({ id: notification.id });
                                 }
                               }}
