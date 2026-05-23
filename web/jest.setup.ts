@@ -220,25 +220,30 @@ jest.mock('@/shared/lib/deep-link-handler', () => ({
 }));
 
 // Mock config
-jest.mock('@/config', () => ({
-  config: {
-    app: {
-      isDevelopment: true,
-      url: 'http://localhost:3000',
-    },
-    api: {
-      url: 'http://localhost:3000',
-    },
-    telegram: {
-      botUsername: 'test_bot',
-      botToken: 'test_token',
-      botUrl: 'https://t.me/test_bot',
-    },
-    development: {
-      fakeDataMode: false,
-      testAuthMode: false,
-    },
+const mockConfig = {
+  app: {
+    isDevelopment: true,
+    url: 'http://localhost:3000',
   },
+  api: {
+    baseUrl: 'http://localhost:8001',
+    url: 'http://localhost:3000',
+  },
+  telegram: {
+    botUsername: 'test_bot',
+    botToken: 'test_token',
+    botUrl: 'https://t.me/test_bot',
+  },
+  development: {
+    fakeDataMode: false,
+    testAuthMode: false,
+  },
+};
+
+jest.mock('@/config', () => ({
+  __esModule: true,
+  default: mockConfig,
+  config: mockConfig,
   isFakeDataMode: jest.fn(() => false),
   isTestAuthMode: jest.fn(() => false),
   isDevelopment: jest.fn(() => true),
