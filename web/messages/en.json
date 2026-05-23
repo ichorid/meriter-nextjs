@@ -572,6 +572,7 @@
             "default": "You do not have permission to vote on this content",
             "notLoggedIn": "You must be logged in to vote",
             "projectPost": "Project posts cannot be voted on",
+            "eventPost": "Event posts cannot be voted on",
             "projectOwnDiscussion": "You cannot vote on a project discussion you created",
             "projectOwnTicket": "You cannot vote on a project task where you are the assignee",
             "noCommunity": "Cannot determine voting permissions",
@@ -655,6 +656,15 @@
             "copyLink": "Copy link",
             "openInBrowser": "Open in browser",
             "toastCopied": "Link copied. Open it in Safari or Chrome."
+        },
+        "captiveHint": {
+            "title": "Open this page in your browser",
+            "body": "Tap ⋯ in the top-right corner of Telegram and choose “Open in browser”.",
+            "why": "Meriter may not work correctly in a messenger’s in-app browser—sign-in, invite links, and other features can fail. Open this page in Safari or Chrome for the full experience.",
+            "disable": "How to disable the in-app browser permanently",
+            "disableIos": "iOS: Settings → Data and Storage → Other → “Open Links In” → Safari.",
+            "disableAndroid": "Android: ☰ Menu → Settings → Chat Settings → “In-App Browser” → Off.",
+            "ok": "Got it"
         },
         "telegramWidget": {
             "instructions": "Click the button below to sign in with Telegram"
