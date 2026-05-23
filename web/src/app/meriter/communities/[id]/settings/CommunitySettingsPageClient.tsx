@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
+import { routes } from '@/lib/constants/routes';
 
 interface CommunitySettingsPageClientProps {
   communityId: string;
@@ -50,6 +51,18 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
 
     // Check if user has access (superadmin or lead)
     const hasAccess = isSuperadmin || isUserLead;
+
+    useEffect(() => {
+        if (!focusFutureVisionText || !communityId || !hasAccess || communityLoading || rolesLoading) return;
+        router.replace(routes.communityDocuments(communityId));
+    }, [
+        focusFutureVisionText,
+        communityId,
+        hasAccess,
+        communityLoading,
+        rolesLoading,
+        router,
+    ]);
 
     // Redirect if no access
     useEffect(() => {
@@ -236,10 +249,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className="mt-6">
-                        <CommunityForm
-                            communityId={communityId}
-                            focusFutureVisionTextOnMount={focusFutureVisionText}
-                        />
+                        <CommunityForm communityId={communityId} />
                     </TabsContent>
                     <TabsContent value="rules" className="mt-6">
                         <CommunityRulesEditor

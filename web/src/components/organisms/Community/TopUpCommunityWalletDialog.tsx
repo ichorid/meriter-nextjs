@@ -11,6 +11,7 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
 import { formatMerits } from '@/lib/utils/currency';
+import { routes } from '@/lib/constants/routes';
 import { MeritsIntegerStepper } from '@/components/molecules/MeritsIntegerStepper/MeritsIntegerStepper';
 import { useToastStore } from '@/shared/stores/toast.store';
 import {
@@ -111,7 +112,7 @@ export function TopUpCommunityWalletDialog({
   const handleJoinClick = () => {
     addToast(tCommunities('walletTopUpJoinNavigateToast'), 'success');
     closeThanks();
-    router.push(`/meriter/communities/${communityId}/join`);
+    router.push(routes.communityJoin(communityId));
   };
 
   const placeName = community?.name?.trim() || '';

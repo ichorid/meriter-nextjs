@@ -51,6 +51,8 @@ export interface ProjectHeroProps {
   showModerationLinks?: boolean;
   /** Placed in the avatar row (e.g. join CTA), aligned with community hero. */
   avatarRowEndSlot?: ReactNode;
+  /** §6.5 — link to collaborative description document. */
+  descriptionDocumentHref?: string;
 }
 
 export function ProjectHero({
@@ -62,9 +64,11 @@ export function ProjectHero({
   status,
   showModerationLinks = false,
   avatarRowEndSlot,
+  descriptionDocumentHref,
 }: ProjectHeroProps) {
   const router = useRouter();
   const t = useTranslations('projects');
+  const tCommunities = useTranslations('pages.communities');
   const tCommon = useTranslations('common');
 
   const [gradientFrom, gradientTo] = projectGradient(project.name);
@@ -152,6 +156,14 @@ export function ProjectHero({
                   {descExpanded ? t('showLess') : t('showMore')}
                 </button>
               )}
+              {descriptionDocumentHref ? (
+                <Link
+                  href={descriptionDocumentHref}
+                  className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
+                >
+                  {tCommunities('openCollaborativeDocument')}
+                </Link>
+              ) : null}
             </div>
           )}
 

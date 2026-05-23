@@ -9,6 +9,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
 import type { PaginatedResponse, Community, CommunityWithComputedFields } from "@/types/api-v1";
 import { useBatchQueries } from "./useBatchQueries";
+import { useAuth } from '@/contexts/AuthContext';
 
 // Local type definition
 interface CreateCommunityDto {
@@ -110,11 +111,14 @@ export function useCommunitiesBatch(communityIds: string[]) {
 
 export const useCreateCommunity = () => {
     const utils = trpc.useUtils();
-    
+    const { user } = useAuth();
+
     return trpc.communities.create.useMutation({
         onSuccess: () => {
-            // Invalidate communities list
-            utils.communities.getAll.invalidate();
+            void utils.communities.getAll.invalidate();
+            if (user?.id) {
+                void utils.users.getUserRoles.invalidate({ userId: user.id });
+            }
         },
     });
 };

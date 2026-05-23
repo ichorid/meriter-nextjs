@@ -20,6 +20,7 @@ import {
     Copy,
     Loader2,
     LogOut,
+    Share2,
     Shield,
     ShieldOff,
     UserMinus,
@@ -27,6 +28,7 @@ import {
     UserX,
     Users,
 } from 'lucide-react';
+import { shareUrl } from '@shared/lib/share-utils';
 import { useCanViewUserMerits } from '@/hooks/useCanViewUserMerits';
 import { MemberCardWithMerits } from './MemberCardWithMerits';
 import { SearchInput } from '@/components/molecules/SearchInput';
@@ -85,6 +87,7 @@ export function CommunityMembersPageClient({
     const tProjects = useTranslations('projects');
     const tSearch = useTranslations('search');
     const tCommon = useTranslations('common');
+    const tShared = useTranslations('shared');
     const { user } = useAuth();
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
 
@@ -146,7 +149,7 @@ export function CommunityMembersPageClient({
         'global',
     ]);
     const canCreateInviteLink =
-        isCurrentUserMember &&
+        (isCurrentUserMember || Boolean(user && community?.isAdmin)) &&
         community != null &&
         (!community.typeTag || !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag));
 
@@ -155,11 +158,17 @@ export function CommunityMembersPageClient({
     const isPlatformSuperadmin = user?.globalRole === 'superadmin';
 
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
-        onSuccess: (data) => {
-            const path = `${routes.communityJoin(communityId)}?t=${encodeURIComponent(data.token)}`;
+        onSuccess: async (data) => {
+            const path = routes.communityInviteLink(communityId, data.token);
             const full = `${window.location.origin}${path}`;
             setInviteUrl(full);
             setInviteDialogOpen(true);
+            try {
+                await navigator.clipboard.writeText(full);
+                addToast(t('members.invite.copied'), 'success');
+            } catch {
+                // Dialog stays open for manual copy / share.
+            }
         },
         onError: (e) => {
             addToast(
@@ -619,8 +628,17 @@ export function CommunityMembersPageClient({
                             {isProjectMembersUi ? tProjects('inviteToProjectHint') : t('members.invite.dialogHint')}
                         </DialogDescription>
                     </DialogHeader>
-                    <Input readOnly value={inviteUrl} className="font-mono text-xs" />
-                    <DialogFooter className="gap-2 sm:gap-0">
+                    <Input readOnly value={inviteUrl} className="font-mono text-xs break-all" />
+                    <DialogFooter className="gap-2 sm:flex-row sm:justify-end">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="gap-2"
+                            onClick={() => void shareUrl(inviteUrl, t('members.invite.copied'))}
+                        >
+                            <Share2 className="h-4 w-4" />
+                            {tShared('share')}
+                        </Button>
                         <Button
                             type="button"
                             variant="secondary"

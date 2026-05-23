@@ -42,6 +42,10 @@ export const routes = {
     /** Aggregate merit ledger for members in this community context. */
     communityMeritHistory: (id: string) => `/meriter/communities/${id}/merit-history`,
     communityEvents: (id: string) => `/meriter/communities/${id}/events`,
+    /** Collaborative documents (WYSIWYG hub). */
+    communityDocuments: (id: string) => `/meriter/communities/${id}/documents`,
+    communityDocument: (communityId: string, documentId: string) =>
+        `/meriter/communities/${communityId}/documents/${documentId}`,
     /** @deprecated Use projectMembers — canonical URL is under /meriter/projects/:id/members */
     projectMembersManage: (projectCommunityId: string) =>
       `/meriter/projects/${projectCommunityId}/members`,
@@ -53,8 +57,11 @@ export const routes = {
       });
       return `/meriter/communities/${projectCommunityId}/create?${q.toString()}`;
     },
-    /** Invite accept flow; append ?t=<jwt> */
+    /** Invite landing without token (join request fallback). */
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
+    /** Signed invite link (token in path — reliable when sharing in messengers). Legacy: ?t= query. */
+    communityInviteLink: (id: string, token: string) =>
+        `/meriter/communities/${id}/join/${encodeURIComponent(token)}`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,
     /** Birzha posts published on behalf of this community (lead/admin). */
@@ -62,7 +69,7 @@ export const routes = {
     /** Create a Birzha publication on behalf of this source community (lead). */
     communityBirzhaPublish: (id: string) => `/meriter/communities/${id}/birzha-publish`,
     communitySettings: (id: string) => `/meriter/communities/${id}/settings`,
-    /** Opens General tab with future vision textarea focused (lead/superadmin settings). */
+    /** Legacy: settings used to focus OB textarea; now redirects to collaborative documents hub. */
     communitySettingsEditFutureVision: (id: string) =>
         `/meriter/communities/${id}/settings?edit=futureVision`,
     setupCommunity: "/meriter/setup-community",

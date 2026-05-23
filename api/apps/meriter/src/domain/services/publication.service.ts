@@ -29,6 +29,7 @@ import { UserService } from './user.service';
 import { CommunityWalletService } from './community-wallet.service';
 import { WalletService } from './wallet.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import { buildHubPostsFeedMongoQuery } from '../common/helpers/hub-posts-feed.helper';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -725,6 +726,26 @@ export class PublicationService {
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
+  /** Hub «Посты» tab: non-project publications with body text in a community feed. */
+  async countHubFeedPublicationsByCommunity(communityId: string): Promise<number> {
+    return this.publicationModel.countDocuments({
+      communityId,
+      deleted: { $ne: true },
+      content: { $exists: true, $nin: [null, ''] },
+      postType: { $nin: ['project', 'event'] },
+      isProject: { $ne: true },
+    });
+  }
+
+  /** Cooperative project hub «Посты» tab: tickets + discussions. */
+  async countProjectHubPosts(projectId: string): Promise<number> {
+    return this.publicationModel.countDocuments({
+      communityId: projectId,
+      deleted: { $ne: true },
+      postType: { $in: ['ticket', 'discussion'] },
+    });
+  }
+
   /** Count active Birzha posts for a source entity (same filter as {@link getBirzhaPostsBySourceEntity}). */
   async countBirzhaPostsBySourceEntity(
     birzhaCommunityId: string,
@@ -791,8 +812,12 @@ export class PublicationService {
   ): Promise<Publication[]> {
     const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Build query - exclude deleted items
-    const query: Record<string, unknown> = { communityId, deleted: { $ne: true } };
+    // Build query - exclude deleted items and hub-tab-only publication types
+    const query: Record<string, unknown> = {
+      communityId,
+      deleted: { $ne: true },
+      ...buildHubPostsFeedMongoQuery(),
+    };
 
     const searchOr =
       search && search.trim()

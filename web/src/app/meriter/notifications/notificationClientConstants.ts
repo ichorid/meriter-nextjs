@@ -53,6 +53,9 @@ export const NOTIFICATION_TYPES_WITHOUT_SEPARATE_ACTOR = new Set<NotificationTyp
   'ticket_apply',
   'ticket_rejection',
   'event_created',
+  'document_variant_won',
+  'document_variant_applied',
+  'document_block_admin_override',
 ]);
 
 export const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
@@ -69,6 +72,9 @@ export const NOTIFICATION_TYPES_HIDE_CONTEXT = new Set<NotificationType>([
   'ticket_assignee_declined',
   'ticket_rejection',
   'ticket_apply',
+  'document_variant_won',
+  'document_variant_applied',
+  'document_block_admin_override',
 ]);
 
 export function communityOrProjectHref(communityId: string, isProject: boolean): string {

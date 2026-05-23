@@ -1,0 +1,123 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
+import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
+import { cn } from '@/lib/utils';
+
+/** Matches TipTap StarterKit + Link output used in RichTextEditor. */
+const PURIFY: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    'p',
+    'br',
+    'strong',
+    'b',
+    'em',
+    'i',
+    'u',
+    's',
+    'strike',
+    'a',
+    'ul',
+    'ol',
+    'li',
+    'h1',
+    'h2',
+    'h3',
+    'blockquote',
+    'code',
+    'pre',
+    'span',
+    'img',
+  ],
+  ALLOWED_ATTR: ['href', 'class', 'target', 'rel', 'src', 'alt', 'style'],
+};
+
+function looksLikeHtml(s: string): boolean {
+  const t = s.trim();
+  return t.length >= 3 && t.startsWith('<') && t.includes('>');
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export interface DocumentRichContentProps {
+  html: string;
+  className?: string;
+  /** When set, normalizes plain/legacy bodies to semantic HTML for that block type. */
+  blockType?: string;
+}
+
+/**
+ * Renders stored document / variant body: HTML from TipTap (sanitized) or legacy plain text.
+ */
+function displayProseClass(blockType?: string): string {
+  if (
+    blockType === 'heading' ||
+    blockType === 'list-bullet' ||
+    blockType === 'list-numbered' ||
+    blockType === 'quote'
+  ) {
+    return cn(
+      'max-w-none text-base-content',
+      '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-base-content',
+      '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-base-content',
+      '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5',
+      '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5',
+      '[&_li]:pl-0',
+      '[&_blockquote]:my-0 [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/25 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-base-content/85',
+    );
+  }
+  return 'prose prose-sm dark:prose-invert max-w-none text-base-content';
+}
+
+export function DocumentRichContent({ html, className, blockType }: DocumentRichContentProps) {
+  const [safe, setSafe] = useState<string | null>(null);
+
+  useEffect(() => {
+    const raw = html ?? '';
+    if (!raw.trim()) {
+      setSafe('');
+      return;
+    }
+    const normalized = blockType
+      ? normalizeOfficialContentForDisplay(blockType, raw)
+      : raw;
+    if (!normalized.trim()) {
+      setSafe('');
+      return;
+    }
+    if (looksLikeHtml(normalized)) {
+      setSafe(DOMPurify.sanitize(normalized, PURIFY));
+      return;
+    }
+    setSafe(
+      DOMPurify.sanitize(`<p class="whitespace-pre-wrap">${escapeHtml(normalized)}</p>`, PURIFY),
+    );
+  }, [html, blockType]);
+
+  if (safe === null) {
+    return <div className={cn('min-h-[2rem] rounded-lg bg-base-300/15', className)} aria-hidden />;
+  }
+
+  if (!safe) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        displayProseClass(blockType),
+        '[&_a]:text-brand-primary [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg',
+        className,
+      )}
+       
+      dangerouslySetInnerHTML={{ __html: safe }}
+    />
+  );
+}

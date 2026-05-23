@@ -67,6 +67,23 @@ export class PermissionsHelperService {
     const snapshot = publication.toSnapshot();
     const isProject = snapshot.postType === 'project' || snapshot.isProject === true;
 
+    if (snapshot.postType === 'event') {
+      const canEdit = await this.permissionService.canEditPublication(userId, publicationId);
+      const canDelete = await this.permissionService.canDeletePublication(userId, publicationId);
+      const canComment = await this.permissionService.canComment(userId, publicationId);
+
+      return {
+        canVote: false,
+        canEdit,
+        canDelete,
+        canComment,
+        canTopUpFromSourceEntityWallet: false,
+        voteDisabledReason: 'voteDisabled.eventPost',
+        editDisabledReason: canEdit ? undefined : this.getEditDisabledReason(publication, userId, authorId),
+        deleteDisabledReason: canDelete ? undefined : this.getDeleteDisabledReason(publication, userId, authorId),
+      };
+    }
+
     // Check if project (cannot vote on projects)
     if (isProject) {
       const canEdit = await this.permissionService.canEditPublication(userId, publicationId);

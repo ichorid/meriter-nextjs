@@ -695,6 +695,17 @@ export class NotificationService {
         return undefined;
       }
 
+      case 'document_variant_won':
+      case 'document_variant_applied':
+      case 'document_block_admin_override': {
+        const communityId = metadata?.communityId as string | undefined;
+        const documentId = metadata?.documentId as string | undefined;
+        if (communityId && documentId) {
+          return `/meriter/communities/${communityId}/documents/${documentId}`;
+        }
+        return undefined;
+      }
+
       case 'system': {
         const noticeKind = metadata?.noticeKind as string | undefined;
         const cid = metadata?.communityId as string | undefined;

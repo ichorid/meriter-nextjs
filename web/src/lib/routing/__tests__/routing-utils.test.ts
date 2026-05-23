@@ -3,7 +3,7 @@
  * Verifies redirect logic and route processing
  */
 
-import { getRouteRedirect, requiresRouteProcessing } from '../routing-utils';
+import { getRouteRedirect, getRootRedirectPath, requiresRouteProcessing } from '../routing-utils';
 
 // Mock window and document for tests
 const mockCookie = (cookie: string) => {
@@ -17,6 +17,22 @@ describe('Routing Utilities', () => {
   beforeEach(() => {
     // Reset cookie
     mockCookie('');
+  });
+
+  describe('getRootRedirectPath', () => {
+    it('should send Telegram start param to login', () => {
+      expect(
+        getRootRedirectPath({ hasJwt: false, tgWebAppStartParam: 'test-param' }),
+      ).toBe('/meriter/login?tgWebAppStartParam=test-param');
+    });
+
+    it('should send authenticated users to profile', () => {
+      expect(getRootRedirectPath({ hasJwt: true })).toBe('/meriter/profile');
+    });
+
+    it('should send unauthenticated users to login', () => {
+      expect(getRootRedirectPath({ hasJwt: false })).toBe('/meriter/login');
+    });
   });
 
   describe('getRouteRedirect', () => {

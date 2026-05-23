@@ -7,6 +7,7 @@ import { useFreeBalance } from '@/hooks/api/useWallet';
 import { useCommunityQuotas } from '@/hooks/api/useCommunityQuota';
 import { useTranslations } from 'next-intl';
 import { useVoteOnPublicationWithComment, useVoteOnVote } from '@/hooks/api/useVotes';
+import { trpc } from '@/lib/trpc/client';
 import { usePopupCommunityData } from '@/hooks/usePopupCommunityData';
 import { usePopupFormData } from '@/hooks/usePopupFormData';
 import { useUserRoles } from '@/hooks/api/useProfile';
@@ -40,6 +41,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     votingMode,
     votingPublicationIsTask,
     votingTaskAllowWeightedMerits,
+    votingCommunityId,
+    votingDocumentVariantIsOwn,
+    votingDocumentAllowDownvotes,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -52,11 +56,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   );
 
   const voteContextCommunityId = useMemo(() => {
+    if (votingTargetType === 'document-variant' && votingCommunityId) {
+      return votingCommunityId;
+    }
     if (votingTargetType === 'publication' && publication?.communityId) {
       return publication.communityId;
     }
     return communityId;
-  }, [votingTargetType, publication?.communityId, communityId]);
+  }, [votingTargetType, votingCommunityId, publication?.communityId, communityId]);
 
   // Wallet / quota context: publication's community when voting on a post (e.g. OB in future-vision)
   const { targetCommunityId, currencyIconUrl, walletBalance } =
@@ -70,6 +77,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   
   // Personal author or beneficiary: wallet-only / own-post helpers (entity-sourced posts are not "own personal post")
   const isOwnPost = useMemo(() => {
+    if (votingTargetType === 'document-variant') {
+      return votingDocumentVariantIsOwn === true;
+    }
     if (!user?.id || !publication || votingTargetType !== 'publication') return false;
     const authorId = publication.authorId;
     const beneficiaryId = publication.beneficiaryId || publication.meta?.beneficiary?.id;
@@ -80,7 +90,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
     const isBeneficiary = !!(hasBeneficiary && beneficiaryId && user.id === beneficiaryId);
     return isPersonalAuthor || isBeneficiary;
-  }, [user?.id, publication, votingTargetType]);
+  }, [user?.id, publication, votingTargetType, votingDocumentVariantIsOwn]);
   
   const isProjectCommunity = community?.isProject === true;
 
@@ -141,6 +151,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // Use mutation hooks for voting and commenting
   const voteOnPublicationWithCommentMutation = useVoteOnPublicationWithComment();
   const voteOnVoteMutation = useVoteOnVote();
+  const voteOnDocumentVariantMutation = trpc.votes.createWithComment.useMutation();
+  const utils = trpc.useUtils();
 
   const isOpen = !!activeVotingTarget && !!votingTargetType;
 
@@ -180,8 +192,15 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
-  const calculatedMaxMinus =
-    community?.votingSettings?.allowNegativeVoting === false ? 0 : (walletBalance || 0);
+  const calculatedMaxMinus = useMemo(() => {
+    if (votingTargetType === 'document-variant' && !votingDocumentAllowDownvotes) {
+      return 0;
+    }
+    if (community?.votingSettings?.allowNegativeVoting === false) {
+      return 0;
+    }
+    return walletBalance || 0;
+  }, [votingTargetType, votingDocumentAllowDownvotes, community?.votingSettings?.allowNegativeVoting, walletBalance]);
 
   // Use shared hook for form data management
   const { formData, handleCommentChange } = usePopupFormData({
@@ -258,6 +277,17 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     }
 
     const delta = formData.delta;
+
+    if (votingTargetType === 'document-variant') {
+      if (!formData.comment?.trim()) {
+        updateVotingFormData({ error: t('reasonRequired') });
+        return;
+      }
+      if (delta === 0) {
+        updateVotingFormData({ error: t('weightRequired') });
+        return;
+      }
+    }
     if (delta === 0) {
       if (effectiveCommentModeForSubmit === 'weightedOnly') {
         updateVotingFormData({ error: t('weightRequired') });
@@ -357,18 +387,6 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     try {
       // For publications, use the combined endpoint that creates comment and vote atomically
       if (votingTargetType === 'publication') {
-        const mutationPayload = {
-          publicationId: targetId,
-          data: {
-            quotaAmount,
-            walletAmount,
-            comment: commentText || undefined,
-            direction: isUpvote ? 'up' : 'down' as const,
-            images: imagesToSubmit,
-          },
-          communityId: targetCommunityId,
-        };
-        // Single vote with both quota and wallet amounts
         await voteOnPublicationWithCommentMutation.mutateAsync({
           publicationId: targetId,
           data: {
@@ -380,9 +398,18 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           },
           communityId: targetCommunityId,
         });
+      } else if (votingTargetType === 'document-variant') {
+        await voteOnDocumentVariantMutation.mutateAsync({
+          targetType: 'document-variant',
+          targetId,
+          quotaAmount,
+          walletAmount,
+          direction: isUpvote ? 'up' : 'down',
+          comment: commentText,
+        });
+        await utils.documentVariants.listByBlock.invalidate();
+        await utils.documents.getById.invalidate();
       } else {
-        // For votes, use the vote-on-vote endpoint
-        // Include comment field for vote-comments (L2, L3, etc.)
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
           data: {
@@ -448,10 +475,18 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           error={formData.error}
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
-          commentMode={ticketFreeCommentOnlyUi ? 'neutralOnly' : effectiveCommentMode}
+          commentMode={
+            votingTargetType === 'document-variant'
+              ? 'weightedOnly'
+              : ticketFreeCommentOnlyUi
+                ? 'neutralOnly'
+                : effectiveCommentMode
+          }
           hideQuota={
-            ticketFreeCommentOnlyUi ||
-            (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
+            votingTargetType === 'document-variant'
+              ? isOwnPost || community?.typeTag === 'future-vision'
+              : ticketFreeCommentOnlyUi ||
+                (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)
           }
           submitButtonLabel={
             ticketFreeCommentOnlyUi ||

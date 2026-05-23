@@ -64,6 +64,21 @@ export class CommunityFeedService {
     private readonly communityService: CommunityService,
   ) { }
 
+  /** Matches hub «Посты» tab (publications + polls, excluding project/event rows). */
+  async countHubFeedPosts(communityId: string): Promise<number> {
+    const community = await this.communityService.getCommunity(communityId);
+    const isFutureVision = community?.typeTag === 'future-vision';
+
+    const [publicationCount, pollCount] = await Promise.all([
+      this.publicationService.countHubFeedPublicationsByCommunity(communityId),
+      isFutureVision
+        ? Promise.resolve(0)
+        : this.pollService.countActivePollsByCommunity(communityId),
+    ]);
+
+    return publicationCount + pollCount;
+  }
+
   async getCommunityFeed(
     communityId: string,
     options: FeedOptions = {},

@@ -780,6 +780,47 @@ export default function NotificationsPage() {
       );
     }
 
+    if (
+      notification.type === 'document_variant_won' ||
+      notification.type === 'document_variant_applied' ||
+      notification.type === 'document_block_admin_override'
+    ) {
+      const communityId = typeof m.communityId === 'string' ? m.communityId : '';
+      const documentId = typeof m.documentId === 'string' ? m.documentId : '';
+      const documentTitle =
+        typeof m.documentTitle === 'string' && m.documentTitle.trim()
+          ? m.documentTitle.trim()
+          : t('untitledPost');
+      const documentHref =
+        communityId && documentId
+          ? routes.communityDocument(communityId, documentId)
+          : '';
+      const bodyKey =
+        notification.type === 'document_variant_won'
+          ? 'documentVariantWonBody'
+          : notification.type === 'document_variant_applied'
+            ? 'documentVariantAppliedBody'
+            : 'documentBlockAdminOverrideBody';
+
+      return (
+        <div className={NOTIFY_SUB.stack}>
+          <div className={NOTIFY_SUB.body}>{t(bodyKey)}</div>
+          {documentHref ? (
+            <Link
+              href={documentHref}
+              onClick={(e) => e.stopPropagation()}
+              className={NOTIFY_SUB.entityLink}
+            >
+              {quotePlaceLabel(documentTitle, locale)}
+            </Link>
+          ) : (
+            <span className={NOTIFY_SUB.entityText}>{quotePlaceLabel(documentTitle, locale)}</span>
+          )}
+          <div className={NOTIFY_SUB.stamp}>{formatDate(notification.createdAt)}</div>
+        </div>
+      );
+    }
+
     if (notification.type === 'ticket_done') {
       const { ticketHref, projectHref, ticketTitle, projectName } = buildTicketLinkParts(
         m,
@@ -1464,7 +1505,7 @@ export default function NotificationsPage() {
                                 e.stopPropagation();
                                 const cid = notification.metadata?.communityId;
                                 if (typeof cid === 'string') {
-                                  router.push(`/meriter/communities/${cid}/join`);
+                                  router.push(routes.communityJoin(cid));
                                   markAsRead.mutate({ id: notification.id });
                                 }
                               }}

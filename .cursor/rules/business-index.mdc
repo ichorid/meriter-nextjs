@@ -48,6 +48,9 @@ alwaysApply: true
 ### Future Vision (ОБ) and cooperative projects
 - **ОБ** hub + **лента ОБ** (`/meriter/future-visions`, `communities.getFutureVisions`) vs **`isProject`** communities (Birzha `sourceEntity*`, `CommunityWallet`, tickets): @business-future-vision.mdc · @business-projects.mdc — open the relevant file for detail.
 
+### Collaborative documents (shared-document)
+- **`documents.*`** / **`documentVariants.*`**, votes **`targetType === 'document-variant'`**, OB/description **`documentsMode`**, waves + cron + manual/auto apply: @business-shared-document.mdc.
+
 ---
 
 ## Business Rules File Structure
@@ -67,6 +70,7 @@ Use this file for routing only. Details and full rule text live in the listed bu
 | `business-events.mdc` | Event publications (`postType === 'event'`), RSVP, invites, `eventCreation`, `events.*` tRPC | Event pages, community/project events hubs, merit transfer on event thread |
 | `business-projects.mdc` | Cooperative projects (isProject), Birzha source, tickets, CommunityWallet | Project / ticket / Birzha-from-project; web hub **`/meriter/projects`** |
 | `business-future-vision.mdc` | ОБ hub (`typeTag === 'future-vision'`), OB posts, Future Visions feed, tags | OB / `getFutureVisions`; web **`/meriter/future-visions`** |
+| `business-shared-document.mdc` | Collaborative documents, variants, voting waves, apply modes, mirror to ОБ/description | `documents` / `documentVariants` / document-variant votes; web **`/meriter/communities/.../documents`** |
 | `business-users.mdc` | Users, roles, permissions | Auth, permissions |
 | `business-mvp.mdc` | MVP-specific settings | Domain, tRPC, meriter routes, features (globs) |
 

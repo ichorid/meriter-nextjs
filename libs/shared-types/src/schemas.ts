@@ -177,6 +177,17 @@ export const CommunitySettingsSchema = z.object({
   distributeAllByContractOnClose: z.boolean().default(true),
   /** Who may create event posts in this community/project. */
   eventCreation: z.enum(["admin", "members"]).default("admin"),
+  /** Collaborative documents hub mode (OB/description/custom docs). */
+  documentsMode: z
+    .enum(["off", "visionOrDescriptionOnly", "all"])
+    .default("visionOrDescriptionOnly"),
+  /** Who may create custom documents when documentsMode === 'all'. */
+  documentCreators: z.enum(["admins", "members"]).default("admins"),
+  /** Override variant propose cost; null = use settings.postCost. */
+  documentVariantCost: z.number().int().min(0).nullable().optional(),
+  documentVotingDurationHours: z.number().int().min(1).default(48),
+  documentDefaultMode: z.enum(["manual", "auto"]).default("manual"),
+  documentAutoApplyTimerHours: z.number().int().min(1).default(48),
 });
 
 export const CommunityMeritConversionSchema = z.object({
@@ -870,6 +881,12 @@ export const UpdateCommunityDtoSchema = z.object({
     tappalkaOnlyMode: z.boolean().optional(),
     commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
     eventCreation: z.enum(['admin', 'members']).optional(),
+    documentsMode: z.enum(['off', 'visionOrDescriptionOnly', 'all']).optional(),
+    documentCreators: z.enum(['admins', 'members']).optional(),
+    documentVariantCost: z.number().int().min(0).nullable().optional(),
+    documentVotingDurationHours: z.number().int().min(1).optional(),
+    documentDefaultMode: z.enum(['manual', 'auto']).optional(),
+    documentAutoApplyTimerHours: z.number().int().min(1).optional(),
   }).passthrough().optional(),
   votingSettings: CommunityVotingSettingsSchema.optional(),
   meritSettings: CommunityMeritSettingsSchema.optional(),
@@ -922,6 +939,42 @@ export const UpdatePublicationDtoSchema = z.object({
     },
   ); // Strict mode prevents postType and isProject from being included
 
+/** Strip HTML for required-field checks (ОБ / описание из WYSIWYG). */
+export function plainTextFromRichCommunityInput(s: string | undefined): string {
+  if (!s) return "";
+  return s
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export const MeriterBlockTypeSchema = z.enum([
+  "paragraph",
+  "heading",
+  "list-bullet",
+  "list-numbered",
+  "quote",
+]);
+
+export const DocumentSeedBlockSchema = z.object({
+  order: z.number().int().min(0),
+  blockType: MeriterBlockTypeSchema,
+  officialContent: z.string().max(50_000),
+});
+
+export const DocumentSeedSectionSchema = z.object({
+  title: z.string().max(500).optional(),
+  order: z.number().int().min(0),
+  blocks: z.array(DocumentSeedBlockSchema).min(1),
+});
+
+export const FutureVisionDocumentSeedSchema = z.object({
+  sections: z.array(DocumentSeedSectionSchema).min(1),
+});
+
+export type FutureVisionDocumentSeed = z.infer<typeof FutureVisionDocumentSeedSchema>;
+
 export const CreateCommunityDtoSchema = z
   .object({
     name: z.string().min(1),
@@ -932,6 +985,7 @@ export const CreateCommunityDtoSchema = z
     isPriority: z.boolean().optional(),
 
     futureVisionText: z.string().optional(),
+    futureVisionDocumentSeed: FutureVisionDocumentSeedSchema.optional(),
     futureVisionTags: z.array(z.string()).optional(),
     futureVisionCover: z.string().url().optional(),
 
@@ -948,14 +1002,23 @@ export const CreateCommunityDtoSchema = z
   .superRefine((data, ctx) => {
     const typeTag = data.typeTag;
     const requiresFutureVisionText = typeTag !== "project" && typeTag !== "global";
-    const futureVisionText = (data.futureVisionText ?? "").trim();
-
-    if (requiresFutureVisionText && futureVisionText.length === 0) {
+    const fvPlain = plainTextFromRichCommunityInput(data.futureVisionText);
+    if (requiresFutureVisionText && fvPlain.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["futureVisionText"],
         message: "futureVisionText is required when creating a community",
       });
+    }
+    if (typeTag === "project") {
+      const descPlain = plainTextFromRichCommunityInput(data.description);
+      if (descPlain.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["description"],
+          message: "description is required when creating a project community",
+        });
+      }
     }
   });
 
@@ -988,7 +1051,9 @@ export const WithdrawAmountDtoSchema = z.object({
 });
 
 export const VoteWithCommentDtoSchema = z.object({
-  targetType: z.enum(["publication", "comment", "vote"]).optional(),
+  targetType: z
+    .enum(["publication", "comment", "vote", "document-variant"])
+    .optional(),
   targetId: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
   walletAmount: z.number().int().min(0).optional(),

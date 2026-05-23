@@ -43,13 +43,18 @@ export class ContextCurrencyModeFactor {
 
     const effectiveVoting = this.communityService.getEffectiveVotingSettings(community);
     // Note: Polls are handled separately via polls router, not through vote service
-    // The vote service only handles targetType 'publication' | 'vote' (where 'vote' means comment)
+    // Vote service: publication | vote (comment) | document-variant
     const isPoll = false;
     const isDownvote = direction === 'down';
     // Note: viewer role removed - all users are now participants
 
     // Downvotes always use wallet (before votingSettings / quota-and-wallet)
-    if (isDownvote && (targetType === 'publication' || targetType === 'vote')) {
+    if (
+      isDownvote &&
+      (targetType === 'publication' ||
+        targetType === 'vote' ||
+        targetType === 'document-variant')
+    ) {
       this.logger.debug(`[evaluate] Downvote → wallet-only (early): community=${community.id}`);
       return {
         allowedQuota: false,
@@ -61,7 +66,12 @@ export class ContextCurrencyModeFactor {
 
     // Priority 1: currencySource from effective voting settings (DB + typeTag defaults, e.g. project → quota-and-wallet)
     const currencySource = effectiveVoting.currencySource;
-    if (currencySource && (targetType === 'publication' || targetType === 'vote')) {
+    if (
+      currencySource &&
+      (targetType === 'publication' ||
+        targetType === 'vote' ||
+        targetType === 'document-variant')
+    ) {
       if (currencySource === 'quota-only') {
         this.logger.debug(
           `[evaluate] currencySource=quota-only: community=${community.id}`,
@@ -102,7 +112,13 @@ export class ContextCurrencyModeFactor {
 
     // Priority 2: Future Vision + post/comment → wallet-only (backward compatibility)
     const isFutureVision = community.typeTag === 'future-vision';
-    if (isFutureVision && (targetType === 'publication' || targetType === 'vote') && !currencySource) {
+    if (
+      isFutureVision &&
+      (targetType === 'publication' ||
+        targetType === 'vote' ||
+        targetType === 'document-variant') &&
+      !currencySource
+    ) {
       this.logger.debug(
         `[evaluate] Future Vision + post/comment → wallet-only: community=${community.id}`,
       );

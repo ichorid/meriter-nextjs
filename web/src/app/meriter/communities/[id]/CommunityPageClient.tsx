@@ -15,7 +15,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar } from 'lucide-react';
+import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar, FileText } from 'lucide-react';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -83,6 +84,7 @@ import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinR
 import { canUserCreateEvents, type EventCreationMode } from '@/features/events/lib/event-permissions';
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
+import { isHubPostsFeedPublication } from '@/features/communities/lib/hub-posts-feed-filter';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -405,7 +407,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         if (!comms) return ['posts'];
         const tabs: CommunityHubFeedTab[] = ['posts'];
         if (!isMarathonOfGood) tabs.push('projects');
-        if (user?.id) tabs.push('events');
+        /** Meta hub «Биржа» (marathon-of-good): no Events tab — events/documents live elsewhere */
+        if (user?.id && !isMarathonOfGood) tabs.push('events');
         if (showBirzhaSourceDashboard) tabs.push('birzha');
         return tabs;
     }, [comms, isMarathonOfGood, user?.id, showBirzhaSourceDashboard]);
@@ -673,6 +676,47 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             (r.role === 'lead' || r.role === 'participant'),
     );
 
+    const documentsMode =
+        (comms?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
+        'visionOrDescriptionOnly';
+    const documentCreators =
+        (comms?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
+            ?.documentCreators ?? 'admins';
+
+    const obOfficialDocQuery = trpc.documents.getOfficialByType.useQuery(
+        { communityId: chatId, type: 'imageOfFuture' },
+        {
+            enabled: Boolean(
+                comms &&
+                    user?.id &&
+                    documentsMode !== 'off' &&
+                    communityMayHaveOfficialObDocument(comms.typeTag),
+            ),
+        },
+    );
+
+    const obDocForHero = obOfficialDocQuery.data ?? null;
+
+    const canEditFutureVisionDocument =
+        Boolean(user?.id) &&
+        documentsMode !== 'off' &&
+        (user?.globalRole === 'superadmin' ||
+            userRoleInCommunity === 'lead' ||
+            (isCommunityMember &&
+                documentCreators === 'members' &&
+                userRoleInCommunity === 'participant'));
+
+    const canOpenObCollaborativeDocument = Boolean(
+        user?.id &&
+            documentsMode !== 'off' &&
+            isCommunityMember &&
+            obDocForHero?.id,
+    );
+
+    const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
+        ? routes.communityDocument(chatId, obDocForHero!.id)
+        : undefined;
+
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(
         user && (isCommunityMember || user.globalRole === 'superadmin'),
@@ -786,6 +830,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             ...comms,
                             id: comms.id || chatId,
                         }}
+                        futureVisionCollaborativeDocumentHref={
+                            futureVisionCollaborativeDocumentHref
+                        }
+                        obDocument={obDocForHero}
+                        obDocumentLoading={obOfficialDocQuery.isLoading}
+                        obDocumentFetched={obOfficialDocQuery.isFetched}
+                        canEditFutureVisionDocument={canEditFutureVisionDocument}
+                        documentsMode={documentsMode}
                         avatarRowEndSlot={
                             user &&
                             isCommunityMember &&
@@ -890,22 +942,39 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             </Link>
                         ) : null}
                     </div>
-                    {!showHubFeedTabChrome && user ? (
-                        <Link
-                            href={routes.communityEvents(chatId)}
-                            className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                        >
-                            <div className="flex min-w-0 items-center gap-3">
-                                <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                <span className="truncate font-medium text-base-content">
-                                    {tCommunities('communityEvents')}
+                    {user && !isMarathonOfGood ? (
+                        <>
+                            <Link
+                                href={routes.communityEvents(chatId)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <Calendar className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityEvents')}
+                                    </span>
+                                </div>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
                                 </span>
-                            </div>
-                            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                {tCommunities('all')}
-                                <ChevronRight size={14} />
-                            </span>
-                        </Link>
+                            </Link>
+                            <Link
+                                href={routes.communityDocuments(chatId)}
+                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
+                            >
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <FileText className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+                                    <span className="truncate font-medium text-base-content">
+                                        {tCommunities('communityDocuments')}
+                                    </span>
+                                </div>
+                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+                                    {tCommunities('all')}
+                                    <ChevronRight size={14} />
+                                </span>
+                            </Link>
+                        </>
                     ) : null}
                     {!showHubFeedTabChrome && user && isCommunityMember ? (
                         <Link
@@ -1447,11 +1516,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     filteredPublications
                         .filter((p: FeedItem) => {
                             if (p.type === 'publication') {
-                                const isProject =
-                                    (p as PublicationFeedItem).postType === 'project' ||
-                                    (p as PublicationFeedItem).isProject === true;
-                                return !!p.content && !isProject;
-                            } else if (p.type === 'poll') {
+                                const pub = p as PublicationFeedItem;
+                                return (
+                                    !!pub.content &&
+                                    isHubPostsFeedPublication(pub, {
+                                        hubCommunityId: chatId,
+                                        birzhaCommunityId,
+                                    })
+                                );
+                            }
+                            if (p.type === 'poll') {
                                 // Hide polls in future-vision communities
                                 return comms?.typeTag !== 'future-vision';
                             }

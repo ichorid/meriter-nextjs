@@ -2,8 +2,9 @@
 
 import React, { useState, type ReactNode } from 'react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
-import { User, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, ChevronDown } from 'lucide-react';
 import { Users, Settings, Trash2, TrendingUp, ArrowUp, SquarePen } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { routes } from '@/lib/constants/routes';
 import { useTranslations } from 'next-intl';
@@ -13,6 +14,10 @@ import { Button } from '@/components/ui/shadcn/button';
 import { formatMerits } from '@/lib/utils/currency';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
+import { DocumentOfficialPreview } from '@/features/documents/components/DocumentOfficialPreview';
+import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
+import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
+import { futureVisionMirrorPlainTextToHtml } from '@/features/documents/lib/future-vision-mirror-text';
 
 interface CommunityHeroCardProps {
   community: {
@@ -42,6 +47,17 @@ interface CommunityHeroCardProps {
   onClick?: () => void;
   /** Placed in the avatar row: bottom-right on sm+, stacked under the avatar on narrow screens */
   avatarRowEndSlot?: ReactNode;
+  /** Collaborative OB document — all members who can vote/propose. */
+  futureVisionCollaborativeDocumentHref?: string;
+  /** Loaded OB document (official sections/blocks). */
+  obDocument?: { id: string; sections?: unknown } | null;
+  /** While OB document is resolving, avoid flashing plain mirror text. */
+  obDocumentLoading?: boolean;
+  /** Set when `getOfficialByType` has finished (success or empty). */
+  obDocumentFetched?: boolean;
+  /** Lead / permitted editor — edit icon opens OB document or documents hub. */
+  canEditFutureVisionDocument?: boolean;
+  documentsMode?: string;
 }
 
 /**
@@ -53,6 +69,12 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   isCompact = false,
   onClick,
   avatarRowEndSlot,
+  futureVisionCollaborativeDocumentHref,
+  obDocument,
+  obDocumentLoading = false,
+  obDocumentFetched = false,
+  canEditFutureVisionDocument = false,
+  documentsMode = 'visionOrDescriptionOnly',
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,11 +110,29 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const headerImageUrl = obCover || community.coverImageUrl;
   const hasCoverImage = !!headerImageUrl;
   const obCoverUsedInHeader = !!obCover;
+  const obDocumentsEnabled =
+    documentsMode !== 'off' && communityMayHaveOfficialObDocument(community.typeTag);
+
+  const futureVisionDocumentEditHref = canEditFutureVisionDocument
+    ? obDocument?.id
+      ? routes.communityDocument(community.id, obDocument.id)
+      : routes.communityDocuments(community.id)
+    : undefined;
+
+  const obSections = obDocument?.sections;
+  const hasObDocumentPreview = Boolean(obDocument?.id && obSections);
+
+  const futureVisionMirrorHtml = community.futureVisionText?.trim()
+    ? futureVisionMirrorPlainTextToHtml(community.futureVisionText.trim())
+    : '';
+
+  const obPreviewResolved = !obDocumentsEnabled || obDocumentFetched;
+
   const showFutureVisionSubsection =
     (!!obCover && !obCoverUsedInHeader) ||
     !!community.futureVisionText?.trim() ||
+    Boolean(obDocument?.id) ||
     (community.futureVisionTags && community.futureVisionTags.length > 0);
-  const [obExpanded, setObExpanded] = useState(false);
   const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(true);
 
   const obPublicationId = community.futureVisionPublicationId;
@@ -310,13 +350,13 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                       aria-hidden
                     />
                   </button>
-                  {community.isAdmin && (
+                  {futureVisionDocumentEditHref ? (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        router.push(routes.communitySettingsEditFutureVision(community.id));
+                        router.push(futureVisionDocumentEditHref);
                       }}
                       className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-base-content/70 hover:text-base-content hover:bg-base-300/60 dark:hover:bg-base-300/40 transition-colors"
                       title={tCommon('edit')}
@@ -324,7 +364,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     >
                       <SquarePen className="h-5 w-5" aria-hidden />
                     </button>
-                  )}
+                  ) : null}
                 </div>
 
                 {isFutureVisionSectionOpen && obCover && !obCoverUsedInHeader && (
@@ -336,37 +376,35 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                     />
                   </div>
                 )}
-                {isFutureVisionSectionOpen && community.futureVisionText?.trim() && (
+                {isFutureVisionSectionOpen && hasObDocumentPreview ? (
                   <>
-                    <p
-                      className={`text-sm text-base-content/90 whitespace-pre-wrap ${obExpanded ? '' : 'line-clamp-3'}`}
-                    >
-                      {community.futureVisionText.trim()}
-                    </p>
-                    {community.futureVisionText.trim().length > 180 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setObExpanded((v) => !v);
-                        }}
-                        className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
+                    <DocumentOfficialPreview sections={obSections} />
+                    {futureVisionCollaborativeDocumentHref ? (
+                      <Link
+                        href={futureVisionCollaborativeDocumentHref}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-block text-sm font-medium text-primary hover:underline"
                       >
-                        {obExpanded ? (
-                          <>
-                            <ChevronUp size={14} />
-                            {tCommunities('showLess')}
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDown size={14} />
-                            {tCommunities('showMore')}
-                          </>
-                        )}
-                      </button>
-                    )}
+                        {tCommunities('openCollaborativeDocument')}
+                      </Link>
+                    ) : null}
                   </>
-                )}
+                ) : null}
+                {isFutureVisionSectionOpen && obDocumentLoading && obDocumentsEnabled ? (
+                  <div
+                    className="min-h-[4rem] rounded-lg bg-base-300/20 animate-pulse"
+                    aria-hidden
+                  />
+                ) : null}
+                {isFutureVisionSectionOpen &&
+                obPreviewResolved &&
+                !hasObDocumentPreview &&
+                futureVisionMirrorHtml ? (
+                  <DocumentRichContent
+                    html={futureVisionMirrorHtml}
+                    className="text-sm text-base-content/90"
+                  />
+                ) : null}
                 {isFutureVisionSectionOpen && community.futureVisionTags && community.futureVisionTags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {community.futureVisionTags.map((tag: string) => (

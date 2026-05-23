@@ -4,6 +4,10 @@ import { useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
+import {
+  formatHubFeedTabCount,
+  useCommunityHubFeedTabCounts,
+} from '@/features/communities/hooks/useCommunityHubFeedTabCounts';
 
 const SCROLL_OPTS = { scroll: false as const };
 
@@ -19,13 +23,16 @@ const DEFAULT_VISIBLE: readonly CommunityHubFeedTab[] = [
 const TAB_ORDER: readonly CommunityHubFeedTab[] = ['posts', 'projects', 'events', 'birzha'];
 
 export function CommunityHubFeedTabBar({
-  communityId: _communityId,
+  communityId,
   visibleTabs = DEFAULT_VISIBLE,
+  hubKind = 'community',
   className,
 }: {
   communityId: string;
   /** Subset of hub tabs (e.g. project hub omits «Проекты сообщества»). */
   visibleTabs?: readonly CommunityHubFeedTab[];
+  /** Project cooperative hub uses tickets/discussions for the posts tab. */
+  hubKind?: 'community' | 'project';
   /** When tabs sit inside the feed chrome card (no outer border / separate rounding). */
   className?: string;
 }) {
@@ -36,6 +43,12 @@ export function CommunityHubFeedTabBar({
 
   const visibleSet = new Set<CommunityHubFeedTab>(visibleTabs);
   const orderedTabs = TAB_ORDER.filter((id) => visibleSet.has(id));
+
+  const { counts: tabCounts, isLoading: tabCountsLoading } = useCommunityHubFeedTabCounts(
+    communityId,
+    orderedTabs,
+    { hubKind },
+  );
 
   const KNOWN_NON_POST = new Set<string>(['projects', 'events', 'birzha']);
   const rawVal = searchParams?.get('feedTab');
@@ -107,21 +120,50 @@ export function CommunityHubFeedTabBar({
     >
       {orderedTabs.map((tab) => {
         const selected = active === tab;
+        const label = labelFor(tab);
+        const count = tabCounts[tab];
+        const showCount = !tabCountsLoading && count !== undefined;
+        const tabAriaLabel =
+          showCount && count !== undefined
+            ? `${label} (${count})`
+            : label;
+
         return (
           <button
             key={tab}
             type="button"
             role="tab"
             aria-selected={selected}
+            aria-label={tabAriaLabel}
             className={cn(
-              'min-h-9 w-full rounded-lg px-1.5 py-1.5 text-center text-sm font-medium transition-colors sm:px-2',
+              'flex min-h-9 w-full items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm font-medium transition-colors sm:px-2',
               selected
                 ? 'bg-base-100 text-base-content shadow-sm dark:bg-base-300/80'
                 : 'text-base-content/70 hover:bg-base-300/40 hover:text-base-content',
             )}
             onClick={() => setTab(tab)}
           >
-            <span className="line-clamp-2 leading-tight">{labelFor(tab)}</span>
+            <span className="flex min-w-0 max-w-full flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
+              <span className="line-clamp-2 min-w-0 leading-tight">{label}</span>
+              {showCount ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'shrink-0 rounded-md px-1 py-px text-[10px] font-semibold tabular-nums leading-none',
+                    selected
+                      ? 'bg-primary/15 text-primary dark:bg-primary/25'
+                      : 'bg-base-content/8 text-base-content/45 dark:bg-base-content/12',
+                  )}
+                >
+                  {formatHubFeedTabCount(count)}
+                </span>
+              ) : tabCountsLoading ? (
+                <span
+                  aria-hidden
+                  className="h-3.5 w-5 shrink-0 animate-pulse rounded-md bg-base-content/10"
+                />
+              ) : null}
+            </span>
           </button>
         );
       })}

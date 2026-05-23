@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,7 +14,6 @@ import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
-import { Textarea } from "@/components/ui/shadcn/textarea";
 import {
     Select,
     SelectContent,
@@ -33,16 +33,22 @@ import { usePlatformValueRubricatorSections } from "@/shared/hooks/usePlatformVa
 import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { extractErrorMessage } from "@/shared/lib/utils/error-utils";
+import { routes } from "@/lib/constants/routes";
+import { MeriterEditor } from "@/components/molecules/RichTextEditor";
+import {
+    createEmptyDocumentDraft,
+    concatOfficialPlainTextFromDraft,
+    documentDraftHasOfficialText,
+    serializeDraftForApi,
+    type DocumentDraft,
+} from "@/features/documents/lib/document-draft";
 
 interface CommunityFormProps {
     communityId?: string; // Если нет - создание, если есть - редактирование
-    /** When true (e.g. ?edit=futureVision on settings URL), focus future vision textarea after load */
-    focusFutureVisionTextOnMount?: boolean;
 }
 
 export const CommunityForm = ({
     communityId,
-    focusFutureVisionTextOnMount = false,
 }: CommunityFormProps) => {
     const router = useRouter();
     const queryClient = useQueryClient();
@@ -62,6 +68,9 @@ export const CommunityForm = ({
     const isFutureVisionHub =
         isEditMode &&
         (community as { typeTag?: string } | undefined)?.typeTag === "future-vision";
+    const isProjectCommunity = Boolean(
+        (community as { isProject?: boolean } | undefined)?.isProject,
+    );
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
 
@@ -84,12 +93,24 @@ export const CommunityForm = ({
         "🙏"
     )}</text></svg>`;
     const [iconUrl, setIconUrl] = useState(defaultIconUrl);
-    const [futureVisionText, setFutureVisionText] = useState("");
     const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
     const [futureVisionCover, setFutureVisionCover] = useState("");
     const [eventCreation, setEventCreation] = useState<"admin" | "members">("admin");
-    const futureVisionTextareaRef = useRef<HTMLTextAreaElement>(null);
-    const didFocusFutureVisionRef = useRef(false);
+    const [documentsMode, setDocumentsMode] = useState<
+        "off" | "visionOrDescriptionOnly" | "all"
+    >("visionOrDescriptionOnly");
+    const [documentCreators, setDocumentCreators] = useState<"admins" | "members">(
+        "admins",
+    );
+    const [documentVariantCost, setDocumentVariantCost] = useState("");
+    const [documentVotingDurationHours, setDocumentVotingDurationHours] = useState("48");
+    const [documentDefaultMode, setDocumentDefaultMode] = useState<"manual" | "auto">(
+        "manual",
+    );
+    /** Draft collaborative OB document at create time (seeded into imageOfFuture document). */
+    const [futureVisionDraft, setFutureVisionDraft] = useState<DocumentDraft>(() =>
+        createEmptyDocumentDraft(),
+    );
 
     useFutureVisionTags();
     const { sections: rubricatorSections } = usePlatformValueRubricatorSections();
@@ -108,33 +129,37 @@ export const CommunityForm = ({
             );
             setIsPriority(c.isPriority || false);
             setIconUrl(c.settings?.iconUrl || defaultIconUrl);
-            setFutureVisionText(c.futureVisionText || "");
             setFutureVisionTags(Array.isArray(c.futureVisionTags) ? c.futureVisionTags : []);
             setFutureVisionCover(c.futureVisionCover || "");
             const ec = c.settings?.eventCreation;
             setEventCreation(ec === "members" ? "members" : "admin");
+            const dm = c.settings?.documentsMode;
+            setDocumentsMode(
+                dm === "off" || dm === "visionOrDescriptionOnly" || dm === "all"
+                    ? dm
+                    : "visionOrDescriptionOnly",
+            );
+            setDocumentCreators(c.settings?.documentCreators === "members" ? "members" : "admins");
+            const dvc = c.settings?.documentVariantCost;
+            setDocumentVariantCost(
+                dvc === null || dvc === undefined ? "" : String(dvc),
+            );
+            setDocumentVotingDurationHours(
+                String(c.settings?.documentVotingDurationHours ?? 48),
+            );
+            setDocumentDefaultMode(
+                c.settings?.documentDefaultMode === "auto" ? "auto" : "manual",
+            );
         }
     }, [community, isEditMode]);
 
-    useEffect(() => {
-        if (
-            !focusFutureVisionTextOnMount ||
-            !isEditMode ||
-            isLoading ||
-            didFocusFutureVisionRef.current ||
-            isFutureVisionHub
-        ) {
-            return;
-        }
-        didFocusFutureVisionRef.current = true;
-        const t = window.setTimeout(() => {
-            const el = futureVisionTextareaRef.current;
-            if (!el) return;
-            el.focus();
-            el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 150);
-        return () => window.clearTimeout(t);
-    }, [focusFutureVisionTextOnMount, isEditMode, isLoading, isFutureVisionHub]);
+    const isSuperadmin = user?.globalRole === "superadmin";
+
+    const isUserLead = useMemo(() => {
+        if (!communityId || !user?.id || !userRoles) return false;
+        const role = userRoles.find((r) => r.communityId === communityId);
+        return role?.role === "lead";
+    }, [communityId, user?.id, userRoles]);
 
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
@@ -156,7 +181,31 @@ export const CommunityForm = ({
                         plural: currencyPlural,
                         genitive: currencyGenitive,
                     },
-                    ...(isEditMode && (isUserLead || isSuperadmin) ? { eventCreation } : {}),
+                    ...(isEditMode && (isUserLead || isSuperadmin)
+                        ? { eventCreation }
+                        : {}),
+                    ...(!isEditMode || isUserLead || isSuperadmin
+                        ? {
+                              documentsMode,
+                              documentCreators,
+                              ...(documentsMode !== "off"
+                                  ? {
+                                        documentVariantCost:
+                                            documentVariantCost.trim() === ""
+                                                ? null
+                                                : Math.max(
+                                                      0,
+                                                      parseInt(documentVariantCost, 10) || 0,
+                                                  ),
+                                        documentVotingDurationHours: Math.max(
+                                            1,
+                                            parseInt(documentVotingDurationHours, 10) || 48,
+                                        ),
+                                        documentDefaultMode,
+                                    }
+                                  : {}),
+                          }
+                        : {}),
                 },
             };
 
@@ -167,7 +216,6 @@ export const CommunityForm = ({
                         ...data,
                         ...(isSuperadmin && { isPriority }),
                         ...(!isFutureVisionHub && {
-                            futureVisionText: futureVisionText.trim() || undefined,
                             futureVisionTags:
                                 futureVisionTags.length > 0 ? futureVisionTags : undefined,
                             futureVisionCover: futureVisionCover.trim() || undefined,
@@ -176,10 +224,13 @@ export const CommunityForm = ({
                 });
                 router.push(`/meriter/communities/${communityId}`);
             } else {
+                const futureVisionPlain = concatOfficialPlainTextFromDraft(futureVisionDraft);
                 const createData = {
                     ...data,
+                    typeTag: "team",
                     ...(isSuperadmin && { isPriority }),
-                    futureVisionText: futureVisionText.trim(),
+                    futureVisionText: futureVisionPlain,
+                    futureVisionDocumentSeed: serializeDraftForApi(futureVisionDraft),
                     futureVisionTags: futureVisionTags.length > 0 ? futureVisionTags : undefined,
                     futureVisionCover: futureVisionCover.trim() || undefined,
                 };
@@ -207,18 +258,6 @@ export const CommunityForm = ({
     const isPending = isEditMode
         ? updateCommunity.isPending
         : createCommunity.isPending;
-
-    // Check if user is superadmin
-    const isSuperadmin = user?.globalRole === "superadmin";
-
-    // Check if user is lead/admin of this community
-    const isUserLead = useMemo(() => {
-        if (!communityId || !user?.id || !userRoles) return false;
-        const role = userRoles.find((r) => r.communityId === communityId);
-        return role?.role === "lead";
-    }, [communityId, user?.id, userRoles]);
-
-
 
 
     if (isEditMode && isLoading) {
@@ -341,23 +380,33 @@ export const CommunityForm = ({
             </BrandFormControl>
 
             {!isFutureVisionHub && (
-                <div className="border-t border-base-300 pt-6">
-                    <h2 className="text-lg font-semibold text-brand-text-primary mb-4">
-                        {t("futureVisionSection")}
-                    </h2>
-                    <div className="space-y-4 mb-6">
-                        <BrandFormControl label={t("futureVisionText")} required={!isEditMode}>
-                            <Textarea
-                                ref={futureVisionTextareaRef}
-                                id="community-future-vision-text"
-                                value={futureVisionText}
-                                onChange={(e) => setFutureVisionText(e.target.value)}
+                <div className="border-t border-base-300 pt-6 space-y-6">
+                    {isEditMode && communityId ? (
+                        <>
+                            <h2 className="text-lg font-semibold text-brand-text-primary">
+                                {isProjectCommunity ? t("projectDocumentSection") : t("futureVisionSection")}
+                            </h2>
+                            <Button variant="outline" className="rounded-xl active:scale-[0.98]" asChild>
+                            <Link href={routes.communityDocuments(communityId)}>
+                                {t("openCollaborativeDocument")}
+                            </Link>
+                        </Button>
+                        </>
+                    ) : (
+                        <BrandFormControl
+                            label={t("futureVisionSection")}
+                            required
+                        >
+                            <MeriterEditor
+                                mode="collaborative-document"
+                                value={futureVisionDraft}
+                                onChange={setFutureVisionDraft}
                                 placeholder={t("futureVisionPlaceholder")}
-                                maxLength={10000}
-                                rows={4}
-                                className="rounded-xl w-full"
+                                disabled={isPending}
                             />
                         </BrandFormControl>
+                    )}
+                    <div className="space-y-4">
                         <ValuesFormPickerFields
                             decree809Tags={rubricatorSections.decree809}
                             adminExtrasTags={rubricatorSections.adminExtras}
@@ -451,6 +500,104 @@ export const CommunityForm = ({
             {isEditMode && (isUserLead || isSuperadmin) && !isFutureVisionHub && (
                 <div className="border-t border-base-300 pt-6">
                     <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">
+                        {t("documentsSection")}
+                    </h2>
+                    <p className="mb-4 text-sm text-base-content/70">{t("documentsSectionHelp")}</p>
+                    <div className="mb-6 space-y-4">
+                        <BrandFormControl label={t("documentsModeLabel")}>
+                            <Select
+                                value={documentsMode}
+                                onValueChange={(v) =>
+                                    setDocumentsMode(v as "off" | "visionOrDescriptionOnly" | "all")
+                                }
+                                disabled={isPending}
+                            >
+                                <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="off">{t("documentsModeOff")}</SelectItem>
+                                    <SelectItem value="visionOrDescriptionOnly">
+                                        {t("documentsModeVisionOnly")}
+                                    </SelectItem>
+                                    <SelectItem value="all">{t("documentsModeAll")}</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </BrandFormControl>
+                        {documentsMode !== "off" ? (
+                            <>
+                                <BrandFormControl label={t("documentCreatorsLabel")}>
+                                    <Select
+                                        value={documentCreators}
+                                        onValueChange={(v) =>
+                                            setDocumentCreators(v as "admins" | "members")
+                                        }
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="admins">
+                                                {t("documentCreatorsAdmins")}
+                                            </SelectItem>
+                                            <SelectItem value="members">
+                                                {t("documentCreatorsMembers")}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </BrandFormControl>
+                                <BrandFormControl
+                                    label={t("documentVariantCostLabel")}
+                                    helperText={t("documentVariantCostHelp")}
+                                >
+                                    <Input
+                                        type="number"
+                                        min={0}
+                                        className="h-11 max-w-md rounded-xl"
+                                        value={documentVariantCost}
+                                        onChange={(e) => setDocumentVariantCost(e.target.value)}
+                                        disabled={isPending}
+                                        placeholder="1"
+                                    />
+                                </BrandFormControl>
+                                <BrandFormControl label={t("documentVotingDurationLabel")}>
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        className="h-11 max-w-md rounded-xl"
+                                        value={documentVotingDurationHours}
+                                        onChange={(e) =>
+                                            setDocumentVotingDurationHours(e.target.value)
+                                        }
+                                        disabled={isPending}
+                                    />
+                                </BrandFormControl>
+                                <BrandFormControl label={t("documentDefaultModeLabel")}>
+                                    <Select
+                                        value={documentDefaultMode}
+                                        onValueChange={(v) =>
+                                            setDocumentDefaultMode(v as "manual" | "auto")
+                                        }
+                                        disabled={isPending}
+                                    >
+                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="manual">
+                                                {t("documentDefaultModeManual")}
+                                            </SelectItem>
+                                            <SelectItem value="auto">
+                                                {t("documentDefaultModeAuto")}
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </BrandFormControl>
+                            </>
+                        ) : null}
+                    </div>
+                    <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">
                         {t("eventCreationSection")}
                     </h2>
                     <p className="mb-3 text-sm text-base-content/70">{t("eventCreationHelp")}</p>
@@ -477,7 +624,13 @@ export const CommunityForm = ({
                     variant="default"
                     size="lg"
                     onClick={handleSubmit}
-                    disabled={!name || (!isEditMode && !futureVisionText.trim()) || isPending}
+                    disabled={
+                        !name ||
+                        isPending ||
+                        (!isEditMode &&
+                            !isFutureVisionHub &&
+                            !documentDraftHasOfficialText(futureVisionDraft))
+                    }
                     className="rounded-xl active:scale-[0.98]"
                 >
                     {isPending && <Loader2 className="h-4 w-4 animate-spin" />}

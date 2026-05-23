@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-export type VotingTargetType = 'publication' | 'comment' | null;
+export type VotingTargetType = 'publication' | 'comment' | 'document-variant' | null;
 export type WithdrawTargetType = 'publication' | 'comment' | 'vote' | 'publication-topup' | 'comment-topup' | null;
 
 interface VotingFormData {
@@ -33,6 +33,9 @@ interface UIState {
   votingPublicationIsTask?: boolean;
   /** Accepted project task: allow weighted merits in popup (backend allows project appreciation). */
   votingTaskAllowWeightedMerits?: boolean;
+  votingCommunityId?: string | null;
+  votingDocumentVariantIsOwn?: boolean;
+  votingDocumentAllowDownvotes?: boolean;
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -54,7 +57,13 @@ interface UIActions {
     targetId: string,
     targetType: VotingTargetType,
     mode?: 'standard' | 'wallet-only' | 'quota-only',
-    opts?: { publicationIsTask?: boolean; taskAllowWeightedMerits?: boolean },
+    opts?: {
+      publicationIsTask?: boolean;
+      taskAllowWeightedMerits?: boolean;
+      communityId?: string;
+      documentVariantIsOwn?: boolean;
+      documentAllowDownvotes?: boolean;
+    },
   ) => void;
   closeVotingPopup: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
@@ -75,6 +84,9 @@ const initialState: UIState = {
   votingMode: 'standard',
   votingPublicationIsTask: false,
   votingTaskAllowWeightedMerits: false,
+  votingCommunityId: null,
+  votingDocumentVariantIsOwn: false,
+  votingDocumentAllowDownvotes: true,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -102,6 +114,9 @@ export const useUIStore = create<UIState & UIActions>()(
             votingMode: mode,
             votingPublicationIsTask: opts?.publicationIsTask === true,
             votingTaskAllowWeightedMerits: opts?.taskAllowWeightedMerits === true,
+            votingCommunityId: opts?.communityId ?? null,
+            votingDocumentVariantIsOwn: opts?.documentVariantIsOwn === true,
+            votingDocumentAllowDownvotes: opts?.documentAllowDownvotes !== false,
             activeVotingFormData: { comment: '', delta: 0, error: '', images: [] },
           }),
         closeVotingPopup: () =>
@@ -110,6 +125,9 @@ export const useUIStore = create<UIState & UIActions>()(
             votingTargetType: null,
             votingPublicationIsTask: false,
             votingTaskAllowWeightedMerits: false,
+            votingCommunityId: null,
+            votingDocumentVariantIsOwn: false,
+            votingDocumentAllowDownvotes: true,
             activeVotingFormData: null,
           }),
         updateVotingFormData: (data) => set((state) => ({

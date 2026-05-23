@@ -63,6 +63,10 @@ export function getNotificationIcon(type: NotificationType): string {
     case 'event_created':
     case 'event_invitation':
       return '📅';
+    case 'document_variant_won':
+    case 'document_variant_applied':
+    case 'document_block_admin_override':
+      return '📄';
     case 'shares_changed':
       return '📊';
     default:

@@ -61,6 +61,10 @@ import {
   TappalkaProgressSchema,
 } from './domain/models/tappalka/tappalka-progress.schema';
 import {
+  TappalkaSessionSchemaClass,
+  TappalkaSessionSchema,
+} from './domain/models/tappalka/tappalka-session.schema';
+import {
   TeamJoinRequestSchemaClass,
   TeamJoinRequestSchema,
 } from './domain/models/team-join-request/team-join-request.schema';
@@ -88,6 +92,14 @@ import {
   EventInviteSchemaClass,
   EventInviteSchema,
 } from './domain/models/event-invite/event-invite.schema';
+import {
+  MeriterDocumentSchemaClass,
+  MeriterDocumentSchema,
+} from './domain/models/meriter-document/meriter-document.schema';
+import {
+  DocumentBlockVariantSchemaClass,
+  DocumentBlockVariantSchema,
+} from './domain/models/document-block-variant/document-block-variant.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -135,8 +147,12 @@ import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.se
 import { PlatformDemoEventsSeedService } from './domain/services/platform-demo-events-seed.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
+import { CollaborativeDocumentsMigrationService } from './domain/services/collaborative-documents-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
 import { EventService } from './domain/services/event.service';
+import { DocumentService } from './domain/services/document.service';
+import { DocumentVariantService } from './domain/services/document-variant.service';
+import { DocumentStructureService } from './domain/services/document-structure.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -171,6 +187,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: AboutCategorySchemaClass.name, schema: AboutCategorySchema },
       { name: AboutArticleSchemaClass.name, schema: AboutArticleSchema },
       { name: TappalkaProgressSchemaClass.name, schema: TappalkaProgressSchema },
+      { name: TappalkaSessionSchemaClass.name, schema: TappalkaSessionSchema },
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
       {
         name: ProjectParentLinkRequestSchemaClass.name,
@@ -181,6 +198,11 @@ import { EventBus } from './domain/events/event-bus';
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
       { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
       { name: EventInviteSchemaClass.name, schema: EventInviteSchema },
+      { name: MeriterDocumentSchemaClass.name, schema: MeriterDocumentSchema },
+      {
+        name: DocumentBlockVariantSchemaClass.name,
+        schema: DocumentBlockVariantSchema,
+      },
     ]),
   ],
   providers: [
@@ -230,8 +252,12 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDemoEventsSeedService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
+    CollaborativeDocumentsMigrationService,
     MeritTransferService,
     EventService,
+    DocumentService,
+    DocumentVariantService,
+    DocumentStructureService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -290,6 +316,9 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
+    DocumentService,
+    DocumentVariantService,
+    DocumentStructureService,
 
     // Export vote factor services
     RoleHierarchyFactor,

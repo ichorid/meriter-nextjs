@@ -14,6 +14,7 @@ import { validationSchema } from './config/validation.schema';
 import { UpdatesConductorsModule } from './updates-conductors/updates-conductors.module';
 import { QuotaResetModule } from './domain/services/quota-reset.module';
 import { PostClosingCronModule } from './domain/services/post-closing-cron.module';
+import { DocumentWaveCronModule } from './domain/services/document-wave-cron.module';
 import { CommonServicesModule } from './common/services/common-services.module';
 import { TgBotsModule } from './tg-bots/tg-bots.module';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
@@ -48,6 +49,7 @@ import { TrpcModule } from './trpc/trpc.module';
     UpdatesConductorsModule,
     QuotaResetModule,
     PostClosingCronModule,
+    DocumentWaveCronModule,
     // TgBotsModule is always registered, but TgBotsService checks TELEGRAM_BOT_ENABLED flag internally
     // This allows the module to be available but the service methods will return early if disabled
     TgBotsModule,

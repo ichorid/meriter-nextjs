@@ -108,7 +108,7 @@ export const communitiesRouter = router({
 
   /**
    * Create a signed invite token (any member). Lead/superadmin → direct join on accept; participant → pending request.
-   * Client builds URL: /meriter/communities/{id}/join?t=...
+   * Client builds URL: /meriter/communities/{id}/join/{token} (legacy: ?t=...)
    */
   createCommunityInviteLink: protectedProcedure
     .input(z.object({ communityId: z.string().min(1) }))
@@ -401,6 +401,7 @@ export const communitiesRouter = router({
         linkedCurrencies: input.linkedCurrencies,
         typeTag: input.typeTag,
         futureVisionText: input.futureVisionText,
+        futureVisionDocumentSeed: input.futureVisionDocumentSeed,
         futureVisionTags: input.futureVisionTags,
         futureVisionCover: input.futureVisionCover,
       };
@@ -698,6 +699,98 @@ export const communitiesRouter = router({
           hasPrev: result.pagination.page > 1,
         },
       };
+    }),
+
+  /**
+   * Tab badge counts for community / project hub feed chrome.
+   */
+  getHubFeedTabCounts: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        tabs: z.array(z.enum(['posts', 'projects', 'events', 'birzha'])).min(1),
+        hubKind: z.enum(['community', 'project']).default('community'),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      const counts: Partial<
+        Record<'posts' | 'projects' | 'events' | 'birzha', number>
+      > = {};
+      const tabSet = new Set(input.tabs);
+      const isProjectHub =
+        input.hubKind === 'project' || isProjectCommunity(community);
+
+      const tasks: Promise<void>[] = [];
+
+      if (tabSet.has('posts')) {
+        tasks.push(
+          (async () => {
+            counts.posts = isProjectHub
+              ? await ctx.publicationService.countProjectHubPosts(input.communityId)
+              : await ctx.communityFeedService.countHubFeedPosts(input.communityId);
+          })(),
+        );
+      }
+
+      if (tabSet.has('projects') && !isProjectHub) {
+        tasks.push(
+          (async () => {
+            const list = await ctx.projectService.getGlobalList({
+              parentCommunityId: input.communityId,
+              page: 1,
+              pageSize: 1,
+            });
+            counts.projects = list.total;
+          })(),
+        );
+      }
+
+      if (tabSet.has('events')) {
+        tasks.push(
+          (async () => {
+            const grouped = await ctx.eventService.getEventsByCommunity(
+              input.communityId,
+            );
+            counts.events = grouped.upcoming.length + grouped.past.length;
+          })(),
+        );
+      }
+
+      if (tabSet.has('birzha')) {
+        tasks.push(
+          (async () => {
+            const canList = await ctx.communityService.isUserAdmin(
+              input.communityId,
+              ctx.user.id,
+            );
+            if (!canList) {
+              return;
+            }
+            const birzha = await ctx.communityService.getCommunityByTypeTag(
+              'marathon-of-good',
+            );
+            if (!birzha) {
+              return;
+            }
+            counts.birzha = await ctx.publicationService.countBirzhaPostsBySourceEntity(
+              birzha.id as string,
+              isProjectHub ? 'project' : 'community',
+              input.communityId,
+            );
+          })(),
+        );
+      }
+
+      await Promise.all(tasks);
+      return counts;
     }),
 
   /**

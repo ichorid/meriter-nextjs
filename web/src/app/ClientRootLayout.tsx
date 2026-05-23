@@ -116,7 +116,7 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
             messages={messages}
             timeZone="UTC"
           >
-            {/* CaptiveBrowserProvider must wrap both TelegramHint and routed content so login and tg-hint share the same captive state. */}
+            {/* CaptiveBrowserProvider wraps TelegramHint and routed content so captive detection stays in sync. */}
             <CaptiveBrowserProvider>
               <TelegramHint />
               <Suspense fallback={null}>

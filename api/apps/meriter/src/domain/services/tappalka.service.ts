@@ -16,6 +16,10 @@ import {
   TappalkaProgressSchemaClass,
   TappalkaProgressDocument,
 } from '../models/tappalka/tappalka-progress.schema';
+import {
+  TappalkaSessionSchemaClass,
+  TappalkaSessionDocument,
+} from '../models/tappalka/tappalka-session.schema';
 import { MeritService } from './merit.service';
 import { MeritResolverService } from './merit-resolver.service';
 import { WalletService } from './wallet.service';
@@ -46,6 +50,9 @@ import {
 export class TappalkaService {
   private readonly logger = new Logger(TappalkaService.name);
 
+  /** One-time comparison token lifetime (server-enforced). */
+  private static readonly SESSION_TTL_MS = 10 * 60 * 1000;
+
   constructor(
     @InjectModel(PublicationSchemaClass.name)
     private publicationModel: Model<PublicationDocument>,
@@ -53,6 +60,8 @@ export class TappalkaService {
     private communityModel: Model<CommunityDocument>,
     @InjectModel(TappalkaProgressSchemaClass.name)
     private tappalkaProgressModel: Model<TappalkaProgressDocument>,
+    @InjectModel(TappalkaSessionSchemaClass.name)
+    private tappalkaSessionModel: Model<TappalkaSessionDocument>,
     private meritService: MeritService,
     private meritResolverService: MeritResolverService,
     private walletService: WalletService,
@@ -223,8 +232,21 @@ export class TappalkaService {
     const tappalkaPostA = await this.mapPostToTappalkaPost(postA);
     const tappalkaPostB = await this.mapPostToTappalkaPost(postB);
 
-    // Generate session ID
     const sessionId = randomUUID();
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + TappalkaService.SESSION_TTL_MS);
+
+    await this.tappalkaSessionModel.create({
+      id: sessionId,
+      userId,
+      communityId,
+      postAId: String(postA.id),
+      postBId: String(postB.id),
+      status: 'pending',
+      expiresAt,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     this.logger.debug(
       `Generated tappalka pair: sessionId=${sessionId}, postA=${postA.id}, postB=${postB.id}`,
@@ -235,6 +257,74 @@ export class TappalkaService {
       postB: tappalkaPostB,
       sessionId,
     };
+  }
+
+  private assertChoiceMatchesSession(
+    session: Pick<TappalkaSessionDocument, 'postAId' | 'postBId'>,
+    winnerPostId: string,
+    loserPostId: string,
+  ): void {
+    const allowed = new Set([session.postAId, session.postBId]);
+    if (
+      !allowed.has(winnerPostId) ||
+      !allowed.has(loserPostId) ||
+      winnerPostId === loserPostId
+    ) {
+      throw new Error('Choice does not match comparison pair');
+    }
+  }
+
+  private async claimComparisonSession(
+    sessionId: string,
+    userId: string,
+  ): Promise<TappalkaSessionDocument | null> {
+    const now = new Date();
+    return this.tappalkaSessionModel
+      .findOneAndUpdate(
+        {
+          id: sessionId,
+          userId,
+          status: 'pending',
+          expiresAt: { $gt: now },
+        },
+        { $set: { status: 'processing', updatedAt: now } },
+        { new: true },
+      )
+      .exec();
+  }
+
+  private async finalizeComparisonSession(
+    sessionId: string,
+    result: TappalkaChoiceResult,
+  ): Promise<void> {
+    const now = new Date();
+    await this.tappalkaSessionModel
+      .updateOne(
+        { id: sessionId, status: 'processing' },
+        {
+          $set: {
+            status: 'consumed',
+            consumedAt: now,
+            storedResult: result,
+            updatedAt: now,
+          },
+        },
+      )
+      .exec();
+  }
+
+  private async getReplayedChoiceResult(
+    sessionId: string,
+    userId: string,
+  ): Promise<TappalkaChoiceResult | null> {
+    const session = await this.tappalkaSessionModel
+      .findOne({ id: sessionId, userId, status: 'consumed' })
+      .lean()
+      .exec();
+    if (!session?.storedResult) {
+      return null;
+    }
+    return session.storedResult as TappalkaChoiceResult;
   }
 
   private static readonly TAPPALKA_SUMMARY_MAX_CHARS = 500;
@@ -320,6 +410,57 @@ export class TappalkaService {
    * - Return next pair for seamless UX
    */
   async submitChoice(
+    communityId: string,
+    userId: string,
+    sessionId: string,
+    winnerPostId: string,
+    loserPostId: string,
+  ): Promise<TappalkaChoiceResult> {
+    const replayed = await this.getReplayedChoiceResult(sessionId, userId);
+    if (replayed) {
+      return replayed;
+    }
+
+    const claimed = await this.claimComparisonSession(sessionId, userId);
+    if (!claimed) {
+      const replayedAfterRace = await this.getReplayedChoiceResult(sessionId, userId);
+      if (replayedAfterRace) {
+        return replayedAfterRace;
+      }
+      throw new Error('Invalid or expired comparison session');
+    }
+
+    if (claimed.communityId !== communityId) {
+      throw new Error('Invalid comparison session');
+    }
+
+    this.assertChoiceMatchesSession(claimed, winnerPostId, loserPostId);
+
+    try {
+      return await this.executeSubmitChoice(
+        communityId,
+        userId,
+        sessionId,
+        winnerPostId,
+        loserPostId,
+      );
+    } catch (error) {
+      await this.releaseProcessingSession(sessionId);
+      throw error;
+    }
+  }
+
+  private async releaseProcessingSession(sessionId: string): Promise<void> {
+    const now = new Date();
+    await this.tappalkaSessionModel
+      .updateOne(
+        { id: sessionId, status: 'processing' },
+        { $set: { status: 'pending', updatedAt: now } },
+      )
+      .exec();
+  }
+
+  private async executeSubmitChoice(
     communityId: string,
     userId: string,
     sessionId: string,
@@ -419,6 +560,8 @@ export class TappalkaService {
       // If no next pair, indicate that there are no more posts
       result.noMorePosts = true;
     }
+
+    await this.finalizeComparisonSession(sessionId, result);
 
     return result;
   }

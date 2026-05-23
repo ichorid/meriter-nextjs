@@ -62,6 +62,10 @@ export class PollService {
     await this.pollModel.deleteOne({ id }).exec();
   }
 
+  async countActivePollsByCommunity(communityId: string): Promise<number> {
+    return this.pollModel.countDocuments({ communityId, isActive: true });
+  }
+
   async getPollsByCommunity(
     communityId: string, 
     limit: number = 20, 

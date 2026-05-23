@@ -173,7 +173,12 @@ export class WalletService {
     let transactionType: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
     if (referenceType === 'publication_withdrawal' || referenceType === 'comment_withdrawal') {
       transactionType = 'withdrawal';
-    } else if (referenceType === 'vote' || referenceType === 'publication_vote' || referenceType === 'comment_vote') {
+    } else if (
+      referenceType === 'vote' ||
+      referenceType === 'publication_vote' ||
+      referenceType === 'comment_vote' ||
+      referenceType === 'document_variant_vote'
+    ) {
       transactionType = 'vote';
     } else if (referenceType === 'comment') {
       transactionType = 'comment';

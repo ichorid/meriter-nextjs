@@ -18,7 +18,14 @@ export interface QuotaUsage {
   userId: string;
   communityId: string;
   amountQuota: number;
-  usageType: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
+  usageType:
+    | 'vote'
+    | 'poll_cast'
+    | 'publication_creation'
+    | 'poll_creation'
+    | 'forward'
+    | 'forward_proposal'
+    | 'document_variant_proposal';
   referenceId: string; // ID of publication, poll, vote, or poll_cast
   createdAt: Date;
 }
@@ -38,10 +45,19 @@ export class QuotaUsageSchemaClass implements QuotaUsage {
   amountQuota!: number;
 
   @Prop({
+    type: String,
     required: true,
-    enum: ['vote', 'poll_cast', 'publication_creation', 'poll_creation', 'forward', 'forward_proposal'],
+    enum: [
+      'vote',
+      'poll_cast',
+      'publication_creation',
+      'poll_creation',
+      'forward',
+      'forward_proposal',
+      'document_variant_proposal',
+    ],
   })
-  usageType!: 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
+  usageType!: QuotaUsage['usageType'];
 
   @Prop({ required: true })
   referenceId!: string; // ID of publication, poll, vote, or poll_cast

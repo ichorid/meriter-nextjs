@@ -25,6 +25,7 @@ import { PublicationCardComponent } from '@/components/organisms/Publication';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { trpc } from '@/lib/trpc/client';
 import { useWallets } from '@/hooks/api';
+import type { TappalkaChoiceResult } from '@meriter/shared-types';
 
 interface TappalkaScreenProps {
   communityId: string;
@@ -52,6 +53,10 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const [dragHintShown, setDragHintShown] = useState(0);
   const dragHintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  /** Prevents duplicate submitChoice for the same gesture (card drop + drag end). */
+  const submitHandledSessionRef = useRef<string | null>(null);
+
+  const utils = trpc.useUtils();
 
   // Hooks
   const { data: progress, isLoading: progressLoading } = useTappalkaProgress(communityId);
@@ -77,8 +82,21 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       setDraggedPostId(null);
       setDropTargetPostId(null);
       setIsDragging(false);
+      submitHandledSessionRef.current = null;
     }
   }, [pair?.sessionId, votedSessionId]);
+
+  const applyChoiceResult = useCallback(
+    (result: TappalkaChoiceResult) => {
+      if (result.nextPair) {
+        utils.tappalka.getPair.setData({ communityId }, result.nextPair);
+      } else if (result.noMorePosts) {
+        utils.tappalka.getPair.setData({ communityId }, undefined);
+      }
+      void utils.tappalka.getProgress.invalidate({ communityId });
+    },
+    [communityId, utils],
+  );
 
   // Check if voting is disabled for current pair (must be before useEffect that uses it)
   const isVotingDisabled = pair ? votedSessionId === pair.sessionId : false;
@@ -155,13 +173,19 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   // Handle drop on post
   const handlePostDrop = useCallback(
     async (postId: string) => {
-      // Prevent multiple votes for the same pair
-      if (!pair || isSubmitting || !draggedPostId || votedSessionId === pair.sessionId) return;
+      if (!pair || isSubmitting || !draggedPostId) return;
+      if (
+        submitHandledSessionRef.current === pair.sessionId ||
+        votedSessionId === pair.sessionId
+      ) {
+        return;
+      }
 
       const otherPostId = postId === pair.postA.id ? pair.postB.id : pair.postA.id;
+      const sessionId = pair.sessionId;
 
-      // Immediately mark this session as voted to prevent duplicate votes
-      setVotedSessionId(pair.sessionId);
+      submitHandledSessionRef.current = sessionId;
+      setVotedSessionId(sessionId);
       setSelectedPostId(postId);
       setIsSubmitting(true);
       setDraggedPostId(null);
@@ -170,12 +194,13 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       try {
         const result = await submitChoice.mutateAsync({
           communityId,
-          sessionId: pair.sessionId,
+          sessionId,
           winnerPostId: postId,
           loserPostId: otherPostId,
         });
 
-        // Show success message if reward earned
+        applyChoiceResult(result);
+
         if (result.rewardEarned && result.userMeritsEarned) {
           addToast(
             t('congratulationsMerits', {
@@ -186,38 +211,41 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
           );
         }
 
-        // Quickly switch to next pair (short delay for visual feedback)
-        if (result.nextPair) {
-          setTimeout(() => {
-            refetchPair();
-            setSelectedPostId(null);
-            setVotedSessionId(null);
-          }, 300); // Short delay for visual feedback
-        } else if (result.noMorePosts) {
+        if (result.noMorePosts) {
           addToast(t('noMorePosts'), 'info');
-          setTimeout(() => {
-            setSelectedPostId(null);
-            setVotedSessionId(null);
-          }, 300);
-        } else {
-          // Refetch to get next pair
-          setTimeout(() => {
-            refetchPair();
-            setSelectedPostId(null);
-            setVotedSessionId(null);
-          }, 300);
         }
+
+        if (!result.nextPair && !result.noMorePosts) {
+          void refetchPair();
+        }
+
+        setSelectedPostId(null);
+        setVotedSessionId(null);
+        submitHandledSessionRef.current = null;
       } catch (error) {
         console.error('Failed to submit choice:', error);
         const raw = error instanceof Error ? error.message : undefined;
         addToast(resolveApiErrorToastMessage(raw), 'error');
         setSelectedPostId(null);
         setVotedSessionId(null);
+        submitHandledSessionRef.current = null;
       } finally {
         setIsSubmitting(false);
       }
     },
-    [pair, isSubmitting, draggedPostId, votedSessionId, communityId, submitChoice, progress, addToast, refetchPair],
+    [
+      pair,
+      isSubmitting,
+      draggedPostId,
+      votedSessionId,
+      communityId,
+      submitChoice,
+      progress,
+      addToast,
+      applyChoiceResult,
+      refetchPair,
+      t,
+    ],
   );
 
   // Handle drag end (releasePoint for mobile touch: drop on card under finger)
@@ -227,7 +255,12 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
         const el = document.elementFromPoint(releasePoint.x, releasePoint.y);
         const card = el?.closest('[data-tappalka-post-id]');
         const postId = card?.getAttribute('data-tappalka-post-id');
-        if (postId && (postId === pair?.postA.id || postId === pair?.postB.id)) {
+        if (
+          postId &&
+          pair &&
+          submitHandledSessionRef.current !== pair.sessionId &&
+          (postId === pair.postA.id || postId === pair.postB.id)
+        ) {
           handlePostDrop(postId);
         }
       }

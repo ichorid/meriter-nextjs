@@ -17,6 +17,10 @@ import {
   TappalkaProgressSchemaClass,
   TappalkaProgressDocument,
 } from '../src/domain/models/tappalka/tappalka-progress.schema';
+import {
+  TappalkaSessionSchemaClass,
+  TappalkaSessionDocument,
+} from '../src/domain/models/tappalka/tappalka-session.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../src/domain/models/wallet/wallet.schema';
 import { uid } from 'uid';
@@ -32,6 +36,7 @@ describe('TappalkaService', () => {
   let publicationModel: Model<PublicationDocument>;
   let communityModel: Model<CommunityDocument>;
   let tappalkaProgressModel: Model<TappalkaProgressDocument>;
+  let tappalkaSessionModel: Model<TappalkaSessionDocument>;
   let userModel: Model<UserDocument>;
   let walletModel: Model<WalletDocument>;
 
@@ -60,6 +65,9 @@ describe('TappalkaService', () => {
     tappalkaProgressModel = connection.model<TappalkaProgressDocument>(
       TappalkaProgressSchemaClass.name,
     );
+    tappalkaSessionModel = connection.model<TappalkaSessionDocument>(
+      TappalkaSessionSchemaClass.name,
+    );
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
     walletModel = connection.model<WalletDocument>(WalletSchemaClass.name);
 
@@ -75,6 +83,7 @@ describe('TappalkaService', () => {
     await publicationModel.deleteMany({});
     await communityModel.deleteMany({});
     await tappalkaProgressModel.deleteMany({});
+    await tappalkaSessionModel.deleteMany({});
     await userModel.deleteMany({});
     await walletModel.deleteMany({});
   });
@@ -143,6 +152,49 @@ describe('TappalkaService', () => {
       ...overrides,
     };
     return await publicationModel.create(publicationData);
+  }
+
+  async function createTappalkaSession(
+    userId: string,
+    communityId: string,
+    postAId: string,
+    postBId: string,
+  ): Promise<string> {
+    const sessionId = uid();
+    const now = new Date();
+    await tappalkaSessionModel.create({
+      id: sessionId,
+      userId,
+      communityId,
+      postAId,
+      postBId,
+      status: 'pending',
+      expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    return sessionId;
+  }
+
+  async function submitChoiceForPosts(
+    communityId: string,
+    userId: string,
+    winnerPostId: string,
+    loserPostId: string,
+  ) {
+    const sessionId = await createTappalkaSession(
+      userId,
+      communityId,
+      winnerPostId,
+      loserPostId,
+    );
+    return tappalkaService.submitChoice(
+      communityId,
+      userId,
+      sessionId,
+      winnerPostId,
+      loserPostId,
+    );
   }
 
   // Helper function to create a test user
@@ -403,16 +455,37 @@ describe('TappalkaService', () => {
   });
 
   describe('submitChoice', () => {
+    it('should throw error if session is invalid or expired', async () => {
+      await createTestCommunityWithTappalka();
+
+      await expect(
+        tappalkaService.submitChoice(
+          testCommunityId,
+          testUserId,
+          'non-existent-session',
+          'post1',
+          'post2',
+        ),
+      ).rejects.toThrow('Invalid or expired comparison session');
+    });
+
     it('should throw error if community not found', async () => {
+      const sessionId = await createTappalkaSession(
+        testUserId,
+        testCommunityId,
+        'post1',
+        'post2',
+      );
+
       await expect(
         tappalkaService.submitChoice(
           'non-existent',
           testUserId,
-          'session-id',
+          sessionId,
           'post1',
           'post2',
         ),
-      ).rejects.toThrow('Community not found');
+      ).rejects.toThrow('Invalid comparison session');
     });
 
     it('should throw error if tappalka is not enabled', async () => {
@@ -427,11 +500,18 @@ describe('TappalkaService', () => {
         updatedAt: now,
       });
 
+      const sessionId = await createTappalkaSession(
+        testUserId,
+        testCommunityId,
+        'post1',
+        'post2',
+      );
+
       await expect(
         tappalkaService.submitChoice(
           testCommunityId,
           testUserId,
-          'session-id',
+          sessionId,
           'post1',
           'post2',
         ),
@@ -441,11 +521,18 @@ describe('TappalkaService', () => {
     it('should throw error if posts no longer available', async () => {
       await createTestCommunityWithTappalka();
 
+      const sessionId = await createTappalkaSession(
+        testUserId,
+        testCommunityId,
+        'non-existent-post',
+        'non-existent-post2',
+      );
+
       await expect(
         tappalkaService.submitChoice(
           testCommunityId,
           testUserId,
-          'session-id',
+          sessionId,
           'non-existent-post',
           'non-existent-post2',
         ),
@@ -468,10 +555,9 @@ describe('TappalkaService', () => {
       const winner = await createTestPublication(testUserId2, { 'metrics.score': 10 });
       const loser = await createTestPublication(testUserId2, { 'metrics.score': 10 });
 
-      await tappalkaService.submitChoice(
+      await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id',
         winner.id,
         loser.id,
       );
@@ -499,10 +585,9 @@ describe('TappalkaService', () => {
       const winner = await createTestPublication(testUserId2, { 'metrics.score': 5 });
       const loser = await createTestPublication(testUserId2, { 'metrics.score': 5 });
 
-      await tappalkaService.submitChoice(
+      await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id',
         winner.id,
         loser.id,
       );
@@ -519,10 +604,9 @@ describe('TappalkaService', () => {
       const winner = await createTestPublication(testUserId2);
       const loser = await createTestPublication(testUserId2);
 
-      await tappalkaService.submitChoice(
+      await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id',
         winner.id,
         loser.id,
       );
@@ -567,10 +651,9 @@ describe('TappalkaService', () => {
       const loser1 = await createTestPublication(testUserId2);
 
       // First comparison (count = 1)
-      await tappalkaService.submitChoice(
+      await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id-1',
         winner1.id,
         loser1.id,
       );
@@ -585,10 +668,9 @@ describe('TappalkaService', () => {
       const loser2 = await createTestPublication(testUserId2);
 
       // Second comparison (count = 2, should trigger reward)
-      const result = await tappalkaService.submitChoice(
+      const result = await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id-2',
         winner2.id,
         loser2.id,
       );
@@ -618,10 +700,9 @@ describe('TappalkaService', () => {
       const loser = await createTestPublication(testUserId2);
       await createTestPublication(testUserId2); // Extra post for next pair
 
-      const result = await tappalkaService.submitChoice(
+      const result = await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id',
         winner.id,
         loser.id,
       );
@@ -641,10 +722,9 @@ describe('TappalkaService', () => {
       const loser = await createTestPublication(testUserId2);
       // No more posts - only these 2 posts exist
 
-      const result = await tappalkaService.submitChoice(
+      const result = await submitChoiceForPosts(
         testCommunityId,
         testUserId,
-        'session-id',
         winner.id,
         loser.id,
       );
@@ -663,6 +743,47 @@ describe('TappalkaService', () => {
         // If no nextPair, noMorePosts should be true
         expect(result.noMorePosts).toBe(true);
       }
+    });
+
+    it('should be idempotent when the same session is submitted twice', async () => {
+      await createTestCommunityWithTappalka();
+      await createTestUserDoc({ id: testUserId });
+      await createTestUserDoc({ id: testUserId2 });
+
+      const winner = await createTestPublication(testUserId2, { 'metrics.score': 10 });
+      const loser = await createTestPublication(testUserId2, { 'metrics.score': 10 });
+      const sessionId = await createTappalkaSession(
+        testUserId,
+        testCommunityId,
+        winner.id,
+        loser.id,
+      );
+
+      const first = await tappalkaService.submitChoice(
+        testCommunityId,
+        testUserId,
+        sessionId,
+        winner.id,
+        loser.id,
+      );
+      const second = await tappalkaService.submitChoice(
+        testCommunityId,
+        testUserId,
+        sessionId,
+        winner.id,
+        loser.id,
+      );
+
+      expect(second.newComparisonCount).toBe(first.newComparisonCount);
+      expect(second.rewardEarned).toBe(first.rewardEarned);
+
+      const progress = await tappalkaProgressModel
+        .findOne({ userId: testUserId, communityId: testCommunityId })
+        .lean();
+      expect(progress?.comparisonCount).toBe(1);
+
+      const updatedWinner = await publicationModel.findOne({ id: winner.id }).lean();
+      expect(updatedWinner?.metrics.score).toBe(10.9);
     });
   });
 

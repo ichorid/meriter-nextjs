@@ -6,6 +6,28 @@
 import type { RedirectResult, RouteRedirectOptions } from './types';
 import { isStaticRoute, isDynamicRoute } from './route-patterns';
 
+export interface RootRedirectInput {
+  hasJwt: boolean;
+  tgWebAppStartParam?: string | null;
+}
+
+/**
+ * Target path for `/` — shared by middleware (edge) and ClientRouter (browser).
+ */
+export function getRootRedirectPath(input: RootRedirectInput): string {
+  const { hasJwt, tgWebAppStartParam } = input;
+
+  if (tgWebAppStartParam) {
+    return `/meriter/login?tgWebAppStartParam=${encodeURIComponent(tgWebAppStartParam)}`;
+  }
+
+  if (hasJwt) {
+    return '/meriter/profile';
+  }
+
+  return '/meriter/login';
+}
+
 /**
  * Check if user has JWT cookie (is authenticated)
  */
@@ -21,28 +43,23 @@ function hasJwtCookie(): boolean {
  */
 function handleRootRedirect(options: RouteRedirectOptions): RedirectResult {
   const { tgWebAppStartParam } = options;
+  const hasJwt = hasJwtCookie();
+  const targetPath = getRootRedirectPath({
+    hasJwt,
+    tgWebAppStartParam: tgWebAppStartParam ?? null,
+  });
 
+  let reason: RedirectResult['reason'] = 'unauthenticated_root';
   if (tgWebAppStartParam) {
-    return {
-      shouldRedirect: true,
-      targetPath: `/meriter/login?tgWebAppStartParam=${encodeURIComponent(tgWebAppStartParam)}`,
-      reason: 'telegram_web_app_start_param',
-    };
-  }
-
-  // Check authentication status
-  if (hasJwtCookie()) {
-    return {
-      shouldRedirect: true,
-      targetPath: '/meriter/profile',
-      reason: 'authenticated_root',
-    };
+    reason = 'telegram_web_app_start_param';
+  } else if (hasJwt) {
+    reason = 'authenticated_root';
   }
 
   return {
     shouldRedirect: true,
-    targetPath: '/meriter/login',
-    reason: 'unauthenticated_root',
+    targetPath,
+    reason,
   };
 }
 

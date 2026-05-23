@@ -215,11 +215,29 @@ function shouldUseProjectInstantAppreciation(
  * Helper to get communityId from target
  */
 async function getCommunityIdFromTarget(
-  targetType: 'publication' | 'vote',
+  targetType: 'publication' | 'vote' | 'document-variant',
   targetId: string,
   publicationService: any,
   voteService: any,
+  documentService: any,
 ): Promise<string> {
+  if (targetType === 'document-variant') {
+    const variant = await documentService.getVariantById(targetId);
+    if (!variant) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document variant not found',
+      });
+    }
+    const doc = await documentService.getById(variant.documentId);
+    if (!doc) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document not found',
+      });
+    }
+    return doc.communityId;
+  }
   if (targetType === 'publication') {
     const publication = await publicationService.getPublication(targetId);
     if (!publication) {
@@ -229,17 +247,15 @@ async function getCommunityIdFromTarget(
       });
     }
     return publication.getCommunityId.getValue();
-  } else {
-    // targetType === 'vote'
-    const vote = await voteService.getVoteById(targetId);
-    if (!vote) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Vote not found',
-      });
-    }
-    return vote.communityId;
   }
+  const vote = await voteService.getVoteById(targetId);
+  if (!vote) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Vote not found',
+    });
+  }
+  return vote.communityId;
 }
 
 /**
@@ -248,7 +264,7 @@ async function getCommunityIdFromTarget(
 export async function createVoteLogic(
   ctx: any,
   input: {
-    targetType: 'publication' | 'vote';
+    targetType: 'publication' | 'vote' | 'document-variant';
     targetId: string;
     quotaAmount?: number;
     walletAmount?: number;
@@ -260,7 +276,31 @@ export async function createVoteLogic(
   let publicationDoc: Awaited<
     ReturnType<typeof ctx.publicationService.getPublicationDocument>
   > | null = null;
-  if (input.targetType === 'publication') {
+
+  let documentVoteCtx:
+    | {
+        variant: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getVariantById>>>;
+        doc: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getById>>>;
+      }
+    | undefined;
+
+  if (input.targetType === 'document-variant') {
+    const variant = await ctx.documentService.getVariantById(input.targetId);
+    if (!variant || variant.deleted || variant.status !== 'open') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This document variant is not open for voting',
+      });
+    }
+    const doc = await ctx.documentService.getById(variant.documentId);
+    if (!doc || doc.deleted) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document not found',
+      });
+    }
+    documentVoteCtx = { variant, doc };
+  } else if (input.targetType === 'publication') {
     publicationDoc = await ctx.publicationService.getPublicationDocument(
       input.targetId,
     );
@@ -308,6 +348,17 @@ export async function createVoteLogic(
         message: 'You do not have permission to vote on this comment',
       });
     }
+  } else if (input.targetType === 'document-variant') {
+    const canVote = await ctx.permissionService.canVoteOnDocumentVariant(
+      ctx.user.id,
+      input.targetId,
+    );
+    if (!canVote) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to vote on this document variant',
+      });
+    }
   }
 
   // Get communityId from target
@@ -316,6 +367,7 @@ export async function createVoteLogic(
     input.targetId,
     ctx.publicationService,
     ctx.voteService,
+    ctx.documentService,
   );
 
   // Get community
@@ -325,6 +377,28 @@ export async function createVoteLogic(
       code: 'NOT_FOUND',
       message: 'Community not found',
     });
+  }
+
+  if (input.targetType === 'document-variant' && documentVoteCtx) {
+    const documentsMode =
+      community.settings?.documentsMode ?? 'visionOrDescriptionOnly';
+    if (documentsMode === 'off') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Collaborative documents are disabled in this community',
+      });
+    }
+    if (
+      !ctx.documentService.isDocumentBlockVotingOpen(
+        documentVoteCtx.doc,
+        documentVoteCtx.variant.blockId,
+      )
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Voting for this document block wave has ended',
+      });
+    }
   }
 
   const isTicketPublication = publicationDoc?.postType === 'ticket';
@@ -440,8 +514,18 @@ export async function createVoteLogic(
   // Default to "up" when not specified. Downvotes must be explicit.
   const direction: 'up' | 'down' = input.direction ?? 'up';
 
+  if (input.targetType === 'document-variant' && !input.comment?.trim()) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Comment is required when voting on document variants',
+    });
+  }
+
   // Future Vision (OB): wallet-only on posts/comments; comment required for weighted votes
-  if (community?.typeTag === 'future-vision' && (input.targetType === 'publication' || input.targetType === 'vote')) {
+  if (
+    community?.typeTag === 'future-vision' &&
+    (input.targetType === 'publication' || input.targetType === 'vote')
+  ) {
     if (!input.comment?.trim()) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
@@ -455,6 +539,18 @@ export async function createVoteLogic(
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'Downvotes are disabled in this community',
+    });
+  }
+
+  if (
+    input.targetType === 'document-variant' &&
+    direction === 'down' &&
+    documentVoteCtx &&
+    documentVoteCtx.doc.allowDownvotes === false
+  ) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Downvotes are disabled for this document',
     });
   }
 
@@ -474,7 +570,9 @@ export async function createVoteLogic(
 
   // Backward compatibility: Special case: Future Vision blocks quota voting (wallet only) for posts/comments (if currencySource not set).
   if (
-    (input.targetType === 'publication' || input.targetType === 'vote') &&
+    (input.targetType === 'publication' ||
+      input.targetType === 'vote' ||
+      input.targetType === 'document-variant') &&
     community?.typeTag === 'future-vision' &&
     !currencySource &&
     requestedQuotaAmount > 0
@@ -592,33 +690,68 @@ export async function createVoteLogic(
         ctx.user.id,
         communityId,
       );
-      const allowNonMemberMerit =
-        publicationDoc &&
-        (publicationDoc.postType === 'discussion' ||
-          (publicationDoc.postType === 'ticket' &&
-            publicationDoc.ticketStatus === 'closed' &&
-            ticketHasWorkAccepted(publicationDoc)));
-      if (!memberRole && !allowNonMemberMerit) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Only project members can vote with merits in this project',
-        });
+      if (input.targetType === 'document-variant') {
+        if (!memberRole) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only project members can vote with merits in this project',
+          });
+        }
+      } else {
+        const allowNonMemberMerit =
+          publicationDoc &&
+          (publicationDoc.postType === 'discussion' ||
+            (publicationDoc.postType === 'ticket' &&
+              publicationDoc.ticketStatus === 'closed' &&
+              ticketHasWorkAccepted(publicationDoc)));
+        if (!memberRole && !allowNonMemberMerit) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only project members can vote with merits in this project',
+          });
+        }
       }
     }
   }
 
-  // Create vote
-  const vote = await ctx.voteService.createVote(
-    ctx.user.id,
-    input.targetType,
-    input.targetId,
-    quotaAmount,
-    walletAmount,
-    direction,
-    input.comment || '',
-    communityId,
-    input.images,
-  );
+  // Create vote (document-variant rating is updated in the same transaction)
+  let vote: Awaited<ReturnType<typeof ctx.voteService.createVote>>;
+  if (input.targetType === 'document-variant') {
+    const totalAmount = quotaAmount + walletAmount;
+    const delta = direction === 'up' ? totalAmount : -totalAmount;
+    const session = await ctx.connection.startSession();
+    try {
+      await session.withTransaction(async () => {
+        vote = await ctx.voteService.createVote(
+          ctx.user.id,
+          input.targetType,
+          input.targetId,
+          quotaAmount,
+          walletAmount,
+          direction,
+          input.comment || '',
+          communityId,
+          input.images,
+          session,
+        );
+        await ctx.documentService.applyRatingDelta(input.targetId, delta, session);
+      });
+    } finally {
+      await session.endSession();
+    }
+  } else {
+    vote = await ctx.voteService.createVote(
+      ctx.user.id,
+      input.targetType,
+      input.targetId,
+      quotaAmount,
+      walletAmount,
+      direction,
+      input.comment || '',
+      communityId,
+      input.images,
+    );
+  }
 
   // Update publication metrics if voting on a publication.
   // Project instant appreciation: credit beneficiary wallet AND update publication metrics (rating UI / lists).
@@ -664,7 +797,11 @@ export async function createVoteLogic(
   // Deduct from wallet if wallet amount was used (global for priority, community for local)
   if (walletAmount > 0) {
     const transactionType =
-      input.targetType === 'publication' ? 'publication_vote' : 'vote_vote';
+      input.targetType === 'publication'
+        ? 'publication_vote'
+        : input.targetType === 'vote'
+          ? 'vote_vote'
+          : 'document_variant_vote';
     const targetCommunity =
       walletCommunityId === GLOBAL_COMMUNITY_ID
         ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
@@ -732,10 +869,16 @@ export const votesRouter = router({
           message: 'Voting on comments is not supported. Use targetType "vote" to vote on comments.',
         });
       }
-      if (!input.targetType || (input.targetType !== 'publication' && input.targetType !== 'vote')) {
+      if (
+        !input.targetType ||
+        (input.targetType !== 'publication' &&
+          input.targetType !== 'vote' &&
+          input.targetType !== 'document-variant')
+      ) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'targetType must be "publication" or "vote"',
+          message:
+            'targetType must be "publication", "vote", or "document-variant"',
         });
       }
       return createVoteLogic(ctx, {

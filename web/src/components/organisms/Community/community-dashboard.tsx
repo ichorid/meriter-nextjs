@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { Users } from 'lucide-react';
+import { ChevronRight, FileText, Users } from 'lucide-react';
 import { CommunityWalletCard } from './CommunityWalletCard';
 import { CommunityWalletPayoutDialog } from './CommunityWalletPayoutDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { useCommunitySourceWallet } from '@/hooks/api/useCommunities';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
+import { useAuth } from '@/contexts/AuthContext';
 
 const cardShell =
   'flex min-h-0 flex-col rounded-xl border border-base-300 bg-base-200/60 p-4 dark:border-base-content/10 dark:bg-base-200/40 md:h-full';
@@ -30,6 +31,7 @@ export function CommunityDashboard({
   readOnly = false,
   isCommunityMember = false,
 }: CommunityDashboardProps) {
+  const { user } = useAuth();
   const tCommunities = useTranslations('pages.communities');
   const [payoutOpen, setPayoutOpen] = useState(false);
   const { data: wallet } = useCommunitySourceWallet(communityId);
@@ -86,6 +88,23 @@ export function CommunityDashboard({
           </div>
         </div>
       </div>
+      {user?.id ? (
+        <Link
+          href={routes.communityDocuments(communityId)}
+          className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60 dark:border-base-content/10"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <FileText className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
+            <span className="truncate font-medium text-base-content">
+              {tCommunities('communityDocuments')}
+            </span>
+          </div>
+          <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
+            {tCommunities('all')}
+            <ChevronRight size={14} />
+          </span>
+        </Link>
+      ) : null}
       {canPayout && !readOnly && (
         <CommunityWalletPayoutDialog
           communityId={communityId}

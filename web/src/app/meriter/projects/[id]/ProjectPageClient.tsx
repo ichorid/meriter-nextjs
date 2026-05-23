@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { trpc } from '@/lib/trpc/client';
 import { useProject, useLeaveProject, useProjectMembers } from '@/hooks/api/useProjects';
 import { ProjectHero } from '@/components/organisms/Project/project-hero';
 import { ProjectParentSettingsCard } from '@/components/organisms/Project/ProjectParentSettingsCard';
@@ -83,6 +84,33 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     if (v === 'events' || v === 'birzha') return v;
     return 'posts' as const;
   }, [searchParams]);
+
+  const documentsMode =
+    (data?.project?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
+    'visionOrDescriptionOnly';
+
+  const descriptionDocQuery = trpc.documents.getOfficialByType.useQuery(
+    { communityId: projectId, type: 'description' },
+    { enabled: Boolean(user?.id && data?.project && documentsMode !== 'off') },
+  );
+
+  const isProjectMemberForDocs = useMemo(() => {
+    if (!user?.id || !data?.project) return false;
+    const p = data.project;
+    return Boolean(
+      p.members?.includes(user.id) ||
+        meInProjectMembers?.role === 'lead' ||
+        meInProjectMembers?.role === 'participant',
+    );
+  }, [user?.id, data?.project, meInProjectMembers?.role]);
+
+  const descriptionDocumentHref =
+    user?.id &&
+    documentsMode !== 'off' &&
+    (isProjectMemberForDocs || user.globalRole === 'superadmin') &&
+    descriptionDocQuery.data?.id
+      ? routes.communityDocument(projectId, descriptionDocQuery.data.id)
+      : undefined;
 
   if (isLoading || !data) {
     return (
@@ -224,6 +252,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
               />
             ) : undefined
           }
+          descriptionDocumentHref={descriptionDocumentHref}
         />
 
         {showProjectMeritsUnderHero ? (
@@ -273,7 +302,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           readOnly={isArchived}
         />
 
-        <CommunityHubFeedTabBar communityId={projectId} visibleTabs={PROJECT_HUB_FEED_TABS} />
+        <CommunityHubFeedTabBar
+          communityId={projectId}
+          visibleTabs={PROJECT_HUB_FEED_TABS}
+          hubKind="project"
+        />
 
         {projectHubFeedTab === 'posts' && isMember && user ? (
           <ProjectWorkArea
