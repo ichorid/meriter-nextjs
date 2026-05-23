@@ -280,6 +280,11 @@ describe('Server-side search for community feed primitives', () => {
       communityId,
       50,
       0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      true,
     );
 
     expect(publications.map((p) => p.getId.getValue())).toEqual([basicId]);

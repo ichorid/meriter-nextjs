@@ -661,6 +661,11 @@ export const publicationsRouter = router({
           query.communityId,
           parsedLimit,
           parsedSkip,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
         );
       } else if (query.authorId) {
         publications = await ctx.publicationService.getPublicationsByAuthor(

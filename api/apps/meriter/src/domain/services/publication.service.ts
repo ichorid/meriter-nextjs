@@ -809,14 +809,15 @@ export class PublicationService {
       valueTags?: string[];
     },
     search?: string,
+    hubPostsFeedOnly = false,
   ): Promise<Publication[]> {
     const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Build query - exclude deleted items and hub-tab-only publication types
+    // Build query - exclude deleted items; hub «Posts» tab excludes dedicated-tab types
     const query: Record<string, unknown> = {
       communityId,
       deleted: { $ne: true },
-      ...buildHubPostsFeedMongoQuery(),
+      ...(hubPostsFeedOnly ? buildHubPostsFeedMongoQuery() : {}),
     };
 
     const searchOr =
