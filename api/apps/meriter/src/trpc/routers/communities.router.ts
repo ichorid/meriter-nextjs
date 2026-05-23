@@ -6,8 +6,6 @@ import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-set
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import {
-  signCommunityInviteToken,
-  verifyCommunityInviteToken,
   type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
 import { isEligibleNonProjectBirzhaSourceCommunity } from '../../domain/common/constants/birzha-source-entity.constants';
@@ -107,8 +105,25 @@ export const communitiesRouter = router({
     }),
 
   /**
-   * Create a signed invite token (any member). Lead/superadmin → direct join on accept; participant → pending request.
-   * Client builds URL: /meriter/communities/{id}/join/{token} (legacy: ?t=...)
+   * Public landing summary for a community invite token (short or legacy JWT links).
+   */
+  getCommunityInvitePreview: publicProcedure
+    .input(z.object({ token: z.string().min(8) }))
+    .query(async ({ ctx, input }) => {
+      const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
+      try {
+        return await ctx.communityInviteService.getInvitePreview(input.token, secret);
+      } catch {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Invalid or expired invite link',
+        });
+      }
+    }),
+
+  /**
+   * Create a short invite token (any member). Lead/superadmin → direct join on accept; participant → pending request.
+   * Client builds URL: /meriter/join/{token} (legacy JWT: /meriter/communities/{id}/join/{token} or ?t=...)
    */
   createCommunityInviteLink: protectedProcedure
     .input(z.object({ communityId: z.string().min(1) }))
@@ -137,17 +152,16 @@ export const communitiesRouter = router({
           message: 'Only community members can create invite links',
         });
       }
-      const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
       const parentCommunityId =
         community.isProject && community.parentCommunityId
           ? community.parentCommunityId
           : undefined;
-      const token = signCommunityInviteToken(input.communityId, secret, {
+      return ctx.communityInviteService.createInviteLink({
+        communityId: input.communityId,
         parentCommunityId,
         inviterUserId: ctx.user.id,
         inviterIsAdmin: isAdmin,
       });
-      return { token };
     }),
 
   /**
@@ -157,7 +171,7 @@ export const communitiesRouter = router({
   acceptCommunityInvite: protectedProcedure
     .input(
       z.object({
-        token: z.string().min(20),
+        token: z.string().min(8),
         /** When set, must match community id embedded in the token (prevents wrong /join/:id page). */
         expectedCommunityId: z.string().min(1).optional(),
       }),
@@ -166,7 +180,7 @@ export const communitiesRouter = router({
       const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
       let invite: VerifiedCommunityInvite;
       try {
-        invite = verifyCommunityInviteToken(input.token, secret);
+        invite = await ctx.communityInviteService.resolveInviteToken(input.token, secret);
       } catch {
         throw new TRPCError({
           code: 'BAD_REQUEST',

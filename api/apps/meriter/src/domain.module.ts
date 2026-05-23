@@ -93,6 +93,10 @@ import {
   EventInviteSchema,
 } from './domain/models/event-invite/event-invite.schema';
 import {
+  CommunityInviteSchemaClass,
+  CommunityInviteSchema,
+} from './domain/models/community-invite/community-invite.schema';
+import {
   MeriterDocumentSchemaClass,
   MeriterDocumentSchema,
 } from './domain/models/meriter-document/meriter-document.schema';
@@ -150,6 +154,7 @@ import { Decree809TagMigrationService } from './domain/services/decree809-tag-mi
 import { CollaborativeDocumentsMigrationService } from './domain/services/collaborative-documents-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
 import { EventService } from './domain/services/event.service';
+import { CommunityInviteService } from './domain/services/community-invite.service';
 import { DocumentService } from './domain/services/document.service';
 import { DocumentVariantService } from './domain/services/document-variant.service';
 import { DocumentStructureService } from './domain/services/document-structure.service';
@@ -198,6 +203,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: CommunityWalletSchemaClass.name, schema: CommunityWalletSchema },
       { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
       { name: EventInviteSchemaClass.name, schema: EventInviteSchema },
+      { name: CommunityInviteSchemaClass.name, schema: CommunityInviteSchema },
       { name: MeriterDocumentSchemaClass.name, schema: MeriterDocumentSchema },
       {
         name: DocumentBlockVariantSchemaClass.name,
@@ -255,6 +261,7 @@ import { EventBus } from './domain/events/event-bus';
     CollaborativeDocumentsMigrationService,
     MeritTransferService,
     EventService,
+    CommunityInviteService,
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
@@ -316,6 +323,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
+    CommunityInviteService,
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
