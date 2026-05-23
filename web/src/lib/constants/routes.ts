@@ -59,8 +59,10 @@ export const routes = {
     },
     /** Invite landing without token (join request fallback). */
     communityJoin: (id: string) => `/meriter/communities/${id}/join`,
-    /** Signed invite link (token in path — reliable when sharing in messengers). Legacy: ?t= query. */
-    communityInviteLink: (id: string, token: string) =>
+    /** Short DB-backed community invite link (canonical). */
+    communityInviteLink: (token: string) => `/meriter/join/${encodeURIComponent(token)}`,
+    /** Legacy JWT invite with community id in the path (backward compatibility). */
+    communityInviteLegacyLink: (id: string, token: string) =>
         `/meriter/communities/${id}/join/${encodeURIComponent(token)}`,
     communityProjects: (id: string) => `/meriter/communities/${id}/projects`,
     communityDeleted: (id: string) => `/meriter/communities/${id}/deleted`,

@@ -48,7 +48,8 @@ export const DYNAMIC_ROUTE_PATTERNS = [
   /^\/meriter\/communities\/[^/]+\/merit-transfers$/, // /meriter/communities/[id]/merit-transfers
   /^\/meriter\/communities\/[^/]+\/merit-history$/, // /meriter/communities/[id]/merit-history
   /^\/meriter\/communities\/[^/]+\/join$/, // /meriter/communities/[id]/join
-  /^\/meriter\/communities\/[^/]+\/join\/[^/]+$/, // /meriter/communities/[id]/join/[token]
+  /^\/meriter\/communities\/[^/]+\/join\/[^/]+$/, // legacy JWT invite
+  /^\/meriter\/join\/[^/]+$/, // /meriter/join/[token]
   /^\/meriter\/users\/[^/]+$/, // /meriter/users/[userId]
   /^\/meriter\/users\/[^/]+\/merit-transfers$/, // /meriter/users/[userId]/merit-transfers (peer transfers)
   /^\/meriter\/users\/[^/]+\/merit-history$/, // /meriter/users/[userId]/merit-history (global ledger)

@@ -159,7 +159,7 @@ export function CommunityMembersPageClient({
 
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
         onSuccess: async (data) => {
-            const path = routes.communityInviteLink(communityId, data.token);
+            const path = routes.communityInviteLink(data.token);
             const full = `${window.location.origin}${path}`;
             setInviteUrl(full);
             setInviteDialogOpen(true);
