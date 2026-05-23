@@ -84,6 +84,7 @@ import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinR
 import { canUserCreateEvents, type EventCreationMode } from '@/features/events/lib/event-permissions';
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
+import { isHubPostsFeedPublication } from '@/features/communities/lib/hub-posts-feed-filter';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -1515,11 +1516,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     filteredPublications
                         .filter((p: FeedItem) => {
                             if (p.type === 'publication') {
-                                const isProject =
-                                    (p as PublicationFeedItem).postType === 'project' ||
-                                    (p as PublicationFeedItem).isProject === true;
-                                return !!p.content && !isProject;
-                            } else if (p.type === 'poll') {
+                                const pub = p as PublicationFeedItem;
+                                return (
+                                    !!pub.content &&
+                                    isHubPostsFeedPublication(pub, {
+                                        hubCommunityId: chatId,
+                                        birzhaCommunityId,
+                                    })
+                                );
+                            }
+                            if (p.type === 'poll') {
                                 // Hide polls in future-vision communities
                                 return comms?.typeTag !== 'future-vision';
                             }

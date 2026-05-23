@@ -29,6 +29,7 @@ import { UserService } from './user.service';
 import { CommunityWalletService } from './community-wallet.service';
 import { WalletService } from './wallet.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import { buildHubPostsFeedMongoQuery } from '../common/helpers/hub-posts-feed.helper';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -811,8 +812,12 @@ export class PublicationService {
   ): Promise<Publication[]> {
     const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Build query - exclude deleted items
-    const query: Record<string, unknown> = { communityId, deleted: { $ne: true } };
+    // Build query - exclude deleted items and hub-tab-only publication types
+    const query: Record<string, unknown> = {
+      communityId,
+      deleted: { $ne: true },
+      ...buildHubPostsFeedMongoQuery(),
+    };
 
     const searchOr =
       search && search.trim()

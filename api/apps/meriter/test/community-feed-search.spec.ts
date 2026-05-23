@@ -205,6 +205,85 @@ describe('Server-side search for community feed primitives', () => {
     );
     expect(byEscaped.map((p) => p.getId)).toEqual([poll2Id]);
   });
+
+  it('PublicationService.getPublicationsByCommunity excludes hub-tab-only post types from «Posts» feed', async () => {
+    await communityModel.create({
+      id: communityId,
+      name: 'Hub Posts Feed Community',
+      telegramChatId: `chat_${communityId}_${Date.now()}`,
+      members: [],
+      settings: {
+        dailyEmission: 100,
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const publicationModel = connection.model(PublicationSchemaClass.name);
+    const basicId = uid();
+    const eventId = uid();
+    const projectId = uid();
+    const ticketId = uid();
+
+    await publicationModel.create([
+      {
+        id: basicId,
+        communityId,
+        authorId: uid(),
+        content: 'Regular votable post',
+        type: 'text',
+        postType: 'basic',
+        metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: eventId,
+        communityId,
+        authorId: uid(),
+        content: 'Community event',
+        type: 'text',
+        postType: 'event',
+        eventStartDate: new Date(),
+        eventEndDate: new Date(),
+        metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: projectId,
+        communityId,
+        authorId: uid(),
+        content: 'Legacy project row',
+        type: 'text',
+        postType: 'project',
+        isProject: true,
+        metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: ticketId,
+        communityId,
+        authorId: uid(),
+        content: 'Project ticket',
+        type: 'text',
+        postType: 'ticket',
+        metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    const publications = await publicationService.getPublicationsByCommunity(
+      communityId,
+      50,
+      0,
+    );
+
+    expect(publications.map((p) => p.getId.getValue())).toEqual([basicId]);
+  });
 });
 
 

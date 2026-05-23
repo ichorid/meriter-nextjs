@@ -647,6 +647,7 @@ export function EventPage({ communityId, publicationId }: EventPageProps) {
             updateAll={() => {
               void utils.publications.getById.invalidate({ id: getPublicationIdentifier(publication) ?? '' });
             }}
+            hideVoteAndScore
           />
         </article>
 
