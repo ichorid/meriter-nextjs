@@ -53,7 +53,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { Input } from '@/components/ui/shadcn/input';
 import { trpc } from '@/lib/trpc/client';
 import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
 import { communityAllowsLeadManagement } from '@/lib/community/community-lead-management';
@@ -97,7 +96,7 @@ export function CommunityMembersPageClient({
     const [addMeritsDialogOpen, setAddMeritsDialogOpen] = useState(false);
     const [selectedMember, setSelectedMember] = useState<{ id: string; name: string } | null>(null);
     const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
-    const [inviteUrl, setInviteUrl] = useState('');
+    const [inviteShareText, setInviteShareText] = useState('');
     const [promoteLeadTarget, setPromoteLeadTarget] = useState<{ id: string; name: string } | null>(
         null,
     );
@@ -159,12 +158,17 @@ export function CommunityMembersPageClient({
 
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
         onSuccess: async (data) => {
-            const path = routes.communityInviteLink(communityId, data.token);
+            const path = routes.communityInviteLink(data.token);
             const full = `${window.location.origin}${path}`;
-            setInviteUrl(full);
+            const communityName = community?.name?.trim() || t('members.invite.unnamedCommunity');
+            const inviteIsProject = isProjectMembersUi || community?.isProject === true;
+            const shareText = inviteIsProject
+                ? t('members.invite.shareMessageProject', { name: communityName, url: full })
+                : t('members.invite.shareMessageCommunity', { name: communityName, url: full });
+            setInviteShareText(shareText);
             setInviteDialogOpen(true);
             try {
-                await navigator.clipboard.writeText(full);
+                await navigator.clipboard.writeText(shareText);
                 addToast(t('members.invite.copied'), 'success');
             } catch {
                 // Dialog stays open for manual copy / share.
@@ -628,13 +632,18 @@ export function CommunityMembersPageClient({
                             {isProjectMembersUi ? tProjects('inviteToProjectHint') : t('members.invite.dialogHint')}
                         </DialogDescription>
                     </DialogHeader>
-                    <Input readOnly value={inviteUrl} className="font-mono text-xs break-all" />
+                    <textarea
+                        readOnly
+                        value={inviteShareText}
+                        rows={5}
+                        className="min-h-[120px] w-full resize-none rounded-lg border border-base-300 bg-base-100 px-3 py-2 text-sm leading-relaxed text-base-content"
+                    />
                     <DialogFooter className="gap-2 sm:flex-row sm:justify-end">
                         <Button
                             type="button"
                             variant="outline"
                             className="gap-2"
-                            onClick={() => void shareUrl(inviteUrl, t('members.invite.copied'))}
+                            onClick={() => void shareUrl(inviteShareText, t('members.invite.copied'))}
                         >
                             <Share2 className="h-4 w-4" />
                             {tShared('share')}
@@ -645,7 +654,7 @@ export function CommunityMembersPageClient({
                             className="gap-2"
                             onClick={async () => {
                                 try {
-                                    await navigator.clipboard.writeText(inviteUrl);
+                                    await navigator.clipboard.writeText(inviteShareText);
                                     addToast(t('members.invite.copied'), 'success');
                                 } catch {
                                     addToast(t('members.invite.copyFailed'), 'error');

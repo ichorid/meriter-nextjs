@@ -1247,9 +1247,11 @@
                     "button": "Invite to community",
                     "dialogTitle": "Invite link",
                     "dialogHint": "Share this link: admins’ links add people immediately after they accept; participants’ links send a join request for admins to approve.",
-                    "copyLink": "Copy link",
+                    "copyLink": "Copy message and link",
                     "copyFailed": "Could not copy to clipboard",
-                    "copied": "Link copied",
+                    "copied": "Message and link copied",
+                    "shareMessageCommunity": "You are invited to join “{name}” on Meriter — a platform where we build the future together.\n\n{url}",
+                    "shareMessageProject": "You are invited to join the project “{name}” on Meriter — a platform where we build the future together.\n\n{url}",
                     "generateFailed": "Could not create invite link",
                     "pageTitle": "Invite",
                     "joining": "Opening invite…",
@@ -3370,6 +3372,10 @@
     },
     "metadata": {
         "birzhaPosts": "Birzha posts",
-        "joinCommunity": "Join community"
+        "joinCommunity": "Join community",
+        "communityInviteOgTitle": "Invitation to “{name}”",
+        "communityInviteOgTitleProject": "Invitation to project “{name}”",
+        "communityInviteOgDescription": "You are invited to join “{name}” on Meriter — a platform where we build the future together.",
+        "communityInviteOgDescriptionProject": "You are invited to join the project “{name}” on Meriter — a platform where we build the future together."
     }
 }

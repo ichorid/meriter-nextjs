@@ -1,22 +1,22 @@
 import { Suspense } from 'react';
-import { JoinCommunityPageClient } from '../JoinCommunityPageClient';
+import { JoinCommunityPageClient } from '@/app/meriter/communities/[id]/join/JoinCommunityPageClient';
 import { buildCommunityInviteMetadata } from '@/lib/i18n/community-invite-metadata';
 import { routes } from '@/lib/constants/routes';
 
 interface PageProps {
-  params: Promise<{ id: string; token: string }>;
+  params: Promise<{ token: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const { id, token } = await params;
+  const { token } = await params;
   return buildCommunityInviteMetadata({
     token,
-    canonicalPath: routes.communityInviteLegacyLink(id, token),
+    canonicalPath: routes.communityInviteLink(token),
   });
 }
 
-export default async function CommunityJoinWithTokenPage({ params }: PageProps) {
-  const { id, token } = await params;
+export default async function CommunityShortInvitePage({ params }: PageProps) {
+  const { token } = await params;
   return (
     <Suspense
       fallback={
@@ -25,7 +25,7 @@ export default async function CommunityJoinWithTokenPage({ params }: PageProps) 
         </div>
       }
     >
-      <JoinCommunityPageClient communityId={id} pathToken={token} legacyInvitePath />
+      <JoinCommunityPageClient pathToken={token} />
     </Suspense>
   );
 }

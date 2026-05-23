@@ -1247,9 +1247,11 @@
                     "button": "Пригласить в сообщество",
                     "dialogTitle": "Ссылка-приглашение",
                     "dialogHint": "Поделитесь ссылкой: по ссылке админа пользователь вступает сразу после согласия; по ссылке участника уходит заявка на рассмотрение админам.",
-                    "copyLink": "Копировать ссылку",
+                    "copyLink": "Копировать текст и ссылку",
                     "copyFailed": "Не удалось скопировать",
-                    "copied": "Ссылка скопирована",
+                    "copied": "Текст и ссылка скопированы",
+                    "shareMessageCommunity": "Вас пригласили в «{name}» на Meriter — платформе, где мы вместе строим будущее.\n\n{url}",
+                    "shareMessageProject": "Вас пригласили в проект «{name}» на Meriter — платформе, где мы вместе строим будущее.\n\n{url}",
                     "generateFailed": "Не удалось создать ссылку",
                     "pageTitle": "Приглашение",
                     "joining": "Загрузка приглашения…",
@@ -3370,6 +3372,10 @@
     },
     "metadata": {
         "birzhaPosts": "Посты на Бирже",
-        "joinCommunity": "Вступить в сообщество"
+        "joinCommunity": "Вступить в сообщество",
+        "communityInviteOgTitle": "Приглашение в «{name}»",
+        "communityInviteOgTitleProject": "Приглашение в проект «{name}»",
+        "communityInviteOgDescription": "Вас пригласили в «{name}» на Meriter — платформе, где мы вместе строим будущее.",
+        "communityInviteOgDescriptionProject": "Вас пригласили в проект «{name}» на Meriter — платформе, где мы вместе строим будущее."
     }
 }
