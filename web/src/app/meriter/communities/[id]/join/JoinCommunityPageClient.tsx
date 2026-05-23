@@ -16,14 +16,18 @@ import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinR
 import { isLocalMembershipHubCommunity } from '@/lib/constants/birzha-source';
 
 interface JoinCommunityPageClientProps {
-  communityId: string;
+  /** Known from legacy URL `/communities/:id/join/...`; resolved from preview on short links. */
+  communityId?: string;
   /** Token from `/join/[token]` path (preferred over `?t=`). */
   pathToken?: string;
+  /** When true, use legacy URL shape for login returnTo (JWT links with id in path). */
+  legacyInvitePath?: boolean;
 }
 
 export function JoinCommunityPageClient({
-  communityId,
+  communityId: communityIdProp,
   pathToken,
+  legacyInvitePath = false,
 }: JoinCommunityPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,16 +38,31 @@ export function JoinCommunityPageClient({
   const token = (pathToken ?? searchParams?.get('t') ?? '').trim();
   const [error, setError] = useState<string | null>(null);
 
+  const previewQuery = trpc.communities.getCommunityInvitePreview.useQuery(
+    { token },
+    { enabled: Boolean(token) && !communityIdProp },
+  );
+
+  const communityId = communityIdProp ?? previewQuery.data?.communityId ?? '';
+  const previewError =
+    previewQuery.error?.message?.trim() ||
+    (previewQuery.isError ? tInvite('acceptFailed') : null);
+
   const utils = trpc.useUtils();
   const { data: community, isLoading: communityLoading } = trpc.communities.getById.useQuery(
     { id: communityId },
     { enabled: Boolean(communityId) },
   );
 
-  const communityName = useMemo(
-    () => community?.name?.trim() || tInvite('unnamedCommunity'),
-    [community?.name, tInvite],
-  );
+  const communityName = useMemo(() => {
+    if (community?.name?.trim()) {
+      return community.name.trim();
+    }
+    if (previewQuery.data?.communityName?.trim()) {
+      return previewQuery.data.communityName.trim();
+    }
+    return tInvite('unnamedCommunity');
+  }, [community?.name, previewQuery.data?.communityName, tInvite]);
 
   const acceptMutation = trpc.communities.acceptCommunityInvite.useMutation({
     onSuccess: async (data) => {
@@ -69,14 +88,16 @@ export function JoinCommunityPageClient({
   });
 
   const inviteReturnPath = token
-    ? pathToken
-      ? routes.communityInviteLink(communityId, token)
-      : `${routes.communityJoin(communityId)}?t=${encodeURIComponent(token)}`
+    ? legacyInvitePath && communityId
+      ? routes.communityInviteLegacyLink(communityId, token)
+      : routes.communityInviteLink(token)
     : null;
 
   useEffect(() => {
     if (!token) return;
     if (authLoading) return;
+    if (!communityIdProp && previewQuery.isLoading) return;
+    if (!communityId) return;
     if (!user) {
       const safe = inviteReturnPath ? safeMeriterReturnPath(inviteReturnPath) : null;
       if (safe) {
@@ -85,23 +106,41 @@ export function JoinCommunityPageClient({
         router.replace(routes.login);
       }
     }
-  }, [token, user?.id, authLoading, communityId, router, inviteReturnPath]);
+  }, [
+    token,
+    user?.id,
+    authLoading,
+    communityId,
+    communityIdProp,
+    previewQuery.isLoading,
+    router,
+    inviteReturnPath,
+  ]);
 
   const handleJoin = () => {
-    if (!token) return;
+    if (!token || !communityId) return;
     setError(null);
-    acceptMutation.mutate({ token, expectedCommunityId: communityId });
+    acceptMutation.mutate({
+      token,
+      expectedCommunityId: communityIdProp ?? communityId,
+    });
   };
 
   const handleDecline = () => {
-    router.replace(routes.community(communityId));
+    if (communityId) {
+      router.replace(routes.community(communityId));
+      return;
+    }
+    router.replace(routes.communities);
   };
 
   const stickyHeaderInvite = (
     <SimpleStickyHeader
       title={tInvite('pageTitle')}
       showBack={true}
-      onBack={() => router.push(routes.community(communityId))}
+      onBack={() =>
+        communityId ? router.push(routes.community(communityId)) : router.push(routes.communities)
+      }
       asStickyHeader={true}
       showScrollToTop={false}
     />
@@ -118,6 +157,16 @@ export function JoinCommunityPageClient({
   );
 
   if (!token) {
+    if (!communityIdProp) {
+      return (
+        <AdaptiveLayout className="members" myId={user?.id} stickyHeader={stickyHeaderJoinRequest}>
+          <div className="mx-auto flex max-w-md flex-col gap-4 px-4 py-8">
+            <p className="text-center text-base-content/80">{tInvite('missingToken')}</p>
+          </div>
+        </AdaptiveLayout>
+      );
+    }
+
     if (communityLoading) {
       return (
         <AdaptiveLayout
@@ -160,20 +209,15 @@ export function JoinCommunityPageClient({
     );
   }
 
-  if (error) {
+  if (previewError && !communityId) {
     return (
-      <AdaptiveLayout
-        className="members"
-        communityId={communityId}
-        myId={user?.id}
-        stickyHeader={stickyHeaderInvite}
-      >
+      <AdaptiveLayout className="members" myId={user?.id} stickyHeader={stickyHeaderInvite}>
         <div className="max-w-md mx-auto px-4 py-8 text-center space-y-4">
-          <p className="text-base-content/80">{error}</p>
+          <p className="text-base-content/80">{previewError}</p>
           <button
             type="button"
             className="text-primary font-medium hover:underline"
-            onClick={() => router.replace(routes.community(communityId))}
+            onClick={() => router.replace(routes.communities)}
           >
             {tInvite('goToCommunity')}
           </button>
@@ -182,32 +226,44 @@ export function JoinCommunityPageClient({
     );
   }
 
-  if (authLoading || !user) {
+  if (error) {
     return (
       <AdaptiveLayout
         className="members"
-        communityId={communityId}
+        communityId={communityId || undefined}
+        myId={user?.id}
+        stickyHeader={stickyHeaderInvite}
+      >
+        <div className="max-w-md mx-auto px-4 py-8 text-center space-y-4">
+          <p className="text-base-content/80">{error}</p>
+          <button
+            type="button"
+            className="text-primary font-medium hover:underline"
+            onClick={handleDecline}
+          >
+            {tInvite('goToCommunity')}
+          </button>
+        </div>
+      </AdaptiveLayout>
+    );
+  }
+
+  if (
+    authLoading ||
+    !user ||
+    (!communityIdProp && previewQuery.isLoading) ||
+    (communityId && communityLoading)
+  ) {
+    return (
+      <AdaptiveLayout
+        className="members"
+        communityId={communityId || undefined}
         myId={user?.id}
         stickyHeader={stickyHeaderInvite}
       >
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 px-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
           <p className="text-sm text-base-content/70">{tInvite('joining')}</p>
-        </div>
-      </AdaptiveLayout>
-    );
-  }
-
-  if (communityLoading) {
-    return (
-      <AdaptiveLayout
-        className="members"
-        communityId={communityId}
-        myId={user?.id}
-        stickyHeader={stickyHeaderInvite}
-      >
-        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-3 px-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       </AdaptiveLayout>
     );
