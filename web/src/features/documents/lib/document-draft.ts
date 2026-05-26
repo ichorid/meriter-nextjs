@@ -10,6 +10,7 @@ export interface DocumentSeedBlock {
   order: number;
   blockType: MeriterBlockType;
   officialContent: string;
+  proposalsLocked?: boolean;
 }
 
 export interface DocumentSeedSection {
@@ -104,6 +105,7 @@ export function serializeDraftForApi(draft: DocumentDraft): FutureVisionDocument
           order: blockIndex,
           blockType: (block.blockType as MeriterBlockType) || 'paragraph',
           officialContent: block.officialContent?.trim() || '<p></p>',
+          ...(block.proposalsLocked ? { proposalsLocked: true } : {}),
         })),
       };
     }),

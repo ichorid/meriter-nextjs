@@ -208,6 +208,7 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>;
     },
@@ -230,16 +231,17 @@ export class DocumentService {
         order: sec.order,
         blocks: [...sec.blocks]
           .sort((a, b) => a.order - b.order)
-          .map((block) => ({
-            id: randomUUID(),
-            order: block.order,
-            blockType: block.blockType,
-            officialContent: block.officialContent,
-            officialContentSetAt: now,
-            officialContentSetBy: createdByUserId,
-            officialContentReason: 'initial' as const,
-            editHistory: [],
-          })),
+            .map((block) => ({
+              id: randomUUID(),
+              order: block.order,
+              blockType: block.blockType,
+              officialContent: block.officialContent,
+              proposalsLocked: block.proposalsLocked === true,
+              officialContentSetAt: now,
+              officialContentSetBy: createdByUserId,
+              officialContentReason: 'initial' as const,
+              editHistory: [],
+            })),
       }));
 
     await this.documentModel.updateOne(
@@ -263,6 +265,7 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>;
     };
@@ -368,6 +371,7 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>,
     ) =>
@@ -384,6 +388,7 @@ export class DocumentService {
               order: block.order,
               blockType: block.blockType,
               officialContent: block.officialContent,
+              proposalsLocked: block.proposalsLocked === true,
               officialContentSetAt: now,
               officialContentSetBy: args.createdBy,
               officialContentReason: 'initial' as const,
@@ -535,9 +540,9 @@ export class DocumentService {
   findBlock(
     doc: MeriterDocumentSchemaClass,
     blockId: string,
-  ): { currentWaveStartedAt?: Date } | null {
+  ): { currentWaveStartedAt?: Date; proposalsLocked?: boolean } | null {
     const sections = doc.sections as Array<{
-      blocks?: Array<{ id: string; currentWaveStartedAt?: Date }>;
+      blocks?: Array<{ id: string; currentWaveStartedAt?: Date; proposalsLocked?: boolean }>;
     }>;
     for (const sec of sections ?? []) {
       for (const b of sec.blocks ?? []) {

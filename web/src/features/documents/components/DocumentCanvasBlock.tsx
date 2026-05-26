@@ -127,6 +127,8 @@ export function DocumentCanvasBlock({
   const official = (block.officialContent ?? '').trim();
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
   const isFocused = focus?.focusedBlockId === block.id;
+  const proposalsLocked = block.proposalsLocked === true;
+  const canProposeVariant = !structureMode && (!proposalsLocked || canManageDocument);
 
   const displayedVariants =
     variantsExpanded && showAllVariants
@@ -172,11 +174,19 @@ export function DocumentCanvasBlock({
             blockHasOfficial={hasOfficialContent}
             sectionHasOfficial={sectionHasOfficial}
             showRemoveSection={showRemoveSection}
+            proposalsLocked={block.proposalsLocked === true}
           />
         ) : null}
 
         <div className="mb-1 flex items-start justify-end gap-2 opacity-0 transition-opacity group-hover/block:opacity-100 focus-within:opacity-100">
-          {reasonKey ? (
+          {proposalsLocked && !structureMode ? (
+            <Badge
+              variant="outline"
+              className="mr-auto rounded-md px-1.5 py-0 text-[10px] font-normal text-base-content/50"
+            >
+              {tCanvas('blockProposalsLocked')}
+            </Badge>
+          ) : reasonKey ? (
             <Badge
               variant="outline"
               className="mr-auto rounded-md px-1.5 py-0 text-[10px] font-normal text-base-content/50"
@@ -288,6 +298,7 @@ export function DocumentCanvasBlock({
           </div>
         ) : null}
 
+        {canProposeVariant ? (
         <div className="mt-3" onClick={(e) => e.stopPropagation()}>
           {userOpenVariant ? (
             <p className="text-xs text-base-content/55">{tCanvas('yourOpenVariant')}</p>
@@ -326,6 +337,9 @@ export function DocumentCanvasBlock({
             </Button>
           )}
         </div>
+        ) : proposalsLocked && !structureMode && !canManageDocument ? (
+          <p className="mt-3 text-xs text-base-content/50">{tCanvas('proposalsLockedHint')}</p>
+        ) : null}
       </div>
     </div>
   );

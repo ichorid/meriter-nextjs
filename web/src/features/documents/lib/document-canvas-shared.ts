@@ -26,6 +26,8 @@ export interface DocBlock {
   officialContentReason?: OfficialContentReason;
   currentWaveStartedAt?: string | Date | null;
   editHistory?: BlockEditHistoryEntry[];
+  /** When true, non-admin members cannot propose variants for this block. */
+  proposalsLocked?: boolean;
 }
 
 export interface DocSection {

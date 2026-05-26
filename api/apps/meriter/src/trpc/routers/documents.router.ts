@@ -178,6 +178,7 @@ export const documentsRouter = router({
         blockId: z.string().min(1),
         blockType: BlockTypeSchema.optional(),
         order: z.number().int().min(0).optional(),
+        proposalsLocked: z.boolean().optional(),
       }).merge(StructureConcurrencyInput),
     )
     .mutation(async ({ ctx, input }) => {
@@ -189,6 +190,7 @@ export const documentsRouter = router({
           {
             blockType: input.blockType,
             order: input.order,
+            proposalsLocked: input.proposalsLocked,
             expectedUpdatedAt: input.expectedUpdatedAt,
           },
         );

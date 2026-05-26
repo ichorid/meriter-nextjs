@@ -32,6 +32,8 @@ export function DocumentCanvasMobileSheet() {
 
   const blockId = focusedBlockId ?? '';
   const block = blockId ? focus.getBlock(blockId) : null;
+  const proposalsLocked = block?.proposalsLocked === true;
+  const canProposeVariant = !proposalsLocked || canManageDocument;
   const variantsQuery = trpc.documentVariants.listByBlock.useQuery(
     { documentId, blockId },
     { enabled: !!documentId && !!blockId && mobileSheet.kind !== 'closed' },
@@ -82,18 +84,22 @@ export function DocumentCanvasMobileSheet() {
     <BottomActionSheet isOpen={isOpen} onClose={closeMobileSheet} title={title}>
       {mobileSheet.kind === 'blockMenu' && blockId ? (
         <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 justify-start gap-2 rounded-lg"
-            onClick={() => {
-              closeMobileSheet();
-              openMobileSheet({ kind: 'propose' });
-            }}
-          >
-            <MessageSquarePlus size={16} />
-            {tCanvas('proposeCta')}
-          </Button>
+          {canProposeVariant ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 justify-start gap-2 rounded-lg"
+              onClick={() => {
+                closeMobileSheet();
+                openMobileSheet({ kind: 'propose' });
+              }}
+            >
+              <MessageSquarePlus size={16} />
+              {tCanvas('proposeCta')}
+            </Button>
+          ) : proposalsLocked ? (
+            <p className="text-sm text-base-content/55">{tCanvas('proposalsLockedHint')}</p>
+          ) : null}
           {canManageDocument ? (
             <>
               <Button

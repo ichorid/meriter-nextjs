@@ -42,6 +42,7 @@ interface BlockEmbedded {
   officialContentVariantId?: string;
   currentWaveStartedAt?: Date;
   editHistory?: unknown[];
+  proposalsLocked?: boolean;
 }
 
 type StructureWriteInput = {
@@ -149,7 +150,7 @@ export class DocumentStructureService {
     actorUserId: string,
     documentId: string,
     blockId: string,
-    input: { blockType?: MeriterBlockType; order?: number } & StructureWriteInput,
+    input: { blockType?: MeriterBlockType; order?: number; proposalsLocked?: boolean } & StructureWriteInput,
   ): Promise<MeriterDocumentSchemaClass> {
     const doc = await this.requireManageableDocument(actorUserId, documentId);
     const sections = this.cloneSections(doc);
@@ -162,6 +163,9 @@ export class DocumentStructureService {
     }
     if (input.order !== undefined) {
       located.block.order = input.order;
+    }
+    if (input.proposalsLocked !== undefined) {
+      located.block.proposalsLocked = input.proposalsLocked;
     }
     return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
   }
@@ -221,6 +225,7 @@ export class DocumentStructureService {
         officialContentVariantId: b.officialContentVariantId,
         currentWaveStartedAt: b.currentWaveStartedAt,
         editHistory: Array.isArray(b.editHistory) ? [...b.editHistory] : [],
+        proposalsLocked: b.proposalsLocked === true,
       })),
     }));
   }

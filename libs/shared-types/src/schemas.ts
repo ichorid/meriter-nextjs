@@ -961,6 +961,7 @@ export const DocumentSeedBlockSchema = z.object({
   order: z.number().int().min(0),
   blockType: MeriterBlockTypeSchema,
   officialContent: z.string().max(50_000),
+  proposalsLocked: z.boolean().optional(),
 });
 
 export const DocumentSeedSectionSchema = z.object({

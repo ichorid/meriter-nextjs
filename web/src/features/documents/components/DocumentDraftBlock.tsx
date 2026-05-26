@@ -37,6 +37,7 @@ export function DocumentDraftBlock({
           blockHasOfficial={hasOfficial}
           sectionHasOfficial={sectionHasOfficial}
           showRemoveSection={showRemoveSection}
+          proposalsLocked={block.proposalsLocked === true}
         />
         <DocumentBlockEditor
           blockType={block.blockType}

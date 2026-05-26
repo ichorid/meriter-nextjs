@@ -33,6 +33,7 @@ export interface DocumentStructureContextValue {
   onAddBlockAfter: (sectionId: string, afterOrder: number) => void;
   onSectionTitleSave: (sectionId: string, title: string) => void;
   onBlockTypeChange: (blockId: string, blockType: MeriterBlockType) => void;
+  onToggleBlockProposalsLocked: (blockId: string, locked: boolean) => void;
   onRemoveSection: (sectionId: string, confirmLossOfOfficial: boolean) => void;
   onRemoveBlock: (blockId: string, confirmLossOfOfficial: boolean) => void;
 }
@@ -198,6 +199,13 @@ export function DocumentStructureProvider({
                 documentId,
                 blockId,
                 blockType,
+                ...structureConcurrency,
+              }),
+            onToggleBlockProposalsLocked: (blockId, locked) =>
+              updateBlockMutation.mutate({
+                documentId,
+                blockId,
+                proposalsLocked: locked,
                 ...structureConcurrency,
               }),
             onRemoveSection: (sectionId, confirmLossOfOfficial) =>

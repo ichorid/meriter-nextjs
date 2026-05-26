@@ -240,6 +240,16 @@ export class DocumentVariantService {
       throw new NotFoundException('Block not found');
     }
 
+    if (block.proposalsLocked === true) {
+      const canEditStructure = await this.permissionService.canEditDocumentStructure(
+        userId,
+        doc.id,
+      );
+      if (!canEditStructure) {
+        throw new ForbiddenException('This block is locked; you cannot propose changes');
+      }
+    }
+
     await this.finalizeExpiredWaveOnBlock(doc.id, input.blockId);
 
     doc = (await this.documentService.getById(input.documentId))!;

@@ -139,6 +139,26 @@ describe('DocumentStructureService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
+  it('updates proposalsLocked on block', async () => {
+    mockDoc(baseDoc.sections);
+
+    await service.updateBlock(actorUserId, documentId, 'b1', {
+      proposalsLocked: true,
+    });
+
+    expect(documentService.updateSections).toHaveBeenCalledWith(
+      documentId,
+      expect.arrayContaining([
+        expect.objectContaining({
+          blocks: expect.arrayContaining([
+            expect.objectContaining({ id: 'b1', proposalsLocked: true }),
+          ]),
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
   it('throws when section is missing', async () => {
     mockDoc([
       ...baseDoc.sections,

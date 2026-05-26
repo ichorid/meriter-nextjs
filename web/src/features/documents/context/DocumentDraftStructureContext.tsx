@@ -163,6 +163,16 @@ export function DocumentDraftStructureProvider({
           })),
         );
       },
+      onToggleBlockProposalsLocked: (blockId, locked) => {
+        updateSections((prev) =>
+          prev.map((sec) => ({
+            ...sec,
+            blocks: (sec.blocks ?? []).map((b) =>
+              b.id === blockId ? { ...b, proposalsLocked: locked } : b,
+            ),
+          })),
+        );
+      },
       onRemoveSection: (sectionId) => {
         updateSections((prev) => {
           const filtered = prev.filter((s) => s.id !== sectionId);

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Trash2 } from 'lucide-react';
+import { Pin, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Select,
@@ -14,6 +14,7 @@ import {
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
 import { DocumentStructureDeleteDialog } from '@/features/documents/components/DocumentStructureDeleteDialog';
 import type { MeriterBlockType } from '@/features/documents/types/document-block';
+import { cn } from '@/lib/utils';
 
 const BLOCK_TYPES: MeriterBlockType[] = [
   'paragraph',
@@ -30,6 +31,7 @@ export interface DocumentBlockStructureBarProps {
   blockHasOfficial: boolean;
   sectionHasOfficial: boolean;
   showRemoveSection: boolean;
+  proposalsLocked?: boolean;
 }
 
 export function DocumentBlockStructureBar({
@@ -39,8 +41,10 @@ export function DocumentBlockStructureBar({
   blockHasOfficial,
   sectionHasOfficial,
   showRemoveSection,
+  proposalsLocked = false,
 }: DocumentBlockStructureBarProps) {
   const t = useTranslations('pages.documents.structure');
+  const tCanvas = useTranslations('pages.documents.canvas');
   const structure = useDocumentStructure();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<'section' | 'block' | null>(null);
@@ -98,6 +102,25 @@ export function DocumentBlockStructureBar({
             ))}
           </SelectContent>
         </Select>
+
+        <Button
+          type="button"
+          variant={proposalsLocked ? 'default' : 'outline'}
+          size="sm"
+          className={cn(
+            'h-8 rounded-lg px-2.5 text-xs',
+            proposalsLocked && 'bg-primary text-primary-foreground hover:bg-primary/90',
+          )}
+          disabled={structureBusy}
+          aria-pressed={proposalsLocked}
+          aria-label={tCanvas('pinBlock')}
+          onClick={() =>
+            structure.onToggleBlockProposalsLocked(blockId, !proposalsLocked)
+          }
+        >
+          <Pin size={12} className={cn('mr-1 shrink-0', proposalsLocked && 'fill-current')} />
+          {tCanvas('pinBlock')}
+        </Button>
 
         {canRemoveBlock ? (
           <Button
