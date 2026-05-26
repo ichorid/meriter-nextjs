@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/shadcn/input';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
 import { routes } from '@/lib/constants/routes';
 import type { FutureVisionItem } from './FutureVisionCard';
+import { documentSectionsSearchPlainText } from '@/features/documents/lib/document-canvas-shared';
 
 const FV_TAG_QUERY = 'fvTag';
 
@@ -49,7 +50,8 @@ export function FutureVisionFeed() {
     return rawItems.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
-        (item.futureVisionText?.toLowerCase().includes(q) ?? false),
+        (item.futureVisionText?.toLowerCase().includes(q) ?? false) ||
+        documentSectionsSearchPlainText(item.futureVisionDocumentSections).includes(q),
     );
   }, [rawItems, searchQuery]);
   const total = data?.total ?? 0;

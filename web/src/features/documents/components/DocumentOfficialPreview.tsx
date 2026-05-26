@@ -105,6 +105,7 @@ export function DocumentOfficialPreview({ sections: sectionsRaw, className }: Do
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             setExpanded((v) => !v);
           }}
           className="text-primary text-sm font-medium hover:underline flex items-center gap-1"

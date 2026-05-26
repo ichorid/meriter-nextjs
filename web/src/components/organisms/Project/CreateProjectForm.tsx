@@ -26,6 +26,14 @@ import {
   SelectValue,
 } from '@/components/ui/shadcn/select';
 import { AlertTriangle } from 'lucide-react';
+import { MeriterEditor } from '@/components/molecules/RichTextEditor';
+import {
+  concatOfficialPlainTextFromDraft,
+  createEmptyDocumentDraft,
+  documentDraftHasOfficialText,
+  serializeDraftForApi,
+  type DocumentDraft,
+} from '@/features/documents/lib/document-draft';
 
 const NEW_COMMUNITY_VALUE = '__new__';
 const PERSONAL_VALUE = '__personal__';
@@ -48,7 +56,9 @@ export function CreateProjectForm() {
   const [investingEnabled, setInvestingEnabled] = useState(false);
   const [parentChoice, setParentChoice] = useState<string>(PERSONAL_VALUE);
   const [newCommunityName, setNewCommunityName] = useState('');
-  const [newCommunityFutureVision, setNewCommunityFutureVision] = useState('');
+  const [newCommunityFutureVisionDraft, setNewCommunityFutureVisionDraft] = useState<DocumentDraft>(
+    () => createEmptyDocumentDraft(),
+  );
   const [valueTags, setValueTags] = useState<string[]>([]);
   const [newCommunityCover, setNewCommunityCover] = useState('');
 
@@ -70,7 +80,7 @@ export function CreateProjectForm() {
     if (!name.trim()) return;
     if (!isPersonal && !parentChoice) return;
     if (!isPersonal && isNewCommunity && !newCommunityName.trim()) return;
-    if (!isPersonal && isNewCommunity && !newCommunityFutureVision.trim()) return;
+    if (!isPersonal && isNewCommunity && !documentDraftHasOfficialText(newCommunityFutureVisionDraft)) return;
 
     const tagsPayload = valueTags.length > 0 ? valueTags : undefined;
     if (isPersonal) {
@@ -99,10 +109,11 @@ export function CreateProjectForm() {
       newCommunity: isNewCommunity
         ? {
             name: newCommunityName.trim(),
-            futureVisionText: newCommunityFutureVision.trim(),
+            futureVisionText: concatOfficialPlainTextFromDraft(newCommunityFutureVisionDraft),
+            futureVisionDocumentSeed: serializeDraftForApi(newCommunityFutureVisionDraft),
             futureVisionTags: tagsPayload,
             futureVisionCover: newCommunityCover.trim() || undefined,
-            typeTag: 'custom',
+            typeTag: 'custom' as const,
           }
         : undefined,
     });
@@ -113,7 +124,9 @@ export function CreateProjectForm() {
     !!name.trim() &&
     (isPersonal ||
       (!!parentChoice &&
-        (!isNewCommunity || (!!newCommunityName.trim() && !!newCommunityFutureVision.trim()))));
+        (!isNewCommunity ||
+          (!!newCommunityName.trim() &&
+            documentDraftHasOfficialText(newCommunityFutureVisionDraft)))));
 
   return (
     <form
@@ -245,15 +258,12 @@ export function CreateProjectForm() {
               />
             </BrandFormControl>
             <BrandFormControl label={t('futureVisionRequired')} required={isNewCommunity}>
-              <Textarea
-                id="futureVision"
-                value={newCommunityFutureVision}
-                onChange={(e) => setNewCommunityFutureVision(e.target.value)}
+              <MeriterEditor
+                mode="collaborative-document"
+                value={newCommunityFutureVisionDraft}
+                onChange={setNewCommunityFutureVisionDraft}
                 placeholder={t('futureVisionPlaceholder')}
-                rows={4}
-                required={isNewCommunity}
                 disabled={pending}
-                className="rounded-xl w-full min-h-[104px] resize-y text-base leading-relaxed"
               />
             </BrandFormControl>
             <div className="space-y-2">

@@ -959,6 +959,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     <ChevronRight size={14} />
                                 </span>
                             </Link>
+                            {isCommunityMember && documentsMode !== 'off' ? (
                             <Link
                                 href={routes.communityDocuments(chatId)}
                                 className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
@@ -974,6 +975,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     <ChevronRight size={14} />
                                 </span>
                             </Link>
+                            ) : null}
                         </>
                     ) : null}
                     {!showHubFeedTabChrome && user && isCommunityMember ? (

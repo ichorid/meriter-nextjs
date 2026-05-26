@@ -145,6 +145,7 @@ export function DocumentCanvasBlock({
 
   return (
     <div
+      id={`block-${block.id}`}
       className={cn(
         'group/block relative grid gap-3 rounded-lg grid-cols-1 border p-3',
         structureMode

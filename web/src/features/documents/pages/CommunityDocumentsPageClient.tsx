@@ -85,7 +85,18 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
           </div>
         ) : listQuery.error ? (
-          <p className="text-sm text-error">{t('loadError')}</p>
+          <div className="flex flex-col items-start gap-3 py-6">
+            <p className="text-sm text-error">{t('loadError')}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => listQuery.refetch()}
+            >
+              {t('retryLoad')}
+            </Button>
+          </div>
         ) : !listQuery.data?.length ? (
           <p className="text-sm text-base-content/70">{t('empty')}</p>
         ) : (

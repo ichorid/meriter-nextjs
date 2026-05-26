@@ -781,30 +781,41 @@ export default function NotificationsPage() {
     }
 
     if (
+      notification.type === 'document_variant_proposed' ||
+      notification.type === 'document_variant_not_selected' ||
       notification.type === 'document_variant_won' ||
       notification.type === 'document_variant_applied' ||
       notification.type === 'document_block_admin_override'
     ) {
       const communityId = typeof m.communityId === 'string' ? m.communityId : '';
       const documentId = typeof m.documentId === 'string' ? m.documentId : '';
+      const blockId = typeof m.blockId === 'string' ? m.blockId : '';
       const documentTitle =
         typeof m.documentTitle === 'string' && m.documentTitle.trim()
           ? m.documentTitle.trim()
           : t('untitledPost');
       const documentHref =
         communityId && documentId
-          ? routes.communityDocument(communityId, documentId)
+          ? blockId
+            ? routes.communityDocumentBlock(communityId, documentId, blockId)
+            : routes.communityDocument(communityId, documentId)
           : '';
-      const bodyKey =
-        notification.type === 'document_variant_won'
-          ? 'documentVariantWonBody'
-          : notification.type === 'document_variant_applied'
-            ? 'documentVariantAppliedBody'
-            : 'documentBlockAdminOverrideBody';
+      const body =
+        notification.type === 'document_variant_proposed'
+          ? t('documentVariantProposedBody', {
+              name: notification.actor?.name || tCommon('someone'),
+            })
+          : notification.type === 'document_variant_not_selected'
+            ? t('documentVariantNotSelectedBody')
+            : notification.type === 'document_variant_won'
+              ? t('documentVariantWonBody')
+              : notification.type === 'document_variant_applied'
+                ? t('documentVariantAppliedBody')
+                : t('documentBlockAdminOverrideBody');
 
       return (
         <div className={NOTIFY_SUB.stack}>
-          <div className={NOTIFY_SUB.body}>{t(bodyKey)}</div>
+          <div className={NOTIFY_SUB.body}>{body}</div>
           {documentHref ? (
             <Link
               href={documentHref}

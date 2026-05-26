@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -48,6 +48,21 @@ export function CommunityDocumentDetailPageClient({
     { id: documentId },
     { enabled: Boolean(documentId && user?.id) },
   );
+
+  useEffect(() => {
+    if (!docQuery.data?.sections) return;
+    const hash = typeof window !== 'undefined' ? window.location.hash : '';
+    if (!hash.startsWith('#block-')) return;
+    const blockId = hash.slice('#block-'.length);
+    if (!blockId) return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(`block-${blockId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [docQuery.data?.sections, docQuery.dataUpdatedAt]);
 
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const walletBalance = getWalletBalance(wallets, communityId);

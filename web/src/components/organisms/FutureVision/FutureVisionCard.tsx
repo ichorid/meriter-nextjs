@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/shadcn/button';
 import { formatMerits } from '@/lib/utils/currency';
 import { shareUrl } from '@shared/lib/share-utils';
 import { routes } from '@/lib/constants/routes';
+import { futureVisionMirrorPlainTextToHtml } from '@/features/documents/lib/future-vision-mirror-text';
+import { DocumentOfficialPreview } from '@/features/documents/components/DocumentOfficialPreview';
+import { CollapsibleRichPreview } from '@/features/documents/components/CollapsibleRichPreview';
 
 export interface FutureVisionItem {
   communityId: string;
@@ -17,6 +20,8 @@ export interface FutureVisionItem {
   futureVisionText?: string;
   futureVisionTags?: string[];
   futureVisionCover?: string;
+  futureVisionDocumentId?: string;
+  futureVisionDocumentSections?: unknown;
   publicationId: string;
   score: number;
   memberCount: number;
@@ -49,6 +54,13 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [gradientFrom, gradientTo] = futureVisionGradient(item.name);
   const hasCover = !!item.futureVisionCover;
+  const hasObDocumentPreview = Boolean(
+    item.futureVisionDocumentId && item.futureVisionDocumentSections,
+  );
+  const futureVisionMirrorHtml =
+    !hasObDocumentPreview && item.futureVisionText?.trim()
+      ? futureVisionMirrorPlainTextToHtml(item.futureVisionText.trim())
+      : '';
 
   const handleRatingClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -102,11 +114,21 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
       <h3 className="text-lg font-semibold text-base-content leading-tight mb-2">
         {item.name}
       </h3>
-      {item.futureVisionText && (
-        <p className="text-sm text-base-content/70 mb-3 line-clamp-4">
-          {item.futureVisionText}
-        </p>
-      )}
+      {hasObDocumentPreview ? (
+        <div className="mb-3 text-sm">
+          <DocumentOfficialPreview sections={item.futureVisionDocumentSections} />
+        </div>
+      ) : futureVisionMirrorHtml ? (
+        <CollapsibleRichPreview
+          html={futureVisionMirrorHtml}
+          className="mb-3"
+          contentClassName={`
+            text-sm text-base-content/70
+            [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold
+            [&_p]:my-0.5 [&_p]:leading-snug
+          `}
+        />
+      ) : null}
       {item.futureVisionTags && item.futureVisionTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {item.futureVisionTags.map((tag) => (

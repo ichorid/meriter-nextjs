@@ -1,6 +1,7 @@
 import type { Community } from '@meriter/shared-types';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
+import { htmlToPlainText } from '@/features/documents/lib/document-text-diff';
 
 export const MAX_VARIANT_HTML_LENGTH = 5000;
 export const MERIT_VOTE_UNIT = 1;
@@ -197,4 +198,18 @@ export function sectionTitleForDisplay(title: string | undefined): string | null
   const lowered = t.toLowerCase();
   if (lowered === 'новый раздел' || lowered === 'new section') return null;
   return t;
+}
+
+/** Lowercase plain text from document sections for client-side search (e.g. future visions feed). */
+export function documentSectionsSearchPlainText(sections: unknown): string {
+  const parts: string[] = [];
+  for (const { section, blocks } of groupBlocksBySection(sections)) {
+    const title = section.title?.trim();
+    if (title) parts.push(title);
+    for (const block of blocks) {
+      const plain = htmlToPlainText(block.officialContent ?? '');
+      if (plain) parts.push(plain);
+    }
+  }
+  return parts.join(' ').toLowerCase();
 }

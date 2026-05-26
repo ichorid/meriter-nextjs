@@ -300,6 +300,8 @@ export type NotificationType =
     | "community_member_removed"
     | "event_created"
     | "event_invitation"
+    | "document_variant_proposed"
+    | "document_variant_not_selected"
     | "document_variant_won"
     | "document_variant_applied"
     | "document_block_admin_override";
