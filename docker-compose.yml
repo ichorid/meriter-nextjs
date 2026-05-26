@@ -86,6 +86,9 @@ services:
     environment:
       - PORT=8002
       - NODE_ENV=production
+      # Collaborative documents DB migration runs on API startup (CollaborativeDocumentsMigrationService).
+      # Do not set MERITER_MANUAL_COLLABORATIVE_DOCUMENTS_MIGRATION=1 in production/deploy.
+      # Manual dry-run: pnpm --filter @meriter/api migrate:collaborative-documents:dry
       # MongoDB connection with authentication
       - MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
     # Security: API port not exposed to host, only accessible through Caddy

@@ -12,123 +12,184 @@ alwaysApply: false
 
 # Collaborative documents (shared-document)
 
-> Merit-based collaborative editing: official block text, proposed variants, voting with заслуги, manual vs auto apply. Canonical product/architecture: `docs/prd/shared-document/business-approved-tz.md`; PRD folder: `docs/prd/shared-document/`.
+> Merit-based collaborative editing: official block text, proposed variants, voting with заслуги, manual vs auto apply. PRD: `docs/prd/shared-document/`.
 
 ---
 
 ## Concept
 
-- **Document** (`documents` collection): belongs to a **community** (`communityId`). Types: `imageOfFuture` (one per community — ОБ), `description` (one per project community), `custom` (only when `documentsMode === 'all'`).
-- **Sections → blocks**: embedded in the document. Each **block** has stable `id`, `officialContent`, optional voting anchor `currentWaveStartedAt`, edit metadata (`officialContentReason`: `initial` | `vote` | `admin`).
-- **Variant** (`document_block_variants`): proposed alternative text for one block; `status`: `open` → `closed-winner` / `closed-not-winner` → optional `applied`; `withdrawn` if author retracts.
-- **Votes**: reuse **`Vote`** with **`targetType === 'document-variant'`** and `targetId` = variant id (same quota/wallet/community rules as other weighted votes; Future Vision may require comment text — see `votes.router` / @business-future-vision.mdc).
+- **Document** (`documents`): belongs to a **community** (`communityId`). Types: `imageOfFuture` (one per community — ОБ), `description` (one per project community), `custom` (only when `documentsMode === 'all'`; no create API yet).
+- **Sections → blocks**: embedded in the document. Each **block** has stable `id`, `officialContent`, `blockType`, optional `currentWaveStartedAt`, `proposalsLocked`, edit metadata (`officialContentReason`: `initial` | `vote` | `admin`).
+- **Variant** (`document_block_variants`): proposed alternative for one block; `status`: `open` → `closed-winner` / `closed-not-winner` → `applied`; `withdrawn` if author retracts. **Multiple open variants per block from different authors are allowed** (no one-variant-per-user limit).
+- **Votes**: reuse **`Vote`** with `targetType === 'document-variant'` or `'document-block-official'` (`targetId` = variant id or `{docId}::{blockId}`).
 
 ---
 
-## Community settings (documents hub)
+## Community settings
 
-- **`Community.settings.documentsMode`**: `'off'` | `'visionOrDescriptionOnly'` | `'all'` — controls whether only seeded OB/description docs exist vs arbitrary custom documents.
-- **`documentCreators`**, **`documentVariantCost`**, **`documentVotingDurationHours`**, **`documentDefaultMode`**, **`documentAutoApplyTimerHours`** — economy and defaults for variants/waves (see `community.schema` / shared-types).
+| Setting | Role |
+|---------|------|
+| `documentsMode` | `'off'` \| `'visionOrDescriptionOnly'` \| `'all'` |
+| `documentCreators` | `'admins'` \| `'members'` — who may propose (custom docs + members mode) |
+| `documentVariantCost` | Proposal fee (null → use `postCost`) |
+| `documentVotingDurationHours` | Default wave length copied to new official docs |
+| `documentDefaultMode` | `'manual'` \| `'auto'` — copied to new official docs |
+
+**Not exposed in UI:** `documentAutoApplyTimerHours` exists in schema/migration defaults but is **unused** by finalize/auto-apply (auto-apply runs immediately after wave close when `mode === 'auto'`).
+
+New communities default `documentsMode: 'visionOrDescriptionOnly'`.
 
 ---
 
 ## Apply modes (`MeriterDocument.mode`)
 
-| Mode | Behaviour |
-|------|-------------|
-| **`manual`** | After a wave closes, a **`closed-winner`** variant must be **applied** by author/admin via **`documentVariants.applyVotingWinner`** (or **applyOpenAsAdmin** for override). |
-| **`auto`** | After **`finalizeExpiredWaveOnBlock`**, if there is a **`closed-winner`** with **positive rating**, **`applyVariantToOfficial`** runs automatically with synthetic actor **`MERITER_DOCUMENT_AUTO_APPLY_USER_ID`** (`meriter-actors.constant.ts`). |
+| Mode | After wave finalize (positive winner) |
+|------|----------------------------------------|
+| **`manual`** | `document_variant_won` notification; lead/author applies via `applyVotingWinner` or `applyOpenAsAdmin` |
+| **`auto`** | `tryAutoApplyWinner` → `applyVariantToOfficial` as `MERITER_DOCUMENT_AUTO_APPLY_USER_ID` |
 
-Manual UI apply is rejected when `mode !== 'manual'` for **`applyVotingWinner`**.
+`applyVotingWinner` rejected when `mode !== 'manual'`.
+
+Also: `applyOfficialVotingWinner` (keep official text, close wave), `applyAdminOverride` (direct official text), `applyOpenAsAdmin` (apply open variant without vote outcome).
 
 ---
 
 ## Voting waves and cron
 
-- **Wave open**: while **`DocumentVariantService`/document helpers** consider the block’s voting window open (`currentWaveStartedAt` + `votingDurationHours`), finalize does nothing.
-- **Finalize**: **`finalizeExpiredWaveOnBlock(documentId, blockId)`** — ranks open variants by rating (tie-break `proposedAt`), assigns `closed-winner` / `closed-not-winner`, clears wave anchor; then **`tryAutoApplyWinner`** if `mode === 'auto'`.
-- **Periodic sweep**: **`DocumentWaveCronService`** (`*/5 * * * *`) calls **`runPeriodicWaveSweep()`** — discovers `(documentId, blockId)` pairs with **`open`** variants, skips blocks still voting, otherwise **`finalizeExpiredWaveOnBlock`**.
-- **Trigger on propose**: proposing a variant also calls **`finalizeExpiredWaveOnBlock`** first so elapsed waves close before a new open variant is added.
+- **Wave anchor:** first `proposeVariant` on a block sets `currentWaveStartedAt` and resets `officialRating`.
+- **Open window:** `now <= start + document.votingDurationHours` (per-document hours after bootstrap).
+- **Finalize:** `finalizeExpiredWaveOnBlock` — rank open variants vs block `officialRating`; positive winner → `closed-winner`; else all `closed-not-winner`; Mongo lock per block.
+- **Cron:** `DocumentWaveCronService` `*/5 * * * *` → `runPeriodicWaveSweep()`.
+- **On propose:** pre-finalize elapsed waves on that block.
 
 ---
 
 ## Economics
 
-- **Propose variant**: fee via **`document_variant_proposal`** (quota/wallet rules in **`DocumentVariantService`**); aligns with global burn for fees (see @business-merits.mdc / fees).
-- **Max variant body length**: **5000** characters (API trim); rich HTML from WYSIWYG counts toward the limit.
+- **Propose:** fee `document_variant_proposal` (quota/wallet → global burn).
+- **Max variant body:** 5000 chars after sanitize.
+- **Vote:** comment **required** for document targets in **all** communities.
 
 ---
 
-## Mirror to legacy community fields (§5.3)
+## Mirror to legacy fields (ОБ / description)
 
-- OB (`type === 'imageOfFuture'`) and project description (`type === 'description'`): **`mirrorOfficialTextToCommunityIfApplicable`** updates **`futureVisionText`** / **`description`** on **`Community`**.
-- For **OB**, mirror also calls **`PublicationService.updateFutureVisionPostContent`** on the **`future-vision`** hub so feed cards stay aligned with the document (same path as direct `Community.futureVisionText` edits in **`CommunityService.updateCommunity`**).
-- **No `imageOfFuture` document** on hub communities (`typeTag`: `future-vision`, `marathon-of-good`, `team-projects`). Bootstrap + startup migration skip them; stray hub OB rows are soft-deleted on migration.
-- **Startup migration:** `CollaborativeDocumentsMigrationService` (`onModuleInit`), revision in `platform_settings.collaborativeDocumentsMigrationRevision` (`COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION`). Manual: `pnpm --filter @meriter/api migrate:collaborative-documents`.
-- **`concatOfficialPlainText`** builds plain text from block **`officialContent`**; **HTML is stripped** for mirror (**`stripHtmlForMirror`**) so legacy fields stay readable plain text while the document stores rich content.
+- **`mirrorOfficialTextToCommunityIfApplicable`** updates `Community.futureVisionText` (OB) or `description` (project) from `concatOfficialPlainText` + `stripHtmlForMirror` (block types lost in mirror — lists become plain lines).
+- **OB hub post:** same mirror path calls `PublicationService.updateFutureVisionPostContent` on `future-vision` hub.
+- **Direct edit forbidden:** `CommunityService.updateCommunity` **rejects** `futureVisionText` / `futureVisionDocumentSeed` — ОБ must be edited only via collaborative document. Tags/cover still updatable on community.
+- **Create flows (canonical):** `futureVisionText` (plain mirror) + **`futureVisionDocumentSeed`** (structured sections) on community create — used by `CommunityForm`, `CreateTeamDialog`, `CreateProjectForm` (`newCommunity`). Bootstrap seeds OB document from seed.
+
+---
+
+## Future Visions feed display
+
+- **`communities.getFutureVisions`** batch-loads `imageOfFuture` sections via `getOfficialByCommunities`.
+- **Web:** `FutureVisionCard` / `CommunityHeroCard` use **`DocumentOfficialPreview`** when sections present; fallback **`CollapsibleRichPreview`** from plain `futureVisionText`.
+- **Search (client):** `FutureVisionFeed` matches name, mirror text, and **`documentSectionsSearchPlainText(sections)`**.
+- **Public read:** feed is public; document pages require auth but **any logged-in user** may read documents (no membership gate on read).
+
+---
+
+## Hub / documents entry UX
+
+- **No OB document** on MVP hubs: `future-vision`, `marathon-of-good`, `team-projects`.
+- **Community hub «Документы» link:** visible only to **community members** (`lead`/`participant`) when `documentsMode !== 'off'`. ОБ preview on hero / future-visions feed remains visible to everyone.
+- **Edit ОБ:** settings `?edit=futureVision` redirects to `/documents` list; edit mode in `CommunityForm` shows link to collaborative document only.
 
 ---
 
 ## Variant references (§17)
 
-- Up to **10** links per variant: `url` (http/https, ≤2000 chars), `summary` (required, ≤280), optional `stance` (`pro` | `con`).
-- API: `normalizeDocumentVariantReferences` in `domain/common/document-variant-references.util.ts`; passed via `documentVariants.propose` `references` array.
-- Web: `DocumentVariantReferencesEditor` on propose form; `DocumentVariantReferencesList` on variant cards. References stay on the variant record after apply (not copied to official block).
+Up to 10 links: `url` (http/https, ≤2000), `summary` (≤280, required), optional `stance` (`pro` | `con`). Stay on variant after apply.
+
+---
 
 ## Block history (§19)
 
-- Each change to **`officialContent`** appends **`block.editHistory`**: `previousContent`, `changedBy`, `changedAt`, `reason` (`initial` | `vote` | `admin`), optional `variantId` when `reason === 'vote'`.
-- Populated on **`applyVariantToOfficial`** and **`applyAdminOverride`** (not retroactively for pre-migration blocks).
+`block.editHistory` on each `officialContent` change: `previousContent`, `changedBy`, `changedAt`, `reason`, optional `variantId`.
 
-## Document structure (§7.4, §20.2)
+---
 
-- **Who**: community **lead**, document **author**, or **superadmin** (`assertCanManageDocument`).
-- **tRPC** (`documents`): `addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`.
-- **Guards**: cannot remove the only section or the only block in the document; removing block/section with non-empty **`officialContent`** requires **`confirmLossOfOfficial: true`**; open variants on removed blocks → **`withdrawn`**; OB/description docs re-mirror community plain text after structure change.
-- **Web**: document toolbar (add section / add block to last section); per-block `DocumentBlockStructureControls` (section title, block type, remove with confirm).
+## Document structure
 
-## Server HTML (§24.9)
+- **Who:** lead, document author, superadmin (`assertCanEditDocumentStructure` / `assertCanManageDocument`).
+- **tRPC `documents`:** `addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`, `reorderBlocks`.
+- **Guards:** cannot remove sole section/block; non-empty official removal needs `confirmLossOfOfficial: true`; open variants on removed blocks → `withdrawn`; OB/description re-mirror after structure change.
+- **Web:** structure mode toggle, dnd reorder, mobile `BottomActionSheet` for propose/vote/admin.
 
-- **`sanitizeDocumentHtml`** (`api/.../common/utils/sanitize-document-html.ts`) runs on **`propose`** and **`applyAdminOverride`**; allowlist aligned with web **`DocumentRichContent`**.
+---
 
-## tRPC (high level)
+## Server HTML
 
-| Namespace | Procedures |
-|-------------|------------|
-| **`documents`** | `listByCommunity`, `getById`, `getOfficialByType`, **`updateMeta`**, **`applyAdminOverride`**, structure mutations (`addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`) |
-| **`documentVariants`** | `listByBlock`, `propose`, `withdraw`, `applyVotingWinner`, `applyOpenAsAdmin`, **`closeVotingWaveOnBlock`**, **`deleteVariant`** |
-| **`votes`** | `create` / `createWithComment` with **`document-variant`** |
+`sanitizeDocumentHtml` on `propose` and `applyAdminOverride`; aligned with web `DocumentRichContent` (DOMPurify).
+
+---
+
+## tRPC surface
+
+### `documents` (all `protectedProcedure`)
+
+| Procedure | Notes |
+|-----------|--------|
+| `listByCommunity`, `getById`, `getOfficialByType` | Read; lazy `ensureOfficialDocumentsForCommunity` |
+| `updateMeta` | Title (custom only), mode, hours, cost, allowDownvotes |
+| `applyAdminOverride` | Direct official text |
+| Structure mutations | Optional `expectedUpdatedAt` concurrency |
+
+### `documentVariants`
+
+| Procedure | Notes |
+|-----------|--------|
+| `listByBlock`, `getBlockVotingPanel`, `getBlockGovernanceHistory` | |
+| `propose`, `withdraw` | |
+| `applyVotingWinner`, `applyOfficialVotingWinner`, `applyOpenAsAdmin` | |
+| `closeVotingWaveOnBlock`, `deleteVariant` | |
+
+### `votes`
+
+`create` / `createWithComment` with `document-variant` or `document-block-official`.
 
 ---
 
 ## Web routes
 
-- Community hub link + **`/meriter/communities/[id]/documents`** (list), **`/meriter/communities/[id]/documents/[documentId]`** (detail).
-- Proposal/editor: TipTap **`RichTextEditor`**; display: **`DocumentRichContent`** (client DOMPurify); API sanitizes on save.
-- Document page (lead): official reason badge, wave timer, collapse variants, admin override dialog, block history, apply open variant, delete variant, close voting wave.
-- **UX redesign (in progress):** [`docs/prd/shared-document/document-canvas-ux-spec.md`](../../docs/prd/shared-document/document-canvas-ux-spec.md) — reading canvas, structure mode, rail; tasks **FE-UX-*** in `tasklist.md`.
+- `/meriter/communities/[id]/documents` — list (members; auth required)
+- `/meriter/communities/[id]/documents/[documentId]` — canvas; deep link `#block-{blockId}` (notifications)
+- `routes.communityDocumentBlock(communityId, documentId, blockId)`
 
 ---
 
-## Notifications (§20.7, MVP)
-
-Emitted from **`DocumentVariantService`** via **`NotificationService`**:
+## Notifications
 
 | Type | When |
 |------|------|
-| **`document_variant_won`** | Variant becomes **`closed-winner`** after wave finalize (positive rating) |
-| **`document_variant_applied`** | Variant applied to **`officialContent`** |
-| **`document_block_admin_override`** | **`applyAdminOverride`** closes open variants on the block (authors notified, not the actor) |
+| `document_variant_proposed` | New variant (leads + document author, not proposer) |
+| `document_variant_not_selected` | Lost after apply / wave / admin override |
+| `document_variant_won` | `closed-winner` after finalize (positive rating) |
+| `document_variant_applied` | Applied to official |
+| `document_block_admin_override` | Admin override on block |
 
-Redirect: **`/meriter/communities/{communityId}/documents/{documentId}`**. Metadata: `communityId`, `documentId`, `documentTitle`, `blockId`, `communityName`, `inviteTargetIsProject`.
+Redirect: `/meriter/communities/{communityId}/documents/{documentId}` + `#block-{blockId}` when metadata includes `blockId`.
 
-**Votes on variants:** comment required in **all** communities (`votes` router); not only **`future-vision`**.
+---
+
+## Deploy / migration
+
+- **`CollaborativeDocumentsMigrationService`** runs on **every API startup** (`onModuleInit`), revision-gated (`COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION`).
+- **Production:** do **not** set `MERITER_MANUAL_COLLABORATIVE_DOCUMENTS_MIGRATION=1` (disables auto-run).
+- **Manual dry-run:** `pnpm --filter @meriter/api migrate:collaborative-documents:dry`.
+
+---
+
+## MVP scope notes
+
+- **In scope:** OB + project description docs, variants, waves, canvas UX, OB feed sync, notifications, member-only documents hub link.
+- **Out of scope (backlog):** `documentsMode: 'all'`, custom document create UI, desktop side rail (removed/unshipped).
 
 ---
 
 ## Related rules
 
-- **ОБ hub / cards**: @business-future-vision.mdc (community **`futureVisionText`** is mirrored from OB document).
-- **Projects / description**: @business-projects.mdc.
-- **Voting merit flow**: @business-content.mdc, @business-merits.mdc.
-- **Permissions**: document author, community **lead** / admin checks in **`DocumentVariantService`** (`assertCanManageDocument`, proposal gates).
+- @business-future-vision.mdc — ОБ hub, feed, tags
+- @business-projects.mdc — project `description` document
+- @business-merits.mdc, @business-content.mdc — voting and fees

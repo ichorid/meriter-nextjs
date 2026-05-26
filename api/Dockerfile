@@ -66,4 +66,5 @@ RUN pnpm install --prod && \
 
 USER nestjs
 EXPOSE 8002
+# Collaborative documents migration runs on process start (CollaborativeDocumentsMigrationService.onModuleInit).
 CMD ["node", "dist/apps/meriter/main"]

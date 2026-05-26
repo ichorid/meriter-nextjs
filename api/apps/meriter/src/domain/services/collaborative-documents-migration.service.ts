@@ -70,6 +70,9 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
         .exec();
       const rev = doc?.collaborativeDocumentsMigrationRevision ?? 0;
       if (rev >= COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION) {
+        this.logger.log(
+          `Collaborative documents migration up to date (revision ${rev}). Runs automatically on every API deploy.`,
+        );
         return;
       }
       this.logger.log(
