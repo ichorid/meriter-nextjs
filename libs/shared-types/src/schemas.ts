@@ -1053,7 +1053,7 @@ export const WithdrawAmountDtoSchema = z.object({
 
 export const VoteWithCommentDtoSchema = z.object({
   targetType: z
-    .enum(["publication", "comment", "vote", "document-variant"])
+    .enum(["publication", "comment", "vote", "document-variant", "document-block-official"])
     .optional(),
   targetId: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),

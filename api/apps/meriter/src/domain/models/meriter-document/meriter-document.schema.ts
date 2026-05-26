@@ -45,6 +45,8 @@ const BlockEmbeddedSchema = new MongooseRawSchema(
     proposalsLocked: { type: Boolean, default: false },
     /** Voting wave anchor — см. ТЗ §13.3 */
     currentWaveStartedAt: { type: Date },
+    /** Weighted vote total for keeping current official text during an open wave. */
+    officialRating: { type: Number, default: 0 },
     editHistory: { type: [EditHistoryEntrySchema], default: [] },
   },
   { _id: false },

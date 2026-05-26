@@ -15,7 +15,7 @@ import { Document } from 'mongoose';
 
 export interface Vote {
   id: string;
-  targetType: 'publication' | 'vote' | 'document-variant';
+  targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official';
   targetId: string;
   userId: string;
   amountQuota: number;
@@ -33,8 +33,11 @@ export class VoteSchemaClass implements Vote {
   @Prop({ required: true, unique: true })
   id!: string;
 
-  @Prop({ required: true, enum: ['publication', 'vote', 'document-variant'] })
-  targetType!: 'publication' | 'vote' | 'document-variant';
+  @Prop({
+    required: true,
+    enum: ['publication', 'vote', 'document-variant', 'document-block-official'],
+  })
+  targetType!: 'publication' | 'vote' | 'document-variant' | 'document-block-official';
 
   @Prop({ required: true })
   targetId!: string;

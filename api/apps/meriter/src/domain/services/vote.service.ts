@@ -13,6 +13,10 @@ import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 import { NotificationService } from './notification.service';
 import { DocumentService } from './document.service';
+import {
+  buildOfficialBlockVoteTargetId,
+  parseOfficialBlockVoteTargetId,
+} from '../common/document-official-vote.util';
 
 @Injectable()
 export class VoteService {
@@ -38,9 +42,16 @@ export class VoteService {
    * - For votes: userId of the vote being voted on
    */
   private async getEffectiveBeneficiary(
-    targetType: 'publication' | 'vote' | 'document-variant',
+    targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official',
     targetId: string,
   ): Promise<string | null> {
+    if (targetType === 'document-block-official') {
+      const parsed = parseOfficialBlockVoteTargetId(targetId);
+      if (!parsed) {
+        return null;
+      }
+      return `official-block:${parsed.blockId}`;
+    }
     if (targetType === 'document-variant') {
       const variant = await this.documentService.getVariantById(targetId);
       return variant ? variant.proposedBy : null;
@@ -79,7 +90,7 @@ export class VoteService {
 
   async createVote(
     userId: string,
-    targetType: 'publication' | 'vote' | 'document-variant',
+    targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official',
     targetId: string,
     amountQuota: number,
     amountWallet: number,
@@ -125,8 +136,8 @@ export class VoteService {
       if (targetType === 'publication') {
         throw new NotFoundException('Publication not found');
       }
-      if (targetType === 'document-variant') {
-        throw new NotFoundException('Document variant not found');
+      if (targetType === 'document-variant' || targetType === 'document-block-official') {
+        throw new NotFoundException('Document vote target not found');
       }
       throw new NotFoundException('Vote not found');
     }
@@ -307,6 +318,25 @@ export class VoteService {
 
   async getTargetVotes(targetType: string, targetId: string): Promise<Vote[]> {
     return this.voteModel.find({ targetType, targetId }).lean().exec();
+  }
+
+  async getDocumentBlockPanelVotes(
+    documentId: string,
+    blockId: string,
+    variantIds: string[],
+  ): Promise<Vote[]> {
+    const officialTargetId = buildOfficialBlockVoteTargetId(documentId, blockId);
+    const or: Array<Record<string, unknown>> = [
+      { targetType: 'document-block-official', targetId: officialTargetId },
+    ];
+    if (variantIds.length > 0) {
+      or.push({ targetType: 'document-variant', targetId: { $in: variantIds } });
+    }
+    return this.voteModel
+      .find({ $or: or })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async getVotesOnVote(voteId: string): Promise<Vote[]> {

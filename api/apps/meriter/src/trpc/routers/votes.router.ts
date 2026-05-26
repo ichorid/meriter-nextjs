@@ -7,6 +7,13 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
+import {
+  applyDocumentVoteRatingDelta,
+  getCommunityIdForDocumentVoteTarget,
+  isDocumentVoteTargetType,
+  resolveDocumentVoteContext,
+  type DocumentVoteTargetType,
+} from '../helpers/document-vote-router.helper';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -215,28 +222,14 @@ function shouldUseProjectInstantAppreciation(
  * Helper to get communityId from target
  */
 async function getCommunityIdFromTarget(
-  targetType: 'publication' | 'vote' | 'document-variant',
+  targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official',
   targetId: string,
   publicationService: any,
   voteService: any,
   documentService: any,
 ): Promise<string> {
-  if (targetType === 'document-variant') {
-    const variant = await documentService.getVariantById(targetId);
-    if (!variant) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Document variant not found',
-      });
-    }
-    const doc = await documentService.getById(variant.documentId);
-    if (!doc) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Document not found',
-      });
-    }
-    return doc.communityId;
+  if (isDocumentVoteTargetType(targetType)) {
+    return getCommunityIdForDocumentVoteTarget(documentService, targetType, targetId);
   }
   if (targetType === 'publication') {
     const publication = await publicationService.getPublication(targetId);
@@ -264,7 +257,7 @@ async function getCommunityIdFromTarget(
 export async function createVoteLogic(
   ctx: any,
   input: {
-    targetType: 'publication' | 'vote' | 'document-variant';
+    targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official';
     targetId: string;
     quotaAmount?: number;
     walletAmount?: number;
@@ -277,29 +270,18 @@ export async function createVoteLogic(
     ReturnType<typeof ctx.publicationService.getPublicationDocument>
   > | null = null;
 
-  let documentVoteCtx:
-    | {
-        variant: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getVariantById>>>;
-        doc: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getById>>>;
-      }
-    | undefined;
+  let documentVoteCtx: Awaited<ReturnType<typeof resolveDocumentVoteContext>> | undefined;
 
-  if (input.targetType === 'document-variant') {
-    const variant = await ctx.documentService.getVariantById(input.targetId);
-    if (!variant || variant.deleted || variant.status !== 'open') {
-      throw new TRPCError({
-        code: 'BAD_REQUEST',
-        message: 'This document variant is not open for voting',
-      });
-    }
-    const doc = await ctx.documentService.getById(variant.documentId);
-    if (!doc || doc.deleted) {
-      throw new TRPCError({
-        code: 'NOT_FOUND',
-        message: 'Document not found',
-      });
-    }
-    documentVoteCtx = { variant, doc };
+  if (isDocumentVoteTargetType(input.targetType)) {
+    documentVoteCtx = await resolveDocumentVoteContext(
+      ctx.documentService,
+      async (documentId, blockId) => {
+        const variants = await ctx.documentVariantService.listByBlock(documentId, blockId);
+        return variants.some((v) => v.status === 'open');
+      },
+      input.targetType,
+      input.targetId,
+    );
   } else if (input.targetType === 'publication') {
     publicationDoc = await ctx.publicationService.getPublicationDocument(
       input.targetId,
@@ -348,11 +330,15 @@ export async function createVoteLogic(
         message: 'You do not have permission to vote on this comment',
       });
     }
-  } else if (input.targetType === 'document-variant') {
-    const canVote = await ctx.permissionService.canVoteOnDocumentVariant(
-      ctx.user.id,
-      input.targetId,
-    );
+  } else if (isDocumentVoteTargetType(input.targetType)) {
+    const canVote =
+      input.targetType === 'document-variant'
+        ? await ctx.permissionService.canVoteOnDocumentVariant(ctx.user.id, input.targetId)
+        : await ctx.permissionService.canVoteOnDocumentBlockOfficial(
+            ctx.user.id,
+            documentVoteCtx!.doc.id,
+            documentVoteCtx!.blockId,
+          );
     if (!canVote) {
       throw new TRPCError({
         code: 'FORBIDDEN',
@@ -379,7 +365,7 @@ export async function createVoteLogic(
     });
   }
 
-  if (input.targetType === 'document-variant' && documentVoteCtx) {
+  if (documentVoteCtx) {
     const documentsMode =
       community.settings?.documentsMode ?? 'visionOrDescriptionOnly';
     if (documentsMode === 'off') {
@@ -391,7 +377,7 @@ export async function createVoteLogic(
     if (
       !ctx.documentService.isDocumentBlockVotingOpen(
         documentVoteCtx.doc,
-        documentVoteCtx.variant.blockId,
+        documentVoteCtx.blockId,
       )
     ) {
       throw new TRPCError({
@@ -514,7 +500,7 @@ export async function createVoteLogic(
   // Default to "up" when not specified. Downvotes must be explicit.
   const direction: 'up' | 'down' = input.direction ?? 'up';
 
-  if (input.targetType === 'document-variant' && !input.comment?.trim()) {
+  if (isDocumentVoteTargetType(input.targetType) && !input.comment?.trim()) {
     throw new TRPCError({
       code: 'BAD_REQUEST',
       message: 'Comment is required when voting on document variants',
@@ -543,7 +529,7 @@ export async function createVoteLogic(
   }
 
   if (
-    input.targetType === 'document-variant' &&
+    isDocumentVoteTargetType(input.targetType) &&
     direction === 'down' &&
     documentVoteCtx &&
     documentVoteCtx.doc.allowDownvotes === false
@@ -572,7 +558,7 @@ export async function createVoteLogic(
   if (
     (input.targetType === 'publication' ||
       input.targetType === 'vote' ||
-      input.targetType === 'document-variant') &&
+      isDocumentVoteTargetType(input.targetType)) &&
     community?.typeTag === 'future-vision' &&
     !currencySource &&
     requestedQuotaAmount > 0
@@ -690,7 +676,7 @@ export async function createVoteLogic(
         ctx.user.id,
         communityId,
       );
-      if (input.targetType === 'document-variant') {
+      if (isDocumentVoteTargetType(input.targetType)) {
         if (!memberRole) {
           throw new TRPCError({
             code: 'FORBIDDEN',
@@ -716,7 +702,7 @@ export async function createVoteLogic(
 
   // Create vote (document-variant rating is updated in the same transaction)
   let vote: Awaited<ReturnType<typeof ctx.voteService.createVote>>;
-  if (input.targetType === 'document-variant') {
+  if (isDocumentVoteTargetType(input.targetType)) {
     const totalAmount = quotaAmount + walletAmount;
     const delta = direction === 'up' ? totalAmount : -totalAmount;
     const session = await ctx.connection.startSession();
@@ -734,7 +720,13 @@ export async function createVoteLogic(
           input.images,
           session,
         );
-        await ctx.documentService.applyRatingDelta(input.targetId, delta, session);
+        await applyDocumentVoteRatingDelta(
+          ctx.documentService,
+          input.targetType,
+          input.targetId,
+          delta,
+          session,
+        );
       });
     } finally {
       await session.endSession();
@@ -873,16 +865,19 @@ export const votesRouter = router({
         !input.targetType ||
         (input.targetType !== 'publication' &&
           input.targetType !== 'vote' &&
-          input.targetType !== 'document-variant')
+          !isDocumentVoteTargetType(input.targetType))
       ) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message:
-            'targetType must be "publication", "vote", or "document-variant"',
+            'targetType must be "publication", "vote", "document-variant", or "document-block-official"',
         });
       }
       return createVoteLogic(ctx, {
-        targetType: input.targetType,
+        targetType: input.targetType as
+          | 'publication'
+          | 'vote'
+          | DocumentVoteTargetType,
         targetId: input.targetId!,
         quotaAmount: input.quotaAmount,
         walletAmount: input.walletAmount,

@@ -199,6 +199,30 @@ export const documentsRouter = router({
       }
     }),
 
+  reorderBlocks: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        sectionId: z.string().min(1),
+        blockIds: z.array(z.string().min(1)).min(1),
+      }).merge(StructureConcurrencyInput),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.documentStructureService.reorderBlocks(
+          ctx.user.id,
+          input.documentId,
+          input.sectionId,
+          {
+            blockIds: input.blockIds,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          },
+        );
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
   removeBlock: protectedProcedure
     .input(
       z.object({

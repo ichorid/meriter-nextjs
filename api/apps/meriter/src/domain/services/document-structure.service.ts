@@ -170,6 +170,37 @@ export class DocumentStructureService {
     return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
   }
 
+  async reorderBlocks(
+    actorUserId: string,
+    documentId: string,
+    sectionId: string,
+    input: { blockIds: string[] } & StructureWriteInput,
+  ): Promise<MeriterDocumentSchemaClass> {
+    const doc = await this.requireManageableDocument(actorUserId, documentId);
+    const sections = this.cloneSections(doc);
+    const sec = sections.find((s) => s.id === sectionId);
+    if (!sec) {
+      throw new NotFoundException('Section not found');
+    }
+    const existingIds = sec.blocks.map((b) => b.id).sort();
+    const inputIds = [...input.blockIds].sort();
+    if (
+      existingIds.length !== inputIds.length ||
+      !existingIds.every((id, index) => id === inputIds[index])
+    ) {
+      throw new BadRequestException('blockIds must match section blocks exactly');
+    }
+    const byId = new Map(sec.blocks.map((b) => [b.id, b]));
+    sec.blocks = input.blockIds.map((id, order) => {
+      const block = byId.get(id);
+      if (!block) {
+        throw new NotFoundException('Block not found');
+      }
+      return { ...block, order };
+    });
+    return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
+  }
+
   async removeBlock(
     actorUserId: string,
     documentId: string,

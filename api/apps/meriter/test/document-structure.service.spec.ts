@@ -159,6 +159,38 @@ describe('DocumentStructureService', () => {
     );
   });
 
+  it('reorders blocks within a section', async () => {
+    mockDoc(baseDoc.sections);
+
+    await service.reorderBlocks(actorUserId, documentId, 's1', {
+      blockIds: ['b2', 'b1'],
+    });
+
+    expect(documentService.updateSections).toHaveBeenCalledWith(
+      documentId,
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 's1',
+          blocks: [
+            expect.objectContaining({ id: 'b2', order: 0 }),
+            expect.objectContaining({ id: 'b1', order: 1 }),
+          ],
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
+  it('rejects reorder when blockIds do not match section', async () => {
+    mockDoc(baseDoc.sections);
+
+    await expect(
+      service.reorderBlocks(actorUserId, documentId, 's1', {
+        blockIds: ['b1'],
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
   it('throws when section is missing', async () => {
     mockDoc([
       ...baseDoc.sections,

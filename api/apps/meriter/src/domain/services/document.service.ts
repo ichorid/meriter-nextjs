@@ -537,12 +537,61 @@ export class DocumentService {
     );
   }
 
+  async applyOfficialBlockRatingDelta(
+    documentId: string,
+    blockId: string,
+    delta: number,
+    session?: ClientSession,
+  ): Promise<void> {
+    if (!delta) {
+      return;
+    }
+    const doc = await this.documentModel.findOne({ id: documentId }).exec();
+    if (!doc) {
+      throw new NotFoundException('Document not found');
+    }
+    let found = false;
+    for (const sec of doc.sections ?? []) {
+      for (const block of sec.blocks ?? []) {
+        if (block.id === blockId) {
+          block.officialRating = (block.officialRating ?? 0) + delta;
+          found = true;
+          break;
+        }
+      }
+      if (found) {
+        break;
+      }
+    }
+    if (!found) {
+      throw new NotFoundException('Block not found');
+    }
+    doc.markModified('sections');
+    await doc.save(session ? { session } : undefined);
+  }
+
+  getBlockOfficialRating(doc: MeriterDocumentSchemaClass, blockId: string): number {
+    const block = this.findBlock(doc, blockId) as { officialRating?: number } | null;
+    return block?.officialRating ?? 0;
+  }
+
   findBlock(
     doc: MeriterDocumentSchemaClass,
     blockId: string,
-  ): { currentWaveStartedAt?: Date; proposalsLocked?: boolean } | null {
+  ): {
+    currentWaveStartedAt?: Date;
+    proposalsLocked?: boolean;
+    officialRating?: number;
+    officialContent?: string;
+  } | null {
     const sections = doc.sections as Array<{
-      blocks?: Array<{ id: string; currentWaveStartedAt?: Date; proposalsLocked?: boolean }>;
+      blocks?: Array<{
+        id: string;
+        currentWaveStartedAt?: Date;
+        proposalsLocked?: boolean;
+        officialRating?: number;
+        officialContent?: string;
+      }>;
     }>;
     for (const sec of sections ?? []) {
       for (const b of sec.blocks ?? []) {

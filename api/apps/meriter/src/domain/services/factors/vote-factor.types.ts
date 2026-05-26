@@ -9,7 +9,7 @@ export interface VoteFactorContext extends PermissionContext {
   communityId: string;
   action?: ActionType;
   community?: Community;
-  targetType?: 'publication' | 'vote' | 'document-variant';
+  targetType?: 'publication' | 'vote' | 'document-variant' | 'document-block-official';
   postType?: string;
   isProject?: boolean;
   direction?: 'up' | 'down';

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
+import { buildOfficialBlockVoteTargetId } from '../../domain/common/document-official-vote.util';
 
 const ReferenceSchema = z.object({
   id: z.string().optional(),
@@ -37,6 +38,174 @@ export const documentVariantsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       return ctx.documentVariantService.listByBlock(input.documentId, input.blockId);
+    }),
+
+  getBlockVotingPanel: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        blockId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const doc = await ctx.documentService.getById(input.documentId);
+      if (!doc || doc.deleted) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+      }
+
+      const block = ctx.documentService.findBlock(doc, input.blockId);
+      if (!block) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Block not found' });
+      }
+
+      const variants = await ctx.documentVariantService.listByBlock(
+        input.documentId,
+        input.blockId,
+      );
+      const votes = await ctx.voteService.getDocumentBlockPanelVotes(
+        input.documentId,
+        input.blockId,
+        variants.map((v) => v.id),
+      );
+
+      const userIds = [...new Set(votes.map((v) => v.userId))];
+      const userById = await ctx.userService.getUsersByIdsForEnrichment(userIds);
+
+      return {
+        officialRating: block.officialRating ?? 0,
+        variants,
+        votes: votes.map((vote) => {
+          const user = userById.get(vote.userId);
+          const amount = (vote.amountQuota ?? 0) + (vote.amountWallet ?? 0);
+          const signedAmount = vote.direction === 'down' ? -amount : amount;
+          return {
+            targetType: vote.targetType,
+            targetId: vote.targetId,
+            userId: vote.userId,
+            userDisplayName: user?.displayName ?? vote.userId.slice(0, 8),
+            userAvatarUrl: user?.avatarUrl ?? null,
+            meritAmount: signedAmount,
+            direction: vote.direction,
+            comment: vote.comment ?? '',
+            createdAt: vote.createdAt,
+          };
+        }),
+      };
+    }),
+
+  getBlockGovernanceHistory: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        blockId: z.string().min(1),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const doc = await ctx.documentService.getById(input.documentId);
+      if (!doc || doc.deleted) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+      }
+
+      const block = ctx.documentService.findBlock(doc, input.blockId) as
+        | {
+            officialContentVariantId?: string;
+            currentWaveStartedAt?: Date | string;
+            editHistory?: Array<{
+              changedAt: Date | string;
+              changedBy: string;
+              reason: 'initial' | 'vote' | 'admin';
+              variantId?: string;
+              previousContent: string;
+            }>;
+          }
+        | null;
+      if (!block) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Block not found' });
+      }
+
+      const variants = await ctx.documentVariantService.listByBlock(
+        input.documentId,
+        input.blockId,
+      );
+      const votes = await ctx.voteService.getDocumentBlockPanelVotes(
+        input.documentId,
+        input.blockId,
+        variants.map((v) => v.id),
+      );
+
+      const userIds = new Set<string>();
+      for (const variant of variants) {
+        userIds.add(variant.proposedBy);
+        if (variant.appliedBy) {
+          userIds.add(variant.appliedBy);
+        }
+      }
+      for (const entry of block.editHistory ?? []) {
+        userIds.add(entry.changedBy);
+      }
+      for (const vote of votes) {
+        userIds.add(vote.userId);
+      }
+
+      const userById = await ctx.userService.getUsersByIdsForEnrichment([...userIds]);
+      const variantById = new Map(variants.map((v) => [v.id, v]));
+
+      return {
+        votingDurationHours: doc.votingDurationHours ?? 48,
+        waveOpen: ctx.documentService.isDocumentBlockVotingOpen(doc, input.blockId),
+        currentWaveStartedAt: block.currentWaveStartedAt ?? null,
+        officialContentVariantId: block.officialContentVariantId ?? null,
+        editHistory: (block.editHistory ?? []).map((entry) => {
+          const linked = entry.variantId ? variantById.get(entry.variantId) : null;
+          const changedByUser = userById.get(entry.changedBy);
+          const appliedByUser = linked?.appliedBy ? userById.get(linked.appliedBy) : null;
+          return {
+            changedAt: entry.changedAt,
+            changedBy: entry.changedBy,
+            changedByDisplayName: changedByUser?.displayName ?? entry.changedBy.slice(0, 8),
+            reason: entry.reason,
+            variantId: entry.variantId,
+            previousContent: entry.previousContent,
+            appliedByDisplayName:
+              appliedByUser?.displayName ??
+              (entry.reason === 'vote' && !entry.variantId
+                ? changedByUser?.displayName ?? entry.changedBy.slice(0, 8)
+                : null),
+          };
+        }),
+        variants: variants.map((variant) => {
+          const proposer = userById.get(variant.proposedBy);
+          const applicator = variant.appliedBy ? userById.get(variant.appliedBy) : null;
+          return {
+            id: variant.id,
+            content: variant.content,
+            status: variant.status,
+            rating: variant.rating ?? 0,
+            proposedAt: variant.proposedAt,
+            proposedBy: variant.proposedBy,
+            proposedByDisplayName: proposer?.displayName ?? variant.proposedBy.slice(0, 8),
+            appliedAt: variant.appliedAt ?? null,
+            appliedBy: variant.appliedBy ?? null,
+            appliedByDisplayName: applicator?.displayName ?? null,
+          };
+        }),
+        votes: votes.map((vote) => {
+          const user = userById.get(vote.userId);
+          const amount = (vote.amountQuota ?? 0) + (vote.amountWallet ?? 0);
+          const signedAmount = vote.direction === 'down' ? -amount : amount;
+          return {
+            targetType: vote.targetType,
+            targetId: vote.targetId,
+            userId: vote.userId,
+            userDisplayName: user?.displayName ?? vote.userId.slice(0, 8),
+            meritAmount: signedAmount,
+            direction: vote.direction,
+            comment: vote.comment ?? '',
+            createdAt: vote.createdAt,
+          };
+        }),
+        officialVoteTargetId: buildOfficialBlockVoteTargetId(input.documentId, input.blockId),
+      };
     }),
 
   propose: protectedProcedure
@@ -77,6 +246,26 @@ export const documentVariantsRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         await ctx.documentVariantService.applyVotingWinner(ctx.user.id, input.variantId);
+        return { ok: true as const };
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
+  applyOfficialVotingWinner: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        blockId: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await ctx.documentVariantService.applyOfficialVotingWinner(
+          ctx.user.id,
+          input.documentId,
+          input.blockId,
+        );
         return { ok: true as const };
       } catch (err) {
         mapNestToTrpc(err);

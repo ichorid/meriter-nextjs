@@ -130,6 +130,7 @@ export class DocumentVariantService {
     if (openVariants.length === 0) {
       await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
         delete b.currentWaveStartedAt;
+        b.officialRating = 0;
       });
       return;
     }
@@ -143,8 +144,35 @@ export class DocumentVariantService {
       return ta - tb;
     });
 
-    const top = openVariants[0]!;
-    const topRated = (top.rating ?? 0) > 0;
+    const block = this.documentService.findBlock(docLean, blockId);
+    const officialRating = block?.officialRating ?? 0;
+    const topVariant = openVariants[0]!;
+    const topVariantRating = topVariant?.rating ?? 0;
+    const officialWins =
+      officialRating > topVariantRating ||
+      (officialRating === topVariantRating && officialRating > 0);
+
+    if (officialWins) {
+      for (const v of openVariants) {
+        await this.variantModel.updateOne(
+          { id: v.id },
+          {
+            $set: {
+              status: 'closed-not-winner',
+              updatedAt: new Date(),
+            },
+          },
+        );
+      }
+      await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
+        delete b.currentWaveStartedAt;
+        b.officialRating = 0;
+      });
+      return;
+    }
+
+    const top = topVariant;
+    const topRated = topVariantRating > 0;
 
     for (const v of openVariants) {
       const isWinner = topRated && v.id === top.id;
@@ -161,6 +189,7 @@ export class DocumentVariantService {
 
     await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
       delete b.currentWaveStartedAt;
+      b.officialRating = 0;
     });
 
     if (topRated && docLean.mode !== 'auto') {
@@ -282,6 +311,7 @@ export class DocumentVariantService {
     if (needsWaveStart) {
       await this.documentService.updateDocumentBlock(doc.id, input.blockId, (b) => {
         b.currentWaveStartedAt = now;
+        b.officialRating = 0;
       });
     }
 
@@ -329,6 +359,71 @@ export class DocumentVariantService {
       { id: variantId },
       { $set: { status: 'withdrawn', updatedAt: new Date() } },
     );
+  }
+
+  /** Apply voting winner (closed-winner) — document owner or community admin. */
+  async applyOfficialVotingWinner(
+    actorUserId: string,
+    documentId: string,
+    blockId: string,
+  ): Promise<void> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      throw new NotFoundException('Document not found');
+    }
+
+    await this.assertCanManageDocument(actorUserId, doc);
+
+    if (doc.mode !== 'manual') {
+      throw new BadRequestException('Manual apply is only for documents in manual mode');
+    }
+
+    if (this.documentService.isDocumentBlockVotingOpen(doc, blockId)) {
+      throw new BadRequestException('Voting is still open on this block');
+    }
+
+    const pending = await this.variantModel
+      .find({
+        documentId,
+        blockId,
+        deleted: false,
+        status: { $in: ['open', 'closed-winner', 'closed-not-winner'] },
+      })
+      .lean()
+      .exec();
+
+    if (pending.some((v) => v.status === 'open')) {
+      throw new BadRequestException('Close voting before choosing a winner');
+    }
+
+    const hasResolvedWave =
+      pending.some((v) => v.status === 'closed-winner') ||
+      pending.some((v) => v.status === 'closed-not-winner');
+    if (!hasResolvedWave) {
+      throw new BadRequestException('No completed voting to finalize on this block');
+    }
+
+    const now = new Date();
+    await this.variantModel.updateMany(
+      {
+        documentId,
+        blockId,
+        deleted: false,
+        status: { $in: ['closed-winner', 'closed-not-winner'] },
+      },
+      { $set: { status: 'withdrawn', updatedAt: now } },
+    );
+
+    await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
+      delete b.currentWaveStartedAt;
+      b.officialRating = 0;
+      this.documentService.appendBlockEditHistory(b, {
+        changedAt: now,
+        changedBy: actorUserId,
+        reason: 'vote',
+        previousContent: String(b.officialContent ?? ''),
+      });
+    });
   }
 
   /** Apply voting winner (closed-winner) — document owner or community admin. */
