@@ -85,24 +85,6 @@ export function DocumentBlockStructureBar({
         aria-label={t('structureLabel')}
         onClick={(e) => e.stopPropagation()}
       >
-        {dragHandleProps ? (
-          <button
-            type="button"
-            className={cn(
-              'flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg',
-              'border border-base-300/30 bg-base-300/10 text-base-content/45',
-              'cursor-grab transition-colors hover:border-base-300/50 hover:text-base-content/70',
-              'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-              structureBusy && 'pointer-events-none opacity-50',
-            )}
-            aria-label={t('dragBlock')}
-            disabled={structureBusy}
-            {...dragHandleProps}
-          >
-            <GripVertical size={14} aria-hidden />
-          </button>
-        ) : null}
-
         <Select
           value={blockType}
           onValueChange={(v) => structure.onBlockTypeChange(blockId, v as MeriterBlockType)}
@@ -123,7 +105,26 @@ export function DocumentBlockStructureBar({
           </SelectContent>
         </Select>
 
-        <Button
+        <div className="flex flex-wrap items-center gap-2">
+          {dragHandleProps ? (
+            <button
+              type="button"
+              className={cn(
+                'flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg',
+                'border border-base-300/30 bg-base-300/10 text-base-content/45',
+                'cursor-grab transition-colors hover:border-base-300/50 hover:text-base-content/70',
+                'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                structureBusy && 'pointer-events-none opacity-50',
+              )}
+              aria-label={t('dragBlock')}
+              disabled={structureBusy}
+              {...dragHandleProps}
+            >
+              <GripVertical size={14} aria-hidden />
+            </button>
+          ) : null}
+
+          <Button
           type="button"
           variant={proposalsLocked ? 'default' : 'outline'}
           size="sm"
@@ -169,6 +170,7 @@ export function DocumentBlockStructureBar({
             {t('removeSection')}
           </Button>
         ) : null}
+        </div>
       </div>
 
       <DocumentStructureDeleteDialog

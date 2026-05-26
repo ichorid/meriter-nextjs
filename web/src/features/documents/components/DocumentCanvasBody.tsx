@@ -66,10 +66,16 @@ export function DocumentCanvasBody({
             key={section.id}
             className={cn(
               'space-y-4',
-              structureMode && 'rounded-lg border border-dashed border-primary/30 p-4',
+              structureMode
+                ? 'rounded-lg border border-dashed border-primary/30 p-4'
+                : 'rounded-xl border border-base-300/40 bg-base-300/[0.04] p-4 sm:p-5',
             )}
           >
-            <DocumentSectionTitle sectionId={section.id} title={section.title} />
+            <DocumentSectionTitle
+              sectionId={section.id}
+              title={section.title}
+              className={cn(!structureMode && section.title?.trim() && 'border-b border-base-300/30 pb-3')}
+            />
 
             {blocks.length === 0 && structureMode ? (
               <DocumentSectionStructureActions
@@ -78,7 +84,7 @@ export function DocumentCanvasBody({
               />
             ) : null}
 
-            <div className="space-y-2">
+            <div className={cn('space-y-2', !structureMode && 'space-y-3')}>
               <DocumentSectionSortableBlocks
                 sectionId={section.id}
                 sectionTitle={section.title ?? ''}

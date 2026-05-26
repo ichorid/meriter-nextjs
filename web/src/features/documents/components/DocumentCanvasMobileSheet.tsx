@@ -206,7 +206,9 @@ export function DocumentCanvasMobileSheet() {
       {mobileSheet.kind === 'propose' && blockId ? (
         <DocumentProposeComposer
           blockId={blockId}
+          blockType={block?.blockType}
           initialContent={block?.officialContent ?? ''}
+          showPanelHeader={false}
           showCancel
           onCancel={closeMobileSheet}
           onSuccess={closeMobileSheet}

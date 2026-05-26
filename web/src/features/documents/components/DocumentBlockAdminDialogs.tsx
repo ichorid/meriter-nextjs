@@ -11,8 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { RichTextEditor } from '@/components/molecules/RichTextEditor';
+import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
 import { DocumentBlockHistoryPanel } from '@/features/documents/components/DocumentBlockHistoryPanel';
+import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import {
   MAX_VARIANT_HTML_LENGTH,
@@ -89,14 +90,17 @@ export function DocumentBlockAdminDialogs() {
               <li>{t('adminOverrideHelpItemHistory')}</li>
             </ul>
           </div>
-          <RichTextEditor
-            key={`admin-override-${blockId ?? 'none'}-${adminOverrideResetKey}`}
-            content={block?.officialContent ?? ''}
+          <DocumentBlockEditor
+            key={`admin-override-${blockId ?? 'none'}-${block?.blockType ?? 'paragraph'}-${adminOverrideResetKey}`}
+            blockType={block?.blockType ?? 'paragraph'}
+            content={normalizeOfficialContentForDisplay(
+              block?.blockType ?? 'paragraph',
+              block?.officialContent ?? '',
+            )}
             onChange={(html) => {
               adminOverrideRef.current = html;
             }}
-            editable={!adminOverrideMutation.isPending}
-            className="[&_.ProseMirror]:min-h-[160px]"
+            disabled={adminOverrideMutation.isPending}
           />
           <DialogFooter className="gap-2 sm:gap-0">
             <Button

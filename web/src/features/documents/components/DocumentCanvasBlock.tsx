@@ -97,7 +97,9 @@ export function DocumentCanvasBlock({
   const [waveCountdown, setWaveCountdown] = useState('');
 
   const variants = variantsQuery.data ?? [];
-  const userOpenVariant = variants.find((v) => v.status === 'open' && v.proposedBy === userId);
+  const userHasOpenVariants = variants.some(
+    (v) => v.status === 'open' && v.proposedBy === userId,
+  );
 
   const waveStartMs = parseDateMs(block.currentWaveStartedAt);
   const waveEndsAtMs =
@@ -116,10 +118,10 @@ export function DocumentCanvasBlock({
 
   useEffect(() => {
     if (!variantsQuery.isSuccess) return;
-    if (userOpenVariant) {
+    if (userHasOpenVariants) {
       setVariantsExpanded(true);
     }
-  }, [variantsQuery.isSuccess, userOpenVariant?.id]);
+  }, [variantsQuery.isSuccess, userHasOpenVariants]);
 
   useEffect(() => {
     if (!waveActive || waveEndsAtMs == null) {
@@ -144,10 +146,11 @@ export function DocumentCanvasBlock({
   return (
     <div
       className={cn(
-        'group/block relative grid gap-3 rounded-lg',
-        'grid-cols-1',
-        waveActive && !structureMode && 'border-l-2 border-primary pl-3 -ml-0.5',
-        waveActive && structureMode && 'border-l-2 border-primary',
+        'group/block relative grid gap-3 rounded-lg grid-cols-1 border p-3',
+        structureMode
+          ? 'border-dashed border-base-300/35 bg-base-300/[0.04]'
+          : 'border-base-300/40 bg-base-200/20 dark:bg-base-300/[0.08]',
+        waveActive && 'border-primary/45 ring-1 ring-primary/20',
       )}
     >
       <div className="min-w-0">
@@ -164,7 +167,14 @@ export function DocumentCanvasBlock({
           />
         ) : null}
 
-        <div className="mb-1 flex items-start justify-end gap-2 opacity-0 transition-opacity group-hover/block:opacity-100 focus-within:opacity-100">
+        <div
+          className={cn(
+            'mb-1 flex items-start justify-end gap-2',
+            proposalsLocked && !structureMode
+              ? 'opacity-100'
+              : 'opacity-0 transition-opacity group-hover/block:opacity-100 focus-within:opacity-100',
+          )}
+        >
           {proposalsLocked && !structureMode ? (
             <Badge
               variant="outline"
@@ -237,9 +247,9 @@ export function DocumentCanvasBlock({
         ) : null}
 
         {showBlockActions ? (
-          <div className="mt-4 space-y-2 border-t border-base-300/35 pt-3">
-            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-base-300/25 bg-base-300/10 px-2 py-1">
-              {canProposeVariant && !userOpenVariant && !(isDesktop && proposeOpen) ? (
+          <div className="mt-3 space-y-2 border-t border-base-300/30 pt-3">
+            <div className="flex flex-wrap items-center gap-1 rounded-lg bg-base-300/10 px-2 py-1">
+              {canProposeVariant && !(isDesktop && proposeOpen) ? (
                 isDesktop ? (
                   <Button
                     type="button"
@@ -274,11 +284,10 @@ export function DocumentCanvasBlock({
                 />
               ) : null}
             </div>
-            {userOpenVariant ? (
-              <p className="text-xs text-base-content/55">{tCanvas('yourOpenVariant')}</p>
-            ) : isDesktop && proposeOpen ? (
+            {isDesktop && proposeOpen ? (
               <DocumentProposeComposer
                 blockId={block.id}
+                blockType={block.blockType}
                 initialContent={block.officialContent ?? ''}
                 showCancel
                 onCancel={() => setProposeOpen(false)}

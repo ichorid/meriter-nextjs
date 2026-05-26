@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
-import { RichTextEditor } from '@/components/molecules/RichTextEditor';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
+import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
 import { DocumentVariantReferencesEditor } from '@/features/documents/components/DocumentVariantReferencesEditor';
+import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
+import type { MeriterBlockType } from '@/features/documents/types/document-block';
 import {
   MAX_VARIANT_HTML_LENGTH,
   canAffordVariantProposal,
@@ -22,26 +24,36 @@ import { useDocumentCanvasFocusRequired } from '@/features/documents/context/Doc
 
 export interface DocumentProposeComposerProps {
   blockId: string;
+  blockType?: MeriterBlockType | string;
   /** Current official block HTML — preloaded in the editor when proposing an edit. */
   initialContent?: string;
   onSuccess?: () => void;
   showCancel?: boolean;
   onCancel?: () => void;
+  /** Inline desktop block — show panel title. Mobile sheet supplies its own chrome. */
+  showPanelHeader?: boolean;
 }
 
 export function DocumentProposeComposer({
   blockId,
+  blockType = 'paragraph',
   initialContent = '',
   onSuccess,
   showCancel,
   onCancel,
+  showPanelHeader = true,
 }: DocumentProposeComposerProps) {
   const focus = useDocumentCanvasFocusRequired();
   const t = useTranslations('pages.documents');
   const tCanvas = useTranslations('pages.documents.canvas');
   const utils = trpc.useUtils();
 
-  const proposalBodyRef = useRef(initialContent);
+  const normalizedInitial = useMemo(
+    () => normalizeOfficialContentForDisplay(blockType, initialContent),
+    [blockType, initialContent],
+  );
+
+  const proposalBodyRef = useRef(normalizedInitial);
   const [referenceDrafts, setReferenceDrafts] = useState<DocumentVariantReferenceDraft[]>([]);
   const [resetKey, setResetKey] = useState(0);
 
@@ -143,42 +155,54 @@ export function DocumentProposeComposer({
       : tCanvas('proposeSubmitFree');
 
   return (
-    <div className="space-y-2">
-      {variantCost > 0 ? (
-        <p className="text-[11px] text-base-content/55">{t('proposeCostHint', { cost: variantCost })}</p>
-      ) : null}
-      <p className="text-[10px] text-base-content/40">{tCanvas('proposeShortcut')}</p>
-      <RichTextEditor
-        key={`propose-${blockId}-${resetKey}`}
-        content={initialContent}
-        onChange={(html) => {
-          proposalBodyRef.current = html;
-        }}
-        placeholder={t('proposePlaceholder')}
-        editable={!proposeMutation.isPending}
-        className="[&_.ProseMirror]:min-h-[100px]"
-      />
-      <DocumentVariantReferencesEditor
-        key={`refs-${blockId}-${resetKey}`}
-        value={referenceDrafts}
-        onChange={setReferenceDrafts}
-        disabled={proposeMutation.isPending}
-      />
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          className="rounded-lg"
-          disabled={proposeMutation.isPending || !canAfford}
-          onClick={submit}
-        >
-          {submitLabel}
-        </Button>
-        {showCancel ? (
-          <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={onCancel}>
-            {tCanvas('proposeCancel')}
-          </Button>
+    <div className="overflow-hidden rounded-xl border border-primary/25 bg-base-300/[0.06] ring-1 ring-primary/10">
+      <div className="space-y-1 border-b border-base-300/30 bg-base-300/[0.08] px-3 py-2.5">
+        {showPanelHeader ? (
+          <p className="text-xs font-semibold tracking-tight text-base-content/85">
+            {tCanvas('proposeCta')}
+          </p>
         ) : null}
+        {variantCost > 0 ? (
+          <p className="text-[11px] leading-snug text-base-content/55">
+            {t('proposeCostHint', { cost: variantCost })}
+          </p>
+        ) : null}
+        <p className="text-[10px] text-base-content/45">{tCanvas('proposeShortcut')}</p>
+      </div>
+
+      <div className="space-y-3 p-3">
+        <DocumentBlockEditor
+          key={`propose-${blockId}-${blockType}-${resetKey}`}
+          blockType={blockType}
+          content={normalizedInitial}
+          onChange={(html) => {
+            proposalBodyRef.current = html;
+          }}
+          placeholder={t('proposePlaceholder')}
+          disabled={proposeMutation.isPending}
+        />
+        <DocumentVariantReferencesEditor
+          key={`refs-${blockId}-${resetKey}`}
+          value={referenceDrafts}
+          onChange={setReferenceDrafts}
+          disabled={proposeMutation.isPending}
+        />
+        <div className="flex flex-wrap gap-2 border-t border-base-300/25 pt-3">
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-lg"
+            disabled={proposeMutation.isPending || !canAfford}
+            onClick={submit}
+          >
+            {submitLabel}
+          </Button>
+          {showCancel ? (
+            <Button type="button" variant="ghost" size="sm" className="rounded-lg" onClick={onCancel}>
+              {tCanvas('proposeCancel')}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
