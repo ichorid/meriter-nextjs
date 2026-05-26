@@ -1407,10 +1407,20 @@
             "subtitle": "Управление настройками для {communityName}",
             "tabs": {
                 "general": "Общие",
+                "documents": "Документы",
+                "events": "События",
                 "rules": "Правила",
                 "comments": "Комментирование",
                 "investing": "Инвестиции",
                 "tappalka": "Майнинг"
+            },
+            "documentsSettingsSection": {
+                "saveSuccess": "Настройки совместных документов сохранены",
+                "saveError": "Не удалось сохранить настройки документов"
+            },
+            "eventsSettingsSection": {
+                "saveSuccess": "Настройки событий сохранены",
+                "saveError": "Не удалось сохранить настройки событий"
             },
             "commentsSection": {
                 "title": "Режим комментариев",

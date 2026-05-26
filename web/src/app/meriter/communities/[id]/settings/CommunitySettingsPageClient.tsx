@@ -6,6 +6,8 @@ import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { CommentSettingsSection } from '@/features/communities/components/CommentSettingsSection';
+import { CommunityDocumentsSettingsSection } from '@/features/communities/components/CommunityDocumentsSettingsSection';
+import { CommunityEventsSettingsSection } from '@/features/communities/components/CommunityEventsSettingsSection';
 import { TappalkaSettingsForm } from '@/features/communities/components/TappalkaSettingsForm';
 import { InvestingSettingsForm } from '@/features/communities/components/InvestingSettingsForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -129,6 +131,22 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         });
     };
 
+    const handleDocumentsSave = async (data: { settings?: Record<string, unknown> }) => {
+        await updateCommunity.mutateAsync({
+            id: communityId,
+            data,
+        });
+    };
+
+    const handleEventsSave = async (data: { settings?: Record<string, unknown> }) => {
+        await updateCommunity.mutateAsync({
+            id: communityId,
+            data,
+        });
+    };
+
+    const isFutureVisionHub = community?.typeTag === 'future-vision';
+
     const pageTitle = community?.name
         ? t('settingsTitle', { communityName: community.name })
         : t('settingsTitle', { communityName: '' });
@@ -216,13 +234,29 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         >
             <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-5 bg-base-200 rounded-xl p-1">
+                    <TabsList className="flex h-auto w-full flex-wrap gap-1 bg-base-200 rounded-xl p-1">
                         <TabsTrigger 
                             value="general"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
                             {t('tabs.general')}
                         </TabsTrigger>
+                        {!isFutureVisionHub ? (
+                            <TabsTrigger 
+                                value="documents"
+                                className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                            >
+                                {t('tabs.documents')}
+                            </TabsTrigger>
+                        ) : null}
+                        {!isFutureVisionHub ? (
+                            <TabsTrigger 
+                                value="events"
+                                className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                            >
+                                {t('tabs.events')}
+                            </TabsTrigger>
+                        ) : null}
                         <TabsTrigger 
                             value="rules"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
@@ -251,6 +285,22 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                     <TabsContent value="general" className="mt-6">
                         <CommunityForm communityId={communityId} />
                     </TabsContent>
+                    {!isFutureVisionHub ? (
+                        <TabsContent value="documents" className="mt-6">
+                            <CommunityDocumentsSettingsSection
+                                community={community}
+                                onSave={handleDocumentsSave}
+                            />
+                        </TabsContent>
+                    ) : null}
+                    {!isFutureVisionHub ? (
+                        <TabsContent value="events" className="mt-6">
+                            <CommunityEventsSettingsSection
+                                community={community}
+                                onSave={handleEventsSave}
+                            />
+                        </TabsContent>
+                    ) : null}
                     <TabsContent value="rules" className="mt-6">
                         <CommunityRulesEditor
                             community={community}

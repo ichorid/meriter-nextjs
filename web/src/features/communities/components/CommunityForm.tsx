@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -10,7 +10,7 @@ import {
 } from "@/hooks/api";
 import { useFutureVisionTags } from "@/hooks/api/useFutureVisions";
 import { useAuth } from "@/contexts/AuthContext";
-import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
+import { useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
@@ -57,7 +57,6 @@ export const CommunityForm = ({
     const tCreate = useTranslations("communities.create");
 
     const { user } = useAuth();
-    const { data: userRoles } = useUserRoles(user?.id || "");
     const { canCreate: canCreateCommunity, isLoading: permissionLoading } =
         useCanCreateCommunity();
     const addToast = useToastStore((state) => state.addToast);
@@ -156,12 +155,6 @@ export const CommunityForm = ({
 
     const isSuperadmin = user?.globalRole === "superadmin";
 
-    const isUserLead = useMemo(() => {
-        if (!communityId || !user?.id || !userRoles) return false;
-        const role = userRoles.find((r) => r.communityId === communityId);
-        return role?.role === "lead";
-    }, [communityId, user?.id, userRoles]);
-
     const handleGenerateAvatar = () => {
         const seed = encodeURIComponent(name || "community");
         const avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${seed}`;
@@ -182,11 +175,9 @@ export const CommunityForm = ({
                         plural: currencyPlural,
                         genitive: currencyGenitive,
                     },
-                    ...(isEditMode && (isUserLead || isSuperadmin)
-                        ? { eventCreation }
-                        : {}),
-                    ...(!isEditMode || isUserLead || isSuperadmin
+                    ...( !isEditMode
                         ? {
+                              eventCreation,
                               documentsMode,
                               documentCreators,
                               ...(documentsMode !== "off"
@@ -503,128 +494,6 @@ export const CommunityForm = ({
                         </div>
                     )}
                 </>
-            )}
-
-            {isEditMode && (isUserLead || isSuperadmin) && !isFutureVisionHub && (
-                <div className="border-t border-base-300 pt-6">
-                    <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">
-                        {t("documentsSection")}
-                    </h2>
-                    <p className="mb-4 text-sm text-base-content/70">{t("documentsSectionHelp")}</p>
-                    <div className="mb-6 space-y-4">
-                        <BrandFormControl label={t("documentsModeLabel")}>
-                            <Select
-                                value={documentsMode}
-                                onValueChange={(v) =>
-                                    setDocumentsMode(v as "off" | "visionOrDescriptionOnly" | "all")
-                                }
-                                disabled={isPending}
-                            >
-                                <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="off">{t("documentsModeOff")}</SelectItem>
-                                    <SelectItem value="visionOrDescriptionOnly">
-                                        {t("documentsModeVisionOnly")}
-                                    </SelectItem>
-                                    <SelectItem value="all">{t("documentsModeAll")}</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </BrandFormControl>
-                        {documentsMode !== "off" ? (
-                            <>
-                                <BrandFormControl label={t("documentCreatorsLabel")}>
-                                    <Select
-                                        value={documentCreators}
-                                        onValueChange={(v) =>
-                                            setDocumentCreators(v as "admins" | "members")
-                                        }
-                                        disabled={isPending}
-                                    >
-                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="admins">
-                                                {t("documentCreatorsAdmins")}
-                                            </SelectItem>
-                                            <SelectItem value="members">
-                                                {t("documentCreatorsMembers")}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </BrandFormControl>
-                                <BrandFormControl
-                                    label={t("documentVariantCostLabel")}
-                                    helperText={t("documentVariantCostHelp")}
-                                >
-                                    <Input
-                                        type="number"
-                                        min={0}
-                                        className="h-11 max-w-md rounded-xl"
-                                        value={documentVariantCost}
-                                        onChange={(e) => setDocumentVariantCost(e.target.value)}
-                                        disabled={isPending}
-                                        placeholder="1"
-                                    />
-                                </BrandFormControl>
-                                <BrandFormControl label={t("documentVotingDurationLabel")}>
-                                    <Input
-                                        type="number"
-                                        min={1}
-                                        className="h-11 max-w-md rounded-xl"
-                                        value={documentVotingDurationHours}
-                                        onChange={(e) =>
-                                            setDocumentVotingDurationHours(e.target.value)
-                                        }
-                                        disabled={isPending}
-                                    />
-                                </BrandFormControl>
-                                <BrandFormControl label={t("documentDefaultModeLabel")}>
-                                    <Select
-                                        value={documentDefaultMode}
-                                        onValueChange={(v) =>
-                                            setDocumentDefaultMode(v as "manual" | "auto")
-                                        }
-                                        disabled={isPending}
-                                    >
-                                        <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="manual">
-                                                {t("documentDefaultModeManual")}
-                                            </SelectItem>
-                                            <SelectItem value="auto">
-                                                {t("documentDefaultModeAuto")}
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </BrandFormControl>
-                            </>
-                        ) : null}
-                    </div>
-                    <h2 className="mb-2 text-lg font-semibold text-brand-text-primary">
-                        {t("eventCreationSection")}
-                    </h2>
-                    <p className="mb-3 text-sm text-base-content/70">{t("eventCreationHelp")}</p>
-                    <BrandFormControl label={t("eventCreationLabel")}>
-                        <Select
-                            value={eventCreation}
-                            onValueChange={(v) => setEventCreation(v as "admin" | "members")}
-                            disabled={isPending}
-                        >
-                            <SelectTrigger className="h-11 rounded-xl w-full max-w-md">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="admin">{t("eventCreationAdmin")}</SelectItem>
-                                <SelectItem value="members">{t("eventCreationMembers")}</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </BrandFormControl>
-                </div>
             )}
 
             <div className="flex justify-end pt-4">

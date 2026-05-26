@@ -1407,10 +1407,20 @@
             "subtitle": "Manage settings for {communityName}",
             "tabs": {
                 "general": "General",
+                "documents": "Documents",
+                "events": "Events",
                 "rules": "Rules",
                 "comments": "Comments",
                 "investing": "Investing",
                 "tappalka": "Mining"
+            },
+            "documentsSettingsSection": {
+                "saveSuccess": "Collaborative document settings saved",
+                "saveError": "Failed to save document settings"
+            },
+            "eventsSettingsSection": {
+                "saveSuccess": "Event settings saved",
+                "saveError": "Failed to save event settings"
             },
             "commentsSection": {
                 "title": "Comment mode",
