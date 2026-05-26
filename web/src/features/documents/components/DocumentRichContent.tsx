@@ -56,6 +56,12 @@ export interface DocumentRichContentProps {
 /**
  * Renders stored document / variant body: HTML from TipTap (sanitized) or legacy plain text.
  */
+/** Block-level headings sit below document section titles (h1). */
+export const documentBlockHeadingProseClass = cn(
+  '[&_h2]:mt-0 [&_h2]:mb-1.5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-base-content',
+  '[&_h3]:mt-0 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-base-content/90',
+);
+
 function displayProseClass(blockType?: string): string {
   if (
     blockType === 'heading' ||
@@ -64,16 +70,16 @@ function displayProseClass(blockType?: string): string {
     blockType === 'quote'
   ) {
     return cn(
-      'max-w-none text-base-content',
-      '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-base-content',
-      '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-base-content',
+      'max-w-none text-base leading-relaxed text-base-content',
+      blockType === 'heading' && documentBlockHeadingProseClass,
       '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5',
       '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5',
       '[&_li]:pl-0',
+      '[&_p]:my-0 [&_p]:leading-relaxed',
       '[&_blockquote]:my-0 [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/25 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-base-content/85',
     );
   }
-  return 'prose prose-sm dark:prose-invert max-w-none text-base-content';
+  return 'prose dark:prose-invert max-w-none text-base leading-relaxed text-base-content';
 }
 
 export function DocumentRichContent({ html, className, blockType }: DocumentRichContentProps) {

@@ -29,15 +29,13 @@ import { cn } from '@/lib/utils';
 
 function officialTypographyClass(blockType: string): string {
   switch (blockType) {
-    case 'heading':
-      return 'text-xl font-semibold tracking-tight text-base-content';
     case 'quote':
       return 'border-l-2 border-base-content/25 pl-4 italic text-base-content/85';
     case 'list-bullet':
     case 'list-numbered':
-      return 'text-base leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5';
+      return '[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5';
     default:
-      return 'text-base leading-relaxed text-base-content/95';
+      return 'text-base-content/95';
   }
 }
 
