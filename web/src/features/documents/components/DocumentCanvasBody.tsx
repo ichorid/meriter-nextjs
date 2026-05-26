@@ -4,8 +4,7 @@ import type { Community } from '@meriter/shared-types';
 import { Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
-import { DocumentCanvasBlock } from '@/features/documents/components/DocumentCanvasBlock';
-import { DocumentBlockInsertSlot } from '@/features/documents/components/DocumentBlockInsertSlot';
+import { DocumentSectionSortableBlocks } from '@/features/documents/components/DocumentSectionSortableBlocks';
 import { DocumentSectionStructureActions } from '@/features/documents/components/DocumentSectionStructureActions';
 import { DocumentSectionTitle } from '@/features/documents/components/DocumentSectionTitle';
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
@@ -80,35 +79,25 @@ export function DocumentCanvasBody({
             ) : null}
 
             <div className="space-y-2">
-              {blocks.map((block, blockIndex) => (
-                <div key={block.id} className="space-y-2">
-                  <DocumentCanvasBlock
-                    documentId={documentId}
-                    sectionId={section.id}
-                    sectionTitle={section.title ?? ''}
-                    showRemoveSection={blockIndex === 0}
-                    hasOfficialContent={blockHasOfficialContent(block)}
-                    sectionHasOfficial={sectionHasOfficial}
-                    docMode={docMode}
-                    variantCost={variantCost}
-                    votingDurationHours={votingDurationHours}
-                    docAllowDownvotes={docAllowDownvotes}
-                    canManageDocument={canManageDocument}
-                    community={community}
-                    block={block}
-                    quotaRemaining={quotaRemaining}
-                    walletBalance={walletBalance}
-                    globalWalletBalance={globalWalletBalance}
-                    userId={userId}
-                    addToast={addToast}
-                    t={t}
-                  />
-                  <DocumentBlockInsertSlot
-                    sectionId={section.id}
-                    afterOrder={block.order + 1}
-                  />
-                </div>
-              ))}
+              <DocumentSectionSortableBlocks
+                sectionId={section.id}
+                sectionTitle={section.title ?? ''}
+                sectionHasOfficial={sectionHasOfficial}
+                blocks={blocks}
+                documentId={documentId}
+                docMode={docMode}
+                variantCost={variantCost}
+                votingDurationHours={votingDurationHours}
+                docAllowDownvotes={docAllowDownvotes}
+                canManageDocument={canManageDocument}
+                community={community}
+                quotaRemaining={quotaRemaining}
+                walletBalance={walletBalance}
+                globalWalletBalance={globalWalletBalance}
+                userId={userId}
+                addToast={addToast}
+                t={t}
+              />
             </div>
           </section>
         );

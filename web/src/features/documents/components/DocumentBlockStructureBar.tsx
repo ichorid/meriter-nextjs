@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Pin, Trash2 } from 'lucide-react';
+import { Pin, Trash2, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import {
   Select,
@@ -32,6 +32,7 @@ export interface DocumentBlockStructureBarProps {
   sectionHasOfficial: boolean;
   showRemoveSection: boolean;
   proposalsLocked?: boolean;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }
 
 export function DocumentBlockStructureBar({
@@ -42,6 +43,7 @@ export function DocumentBlockStructureBar({
   sectionHasOfficial,
   showRemoveSection,
   proposalsLocked = false,
+  dragHandleProps,
 }: DocumentBlockStructureBarProps) {
   const t = useTranslations('pages.documents.structure');
   const tCanvas = useTranslations('pages.documents.canvas');
@@ -83,6 +85,24 @@ export function DocumentBlockStructureBar({
         aria-label={t('structureLabel')}
         onClick={(e) => e.stopPropagation()}
       >
+        {dragHandleProps ? (
+          <button
+            type="button"
+            className={cn(
+              'flex h-8 w-8 shrink-0 touch-none items-center justify-center rounded-lg',
+              'border border-base-300/30 bg-base-300/10 text-base-content/45',
+              'cursor-grab transition-colors hover:border-base-300/50 hover:text-base-content/70',
+              'active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+              structureBusy && 'pointer-events-none opacity-50',
+            )}
+            aria-label={t('dragBlock')}
+            disabled={structureBusy}
+            {...dragHandleProps}
+          >
+            <GripVertical size={14} aria-hidden />
+          </button>
+        ) : null}
+
         <Select
           value={blockType}
           onValueChange={(v) => structure.onBlockTypeChange(blockId, v as MeriterBlockType)}

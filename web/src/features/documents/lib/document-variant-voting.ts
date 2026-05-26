@@ -8,9 +8,20 @@ export function openDocumentVariantVoting(args: {
   userId: string;
   docAllowDownvotes: boolean;
   community: Community | null | undefined;
+  targetType?: 'document-variant' | 'document-block-official';
+  documentVariantIsOwn?: boolean;
 }): void {
-  const { variantId, communityId, proposedBy, userId, docAllowDownvotes, community } = args;
-  const isOwn = proposedBy === userId;
+  const {
+    variantId,
+    communityId,
+    proposedBy,
+    userId,
+    docAllowDownvotes,
+    community,
+    targetType = 'document-variant',
+    documentVariantIsOwn,
+  } = args;
+  const isOwn = documentVariantIsOwn ?? (targetType === 'document-variant' && proposedBy === userId);
   const mode =
     isOwn || community?.typeTag === 'future-vision'
       ? 'wallet-only'
@@ -20,7 +31,7 @@ export function openDocumentVariantVoting(args: {
           ? 'wallet-only'
           : 'standard';
 
-  useUIStore.getState().openVotingPopup(variantId, 'document-variant', mode, {
+  useUIStore.getState().openVotingPopup(variantId, targetType, mode, {
     communityId,
     documentVariantIsOwn: isOwn,
     documentAllowDownvotes: docAllowDownvotes,

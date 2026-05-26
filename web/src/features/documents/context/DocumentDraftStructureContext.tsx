@@ -190,6 +190,24 @@ export function DocumentDraftStructureProvider({
           }),
         );
       },
+      onReorderBlocks: (sectionId, blockIds) => {
+        updateSections((prev) =>
+          prev.map((sec) => {
+            if (sec.id !== sectionId) {
+              return sec;
+            }
+            const byId = new Map((sec.blocks ?? []).map((b) => [b.id, b]));
+            const blocks = blockIds
+              .map((id, order) => {
+                const block = byId.get(id);
+                return block ? { ...block, order } : null;
+              })
+              .filter((b): b is DocBlock => b != null);
+            return { ...sec, blocks };
+          }),
+        );
+        return Promise.resolve(undefined);
+      },
     }),
     [
       canRemoveBlock,

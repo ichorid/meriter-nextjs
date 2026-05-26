@@ -5,15 +5,46 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/shadcn/button';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
 import {
-  buildRevisionTokens,
+  buildStructuredRevision,
   hasOfficialText,
+  type RevisionToken,
   variantDiffersFromOfficial,
 } from '@/features/documents/lib/document-text-diff';
 import { cn } from '@/lib/utils';
 
+const revisionInsertClass =
+  'rounded-sm bg-primary/25 px-0.5 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
+const revisionDeleteClass =
+  'rounded-sm bg-error/15 px-0.5 text-base-content/55 line-through decoration-error/70 decoration-2';
+
+function RevisionTokenInline({
+  tokens,
+  className,
+}: {
+  tokens: RevisionToken[];
+  className?: string;
+}) {
+  return (
+    <span className={cn('leading-relaxed', className)}>
+      {tokens.map((token, index) => (
+        <Fragment key={`${index}-${token.kind}-${token.value}`}>
+          {token.kind === 'same' ? (
+            <span className="text-base-content/90">{token.value}</span>
+          ) : token.kind === 'delete' ? (
+            <del className={revisionDeleteClass}>{token.value}</del>
+          ) : (
+            <ins className={revisionInsertClass}>{token.value}</ins>
+          )}{' '}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
 export interface DocumentVariantRevisionViewProps {
   officialHtml: string;
   variantHtml: string;
+  blockType?: string;
   contentClassName?: string;
   className?: string;
 }
@@ -21,6 +52,7 @@ export interface DocumentVariantRevisionViewProps {
 export function DocumentVariantRevisionView({
   officialHtml,
   variantHtml,
+  blockType,
   contentClassName,
   className,
 }: DocumentVariantRevisionViewProps) {
@@ -28,47 +60,67 @@ export function DocumentVariantRevisionView({
   const canCompare = hasOfficialText(officialHtml) && variantDiffersFromOfficial(officialHtml, variantHtml);
   const [compareMode, setCompareMode] = useState(false);
 
-  const revisionTokens = useMemo(
-    () => (canCompare ? buildRevisionTokens(officialHtml, variantHtml) : null),
-    [canCompare, officialHtml, variantHtml],
+  const structuredRevision = useMemo(
+    () => (canCompare ? buildStructuredRevision(officialHtml, variantHtml, blockType) : null),
+    [canCompare, officialHtml, variantHtml, blockType],
   );
 
-  const showCompare = compareMode && canCompare && revisionTokens;
+  const showCompare = compareMode && canCompare && structuredRevision;
 
   return (
     <div className={className}>
       {showCompare ? (
-        <p className={cn('text-sm leading-relaxed', contentClassName)}>
-          {revisionTokens.map((token, index) => (
-            <Fragment key={`${index}-${token.kind}-${token.value}`}>
-              {token.kind === 'same' ? (
-                <span className="text-base-content/90">{token.value}</span>
-              ) : token.kind === 'delete' ? (
-                <del className="text-base-content/45 decoration-base-content/40">{token.value}</del>
-              ) : (
-                <ins className="font-medium text-base-content no-underline">{token.value}</ins>
-              )}{' '}
-            </Fragment>
-          ))}
-        </p>
+        structuredRevision.kind === 'list' ? (
+          structuredRevision.ordered ? (
+            <ol
+              className={cn(
+                'my-1 list-decimal space-y-1 pl-5 text-sm',
+                contentClassName,
+              )}
+            >
+              {structuredRevision.items.map((itemTokens, index) => (
+                <li key={index} className="pl-0 leading-relaxed">
+                  <RevisionTokenInline tokens={itemTokens} />
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <ul
+              className={cn(
+                'my-1 list-disc space-y-1 pl-5 text-sm',
+                contentClassName,
+              )}
+            >
+              {structuredRevision.items.map((itemTokens, index) => (
+                <li key={index} className="pl-0 leading-relaxed">
+                  <RevisionTokenInline tokens={itemTokens} />
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <div className={cn('text-sm leading-relaxed', contentClassName)}>
+            <RevisionTokenInline tokens={structuredRevision.tokens} />
+          </div>
+        )
       ) : (
-        <DocumentRichContent html={variantHtml} className={contentClassName} />
+        <DocumentRichContent html={variantHtml} blockType={blockType} className={contentClassName} />
       )}
 
       {canCompare ? (
         <div className="mt-2 flex justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-7 rounded-lg px-2.5 text-xs"
-          onClick={(e) => {
-            e.stopPropagation();
-            setCompareMode((v) => !v);
-          }}
-        >
-          {showCompare ? tCanvas('viewClean') : tCanvas('viewCompare')}
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 rounded-lg px-2.5 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              setCompareMode((v) => !v);
+            }}
+          >
+            {showCompare ? tCanvas('viewClean') : tCanvas('viewCompare')}
+          </Button>
         </div>
       ) : null}
     </div>

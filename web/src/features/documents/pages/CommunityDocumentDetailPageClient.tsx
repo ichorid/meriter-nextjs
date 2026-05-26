@@ -21,8 +21,6 @@ import { DocumentSettingsDialog } from '@/features/documents/components/Document
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
 import { DocumentCanvasBody } from '@/features/documents/components/DocumentCanvasBody';
-import { DocumentCanvasRail } from '@/features/documents/components/DocumentCanvasRail';
-import { DocumentCanvasFocusHint } from '@/features/documents/components/DocumentCanvasFocusHint';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
@@ -195,7 +193,6 @@ export function CommunityDocumentDetailPageClient({
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
               <DocumentCanvas>
-                <DocumentCanvasFocusHint />
                 <DocumentCanvasHeader
                   title={doc.title}
                   docType={doc.type}
@@ -225,7 +222,6 @@ export function CommunityDocumentDetailPageClient({
                 />
               </DocumentCanvas>
 
-              <DocumentCanvasRail />
               <DocumentCanvasMobileSheet />
               <DocumentBlockAdminDialogs />
             </>

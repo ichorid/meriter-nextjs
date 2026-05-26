@@ -25,21 +25,22 @@ export type RevisionToken =
   | { kind: 'delete'; value: string }
   | { kind: 'insert'; value: string };
 
+export type StructuredRevision =
+  | { kind: 'flat'; tokens: RevisionToken[] }
+  | { kind: 'list'; ordered: boolean; items: RevisionToken[][] };
+
 function tokenizeWords(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
-/**
- * Word-level revision diff (Google Docs–style): deletions from official, insertions from variant.
- * Returns null when texts are identical.
- */
-export function buildRevisionTokens(
-  officialHtml: string,
-  variantHtml: string,
-): RevisionToken[] | null {
-  const official = htmlToPlainText(officialHtml);
-  const variant = htmlToPlainText(variantHtml);
-  if (!variant) return null;
+function diffWordTokens(official: string, variant: string): RevisionToken[] | null {
+  if (!variant.trim()) {
+    if (!official.trim()) return null;
+    return tokenizeWords(official).map((w) => ({ kind: 'delete' as const, value: w }));
+  }
+  if (!official.trim()) {
+    return [{ kind: 'insert', value: variant }];
+  }
   if (official === variant) return null;
 
   const a = tokenizeWords(official);
@@ -85,6 +86,119 @@ export function buildRevisionTokens(
   out.reverse();
   if (out.every((t) => t.kind === 'same')) return null;
   return out;
+}
+
+/**
+ * Word-level revision diff (Google Docs–style): deletions from official, insertions from variant.
+ * Returns null when texts are identical.
+ */
+export function buildRevisionTokens(
+  officialHtml: string,
+  variantHtml: string,
+): RevisionToken[] | null {
+  const official = htmlToPlainText(officialHtml);
+  const variant = htmlToPlainText(variantHtml);
+  return diffWordTokens(official, variant);
+}
+
+function parseHtmlDocument(html: string): Document | null {
+  if (typeof DOMParser === 'undefined') {
+    return null;
+  }
+  return new DOMParser().parseFromString(html || '', 'text/html');
+}
+
+function htmlContainsList(html: string): 'ul' | 'ol' | null {
+  const doc = parseHtmlDocument(html);
+  if (!doc) return null;
+  if (doc.querySelector('ol')) return 'ol';
+  if (doc.querySelector('ul')) return 'ul';
+  return null;
+}
+
+function resolveListOrdered(
+  officialHtml: string,
+  variantHtml: string,
+  blockType?: string,
+): boolean | null {
+  if (blockType === 'list-numbered') return true;
+  if (blockType === 'list-bullet') return false;
+  const variantList = htmlContainsList(variantHtml);
+  if (variantList === 'ol') return true;
+  if (variantList === 'ul') return false;
+  const officialList = htmlContainsList(officialHtml);
+  if (officialList === 'ol') return true;
+  if (officialList === 'ul') return false;
+  return null;
+}
+
+function parseListItemsFromHtml(html: string, ordered: boolean): string[] {
+  const doc = parseHtmlDocument(html);
+  const listTag = ordered ? 'ol' : 'ul';
+  if (doc) {
+    const list = doc.querySelector(listTag) ?? doc.querySelector(ordered ? 'ul' : 'ol');
+    if (list) {
+      const items = Array.from(list.querySelectorAll(':scope > li')).map(
+        (li) => (li.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      );
+      if (items.length > 0) {
+        return items;
+      }
+    }
+  }
+  const plain = htmlToPlainText(html);
+  if (!plain) {
+    return [''];
+  }
+  const lines = plain.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  return lines.length > 0 ? lines : [plain];
+}
+
+function tokensHaveChanges(tokens: RevisionToken[]): boolean {
+  return tokens.some((t) => t.kind !== 'same');
+}
+
+/**
+ * Builds a structured revision preserving list items when content is list-shaped.
+ */
+export function buildStructuredRevision(
+  officialHtml: string,
+  variantHtml: string,
+  blockType?: string,
+): StructuredRevision | null {
+  const ordered = resolveListOrdered(officialHtml, variantHtml, blockType);
+  if (ordered !== null) {
+    const officialItems = parseListItemsFromHtml(officialHtml, ordered);
+    const variantItems = parseListItemsFromHtml(variantHtml, ordered);
+    const itemCount = Math.max(officialItems.length, variantItems.length);
+    const items: RevisionToken[][] = [];
+
+    for (let i = 0; i < itemCount; i++) {
+      const officialItem = officialItems[i] ?? '';
+      const variantItem = variantItems[i] ?? '';
+      const itemTokens =
+        diffWordTokens(officialItem, variantItem) ??
+        (variantItem ? [{ kind: 'same' as const, value: variantItem }] : null);
+      if (itemTokens && tokensHaveChanges(itemTokens)) {
+        items.push(itemTokens);
+      } else if (variantItem) {
+        items.push([{ kind: 'same', value: variantItem }]);
+      } else if (officialItem) {
+        items.push([{ kind: 'delete', value: officialItem }]);
+      }
+    }
+
+    const flatOfficial = officialItems.join('\n');
+    const flatVariant = variantItems.join('\n');
+    if (flatOfficial === flatVariant) return null;
+    if (items.length === 0) return null;
+    if (items.every((row) => row.every((t) => t.kind === 'same'))) return null;
+
+    return { kind: 'list', ordered, items };
+  }
+
+  const tokens = buildRevisionTokens(officialHtml, variantHtml);
+  return tokens ? { kind: 'flat', tokens } : null;
 }
 
 /** @deprecated Use buildRevisionTokens; kept for tests. */

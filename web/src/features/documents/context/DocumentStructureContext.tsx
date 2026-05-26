@@ -36,6 +36,7 @@ export interface DocumentStructureContextValue {
   onToggleBlockProposalsLocked: (blockId: string, locked: boolean) => void;
   onRemoveSection: (sectionId: string, confirmLossOfOfficial: boolean) => void;
   onRemoveBlock: (blockId: string, confirmLossOfOfficial: boolean) => void;
+  onReorderBlocks: (sectionId: string, blockIds: string[]) => Promise<unknown>;
 }
 
 export const DocumentStructureContext = createContext<DocumentStructureContextValue | null>(null);
@@ -111,6 +112,10 @@ export function DocumentStructureProvider({
     onSuccess: invalidateDocument,
     onError: onStructureError,
   });
+  const reorderBlocksMutation = trpc.documents.reorderBlocks.useMutation({
+    onSuccess: invalidateDocument,
+    onError: onStructureError,
+  });
 
   const sections = parseSections(sectionsRaw);
   const canRemoveSection = sections.length > 1;
@@ -133,7 +138,8 @@ export function DocumentStructureProvider({
     updateSectionMutation.isPending ||
     updateBlockMutation.isPending ||
     removeSectionMutation.isPending ||
-    removeBlockMutation.isPending;
+    removeBlockMutation.isPending ||
+    reorderBlocksMutation.isPending;
 
   const toggleStructureMode = useCallback(() => {
     setStructureMode((v) => !v);
@@ -222,6 +228,13 @@ export function DocumentStructureProvider({
                 confirmLossOfOfficial,
                 ...structureConcurrency,
               }),
+            onReorderBlocks: (sectionId, blockIds) =>
+              reorderBlocksMutation.mutateAsync({
+                documentId,
+                sectionId,
+                blockIds,
+                ...structureConcurrency,
+              }),
           }
         : null,
     [
@@ -238,6 +251,7 @@ export function DocumentStructureProvider({
       updateBlockMutation,
       removeSectionMutation,
       removeBlockMutation,
+      reorderBlocksMutation,
       toggleStructureMode,
     ],
   );

@@ -33,7 +33,10 @@ export interface DocumentVariantSuggestionProps {
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
   officialHtml?: string;
+  blockType?: string;
   className?: string;
+  voteBreakdown?: React.ReactNode;
+  adminActions?: React.ReactNode;
 }
 
 export function DocumentVariantSuggestion({
@@ -47,7 +50,10 @@ export function DocumentVariantSuggestion({
   addToast,
   t,
   officialHtml = '',
+  blockType,
   className,
+  voteBreakdown,
+  adminActions,
 }: DocumentVariantSuggestionProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const focus = useDocumentCanvasFocus();
@@ -72,7 +78,6 @@ export function DocumentVariantSuggestion({
     e.stopPropagation();
     if (!communityId) return;
     focus?.setFocusedBlockId(blockId);
-    focus?.setFocusedVariantId(variant.id);
     openDocumentVariantVoting({
       variantId: variant.id,
       communityId,
@@ -121,6 +126,7 @@ export function DocumentVariantSuggestion({
       <DocumentVariantRevisionView
         officialHtml={officialHtml}
         variantHtml={variant.content}
+        blockType={blockType}
         contentClassName="text-sm leading-relaxed text-base-content/90"
       />
 
@@ -143,12 +149,9 @@ export function DocumentVariantSuggestion({
         </Button>
       ) : null}
 
-      {docMode === 'manual' &&
-      variant.status === 'closed-winner' &&
-      (variant.rating ?? 0) > 0 &&
-      canManageDocument ? (
-        <p className="mt-2 text-[10px] text-base-content/45 lg:hidden">{tCanvas('railApplyHint')}</p>
-      ) : null}
+      {voteBreakdown}
+
+      {adminActions}
     </li>
   );
 }

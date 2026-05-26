@@ -21,6 +21,11 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { canUseWalletForVoting } from './voting-utils';
 import { isPublicationEntitySourced } from '@/lib/publication-source';
+import type { VotingTargetType } from '@/stores/ui.store';
+
+function isDocumentVoteTarget(type: VotingTargetType): type is 'document-variant' | 'document-block-official' {
+  return type === 'document-variant' || type === 'document-block-official';
+}
 
 interface VotingPopupProps {
   communityId?: string;
@@ -56,7 +61,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   );
 
   const voteContextCommunityId = useMemo(() => {
-    if (votingTargetType === 'document-variant' && votingCommunityId) {
+    if (isDocumentVoteTarget(votingTargetType) && votingCommunityId) {
       return votingCommunityId;
     }
     if (votingTargetType === 'publication' && publication?.communityId) {
@@ -77,7 +82,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   
   // Personal author or beneficiary: wallet-only / own-post helpers (entity-sourced posts are not "own personal post")
   const isOwnPost = useMemo(() => {
-    if (votingTargetType === 'document-variant') {
+    if (isDocumentVoteTarget(votingTargetType)) {
       return votingDocumentVariantIsOwn === true;
     }
     if (!user?.id || !publication || votingTargetType !== 'publication') return false;
@@ -193,7 +198,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
   const calculatedMaxMinus = useMemo(() => {
-    if (votingTargetType === 'document-variant' && !votingDocumentAllowDownvotes) {
+    if (isDocumentVoteTarget(votingTargetType) && !votingDocumentAllowDownvotes) {
       return 0;
     }
     if (community?.votingSettings?.allowNegativeVoting === false) {
@@ -278,7 +283,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const delta = formData.delta;
 
-    if (votingTargetType === 'document-variant') {
+    if (isDocumentVoteTarget(votingTargetType)) {
       if (!formData.comment?.trim()) {
         updateVotingFormData({ error: t('reasonRequired') });
         return;
@@ -398,9 +403,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           },
           communityId: targetCommunityId,
         });
-      } else if (votingTargetType === 'document-variant') {
+      } else if (isDocumentVoteTarget(votingTargetType)) {
         await voteOnDocumentVariantMutation.mutateAsync({
-          targetType: 'document-variant',
+          targetType: votingTargetType,
           targetId,
           quotaAmount,
           walletAmount,
@@ -408,6 +413,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           comment: commentText,
         });
         await utils.documentVariants.listByBlock.invalidate();
+        await utils.documentVariants.getBlockVotingPanel.invalidate();
         await utils.documents.getById.invalidate();
       } else {
         await voteOnVoteMutation.mutateAsync({
@@ -476,14 +482,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
           commentMode={
-            votingTargetType === 'document-variant'
+            isDocumentVoteTarget(votingTargetType)
               ? 'weightedOnly'
               : ticketFreeCommentOnlyUi
                 ? 'neutralOnly'
                 : effectiveCommentMode
           }
           hideQuota={
-            votingTargetType === 'document-variant'
+            isDocumentVoteTarget(votingTargetType)
               ? isOwnPost || community?.typeTag === 'future-vision'
               : ticketFreeCommentOnlyUi ||
                 (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)

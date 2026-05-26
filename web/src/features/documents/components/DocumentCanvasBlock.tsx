@@ -2,29 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { Community } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
 import { DocumentBlockMobileActions } from '@/features/documents/components/DocumentCanvasMobileSheet';
-import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { DocumentBlockProposalsPanel } from '@/features/documents/components/DocumentBlockProposalsPanel';
+import { DocumentBlockGovernanceToolbar } from '@/features/documents/components/DocumentBlockGovernanceToolbar';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
-import { DocumentVariantSuggestion } from '@/features/documents/components/DocumentVariantSuggestion';
 import {
-  MAX_VISIBLE_VARIANTS,
-  VARIANT_LIST_SCROLL_THRESHOLD,
+  countActiveProposalVariants,
+  isPendingOfficialManualPick,
+} from '@/features/documents/lib/document-proposal-utils';
+import {
   formatWaveRemaining,
   officialReasonLabelKey,
   parseDateMs,
   type DocBlock,
   type DocTranslate,
 } from '@/features/documents/lib/document-canvas-shared';
-import { parseVariantReferencesFromApi } from '@/features/documents/types/document-variant-reference';
 import { DocumentBlockStructureBar } from '@/features/documents/components/DocumentBlockStructureBar';
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
+import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 function officialTypographyClass(blockType: string): string {
@@ -59,6 +61,7 @@ export interface DocumentCanvasBlockProps {
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
 }
 
 export function DocumentCanvasBlock({
@@ -73,11 +76,10 @@ export function DocumentCanvasBlock({
   canManageDocument,
   community,
   block,
-  quotaRemaining,
-  walletBalance,
   userId,
   addToast,
   t,
+  dragHandleProps,
 }: DocumentCanvasBlockProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const structure = useDocumentStructure();
@@ -91,19 +93,11 @@ export function DocumentCanvasBlock({
   );
 
   const [variantsExpanded, setVariantsExpanded] = useState(false);
-  const [showAllVariants, setShowAllVariants] = useState(false);
   const [proposeOpen, setProposeOpen] = useState(false);
   const [waveCountdown, setWaveCountdown] = useState('');
 
   const variants = variantsQuery.data ?? [];
   const userOpenVariant = variants.find((v) => v.status === 'open' && v.proposedBy === userId);
-
-  useEffect(() => {
-    if (!variantsQuery.isSuccess) return;
-    if (userOpenVariant) {
-      setVariantsExpanded(true);
-    }
-  }, [variantsQuery.isSuccess, userOpenVariant?.id]);
 
   const waveStartMs = parseDateMs(block.currentWaveStartedAt);
   const waveEndsAtMs =
@@ -112,6 +106,20 @@ export function DocumentCanvasBlock({
     waveEndsAtMs != null &&
     waveEndsAtMs > Date.now() &&
     variants.some((v) => v.status === 'open');
+
+  const activeProposalCount = countActiveProposalVariants(variants);
+  const pendingOfficialPick = isPendingOfficialManualPick(docMode, waveActive, variants);
+  const proposalsLocked = block.proposalsLocked === true;
+  const canProposeVariant = !structureMode && (!proposalsLocked || canManageDocument);
+  const showProposalsSection = activeProposalCount > 0 || waveActive || pendingOfficialPick;
+  const showBlockActions = !structureMode && (canProposeVariant || canManageDocument);
+
+  useEffect(() => {
+    if (!variantsQuery.isSuccess) return;
+    if (userOpenVariant) {
+      setVariantsExpanded(true);
+    }
+  }, [variantsQuery.isSuccess, userOpenVariant?.id]);
 
   useEffect(() => {
     if (!waveActive || waveEndsAtMs == null) {
@@ -126,19 +134,6 @@ export function DocumentCanvasBlock({
 
   const official = (block.officialContent ?? '').trim();
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
-  const isFocused = focus?.focusedBlockId === block.id;
-  const proposalsLocked = block.proposalsLocked === true;
-  const canProposeVariant = !structureMode && (!proposalsLocked || canManageDocument);
-
-  const displayedVariants =
-    variantsExpanded && showAllVariants
-      ? variants
-      : variantsExpanded
-        ? variants.slice(0, MAX_VISIBLE_VARIANTS)
-        : [];
-  const hiddenVariantCount = variantsExpanded
-    ? Math.max(0, variants.length - displayedVariants.length)
-    : variants.length;
 
   const openMobilePropose = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -148,24 +143,14 @@ export function DocumentCanvasBlock({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => focus?.setFocusedBlockId(block.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          focus?.setFocusedBlockId(block.id);
-        }
-      }}
       className={cn(
-        'group/block relative grid cursor-pointer gap-3 rounded-lg outline-none transition-shadow',
+        'group/block relative grid gap-3 rounded-lg',
         'grid-cols-1',
         waveActive && !structureMode && 'border-l-2 border-primary pl-3 -ml-0.5',
         waveActive && structureMode && 'border-l-2 border-primary',
-        isFocused && isDesktop && 'ring-1 ring-primary/35',
       )}
     >
-      <div className="min-w-0" onClick={(e) => e.stopPropagation()}>
+      <div className="min-w-0">
         {structureMode ? (
           <DocumentBlockStructureBar
             sectionId={sectionId}
@@ -175,6 +160,7 @@ export function DocumentCanvasBlock({
             sectionHasOfficial={sectionHasOfficial}
             showRemoveSection={showRemoveSection}
             proposalsLocked={block.proposalsLocked === true}
+            dragHandleProps={dragHandleProps}
           />
         ) : null}
 
@@ -215,95 +201,82 @@ export function DocumentCanvasBlock({
           <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
         )}
 
-        {variants.length > 0 ? (
+        {showProposalsSection ? (
           <div className="mt-4 space-y-2">
             <button
               type="button"
               className="flex items-center gap-1.5 text-xs font-medium text-base-content/65 hover:text-base-content"
-              onClick={(e) => {
-                e.stopPropagation();
-                setVariantsExpanded((v) => !v);
-                if (variantsExpanded) setShowAllVariants(false);
-              }}
+              onClick={() => setVariantsExpanded((v) => !v)}
             >
               <ChevronDown
                 size={14}
                 className={cn('transition-transform', variantsExpanded && 'rotate-180')}
               />
-              {tCanvas('variantsToggle', { count: variants.length })}
+              {activeProposalCount > 0
+                ? tCanvas('variantsToggle', { count: activeProposalCount })
+                : tCanvas('governanceFinalize')}
             </button>
 
             {variantsExpanded ? (
-              variantsQuery.isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-brand-primary" />
-              ) : (
-                <>
-                  <ul
-                    className={cn(
-                      'flex flex-col gap-3',
-                      displayedVariants.length > VARIANT_LIST_SCROLL_THRESHOLD &&
-                        'max-h-[min(32rem,70vh)] overflow-y-auto overscroll-contain pr-1',
-                    )}
-                    aria-label={
-                      displayedVariants.length > VARIANT_LIST_SCROLL_THRESHOLD
-                        ? tCanvas('variantsScrollRegion')
-                        : undefined
-                    }
-                  >
-                    {displayedVariants.map((v) => (
-                      <DocumentVariantSuggestion
-                        key={v.id}
-                        officialHtml={block.officialContent ?? ''}
-                        variant={{
-                          id: v.id,
-                          documentId: v.documentId,
-                          blockId: v.blockId,
-                          content: v.content,
-                          proposedBy: v.proposedBy,
-                          status: v.status,
-                          rating: v.rating ?? 0,
-                          references: parseVariantReferencesFromApi(v.references),
-                        }}
-                        documentId={documentId}
-                        blockId={block.id}
-                        docMode={docMode}
-                        docAllowDownvotes={docAllowDownvotes}
-                        canManageDocument={canManageDocument}
-                        community={community}
-                        quotaRemaining={quotaRemaining}
-                        walletBalance={walletBalance}
-                        userId={userId}
-                        addToast={addToast}
-                        t={t}
-                      />
-                    ))}
-                  </ul>
-                  {hiddenVariantCount > 0 ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 rounded-lg px-2 text-xs text-base-content/60"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowAllVariants(true);
-                      }}
-                    >
-                      {tCanvas('variantsMore', { count: hiddenVariantCount })}
-                    </Button>
-                  ) : null}
-                </>
-              )
+              <DocumentBlockProposalsPanel
+                documentId={documentId}
+                block={block}
+                docMode={docMode}
+                docAllowDownvotes={docAllowDownvotes}
+                canManageDocument={canManageDocument}
+                community={community}
+                votingDurationHours={votingDurationHours}
+                waveActive={waveActive}
+                waveEndsAtMs={waveEndsAtMs}
+                userId={userId}
+                addToast={addToast}
+                t={t}
+              />
             ) : null}
           </div>
         ) : null}
 
-        {canProposeVariant ? (
-        <div className="mt-3" onClick={(e) => e.stopPropagation()}>
-          {userOpenVariant ? (
-            <p className="text-xs text-base-content/55">{tCanvas('yourOpenVariant')}</p>
-          ) : isDesktop ? (
-            proposeOpen ? (
+        {showBlockActions ? (
+          <div className="mt-4 space-y-2 border-t border-base-300/35 pt-3">
+            <div className="flex flex-wrap items-center gap-1 rounded-lg border border-base-300/25 bg-base-300/10 px-2 py-1">
+              {canProposeVariant && !userOpenVariant && !(isDesktop && proposeOpen) ? (
+                isDesktop ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-lg px-2 text-xs text-base-content/60 hover:text-primary"
+                    onClick={() => setProposeOpen(true)}
+                  >
+                    {tCanvas('proposeCta')}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-lg px-2 text-xs text-base-content/60 hover:text-primary"
+                    onClick={openMobilePropose}
+                  >
+                    {tCanvas('proposeCta')}
+                  </Button>
+                )
+              ) : null}
+              {canManageDocument ? (
+                <DocumentBlockGovernanceToolbar
+                  documentId={documentId}
+                  blockId={block.id}
+                  waveActive={waveActive}
+                  showCloseVoting
+                  variant="ghost"
+                  onCloseVotingSuccess={() => addToast(t('closeVotingSuccess'), 'success')}
+                  onCloseVotingError={(message) => addToast(message, 'error')}
+                />
+              ) : null}
+            </div>
+            {userOpenVariant ? (
+              <p className="text-xs text-base-content/55">{tCanvas('yourOpenVariant')}</p>
+            ) : isDesktop && proposeOpen ? (
               <DocumentProposeComposer
                 blockId={block.id}
                 initialContent={block.officialContent ?? ''}
@@ -314,29 +287,8 @@ export function DocumentCanvasBlock({
                   setVariantsExpanded(true);
                 }}
               />
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 rounded-lg px-2 text-xs text-base-content/60 hover:text-primary"
-                onClick={() => setProposeOpen(true)}
-              >
-                {tCanvas('proposeCta')}
-              </Button>
-            )
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-lg px-2 text-xs text-base-content/60 hover:text-primary"
-              onClick={openMobilePropose}
-            >
-              {tCanvas('proposeCta')}
-            </Button>
-          )}
-        </div>
+            ) : null}
+          </div>
         ) : proposalsLocked && !structureMode && !canManageDocument ? (
           <p className="mt-3 text-xs text-base-content/50">{tCanvas('proposalsLockedHint')}</p>
         ) : null}

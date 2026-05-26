@@ -4,7 +4,6 @@ import { useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
-import { Badge } from '@/components/ui/shadcn/badge';
 import {
   Dialog,
   DialogContent,
@@ -13,13 +12,11 @@ import {
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
 import { RichTextEditor } from '@/components/molecules/RichTextEditor';
-import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
+import { DocumentBlockHistoryPanel } from '@/features/documents/components/DocumentBlockHistoryPanel';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import {
   MAX_VARIANT_HTML_LENGTH,
-  historyReasonLabelKey,
   isEmptyTipTapHtml,
-  parseDateMs,
 } from '@/features/documents/lib/document-canvas-shared';
 
 export function DocumentBlockAdminDialogs() {
@@ -51,15 +48,10 @@ export function DocumentBlockAdminDialogs() {
       if (blockId) {
         await utils.documents.getById.invalidate({ id: documentId });
         await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
+        await utils.documentVariants.getBlockGovernanceHistory.invalidate({ documentId, blockId });
       }
     },
     onError: (err) => addToast(err.message, 'error'),
-  });
-
-  const historyEntries = [...(block?.editHistory ?? [])].sort((a, b) => {
-    const ta = parseDateMs(a.changedAt) ?? 0;
-    const tb = parseDateMs(b.changedAt) ?? 0;
-    return tb - ta;
   });
 
   const submitAdminOverride = () => {
@@ -89,7 +81,14 @@ export function DocumentBlockAdminDialogs() {
           <DialogHeader>
             <DialogTitle>{t('adminOverrideTitle')}</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-base-content/70">{t('adminOverrideHelp')}</p>
+          <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-sm">
+            <p className="leading-relaxed text-base-content/85">{t('adminOverrideHelpLead')}</p>
+            <ul className="list-disc space-y-1.5 pl-4 text-xs leading-relaxed text-base-content/65">
+              <li>{t('adminOverrideHelpItemAccess')}</li>
+              <li>{t('adminOverrideHelpItemVariants')}</li>
+              <li>{t('adminOverrideHelpItemHistory')}</li>
+            </ul>
+          </div>
           <RichTextEditor
             key={`admin-override-${blockId ?? 'none'}-${adminOverrideResetKey}`}
             content={block?.officialContent ?? ''}
@@ -126,31 +125,14 @@ export function DocumentBlockAdminDialogs() {
           if (!open) closeAdminDialog();
         }}
       >
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t('historyTitle')}</DialogTitle>
           </DialogHeader>
-          {historyEntries.length === 0 ? (
-            <p className="text-sm text-base-content/60">{t('historyEmpty')}</p>
+          {block ? (
+            <DocumentBlockHistoryPanel documentId={documentId} block={block} />
           ) : (
-            <ul className="flex flex-col gap-4">
-              {historyEntries.map((entry, idx) => (
-                <li
-                  key={`${parseDateMs(entry.changedAt) ?? idx}-${entry.changedBy}`}
-                  className="rounded-lg border border-base-300 p-3"
-                >
-                  <div className="mb-2 flex flex-wrap gap-2 text-xs text-base-content/60">
-                    <Badge variant="secondary" className="rounded-md font-normal">
-                      {t(historyReasonLabelKey(entry.reason))}
-                    </Badge>
-                    <span>
-                      {entry.changedAt ? new Date(entry.changedAt).toLocaleString() : ''}
-                    </span>
-                  </div>
-                  <DocumentRichContent html={entry.previousContent} className="text-sm" />
-                </li>
-              ))}
-            </ul>
+            <p className="text-sm text-base-content/60">{t('historyEmpty')}</p>
           )}
         </DialogContent>
       </Dialog>
