@@ -282,16 +282,6 @@ export class DocumentVariantService {
     await this.finalizeExpiredWaveOnBlock(doc.id, input.blockId);
 
     doc = (await this.documentService.getById(input.documentId))!;
-    const dup = await this.variantModel.findOne({
-      documentId: doc.id,
-      blockId: input.blockId,
-      proposedBy: userId,
-      status: 'open',
-      deleted: false,
-    });
-    if (dup) {
-      throw new BadRequestException('You already have an open variant on this block');
-    }
 
     const variantCost = doc.variantCost ?? 1;
     const { quotaAmount, walletAmount } = await this.collectVariantProposalFee(
