@@ -57,7 +57,9 @@ export function DocumentVariantVoteBreakdown({
               </p>
               {vote.comment.trim() ? (
                 <p className="mt-1 whitespace-pre-wrap text-base-content/65">{vote.comment}</p>
-              ) : null}
+              ) : (
+                <p className="mt-1 italic text-base-content/45">{tCanvas('voteNoComment')}</p>
+              )}
             </li>
           ))}
         </ul>

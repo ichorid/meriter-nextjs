@@ -455,6 +455,18 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     return null;
   }
 
+  const documentVoteTarget = isDocumentVoteTarget(votingTargetType)
+    ? votingTargetType === 'document-block-official'
+      ? 'official'
+      : 'variant'
+    : undefined;
+
+  const votingPanelTitle = documentVoteTarget === 'official'
+    ? t('documentOfficialVoteTitle')
+    : documentVoteTarget === 'variant'
+      ? t('documentVariantVoteTitle')
+      : undefined;
+
   return (
     <BottomPortal>
       <IntlPortalWrapper>
@@ -465,6 +477,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         />
         <div className="relative z-10">
           <VotingPanel
+          title={votingPanelTitle}
+          documentVoteTarget={documentVoteTarget}
+          documentAllowDownvotes={votingDocumentAllowDownvotes ?? true}
           onClose={handleClose}
           amount={formData.delta}
           setAmount={handleAmountChange}
