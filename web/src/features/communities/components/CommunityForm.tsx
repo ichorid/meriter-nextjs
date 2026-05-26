@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useUserRoles, useCanCreateCommunity } from "@/hooks/api/useProfile";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Label } from "@/components/ui/shadcn/label";
 import {
     Select,
@@ -318,12 +319,13 @@ export const CommunityForm = ({
                 label={t("description")}
                 helperText={`${description.length}/180 ${t("characters")}`}
             >
-                <Input
+                <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder={t("descriptionPlaceholder")}
                     maxLength={180}
-                    className="h-11 rounded-xl w-full"
+                    rows={3}
+                    className="min-h-[5.5rem] resize-y w-full"
                 />
             </BrandFormControl>
 
@@ -395,6 +397,12 @@ export const CommunityForm = ({
                     ) : (
                         <BrandFormControl
                             label={t("futureVisionSection")}
+                            labelDescription={
+                                <>
+                                    <p>{t("futureVisionSectionHint")}</p>
+                                    <p>{t("futureVisionSectionHintPinBlock")}</p>
+                                </>
+                            }
                             required
                         >
                             <MeriterEditor
