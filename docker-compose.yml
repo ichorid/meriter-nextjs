@@ -60,9 +60,12 @@ services:
     restart: "no"
     env_file:
       - .env
+    environment:
+      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
     volumes:
       - ./mongodb-init/rs-init-every-deploy.js:/scripts/rs-init-every-deploy.js:ro
       - ./mongodb-init/rs-init-on-deploy.sh:/scripts/rs-init-on-deploy.sh:ro
+      - ./mongodb-init/ensure-app-user.js:/scripts/ensure-app-user.js:ro
     networks:
       - meriter-database-network
     depends_on:

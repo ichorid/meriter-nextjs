@@ -177,7 +177,7 @@ class SmsRuProvider implements SmsProvider {
 @Injectable()
 export class SmsProviderService {
     private readonly logger = new Logger(SmsProviderService.name);
-    private readonly provider: SmsProvider;
+    private readonly provider: SmsProvider | null;
     private readonly otpLength: number;
     private readonly otpExpiryMinutes: number;
     private readonly maxAttemptsPerOtp: number;
@@ -191,13 +191,20 @@ export class SmsProviderService {
         private readonly authMagicLinkService: AuthMagicLinkService,
     ) {
         const smsConfig = this.configService.get('sms');
+        const phoneConfig = this.configService.get('phone');
+        const authNeeded = smsConfig?.enabled || phoneConfig?.enabled;
         const providerName = smsConfig?.provider || 'smsru';
 
-        // Initialize provider based on config
-        if (providerName === 'smsru') {
-            this.provider = new SmsRuProvider(this.configService);
+        if (authNeeded) {
+            if (providerName === 'smsru') {
+                this.provider = new SmsRuProvider(this.configService);
+            } else {
+                throw new Error(`Unknown SMS provider: ${providerName}`);
+            }
+            this.logger.log(`SMS Provider initialized: ${providerName}`);
         } else {
-            throw new Error(`Unknown SMS provider: ${providerName}`);
+            this.provider = null;
+            this.logger.log('SMS provider skipped — SMS and phone auth disabled');
         }
 
         this.otpLength = smsConfig?.otpLength ?? 6;
@@ -205,8 +212,13 @@ export class SmsProviderService {
         this.maxAttemptsPerOtp = smsConfig?.maxAttemptsPerOtp ?? 3;
         this.rateLimitPerHour = smsConfig?.rateLimitPerHour ?? 3;
         this.resendCooldownSeconds = smsConfig?.resendCooldownSeconds ?? 60;
+    }
 
-        this.logger.log(`SMS Provider initialized: ${providerName}`);
+    private requireProvider(): SmsProvider {
+        if (!this.provider) {
+            throw new Error('SMS provider is not configured');
+        }
+        return this.provider;
     }
 
     /**
@@ -287,7 +299,7 @@ export class SmsProviderService {
         // Create magic link and append to message
         const { linkUrl } = await this.authMagicLinkService.createToken('sms', phoneNumber);
         const message = `Meriter: ${otpCode} (${this.otpExpiryMinutes}min). Or: ${linkUrl}`;
-        await this.provider.sendSms(phoneNumber, message, options);
+        await this.requireProvider().sendSms(phoneNumber, message, options);
 
         this.logger.log(`OTP sent to ${phoneNumber}, expires at ${expiresAt.toISOString()}`);
 
@@ -347,7 +359,8 @@ export class SmsProviderService {
         callPhonePretty: string;
         expiresIn: number;
     }> {
-        if (!this.provider.initCallCheck) {
+        const provider = this.requireProvider();
+        if (!provider.initCallCheck) {
             throw new Error('Call verification is not supported by the current SMS provider');
         }
 
@@ -355,7 +368,7 @@ export class SmsProviderService {
         await this.checkRateLimit(phoneNumber);
 
         // Initiate call check
-        const result = await this.provider.initCallCheck(phoneNumber);
+        const result = await provider.initCallCheck(phoneNumber);
 
         // We can optionally store this in DB if we want to track it via our own IDs or enforce rate limits strictly on our side vs params.
         // For now, mirroring `sendOtp`, let's just log and return. 
@@ -371,11 +384,12 @@ export class SmsProviderService {
      * Check status of Call Check verification
      */
     async verifyCallStatus(checkId: string): Promise<{ status: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'ERROR' }> {
-        if (!this.provider.checkCallStatus) {
+        const provider = this.requireProvider();
+        if (!provider.checkCallStatus) {
             throw new Error('Call verification is not supported by the current SMS provider');
         }
 
-        const result = await this.provider.checkCallStatus(checkId);
+        const result = await provider.checkCallStatus(checkId);
         return result;
     }
 }
