@@ -791,6 +791,15 @@ export class CommunityService {
     communityId: string,
     dto: UpdateCommunityDto,
   ): Promise<Community> {
+    if (
+      dto.futureVisionText !== undefined ||
+      dto.futureVisionDocumentSeed !== undefined
+    ) {
+      throw new BadRequestException(
+        'Image of future must be edited via the collaborative document, not community update.',
+      );
+    }
+
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -808,7 +817,6 @@ export class CommunityService {
     if (dto.founderSharePercent !== undefined) updateData.founderSharePercent = dto.founderSharePercent;
     if (dto.projectStatus !== undefined) updateData.projectStatus = dto.projectStatus;
     if (dto.rejectionMessage !== undefined) updateData.rejectionMessage = dto.rejectionMessage;
-    if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
     if (dto.futureVisionTags !== undefined) updateData.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) updateData.futureVisionCover = dto.futureVisionCover;
 
@@ -1081,23 +1089,6 @@ export class CommunityService {
     }
     await this.communityModel.updateOne({ id: communityId }, updatePayload);
 
-    if (dto.futureVisionText !== undefined) {
-      const futureVision = await this.getCommunityByTypeTag('future-vision');
-      if (futureVision) {
-        try {
-          await this.publicationService.updateFutureVisionPostContent(
-            futureVision.id,
-            communityId,
-            dto.futureVisionText,
-          );
-        } catch (e) {
-          this.logger.error(
-            `Failed to update OB post content for community ${communityId}: ${e instanceof Error ? e.message : 'Unknown error'}`,
-          );
-        }
-      }
-    }
-
     // Explicitly re-fetch the document to ensure we get the updated values
     const updatedCommunity = await this.communityModel
       .findOne({ id: communityId })
@@ -1234,6 +1225,7 @@ export class CommunityService {
       description?: string;
       avatarUrl?: string;
       futureVisionText: string;
+      futureVisionDocumentSeed?: CreateCommunityDto['futureVisionDocumentSeed'];
       futureVisionTags?: string[];
       futureVisionCover?: string;
     },
@@ -1248,6 +1240,7 @@ export class CommunityService {
       typeTag: 'team',
       creatorUserId: userId,
       futureVisionText: data.futureVisionText,
+      futureVisionDocumentSeed: data.futureVisionDocumentSeed,
       futureVisionTags: data.futureVisionTags,
       futureVisionCover: data.futureVisionCover,
     });
@@ -1744,6 +1737,8 @@ export class CommunityService {
       futureVisionText?: string;
       futureVisionTags?: string[];
       futureVisionCover?: string;
+      futureVisionDocumentId?: string;
+      futureVisionDocumentSections?: unknown;
       publicationId: string;
       score: number;
       memberCount: number;
@@ -1792,6 +1787,11 @@ export class CommunityService {
       communityDocs.map((c: any) => [c.id, c]),
     );
 
+    const obDocumentMap = await this.documentService.getOfficialByCommunities(
+      communityIds,
+      'imageOfFuture',
+    );
+
     const tagsFilter = params.tags?.length ? new Set(params.tags) : null;
     const ordered: Array<{
       communityId: string;
@@ -1800,6 +1800,8 @@ export class CommunityService {
       futureVisionText?: string;
       futureVisionTags?: string[];
       futureVisionCover?: string;
+      futureVisionDocumentId?: string;
+      futureVisionDocumentSections?: unknown;
       publicationId: string;
       score: number;
       memberCount: number;
@@ -1818,6 +1820,8 @@ export class CommunityService {
         continue;
       }
 
+      const obDocument = obDocumentMap.get(community.id);
+
       ordered.push({
         communityId: community.id,
         name: community.name,
@@ -1825,6 +1829,8 @@ export class CommunityService {
         futureVisionText: community.futureVisionText,
         futureVisionTags: community.futureVisionTags,
         futureVisionCover: community.futureVisionCover,
+        futureVisionDocumentId: obDocument?.id,
+        futureVisionDocumentSections: obDocument?.sections,
         publicationId: post.id,
         score: post.metrics.score,
         memberCount: Array.isArray(community.members) ? community.members.length : 0,

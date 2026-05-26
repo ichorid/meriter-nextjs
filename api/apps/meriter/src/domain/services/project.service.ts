@@ -42,6 +42,18 @@ export interface CreateProjectDto {
   newCommunity?: {
     name: string;
     futureVisionText?: string;
+    futureVisionDocumentSeed?: {
+      sections: Array<{
+        title?: string;
+        order: number;
+        blocks: Array<{
+          order: number;
+          blockType: string;
+          officialContent: string;
+          proposalsLocked?: boolean;
+        }>;
+      }>;
+    };
     futureVisionTags?: string[];
     futureVisionCover?: string;
     typeTag?: 'team' | 'custom';
@@ -160,6 +172,7 @@ export class ProjectService {
           name: dto.newCommunity.name,
           description: undefined,
           futureVisionText: dto.newCommunity.futureVisionText,
+          futureVisionDocumentSeed: dto.newCommunity.futureVisionDocumentSeed,
           futureVisionTags: dto.newCommunity.futureVisionTags,
           futureVisionCover: dto.newCommunity.futureVisionCover,
           typeTag: dto.newCommunity.typeTag ?? 'custom',

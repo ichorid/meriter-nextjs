@@ -695,13 +695,17 @@ export class NotificationService {
         return undefined;
       }
 
+      case 'document_variant_proposed':
+      case 'document_variant_not_selected':
       case 'document_variant_won':
       case 'document_variant_applied':
       case 'document_block_admin_override': {
         const communityId = metadata?.communityId as string | undefined;
         const documentId = metadata?.documentId as string | undefined;
+        const blockId = metadata?.blockId as string | undefined;
         if (communityId && documentId) {
-          return `/meriter/communities/${communityId}/documents/${documentId}`;
+          const base = `/meriter/communities/${communityId}/documents/${documentId}`;
+          return blockId ? `${base}#block-${blockId}` : base;
         }
         return undefined;
       }

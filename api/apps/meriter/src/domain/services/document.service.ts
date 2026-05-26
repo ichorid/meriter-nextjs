@@ -511,6 +511,30 @@ export class DocumentService {
     return doc as MeriterDocumentSchemaClass | null;
   }
 
+  /** Batch load official documents for feed/list UIs (e.g. future visions). */
+  async getOfficialByCommunities(
+    communityIds: string[],
+    type: MeriterDocType,
+  ): Promise<Map<string, Pick<MeriterDocumentSchemaClass, 'id' | 'sections'>>> {
+    if (communityIds.length === 0) {
+      return new Map();
+    }
+    const docs = await this.documentModel
+      .find({ communityId: { $in: communityIds }, type, deleted: false })
+      .select('id communityId sections')
+      .lean()
+      .exec();
+    return new Map(
+      docs.map((doc) => [
+        doc.communityId as string,
+        {
+          id: doc.id as string,
+          sections: doc.sections as MeriterDocumentSchemaClass['sections'],
+        },
+      ]),
+    );
+  }
+
   async getVariantById(variantId: string): Promise<DocumentBlockVariantSchemaClass | null> {
     const v = await this.variantModel
       .findOne({ id: variantId, deleted: false })

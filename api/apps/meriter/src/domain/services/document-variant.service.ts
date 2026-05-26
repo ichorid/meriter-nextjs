@@ -168,6 +168,22 @@ export class DocumentVariantService {
         delete b.currentWaveStartedAt;
         b.officialRating = 0;
       });
+      const community = await this.communityService.getCommunity(docLean.communityId);
+      if (community) {
+        await this.notifyVariantsNotSelected({
+          doc: docLean,
+          community,
+          blockId,
+          variants: openVariants,
+          reason: 'official_kept',
+        }).catch((err) => {
+          this.logger.warn(
+            `Failed to notify variant non-selection (official kept) ${documentId}/${blockId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+      }
       return;
     }
 
@@ -191,6 +207,24 @@ export class DocumentVariantService {
       delete b.currentWaveStartedAt;
       b.officialRating = 0;
     });
+
+    const community = await this.communityService.getCommunity(docLean.communityId);
+    if (community) {
+      await this.notifyVariantsNotSelected({
+        doc: docLean,
+        community,
+        blockId,
+        variants: openVariants,
+        winnerVariantId: topRated ? top.id : undefined,
+        reason: topRated ? 'other_variant_won' : 'no_positive_winner',
+      }).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variant non-selection ${documentId}/${blockId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
 
     if (topRated && docLean.mode !== 'auto') {
       await this.notifyVariantWon(top, docLean).catch((err) => {
@@ -331,6 +365,19 @@ export class DocumentVariantService {
     );
 
     const created = await this.variantModel.findOne({ id: variantId }).lean().exec();
+    if (created) {
+      await this.notifyVariantProposed(
+        created as DocumentBlockVariantSchemaClass,
+        doc,
+        community,
+      ).catch((err) => {
+        this.logger.warn(
+          `Failed to notify new variant proposal ${variantId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
     return created as DocumentBlockVariantSchemaClass;
   }
 
@@ -597,6 +644,16 @@ export class DocumentVariantService {
     reason: 'vote' | 'admin',
   ): Promise<void> {
     const now = new Date();
+    const openVariantsBeforeApply = await this.variantModel
+      .find({
+        documentId: doc.id,
+        blockId: v.blockId,
+        id: { $ne: v.id },
+        status: 'open',
+        deleted: false,
+      })
+      .lean()
+      .exec();
     const ok = await this.documentService.updateDocumentBlock(doc.id, v.blockId, (b) => {
       const previousContent = String(b.officialContent ?? '');
       this.documentService.appendBlockEditHistory(b, {
@@ -648,6 +705,23 @@ export class DocumentVariantService {
 
     const community = await this.communityService.getCommunity(doc.communityId);
     if (community) {
+      if (openVariantsBeforeApply.length > 0) {
+        await this.notifyVariantsNotSelected({
+          doc,
+          community,
+          blockId: v.blockId,
+          variants: openVariantsBeforeApply,
+          winnerVariantId: v.id,
+          reason: reason === 'vote' ? 'other_variant_won' : 'applied_by_admin',
+          actorUserId,
+        }).catch((err) => {
+          this.logger.warn(
+            `Failed to notify non-selected variants after apply ${v.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+      }
       await this.notifyVariantApplied(v, doc, community).catch((err) => {
         this.logger.warn(
           `Failed to notify variant applied ${v.id}: ${err instanceof Error ? err.message : String(err)}`,
@@ -875,6 +949,106 @@ export class DocumentVariantService {
       blockId,
       inviteTargetIsProject: community.isProject === true,
     };
+  }
+
+  private async notifyVariantProposed(
+    variant: DocumentBlockVariantSchemaClass,
+    doc: MeriterDocumentSchemaClass,
+    community: Community,
+  ): Promise<void> {
+    const leads = await this.userCommunityRoleService.getUsersByRole(doc.communityId, 'lead');
+    const recipientIds = new Set<string>([doc.createdBy, ...leads.map((r) => r.userId)]);
+    recipientIds.delete(variant.proposedBy);
+
+    if (recipientIds.size === 0) {
+      return;
+    }
+
+    const title = doc.title?.trim() || 'Document';
+    const metadata = {
+      ...this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+      variantId: variant.id,
+      proposedBy: variant.proposedBy,
+    };
+
+    for (const userId of recipientIds) {
+      await this.notificationService.createNotification({
+        userId,
+        type: 'document_variant_proposed',
+        source: 'user',
+        sourceId: variant.proposedBy,
+        metadata,
+        title: 'New variant proposal',
+        message: `A new variant was proposed on "${title}".`,
+      });
+    }
+  }
+
+  private async notifyVariantsNotSelected(params: {
+    doc: MeriterDocumentSchemaClass;
+    community: Community;
+    blockId: string;
+    variants: Array<{ id: string; proposedBy: string }>;
+    winnerVariantId?: string;
+    reason:
+      | 'official_kept'
+      | 'other_variant_won'
+      | 'no_positive_winner'
+      | 'applied_by_admin';
+    actorUserId?: string;
+  }): Promise<void> {
+    const { doc, community, blockId, variants, winnerVariantId, reason, actorUserId } = params;
+    if (variants.length === 0) {
+      return;
+    }
+
+    const winner = winnerVariantId
+      ? variants.find((variant) => variant.id === winnerVariantId)
+      : null;
+    const metadata = {
+      ...this.buildDocumentNotificationMetadata(doc, community, blockId),
+      reason,
+      winnerVariantId,
+    };
+    const title = doc.title?.trim() || 'Document';
+    const recipientIds = new Set<string>();
+    for (const variant of variants) {
+      if (!variant.proposedBy) {
+        continue;
+      }
+      if (winner?.proposedBy && variant.proposedBy === winner.proposedBy) {
+        continue;
+      }
+      if (actorUserId && variant.proposedBy === actorUserId) {
+        continue;
+      }
+      recipientIds.add(variant.proposedBy);
+    }
+
+    if (recipientIds.size === 0) {
+      return;
+    }
+
+    const message =
+      reason === 'official_kept'
+        ? `Voting ended on "${title}" and the official text stayed unchanged.`
+        : reason === 'no_positive_winner'
+          ? `Voting ended on "${title}" and no variant reached a positive result.`
+          : reason === 'applied_by_admin'
+            ? `Another variant was applied on "${title}", so your open variant was closed.`
+            : `Voting ended on "${title}" and another variant was selected.`;
+
+    for (const userId of recipientIds) {
+      await this.notificationService.createNotification({
+        userId,
+        type: 'document_variant_not_selected',
+        source: 'system',
+        ...(actorUserId ? { sourceId: actorUserId } : {}),
+        metadata,
+        title: 'Your variant was not selected',
+        message,
+      });
+    }
   }
 
   private async notifyVariantWon(
