@@ -1,0 +1,28 @@
+{
+  "work_unit_id": "p0-3-named-export-rule",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/.eslintrc.js"
+  ],
+  "changes": [
+    {
+      "file": "api/.eslintrc.js",
+      "summary": "@typescript-eslint/no-restricted-imports at warn on @meriter/shared-types barrel with 17 p0_3_forbidden_import_names (PublicationSchema, WalletSchema, PollSchema, CommunitySchema, UserSchema, VoteSchema, CommentSchema, TransactionSchema, NotificationSchema, PublicationCreateInputSchema, PublicationUpdateInputSchema, WalletCreateInputSchema, CommunityCreateInputSchema, CommunityUpdateInputSchema, PollCreateInputSchema, FeedItemSchema, ResourcePermissionsSchema). p0_3_interim_allowed_barrel_symbols empty — V-13 drift symbols (EventCreateInput, TappalkaPair, DECREE_809_TAGS, Investment, etc.) not whitelisted. Byte-match TARGET_ARCHITECTURE.md §4.3 P0-3 block; zones 1-8 unchanged from p0-2."
+    }
+  ],
+  "verification": {
+    "forbidden_import_names_count": 17,
+    "p0_3_interim_allowed_barrel_symbols": [],
+    "v13_drift_symbols_whitelisted": false,
+    "v13_symbols_checked": ["EventCreateInput", "TappalkaPair", "DECREE_809_TAGS", "Investment"],
+    "target_spec_match": "P0-3 importNames + message byte-match TARGET_ARCHITECTURE.md §4.3",
+    "pnpm_filter_api_lint": "skipped — node_modules absent in worktree; rule syntax verified statically"
+  },
+  "success_criteria": {
+    "p0_3_blocks_17_forbidden_import_names": true,
+    "p0_3_interim_allowed_barrel_symbols_empty": true,
+    "v13_drift_symbols_not_whitelisted": true
+  },
+  "notes": "Depends on p0-2-eslint-zones-1-8 (zones 1-8 present). Zone 9 deferred to p0-4-zone-9-cross-router."
+}
