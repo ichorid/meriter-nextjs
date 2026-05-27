@@ -9,11 +9,11 @@
   "changes": [
     {
       "file": "api/package.json",
-      "summary": "Added eslint-plugin-import (^2.32.0) and eslint-import-resolver-typescript (^4.4.4) to devDependencies per TARGET §4.3 prerequisites"
+      "summary": "eslint-plugin-import (^2.32.0) and eslint-import-resolver-typescript (^4.4.4) present in devDependencies (committed in 56bc6d70); no further edits required"
     },
     {
       "file": "pnpm-lock.yaml",
-      "summary": "Lockfile updated to resolve eslint-plugin-import@2.32.0 and eslint-import-resolver-typescript@4.4.4 under @meriter/api importer"
+      "summary": "Lockfile records eslint-plugin-import@2.32.0 and eslint-import-resolver-typescript@4.4.4 under @meriter/api importer (committed in 56bc6d70); no further edits required"
     }
   ],
   "verification": {
@@ -26,5 +26,5 @@
     "pnpm_install_succeeds": true,
     "api_lint_no_resolver_errors": true
   },
-  "notes": "Attempt 3: write_set changes from prior attempts already present; re-verified pnpm install and api lint. Repo-wide lint channel failures (888 web @typescript-eslint/no-explicit-any issues) are out of scope for this dependency-only node."
+  "notes": "Attempt 3 re-verified committed write_set (56bc6d70). Lint-channel failure (888 @meriter/web no-explicit-any delta vs empty baseline) is pre-existing and unrelated to this work unit; reverting write_set to 86c20aba yields identical web lint count per repair_summary."
 }
