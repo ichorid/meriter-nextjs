@@ -179,6 +179,7 @@ export interface UpdateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   rejectionMessage?: string;
   futureVisionText?: string;
+  futureVisionDocumentSeed?: CreateCommunityDto['futureVisionDocumentSeed'];
   futureVisionTags?: string[];
   futureVisionCover?: string;
   /** Project communities: set parent; pass null to detach (becomes personal when combined with isPersonalProject). */
