@@ -18,6 +18,22 @@ import {
   VALUE_TAG_MAX_LENGTH,
   VALUE_TAGS_MAX_PER_POST,
 } from "./value-rubricator";
+import {
+  PermissionRuleSchema,
+  ResourcePermissionsSchema,
+} from "./schemas/permissions";
+
+export {
+  PermissionRuleSchema,
+  PermissionRuleConditionsSchema,
+  ResourcePermissionsSchema,
+} from "./schemas/permissions";
+
+export type {
+  PermissionRule,
+  PermissionRuleConditions,
+  ResourcePermissions,
+} from "./schemas/permissions";
 
 export const ValueTagsArraySchema = z
   .array(z.string().trim().min(1).max(VALUE_TAG_MAX_LENGTH))
@@ -252,28 +268,6 @@ export const CommunityWalletSchema = z.object({
   updatedAt: z.string().datetime(),
 });
 export type CommunityWallet = z.infer<typeof CommunityWalletSchema>;
-
-// Permission rule schema - granular role -> action -> allow/deny rules
-export const PermissionRuleConditionsSchema = z.object({
-  requiresTeamMembership: z.boolean().optional(),
-  onlyTeamLead: z.boolean().optional(),
-  canVoteForOwnPosts: z.boolean().optional(),
-  participantsCannotVoteForLead: z.boolean().optional(),
-  canEditWithVotes: z.boolean().optional(),
-  canEditWithComments: z.boolean().optional(),
-  canEditAfterMinutes: z.number().int().min(0).optional(),
-  canDeleteWithVotes: z.boolean().optional(),
-  canDeleteWithComments: z.boolean().optional(),
-  teamOnly: z.boolean().optional(),
-  isHidden: z.boolean().optional(),
-});
-
-export const PermissionRuleSchema = z.object({
-  role: z.enum(["superadmin", "lead", "participant"]),
-  action: z.string(), // ActionType enum value
-  allowed: z.boolean(),
-  conditions: PermissionRuleConditionsSchema.optional(),
-});
 
 export const PollOptionSchema = z.object({
   id: z.string(),
@@ -539,18 +533,6 @@ export const CommentAuthorMetaSchema = z.object({
   name: z.string(),
   username: z.string().optional(),
   photoUrl: z.string().url().optional(),
-});
-
-export const ResourcePermissionsSchema = z.object({
-  canVote: z.boolean(),
-  canEdit: z.boolean(),
-  canDelete: z.boolean(),
-  canComment: z.boolean(),
-  /** Birzha source post: manager can top up rating from the source CommunityWallet */
-  canTopUpFromSourceEntityWallet: z.boolean().optional(),
-  voteDisabledReason: z.string().optional(),
-  editDisabledReason: z.string().optional(),
-  deleteDisabledReason: z.string().optional(),
 });
 
 /** Top-up publication rating (personal wallet via vote path, or source CommunityWallet). */
@@ -1296,11 +1278,6 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 
 export type Investment = z.infer<typeof InvestmentSchema>;
 export type InvestmentContract = z.infer<typeof InvestmentContractSchema>;
-
-// Export rule types
-export type PermissionRule = z.infer<typeof PermissionRuleSchema>;
-export type PermissionRuleConditions = z.infer<typeof PermissionRuleConditionsSchema>;
-export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
 
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
