@@ -1,0 +1,16 @@
+{
+  "node_id": "p0-1-eslint-plugin-import",
+  "repair_attempt": 1,
+  "status": "done",
+  "root_cause": "Worker lint delta compares full-repo eslint output against an empty lint baseline (.index/verify/lint_baseline.json, 0 issues) without scope_paths filtering. That flags 888 pre-existing @meriter/web warnings as new. The same 888 warnings appear with or without the write_set changes (verified by reverting api/package.json and re-running web lint). None of the 888 issues are in write_set paths (api/package.json, pnpm-lock.yaml).",
+  "actions_taken": [
+    "Restored eslint-plugin-import (^2.32.0) and eslint-import-resolver-typescript (^4.4.4) in api/package.json after accidental revert during diagnosis",
+    "Ran pnpm install to refresh pnpm-lock.yaml",
+    "Re-verified pnpm install (exit 0), api lint (exit 0, no import/resolver errors), and scoped lint delta (new_scoped=0)"
+  ],
+  "files_changed": [
+    "api/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "verifier_expectation": "Node success criteria satisfied. Repair/orchestrator lint channel should pass (scope_paths=write_set yields new_count=0). Worker attempt lint may still report 888 vs empty baseline until harness applies scope_paths to worker run_lint_delta or baseline is seeded with legacy web debt; that is outside write_set."
+}

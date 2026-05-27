@@ -1,0 +1,30 @@
+{
+  "work_unit_id": "p0-1-eslint-plugin-import",
+  "status": "DONE",
+  "attempt": 3,
+  "files_changed": [
+    "api/package.json",
+    "pnpm-lock.yaml"
+  ],
+  "changes": [
+    {
+      "file": "api/package.json",
+      "summary": "Added eslint-plugin-import (^2.32.0) and eslint-import-resolver-typescript (^4.4.4) to devDependencies per TARGET §4.3 prerequisites"
+    },
+    {
+      "file": "pnpm-lock.yaml",
+      "summary": "Lockfile updated to resolve eslint-plugin-import@2.32.0 and eslint-import-resolver-typescript@4.4.4 under @meriter/api importer"
+    }
+  ],
+  "verification": {
+    "pnpm_install": "passed (exit 0)",
+    "api_lint": "passed (exit 0, no import/resolver errors)"
+  },
+  "success_criteria": {
+    "eslint_plugin_import_in_devDependencies": true,
+    "eslint_import_resolver_typescript_in_devDependencies": true,
+    "pnpm_install_succeeds": true,
+    "api_lint_no_resolver_errors": true
+  },
+  "notes": "Attempt 3: write_set changes from prior attempts already present; re-verified pnpm install and api lint. Repo-wide lint channel failures (888 web @typescript-eslint/no-explicit-any issues) are out of scope for this dependency-only node."
+}
