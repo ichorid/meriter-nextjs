@@ -1466,12 +1466,14 @@ export class CommunityService {
       ? new Date(community.lastQuotaResetAt)
       : today;
     
-    const effectiveMeritSettings = this.getEffectiveMeritSettings(
-      community as unknown as Community,
-    );
-    const dailyQuota = effectiveMeritSettings?.dailyQuota ?? 0;
+    const quotaEnabled =
+      (community as unknown as Community).meritSettings?.quotaEnabled !== false;
+    const baseDailyEmission = quotaEnabled
+      ? (community.settings?.dailyEmission ?? 0)
+      : 0;
+    const dailyEmission =
+      !quotaEnabled || community.typeTag === 'future-vision' ? 0 : baseDailyEmission;
     const isFutureVision = community.typeTag === 'future-vision';
-    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
 
     // 2. Use aggregation pipeline to join users with roles, wallets, and quota
     // Use $facet to get both filtered results and total count
@@ -1527,10 +1529,9 @@ export class CommunityService {
       {
         $addFields: {
           userRole: { $arrayElemAt: ['$roleData.role', 0] },
-          dailyQuota: dailyQuota,
+          dailyEmission: dailyEmission,
           quotaStartTime: quotaStartTime,
           isFutureVision: isFutureVision,
-          isMarathonOfGood: isMarathonOfGood,
         },
       },
 
@@ -1635,17 +1636,12 @@ export class CommunityService {
           usedToday: {
             $add: ['$votesTotal', '$pollCastsTotal', '$quotaUsageTotal'],
           },
-          // Calculate effective daily quota based on role and community type
-          effectiveDailyQuota: {
+          // Calculate effective daily emission based on community type
+          effectiveDailyEmission: {
             $cond: {
-              if: {
-                $or: [
-                  { $eq: ['$isFutureVision', true] },
-                  // Note: viewer role removed - all users are now participants
-                ],
-              },
+              if: { $eq: ['$isFutureVision', true] },
               then: 0,
-              else: '$dailyQuota',
+              else: '$dailyEmission',
             },
           },
         },
@@ -1657,7 +1653,7 @@ export class CommunityService {
             $max: [
               0,
               {
-                $subtract: ['$effectiveDailyQuota', '$usedToday'],
+                $subtract: ['$effectiveDailyEmission', '$usedToday'],
               },
             ],
           },
@@ -1675,7 +1671,7 @@ export class CommunityService {
           role: '$userRole',
           walletBalance: { $arrayElemAt: ['$walletData.balance', 0] },
           quota: {
-            dailyQuota: '$effectiveDailyQuota',
+            dailyEmission: '$effectiveDailyEmission',
             usedToday: '$usedToday',
             remainingToday: '$remainingToday',
           },
@@ -1711,7 +1707,7 @@ export class CommunityService {
       walletBalance: user.walletBalance ?? undefined,
       quota: user.quota
         ? {
-            dailyQuota: user.quota.dailyQuota ?? 0,
+            dailyEmission: user.quota.dailyEmission ?? 0,
             usedToday: user.quota.usedToday ?? 0,
             remainingToday: user.quota.remainingToday ?? 0,
           }

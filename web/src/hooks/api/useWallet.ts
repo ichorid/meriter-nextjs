@@ -11,6 +11,39 @@ import type { Wallet } from '@meriter/shared-types';
 // Re-export Wallet type for convenience
 export type { Wallet };
 
+/** Canonical quota display shape (settings.dailyEmission vocabulary, P-3). */
+export interface MemberQuotaDisplay {
+  dailyEmission: number;
+  usedToday: number;
+  remainingToday: number;
+}
+
+/** Map getCommunityMembers quota payload to display shape; retires dailyQuota in this path. */
+export function memberQuotaDisplayFromApi(
+  quota:
+    | {
+        dailyEmission?: number;
+        usedToday?: number;
+        remainingToday?: number;
+      }
+    | undefined,
+): MemberQuotaDisplay | undefined {
+  if (!quota) {
+    return undefined;
+  }
+  return {
+    dailyEmission: quota.dailyEmission ?? 0,
+    usedToday: quota.usedToday ?? 0,
+    remainingToday: quota.remainingToday ?? 0,
+  };
+}
+
+export function hasMemberQuotaDisplay(
+  quota: MemberQuotaDisplay | undefined,
+): quota is MemberQuotaDisplay {
+  return !!quota && quota.dailyEmission > 0;
+}
+
 // Get user wallets
 export function useWallets() {
   return trpc.wallets.getAll.useQuery(undefined, {
