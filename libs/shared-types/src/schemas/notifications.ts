@@ -1,6 +1,7 @@
 /**
  * Phase 1 Option B subpath entry (@meriter/shared-types/schemas/notifications).
- * NotificationTypeSchema and routing stub land in downstream Phase 1 units.
+ * NotificationRoutingSchema lands in a downstream Phase 1 unit.
  */
+export { NotificationTypeSchema } from '../notification.schema';
 
-export {};
+export type { NotificationType } from '../notification.schema';
