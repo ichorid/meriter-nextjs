@@ -96,6 +96,14 @@ module.exports = {
           from: './apps/meriter/src/application/**',
           message: 'Zone 8: Domain must not import application layer (dep-inward-only).',
         },
+        {
+          target: './apps/meriter/src/trpc/routers/**',
+          from: './apps/meriter/src/trpc/routers/**',
+          except: [
+            './apps/meriter/src/trpc/routers/votes.router.ts',
+          ],
+          message: 'Zone 9: Routers must not import other routers (V-03). Only yaml zone_9_interim_pairs.',
+        },
       ],
     }],
   },
