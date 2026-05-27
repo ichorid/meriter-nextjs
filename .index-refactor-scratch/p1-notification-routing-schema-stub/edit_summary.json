@@ -1,0 +1,33 @@
+{
+  "work_unit_id": "p1-notification-routing-schema-stub",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "libs/shared-types/src/schemas/notifications.ts",
+    "web/src/features/notifications/routing-matrix.ts"
+  ],
+  "changes": [
+    {
+      "file": "libs/shared-types/src/schemas/notifications.ts",
+      "summary": "Added NotificationRoutingRowSchema and NotificationRoutingSchema (47 rows, exhaustive vs NotificationTypeSchema) alongside existing NotificationTypeSchema re-exports for Option B subpath."
+    },
+    {
+      "file": "web/src/features/notifications/routing-matrix.ts",
+      "summary": "Phase 1 scaffold: NOTIFICATION_CLIENT_LEGACY_MATRIX (47 types from NotificationsClient/buildRedirectUrl), NOTIFICATION_ROUTING_ROWS/MATRIX parsed via NotificationRoutingSchema, and assertNotificationRoutingParity for Track B gate."
+    }
+  ],
+  "verification": {
+    "NotificationRoutingSchema_rows_length": 47,
+    "NotificationTypeSchema_options_length": 47,
+    "exhaustive_match_vs_notification_type_enum": true,
+    "npm_run_build_shared_types": "exit 0",
+    "track_b_jest": "pnpm jest src/features/notifications/routing-matrix.test.ts — 2 passed",
+    "assertNotificationRoutingParity": "exit 0"
+  },
+  "success_criteria": {
+    "47_routing_rows_exported": true,
+    "parity_test_vs_notifications_client_subtitle_link_matrix": true,
+    "track_b_web_parity_test_passes": true
+  },
+  "notes": "Track B co-located spec at web/src/features/notifications/routing-matrix.test.ts (companion to write_set scaffold; not imported by runtime). subtitleKey/linkPattern values encode NotificationsClient structured branches, formatNotificationMessage keys, and NotificationService.buildRedirectUrl template ids."
+}
