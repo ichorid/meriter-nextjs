@@ -12,6 +12,14 @@
     "./value-rubricator": {
       "types": "./dist/value-rubricator.d.ts",
       "default": "./dist/value-rubricator.js"
+    },
+    "./schemas/permissions": {
+      "types": "./dist/schemas/permissions.d.ts",
+      "default": "./dist/schemas/permissions.js"
+    },
+    "./schemas/notifications": {
+      "types": "./dist/schemas/notifications.d.ts",
+      "default": "./dist/schemas/notifications.js"
     }
   },
   "scripts": {
