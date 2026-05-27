@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema, IdInputSchema, FutureVisionDocumentSeedSchema } from '@meriter/shared-types';
+import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, IdInputSchema, FutureVisionDocumentSeedSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import {
   type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
@@ -275,9 +276,7 @@ export const communitiesRouter = router({
    */
   getFutureVisions: publicProcedure
     .input(
-      z.object({
-        page: z.number().int().min(1).optional(),
-        pageSize: z.number().int().min(1).max(100).optional(),
+      PaginationInputSchema.pick({ page: true, pageSize: true }).extend({
         tags: z.array(z.string()).optional(),
         sort: z.enum(['score', 'createdAt']).optional(),
       }),
@@ -295,11 +294,11 @@ export const communitiesRouter = router({
    * Get all communities (paginated)
    */
   getAll: protectedProcedure
-    .input(PaginationParamsSchema.optional())
+    .input(PaginationInputSchema.optional())
     .query(async ({ ctx, input }) => {
-      const pagination = input || { page: 1, pageSize: 20 };
-      const skip = (pagination.page - 1) * pagination.pageSize;
-      const limit = pagination.pageSize;
+      const pagination = PaginationHelper.parseOptions(input || {});
+      const skip = PaginationHelper.getSkip(pagination);
+      const limit = pagination.limit || 20;
 
       // Superadmins can see all communities
       if (ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
@@ -616,11 +615,9 @@ export const communitiesRouter = router({
    */
   getFeed: protectedProcedure
     .input(
-      z.object({
+      PaginationInputSchema.extend({
         communityId: z.string(),
-        page: z.number().int().min(1).optional().default(1),
         cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
-        pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
         search: z.string().optional(),
@@ -637,10 +634,10 @@ export const communitiesRouter = router({
     )
     .query(async ({ ctx, input }) => {
       // Use cursor if provided (from tRPC infinite query), otherwise use page
-      const page = input.cursor ?? input.page;
+      const page = input.cursor ?? input.page ?? 1;
       const pagination = PaginationHelper.parseOptions({
         page,
-        limit: input.pageSize,
+        limit: input.pageSize ?? 5,
       });
 
       const result = await ctx.communityFeedService.getCommunityFeed(
@@ -992,12 +989,8 @@ export const communitiesRouter = router({
    * Get community members
    */
   getMembers: protectedProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       id: z.string(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
       search: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {

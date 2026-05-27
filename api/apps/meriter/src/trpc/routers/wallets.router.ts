@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
@@ -125,12 +126,8 @@ export const walletsRouter = router({
    * Get user transactions
    */
   getTransactions: protectedProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       userId: z.string(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
       /** Offset for infinite queries (`useInfiniteQuery` pageParam → cursor). */
       cursor: z.number().int().min(0).optional(),
       communityId: z.string().optional(),
@@ -238,12 +235,8 @@ export const walletsRouter = router({
    */
   getCommunityMeritHistory: protectedProcedure
     .input(
-      z.object({
+      PaginationInputSchema.extend({
         communityId: z.string().min(1),
-        page: z.number().int().min(1).optional(),
-        pageSize: z.number().int().min(1).max(100).optional(),
-        limit: z.number().int().min(1).max(100).optional(),
-        skip: z.number().int().min(0).optional(),
         cursor: z.number().int().min(0).optional(),
         category: z
           .enum(

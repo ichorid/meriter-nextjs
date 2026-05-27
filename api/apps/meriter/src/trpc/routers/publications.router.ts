@@ -17,6 +17,7 @@ import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { getRemainingQuotaForPublicationCreate } from '../helpers/publication-creation-quota';
+import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import {
   attendeeIdsFromParticipants,
   parseEventParticipantsFromDoc,
@@ -420,11 +421,9 @@ export const publicationsRouter = router({
    */
   getBirzhaPostsBySource: protectedProcedure
     .input(
-      z.object({
+      PaginationInputSchema.pick({ limit: true, skip: true }).extend({
         sourceEntityType: z.enum(['project', 'community']),
         sourceEntityId: z.string(),
-        limit: z.number().int().min(1).max(100).optional(),
-        skip: z.number().int().min(0).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -624,15 +623,11 @@ export const publicationsRouter = router({
    * Get publications (paginated)
    */
   getAll: protectedProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       communityId: z.string().optional(),
       authorId: z.string().optional(),
       hashtag: z.string().optional(),
-      page: z.number().int().min(1).optional(),
       cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
       const query = input || {};
@@ -1321,13 +1316,9 @@ export const publicationsRouter = router({
    * Get deleted publications (leads only)
    */
   getDeleted: protectedProcedure
-    .input(z.object({
+    .input(PaginationInputSchema.extend({
       communityId: z.string(),
-      page: z.number().int().min(1).optional(),
       cursor: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
-      skip: z.number().int().min(0).optional(),
     }))
     .query(async ({ ctx, input }) => {
       // Check if user is a lead in the community
