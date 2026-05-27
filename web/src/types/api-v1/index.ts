@@ -48,54 +48,7 @@ import type {
     PollFeedItem,
 } from "@meriter/shared-types";
 
-/**
- * ResourcePermissions interface
- * 
- * Represents the permissions a user has for a specific resource (publication, comment, poll).
- * All permission checks are performed server-side and embedded in API responses.
- */
-export interface ResourcePermissions {
-  /**
-   * Whether the user can vote on this resource
-   */
-  canVote: boolean;
-
-  /**
-   * Whether the user can edit this resource
-   */
-  canEdit: boolean;
-
-  /**
-   * Whether the user can delete this resource
-   */
-  canDelete: boolean;
-
-  /**
-   * Whether the user can comment on this resource
-   */
-  canComment: boolean;
-
-  /** Birzha source post: may top up from source CommunityWallet */
-  canTopUpFromSourceEntityWallet?: boolean;
-
-  /**
-   * Reason why voting is disabled (translation key for frontend)
-   * Only present if canVote is false
-   */
-  voteDisabledReason?: string;
-
-  /**
-   * Reason why editing is disabled (translation key for frontend)
-   * Only present if canEdit is false
-   */
-  editDisabledReason?: string;
-
-  /**
-   * Reason why deletion is disabled (translation key for frontend)
-   * Only present if canDelete is false
-   */
-  deleteDisabledReason?: string;
-}
+import type { ResourcePermissions } from "@meriter/shared-types/schemas/permissions";
 
 // Re-export types explicitly (type-only to avoid pulling in all Zod schemas)
 export type {
@@ -112,6 +65,7 @@ export type {
     UserCommunityRole,
     PermissionRule,
     PermissionRuleConditions,
+    ResourcePermissions,
     CreatePublicationDto,
     CreateCommentDto,
     UpdateCommentDto,
