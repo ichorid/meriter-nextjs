@@ -19,6 +19,8 @@ Merit-based social platform operating through web. Users earn and spend "merits"
 ## Repository Structure
 Structure and layer overview: see @architecture.mdc.
 
+**Target architecture (Round 36):** Clean Architecture migration blueprint in `.index/architecture/TARGET_ARCHITECTURE.md` with structured metadata in `target_architecture.yaml` (schema_version 2). Intrinsic domain complexity preserved in `NECESSARY_COMPLEXITY.md` (30 concepts, **19** bounded contexts). **Phase 0 not landed** — ESLint boundary zones 1–9 and P0-3 named-export rule are spec-only until kickoff PR; live code has documented violation waivers (V-01–V-13).
+
 ## Core Concepts
 - **Merit**: Unit of reputation/currency within a community or several communities
 - **Community**: Group created by users or administrators
@@ -66,9 +68,18 @@ Structure and layer overview: see @architecture.mdc.
 - **Background/domain automation**: post closing cron, quota reset services, **document wave cron** (finalize waves / auto-apply)
 - **Integrations**: Telegram services, Telegram bot module, updates conductor subsystem
 
+## Architecture migration guardrails
+
+When changing backend layers or cross-package contracts:
+1. Respect dependency direction in @architecture.mdc (domain ← application ← adapters; infrastructure implements ports)
+2. Do not add new boundary violations (domain→trpc, cross-router imports, inline notifications in domain)
+3. Permission gates belong in `PermissionRuleEngine` via `PermissionGatesPort` — not new logic in `permissions-helper` (OD-3)
+4. Phase 3 vote work is **blocked_on Phase 2** (adapters scaffold + CookieManager)
+5. Phase 5 permissions merge requires **signed** `od3-matrix-signed.yaml`
+
 ## Before Making Changes
 1. Check existing patterns in similar files
-2. Use shared schemas when shape is reused
+2. Use shared schemas when shape is reused (`ResourcePermissionsSchema` canonical in `libs/shared-types`)
 3. Run `pnpm lint && pnpm lint:fix` from the repository root before committing (see @pnpm.mdc)
 4. Update both frontend AND backend when changing contracts
 

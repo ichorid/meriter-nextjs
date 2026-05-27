@@ -7,6 +7,8 @@ alwaysApply: false
 
 # Backend Patterns (NestJS + tRPC + REST)
 
+Layer model, dependency rules, migration phases, and violation waivers: @architecture.mdc · full spec: `.index/architecture/TARGET_ARCHITECTURE.md`.
+
 ## Tech Stack
 - NestJS 10 + TypeScript (strict)
 - tRPC v11 for main API surface
@@ -63,17 +65,30 @@ api/apps/meriter/src/
 
 Note: additional migration/maintenance scripts also exist outside this tree under `api/scripts/*.ts`.
 
+## Layer responsibilities (Clean Architecture)
+
+| Layer | Live | Target | Agent rule |
+|-------|------|--------|------------|
+| Domain | `domain/services`, `domain/aggregates`, `domain/events` | + `domain/ports/` (Phase 3) | Business rules only; no tRPC/api-v1 imports |
+| Application | scattered in routers (`createVoteLogic`) | `application/use-cases/` (Phase 2–3) | Orchestration; no `@InjectModel` / `@nestjs/mongoose` |
+| Adapters | `trpc/`, `api-v1/` | `adapters/trpc|rest|mappers|presenters|resolvers/` (Phase 2) | Validate → use case → map → `ResourcePermissions` |
+| Infrastructure | `domain/models`, `api-v1/auth`, `tg-bots`, `*-cron.service` in domain | `infrastructure/*` (Phase 2+) | Implements ports; cron invokes domain services only |
+
+**Aspirational paths not on disk yet:** `application/`, `adapters/`, `domain/ports/`, `infrastructure/permissions/`. Phase 3 requires `PermissionGatesPort` + adapter before `CreateVoteUseCase` extraction.
+
 ## Module Wiring Rule
 - Use a shared `domain.module.ts` for providers and model registration.
 - Do not assume "one module per entity" layout.
-- Keep new business logic in `domain/services`; when touching legacy routers/controllers, prefer extracting business logic from transport layer to services.
+- **New orchestration:** add `application/use-cases/[domain]/[action].use-case.ts` when layer exists; until then, do not deepen router god-methods — prefer domain service + thin router.
+- **Legacy:** substantial logic remains in routers (`createVoteLogic`, merit history in `wallets.router`); extract per phase plan, do not add cross-router imports.
 
 ## API Layer Responsibilities
 
-### tRPC (`trpc/routers`)
+### tRPC (`trpc/routers` → target `adapters/trpc/routers`)
 - Validate input with shared Zod schemas when possible.
-- Perform transport-level checks and call domain services.
-- Prefer thin routers (orchestration + mapping), but current codebase still contains substantial business logic and direct DB reads in some routers.
+- **Target:** thin controllers — delegate to application use cases; map via `EntityMappers`; attach permissions via engine + presenter.
+- **Interim:** substantial logic in routers is legacy (V-03/V-04/V-08); do not import logic from other routers (e.g. `createVoteLogic` export pattern is waiver until Phase 3).
+- No new REST business endpoints; dual transport = tRPC primary + REST auth narrow.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
 - Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`.
 - Investments group is mounted as `investments` in appRouter, with implementation file `trpc/routers/investment.router.ts`.
@@ -93,11 +108,17 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 
 ## Permission Flow
 
-1. Route/middleware resolves actor and target context.
-2. `PermissionService` evaluates action-level permission (REST via guards/decorators; tRPC via middleware or handler-level checks). Coverage is endpoint-dependent, and REST/tRPC parity is not guaranteed in all legacy/deprecated paths.
-3. Domain service enforces business constraints (wallet/quota/source rules).
-4. Use sessions/transactions where implemented; some existing flows are best-effort and not fully atomic.
-5. Events/notifications emitted after successful state change.
+1. Route/middleware resolves actor and target context (`permission.middleware.ts`).
+2. **`PermissionRuleEngine.canPerformAction`** — role × action from `permissionRules` (live).
+3. **Post-type / product gates** — target: engine methods via **`PermissionGatesPort`** (Phase 3 stubs → Phase 5 inlined logic). **Interim:** gates live in `permissions-helper.service.ts` (V-06); engine must **not** import permissions-helper.
+4. **`permissions.presenter`** (target Phase 5) — `ResourcePermissions` booleans + i18n disabled-reason keys only; no gate logic in presenter.
+5. Domain services enforce wallet/quota/source rules (`CreateVoteUseCase` target).
+6. Permission checks **before** side effects (inv-08).
+7. Notifications via domain event → **`NotificationHandlersService`** (not inline `createNotification` in domain — V-05 waiver on `ob_vote_join_offer` until Phase 5).
+
+**Nest DI (Phase 3):** `PermissionGatesPort` token → `PermissionGatesAdapter` in `infrastructure/permissions/permissions.module.ts`; adapter is sole infra importer of `permissions-helper`. Engine injects port via `@Inject(PermissionGatesPort)`.
+
+**OD-3 sign-off:** product signatures on `.index/architecture/od3-matrix-signed.yaml` required before Phase 5 permissions migration merge.
 
 Never rely on UI assumptions for security-critical checks.
 
@@ -108,8 +129,11 @@ Never rely on UI assumptions for security-critical checks.
 - Legacy `GET /api/v1/auth/me` exists and is marked deprecated in favor of `trpc.users.getMe`.
 
 ## Data and Schema Rules
-- Shared API contracts: `libs/shared-types/src/`.
-- Backend-only schemas: `api/apps/meriter/src/common/schemas/` (currently minimal; e.g. `pagination.schema.ts`).
+- Shared API contracts: `libs/shared-types/src/` — canonical for cross-stack DTOs (inv-12).
+- **`ResourcePermissionsSchema`** in `schemas.ts` is source of truth; Phase 1 deletes `api-v1/common/interfaces/resource-permissions.interface.ts`.
+- Domain imports from shared-types: **allowlist only** (value-objects, taxonomy, value-rubricator, decree809-tag-remap) — not full `schemas.ts` (zone 6).
+- Phase 1 stub: export `NotificationRoutingSchema` from `schemas.ts` (no backend runtime dependency yet).
+- Backend-only schemas: `api/apps/meriter/src/common/schemas/` (e.g. `pagination.schema.ts` — canonical pagination; replace inline router pagination in Phase 1).
 - Most Mongoose models are in `domain/models/**`; additional schemas can also exist in dedicated feature modules (e.g. `updates-conductors/model`).
 - Auth persistence schemas are in `domain/models/auth/**` (`passkey-challenge.schema.ts`, `auth-magic-link.schema.ts`, `sms-otp.schema.ts`, `email-otp.schema.ts`).
 - When changing contract shape, update both backend usage and frontend consumers.
@@ -142,13 +166,26 @@ export const exampleRouter = router({
 });
 ```
 
+## Stub procedures (resolved)
+
+- `wallets.withdraw` / `wallets.transfer` — **permanent NOT_IMPLEMENTED**; rating withdrawal = `publications.withdraw`; peer transfer = `meritTransfer.*`; hide UI callers (Phase 1 grep).
+
+## ESLint boundaries (Phase 0 — not landed)
+
+Do not assume CI enforces layers yet. When Phase 0 merges, `import/no-restricted-paths` zones 1–7 apply (see @architecture.mdc). New code must not add domain→trpc or cross-router violations even before lint lands.
+
 ## Common Mistakes
 
-❌ Putting business rules directly in tRPC routers/controllers  
-❌ Duplicating validation instead of reusing shared schemas  
-❌ Skipping permission checks for "internal" endpoints  
-❌ Mixing REST/tRPC contracts without explicit mapping  
-❌ Applying tRPC permission middleware before `.input()` validation when resource IDs are extracted from input  
-❌ Treating deprecated REST upload endpoints as the primary API surface  
-❌ Introducing backend-only DTOs into shared-types without cross-package need  
+❌ Putting business rules directly in tRPC routers/controllers (extract to use cases per phase plan)
+❌ `PermissionRuleEngine` importing `permissions-helper` — use `PermissionGatesPort`
+❌ Domain service importing `trpc/helpers` (V-01) or reading `process.env` for feature flags (V-07)
+❌ Cross-router imports for vote economics (`publications` → `votes.createVoteLogic`)
+❌ Inline notification creation in domain services (OD-12 / V-05)
+❌ Duplicating validation instead of reusing shared schemas
+❌ Skipping permission checks for "internal" endpoints
+❌ Mixing REST/tRPC contracts without explicit mapping (inv-18: envelopes stay distinct)
+❌ Applying tRPC permission middleware before `.input()` validation when resource IDs are extracted from input
+❌ Treating deprecated REST upload endpoints as the primary API surface (OD-2 audit Phase 6b)
+❌ Introducing backend-only DTOs into shared-types without cross-package need
 ❌ Assuming deprecated REST endpoints enforce the same permission checks as their tRPC replacements
+❌ Adding `@nestjs/mongoose` imports in `application/**` (zone 5)

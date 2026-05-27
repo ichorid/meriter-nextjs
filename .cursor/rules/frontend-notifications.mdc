@@ -8,6 +8,18 @@ alwaysApply: false
 
 # Notifications list (Meriter)
 
+Architecture: inv-25 · backend matrix in `target_architecture.yaml` → `notification_routing_matrix` · OD-12 (inline `ob_vote_join_offer` in `vote.service.ts` — Phase 5 remediation).
+
+## Routing architecture (interim → target)
+
+| Concern | Interim (live) | Target |
+|---------|----------------|--------|
+| Subtitle/link mapping | `notificationClientFormat.ts` + `renderNotificationSubtitle` | `features/notifications/routing-matrix.ts` |
+| Shared contract | none yet | `NotificationRoutingSchema` in `libs/shared-types` (Phase 1 stub) |
+| Backend creation | `NotificationHandlersService` for vote/favorite; **inline** in VoteService/EventService/InvestmentService/DocumentVariantService for other types | Domain event → handler chain for all types (Phase 5+) |
+
+**Agent rule:** When adding notification types, align subtitle/link keys with future `NotificationRoutingSchema` enum; do not add new inline `createNotification` in domain services.
+
 ## Base typography
 
 - **Card subtitle container** (`InfoCard`): `text-sm text-brand-text-secondary` on the wrapper around `subtitle` so body copy has one consistent size across notification types.
@@ -30,7 +42,21 @@ Do not mix arbitrary `text-xs` / `text-sm` inside subtitle rows except the times
 - **`project_distributed`**: metadata `payoutBucket` is `founder` | `investor` | `team` (API / `project-payout.service.ts`). Subtitle maps unknown buckets to a trimmed fallback; known buckets use `notifications.projectDistributedSubtitleRole` with `{ role }` from `notifications.projectDistributedPayoutRoleFounder` | `...Investor` | `...Team` (see `renderNotificationSubtitle` for `project_distributed`) — do not show raw API bucket strings to users when a mapped label exists.
 - **Fallback** (`formatNotificationMessage` + default subtitle): keep lines split by `\n`; actor row uses a profile link when `actor.id` is present.
 
+## Live notification types (backend emitters)
+
+| Type | Handler | Gap |
+|------|---------|-----|
+| `vote` | `NotificationHandlersService.handlePublicationVoted` | — |
+| `favorite_update` | `notifyFavoriteUpdate` (private) | — |
+| `ob_vote_join_offer` | **VoteService inline** `vote.service.ts:258–271` | No handler until OD-12 Phase 5 |
+| `event_created`, `event_invitation` | EventService inline | Not via NotificationHandlersService |
+| `investment_received` | InvestmentService inline | Not event chain |
+| `document_variant_won` | DocumentVariantService inline | Not event chain |
+
+Removed from matrix (not live): `comment` (no emitter), `merit_transfer` (not in enum).
+
 ## Files
 
-- `web/src/app/meriter/notifications/NotificationsClient.tsx` — subtitle rendering; `NOTIFY_SUB` and notification routing helpers in `notificationClientConstants.ts`; title/body copy in `notificationClientFormat.ts`.
+- `web/src/app/meriter/notifications/NotificationsClient.tsx` — subtitle rendering; `NOTIFY_SUB` in `notificationClientConstants.ts`; routing/copy in `notificationClientFormat.ts` (**interim** until Phase 7 `features/notifications/`).
 - `web/src/components/ui/InfoCard.tsx` — title `text-sm`, subtitle wrapper size as above.
+- **Target (Phase 5 scaffold):** `web/src/features/notifications/routing-matrix.ts` importing `NotificationRoutingSchema`.
