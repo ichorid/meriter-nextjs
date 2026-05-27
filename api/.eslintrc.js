@@ -29,6 +29,19 @@ module.exports = {
       varsIgnorePattern: '^_',
       caughtErrorsIgnorePattern: '^_'
     }],
+    '@typescript-eslint/no-restricted-imports': ['warn', {
+      paths: [{
+        name: '@meriter/shared-types',
+        importNames: [
+          'PublicationSchema', 'WalletSchema', 'PollSchema', 'CommunitySchema',
+          'UserSchema', 'VoteSchema', 'CommentSchema', 'TransactionSchema',
+          'NotificationSchema', 'PublicationCreateInputSchema', 'PublicationUpdateInputSchema',
+          'WalletCreateInputSchema', 'CommunityCreateInputSchema', 'CommunityUpdateInputSchema',
+          'PollCreateInputSchema', 'FeedItemSchema', 'ResourcePermissionsSchema',
+        ],
+        message: 'P0-3: Domain zone-6 allowlist — forbidden god-object schema exports from barrel (17 symbols in p0_3_forbidden_import_names). V-13 drift symbols are NOT whitelisted — see domain_shared_types_drift and P1-V13-MIGRATION. After Phase 1 split, use allowlisted subpaths.',
+      }],
+    }],
     'import/no-restricted-paths': ['warn', {
       zones: [
         {
