@@ -33,7 +33,7 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value);
 }
 
-/** Round merit amounts for display or persistence (max one decimal place). */
+/** Round merit amounts for display (max one decimal place). Non-finite → 0. Mirrors api formatMeritsForDisplay rounding (inv-26). */
 export function roundMeritsToDisplay(value: number): number {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
@@ -42,6 +42,7 @@ export function roundMeritsToDisplay(value: number): number {
 
 /**
  * Format merits to at most 1 decimal place (avoids float artifacts like 56.63000000000001).
+ * Must stay aligned with api `formatMeritsForDisplay` (inv-26).
  * Examples: 10.7 → "10.7", 10 → "10", 0.5 → "0.5"
  */
 export function formatMerits(value: number): string {
