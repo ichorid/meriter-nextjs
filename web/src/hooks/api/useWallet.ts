@@ -234,32 +234,7 @@ export function useWalletController() {
 //   });
 // }
 
-// Withdraw funds - migrated to tRPC (not yet implemented in backend)
-export function useWithdraw() {
-  const utils = trpc.useUtils();
-  
-  return trpc.wallets.withdraw.useMutation({
-    onSuccess: (_result, variables) => {
-      // Invalidate wallet-related queries
-      utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: variables.communityId });
-      utils.wallets.getAll.invalidate();
-      utils.wallets.getBalance.invalidate({ communityId: variables.communityId });
-      utils.wallets.getTransactions.invalidate({ userId: 'me', communityId: variables.communityId });
-    },
-  });
-}
-
-// Transfer funds - migrated to tRPC (not yet implemented in backend)
-export function useTransfer() {
-  const utils = trpc.useUtils();
-  
-  return trpc.wallets.transfer.useMutation({
-    onSuccess: (_result, variables) => {
-      // Invalidate wallet-related queries
-      utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId: variables.communityId });
-      utils.wallets.getAll.invalidate();
-      utils.wallets.getBalance.invalidate({ communityId: variables.communityId });
-      utils.wallets.getTransactions.invalidate({ userId: 'me', communityId: variables.communityId });
-    },
-  });
-}
+// wallets.withdraw / wallets.transfer are permanent NOT_IMPLEMENTED in the API.
+// UI must use canonical paths instead:
+// - Post rating → author wallet: trpc.publications.withdraw (see useWithdrawFromPublication in useVotes.ts)
+// - Peer merit transfer: trpc.meritTransfer.* (see MeritTransferDialog / use-merit-transfers.ts)
