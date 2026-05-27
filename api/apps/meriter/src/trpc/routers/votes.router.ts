@@ -14,6 +14,7 @@ import {
   resolveDocumentVoteContext,
   type DocumentVoteTargetType,
 } from '../helpers/document-vote-router.helper';
+import type { DocumentBlockVariantSchemaClass } from '../../domain/models/document-block-variant/document-block-variant.schema';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -277,7 +278,7 @@ export async function createVoteLogic(
       ctx.documentService,
       async (documentId, blockId) => {
         const variants = await ctx.documentVariantService.listByBlock(documentId, blockId);
-        return variants.some((v) => v.status === 'open');
+        return variants.some((v: DocumentBlockVariantSchemaClass) => v.status === 'open');
       },
       input.targetType,
       input.targetId,
@@ -703,6 +704,7 @@ export async function createVoteLogic(
   // Create vote (document-variant rating is updated in the same transaction)
   let vote: Awaited<ReturnType<typeof ctx.voteService.createVote>>;
   if (isDocumentVoteTargetType(input.targetType)) {
+    const documentVoteTargetType: DocumentVoteTargetType = input.targetType;
     const totalAmount = quotaAmount + walletAmount;
     const delta = direction === 'up' ? totalAmount : -totalAmount;
     const session = await ctx.connection.startSession();
@@ -710,7 +712,7 @@ export async function createVoteLogic(
       await session.withTransaction(async () => {
         vote = await ctx.voteService.createVote(
           ctx.user.id,
-          input.targetType,
+          documentVoteTargetType,
           input.targetId,
           quotaAmount,
           walletAmount,
@@ -722,7 +724,7 @@ export async function createVoteLogic(
         );
         await applyDocumentVoteRatingDelta(
           ctx.documentService,
-          input.targetType,
+          documentVoteTargetType,
           input.targetId,
           delta,
           session,

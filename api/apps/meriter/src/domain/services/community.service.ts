@@ -179,6 +179,17 @@ export interface UpdateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   rejectionMessage?: string;
   futureVisionText?: string;
+  futureVisionDocumentSeed?: {
+    sections: Array<{
+      title?: string;
+      order: number;
+      blocks: Array<{
+        order: number;
+        blockType: string;
+        officialContent: string;
+      }>;
+    }>;
+  };
   futureVisionTags?: string[];
   futureVisionCover?: string;
   /** Project communities: set parent; pass null to detach (becomes personal when combined with isPersonalProject). */

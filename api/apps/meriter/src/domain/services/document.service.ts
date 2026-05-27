@@ -574,22 +574,11 @@ export class DocumentService {
     if (!doc) {
       throw new NotFoundException('Document not found');
     }
-    let found = false;
-    for (const sec of doc.sections ?? []) {
-      for (const block of sec.blocks ?? []) {
-        if (block.id === blockId) {
-          block.officialRating = (block.officialRating ?? 0) + delta;
-          found = true;
-          break;
-        }
-      }
-      if (found) {
-        break;
-      }
-    }
-    if (!found) {
+    const block = this.findBlock(doc, blockId);
+    if (!block) {
       throw new NotFoundException('Block not found');
     }
+    block.officialRating = (block.officialRating ?? 0) + delta;
     doc.markModified('sections');
     await doc.save(session ? { session } : undefined);
   }
