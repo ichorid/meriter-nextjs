@@ -395,19 +395,15 @@ export class UploadsService {
   }
 
   private getPublicUrl(key: string): string {
-    // For S3-compatible providers, construct URL from endpoint
+    // forcePathStyle uploads always address objects as /{bucket}/{key}.
+    // When the endpoint hostname already includes the bucket (e.g. DO Spaces
+    // https://{bucket}.{region}.digitaloceanspaces.com), public URLs must still
+    // include the bucket path segment — omitting it yields 403 AccessDenied.
     if (this.s3Endpoint && this.bucketName) {
-      // Remove trailing slash from endpoint if present
       const endpoint = this.s3Endpoint.replace(/\/$/, '');
-      // Check if endpoint already contains bucket (some providers use path-style)
-      if (endpoint.includes(this.bucketName)) {
-        return `${endpoint}/${key}`;
-      }
-      // Use virtual-hosted style URL for most providers
       return `${endpoint}/${this.bucketName}/${key}`;
     }
-    // Fallback to AWS-style URL
-    return `https://${this.bucketName}.s3.amazonaws.com/${key}`;
+    return `https://${this.bucketName}.s3.amazonaws.com/${this.bucketName}/${key}`;
   }
 }
 

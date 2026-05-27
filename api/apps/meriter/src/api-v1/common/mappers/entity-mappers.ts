@@ -259,18 +259,4 @@ export class EntityMappers {
 
     return baseComment;
   }
-
-  /**
-   * Map Vote to API format
-   */
-  static mapVoteToApi(vote: any, usersMap: Map<string, any>): any {
-    const author = usersMap.get(vote.userId);
-
-    return {
-      ...vote,
-      meta: {
-        author: UserFormatter.formatUserForApi(author, vote.userId),
-      },
-    };
-  }
 }
