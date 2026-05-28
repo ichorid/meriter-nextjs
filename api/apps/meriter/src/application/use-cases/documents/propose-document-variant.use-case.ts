@@ -64,11 +64,13 @@ export type ProposeDocumentVariantDeps = {
  */
 export class ProposeDocumentVariantUseCase {
   private readonly logger = new Logger(ProposeDocumentVariantUseCase.name);
-  private readonly getRemainingQuota = createGetRemainingQuotaUseCase({
-    communityService: this.deps.communityService,
-  });
+  private readonly getRemainingQuota: ReturnType<typeof createGetRemainingQuotaUseCase>;
 
-  constructor(private readonly deps: ProposeDocumentVariantDeps) {}
+  constructor(private readonly deps: ProposeDocumentVariantDeps) {
+    this.getRemainingQuota = createGetRemainingQuotaUseCase({
+      communityService: this.deps.communityService,
+    });
+  }
 
   async execute(
     userId: string,

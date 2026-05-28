@@ -5,9 +5,28 @@ import {
   type NotificationType,
 } from '@meriter/shared-types/schemas/notifications';
 
+/** Deep-link template ids referenced by the inv-25 routing matrix. */
+export type NotificationLinkPattern =
+  | 'community.post'
+  | 'community.members'
+  | 'community.post.highlight'
+  | 'community.poll'
+  | 'community.postOrPoll'
+  | 'project.orCommunity.inviteTarget'
+  | 'community'
+  | 'project.orCommunity.members'
+  | 'community.projects'
+  | 'project'
+  | 'project.ticket'
+  | 'birzha.post'
+  | 'community.postOrProject'
+  | 'community.document.block'
+  | 'community.document';
+
 /**
- * Interim subtitle/link matrix extracted from NotificationsClient.tsx +
- * notificationClientFormat.ts + NotificationService.buildRedirectUrl (inv-25 Track B).
+ * Canonical inv-25 subtitle/link matrix (Phase 7).
+ * Encodes NotificationsClient structured branches, formatNotificationMessage keys,
+ * and NotificationService.buildRedirectUrl template ids.
  *
  * subtitleKey — rendering template id (structured JSX branch or formatNotificationMessage key).
  * linkPattern — deep-link template id (buildRedirectUrl / handleNotificationClick).
@@ -180,6 +199,12 @@ export const NOTIFICATION_ROUTING_ROWS: NotificationRoutingRow[] =
 /** Parsed shared-types contract (Track A). */
 export const NOTIFICATION_ROUTING_MATRIX: NotificationRoutingRow[] =
   NotificationRoutingSchema.parse(NOTIFICATION_ROUTING_ROWS);
+
+/** O(1) lookup by notification type — inv-25 Phase 7 UI routing entry. */
+export const NOTIFICATION_ROUTING_BY_TYPE: Record<NotificationType, NotificationRoutingRow> =
+  Object.fromEntries(
+    NOTIFICATION_ROUTING_MATRIX.map((row) => [row.type, row]),
+  ) as Record<NotificationType, NotificationRoutingRow>;
 
 /** Track B — assert routing-matrix matches NotificationsClient interim matrix. */
 export function assertNotificationRoutingParity(): void {

@@ -42,6 +42,7 @@ export class PermissionService {
     private voteService: VoteService,
     @Inject(forwardRef(() => DocumentService))
     private documentService: DocumentService,
+    @Inject(forwardRef(() => PermissionRuleEngine))
     private permissionRuleEngine: PermissionRuleEngine,
     private permissionContextService: PermissionContextService,
   ) { }
