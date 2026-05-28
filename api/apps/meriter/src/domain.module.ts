@@ -132,6 +132,7 @@ import { CategoryService } from './domain/services/category.service';
 import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
+import { PERMISSION_GATES_PORT } from './domain/ports/permission-gates.port';
 import { TappalkaService } from './domain/services/tappalka.service';
 import { InvestmentService } from './domain/services/investment.service';
 import { PostClosingService } from './domain/services/post-closing.service';
@@ -226,6 +227,10 @@ import { EventBus } from './domain/events/event-bus';
     CommunityService,
     CommunityDefaultsService,
     PermissionRuleEngine,
+    {
+      provide: PERMISSION_GATES_PORT,
+      useExisting: PermissionRuleEngine,
+    },
     PermissionContextService,
     UserUpdatesService,
     UserSettingsService,
@@ -291,6 +296,10 @@ import { EventBus } from './domain/events/event-bus';
     CommunityService,
     CommunityDefaultsService,
     PermissionRuleEngine,
+    {
+      provide: PERMISSION_GATES_PORT,
+      useExisting: PermissionRuleEngine,
+    },
     PermissionContextService,
     UserUpdatesService,
     UserSettingsService,

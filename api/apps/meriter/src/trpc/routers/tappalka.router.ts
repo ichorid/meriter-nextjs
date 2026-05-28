@@ -1,5 +1,11 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
+import { createProcessTappalkaComparisonUseCaseFromContext } from '../../application/use-cases/tappalka/process-tappalka-comparison.use-case';
 import {
   GetTappalkaPairInputSchema,
   SubmitTappalkaChoiceInputSchema,
@@ -48,18 +54,32 @@ export const tappalkaRouter = router({
     .output(TappalkaChoiceResultSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const result = await ctx.tappalkaService.submitChoice(
-          input.communityId,
-          ctx.user.id,
-          input.sessionId,
-          input.winnerPostId,
-          input.loserPostId,
-        );
+        const result = await createProcessTappalkaComparisonUseCaseFromContext(
+          ctx,
+        ).execute({
+          communityId: input.communityId,
+          userId: ctx.user.id,
+          sessionId: input.sessionId,
+          winnerPostId: input.winnerPostId,
+          loserPostId: input.loserPostId,
+        });
         return result;
       } catch (error) {
-        if (error instanceof Error) {
+        if (error instanceof BadRequestException) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
+            message: error.message,
+          });
+        }
+        if (error instanceof ForbiddenException) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: error.message,
+          });
+        }
+        if (error instanceof NotFoundException) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
             message: error.message,
           });
         }
