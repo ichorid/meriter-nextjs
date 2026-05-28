@@ -5,6 +5,7 @@ const servers = new Set();
 const replSets = new Set();
 
 let signalHandlersRegistered = false;
+let workerTeardownRegistered = false;
 let stoppingAll = false;
 
 function registerServer(mongod) {
@@ -69,6 +70,19 @@ function registerSignalHandlers() {
   process.once('SIGTERM', onShutdown);
 }
 
+function registerWorkerTeardown() {
+  if (workerTeardownRegistered) {
+    return;
+  }
+  workerTeardownRegistered = true;
+
+  registerSignalHandlers();
+
+  process.once('beforeExit', () => {
+    void stopAllRegistered({ force: true });
+  });
+}
+
 module.exports = {
   registerServer,
   unregisterServer,
@@ -76,4 +90,5 @@ module.exports = {
   unregisterReplSet,
   stopAllRegistered,
   registerSignalHandlers,
+  registerWorkerTeardown,
 };

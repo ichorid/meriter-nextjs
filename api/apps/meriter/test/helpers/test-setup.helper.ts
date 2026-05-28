@@ -24,12 +24,7 @@ export class TestSetupHelper {
    */
   static async createTestApp(): Promise<TestAppContext> {
     const testDb = new TestDatabaseHelper();
-    
-    // Delete MONGO_URL if it exists (from global setup) to ensure each test gets its own instance
-    // This prevents conflicts where tests try to use the global MongoDB instance
-    const _originalMongoUrl = process.env.MONGO_URL;
-    delete process.env.MONGO_URL;
-    
+
     const uri = await testDb.start();
 
     // Ensure DatabaseModule (inside MeriterModule) uses the same in-memory DB

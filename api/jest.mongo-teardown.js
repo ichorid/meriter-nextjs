@@ -1,3 +1,3 @@
-const { registerSignalHandlers } = require('./apps/meriter/test/mongo-memory-registry.js');
+const { registerWorkerTeardown } = require('./apps/meriter/test/mongo-memory-registry.js');
 
-registerSignalHandlers();
+registerWorkerTeardown();
