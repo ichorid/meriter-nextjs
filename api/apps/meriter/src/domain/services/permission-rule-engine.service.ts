@@ -6,8 +6,6 @@ import { VoteFactorService } from './vote-factor.service';
 import { VoteFactorContext } from './factors/vote-factor.types';
 import { PermissionService } from './permission.service';
 import {
-  PERMISSION_GATES_PORT,
-  PermissionGatesPort,
   PublicationPostTypeGateInput,
   PostTypeGateResult,
 } from '../ports/permission-gates.port';
@@ -18,7 +16,8 @@ import {
  * Core service for evaluating permissions using factorized rule engine.
  * Uses Factor 1: Role Hierarchy for permission checks.
  *
- * Post-type / product gates (V-06) delegate to PermissionGatesPort (Phase 3 stub → Phase 5 inline).
+ * Product gates (inv-05 post-type matrix, inv-19 ENABLE_COMMENT_VOTING) inlined
+ * after Phase 5 OD-3 merge; former zone-7 adapter deleted (V-11 retired).
  *
  * Note: Self-voting and teammate voting blocks are now currency constraints (handled in VoteService).
  * Only 'not-same-team' restriction remains as a permission block (handled by Factor 1).
@@ -31,24 +30,32 @@ export class PermissionRuleEngine {
     private voteFactorService: VoteFactorService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
-    @Inject(PERMISSION_GATES_PORT)
-    private permissionGates: PermissionGatesPort,
   ) {}
 
   /**
-   * Phase 3 stub — delegates product post-type vote gates to PermissionGatesPort (V-06 interim).
+   * inv-05: event and project publications cannot receive votes.
    */
   evaluatePublicationVotePostTypeGate(
     input: PublicationPostTypeGateInput,
   ): PostTypeGateResult {
-    return this.permissionGates.evaluatePublicationVotePostTypeGate(input);
+    if (input.postType === 'event') {
+      return { blocksVote: true, voteDisabledReason: 'voteDisabled.eventPost' };
+    }
+
+    const isProject =
+      input.isProject === true || input.postType === 'project';
+    if (isProject) {
+      return { blocksVote: true, voteDisabledReason: 'voteDisabled.projectPost' };
+    }
+
+    return { blocksVote: false };
   }
 
   /**
-   * Phase 3 stub — delegates ENABLE_COMMENT_VOTING gate to PermissionGatesPort (inv-19).
+   * inv-19: ENABLE_COMMENT_VOTING runtime gate.
    */
   isCommentVotingEnabled(): boolean {
-    return this.permissionGates.isCommentVotingEnabled();
+    return process.env.ENABLE_COMMENT_VOTING === 'true';
   }
 
   /**

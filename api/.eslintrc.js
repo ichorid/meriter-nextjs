@@ -88,10 +88,8 @@ module.exports = {
         {
           target: './apps/meriter/src/infrastructure/**',
           from: './apps/meriter/src/api-v1/**',
-          except: [
-            './apps/meriter/src/infrastructure/permissions/permission-gates.adapter.ts',
-          ],
-          message: 'Zone 7: Infrastructure→api-v1 only via permission-gates.adapter.ts (V-11).',
+          except: [],
+          message: 'Zone 7: Infrastructure must not import api-v1 (V-11 retired).',
         },
         {
           target: './apps/meriter/src/domain/**',
