@@ -9,7 +9,7 @@ import { Connection, Model } from 'mongoose';
 import {
   MeritTransferCreateInputSchema,
   type MeritTransferCreateInput,
-} from '@meriter/shared-types';
+} from '@meriter/shared-types/merit-transfer';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { isPriorityCommunity } from '../common/helpers/community.helper';

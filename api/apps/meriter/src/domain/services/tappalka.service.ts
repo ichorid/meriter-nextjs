@@ -30,7 +30,7 @@ import type {
   TappalkaPost,
   TappalkaProgress,
   TappalkaChoiceResult,
-} from '@meriter/shared-types';
+} from '@meriter/shared-types/tappalka';
 import {
   stripHtmlToPlainText,
   truncatePlainText,

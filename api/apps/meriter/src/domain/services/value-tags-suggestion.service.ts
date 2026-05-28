@@ -11,7 +11,7 @@ import {
 } from '../models/community/community.schema';
 import { CommunityService } from './community.service';
 import { PlatformSettingsService } from './platform-settings.service';
-import { DECREE_809_TAGS } from '@meriter/shared-types';
+import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
 
 export interface SuggestedValueTagRow {
   tag: string;

@@ -5,13 +5,13 @@ import { ActionType } from '../../common/constants/action-types.constants';
 /**
  * Community Mongoose Schema
  *
- * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - CommunitySchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/schemas - CommunitySchema (Zod)
  *
  * This Mongoose schema implements the Community entity defined in shared-types.
  * Any changes to the Community entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  *
- * Fields correspond to CommunitySchema in libs/shared-types/src/schemas.ts
+ * Fields correspond to CommunitySchema in @meriter/shared-types/schemas
  */
 
 export interface CommunityCurrencyNames {

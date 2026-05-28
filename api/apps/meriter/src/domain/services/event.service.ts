@@ -16,8 +16,8 @@ import type {
   EventInviteRecord,
   EventPublicationView,
   EventUpdateInput,
-} from '@meriter/shared-types';
-import type { MeritTransferCreateProcedureInput } from '@meriter/shared-types';
+} from '@meriter/shared-types/events';
+import type { MeritTransferCreateProcedureInput } from '@meriter/shared-types/merit-transfer';
 import type { Publication } from '../aggregates/publication/publication.entity';
 import {
   EventInviteSchemaClass,
