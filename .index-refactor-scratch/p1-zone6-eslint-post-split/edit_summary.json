@@ -1,0 +1,46 @@
+{
+  "work_unit_id": "p1-zone6-eslint-post-split",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/.eslintrc.js"
+  ],
+  "changes": [
+    {
+      "file": "api/.eslintrc.js",
+      "summary": "Zone 6 post-split: removed interim ./libs/shared-types/src/schemas.ts from import/no-restricted-paths except; replaced per-file schemas/permissions|notifications entries with ./libs/shared-types/src/schemas/** glob; added Phase 1 V-13 subpath modules (decree809-tag-remap, demo-event-seed-targets, events, merit-transfer, tappalka) alongside existing value-objects/**, taxonomy, value-rubricator. Updated zone 6 and P0-3 messages to Phase 1 Option B subpath-only wording (retires interim schemas.ts ESLint waiver scope; V-13 yaml flag retirement remains orchestrator scope)."
+    }
+  ],
+  "verification": {
+    "schemas_ts_in_zone_6_except": false,
+    "zone_6_except_paths": [
+      "./libs/shared-types/src/decree809-tag-remap.ts",
+      "./libs/shared-types/src/demo-event-seed-targets.ts",
+      "./libs/shared-types/src/events.ts",
+      "./libs/shared-types/src/merit-transfer.ts",
+      "./libs/shared-types/src/schemas/**",
+      "./libs/shared-types/src/tappalka.ts",
+      "./libs/shared-types/src/taxonomy.ts",
+      "./libs/shared-types/src/value-objects/**",
+      "./libs/shared-types/src/value-rubricator.ts"
+    ],
+    "domain_subpath_imports_covered": [
+      "value-rubricator",
+      "decree809-tag-remap",
+      "events",
+      "tappalka",
+      "merit-transfer",
+      "demo-event-seed-targets",
+      "schemas/permissions",
+      "schemas/notifications"
+    ],
+    "domain_monolithic_schemas_import": "feed-item-investments.mapper.ts imports @meriter/shared-types/schemas (resolves to schemas.ts) — now outside zone 6 except; intentional until Investment subpath extraction",
+    "pnpm_filter_api_lint": "skipped — node_modules absent in worktree; static grep confirms schemas.ts removed from except array"
+  },
+  "success_criteria": {
+    "schemas_ts_removed_from_zone_6_except": true,
+    "domain_imports_only_allowlisted_subpaths": true,
+    "eslint_waivers_rubric_improved": true
+  },
+  "notes": "Depends on p1-v13-domain-drift-migration (domain barrel imports cleared). Retires interim zone 6 schemas.ts except per TARGET §4.1 Option B; closes ARCH-R28-V13-ESLINT-SCOPE-GAP at eslint boundary. target_architecture.yaml V-13 waiver flag removal out of write_set."
+}
