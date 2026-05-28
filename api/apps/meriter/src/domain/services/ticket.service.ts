@@ -20,6 +20,10 @@ import { VoteService } from './vote.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
+import {
+  createTransitionTicketStatusUseCase,
+  type TransitionTicketStatusUseCase,
+} from '../../application/use-cases/tickets/transition-ticket-status.use-case';
 
 export interface CreateTicketDto {
   title: string;
@@ -45,6 +49,7 @@ export interface ProjectShareRow {
 @Injectable()
 export class TicketService {
   private readonly logger = new Logger(TicketService.name);
+  private readonly transitionTicketStatusUseCase: TransitionTicketStatusUseCase;
 
   /** Rich metadata for ticket-related notifications (URLs + client copy). */
   private async buildTicketNotificationMetadata(
@@ -120,25 +125,15 @@ export class TicketService {
     private notificationService: NotificationService,
     private voteService: VoteService,
     private eventBus: EventBus,
-  ) {}
-
-  private assigneeDeclinePublicationComment(locale: string | undefined, reason: string): string {
-    const loc = (locale ?? '').toLowerCase();
-    if (loc === 'ru' || loc.startsWith('ru-')) {
-      return `Отказался: ${reason}`;
-    }
-    return `Declined: ${reason}`;
-  }
-
-  private leadReturnForRevisionPublicationComment(
-    locale: string | undefined,
-    reason: string,
-  ): string {
-    const loc = (locale ?? '').toLowerCase();
-    if (loc === 'ru' || loc.startsWith('ru-')) {
-      return `Возврат на доработку: ${reason}`;
-    }
-    return `Returned for revision: ${reason}`;
+  ) {
+    this.transitionTicketStatusUseCase = createTransitionTicketStatusUseCase({
+      publicationModel: this.publicationModel,
+      communityService: this.communityService,
+      userCommunityRoleService: this.userCommunityRoleService,
+      userService: this.userService,
+      notificationService: this.notificationService,
+      voteService: this.voteService,
+    });
   }
 
   private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {
@@ -633,75 +628,7 @@ export class TicketService {
     userId: string,
     newStatus: TicketStatus,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (newStatus === 'done' && current === 'in_progress') {
-      const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
-      if (userId !== beneficiaryId) {
-        throw new ForbiddenException('Only the ticket beneficiary can mark it as done');
-      }
-      doc.ticketStatus = 'done';
-      doc.updatedAt = new Date();
-      await doc.save();
-
-      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
-        from: current,
-        to: 'done',
-      });
-
-      const projectId = doc.communityId;
-      const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
-      for (const lead of leads) {
-        try {
-          await this.notificationService.createNotification({
-            userId: lead.userId,
-            type: 'ticket_done',
-            source: 'system',
-            sourceId: userId,
-            metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-              beneficiaryId: userId,
-            }),
-            title: 'Ticket marked done',
-            message: 'A ticket was marked as done and is ready for review.',
-          });
-        } catch (err) {
-          this.logger.warn(`Failed to notify lead about ticket done: ${err}`);
-        }
-      }
-
-      this.logger.log(`Ticket ${ticketId} marked done by beneficiary`);
-      return;
-    }
-
-    if (newStatus === 'in_progress' && current === 'closed') {
-      await this.assertProjectLeadOrSuperadmin(userId, doc.communityId);
-      const beneficiaryId = doc.beneficiaryId;
-      if (!beneficiaryId) {
-        throw new BadRequestException('Cannot reopen a ticket without an assignee');
-      }
-      doc.ticketStatus = 'in_progress';
-      doc.updatedAt = new Date();
-      await doc.save();
-
-      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
-        from: 'closed',
-        to: 'in_progress',
-      });
-
-      this.logger.log(`Ticket ${ticketId} reopened (closed → in_progress) by lead/superadmin`);
-      return;
-    }
-
-    throw new BadRequestException(
-      `Invalid status transition or caller: current=${current}, requested=${newStatus}`,
-    );
+    await this.transitionTicketStatusUseCase.updateStatus({ ticketId, userId, newStatus });
   }
 
   /**
@@ -715,134 +642,19 @@ export class TicketService {
     reason: string,
     locale?: string,
   ): Promise<void> {
-    const trimmed = reason.trim();
-    if (trimmed.length === 0) {
-      throw new BadRequestException('Comment is required');
-    }
-    if (trimmed.length > 2000) {
-      throw new BadRequestException('Comment is too long');
-    }
-
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'in_progress') {
-      throw new BadRequestException('Only a task in progress can be declined by the assignee');
-    }
-
-    const assigneeId = doc.beneficiaryId;
-    if (!assigneeId || assigneeId !== userId) {
-      throw new ForbiddenException('Only the current assignee can decline this task');
-    }
-
-    doc.set('beneficiaryId', null);
-    doc.ticketStatus = 'open';
-    doc.isNeutralTicket = true;
-    doc.applicants = [];
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, userId, 'assignee_declined', {
-      reason: trimmed,
-      from: 'in_progress',
-      to: 'open',
+    await this.transitionTicketStatusUseCase.declineAsAssignee({
+      ticketId,
+      userId,
+      reason,
+      locale,
     });
-
-    const commentText = this.assigneeDeclinePublicationComment(locale, trimmed);
-    try {
-      await this.voteService.createVote(
-        userId,
-        'publication',
-        ticketId,
-        0,
-        0,
-        'up',
-        commentText,
-        doc.communityId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `Ticket ${ticketId}: assignee declined but failed to add publication comment vote: ${err}`,
-      );
-      throw err;
-    }
-
-    const projectId = doc.communityId;
-    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
-    for (const lead of leads) {
-      try {
-        await this.notificationService.createNotification({
-          userId: lead.userId,
-          type: 'ticket_assignee_declined',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            assigneeId: userId,
-            reason: trimmed,
-          }),
-          title: 'Assignee declined task',
-          message: `The assignee declined the task: ${trimmed.slice(0, 200)}`,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify lead about assignee decline: ${err}`);
-      }
-    }
-
-    this.logger.log(`Ticket ${ticketId} declined by assignee ${userId}`);
   }
 
   /**
    * Lead accepts work: done → closed.
    */
   async acceptWork(ticketId: string, leadUserId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'done') {
-      throw new BadRequestException('Ticket must be in done status to accept work');
-    }
-
-    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
-
-    doc.ticketStatus = 'closed';
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, leadUserId, 'work_accepted', {
-      from: 'done',
-      to: 'closed',
-    });
-
-    const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
-    try {
-      await this.notificationService.createNotification({
-        userId: beneficiaryId,
-        type: 'ticket_accepted',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
-          leadUserId,
-        }),
-        title: 'Work accepted',
-        message: 'Your work was accepted by the project lead.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify beneficiary about accept: ${err}`);
-    }
-
-    this.logger.log(`Ticket ${ticketId} accepted (closed) by lead`);
+    await this.transitionTicketStatusUseCase.acceptWork({ ticketId, leadUserId });
   }
 
   /**
@@ -854,84 +666,12 @@ export class TicketService {
     reason: string,
     locale?: string,
   ): Promise<void> {
-    const trimmed = reason.trim();
-    if (trimmed.length === 0) {
-      throw new BadRequestException('Comment is required');
-    }
-    if (trimmed.length > 2000) {
-      throw new BadRequestException('Comment is too long');
-    }
-
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'done') {
-      throw new BadRequestException(
-        'Ticket must be in done status to return for revision',
-      );
-    }
-
-    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
-
-    const assigneeId = doc.beneficiaryId ?? doc.authorId;
-    if (!assigneeId) {
-      throw new BadRequestException('Ticket has no assignee');
-    }
-
-    doc.ticketStatus = 'in_progress';
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, leadUserId, 'returned_for_revision', {
-      reason: trimmed,
-      from: 'done',
-      to: 'in_progress',
-      assigneeId,
+    await this.transitionTicketStatusUseCase.returnWorkForRevision({
+      ticketId,
+      leadUserId,
+      reason,
+      locale,
     });
-
-    const commentText = this.leadReturnForRevisionPublicationComment(locale, trimmed);
-    try {
-      await this.voteService.createVote(
-        leadUserId,
-        'publication',
-        ticketId,
-        0,
-        0,
-        'up',
-        commentText,
-        doc.communityId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `Ticket ${ticketId}: return for revision but failed to add publication comment vote: ${err}`,
-      );
-      throw err;
-    }
-
-    try {
-      await this.notificationService.createNotification({
-        userId: assigneeId,
-        type: 'ticket_returned_for_revision',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
-          reason: trimmed,
-          leadUserId,
-        }),
-        title: 'Task returned for revision',
-        message: trimmed.slice(0, 200),
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify assignee about return for revision: ${err}`);
-    }
-
-    this.logger.log(`Ticket ${ticketId} returned for revision by ${leadUserId}`);
   }
 
   /**
