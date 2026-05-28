@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, IdInputSchema, FutureVisionDocumentSeedSchema } from '@meriter/shared-types';
+import {
+  CreateCommunityDtoSchema,
+  UpdateCommunityDtoSchema,
+  UpdateTappalkaSettingsInputSchema,
+  IdInputSchema,
+  FutureVisionDocumentSeedSchema,
+} from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
@@ -607,6 +613,36 @@ export const communitiesRouter = router({
         needsSetup,
         createdAt: community.createdAt.toISOString(),
         updatedAt: community.updatedAt.toISOString(),
+      };
+    }),
+
+  /**
+   * Update tappalka settings for a community (admin only).
+   */
+  updateTappalkaSettings: protectedProcedure
+    .input(UpdateTappalkaSettingsInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      const isAdmin = await ctx.communityService.isUserAdmin(
+        input.communityId,
+        ctx.user.id,
+      );
+      const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+
+      if (!isAdmin && !isSuperadmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only administrators can update tappalka settings',
+        });
+      }
+
+      const community = await ctx.communityService.updateCommunity(
+        input.communityId,
+        { tappalkaSettings: input.settings },
+      );
+
+      return {
+        communityId: input.communityId,
+        tappalkaSettings: community.tappalkaSettings,
       };
     }),
 
