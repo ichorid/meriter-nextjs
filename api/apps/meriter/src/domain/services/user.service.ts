@@ -25,6 +25,10 @@ import { UserCommunityRoleService } from './user-community-role.service';
 import { PlatformSettingsService } from './platform-settings.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import {
+  createProvisionBaseMembershipUseCase,
+  type ProvisionBaseMembershipUseCase,
+} from '../../application/use-cases/communities/provision-base-membership.use-case';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -45,6 +49,7 @@ export interface CreateUserDto {
 @Injectable()
 export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
+  private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipUseCase;
 
   constructor(
     @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
@@ -57,7 +62,15 @@ export class UserService implements OnModuleInit {
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
     private platformSettingsService: PlatformSettingsService,
-  ) { }
+  ) {
+    this.provisionBaseMembershipUseCase = createProvisionBaseMembershipUseCase({
+      userService: this,
+      communityService: this.communityService,
+      userCommunityRoleService: this.userCommunityRoleService,
+      walletService: this.walletService,
+      platformSettingsService: this.platformSettingsService,
+    });
+  }
 
   async onModuleInit() {
     try {
@@ -287,285 +300,7 @@ export class UserService implements OnModuleInit {
    * 3. Creates wallet for user in community
    */
   async ensureUserInBaseCommunities(userId: string): Promise<void> {
-    this.logger.log(`Ensuring user ${userId} is in base communities`);
-
-    // Get base communities by typeTag
-    const futureVision = await this.communityModel
-      .findOne({ typeTag: 'future-vision' })
-      .lean();
-    const marathonOfGood = await this.communityModel
-      .findOne({ typeTag: 'marathon-of-good' })
-      .lean();
-    const teamProjects = await this.communityModel
-      .findOne({ typeTag: 'team-projects' })
-      .lean();
-    const support = await this.communityModel
-      .findOne({ typeTag: 'support' })
-      .lean();
-
-    // Log warnings for missing communities but continue processing available ones
-    if (!futureVision) {
-      this.logger.warn('Future Vision community not found');
-    }
-    if (!marathonOfGood) {
-      this.logger.warn('Marathon of Good community not found');
-    }
-    if (!teamProjects) {
-      this.logger.warn('Team Projects community not found');
-    }
-    if (!support) {
-      this.logger.warn('Support community not found');
-    }
-
-    // Check if user is already a member
-    const user = await this.userModel.findOne({ id: userId }).lean();
-    if (!user) {
-      this.logger.error(`User ${userId} not found`);
-      return;
-    }
-
-    const memberships = user.communityMemberships || [];
-    const needsToJoinFV = futureVision && !memberships.includes(futureVision.id);
-    const needsToJoinMG = marathonOfGood && !memberships.includes(marathonOfGood.id);
-    const needsToJoinTP = teamProjects && !memberships.includes(teamProjects.id);
-    const needsToJoinSupport = support && !memberships.includes(support.id);
-
-    // G-12: Ensure global wallet exists for user (used by priority communities)
-    const defaultCurrency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await this.walletService.createOrGetWallet(userId, GLOBAL_COMMUNITY_ID, defaultCurrency);
-
-    // G-10: Credit platform-configured welcome merits to global wallet on first registration
-    const isNewToBaseCommunities =
-      needsToJoinFV || needsToJoinMG || needsToJoinTP || needsToJoinSupport;
-    if (isNewToBaseCommunities) {
-      try {
-        const welcomeMerits = await this.platformSettingsService.getWelcomeMeritsGlobal();
-        if (welcomeMerits > 0) {
-          await this.walletService.creditWelcomeMeritsIfNeeded(userId, welcomeMerits);
-        }
-      } catch (err) {
-        this.logger.warn(
-          `Failed to credit welcome merits to user ${userId}: ${err instanceof Error ? err.message : 'Unknown'}`,
-        );
-      }
-    }
-
-    // Add user to Future Vision if needed
-    if (needsToJoinFV && futureVision) {
-      this.logger.log(`Adding user ${userId} to Future Vision`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          futureVision.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(futureVision.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, futureVision.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            futureVision.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Future Vision (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = futureVision.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          futureVision.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              futureVision as Community,
-            ),
-          },
-        );
-        this.logger.log(`User ${userId} successfully added to Future Vision`);
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Future Vision: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Marathon of Good if needed
-    if (needsToJoinMG && marathonOfGood) {
-      this.logger.log(`Adding user ${userId} to Marathon of Good`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          marathonOfGood.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(marathonOfGood.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, marathonOfGood.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            marathonOfGood.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Marathon of Good (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = marathonOfGood.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          marathonOfGood.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              marathonOfGood as Community,
-            ),
-          },
-        );
-        this.logger.log(
-          `User ${userId} successfully added to Marathon of Good`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Marathon of Good: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Team Projects if needed
-    if (needsToJoinTP && teamProjects) {
-      this.logger.log(`Adding user ${userId} to Team Projects`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          teamProjects.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(teamProjects.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, teamProjects.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        // Everyone gets participant role by default
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            teamProjects.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Team Projects (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = teamProjects.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          teamProjects.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              teamProjects as Community,
-            ),
-          },
-        );
-        this.logger.log(
-          `User ${userId} successfully added to Team Projects`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Team Projects: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Support if needed
-    if (needsToJoinSupport && support) {
-      this.logger.log(`Adding user ${userId} to Support`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          support.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(support.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, support.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            support.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Support (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = support.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          support.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              support as Community,
-            ),
-          },
-        );
-        this.logger.log(`User ${userId} successfully added to Support`);
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Support: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    if (!needsToJoinFV && !needsToJoinMG && !needsToJoinTP && !needsToJoinSupport) {
-      this.logger.log(`User ${userId} already in base communities`);
-    }
+    return this.provisionBaseMembershipUseCase.execute(userId);
   }
 
   async addCommunityMembership(
