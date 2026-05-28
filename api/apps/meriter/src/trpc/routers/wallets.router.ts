@@ -14,6 +14,7 @@ import {
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
 import { enrichMeritHistoryTransactions } from '../../domain/common/helpers/merit-history-enrichment';
+import { GetWalletBalanceUseCase } from '../../application/use-cases/wallets/get-wallet-balance.use-case';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -24,6 +25,18 @@ const DEFAULT_CURRENCY = {
 /** Lean community docs must expose string `id`; legacy/broken rows may omit it and would break Wallet.create(CommunityId.fromString). */
 function hasStableCommunityId(community: { id?: unknown }): boolean {
   return typeof community.id === 'string' && community.id.length > 0;
+}
+
+function createGetWalletBalanceUseCase(ctx: {
+  walletService: import('../../domain/services/wallet.service').WalletService;
+  communityService: import('../../domain/services/community.service').CommunityService;
+  meritResolverService: import('../../domain/services/merit-resolver.service').MeritResolverService;
+}): GetWalletBalanceUseCase {
+  return new GetWalletBalanceUseCase(
+    ctx.walletService,
+    ctx.communityService,
+    ctx.meritResolverService,
+  );
 }
 
 async function assertMeritHistoryTransactionsAccess(
@@ -95,31 +108,19 @@ export const walletsRouter = router({
       }
 
       // G-11: For priority communities, return global wallet
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      const walletCommunityId = community && isPriorityCommunity(community)
-        ? GLOBAL_COMMUNITY_ID
-        : input.communityId;
+      const walletSnapshot = await createGetWalletBalanceUseCase(ctx).getWalletByCommunity({
+        userId: actualUserId,
+        communityId: input.communityId,
+      });
 
-      // Get wallet
-      const wallet = await ctx.walletService.getUserWallet(
-        actualUserId,
-        walletCommunityId,
-      );
-      
-      if (!wallet) {
+      if (!walletSnapshot) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Wallet not found',
         });
       }
-      
-      const snapshot = wallet.toSnapshot();
-      return {
-        ...snapshot,
-        lastUpdated: snapshot.lastUpdated.toISOString(),
-        createdAt: snapshot.lastUpdated.toISOString(),
-        updatedAt: snapshot.lastUpdated.toISOString(),
-      };
+
+      return walletSnapshot;
     }),
 
   /**
@@ -764,16 +765,10 @@ export const walletsRouter = router({
   getBalance: protectedProcedure
     .input(z.object({ communityId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      const walletCommunityId = community && isPriorityCommunity(community)
-        ? GLOBAL_COMMUNITY_ID
-        : input.communityId;
-
-      const wallet = await ctx.walletService.getWallet(ctx.user.id, walletCommunityId);
-      if (!wallet) {
-        return 0;
-      }
-      return wallet.getBalance();
+      return createGetWalletBalanceUseCase(ctx).getBalance({
+        userId: ctx.user.id,
+        communityId: input.communityId,
+      });
     }),
 
   /**
