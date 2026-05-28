@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import type { TappalkaChoiceResult } from '@meriter/shared-types';
+import type { TappalkaChoiceResult } from '@meriter/shared-types/tappalka';
 
 export type TappalkaSessionStatus = 'pending' | 'processing' | 'consumed';
 

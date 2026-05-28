@@ -8,7 +8,8 @@ import {
   PLATFORM_SETTINGS_ID,
 } from '../models/platform-settings/platform-settings.schema';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
-import { DECREE_809_TAGS, DECREE_809_TAGS_REVISION } from '@meriter/shared-types';
+import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
+import { DECREE_809_TAGS_REVISION } from '@meriter/shared-types/decree809-tag-remap';
 import { loadDevPlatformSnapshot } from '../../seed-data/load-dev-platform-snapshot';
 
 export interface UpdatePlatformSettingsDto {

@@ -1,0 +1,148 @@
+VerifierVerdict:
+  work_unit_id: p1-v13-domain-drift-migration
+  attempt: 1
+  channel: llm
+  verdict: pass
+  summary: >-
+    All 20 write_set domain paths migrated off the @meriter/shared-types barrel to
+    zone-6 allowlisted subpaths. Independent grep confirms zero barrel from-imports,
+    zero libs/shared-types/src/schemas couplings, and zero sed \1 backreference
+    artifacts in active schema files. Attempt 1 completes the repair flagged in
+    attempt-0 (EntitySchema names restored in SOURCE OF TRUTH headers).
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted git diff on write_set (git diff HEAD~..HEAD shows prior
+    p1-events-consolidation-st1-st4 commit; work-unit delta reviewed via
+    git diff api/apps/meriter/src/domain/ plus independent ripgrep verification).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/domain/services/tappalka.service.ts
+    - api/apps/meriter/src/domain/services/platform-demo-events-seed.service.ts
+    - api/apps/meriter/src/domain/services/merit-transfer.service.ts
+    - api/apps/meriter/src/domain/services/decree809-tag-migration.service.ts
+    - api/apps/meriter/src/domain/services/event.service.ts
+    - api/apps/meriter/src/domain/services/value-tags-suggestion.service.ts
+    - api/apps/meriter/src/domain/services/platform-settings.service.ts
+    - api/apps/meriter/src/domain/services/feed-item-investments.mapper.ts
+    - api/apps/meriter/src/domain/common/constants/platform-bootstrap.constants.ts
+    - api/apps/meriter/src/domain/common/constants/marathon-hub-defaults.constants.ts
+    - api/apps/meriter/src/domain/models/tappalka/tappalka-session.schema.ts
+    - api/apps/meriter/src/domain/models/vote/vote.schema.ts
+    - api/apps/meriter/src/domain/models/community/community.schema.ts
+    - api/apps/meriter/src/domain/models/comment/comment.schema.ts
+    - api/apps/meriter/src/domain/models/transaction/transaction.schema.ts
+    - api/apps/meriter/src/domain/models/publication/publication.schema.ts
+    - api/apps/meriter/src/domain/models/user/user.schema.ts
+    - api/apps/meriter/src/domain/models/wallet/wallet.schema.ts
+    - api/apps/meriter/src/domain/models/poll/poll.schema.ts
+    - api/apps/meriter/src/domain/models/poll/poll-cast.schema.ts
+  files_outside_write_set: []
+
+  constraint_checks:
+    - id: phase-1
+      status: pass
+      evidence: >-
+        Import-path migration only; no runtime logic changes. Subpath consumption
+        aligns with Phase 1 Option B pattern (value-rubricator, events, schemas, etc.).
+    - id: bounded_contexts-BC-17
+      status: pass
+      evidence: >-
+        Domain layer decoupled from @meriter/shared-types barrel; Mongoose schema
+        SOURCE OF TRUTH comments now reference @meriter/shared-types/schemas with
+        correct EntitySchema names instead of libs/shared-types/src/schemas.ts.
+    - id: duplication_clusters-P-3
+      status: pass
+      evidence: >-
+        No new duplication introduced; import retargeting only across 11 service/constants
+        files and 9 schema comment files plus tappalka-session type import.
+    - id: retirement_criteria-V-13
+      status: pass
+      evidence: >-
+        Live domain grep: 0 files with from '@meriter/shared-types'; 0 active files
+        referencing libs/shared-types/src/schemas (excluding .orig backup). Matches
+        empty domain_shared_types_drift target (20 unique paths cleared).
+    - id: closes_waiver-V-13
+      status: pass
+      evidence: >-
+        Drift list emptied within write_set scope; V-13 waiver config/yaml retirement
+        not in write_set (orchestrator downstream after merge). Worker correctly
+        reports v13_waiver_retirement_ready rather than claiming config already edited.
+
+  success_criteria:
+    - id: domain_shared_types_drift_count_zero
+      status: pass
+      evidence: >-
+        ripgrep from '@meriter/shared-types' under api/apps/meriter/src/domain → 0 matches.
+        ripgrep libs/shared-types/src/schemas and @meriter/shared-types/src/ → 0 matches
+        in active write_set files (excluding user.schema.ts.orig backup).
+    - id: all_11_barrel_from_imports_removed
+      status: pass
+      evidence: >-
+        Eleven files previously on V-13 barrel list now import allowlisted subpaths:
+        value-rubricator (4), decree809-tag-remap (2), events (2), tappalka (2),
+        merit-transfer (2), demo-event-seed-targets (1), schemas (1). tappalka-session.schema.ts
+        had both barrel import and schema coupling (1 overlap per architecture breakdown).
+    - id: nine_schema_couplings_resolved
+      status: pass
+      evidence: >-
+        All nine comment-only schema files (vote, community, comment, transaction,
+        publication, user, wallet, poll, poll-cast) no longer reference
+        libs/shared-types/src/schemas.ts; SOURCE OF TRUTH and field-correspondence
+        lines point to @meriter/shared-types/schemas with correct EntitySchema names
+        (attempt-0 sed \1 artifact fixed in attempt 1).
+    - id: v13_waiver_retired
+      status: pass
+      evidence: >-
+        Retirement criterion for this unit is emptying domain_shared_types_drift (20 paths);
+        achieved. Explicit waiver flag removal in target_architecture.yaml / eslint config
+        deferred to orchestrator or p1-zone6-eslint-post-split per worker notes.
+
+  architecture_alignment:
+    - id: zone-6-subpath-migration
+      status: pass
+      evidence: >-
+        Imports use package subpaths matching Phase 1 split modules on disk
+        (libs/shared-types/src/events.ts, tappalka.ts, merit-transfer.ts,
+        decree809-tag-remap.ts, demo-event-seed-targets.ts, value-rubricator.ts,
+        schemas.ts). Zone 6 eslint except list still interim for schemas.ts until
+        p1-zone6-eslint-post-split; subpath imports bypass barrel restriction.
+    - id: depends-on-prerequisites
+      status: pass
+      evidence: >-
+        events subpath consumption depends on p1-events-consolidation-st1-st4 shapes
+        in libs/shared-types/src/events.ts (present on branch). value-rubricator and
+        decree809-tag-remap modules exist. Investment type exported from schemas.ts
+        at line 1220. No write_set dependency on unmerged export-map entries beyond
+        tsconfig path alias @meriter/shared-types → libs/shared-types/src.
+
+  attempt_delta_from_prior:
+    - id: sed-artifact-repair
+      status: resolved
+      evidence: >-
+        Attempt 0 left '\1 (Zod)' in nine SOURCE OF TRUTH header comments. Attempt 1
+        diff restores correct names (e.g. CommentSchema, VoteSchema). ripgrep for
+        literal \1 under domain models → 0 matches in active files.
+
+  findings: []
+
+  warnings:
+    - id: export-map-partial
+      severity: info
+      message: >-
+        libs/shared-types/package.json exports only ., value-rubricator, schemas/permissions,
+        schemas/notifications. Subpaths events, tappalka, merit-transfer, decree809-tag-remap,
+        demo-event-seed-targets, schemas resolve via api tsconfig path alias to src/ in dev;
+        full export-map expansion is out of write_set scope.
+    - id: uncommitted-changes
+      severity: info
+      message: >-
+        Work-unit changes are uncommitted on branch refactor/p1-v13-domain-drift-migration.
+    - id: user-schema-orig-backup
+      severity: info
+      message: >-
+        api/apps/meriter/src/domain/models/user/user.schema.ts.orig retains stale
+        libs/shared-types/src/schemas.ts references; outside write_set, not counted in drift.
+
+  blockers: []

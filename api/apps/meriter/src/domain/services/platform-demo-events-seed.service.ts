@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import type { EventCreateInput } from '@meriter/shared-types';
+import type { EventCreateInput } from '@meriter/shared-types/events';
 import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
 import { CommunityService } from './community.service';
 import { CommentService } from './comment.service';
@@ -12,7 +12,7 @@ import {
   DEMO_EVENT_SEED_COMMUNITY_IDS,
   DEMO_EVENT_SEED_MAX_TOTAL,
   DEMO_EVENT_TITLE_PREFIX,
-} from '@meriter/shared-types';
+} from '@meriter/shared-types/demo-event-seed-targets';
 
 function resolveDemoEventSeedCommunityIdsFromEnv(): string[] {
   const raw = process.env.MERITER_DEMO_EVENT_SEED_COMMUNITY_IDS?.trim();

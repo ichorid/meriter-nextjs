@@ -1,11 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
 import {
-  DECREE_809_TAGS,
   DECREE_809_TAGS_REVISION,
   remapDecree809ValueTags,
-} from '@meriter/shared-types';
+} from '@meriter/shared-types/decree809-tag-remap';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
 import {
   CommunitySchemaClass,
