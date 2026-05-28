@@ -17,7 +17,7 @@ import {
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { getRemainingQuotaForPublicationCreate } from '../helpers/publication-creation-quota';
+import { createGetRemainingQuotaUseCase } from '../../application/use-cases/wallets/get-remaining-quota.use-case';
 
 async function assertCommunityExistsForEvents(
   ctx: { communityService: { getCommunity(id: string): Promise<unknown | null> } },
@@ -68,14 +68,22 @@ export const eventsRouter = router({
       let walletAmount = 0;
 
       if (postCost > 0) {
+        const getRemainingQuota = createGetRemainingQuotaUseCase(ctx);
+        const quotaDb = ctx.connection.db;
+        if (!quotaDb) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection not available',
+          });
+        }
+
         if (canPayFromQuota) {
-          const remainingQuota = await getRemainingQuotaForPublicationCreate(
-            ctx.user.id,
-            input.communityId,
+          const remainingQuota = await getRemainingQuota.forPublicationCreate({
+            userId: ctx.user.id,
+            communityId: input.communityId,
             community,
-            ctx.communityService,
-            ctx.connection,
-          );
+            db: quotaDb,
+          });
           quotaAmount = Math.min(postCost, remainingQuota);
           walletAmount = Math.max(0, postCost - quotaAmount);
         } else {
@@ -94,13 +102,12 @@ export const eventsRouter = router({
         }
 
         if (quotaAmount > 0) {
-          const remainingQuota = await getRemainingQuotaForPublicationCreate(
-            ctx.user.id,
-            input.communityId,
+          const remainingQuota = await getRemainingQuota.forPublicationCreate({
+            userId: ctx.user.id,
+            communityId: input.communityId,
             community,
-            ctx.communityService,
-            ctx.connection,
-          );
+            db: quotaDb,
+          });
           if (remainingQuota < quotaAmount) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
