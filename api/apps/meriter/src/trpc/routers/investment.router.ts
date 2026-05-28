@@ -1,7 +1,12 @@
 import { z } from 'zod';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
+import { createInvestInPostUseCaseFromContext } from '../../application/use-cases/investments/invest-in-post.use-case';
 
 const InvestInputSchema = z.object({
   postId: z.string(),
@@ -13,16 +18,21 @@ export const investmentRouter = router({
     .input(InvestInputSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const result = await ctx.investmentService.processInvestment(
-          input.postId,
-          ctx.user.id,
-          input.amount,
-        );
-        return result;
+        return await createInvestInPostUseCaseFromContext(ctx).execute({
+          postId: input.postId,
+          investorId: ctx.user.id,
+          amount: input.amount,
+        });
       } catch (err) {
         if (err instanceof BadRequestException) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
+            message: err.message,
+          });
+        }
+        if (err instanceof ForbiddenException) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
             message: err.message,
           });
         }
