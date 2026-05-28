@@ -1,0 +1,30 @@
+{
+  "work_unit_id": "p4-search-uc",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/search/search.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/search.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/search/search.use-case.ts",
+      "summary": "Added SearchUseCase (BC-03) with searchPublications and searchCommunities methods extracted from search.router. Preserves query/tag/author/community filtering, user-community scoping, author/community enrichment, and project-community exclusion. Exposes createSearchUseCase factory and SearchResultItem type."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/search.router.ts",
+      "summary": "search procedure delegates publications and communities branches to SearchUseCase; polls and users search remain inline. Response shape (results + meta) unchanged."
+    }
+  ],
+  "verification": {
+    "search_publications_delegates_to_use_case": true,
+    "search_communities_delegates_to_use_case": true,
+    "search_results_shape_unchanged": true,
+    "tsc_changed_files": "no errors filtered for changed paths"
+  },
+  "success_criteria": {
+    "search_procedures_delegate_to_use_case": true,
+    "no_regression_in_search_results_shape": true
+  },
+  "notes": "Polls and users search extraction deferred to follow-up work units outside this bounded scope. searchPublications and searchCommunities retain try/catch swallow behavior so other content types still run on partial failure."
+}
