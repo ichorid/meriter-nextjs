@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
-import { AuthController } from './auth.controller';
+import { AuthController } from '../../adapters/rest/auth.controller';
 import { AuthProviderService } from './auth.service';
 import { SmsProviderService } from './sms-provider.service';
 import { DomainModule } from '../../domain.module';

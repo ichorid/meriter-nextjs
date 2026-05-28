@@ -1,1 +1,2 @@
-/** Phase 2 scaffold — REST controllers migrate here from api-v1/ in later waves. */
+/** Phase 8 — REST auth controllers migrated from api-v1/auth. */
+export { AuthController } from './auth.controller';
