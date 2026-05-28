@@ -22,6 +22,29 @@ import {
   PermissionRuleSchema,
   ResourcePermissionsSchema,
 } from "./schemas/permissions";
+import {
+  EventOptionalDateFieldsSchema,
+  EventPublicationFieldsSchema,
+  addEventPublicationValidationIssues,
+  eventDatesRequiredWhenPostTypeEvent,
+  eventDatesRequiredWhenPostTypeEventRefineConfig,
+  eventEndDateOrderRefineCheck,
+  eventEndDateOrderRefineConfig,
+  eventEndDateOrderWhenPostTypeEvent,
+} from "./events";
+
+export {
+  EventOptionalDateFieldsSchema,
+  EventRequiredDateFieldsSchema,
+  EventPublicationFieldsSchema,
+  EventParticipantViewSchema,
+  eventEndDateOrderRefineCheck,
+  eventEndDateOrderRefineConfig,
+  eventDatesRequiredWhenPostTypeEvent,
+  eventDatesRequiredWhenPostTypeEventRefineConfig,
+  eventEndDateOrderWhenPostTypeEvent,
+  addEventPublicationValidationIssues,
+} from "./events";
 
 export {
   PermissionRuleSchema,
@@ -485,48 +508,9 @@ export const PublicationSchema = IdentifiableSchema.merge(
   ttlWarningNotified: z.boolean().optional().default(false),
   /** True after 24h-before-inactivity-close warning sent. */
   inactivityWarningNotified: z.boolean().optional().default(false),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
-  eventAttendees: z.array(z.string()).optional().default([]),
-  eventParticipants: z
-    .array(
-      z.object({
-        userId: z.string(),
-        attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
-        attendanceUpdatedAt: z.coerce.date().optional(),
-        attendanceUpdatedByUserId: z.string().optional(),
-      }),
-    )
-    .optional()
-    .default([]),
 })
-  .superRefine((data, ctx) => {
-    if (data.postType === "event") {
-      if (data.eventStartDate == null) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventStartDate is required when postType is event",
-          path: ["eventStartDate"],
-        });
-      }
-      if (data.eventEndDate == null) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventEndDate is required when postType is event",
-          path: ["eventEndDate"],
-        });
-      }
-      if (data.eventStartDate != null && data.eventEndDate != null && data.eventEndDate < data.eventStartDate) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventEndDate must be on or after eventStartDate",
-          path: ["eventEndDate"],
-        });
-      }
-    }
-  });
+  .merge(EventPublicationFieldsSchema)
+  .superRefine(addEventPublicationValidationIssues);
 
 export const CommentAuthorMetaSchema = z.object({
   id: z.string().optional(),
@@ -657,11 +641,8 @@ export const CreatePublicationDtoSchema = z.object({
   postCostFunding: z
     .enum(["source_community_wallet", "caller_global_wallet"])
     .optional(),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
 })
+  .merge(EventOptionalDateFieldsSchema)
   .refine(
     (data) => {
       // Require investorSharePercent when investingEnabled is true
@@ -698,34 +679,8 @@ export const CreatePublicationDtoSchema = z.object({
       message: "beneficiaries max 2, methods max 3, helpNeeded max 3",
     }
   )
-  .refine(
-    (data) => {
-      if (data.postType === "event") {
-        return data.eventStartDate != null && data.eventEndDate != null;
-      }
-      return true;
-    },
-    {
-      message: "eventStartDate and eventEndDate are required when postType is event",
-      path: ["eventStartDate"],
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.postType === "event" &&
-        data.eventStartDate != null &&
-        data.eventEndDate != null
-      ) {
-        return data.eventEndDate >= data.eventStartDate;
-      }
-      return true;
-    },
-    {
-      message: "eventEndDate must be on or after eventStartDate",
-      path: ["eventEndDate"],
-    }
-  );
+  .refine(eventDatesRequiredWhenPostTypeEvent, eventDatesRequiredWhenPostTypeEventRefineConfig)
+  .refine(eventEndDateOrderWhenPostTypeEvent, eventEndDateOrderRefineConfig);
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -902,24 +857,10 @@ export const UpdatePublicationDtoSchema = z.object({
   // Present only to reject with clear error (immutable)
   investingEnabled: z.boolean().optional(),
   investorSharePercent: z.number().int().min(1).max(99).optional(),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
 })
+  .merge(EventOptionalDateFieldsSchema)
   .strict()
-  .refine(
-    (data) => {
-      if (data.eventStartDate != null && data.eventEndDate != null) {
-        return data.eventEndDate >= data.eventStartDate;
-      }
-      return true;
-    },
-    {
-      message: "eventEndDate must be on or after eventStartDate",
-      path: ["eventEndDate"],
-    },
-  ); // Strict mode prevents postType and isProject from being included
+  .refine(eventEndDateOrderRefineCheck, eventEndDateOrderRefineConfig); // Strict mode prevents postType and isProject from being included
 
 /** Strip HTML for required-field checks (ОБ / описание из WYSIWYG). */
 export function plainTextFromRichCommunityInput(s: string | undefined): string {
