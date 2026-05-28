@@ -330,6 +330,195 @@ export class CommunityService {
     return effectiveSettings;
   }
 
+  /** BC-02 inv-02: start of the current quota usage window. */
+  getQuotaStartTime(community: Pick<Community, 'lastQuotaResetAt'>): Date {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+  }
+
+  /** BC-02: daily cap from settings.dailyEmission (wallets.getQuota / member list). */
+  getDailyEmissionCapForQuota(
+    community: Pick<Community, 'typeTag' | 'meritSettings' | 'settings'>,
+  ): number {
+    const quotaEnabled = community.meritSettings?.quotaEnabled !== false;
+    const baseDailyEmission = quotaEnabled
+      ? (community.settings?.dailyEmission ?? 0)
+      : 0;
+    if (!quotaEnabled || community.typeTag === 'future-vision') {
+      return 0;
+    }
+    return baseDailyEmission;
+  }
+
+  /** BC-02: daily cap for publication/event post fees (meritSettings.dailyQuota). */
+  getPublicationCreateDailyCap(
+    community: Pick<Community, 'typeTag' | 'meritSettings'>,
+  ): number {
+    if (isPriorityCommunity(community)) {
+      return 0;
+    }
+    if (community.meritSettings?.quotaEnabled === false) {
+      return 0;
+    }
+    const effectiveMeritSettings = this.getEffectiveMeritSettings(community);
+    const dailyQuota =
+      typeof effectiveMeritSettings?.dailyQuota === 'number'
+        ? effectiveMeritSettings.dailyQuota
+        : 0;
+    return dailyQuota <= 0 ? 0 : dailyQuota;
+  }
+
+  /** BC-02 inv-02: remaining quota from daily cap and used amount. */
+  computeRemainingQuota(dailyCap: number, used: number): number {
+    return dailyCap <= 0 ? 0 : Math.max(0, dailyCap - used);
+  }
+
+  /** BC-02 inv-02 (P-3): remaining quota for publication/event create fees. */
+  async getRemainingPublicationCreateQuota(
+    userId: string,
+    communityId: string,
+    community: Pick<
+      Community,
+      'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt' | 'isPriority'
+    >,
+    dbOverride?: Parameters<CommunityService['aggregateQuotaUsedSince']>[3],
+  ): Promise<number> {
+    const dailyCap = this.getPublicationCreateDailyCap(community);
+    if (dailyCap <= 0) {
+      return 0;
+    }
+    const used = await this.aggregateQuotaUsedSince(
+      userId,
+      communityId,
+      this.getQuotaStartTime(community),
+      dbOverride,
+    );
+    return this.computeRemainingQuota(dailyCap, used);
+  }
+
+  /** BC-02 inv-02 (P-3): remaining quota for wallets.getQuota / dailyEmission path. */
+  async getRemainingDailyEmissionQuota(
+    userId: string,
+    communityId: string,
+    community: Pick<
+      Community,
+      'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt'
+    >,
+    dbOverride?: Parameters<CommunityService['aggregateQuotaUsedSince']>[3],
+  ): Promise<number> {
+    const dailyCap = this.getDailyEmissionCapForQuota(community);
+    if (dailyCap <= 0) {
+      return 0;
+    }
+    const used = await this.aggregateQuotaUsedSince(
+      userId,
+      communityId,
+      this.getQuotaStartTime(community),
+      dbOverride,
+    );
+    return this.computeRemainingQuota(dailyCap, used);
+  }
+
+  /** P-3: single-user quota-used aggregation pipeline (votes, poll_casts, quota_usage). */
+  private quotaUsedAggregationPipeline(
+    userId: string,
+    communityId: string,
+    quotaStartTime: Date,
+  ): unknown[] {
+    return [
+      {
+        $match: {
+          userId,
+          communityId,
+          createdAt: { $gte: quotaStartTime },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: '$amountQuota' },
+        },
+      },
+    ];
+  }
+
+  /** P-3: $lookup stage for per-member quota-used in getCommunityMembers. */
+  private memberQuotaUsedLookupStage(
+    collection: 'votes' | 'poll_casts' | 'quota_usage',
+    communityId: string,
+    quotaStartTime: Date,
+    asField: string,
+  ): Record<string, unknown> {
+    return {
+      $lookup: {
+        from: collection,
+        let: { userId: '$id', communityId, quotaStartTime },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$userId', '$$userId'] },
+                  { $eq: ['$communityId', '$$communityId'] },
+                  { $gt: ['$amountQuota', 0] },
+                  { $gte: ['$createdAt', '$$quotaStartTime'] },
+                ],
+              },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$amountQuota' },
+            },
+          },
+        ],
+        as: asField,
+      },
+    };
+  }
+
+  private sumQuotaAggregationTotal(
+    rows: Array<{ total?: number }>,
+  ): number {
+    return rows.length > 0 && rows[0] ? (rows[0].total as number) : 0;
+  }
+
+  async aggregateQuotaUsedSince(
+    userId: string,
+    communityId: string,
+    quotaStartTime: Date,
+    dbOverride?: {
+      collection(name: string): {
+        aggregate(pipeline: unknown[]): { toArray(): Promise<Array<{ total?: number }>> };
+      };
+    },
+  ): Promise<number> {
+    const db = dbOverride ?? this.mongoose.db;
+    if (!db) {
+      throw new Error('Database connection not available');
+    }
+    const pipeline = this.quotaUsedAggregationPipeline(
+      userId,
+      communityId,
+      quotaStartTime,
+    );
+    const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
+      db.collection('votes').aggregate(pipeline).toArray(),
+      db.collection('poll_casts').aggregate(pipeline).toArray(),
+      db.collection('quota_usage').aggregate(pipeline).toArray(),
+    ]);
+
+    return (
+      this.sumQuotaAggregationTotal(votesUsed) +
+      this.sumQuotaAggregationTotal(pollCastsUsed) +
+      this.sumQuotaAggregationTotal(quotaUsageUsed)
+    );
+  }
+
   /**
    * Get effective voting settings (defaults merged with custom overrides)
    */
@@ -1459,20 +1648,10 @@ export class CommunityService {
       return { members: [], total: 0 };
     }
 
-    // Calculate quota start time (needed for quota aggregation)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const quotaStartTime = community.lastQuotaResetAt
-      ? new Date(community.lastQuotaResetAt)
-      : today;
-    
-    const quotaEnabled =
-      (community as unknown as Community).meritSettings?.quotaEnabled !== false;
-    const baseDailyEmission = quotaEnabled
-      ? (community.settings?.dailyEmission ?? 0)
-      : 0;
-    const dailyEmission =
-      !quotaEnabled || community.typeTag === 'future-vision' ? 0 : baseDailyEmission;
+    const quotaStartTime = this.getQuotaStartTime(community);
+    const dailyEmission = this.getDailyEmissionCapForQuota(
+      community as unknown as Community,
+    );
     const isFutureVision = community.typeTag === 'future-vision';
 
     // 2. Use aggregation pipeline to join users with roles, wallets, and quota
@@ -1535,92 +1714,9 @@ export class CommunityService {
         },
       },
 
-      // Lookup and aggregate quota usage from votes
-      {
-        $lookup: {
-          from: 'votes',
-          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$userId'] },
-                    { $eq: ['$communityId', '$$communityId'] },
-                    { $gt: ['$amountQuota', 0] },
-                    { $gte: ['$createdAt', '$$quotaStartTime'] },
-                  ],
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ],
-          as: 'votesQuota',
-        },
-      },
-
-      // Lookup and aggregate quota usage from poll_casts
-      {
-        $lookup: {
-          from: 'poll_casts',
-          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$userId'] },
-                    { $eq: ['$communityId', '$$communityId'] },
-                    { $gt: ['$amountQuota', 0] },
-                    { $gte: ['$createdAt', '$$quotaStartTime'] },
-                  ],
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ],
-          as: 'pollCastsQuota',
-        },
-      },
-
-      // Lookup and aggregate quota usage from quota_usage
-      {
-        $lookup: {
-          from: 'quota_usage',
-          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$userId'] },
-                    { $eq: ['$communityId', '$$communityId'] },
-                    { $gt: ['$amountQuota', 0] },
-                    { $gte: ['$createdAt', '$$quotaStartTime'] },
-                  ],
-                },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ],
-          as: 'quotaUsageQuota',
-        },
-      },
+      this.memberQuotaUsedLookupStage('votes', communityId, quotaStartTime, 'votesQuota'),
+      this.memberQuotaUsedLookupStage('poll_casts', communityId, quotaStartTime, 'pollCastsQuota'),
+      this.memberQuotaUsedLookupStage('quota_usage', communityId, quotaStartTime, 'quotaUsageQuota'),
 
       // Calculate quota fields
       {
@@ -1647,19 +1743,6 @@ export class CommunityService {
         },
       },
 
-      {
-        $addFields: {
-          remainingToday: {
-            $max: [
-              0,
-              {
-                $subtract: ['$effectiveDailyEmission', '$usedToday'],
-              },
-            ],
-          },
-        },
-      },
-
       // Project final structure
       {
         $project: {
@@ -1673,7 +1756,6 @@ export class CommunityService {
           quota: {
             dailyEmission: '$effectiveDailyEmission',
             usedToday: '$usedToday',
-            remainingToday: '$remainingToday',
           },
         },
       },
@@ -1709,7 +1791,10 @@ export class CommunityService {
         ? {
             dailyEmission: user.quota.dailyEmission ?? 0,
             usedToday: user.quota.usedToday ?? 0,
-            remainingToday: user.quota.remainingToday ?? 0,
+            remainingToday: this.computeRemainingQuota(
+              user.quota.dailyEmission ?? 0,
+              user.quota.usedToday ?? 0,
+            ),
           }
         : undefined,
     }));
