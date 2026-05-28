@@ -11,7 +11,6 @@ import { UserService } from './user.service';
 import { VoteFactorService } from './vote-factor.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
-import { NotificationService } from './notification.service';
 import { DocumentService } from './document.service';
 import {
   buildOfficialBlockVoteTargetId,
@@ -31,7 +30,6 @@ export class VoteService {
     @Inject(forwardRef(() => UserService)) private userService: UserService,
     private voteFactorService: VoteFactorService,
     private eventBus: EventBus,
-    private notificationService: NotificationService,
     @Inject(forwardRef(() => DocumentService))
     private documentService: DocumentService,
   ) {}
@@ -235,46 +233,6 @@ export class VoteService {
       await this.eventBus.publish(
         new PublicationVotedEvent(targetId, userId, totalAmount, direction),
       );
-
-      // OB join offer: first vote by this user on this future-vision OB post (sourceEntityType=community)
-      try {
-        const pubDoc = await this.publicationService.getPublicationDocument(targetId);
-        const community = await this.communityService.getCommunity(communityId);
-        if (
-          community?.typeTag === 'future-vision' &&
-          pubDoc?.sourceEntityType === 'community' &&
-          pubDoc?.sourceEntityId
-        ) {
-          const voteCount = await this.voteModel.countDocuments({
-            userId,
-            targetType: 'publication',
-            targetId,
-          });
-          if (voteCount === 1) {
-            const sourceCommunity = await this.communityService.getCommunity(
-              pubDoc.sourceEntityId as string,
-            );
-            const communityName = sourceCommunity?.name ?? 'Community';
-            await this.notificationService.createNotification({
-              userId,
-              type: 'ob_vote_join_offer',
-              source: 'system',
-              metadata: {
-                communityId: pubDoc.sourceEntityId,
-                publicationId: targetId,
-                publicationCommunityId: communityId,
-                sourceCommunityName: communityName,
-              },
-              title: 'Join the community?',
-              message: `You voted for "${communityName}". Would you like to join?`,
-            });
-          }
-        }
-      } catch (err) {
-        this.logger.warn(
-          `ob_vote_join_offer check failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        );
-      }
     } else if (targetType === 'vote') {
       await this.eventBus.publish(
         new CommentVotedEvent(vote.id, userId, totalAmount, direction),
