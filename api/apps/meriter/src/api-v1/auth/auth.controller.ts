@@ -19,6 +19,10 @@ import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../../infrastructure/auth/cookie-manager';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
 import { AppConfig } from '../../config/configuration';
+import {
+  EstablishSessionUseCase,
+  FakeAuthDisabledError,
+} from '../../application/use-cases/auth/establish-session.use-case';
 
 /**
  * Authentication Controller
@@ -38,6 +42,7 @@ const MAGIC_LINK_RATE_LIMIT_PER_MIN = 30;
 @Controller('api/v1/auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
+  private readonly establishSessionUseCase: EstablishSessionUseCase;
 
   /** IP -> { count, resetAt } for GET /link/:token rate limiting. */
   private readonly magicLinkRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -105,7 +110,13 @@ export class AuthController {
     private readonly emailProviderService: EmailProviderService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
-  ) {}
+  ) {
+    this.establishSessionUseCase = new EstablishSessionUseCase(
+      this.cookieManager,
+      this.configService,
+      this.authService,
+    );
+  }
 
   // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
 
@@ -134,34 +145,9 @@ export class AuthController {
   @Post('fake')
   async authenticateFake(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode or test auth mode is enabled
-      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
-      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
-      if (!fakeDataMode && !testAuthMode) {
-        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
-      }
-
       this.logger.log('Fake authentication request received');
 
-      // Get or generate a session-specific fake user ID
-      // Check for existing fake_user_id cookie (session-specific)
-      let fakeUserId = req.cookies?.fake_user_id;
-
-      // If no cookie exists, generate a new unique fake user ID
-      if (!fakeUserId) {
-        // Generate a unique ID: fake_user_<timestamp>_<random>
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 9);
-        fakeUserId = `fake_user_${timestamp}_${random}`;
-        this.logger.log(`Generated new fake user ID: ${fakeUserId}`);
-      } else {
-        this.logger.log(`Reusing existing fake user ID: ${fakeUserId}`);
-      }
-
-      const result = await this.authService.authenticateFakeUser(fakeUserId);
-
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
-      this.cookieManager.setAuthSessionCookie(res, 'fake_user_id', fakeUserId, req);
+      const result = await this.establishSessionUseCase.authenticateFakeUser(req, res);
 
       this.logger.log('Fake authentication successful, sending response');
 
@@ -173,8 +159,8 @@ export class AuthController {
         },
       });
     } catch (error) {
-      if (error instanceof ForbiddenException) {
-        throw error;
+      if (error instanceof FakeAuthDisabledError) {
+        throw new ForbiddenException(error.message);
       }
       const errorStack = error instanceof Error ? error.stack : String(error);
       this.logger.error('Fake authentication error', errorStack);
@@ -265,7 +251,7 @@ export class AuthController {
           throw new Error(`Unsupported provider: ${provider}`);
       }
 
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
       return res.json({
         success: true,
@@ -282,34 +268,9 @@ export class AuthController {
   @Post('fake/superadmin')
   async authenticateFakeSuperadmin(@Req() req: any, @Res() res: any) {
     try {
-      // Check if fake data mode or test auth mode is enabled
-      const fakeDataMode = this.configService.get('dev')?.fakeDataMode ?? false;
-      const testAuthMode = this.configService.get('dev')?.testAuthMode ?? false;
-      if (!fakeDataMode && !testAuthMode) {
-        throw new ForbiddenException('Fake data mode or test auth mode is not enabled');
-      }
-
       this.logger.log('Fake superadmin authentication request received');
 
-      // Get or generate a session-specific fake superadmin user ID
-      // Check for existing fake_superadmin_id cookie (session-specific)
-      let fakeUserId = req.cookies?.fake_superadmin_id;
-
-      // If no cookie exists, generate a new unique fake superadmin user ID
-      if (!fakeUserId) {
-        // Generate a unique ID: fake_superadmin_<timestamp>_<random>
-        const timestamp = Date.now();
-        const random = Math.random().toString(36).substring(2, 9);
-        fakeUserId = `fake_superadmin_${timestamp}_${random}`;
-        this.logger.log(`Generated new fake superadmin user ID: ${fakeUserId}`);
-      } else {
-        this.logger.log(`Reusing existing fake superadmin user ID: ${fakeUserId}`);
-      }
-
-      const result = await this.authService.authenticateFakeSuperadmin(fakeUserId);
-
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
-      this.cookieManager.setAuthSessionCookie(res, 'fake_superadmin_id', fakeUserId, req);
+      const result = await this.establishSessionUseCase.authenticateFakeSuperadmin(req, res);
 
       this.logger.log('Fake superadmin authentication successful, sending response');
 
@@ -321,8 +282,8 @@ export class AuthController {
         },
       });
     } catch (error) {
-      if (error instanceof ForbiddenException) {
-        throw error;
+      if (error instanceof FakeAuthDisabledError) {
+        throw new ForbiddenException(error.message);
       }
       const errorStack = error instanceof Error ? error.stack : String(error);
       this.logger.error('Fake superadmin authentication error', errorStack);
@@ -439,7 +400,7 @@ export class AuthController {
       // Authenticate with Google using authorization code
       const result = await this.authService.authenticateGoogle(code);
 
-      this.cookieManager.establishJwtAuth(res, result.jwt, req, 'oauth');
+      this.establishSessionUseCase.establishOAuthSession(res, result.jwt, req);
 
       const isSecure = this.cookieManager.isRequestSecure(req);
       const isProduction = this.cookieManager.resolveIsProduction(req);
@@ -542,7 +503,7 @@ export class AuthController {
 
       const result = await this.authService.authenticateYandex(code);
 
-      this.cookieManager.establishJwtAuth(res, result.jwt, req, 'oauth');
+      this.establishSessionUseCase.establishOAuthSession(res, result.jwt, req);
 
       const isSecure = this.cookieManager.isRequestSecure(req);
       const isProduction = this.cookieManager.resolveIsProduction(req);
@@ -622,7 +583,7 @@ export class AuthController {
 
       // Set JWT cookie (sign-up + sign-in)
       if (result.jwt) {
-        this.cookieManager.establishJwtAuth(res, result.jwt, req);
+        this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
       }
 
       return res.json({
@@ -655,7 +616,7 @@ export class AuthController {
       const result = await this.authService.verifyPasskeyLogin(body);
 
       // Set JWT cookie
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
       return res.json({ success: true, user: result.user });
     } catch (error) {
@@ -698,7 +659,7 @@ export class AuthController {
       const result = await this.authService.authenticateWithPasskey(body);
 
       // Set JWT cookie (same as OAuth)
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
       // Return isNewUser flag for frontend redirect (like OAuth)
       return res.json({
@@ -792,7 +753,7 @@ export class AuthController {
       const result = await this.authService.authenticateSms(phoneNumber);
 
       // Set JWT cookie
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
       this.logger.log(`SMS authentication successful for ${phoneNumber}, isNewUser: ${result.isNewUser}`);
 
@@ -842,7 +803,7 @@ export class AuthController {
           ? await this.authService.authenticateSms(result.target)
           : await this.authService.authenticateEmail(result.target);
 
-      this.cookieManager.establishJwtAuth(res, authResult.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, authResult.jwt, req);
 
       this.logger.log(`Magic link auth successful for ${result.channel}`);
       return res.redirect(302, profileUrl);
@@ -906,7 +867,7 @@ export class AuthController {
         const result = await this.authService.authenticateSms(phoneNumber);
 
         // Set JWT
-        this.cookieManager.establishJwtAuth(res, result.jwt, req);
+        this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
         return res.json({
           success: true,
@@ -975,7 +936,7 @@ export class AuthController {
       const result = await this.authService.authenticateEmail(email);
 
       // Set JWT
-      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.establishSessionUseCase.establishJwtSession(res, result.jwt, req);
 
       return res.json({
         success: true,
