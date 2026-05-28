@@ -30,9 +30,15 @@ export interface ClosePostResult {
   closingSummary: PublicationClosingSummary;
 }
 
+/** Manual close from author/beneficiary: negative score → negative_rating, else manual. */
+export function resolveManualCloseReason(currentScore: number): PostCloseReason {
+  return currentScore < 0 ? 'negative_rating' : 'manual';
+}
+
 /**
  * D-2: Atomic post closing: pool return, rating distribution, status update.
- * "Remove from tappalka" is achieved by setting status='closed' (getEligiblePosts excludes closed).
+ * inv-04: closed posts are archived — status='closed' removes them from feeds/tappalka
+ * (getEligiblePosts excludes closed) and blocks further modification.
  */
 @Injectable()
 export class PostClosingService {

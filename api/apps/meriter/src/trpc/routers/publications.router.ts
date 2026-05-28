@@ -24,6 +24,8 @@ import {
 } from '../../domain/common/helpers/event-participant.helper';
 import { createForwardPublicationUseCase } from '../../application/use-cases/publications/forward-publication.use-case';
 import { createAcceptForwardPublicationUseCase } from '../../application/use-cases/publications/accept-forward-publication.use-case';
+import { createClosePublicationUseCase } from '../../application/use-cases/publications/close-publication.use-case';
+import { createWithdrawPublicationRatingUseCase } from '../../application/use-cases/publications/withdraw-publication-rating.use-case';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -1462,31 +1464,12 @@ export const publicationsRouter = router({
   close: protectedProcedure
     .input(IdInputSchema)
     .mutation(async ({ ctx, input }) => {
-      const publication = await ctx.publicationService.getPublication(input.id);
-      if (!publication) {
-        throw new NotFoundError('Publication', input.id);
-      }
-      const beneficiaryId = publication.getEffectiveBeneficiary().getValue();
-      const canManageSource = await ctx.permissionService.isUserManagingBirzhaSourcePost(
-        ctx.user.id,
-        input.id,
-      );
-      if (beneficiaryId !== ctx.user.id && !canManageSource) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Only the post author can close this post',
-        });
-      }
-      const doc = await ctx.publicationService.getPublicationDocument(input.id);
-      const status = doc?.status ?? 'active';
-      if (status !== 'active') {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'This post is closed and cannot be modified',
-        });
-      }
-      const result = await ctx.postClosingService.closePost(input.id, 'manual');
-      return { closingSummary: result.closingSummary };
+      return createClosePublicationUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        permissionService: ctx.permissionService,
+        postClosingService: ctx.postClosingService,
+      }).execute({ publicationId: input.id });
     }),
 
   /**
@@ -1495,146 +1478,19 @@ export const publicationsRouter = router({
   withdraw: protectedProcedure
     .input(WithdrawAmountDtoSchema.extend({ publicationId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-      const amount = input.amount;
-      if (!amount || amount <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Withdrawal amount must be greater than 0',
-        });
-      }
-
-      // Get publication
-      const publication = await ctx.publicationService.getPublication(input.publicationId);
-      if (!publication) {
-        throw new NotFoundError('Publication', input.publicationId);
-      }
-
-      const pubDoc = await ctx.publicationService.getPublicationDocument(
-        input.publicationId,
-      );
-      if ((pubDoc?.status ?? 'active') === 'closed') {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'This post is closed and cannot be modified',
-        });
-      }
-
-      const postCommunityId = publication.getCommunityId.getValue();
-      const postCommunity =
-        await ctx.communityService.getCommunity(postCommunityId);
-      if (postCommunity?.settings?.allowWithdraw === false) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Withdrawals are disabled in this community',
-        });
-      }
-
-      const sourceEntityType = pubDoc?.sourceEntityType;
-      const sourceEntityId = pubDoc?.sourceEntityId as string | undefined;
-      const isBirzhaSourcePost =
-        postCommunity?.typeTag === 'marathon-of-good' &&
-        (sourceEntityType === 'project' || sourceEntityType === 'community') &&
-        !!sourceEntityId;
-
-      if (isBirzhaSourcePost) {
-        if (!sourceEntityId) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Source post is missing sourceEntityId',
-          });
-        }
-        if (!(await ctx.communityService.isUserAdmin(sourceEntityId, userId))) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Only a source administrator can withdraw from this publication',
-          });
-        }
-      } else {
-        // Validate user can withdraw (effective beneficiary)
-        const canWithdraw = await ctx.voteService.canUserWithdraw(
-          userId,
-          'publication',
-          input.publicationId,
-        );
-        if (!canWithdraw) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'You are not authorized to withdraw from this publication',
-          });
-        }
-      }
-
-      // Get current score
-      const currentScore = publication.getMetrics.score;
-      if (currentScore <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'No votes available to withdraw',
-        });
-      }
-
-      // Publication score represents the remaining withdrawable balance.
-      if (amount > currentScore) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
-        });
-      }
-
-      // Get effective beneficiary
-      const effectiveBeneficiary = publication.getEffectiveBeneficiary();
-      const beneficiaryId = effectiveBeneficiary.getValue();
-      const communityId = publication.getCommunityId.getValue();
-
-      // If post has investments, split between author and investors (investors are paid first)
-      const hasInvestments =
-        pubDoc?.investments && pubDoc.investments.length > 0;
-
-      let authorShare: number;
-      if (hasInvestments && pubDoc?.investorSharePercent != null) {
-        const distribution = await ctx.investmentService.distributeOnWithdrawal(
-          input.publicationId,
-          amount,
-        );
-        authorShare = distribution.authorAmount;
-      } else {
-        authorShare = amount;
-      }
-
-      let targetCommunityId: string;
-      if (isBirzhaSourcePost && sourceEntityId) {
-        await ctx.communityWalletService.createWallet(sourceEntityId);
-        await ctx.communityWalletService.deposit(
-          sourceEntityId,
-          authorShare,
-          'publication_withdrawal',
-        );
-        targetCommunityId = GLOBAL_COMMUNITY_ID;
-      } else {
-        const result = await processWithdrawal(
-          beneficiaryId,
-          communityId,
-          input.publicationId,
-          authorShare,
-          'publication_withdrawal',
-          ctx,
-        );
-        targetCommunityId = result.targetCommunityId;
-      }
-
-      // Reduce publication score
-      await ctx.publicationService.reduceScore(input.publicationId, amount);
-
-      // Get updated wallet balance (global for priority, community for local)
-      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
-      const balance = wallet ? wallet.getBalance() : 0;
-
-      return {
-        amount,
-        balance,
-        message: 'Withdrawal successful',
-      };
+      return createWithdrawPublicationRatingUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        communityService: ctx.communityService,
+        voteService: ctx.voteService,
+        investmentService: ctx.investmentService,
+        communityWalletService: ctx.communityWalletService,
+        meritResolverService: ctx.meritResolverService,
+        walletService: ctx.walletService,
+      }).execute({
+        publicationId: input.publicationId,
+        amount: input.amount,
+      });
     }),
 
   /**
