@@ -1,4 +1,8 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, forwardRef, Inject } from '@nestjs/common';
+import {
+  PERMISSION_GATES_PORT,
+  PermissionGatesPort,
+} from '../ports/permission-gates.port';
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, type ClientSession } from 'mongoose';
 import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
@@ -32,6 +36,8 @@ export class VoteService {
     private eventBus: EventBus,
     @Inject(forwardRef(() => DocumentService))
     private documentService: DocumentService,
+    @Inject(PERMISSION_GATES_PORT)
+    private permissionGates: PermissionGatesPort,
   ) {}
 
   /**
@@ -103,9 +109,8 @@ export class VoteService {
       `Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${commentPreview}...`,
     );
 
-    // Check feature flag - comment voting is disabled by default
-    const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
-    if (targetType === 'vote' && !enableCommentVoting) {
+    // inv-19: comment voting gate via PermissionGatesPort (V-07)
+    if (targetType === 'vote' && !this.permissionGates.isCommentVotingEnabled()) {
       throw new BadRequestException(
         'Voting on comments is disabled. You can only vote on posts/publications.',
       );
