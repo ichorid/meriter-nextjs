@@ -1,0 +1,31 @@
+{
+  "work_unit_id": "p6a-magic-link-uc",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/auth/redeem-magic-link.use-case.ts",
+    "api/apps/meriter/src/api-v1/auth/auth-magic-link.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/redeem-magic-link.use-case.ts",
+      "summary": "New BC-12 RedeemMagicLinkUseCase: delegates token validation/mark-used to AuthMagicLinkService.redeem, then authenticateSms/authenticateEmail + establishJwtSession. Documents inv-24 15m magic-link TTL vs SMS OTP 5m and Phase 7 /a vs /auth/link route consolidation. Exports createRedeemMagicLinkUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/api-v1/auth/auth-magic-link.service.ts",
+      "summary": "Documented BC-12 inv-24 persistence layer: createToken retains magicLink.ttlMinutes (default 15); redeem remains token-only and is consumed by RedeemMagicLinkUseCase for session orchestration."
+    }
+  ],
+  "verification": {
+    "redeem_delegates_to_auth_magic_link_service": true,
+    "authenticate_and_establish_session_in_use_case": true,
+    "inv24_15m_magic_link_ttl_preserved_in_service": true,
+    "inv24_sms_otp_5m_distinction_documented": true,
+    "tsc_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "Magic_link_redeem_delegates": true,
+    "15m_TTL_vs_OTP_5m_preserved": true
+  },
+  "notes": "AuthController wiring to RedeemMagicLinkUseCase is outside write_set (follow-up). Rate limiting and redirect URLs remain transport-layer concerns in the controller. Web route consolidation (/a/[token] canonical, /auth/link/[token] legacy proxy) is Phase 7; both already proxy to GET /api/v1/auth/link/:token."
+}

@@ -17,6 +17,11 @@ export interface RedeemMagicLinkResult {
   target: string;
 }
 
+/**
+ * BC-12 inv-24: one-time magic link persistence.
+ * createToken uses magicLink.ttlMinutes (default 15); distinct from SMS OTP 5-minute TTL.
+ * redeem is consumed by RedeemMagicLinkUseCase for token validation and mark-used.
+ */
 @Injectable()
 export class AuthMagicLinkService {
   private readonly logger = new Logger(AuthMagicLinkService.name);
@@ -53,8 +58,9 @@ export class AuthMagicLinkService {
   }
 
   /**
-   * Redeem a magic link token. If valid, marks it used and returns channel + target.
+   * Validate and mark a magic link token used (inv-24: 15-minute expiry at create time).
    * Returns null if token is missing, expired, or already used (same response for all).
+   * Session establishment is handled by RedeemMagicLinkUseCase.
    */
   async redeem(token: string): Promise<RedeemMagicLinkResult | null> {
     const doc = await this.magicLinkModel.findOne({ token });
