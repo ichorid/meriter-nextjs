@@ -15,6 +15,7 @@ import {
   type DocumentVoteTargetType,
 } from '../helpers/document-vote-router.helper';
 import type { DocumentBlockVariantSchemaClass } from '../../domain/models/document-block-variant/document-block-variant.schema';
+import { createWithdrawFromVoteUseCase } from '../../application/use-cases/voting/withdraw-from-vote.use-case';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -1152,121 +1153,10 @@ export const votesRouter = router({
   withdrawFromVote: protectedProcedure
     .input(WithdrawAmountDtoSchema.extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-      const amount = input.amount;
-      if (!amount || amount <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Withdrawal amount must be greater than 0',
-        });
-      }
-
-      // Get vote (which represents a comment)
-      const vote = await ctx.voteService.getVoteById(input.id);
-      if (!vote) {
-        throw new NotFoundError('Vote', input.id);
-      }
-
-      // Validate user can withdraw
-      const canWithdraw = await ctx.voteService.canUserWithdraw(
-        userId,
-        'vote',
-        input.id,
-      );
-      if (!canWithdraw) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You are not authorized to withdraw from this comment',
-        });
-      }
-
-      // Get comment to get its score and find the publication
-      const comment = await ctx.commentService.getComment(input.id);
-      if (!comment) {
-        throw new NotFoundError('Comment', input.id);
-      }
-
-      // Get current score
-      const currentScore = comment.getScore;
-      if (currentScore <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'No votes available to withdraw',
-        });
-      }
-
-      // Comment score represents the remaining withdrawable balance.
-      if (amount > currentScore) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
-        });
-      }
-
-      // Find the root publication to get the community
-      let publicationId: string | null = null;
-      let currentComment = comment;
-      let depth = 0;
-      while (currentComment.getTargetType === 'comment' && depth < 20) {
-        const parentComment = await ctx.commentService.getComment(currentComment.getTargetId);
-        if (!parentComment) break;
-        currentComment = parentComment;
-        depth++;
-      }
-      if (currentComment.getTargetType === 'publication') {
-        publicationId = currentComment.getTargetId;
-      }
-
-      if (!publicationId) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Could not find publication for this comment',
-        });
-      }
-
-      // Get publication to determine community
-      const publication = await ctx.publicationService.getPublication(publicationId);
-      if (!publication) {
-        throw new NotFoundError('Publication', publicationId);
-      }
-
-      const communityId = publication.getCommunityId.getValue();
-
-      // Future Vision: users can't withdraw merits from posts/comments.
-      {
-        const community = await ctx.communityService.getCommunity(communityId);
-        if (community?.typeTag === 'future-vision') {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'Withdrawals are not allowed in Future Vision',
-          });
-        }
-      }
-
-      // Get effective beneficiary (comment author)
-      const beneficiaryId = comment.getAuthorId.getValue();
-
-      // Process withdrawal (handles marathon bridge)
-      const { targetCommunityId } = await processWithdrawal(
-        beneficiaryId,
-        communityId,
-        input.id,
-        amount,
-        'vote_withdrawal',
-        ctx,
-      );
-
-      // Reduce comment score
-      await ctx.commentService.reduceScore(input.id, amount);
-
-      // Get updated wallet balance
-      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
-      const balance = wallet ? wallet.getBalance() : 0;
-
-      return {
-        amount,
-        balance,
-        message: 'Withdrawal successful',
-      };
+      return createWithdrawFromVoteUseCase(ctx).execute({
+        userId: ctx.user.id,
+        voteId: input.id,
+        amount: input.amount,
+      });
     }),
 });

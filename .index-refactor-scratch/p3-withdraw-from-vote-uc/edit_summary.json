@@ -1,0 +1,29 @@
+{
+  "work_unit_id": "p3-withdraw-from-vote-uc",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/voting/withdraw-from-vote.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/votes.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/voting/withdraw-from-vote.use-case.ts",
+      "summary": "Added WithdrawFromVoteUseCase (BC-04) extracting comment-score withdrawal logic from votes.withdrawFromVote. Validates amount, resolves publication context, enforces canUserWithdraw and Future Vision gate before wallet credit (processWithdrawal) or comment score reduction (inv-08)."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/votes.router.ts",
+      "summary": "Delegated votes.withdrawFromVote to createWithdrawFromVoteUseCase(ctx).execute; router now passes userId, voteId, and amount only."
+    }
+  ],
+  "verification": {
+    "withdrawFromVote_delegates_to_use_case": true,
+    "inv_08_permission_before_side_effects": true,
+    "tsc": "no errors in changed files (apps/meriter/tsconfig.app.json)"
+  },
+  "success_criteria": {
+    "votes_withdrawFromVote_delegates_to_use_case": true,
+    "inv_08_permission_before_debit": true
+  },
+  "notes": "Use case instantiated manually in router via createWithdrawFromVoteUseCase factory (applicationUseCaseProviders registration deferred). Nest HttpExceptions from use case map to TRPCError via existing tRPC middleware."
+}
