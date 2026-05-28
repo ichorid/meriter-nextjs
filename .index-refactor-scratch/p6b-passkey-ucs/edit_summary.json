@@ -1,0 +1,32 @@
+{
+  "work_unit_id": "p6b-passkey-ucs",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/auth/register-passkey.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/authenticate-passkey.use-case.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/register-passkey.use-case.ts",
+      "summary": "New BC-12 inv-09 RegisterPasskeyUseCase: authn enabled gate, registration identity validation, delegates generatePasskeyRegistrationOptions and verifyPasskeyRegistration to AuthProviderService (passkey_challenges persistence unchanged), establishes JWT session on finish when jwt present. Exports PasskeyAuthDisabledError, PasskeyRegistrationIdentityRequiredError, createRegisterPasskeyUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/authenticate-passkey.use-case.ts",
+      "summary": "New BC-12 inv-09 AuthenticatePasskeyUseCase: login start/finish (generatePasskeyLoginOptions, verifyPasskeyLogin) and unified authenticate start/finish (generatePasskeyAuthenticationOptions, authenticateWithPasskey) delegate to AuthProviderService with establishJwtSession on finish. Exports createAuthenticatePasskeyUseCase factory; re-exports PasskeyAuthDisabledError."
+    }
+  ],
+  "verification": {
+    "register_start_finish_delegate_to_auth_service": true,
+    "login_start_finish_delegate_to_auth_service": true,
+    "unified_authenticate_start_finish_delegate_to_auth_service": true,
+    "challenge_persistence_in_auth_service": true,
+    "session_establishment_via_establish_session_use_case": true,
+    "tsc_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "Passkey_register_authenticate_login_delegate": true,
+    "WebAuthn_challenge_persistence_preserved": true
+  },
+  "notes": "AuthController wiring to RegisterPasskeyUseCase and AuthenticatePasskeyUseCase is outside write_set (follow-up). Transport concerns (ForbiddenException mapping, raw res.json for @simplewebauthn/browser) remain in the controller."
+}
