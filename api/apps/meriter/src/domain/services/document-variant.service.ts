@@ -7,13 +7,6 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
-import {
-  DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION,
-  documentWaveFinalizeLockId,
-} from '../common/constants/document-wave-lock.constants';
-import { uid } from 'uid';
-import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
-import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import type { Community } from '../models/community/community.schema';
 import {
   DocumentBlockVariantSchemaClass,
@@ -30,13 +23,19 @@ import { PermissionService } from './permission.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
-import { getRemainingQuotaForPublicationCreate } from '../../trpc/helpers/publication-creation-quota';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import {
-  normalizeDocumentVariantReferences,
   type DocumentVariantReferenceInput,
 } from '../common/document-variant-references.util';
+import {
+  createFinalizeDocumentWaveUseCase,
+  FinalizeDocumentWaveUseCase,
+} from '../../application/use-cases/documents/finalize-document-wave.use-case';
+import {
+  createProposeDocumentVariantUseCase,
+  ProposeDocumentVariantUseCase,
+} from '../../application/use-cases/documents/propose-document-variant.use-case';
 
 export type { DocumentVariantReferenceInput };
 
@@ -45,6 +44,8 @@ const MAX_VARIANT_CONTENT = 5000;
 @Injectable()
 export class DocumentVariantService {
   private readonly logger = new Logger(DocumentVariantService.name);
+  private readonly finalizeDocumentWaveUseCase: FinalizeDocumentWaveUseCase;
+  private readonly proposeDocumentVariantUseCase: ProposeDocumentVariantUseCase;
 
   constructor(
     private readonly documentService: DocumentService,
@@ -57,7 +58,29 @@ export class DocumentVariantService {
     private readonly notificationService: NotificationService,
     private readonly permissionService: PermissionService,
     @InjectConnection() private readonly connection: Connection,
-  ) {}
+  ) {
+    this.finalizeDocumentWaveUseCase = createFinalizeDocumentWaveUseCase({
+      documentService: this.documentService,
+      variantModel: this.variantModel,
+      communityService: this.communityService,
+      notificationService: this.notificationService,
+      connection: this.connection,
+      autoApplyWinner: (documentId, blockId) => this.tryAutoApplyWinner(documentId, blockId),
+    });
+    this.proposeDocumentVariantUseCase = createProposeDocumentVariantUseCase({
+      documentService: this.documentService,
+      variantModel: this.variantModel,
+      communityService: this.communityService,
+      walletService: this.walletService,
+      userCommunityRoleService: this.userCommunityRoleService,
+      userService: this.userService,
+      notificationService: this.notificationService,
+      permissionService: this.permissionService,
+      connection: this.connection,
+      finalizeExpiredWaveOnBlock: (documentId, blockId) =>
+        this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId),
+    });
+  }
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
     return this.variantModel
@@ -80,194 +103,20 @@ export class DocumentVariantService {
     blockId: string,
     options?: { force?: boolean },
   ): Promise<void> {
-    const lockId = documentWaveFinalizeLockId(documentId, blockId);
-    const locks = this.connection.db?.collection(DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION);
-    if (!locks) {
-      await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
-      return;
-    }
-    const acquired = await locks.updateOne(
-      { lockId },
-      { $setOnInsert: { lockId, createdAt: new Date() } },
-      { upsert: true },
-    );
-    if (!acquired.upsertedCount) {
-      return;
-    }
-    try {
-      await this.finalizeExpiredWaveOnBlockCore(documentId, blockId, options);
-    } finally {
-      await locks.deleteOne({ lockId }).catch(() => undefined);
-    }
+    return this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId, options);
   }
 
-  private async finalizeExpiredWaveOnBlockCore(
-    documentId: string,
-    blockId: string,
-    options?: { force?: boolean },
-  ): Promise<void> {
-    const docLean = await this.documentService.getById(documentId);
-    if (!docLean) {
-      return;
-    }
-    if (
-      !options?.force &&
-      this.documentService.isDocumentBlockVotingOpen(docLean, blockId)
-    ) {
-      return;
-    }
-
-    const openVariants = await this.variantModel
-      .find({
-        documentId,
-        blockId,
-        status: 'open',
-        deleted: false,
-      })
-      .lean()
-      .exec();
-
-    if (openVariants.length === 0) {
-      await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
-        delete b.currentWaveStartedAt;
-        b.officialRating = 0;
-      });
-      return;
-    }
-
-    openVariants.sort((a, b) => {
-      if ((b.rating ?? 0) !== (a.rating ?? 0)) {
-        return (b.rating ?? 0) - (a.rating ?? 0);
-      }
-      const ta = new Date(a.proposedAt).getTime();
-      const tb = new Date(b.proposedAt).getTime();
-      return ta - tb;
-    });
-
-    const block = this.documentService.findBlock(docLean, blockId);
-    const officialRating = block?.officialRating ?? 0;
-    const topVariant = openVariants[0]!;
-    const topVariantRating = topVariant?.rating ?? 0;
-    const officialWins =
-      officialRating > topVariantRating ||
-      (officialRating === topVariantRating && officialRating > 0);
-
-    if (officialWins) {
-      for (const v of openVariants) {
-        await this.variantModel.updateOne(
-          { id: v.id },
-          {
-            $set: {
-              status: 'closed-not-winner',
-              updatedAt: new Date(),
-            },
-          },
-        );
-      }
-      await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
-        delete b.currentWaveStartedAt;
-        b.officialRating = 0;
-      });
-      const community = await this.communityService.getCommunity(docLean.communityId);
-      if (community) {
-        await this.notifyVariantsNotSelected({
-          doc: docLean,
-          community,
-          blockId,
-          variants: openVariants,
-          reason: 'official_kept',
-        }).catch((err) => {
-          this.logger.warn(
-            `Failed to notify variant non-selection (official kept) ${documentId}/${blockId}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        });
-      }
-      return;
-    }
-
-    const top = topVariant;
-    const topRated = topVariantRating > 0;
-
-    for (const v of openVariants) {
-      const isWinner = topRated && v.id === top.id;
-      await this.variantModel.updateOne(
-        { id: v.id },
-        {
-          $set: {
-            status: isWinner ? 'closed-winner' : 'closed-not-winner',
-            updatedAt: new Date(),
-          },
-        },
-      );
-    }
-
-    await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
-      delete b.currentWaveStartedAt;
-      b.officialRating = 0;
-    });
-
-    const community = await this.communityService.getCommunity(docLean.communityId);
-    if (community) {
-      await this.notifyVariantsNotSelected({
-        doc: docLean,
-        community,
-        blockId,
-        variants: openVariants,
-        winnerVariantId: topRated ? top.id : undefined,
-        reason: topRated ? 'other_variant_won' : 'no_positive_winner',
-      }).catch((err) => {
-        this.logger.warn(
-          `Failed to notify variant non-selection ${documentId}/${blockId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      });
-    }
-
-    if (topRated && docLean.mode !== 'auto') {
-      await this.notifyVariantWon(top, docLean).catch((err) => {
-        this.logger.warn(
-          `Failed to notify variant winner ${top.id}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
-    }
-
-    await this.tryAutoApplyWinner(documentId, blockId);
-  }
+  
 
   /**
    * Cron / sweep: close expired waves on all blocks that still have open variants.
    */
+  /** Delegates to FinalizeDocumentWaveUseCase (BC-06 / P-6); invoked by document-wave cron. */
   async runPeriodicWaveSweep(): Promise<void> {
-    const pairs = await this.variantModel
-      .aggregate<{ _id: { d: string; b: string } }>([
-        { $match: { status: 'open', deleted: false } },
-        { $group: { _id: { d: '$documentId', b: '$blockId' } } },
-      ])
-      .exec();
-
-    for (const p of pairs) {
-      const documentId = p._id.d;
-      const blockId = p._id.b;
-      try {
-        const doc = await this.documentService.getById(documentId);
-        if (!doc) {
-          continue;
-        }
-        if (this.documentService.isDocumentBlockVotingOpen(doc, blockId)) {
-          continue;
-        }
-        await this.finalizeExpiredWaveOnBlock(documentId, blockId);
-      } catch (err) {
-        this.logger.warn(
-          `Wave sweep failed ${documentId}/${blockId}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-    }
+    return this.finalizeDocumentWaveUseCase.execute();
   }
 
+  /** Delegates to ProposeDocumentVariantUseCase (BC-06 / P-6). */
   async proposeVariant(
     userId: string,
     input: {
@@ -277,108 +126,7 @@ export class DocumentVariantService {
       references?: DocumentVariantReferenceInput[];
     },
   ): Promise<DocumentBlockVariantSchemaClass> {
-    const content = sanitizeDocumentHtml(input.content ?? '');
-    if (!content) {
-      throw new BadRequestException('Variant content is required');
-    }
-    if (content.length > MAX_VARIANT_CONTENT) {
-      throw new BadRequestException(`Variant content must be at most ${MAX_VARIANT_CONTENT} characters`);
-    }
-
-    let doc = await this.documentService.getById(input.documentId);
-    if (!doc || doc.deleted || doc.status !== 'active') {
-      throw new NotFoundException('Document not found');
-    }
-
-    const community = await this.communityService.getCommunity(doc.communityId);
-    if (!community) {
-      throw new NotFoundException('Community not found');
-    }
-
-    this.assertDocumentsModeAllowsDocument(community, doc.type);
-    await this.assertCanAccessDocumentForProposal(userId, community, doc);
-
-    const block = this.documentService.findBlock(doc, input.blockId);
-    if (!block) {
-      throw new NotFoundException('Block not found');
-    }
-
-    if (block.proposalsLocked === true) {
-      const canEditStructure = await this.permissionService.canEditDocumentStructure(
-        userId,
-        doc.id,
-      );
-      if (!canEditStructure) {
-        throw new ForbiddenException('This block is locked; you cannot propose changes');
-      }
-    }
-
-    await this.finalizeExpiredWaveOnBlock(doc.id, input.blockId);
-
-    doc = (await this.documentService.getById(input.documentId))!;
-
-    const variantCost = doc.variantCost ?? 1;
-    const { quotaAmount, walletAmount } = await this.collectVariantProposalFee(
-      userId,
-      doc.communityId,
-      community,
-      variantCost,
-    );
-
-    const refs = normalizeDocumentVariantReferences(input.references);
-
-    const variantId = uid();
-    const now = new Date();
-
-    const blockAfter = this.documentService.findBlock(doc, input.blockId);
-    const needsWaveStart = !blockAfter?.currentWaveStartedAt;
-    if (needsWaveStart) {
-      await this.documentService.updateDocumentBlock(doc.id, input.blockId, (b) => {
-        b.currentWaveStartedAt = now;
-        b.officialRating = 0;
-      });
-    }
-
-    await this.variantModel.create({
-      id: variantId,
-      documentId: doc.id,
-      blockId: input.blockId,
-      content,
-      references: refs,
-      proposedBy: userId,
-      proposedAt: now,
-      status: 'open',
-      rating: 0,
-      costPaid: variantCost,
-      deleted: false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await this.postCollectVariantProposalFee(
-      userId,
-      doc.communityId,
-      community,
-      quotaAmount,
-      walletAmount,
-      variantId,
-    );
-
-    const created = await this.variantModel.findOne({ id: variantId }).lean().exec();
-    if (created) {
-      await this.notifyVariantProposed(
-        created as DocumentBlockVariantSchemaClass,
-        doc,
-        community,
-      ).catch((err) => {
-        this.logger.warn(
-          `Failed to notify new variant proposal ${variantId}: ${
-            err instanceof Error ? err.message : String(err)
-          }`,
-        );
-      });
-    }
-    return created as DocumentBlockVariantSchemaClass;
+    return this.proposeDocumentVariantUseCase.execute(userId, input);
   }
 
   async withdrawVariant(userId: string, variantId: string): Promise<void> {
@@ -775,43 +523,7 @@ export class DocumentVariantService {
     }
   }
 
-  private async assertCanAccessDocumentForProposal(
-    userId: string,
-    community: Community,
-    doc: MeriterDocumentSchemaClass,
-  ): Promise<void> {
-    const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-      return;
-    }
-
-    const role = await this.userCommunityRoleService.getRole(userId, community.id);
-    if (!role) {
-      throw new ForbiddenException('You must be a community member to propose a variant');
-    }
-
-    const canPropose = await this.permissionService.canProposeDocumentVariant(
-      userId,
-      doc.id,
-    );
-    if (!canPropose) {
-      throw new ForbiddenException('You are not allowed to propose a variant on this document');
-    }
-
-    if (doc.type !== 'custom') {
-      return;
-    }
-
-    const creators = community.settings?.documentCreators ?? 'admins';
-    if (creators === 'members') {
-      return;
-    }
-
-    const admin = await this.communityService.isUserAdmin(community.id, userId);
-    if (!admin) {
-      throw new ForbiddenException('Only community admins can propose variants on custom documents');
-    }
-  }
+  
 
   async assertCanManageDocument(
     userId: string,
@@ -836,105 +548,9 @@ export class DocumentVariantService {
     }
   }
 
-  private async collectVariantProposalFee(
-    userId: string,
-    communityId: string,
-    community: Community,
-    variantCost: number,
-  ): Promise<{ quotaAmount: number; walletAmount: number }> {
-    if (variantCost <= 0) {
-      return { quotaAmount: 0, walletAmount: 0 };
-    }
+  
 
-    const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
-    let quotaAmount = 0;
-    let walletAmount = 0;
-
-    if (canPayFromQuota) {
-      const remainingQuota = await getRemainingQuotaForPublicationCreate(
-        userId,
-        communityId,
-        community,
-        this.communityService,
-        this.connection,
-      );
-      quotaAmount = Math.min(variantCost, remainingQuota);
-      walletAmount = Math.max(0, variantCost - quotaAmount);
-    } else {
-      walletAmount = variantCost;
-    }
-
-    if (walletAmount > 0) {
-      const wallet = await this.walletService.getWallet(userId, GLOBAL_COMMUNITY_ID);
-      const bal = wallet ? wallet.getBalance() : 0;
-      if (bal < walletAmount) {
-        throw new BadRequestException(
-          `Insufficient wallet merits. Available: ${bal}, Required: ${walletAmount}`,
-        );
-      }
-    }
-
-    if (quotaAmount > 0) {
-      const remainingQuota = await getRemainingQuotaForPublicationCreate(
-        userId,
-        communityId,
-        community,
-        this.communityService,
-        this.connection,
-      );
-      if (remainingQuota < quotaAmount) {
-        throw new BadRequestException(
-          `Insufficient quota. Available: ${remainingQuota}, Required: ${quotaAmount}`,
-        );
-      }
-    }
-
-    return { quotaAmount, walletAmount };
-  }
-
-  private async postCollectVariantProposalFee(
-    userId: string,
-    communityId: string,
-    community: Community,
-    quotaAmount: number,
-    walletAmount: number,
-    variantId: string,
-  ): Promise<void> {
-    const currency =
-      community.settings?.currencyNames ?? {
-        singular: 'merit',
-        plural: 'merits',
-        genitive: 'merits',
-      };
-    const globalCommunity = await this.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
-    const feeCurrency = globalCommunity?.settings?.currencyNames ?? currency;
-
-    if (quotaAmount > 0 && this.connection.db) {
-      await this.connection.db.collection('quota_usage').insertOne({
-        id: `quota_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
-        userId,
-        communityId,
-        amountQuota: quotaAmount,
-        usageType: 'document_variant_proposal',
-        referenceId: variantId,
-        createdAt: new Date(),
-      });
-    }
-
-    if (walletAmount > 0) {
-      await this.walletService.addTransaction(
-        userId,
-        GLOBAL_COMMUNITY_ID,
-        'debit',
-        walletAmount,
-        'personal',
-        'document_variant_proposal',
-        variantId,
-        feeCurrency,
-        'Fee for proposing a document variant',
-      );
-    }
-  }
+  
 
   private buildDocumentNotificationMetadata(
     doc: MeriterDocumentSchemaClass,
@@ -951,38 +567,7 @@ export class DocumentVariantService {
     };
   }
 
-  private async notifyVariantProposed(
-    variant: DocumentBlockVariantSchemaClass,
-    doc: MeriterDocumentSchemaClass,
-    community: Community,
-  ): Promise<void> {
-    const leads = await this.userCommunityRoleService.getUsersByRole(doc.communityId, 'lead');
-    const recipientIds = new Set<string>([doc.createdBy, ...leads.map((r) => r.userId)]);
-    recipientIds.delete(variant.proposedBy);
-
-    if (recipientIds.size === 0) {
-      return;
-    }
-
-    const title = doc.title?.trim() || 'Document';
-    const metadata = {
-      ...this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
-      variantId: variant.id,
-      proposedBy: variant.proposedBy,
-    };
-
-    for (const userId of recipientIds) {
-      await this.notificationService.createNotification({
-        userId,
-        type: 'document_variant_proposed',
-        source: 'user',
-        sourceId: variant.proposedBy,
-        metadata,
-        title: 'New variant proposal',
-        message: `A new variant was proposed on "${title}".`,
-      });
-    }
-  }
+  
 
   private async notifyVariantsNotSelected(params: {
     doc: MeriterDocumentSchemaClass;
