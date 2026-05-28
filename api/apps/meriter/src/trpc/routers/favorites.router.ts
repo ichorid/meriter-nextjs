@@ -7,8 +7,8 @@ import type { PublicationSnapshot } from '../../common/interfaces/publication-do
 import type { PollSnapshot } from '../../domain/aggregates/poll/poll.entity';
 import type { FavoriteTargetType } from '../../domain/models/favorite/favorite.schema';
 import type { FeedItem } from '@meriter/shared-types';
+import { EntityMappers } from '../../adapters/mappers/entity-mappers';
 import {
-  buildFeedItemLookupMaps,
   createMarkNotificationsReadUseCase,
   createToggleFavoriteUseCase,
 } from '../../application/use-cases/feed/get-community-feed.use-case';
@@ -191,7 +191,7 @@ export const favoritesRouter = router({
         }),
       );
 
-      const { publicationMap, pollMap } = buildFeedItemLookupMaps(
+      const { publicationMap, pollMap } = EntityMappers.buildFeedItemLookupMaps(
         publications,
         polls,
         usersMap,
