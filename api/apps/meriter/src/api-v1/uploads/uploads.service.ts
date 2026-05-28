@@ -120,6 +120,34 @@ export class UploadsService {
   }
 
   /**
+   * P-7: canonical base64 (or data-URL) → Express.Multer.File for tRPC ingress.
+   */
+  toMulterFile(fileData: string, fileName: string, mimeType: string): Express.Multer.File {
+    let fileBuffer: Buffer;
+    try {
+      const base64Data = fileData.includes(',')
+        ? fileData.split(',')[1]
+        : fileData;
+      fileBuffer = Buffer.from(base64Data, 'base64');
+    } catch {
+      throw new BadRequestException('Invalid base64 file data');
+    }
+
+    return {
+      fieldname: 'file',
+      originalname: fileName,
+      encoding: '7bit',
+      mimetype: mimeType,
+      size: fileBuffer.length,
+      buffer: fileBuffer,
+      destination: '',
+      filename: fileName,
+      path: '',
+      stream: null as any,
+    };
+  }
+
+  /**
    * Process image to specific size
    */
   private async processImageToSize(
