@@ -1,0 +1,153 @@
+VerifierVerdict:
+  work_unit_id: p7-tappalka-feature-shells
+  attempt: 0
+  channel: llm
+  verdict: pass
+  summary: >-
+    Attempt 0 satisfies intent and success criteria. ~90% duplicate Birzha source-posts
+    and publish UI is consolidated into BirzhaSourcePostsShell and BirzhaPublishShell
+    under web/src/features/tappalka/; community and project *PageClient route modules
+    are thin delegates (17–33 lines) wiring entity type, ids, and paths. W-1/W-2
+    duplication retired in route layer; community futureVisionPublicationId value-tag
+    seeding preserved; inv-10 Obsidian UI class tokens unchanged in extracted markup.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted work-unit delta on branch refactor/p7-tappalka-feature-shells
+    (git diff HEAD~..HEAD reflects unrelated prior commits; reviewed via
+    git diff on write_set paths plus direct reads of new shell components and
+    thinned route wrappers).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - web/src/features/tappalka/components/BirzhaSourcePostsShell.tsx
+    - web/src/features/tappalka/components/BirzhaPublishShell.tsx
+    - web/src/features/tappalka/components/index.ts
+    - web/src/features/tappalka/index.ts
+    - web/src/app/meriter/communities/[id]/birzha-posts/CommunityBirzhaPostsPageClient.tsx
+    - web/src/app/meriter/communities/[id]/birzha-publish/BirzhaPublishPageClient.tsx
+    - web/src/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient.tsx
+    - web/src/app/meriter/projects/[id]/birzha-publish/ProjectBirzhaPublishPageClient.tsx
+  files_outside_write_set: []
+
+  constraint_checks:
+    - id: phase-7
+      status: pass
+      evidence: >-
+        Canonical Birzha shells live in web/src/features/tappalka/components/;
+        feature barrel re-exports shells and prop types.
+    - id: bounded_contexts-BC-13
+      status: pass
+      evidence: >-
+        Tappalka feature module owns Birzha presentation shells; route clients remain
+        transport-level wrappers for community/project entry points and hub embeds
+        (CommunityPageClient / ProjectPageClient still import route-local PageClients).
+    - id: duplication_clusters-W-1
+      status: pass
+      evidence: >-
+        Community birzha-posts and birzha-publish PageClients no longer contain
+        AdaptiveLayout, SourceBirzhaPostsList, PublicationCreateForm, or birzha hub
+        query logic; they delegate to feature shells with community-specific paths.
+    - id: duplication_clusters-W-2
+      status: pass
+      evidence: >-
+        Project birzha-posts and birzha-publish PageClients likewise delegate only;
+        shared BirzhaSourcePostsShell / BirzhaPublishShell hold the former ~90%
+        duplicate implementation.
+    - id: retirement_criteria-W-1
+      status: pass
+      evidence: >-
+        TARGET §8.0 W-1: features/tappalka owns community Birzha shell; community
+        routes are thin wrappers (CommunityBirzhaPostsPageClient 33 lines,
+        BirzhaPublishPageClient 17 lines).
+    - id: invariants-inv-10
+      status: pass
+      evidence: >-
+        Extracted shells preserve Obsidian-oriented utility classes from pre-refactor
+        clients: birzha-source-posts, rounded-xl, text-muted-foreground,
+        animate-spin on Loader2, max-w-3xl spacing tokens. No edits to globals.css
+        or currency.ts (not in write_set); UI token usage in Birzha flows unchanged.
+
+  success_criteria:
+    - id: community_and_project_birzha_routes_thin_wrappers
+      status: pass
+      evidence: >-
+        All four *PageClient files are prop-forwarding shells importing
+        BirzhaSourcePostsShell or BirzhaPublishShell from @/features/tappalka.
+        ripgrep shows no remaining SourceBirzhaPostsList, getBirzhaCommunity, or
+        PublicationCreateForm usage under birzha-posts/birzha-publish route folders.
+    - id: W-1_and_W-2_retirement_criteria_met
+      status: pass
+      evidence: >-
+        Single canonical implementation per flow (posts list, publish) in tappalka
+        feature; community and project routes supply only entity type, id, backPath,
+        and publishHref. Duplication cluster retirement satisfied per TARGET §8.0
+        W-1/W-2 definitions.
+    - id: inv_10_obsidian_tokens_preserved
+      status: pass
+      evidence: >-
+        Class-level UI tokens in moved JSX match pre-extraction route clients; community
+        Obsidian value-tag seeding path unchanged (futureVisionPublicationId →
+        usePublication → seedValueTags on PublicationCreateForm).
+
+  architecture_alignment:
+    - id: depends-on-p5-entity-mappers-retirement
+      status: pass
+      evidence: >-
+        Web-only shell extraction; no API mapper or tRPC changes; independent of
+        p5-entity-mappers-retirement backend work.
+    - id: hub-embed-import-paths
+      status: pass
+      evidence: >-
+        CommunityPageClient and ProjectPageClient continue importing route-local
+        CommunityBirzhaPostsPageClient / ProjectBirzhaPostsPageClient; page.tsx
+        files unchanged per worker notes.
+
+  verification_checks:
+    - id: future_vision_seed_value_tags_preserved
+      status: pass
+      evidence: >-
+        BirzhaPublishShell lines 51–58: community-only obPostId from
+        futureVisionPublicationId, useMemo seedValueTags filter(Boolean), passed to
+        PublicationCreateForm seedValueTags (undefined for project, matching prior
+        project client).
+    - id: publish_flow_behavior_preserved
+      status: pass
+      evidence: >-
+        getBirzhaCommunity query (staleTime 120_000), loading/error states, sticky
+        header with named/unnamed description, birzhaSourceEntity, defaultPostType
+        basic, isProjectCommunity false, onSuccess/onCancel navigation unchanged.
+    - id: posts_list_behavior_preserved
+      status: pass
+      evidence: >-
+        BirzhaSourcePostsShell retains PAGE_SIZE 100, embedded vs page variant,
+        suppressPublishToolbar/showPublishCta gating, SimpleStickyHeader with
+        showScrollToTop, SourceBirzhaPostsList wiring.
+    - id: hook_guard_empty_id
+      status: pass
+      evidence: >-
+        BirzhaPublishShell passes '' to inactive entity hook; useCommunity enabled
+        !!id && id !== 'create'; useProject enabled !!projectId — no spurious fetches.
+
+  findings: []
+
+  warnings:
+    - id: uncommitted-changes
+      severity: info
+      message: >-
+        Work-unit changes uncommitted on branch refactor/p7-tappalka-feature-shells;
+        BirzhaSourcePostsShell.tsx and BirzhaPublishShell.tsx are untracked (??).
+    - id: project-path-literals
+      severity: info
+      message: >-
+        ProjectBirzhaPostsPageClient uses template-literal backPath/publishHref while
+        community posts wrapper still uses routes.* helpers; paths appear equivalent
+        but style is inconsistent (optional follow-up, not a functional regression).
+    - id: unified-shell-vs-split-shells
+      severity: info
+      message: >-
+        W-1/W-2 TARGET prose names separate community/project shells; implementation
+        uses one parameterized shell per flow — stricter retirement than separate
+        copies and still satisfies thin-wrapper acceptance.
+
+  blockers: []
