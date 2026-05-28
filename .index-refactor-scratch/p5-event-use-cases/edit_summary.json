@@ -1,0 +1,52 @@
+{
+  "work_unit_id": "p5-event-use-cases",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/events/event-inv05-guards.ts",
+    "api/apps/meriter/src/application/use-cases/events/create-event.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/events/rsvp-event.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/events/check-in-by-token.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/events/set-participant-attendance.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/events.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/events/event-inv05-guards.ts",
+      "summary": "BC-09 inv-05 guards: isEventPostType, evaluateEventPublicationVoteGate (PermissionGatesPort), assertEventPublicationNotVotable/NotForwardable/NotBirzhaEligible with TRPCError messages aligned to forward/vote routers."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/events/create-event.use-case.ts",
+      "summary": "CreateEventUseCase: postCost quota/wallet pre-checks, eventService.createEvent, inv-05 postType event assertion, quota_usage and global wallet debit after create. createCreateEventUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/events/rsvp-event.use-case.ts",
+      "summary": "RsvpEventUseCase: attend/unattend via EventService; createRsvpEventUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/events/check-in-by-token.use-case.ts",
+      "summary": "CheckInByTokenUseCase: delegates checkInByToken to EventService; createCheckInByTokenUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/events/set-participant-attendance.use-case.ts",
+      "summary": "SetParticipantAttendanceUseCase: delegates setParticipantAttendance to EventService; createSetParticipantAttendanceUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/events.router.ts",
+      "summary": "events.createEvent, attend, unattend, checkInByToken, setParticipantAttendance delegate to use cases; removed inline postCost orchestration (~100 lines). Other procedures still delegate to EventService."
+    }
+  ],
+  "verification": {
+    "create_event_delegates_to_use_case": true,
+    "attend_unattend_delegate_to_rsvp_use_case": true,
+    "check_in_by_token_delegates_to_use_case": true,
+    "set_participant_attendance_delegates_to_use_case": true,
+    "inv_05_guards_module_present": true,
+    "tsc_changed_files": "no errors on write_set paths"
+  },
+  "success_criteria": {
+    "events_procedures_delegate": true,
+    "inv_05_blocks_vote_forward_birzha_on_events": true
+  },
+  "notes": "inv-05 vote/forward/Birzha enforcement remains in votes.router, forward use cases, and publications.create guard; event-inv05-guards centralizes the same rules for BC-09 reuse. Remaining events.* procedures (update, delete, invites, merit transfer) still call EventService directly."
+}
