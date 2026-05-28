@@ -16,7 +16,7 @@ import { AuthMagicLinkService } from './auth-magic-link.service';
 import { SmsProviderService } from './sms-provider.service';
 import { EmailProviderService } from './email-provider.service';
 import { UserGuard } from '../../user.guard';
-import { CookieManager } from '../common/utils/cookie-manager.util';
+import { CookieManager } from '../../infrastructure/auth/cookie-manager';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
 import { AppConfig } from '../../config/configuration';
 
@@ -70,16 +70,6 @@ export class AuthController {
     return false;
   }
 
-  private isHttpsRequest(req: unknown): boolean {
-    const r = req as { secure?: unknown; headers?: Record<string, unknown> } | null;
-    if (r?.secure === true) return true;
-    const forwardedProto = r?.headers?.['x-forwarded-proto'];
-    if (!forwardedProto) return false;
-    const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
-    const first = raw.split(',')[0]?.trim().toLowerCase();
-    return first === 'https';
-  }
-
   private getSanitizedSetCookieHeader(res: unknown): string[] | null {
     try {
       const r = res as { getHeader?: (name: string) => unknown } | null;
@@ -123,11 +113,7 @@ export class AuthController {
   async logout(@Res() res: any) {
     this.logger.log('User logout request');
 
-    // Clear the JWT cookie
-    const cookieDomain = this.cookieManager.getCookieDomain();
-    const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const isProduction = nodeEnv === 'production';
-    this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
+    this.cookieManager.logoutJwt(res);
 
     return res.json({
       success: true,
@@ -137,30 +123,7 @@ export class AuthController {
 
   @Post('clear-cookies')
   async clearCookies(@Req() req: any, @Res() res: any) {
-    // Clear ALL cookies from the request, not just JWT variants
-    // This prevents login loops caused by stale cookies with mismatched attributes
-    const cookieDomain = this.cookieManager.getCookieDomain();
-    const isSecure = this.isHttpsRequest(req);
-    const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    const isProduction = nodeEnv === 'production' || isSecure;
-
-    // Get all cookie names from the request
-    const cookieNames = new Set<string>();
-    if (req.cookies) {
-      Object.keys(req.cookies).forEach(name => cookieNames.add(name));
-    }
-
-    // Always ensure JWT cookie is cleared (it might be HttpOnly and not visible in req.cookies)
-    cookieNames.add('jwt');
-
-    // Also clear known cookies that might exist
-    const knownCookies = ['fake_user_id', 'fake_superadmin_id', 'NEXT_LOCALE'];
-    knownCookies.forEach(name => cookieNames.add(name));
-
-    // Clear each cookie with all possible attribute combinations
-    for (const cookieName of cookieNames) {
-      this.cookieManager.clearCookieVariants(res, cookieName, cookieDomain, isProduction);
-    }
+    this.cookieManager.clearAllRequestCookies(res, req);
 
     return res.json({
       success: true,
@@ -197,34 +160,8 @@ export class AuthController {
 
       const result = await this.authService.authenticateFakeUser(fakeUserId);
 
-      // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      // Clear any existing JWT cookie first to ensure clean state
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-
-      // Set new JWT cookie (pass req to detect HTTPS reliably)
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
-
-      // Set fake_user_id cookie (session cookie - expires when browser closes)
-      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
-      const actualIsSecure = this.isHttpsRequest(req);
-      // Recalculate isProduction with actual isSecure value
-      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-      const sameSite = 'lax' as const;
-      const secure = actualIsSecure || actualIsProduction;
-      res.cookie('fake_user_id', fakeUserId, {
-        httpOnly: true,
-        secure,
-        sameSite,
-        // No maxAge - this makes it a session cookie that expires when browser closes
-        path: '/',
-        domain: cookieDomain,
-      });
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.cookieManager.setAuthSessionCookie(res, 'fake_user_id', fakeUserId, req);
 
       this.logger.log('Fake authentication successful, sending response');
 
@@ -328,14 +265,7 @@ export class AuthController {
           throw new Error(`Unsupported provider: ${provider}`);
       }
 
-      // Set JWT cookie
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
       return res.json({
         success: true,
@@ -378,34 +308,8 @@ export class AuthController {
 
       const result = await this.authService.authenticateFakeSuperadmin(fakeUserId);
 
-      // Set JWT cookie with proper domain for Caddy reverse proxy
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      // Treat as production (Secure=true, SameSite=None) if explicitly production OR if accessed via HTTPS
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      // Clear any existing JWT cookie first to ensure clean state
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-
-      // Set new JWT cookie (pass req to detect HTTPS reliably)
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
-
-      // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
-      // Recalculate isSecure to ensure it's correct (trust proxy should make req.secure work)
-      const actualIsSecure = this.isHttpsRequest(req);
-      // Recalculate isProduction with actual isSecure value
-      const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
-      const sameSite = 'lax' as const;
-      const secure = actualIsSecure || actualIsProduction;
-      res.cookie('fake_superadmin_id', fakeUserId, {
-        httpOnly: true,
-        secure,
-        sameSite,
-        // No maxAge - this makes it a session cookie that expires when browser closes
-        path: '/',
-        domain: cookieDomain,
-      });
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
+      this.cookieManager.setAuthSessionCookie(res, 'fake_superadmin_id', fakeUserId, req);
 
       this.logger.log('Fake superadmin authentication successful, sending response');
 
@@ -535,19 +439,10 @@ export class AuthController {
       // Authenticate with Google using authorization code
       const result = await this.authService.authenticateGoogle(code);
 
-      // Set JWT cookie
-      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
-      // which can cause truncation and prevent the cookie from being set properly
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
+      this.cookieManager.establishJwtAuth(res, result.jwt, req, 'oauth');
 
-      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
-
-      // Debug: log cookie attributes (sanitized) to diagnose cookie rejection in browsers.
-      // Safe to keep at debug level; does not log token values.
+      const isSecure = this.cookieManager.isRequestSecure(req);
+      const isProduction = this.cookieManager.resolveIsProduction(req);
       this.logger.debug(
         `[cookie-debug] google callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
       );
@@ -647,17 +542,10 @@ export class AuthController {
 
       const result = await this.authService.authenticateYandex(code);
 
-      // Set JWT cookie
-      // For OAuth callbacks, use minimal clearing (host-only) to avoid Set-Cookie header bloat
-      // which can cause truncation and prevent the cookie from being set properly
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
+      this.cookieManager.establishJwtAuth(res, result.jwt, req, 'oauth');
 
-      this.cookieManager.clearHostOnlyJwtCookie(res, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
-
+      const isSecure = this.cookieManager.isRequestSecure(req);
+      const isProduction = this.cookieManager.resolveIsProduction(req);
       this.logger.debug(
         `[cookie-debug] yandex callback host=${req?.headers?.host} xfHost=${req?.headers?.['x-forwarded-host']} xfProto=${req?.headers?.['x-forwarded-proto']} req.secure=${String(req?.secure)} isSecure=${String(isSecure)} isProduction=${String(isProduction)} set-cookie=${JSON.stringify(this.getSanitizedSetCookieHeader(res))}`
       );
@@ -733,14 +621,8 @@ export class AuthController {
       const result = await this.authService.verifyPasskeyRegistration(body, userIdOrUsername, deviceName);
 
       // Set JWT cookie (sign-up + sign-in)
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
       if (result.jwt) {
-        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+        this.cookieManager.establishJwtAuth(res, result.jwt, req);
       }
 
       return res.json({
@@ -773,13 +655,7 @@ export class AuthController {
       const result = await this.authService.verifyPasskeyLogin(body);
 
       // Set JWT cookie
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
       return res.json({ success: true, user: result.user });
     } catch (error) {
@@ -822,13 +698,7 @@ export class AuthController {
       const result = await this.authService.authenticateWithPasskey(body);
 
       // Set JWT cookie (same as OAuth)
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
       // Return isNewUser flag for frontend redirect (like OAuth)
       return res.json({
@@ -922,13 +792,7 @@ export class AuthController {
       const result = await this.authService.authenticateSms(phoneNumber);
 
       // Set JWT cookie
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
       this.logger.log(`SMS authentication successful for ${phoneNumber}, isNewUser: ${result.isNewUser}`);
 
@@ -978,13 +842,7 @@ export class AuthController {
           ? await this.authService.authenticateSms(result.target)
           : await this.authService.authenticateEmail(result.target);
 
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, authResult.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, authResult.jwt, req);
 
       this.logger.log(`Magic link auth successful for ${result.channel}`);
       return res.redirect(302, profileUrl);
@@ -1048,13 +906,7 @@ export class AuthController {
         const result = await this.authService.authenticateSms(phoneNumber);
 
         // Set JWT
-        const cookieDomain = this.cookieManager.getCookieDomain();
-        const isSecure = this.isHttpsRequest(req);
-        const nodeEnv = this.configService.get('NODE_ENV', 'development');
-        const isProduction = nodeEnv === 'production' || isSecure;
-
-        this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-        this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+        this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
         return res.json({
           success: true,
@@ -1123,13 +975,7 @@ export class AuthController {
       const result = await this.authService.authenticateEmail(email);
 
       // Set JWT
-      const cookieDomain = this.cookieManager.getCookieDomain();
-      const isSecure = this.isHttpsRequest(req);
-      const nodeEnv = this.configService.get('NODE_ENV', 'development');
-      const isProduction = nodeEnv === 'production' || isSecure;
-
-      this.cookieManager.clearAllJwtCookieVariants(res, cookieDomain, isProduction);
-      this.cookieManager.setJwtCookie(res, result.jwt, cookieDomain, isProduction, req);
+      this.cookieManager.establishJwtAuth(res, result.jwt, req);
 
       return res.json({
         success: true,
