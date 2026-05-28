@@ -1,0 +1,48 @@
+{
+  "work_unit_id": "p6a-team-join-ucs",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/teams/submit-team-join-request.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/teams/approve-team-join-request.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/teams/reject-team-join-request.use-case.ts",
+    "api/apps/meriter/src/domain/services/team-join-request.service.ts",
+    "api/apps/meriter/src/trpc/routers/teams.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/teams/submit-team-join-request.use-case.ts",
+      "summary": "New BC-11 SubmitTeamJoinRequestUseCase with execute() for submit flow: community validation, membership/pending checks, request creation, lead/member notifications. Exports createSubmitTeamJoinRequestUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/teams/approve-team-join-request.use-case.ts",
+      "summary": "New BC-11 ApproveTeamJoinRequestUseCase with execute() for approve flow: load pending request via injected helper, membership check, inviteToTeam, deferred event RSVP, status update, applicant/lead notifications, project member_joined. Exports TeamJoinRequestLeadAction type and createApproveTeamJoinRequestUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/teams/reject-team-join-request.use-case.ts",
+      "summary": "New BC-11 RejectTeamJoinRequestUseCase with execute() for reject flow: load pending request via injected helper, status update, applicant notification, resolve admin notifications. Exports createRejectTeamJoinRequestUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/team-join-request.service.ts",
+      "summary": "Extracted P-9 loadPendingJoinRequestForLead helper (shared by approve/reject use cases via injected callback). TeamJoinRequestService.submitRequest, approveRequest, rejectRequest delegate to respective use cases. Query/cancel/resolve helpers remain in service."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/teams.router.ts",
+      "summary": "Documented BC-11/P-9 delegation on submitTeamRequest, approveTeamRequest, rejectTeamRequest endpoints; router continues to call TeamJoinRequestService which forwards to use cases."
+    }
+  ],
+  "verification": {
+    "submitTeamRequest_delegates_to_use_case": true,
+    "approveTeamRequest_delegates_to_use_case": true,
+    "rejectTeamRequest_delegates_to_use_case": true,
+    "approve_reject_use_loadPendingJoinRequestForLead": true,
+    "p9_load_pending_duplication_retired": true,
+    "tsc_errors_in_changed_files": 0,
+    "lint_errors_in_changed_files": 0
+  },
+  "success_criteria": {
+    "teams_submit_approve_reject_delegate": true,
+    "P-9_retirement_met": true
+  },
+  "notes": "Use cases not registered in _bootstrap.ts (outside write_set). communities.router still calls TeamJoinRequestService.submitRequest which forwards to SubmitTeamJoinRequestUseCase. Pattern mirrors p6a-team-invitation-helpers (P-8)."
+}
