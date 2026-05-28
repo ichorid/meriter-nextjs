@@ -19,6 +19,7 @@ import { createAcceptCommunityInviteUseCase } from '../../application/use-cases/
 import { createLeaveCommunityUseCase } from '../../application/use-cases/communities/leave-community.use-case';
 import { createListCommunityMembersUseCase } from '../../application/use-cases/communities/list-community-members.use-case';
 import { createUpdateCommunitySettingsUseCase } from '../../application/use-cases/communities/update-community-settings.use-case';
+import { createGetFutureVisionsFeedUseCase } from '../../application/use-cases/communities/get-future-visions-feed.use-case';
 
 export const communitiesRouter = router({
   /**
@@ -212,7 +213,11 @@ export const communitiesRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return ctx.communityService.getFutureVisions({
+      return createGetFutureVisionsFeedUseCase({
+        communityService: ctx.communityService,
+        publicationService: ctx.publicationService,
+        documentService: ctx.documentService,
+      }).execute({
         page: input.page,
         pageSize: input.pageSize,
         tags: input.tags,
