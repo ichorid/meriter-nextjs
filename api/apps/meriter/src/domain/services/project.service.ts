@@ -17,6 +17,14 @@ import { TicketService } from './ticket.service';
 import { NotificationService } from './notification.service';
 import { ProjectParentLinkRequestService } from './project-parent-link-request.service';
 import { ProjectPayoutService } from './project-payout.service';
+import {
+  createExecuteProjectPayoutUseCase,
+  ExecuteProjectPayoutUseCase,
+} from '../../application/use-cases/projects/execute-project-payout.use-case';
+import {
+  createInvestInProjectUseCase,
+  InvestInProjectUseCase,
+} from '../../application/use-cases/projects/invest-in-project.use-case';
 import type { Community, ProjectInvestmentEntry } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -91,6 +99,8 @@ export interface ProjectWithDetails {
 @Injectable()
 export class ProjectService {
   private readonly logger = new Logger(ProjectService.name);
+  private readonly investInProjectUseCase: InvestInProjectUseCase;
+  private readonly executeProjectPayoutUseCase: ExecuteProjectPayoutUseCase;
 
   constructor(
     private readonly communityService: CommunityService,
@@ -105,7 +115,17 @@ export class ProjectService {
     private readonly notificationService: NotificationService,
     private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
     private readonly projectPayoutService: ProjectPayoutService,
-  ) {}
+  ) {
+    this.investInProjectUseCase = createInvestInProjectUseCase({
+      communityService: this.communityService,
+      communityWalletService: this.communityWalletService,
+      walletService: this.walletService,
+    });
+    this.executeProjectPayoutUseCase = createExecuteProjectPayoutUseCase({
+      projectPayoutService: this.projectPayoutService,
+      userCommunityRoleService: this.userCommunityRoleService,
+    });
+  }
 
   private async createPersonalProjectAndSetup(
     userId: string,
@@ -529,7 +549,7 @@ export class ProjectService {
       await this.postClosingService.closePost(postId, 'manual');
     }
 
-    await this.projectPayoutService.executePayoutAll(projectId, leadUserId, { globalRole });
+    await this.executeProjectPayoutUseCase.executeAll(projectId, leadUserId, { globalRole });
 
     await this.communityService.updateCommunity(projectId, {
       projectStatus: 'archived',
@@ -896,34 +916,9 @@ export class ProjectService {
     return { balance: wallet.balance, mode: 'member_topup' };
   }
 
+  /** Delegates to InvestInProjectUseCase (BC-08). */
   async investInProject(userId: string, projectId: string, amount: number): Promise<void> {
-    if (amount < 1 || !Number.isInteger(amount)) {
-      throw new BadRequestException('Amount must be a positive integer');
-    }
-    const project = await this.communityService.getCommunity(projectId);
-    if (!project?.isProject) {
-      throw new NotFoundException('Project not found');
-    }
-    if (project.projectStatus === 'archived') {
-      throw new BadRequestException('Cannot invest in an archived project');
-    }
-    if (project.settings?.investingEnabled !== true) {
-      throw new BadRequestException('Investing is not enabled for this project');
-    }
-    await this.walletService.addTransaction(
-      userId,
-      GLOBAL_COMMUNITY_ID,
-      'debit',
-      amount,
-      'personal',
-      'project_investment',
-      projectId,
-      DEFAULT_CURRENCY,
-      `Investment in project ${project.name}`,
-    );
-    await this.communityService.appendProjectInvestment(projectId, userId, amount);
-    await this.communityWalletService.createWallet(projectId);
-    await this.communityWalletService.deposit(projectId, amount, 'investment');
+    return this.investInProjectUseCase.execute({ userId, projectId, amount });
   }
 
   async listProjectInvestments(
@@ -964,21 +959,26 @@ export class ProjectService {
     return enriched;
   }
 
+  /** Delegates to ExecuteProjectPayoutUseCase (BC-08). */
   async previewProjectPayout(projectId: string, amount: number, viewerUserId: string) {
-    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
-    if (!role) {
-      throw new ForbiddenException('Only project members can preview payouts');
-    }
-    return this.projectPayoutService.previewPayout(projectId, amount);
+    return this.executeProjectPayoutUseCase.preview({
+      projectId,
+      amount,
+      viewerUserId,
+    });
   }
 
+  /** Delegates to ExecuteProjectPayoutUseCase (BC-08). */
   async executeProjectPayout(
     projectId: string,
     amount: number,
     actorUserId: string,
     globalRole?: string | null,
   ) {
-    return this.projectPayoutService.executePayout(projectId, amount, actorUserId, {
+    return this.executeProjectPayoutUseCase.execute({
+      projectId,
+      amount,
+      actorUserId,
       globalRole,
     });
   }
