@@ -35,6 +35,15 @@ import {
   CreatePublicationUseCase,
   type CreatePublicationExecuteOptions,
 } from '../../application/use-cases/publications/create-publication.use-case';
+import {
+  createPublishProjectToBirzhaUseCase,
+  PublishProjectToBirzhaUseCase,
+  type PublishSourceEntityToBirzhaParams,
+} from '../../application/use-cases/projects/publish-project-to-birzha.use-case';
+import {
+  createPublishCommunityToBirzhaUseCase,
+  PublishCommunityToBirzhaUseCase,
+} from '../../application/use-cases/communities/publish-community-to-birzha.use-case';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -87,6 +96,8 @@ export interface CreatePublicationDto {
 export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
   private readonly createPublicationUseCase: CreatePublicationUseCase;
+  private readonly publishProjectToBirzhaUseCase: PublishProjectToBirzhaUseCase;
+  private readonly publishCommunityToBirzhaUseCase: PublishCommunityToBirzhaUseCase;
 
   constructor(
     @InjectModel(PublicationSchemaClass.name)
@@ -115,6 +126,18 @@ export class PublicationService {
       communityWalletService: this.communityWalletService,
       walletService: this.walletService,
     });
+
+    const birzhaPublishDeps = {
+      publicationModel: this.publicationModel,
+      eventBus: this.eventBus,
+      communityService: this.communityService,
+      userService: this.userService,
+      communityWalletService: this.communityWalletService,
+      walletService: this.walletService,
+    };
+    this.publishProjectToBirzhaUseCase = createPublishProjectToBirzhaUseCase(birzhaPublishDeps);
+    this.publishCommunityToBirzhaUseCase =
+      createPublishCommunityToBirzhaUseCase(birzhaPublishDeps);
   }
 
   async createPublication(
@@ -151,226 +174,50 @@ export class PublicationService {
 
   /**
    * Birzha (МД) post from a project or eligible local community.
-   * postCost from CommunityWallet(sourceEntityId); rights validated here (source admin).
+   * postCost from CommunityWallet(sourceEntityId); rights validated in use cases (inv-07/inv-08).
    */
-  async publishSourceEntityToBirzha(params: {
-    sourceEntityId: string;
-    sourceEntityType: 'project' | 'community';
-    callerId: string;
-    content: string;
-    type: 'text' | 'image' | 'video';
-    title: string;
-    description?: string;
-    images?: string[];
-    valueTags?: string[];
-    hashtags?: string[];
-    beneficiaryId?: string;
-    /** Default: deduct postCost from source CommunityWallet. */
-    postCostFunding?: 'source_community_wallet' | 'caller_global_wallet';
-    /** When false, create post without investing (project or community source). */
-    investingEnabled?: boolean;
-    /** project: share when investing on; community: share when investing on Birzha */
-    investorSharePercent?: number;
-    ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
-    stopLoss?: number;
-    noAuthorWalletSpend?: boolean;
-  }): Promise<{ id: string }> {
-    const birzha = await this.communityService.getCommunityByTypeTag(
-      'marathon-of-good',
-    );
-    if (!birzha) {
-      throw new NotFoundException(
-        'Birzha community (marathon-of-good) not found',
-      );
-    }
-
-    const source = await this.communityService.getCommunity(params.sourceEntityId);
-    if (!source) {
-      throw new NotFoundException('Source community not found');
-    }
-
-    if (
-      !(await this.communityService.isUserAdmin(
-        params.sourceEntityId,
-        params.callerId,
-      ))
-    ) {
-      throw new ForbiddenException(
-        'You are not allowed to publish on behalf of this source',
-      );
-    }
-
+  async publishSourceEntityToBirzha(
+    params: PublishSourceEntityToBirzhaParams,
+  ): Promise<{ id: string }> {
     if (params.sourceEntityType === 'project') {
-      if (!source.isProject) {
-        throw new BadRequestException('Source is not a project community');
-      }
-    } else {
-      this.communityService.assertEligibleCommunitySourceForBirzhaPublish(
-        source,
-      );
+      return this.publishProjectToBirzhaUseCase.execute({
+        callerId: params.callerId,
+        projectId: params.sourceEntityId,
+        content: params.content,
+        type: params.type,
+        title: params.title,
+        description: params.description,
+        images: params.images,
+        valueTags: params.valueTags,
+        hashtags: params.hashtags,
+        beneficiaryId: params.beneficiaryId,
+        postCostFunding: params.postCostFunding,
+        investingEnabled: params.investingEnabled,
+        investorSharePercent: params.investorSharePercent,
+        ttlDays: params.ttlDays,
+        stopLoss: params.stopLoss,
+        noAuthorWalletSpend: params.noAuthorWalletSpend,
+      });
     }
 
-    if (params.beneficiaryId) {
-      const beneficiaryUser = await this.userService.getUserById(
-        params.beneficiaryId,
-      );
-      if (!beneficiaryUser) {
-        throw new BadRequestException('Beneficiary must be a registered user');
-      }
-    }
-
-    const minPct = birzha.settings?.investorShareMin ?? 1;
-    const maxPct = birzha.settings?.investorShareMax ?? 99;
-    const requireTTLForInvestPosts =
-      birzha.settings?.requireTTLForInvestPosts ?? false;
-
-    let investorSharePercent = 0;
-    let investingEnabled = false;
-
-    if (params.sourceEntityType === 'project') {
-      if (params.investingEnabled === false) {
-        investingEnabled = false;
-        investorSharePercent = 0;
-      } else {
-        const raw =
-          params.investorSharePercent ??
-          source.investorSharePercent ??
-          minPct;
-        investorSharePercent = raw;
-        if (investorSharePercent < minPct || investorSharePercent > maxPct) {
-          throw new BadRequestException(
-            `investorSharePercent must be between ${minPct} and ${maxPct}`,
-          );
-        }
-        investingEnabled = investorSharePercent > 0;
-      }
-    } else {
-      // Local community source: same contract rules as project Birzha posts
-      if (params.investingEnabled === false) {
-        investingEnabled = false;
-        investorSharePercent = 0;
-      } else {
-        const raw = params.investorSharePercent ?? minPct;
-        investorSharePercent = raw;
-        if (investorSharePercent < minPct || investorSharePercent > maxPct) {
-          throw new BadRequestException(
-            `investorSharePercent must be between ${minPct} and ${maxPct}`,
-          );
-        }
-        investingEnabled = investorSharePercent > 0;
-      }
-    }
-
-    if (requireTTLForInvestPosts && investingEnabled) {
-      if (params.ttlDays == null || params.ttlDays === undefined) {
-        throw new BadRequestException(
-          'TTL is required for posts with investing on Birzha',
-        );
-      }
-    }
-
-    const stopLoss = params.stopLoss ?? 0;
-    if (stopLoss < 0) {
-      throw new BadRequestException('stopLoss must be 0 or greater');
-    }
-
-    const id = PublicationId.generate().getValue();
-    const postCost = birzha.settings?.postCost ?? 1;
-    const funding =
-      params.postCostFunding ?? 'source_community_wallet';
-
-    await this.communityWalletService.createWallet(params.sourceEntityId);
-
-    if (postCost > 0) {
-      if (funding === 'source_community_wallet') {
-        await this.communityWalletService.deductBalance(
-          params.sourceEntityId,
-          postCost,
-          'birzha_post_cost',
-        );
-      } else {
-        const wallet = await this.walletService.getWallet(
-          params.callerId,
-          GLOBAL_COMMUNITY_ID,
-        );
-        const balance = wallet ? wallet.getBalance() : 0;
-        if (balance < postCost) {
-          throw new BadRequestException(
-            `Insufficient wallet merits. Available: ${balance}, Required: ${postCost}`,
-          );
-        }
-        const globalCommunity =
-          await this.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
-        const feeCurrency = globalCommunity?.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.addTransaction(
-          params.callerId,
-          GLOBAL_COMMUNITY_ID,
-          'debit',
-          postCost,
-          'personal',
-          'publication_creation',
-          id,
-          feeCurrency,
-          'Payment for publishing to Birzha (personal wallet)',
-        );
-      }
-    }
-
-    const now = new Date();
-    const birzhaId = birzha.id as string;
-    const ttlDays = params.ttlDays ?? null;
-    const ttlExpiresAt =
-      ttlDays != null && ttlDays > 0
-        ? new Date(now.getTime() + ttlDays * 24 * 60 * 60 * 1000)
-        : null;
-
-    await this.publicationModel.create({
-      id,
-      communityId: birzhaId,
-      authorId: params.callerId,
-      authorKind: 'community',
-      authoredCommunityId: params.sourceEntityId,
-      publishedByUserId: params.callerId,
-      sourceEntityId: params.sourceEntityId,
-      sourceEntityType: params.sourceEntityType,
-      beneficiaryId: params.beneficiaryId,
+    return this.publishCommunityToBirzhaUseCase.execute({
+      callerId: params.callerId,
+      communityId: params.sourceEntityId,
       content: params.content,
       type: params.type,
       title: params.title,
       description: params.description,
-      hashtags: params.hashtags ?? [],
-      categories: [],
-      valueTags: params.valueTags ?? [],
-      images: params.images ?? [],
-      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
-      investingEnabled,
-      investorSharePercent: investingEnabled ? investorSharePercent : undefined,
-      investmentPool: 0,
-      investmentPoolTotal: 0,
-      investments: [],
-      ttlDays: ttlDays ?? undefined,
-      ttlExpiresAt,
-      stopLoss,
-      noAuthorWalletSpend: params.noAuthorWalletSpend ?? false,
-      status: 'active',
-      postType: 'basic',
-      isProject: false,
-      createdAt: now,
-      updatedAt: now,
+      images: params.images,
+      valueTags: params.valueTags,
+      hashtags: params.hashtags,
+      beneficiaryId: params.beneficiaryId,
+      postCostFunding: params.postCostFunding,
+      investingEnabled: params.investingEnabled,
+      investorSharePercent: params.investorSharePercent,
+      ttlDays: params.ttlDays,
+      stopLoss: params.stopLoss,
+      noAuthorWalletSpend: params.noAuthorWalletSpend,
     });
-
-    await this.eventBus.publish(
-      new PublicationCreatedEvent(id, params.callerId, birzhaId),
-    );
-
-    this.logger.log(
-      `Birzha publication from ${params.sourceEntityType} ${params.sourceEntityId}: ${id}`,
-    );
-    return { id };
   }
 
   /** Thin wrapper; delegates to {@link publishSourceEntityToBirzha}. */
