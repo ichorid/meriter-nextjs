@@ -283,7 +283,9 @@ export class QuotaResetService {
   }
 
   /**
-   * Cron job to reset all communities' quota at midnight UTC
+   * Midnight UTC quota reset (inv-21).
+   * Target schedule: infrastructure/cron/quota-reset.cron.ts — interim @Cron here until
+   * meriter.module imports CronInfrastructureModule and domain decorator is removed.
    */
   @Cron('0 0 * * *')
   async resetAllCommunitiesQuotaAtMidnight(): Promise<void> {

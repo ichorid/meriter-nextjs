@@ -14,7 +14,9 @@ import { WalletService } from './wallet.service';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * D-5, D-6, D-7: Scheduled jobs for TTL auto-close, TTL warning, and inactivity close.
+ * D-5, D-6, D-7: TTL auto-close, TTL warning, and inactivity close.
+ * inv-21: cron schedules migrate to infrastructure/cron/post-closing.cron.ts — interim @Cron
+ * here until meriter.module imports CronInfrastructureModule.
  */
 @Injectable()
 export class PostClosingCronService {
