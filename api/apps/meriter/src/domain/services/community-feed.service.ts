@@ -12,6 +12,7 @@ import {
 
 export type { FeedOptions };
 
+/** Community hub feed; item mapping is canonical in `adapters/mappers/entity-mappers.ts` (P-2). */
 @Injectable()
 export class CommunityFeedService {
   private readonly getCommunityFeedUseCase: GetCommunityFeedUseCase;

@@ -1,8 +1,4 @@
-import type {
-  FeedItem,
-  PollFeedItem,
-  PublicationFeedItem,
-} from '@meriter/shared-types';
+import type { FeedItem } from '@meriter/shared-types';
 import { EntityMappers } from '../../../adapters/mappers/entity-mappers';
 import type { Publication } from '../../../domain/aggregates/publication/publication.entity';
 import type { Poll } from '../../../domain/aggregates/poll/poll.entity';
@@ -12,10 +8,6 @@ import type { FavoriteService } from '../../../domain/services/favorite.service'
 import type { PollService } from '../../../domain/services/poll.service';
 import type { PublicationService } from '../../../domain/services/publication.service';
 import type { UserService } from '../../../domain/services/user.service';
-import {
-  mapInvestmentsForPublicationFeed,
-  type RawPublicationInvestment,
-} from '../../../domain/services/feed-item-investments.mapper';
 
 export interface FeedOptions {
   page?: number;
@@ -34,184 +26,15 @@ export interface FeedOptions {
   valueTags?: string[];
 }
 
-type ApiMetaParty = {
-  id?: string;
-  name: string;
-  username?: string;
-  photoUrl?: string;
-};
+/** @deprecated Use EntityMappers.sortFeedItems */
+export const sortFeedItems = EntityMappers.sortFeedItems.bind(EntityMappers);
 
-type ApiMappedMeta = {
-  author: ApiMetaParty;
-  publishedBy?: ApiMetaParty;
-  beneficiary?: ApiMetaParty;
-  origin?: { telegramChatName?: string };
-};
+/** @deprecated Use EntityMappers.mapPublicationsAndPollsToFeedItems */
+export const mapPublicationsAndPollsToFeedItems =
+  EntityMappers.mapPublicationsAndPollsToFeedItems.bind(EntityMappers);
 
-function feedMetaFromApiMeta(meta: ApiMappedMeta): PublicationFeedItem['meta'] {
-  return {
-    author: {
-      name: meta.author.name,
-      username: meta.author.username,
-      photoUrl: meta.author.photoUrl,
-    },
-    ...(meta.publishedBy && { publishedBy: meta.publishedBy }),
-    ...(meta.beneficiary && {
-      beneficiary: {
-        name: meta.beneficiary.name,
-        username: meta.beneficiary.username,
-        photoUrl: meta.beneficiary.photoUrl,
-      },
-    }),
-    ...(meta.origin && { origin: meta.origin }),
-  };
-}
-
-function toPublicationFeedItem(
-  publication: Publication,
-  mapped: ReturnType<typeof EntityMappers.mapPublicationToApi>,
-): PublicationFeedItem {
-  const snapshot = publication.toSnapshot();
-  return {
-    id: mapped.id,
-    type: 'publication',
-    communityId: mapped.communityId,
-    authorId: mapped.authorId,
-    beneficiaryId: mapped.beneficiaryId,
-    content: mapped.content,
-    slug: mapped.slug,
-    title: mapped.title,
-    description: mapped.description,
-    postType: mapped.postType,
-    isProject: mapped.isProject,
-    hashtags: mapped.hashtags ?? [],
-    categories: mapped.categories ?? [],
-    valueTags: mapped.valueTags ?? [],
-    imageUrl: snapshot.imageUrl || undefined,
-    images: mapped.images,
-    impactArea: mapped.impactArea,
-    stage: mapped.stage,
-    beneficiaries: mapped.beneficiaries,
-    methods: mapped.methods,
-    helpNeeded: mapped.helpNeeded,
-    metrics: {
-      upvotes: mapped.metrics.upvotes,
-      downvotes: mapped.metrics.downvotes,
-      score: mapped.metrics.score,
-      commentCount: mapped.metrics.commentCount,
-    },
-    meta: feedMetaFromApiMeta(mapped.meta as ApiMappedMeta),
-    ...(mapped.authorKind === 'community' &&
-      mapped.authoredCommunityId && {
-        authorKind: 'community' as const,
-        authoredCommunityId: mapped.authoredCommunityId,
-        publishedByUserId: mapped.publishedByUserId,
-      }),
-    deleted: mapped.deleted ?? false,
-    deletedAt: mapped.deletedAt,
-    createdAt: mapped.createdAt,
-    updatedAt: mapped.updatedAt,
-    investingEnabled: snapshot.investingEnabled ?? false,
-    investorSharePercent: snapshot.investorSharePercent,
-    investmentPool: snapshot.investmentPool ?? 0,
-    investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
-    investments: mapInvestmentsForPublicationFeed(
-      snapshot.investments as readonly RawPublicationInvestment[] | undefined,
-    ),
-    stopLoss: snapshot.stopLoss ?? 0,
-    noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
-    sourceEntityId: snapshot.sourceEntityId,
-    sourceEntityType: snapshot.sourceEntityType,
-  };
-}
-
-function toPollFeedItem(mapped: ReturnType<typeof EntityMappers.mapPollToApi>): PollFeedItem {
-  return {
-    id: mapped.id,
-    type: 'poll',
-    communityId: mapped.communityId,
-    authorId: mapped.authorId,
-    question: mapped.question,
-    description: mapped.description,
-    slug: mapped.id,
-    options: mapped.options,
-    expiresAt: mapped.expiresAt,
-    isActive: mapped.isActive,
-    metrics: {
-      totalCasts: mapped.metrics.totalCasts,
-      casterCount: mapped.metrics.casterCount,
-      totalAmount: mapped.metrics.totalAmount,
-    },
-    meta: feedMetaFromApiMeta(mapped.meta as ApiMappedMeta),
-    createdAt: mapped.createdAt,
-    updatedAt: mapped.updatedAt,
-  };
-}
-
-export function sortFeedItems(
-  items: FeedItem[],
-  sortBy: 'createdAt' | 'score',
-): FeedItem[] {
-  return [...items].sort((a, b) => {
-    if (sortBy === 'score') {
-      const scoreA =
-        a.type === 'publication' ? a.metrics.score : a.metrics.totalAmount || 0;
-      const scoreB =
-        b.type === 'publication' ? b.metrics.score : b.metrics.totalAmount || 0;
-      return scoreB - scoreA;
-    }
-    const dateA = new Date(a.createdAt).getTime();
-    const dateB = new Date(b.createdAt).getTime();
-    return dateB - dateA;
-  });
-}
-
-/**
- * Map domain publications and polls to unified feed DTOs via EntityMappers (P-2).
- */
-export function mapPublicationsAndPollsToFeedItems(
-  publications: Publication[],
-  polls: Poll[],
-  usersMap: Map<string, unknown>,
-  communitiesMap: Map<string, unknown>,
-  logicalCommunitiesMap: Map<string, { id: string; name?: string; avatarUrl?: string }>,
-  sortBy?: 'createdAt' | 'score',
-): FeedItem[] {
-  const publicationFeedItems: PublicationFeedItem[] = publications.map((pub) => {
-    const snapshot = pub.toSnapshot();
-    const logicalComm =
-      snapshot.authorKind === 'community' && snapshot.authoredCommunityId
-        ? logicalCommunitiesMap.get(snapshot.authoredCommunityId)
-        : undefined;
-    const mapped = EntityMappers.mapPublicationToApi(
-      pub,
-      usersMap as Map<string, any>,
-      communitiesMap as Map<string, any>,
-      {
-        logicalAuthorCommunity: logicalComm
-          ? {
-              id: snapshot.authoredCommunityId!,
-              name: logicalComm.name,
-              avatarUrl: logicalComm.avatarUrl,
-            }
-          : null,
-      },
-    );
-    return toPublicationFeedItem(pub, mapped);
-  });
-
-  const pollFeedItems: PollFeedItem[] = polls.map((poll) => {
-    const mapped = EntityMappers.mapPollToApi(
-      poll,
-      usersMap as Map<string, any>,
-      communitiesMap as Map<string, any>,
-    );
-    return toPollFeedItem(mapped);
-  });
-
-  const allItems: FeedItem[] = [...publicationFeedItems, ...pollFeedItems];
-  return sortBy ? sortFeedItems(allItems, sortBy) : allItems;
-}
+/** @deprecated Use EntityMappers.buildFeedItemLookupMaps */
+export const buildFeedItemLookupMaps = EntityMappers.buildFeedItemLookupMaps.bind(EntityMappers);
 
 export async function buildDomainFeedMaps(
   publications: Publication[],
@@ -287,35 +110,6 @@ export async function buildDomainFeedMaps(
   );
 
   return { usersMap, communitiesMap, logicalCommunitiesMap };
-}
-
-export function buildFeedItemLookupMaps(
-  publications: Publication[],
-  polls: Poll[],
-  usersMap: Map<string, unknown>,
-  communitiesMap: Map<string, unknown>,
-  logicalCommunitiesMap: Map<string, { id: string; name?: string; avatarUrl?: string }>,
-): {
-  publicationMap: Map<string, PublicationFeedItem>;
-  pollMap: Map<string, PollFeedItem>;
-} {
-  const items = mapPublicationsAndPollsToFeedItems(
-    publications,
-    polls,
-    usersMap,
-    communitiesMap,
-    logicalCommunitiesMap,
-  );
-  const publicationMap = new Map<string, PublicationFeedItem>();
-  const pollMap = new Map<string, PollFeedItem>();
-  for (const item of items) {
-    if (item.type === 'publication') {
-      publicationMap.set(item.id, item);
-    } else {
-      pollMap.set(item.id, item);
-    }
-  }
-  return { publicationMap, pollMap };
 }
 
 export type GetCommunityFeedDeps = {
@@ -417,7 +211,7 @@ export class GetCommunityFeedUseCase {
         this.deps.communityService,
       );
 
-    const allFeedItems = mapPublicationsAndPollsToFeedItems(
+    const allFeedItems = EntityMappers.mapPublicationsAndPollsToFeedItems(
       publications,
       polls,
       usersMap,
