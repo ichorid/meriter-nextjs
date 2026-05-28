@@ -1,5 +1,9 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
+import {
+  createEstablishSessionUseCase,
+  FakeAuthDisabledError,
+} from '../../application/use-cases/auth/establish-session.use-case';
 
 export const authRouter = router({
   /**
@@ -31,31 +35,23 @@ export const authRouter = router({
    * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
-    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
-    if (!fakeDataMode) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Fake data mode is not enabled',
-      });
+    const establishSession = createEstablishSessionUseCase({
+      cookieManager: ctx.cookieManager,
+      configService: ctx.configService,
+      authService: ctx.authService,
+    });
+
+    try {
+      return await establishSession.authenticateFakeUser(ctx.req, ctx.res);
+    } catch (error) {
+      if (error instanceof FakeAuthDisabledError) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: error.message,
+        });
+      }
+      throw error;
     }
-
-    let fakeUserId = ctx.req.cookies?.fake_user_id;
-
-    if (!fakeUserId) {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 9);
-      fakeUserId = `fake_user_${timestamp}_${random}`;
-    }
-
-    const result = await ctx.authService.authenticateFakeUser(fakeUserId);
-
-    ctx.cookieManager.establishJwtAuth(ctx.res, result.jwt, ctx.req);
-    ctx.cookieManager.setAuthSessionCookie(ctx.res, 'fake_user_id', fakeUserId, ctx.req);
-
-    return {
-      user: result.user,
-      hasPendingCommunities: result.hasPendingCommunities,
-    };
   }),
 
   /**
@@ -65,30 +61,22 @@ export const authRouter = router({
    * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
-    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
-    if (!fakeDataMode) {
-      throw new TRPCError({
-        code: 'FORBIDDEN',
-        message: 'Fake data mode is not enabled',
-      });
+    const establishSession = createEstablishSessionUseCase({
+      cookieManager: ctx.cookieManager,
+      configService: ctx.configService,
+      authService: ctx.authService,
+    });
+
+    try {
+      return await establishSession.authenticateFakeSuperadmin(ctx.req, ctx.res);
+    } catch (error) {
+      if (error instanceof FakeAuthDisabledError) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: error.message,
+        });
+      }
+      throw error;
     }
-
-    let fakeUserId = ctx.req.cookies?.fake_superadmin_id;
-
-    if (!fakeUserId) {
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 9);
-      fakeUserId = `fake_superadmin_${timestamp}_${random}`;
-    }
-
-    const result = await ctx.authService.authenticateFakeSuperadmin(fakeUserId);
-
-    ctx.cookieManager.establishJwtAuth(ctx.res, result.jwt, ctx.req);
-    ctx.cookieManager.setAuthSessionCookie(ctx.res, 'fake_superadmin_id', fakeUserId, ctx.req);
-
-    return {
-      user: result.user,
-      hasPendingCommunities: result.hasPendingCommunities,
-    };
   }),
 });
