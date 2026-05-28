@@ -834,6 +834,10 @@ export const UpdateCommunityDtoSchema = z.object({
   futureVisionCover: z.string().url().optional(),
 }).passthrough();
 
+export {
+  UpdateTappalkaSettingsInputSchema,
+} from './tappalka';
+
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
@@ -1232,6 +1236,7 @@ export type CreatePollCastDto = z.infer<typeof CreatePollCastDtoSchema>;
 export type TransferDto = z.infer<typeof TransferDtoSchema>;
 export type WithdrawDto = z.infer<typeof WithdrawDtoSchema>;
 export type UpdateCommunityDto = z.infer<typeof UpdateCommunityDtoSchema>;
+export type { UpdateTappalkaSettingsInput } from './tappalka';
 export type CreateCommunityDto = z.infer<typeof CreateCommunityDtoSchema>;
 export type UpdatePublicationDto = z.infer<typeof UpdatePublicationDtoSchema>;
 export type VoteDirectionDto = z.infer<typeof VoteDirectionDtoSchema>;
