@@ -161,19 +161,19 @@ export type InvestmentEarningsHistoryEntry = z.infer<
   typeof InvestmentEarningsHistoryEntrySchema
 >;
 
-export const InvestmentSchema = z.object({
-  investorId: z.string(),
-  amount: z.number().int().min(0),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  /** F-1: Accumulated total received by this investor from this post. */
-  totalEarnings: z.number().min(0).default(0),
-  /** F-1: Per-event history (withdrawal share, pool return, close). */
-  earningsHistory: z
-    .array(InvestmentEarningsHistoryEntrySchema)
-    .optional()
-    .default([]),
-});
+export const InvestmentSchema = TimestampsSchema.merge(
+  z.object({
+    investorId: z.string(),
+    amount: z.number().int().min(0),
+    /** F-1: Accumulated total received by this investor from this post. */
+    totalEarnings: z.number().min(0).default(0),
+    /** F-1: Per-event history (withdrawal share, pool return, close). */
+    earningsHistory: z
+      .array(InvestmentEarningsHistoryEntrySchema)
+      .optional()
+      .default([]),
+  }),
+);
 
 export const InvestmentContractSchema = z.object({
   investorSharePercent: z.number().int().min(1).max(99),
@@ -281,15 +281,15 @@ export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export const SourceEntityTypeSchema = z.enum(["project", "community"]);
 export type SourceEntityType = z.infer<typeof SourceEntityTypeSchema>;
 
-export const CommunityWalletSchema = z.object({
-  id: z.string(),
-  communityId: z.string(),
-  balance: z.number().int().min(0).default(0),
-  totalReceived: z.number().int().min(0).default(0),
-  totalDistributed: z.number().int().min(0).default(0),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
+export const CommunityWalletSchema = TimestampsSchema.merge(
+  z.object({
+    id: z.string(),
+    communityId: z.string(),
+    balance: z.number().int().min(0).default(0),
+    totalReceived: z.number().int().min(0).default(0),
+    totalDistributed: z.number().int().min(0).default(0),
+  }),
+);
 export type CommunityWallet = z.infer<typeof CommunityWalletSchema>;
 
 export const PollOptionSchema = z.object({
@@ -545,20 +545,21 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   permissions: ResourcePermissionsSchema.optional(),
 });
 
-export const VoteSchema = PolymorphicReferenceSchema.extend({
-  id: z.string(),
-  userId: z.string(),
-  amountQuota: z.number().int().min(0).default(0),
-  amountWallet: z.number().int().min(0).default(0),
-  direction: z.enum(["up", "down"]), // Explicit vote direction: upvote or downvote
-  communityId: z.string(),
-  comment: z.string().max(5000), // Required comment text attached to vote
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().optional(), // Optional for votes
-}).refine((data) => data.amountQuota > 0 || data.amountWallet > 0, {
-  message:
-    "At least one of amountQuota or amountWallet must be greater than zero",
-});
+export const VoteSchema = PolymorphicReferenceSchema.merge(TimestampsSchema)
+  .extend({
+    id: z.string(),
+    userId: z.string(),
+    amountQuota: z.number().int().min(0).default(0),
+    amountWallet: z.number().int().min(0).default(0),
+    direction: z.enum(["up", "down"]), // Explicit vote direction: upvote or downvote
+    communityId: z.string(),
+    comment: z.string().max(5000), // Required comment text attached to vote
+    updatedAt: z.string().optional(), // Optional for votes
+  })
+  .refine((data) => data.amountQuota > 0 || data.amountWallet > 0, {
+    message:
+      "At least one of amountQuota or amountWallet must be greater than zero",
+  });
 
 export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
