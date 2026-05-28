@@ -1,0 +1,38 @@
+{
+  "work_unit_id": "p4-poll-use-cases",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/polls/create-poll.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/polls/cast-poll.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/polls.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/polls/create-poll.use-case.ts",
+      "summary": "Added CreatePollUseCase (BC-07): future-vision guard, pollCost balance check against GLOBAL_COMMUNITY_ID wallet, poll persistence, and inv-01 poll_creation fee debit via WalletService. Exposes createCreatePollUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/polls/cast-poll.use-case.ts",
+      "summary": "Added CastPollUseCase (BC-07): inv-02 quota-first split via GetRemainingQuotaUseCase.forPublicationCreate and role/quotaRecipients gates; inv-01 wallet debit (poll_cast) before cast; poll aggregate update. Exposes createCastPollUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/polls.router.ts",
+      "summary": "polls.create and polls.cast delegate to use cases; removed inline getRemainingQuota helper and duplicated fee/quota orchestration. Router retains permission check (create) and API enrichment on create."
+    }
+  ],
+  "verification": {
+    "polls_create_delegates_to_use_case": true,
+    "polls_cast_delegates_to_use_case": true,
+    "inv_01_global_poll_creation_fee_burn": true,
+    "inv_01_poll_cast_wallet_debit": true,
+    "inv_02_quota_priority_on_cast": true,
+    "tsc_changed_files": "no errors on changed paths"
+  },
+  "success_criteria": {
+    "polls_create_and_cast_delegate": true,
+    "inv_01_fee_burn_on_poll_create_cast": true,
+    "inv_02_quota_priority_on_cast": true
+  },
+  "notes": "Cast quota path uses GetRemainingQuotaUseCase.forPublicationCreate (same aggregation as former router helper: votes + poll_casts + quota_usage). Poll create fee remains global-wallet-only (no quota), matching existing behavior."
+}
