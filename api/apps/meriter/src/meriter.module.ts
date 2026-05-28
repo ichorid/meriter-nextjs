@@ -22,6 +22,7 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 // Import the new domain module
 import { DomainModule } from './domain.module';
 import { TrpcModule } from './trpc/trpc.module';
+import { AdaptersModule } from './adapters/adapters.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { TrpcModule } from './trpc/trpc.module';
     CommonServicesModule, // Feature flags and common services
     ApiV1Module,
     DomainModule, // Domain layer with domain services
+    AdaptersModule, // Adapters layer (Phase 2 scaffold)
     UpdatesConductorsModule,
     QuotaResetModule,
     PostClosingCronModule,
