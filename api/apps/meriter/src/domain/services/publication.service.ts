@@ -30,6 +30,11 @@ import { CommunityWalletService } from './community-wallet.service';
 import { WalletService } from './wallet.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { buildHubPostsFeedMongoQuery } from '../common/helpers/hub-posts-feed.helper';
+import {
+  createCreatePublicationUseCase,
+  CreatePublicationUseCase,
+  type CreatePublicationExecuteOptions,
+} from '../../application/use-cases/publications/create-publication.use-case';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -50,6 +55,9 @@ export interface CreatePublicationDto {
   sourceEntityType?: 'project' | 'community';
   quotaAmount?: number;
   walletAmount?: number;
+  /** When true, use case deducts postCost (inv-01). Interim: router still charges unless set. */
+  processPostCost?: boolean;
+  postCostFunding?: 'source_community_wallet' | 'caller_global_wallet';
   // Merged from dev
   impactArea?: string;
   beneficiaries?: string[];
@@ -78,6 +86,7 @@ export interface CreatePublicationDto {
 @Injectable()
 export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
+  private readonly createPublicationUseCase: CreatePublicationUseCase;
 
   constructor(
     @InjectModel(PublicationSchemaClass.name)
@@ -94,150 +103,29 @@ export class PublicationService {
     private communityWalletService: CommunityWalletService,
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
-  ) {}
+  ) {
+    this.createPublicationUseCase = createCreatePublicationUseCase({
+      publicationModel: this.publicationModel,
+      connection: this.mongoose,
+      eventBus: this.eventBus,
+      permissionService: this.permissionService,
+      communityService: this.communityService,
+      userCommunityRoleService: this.userCommunityRoleService,
+      userService: this.userService,
+      communityWalletService: this.communityWalletService,
+      walletService: this.walletService,
+    });
+  }
 
   async createPublication(
     userId: string,
     dto: CreatePublicationDto,
+    options?: CreatePublicationExecuteOptions,
   ): Promise<Publication> {
-    this.logger.log(
-      `Creating publication: user=${userId}, community=${dto.communityId}`,
-    );
-
-    // Validate using value objects
-    const authorId = UserId.fromString(userId);
-    const _communityId = CommunityId.fromString(dto.communityId);
-
-    const community = await this.communityService.getCommunity(dto.communityId);
-    if (community?.isProject) {
-      if (
-        dto.postType !== 'ticket' &&
-        dto.postType !== 'discussion' &&
-        dto.postType !== 'event'
-      ) {
-        throw new BadRequestException(
-          'When creating a post in a project community, postType must be "ticket", "discussion", or "event"',
-        );
-      }
-      const role = await this.userCommunityRoleService.getRole(userId, dto.communityId);
-      if (!role) {
-        throw new BadRequestException('Only project members can create posts');
-      }
-      if (dto.postType === 'ticket' && role.role !== 'lead') {
-        throw new BadRequestException('Only the project lead can create tickets');
-      }
-    }
-
-    if (dto.beneficiaryId) {
-      const beneficiaryUser = await this.userService.getUserById(dto.beneficiaryId);
-      if (!beneficiaryUser) {
-        throw new BadRequestException('Beneficiary must be a registered user');
-      }
-    }
-
-    // Validate array lengths
-    if (dto.beneficiaries && dto.beneficiaries.length > 2) {
-      throw new BadRequestException('beneficiaries array cannot exceed 2 items');
-    }
-    if (dto.methods && dto.methods.length > 3) {
-      throw new BadRequestException('methods array cannot exceed 3 items');
-    }
-    if (dto.helpNeeded && dto.helpNeeded.length > 3) {
-      throw new BadRequestException('helpNeeded array cannot exceed 3 items');
-    }
-
-    const postingAsCommunity =
-      dto.sourceEntityType === 'community' && !!dto.sourceEntityId;
-
-    // Create publication aggregate
-    const publication = Publication.create(
-      UserId.fromString(String(authorId)),
-      CommunityId.fromString(dto.communityId),
-      dto.content,
-      dto.type,
-      {
-        beneficiaryId: dto.beneficiaryId
-          ? UserId.fromString(dto.beneficiaryId)
-          : undefined,
-        hashtags: dto.hashtags || [],
-        categories: dto.categories || [],
-        valueTags: dto.valueTags || [],
-        images: dto.images,
-        videoUrl: dto.videoUrl,
-        postType: dto.postType,
-        isProject: dto.isProject,
-        title: dto.title,
-        description: dto.description,
-        impactArea: dto.impactArea,
-        beneficiaries: dto.beneficiaries,
-        methods: dto.methods,
-        stage: dto.stage,
-        helpNeeded: dto.helpNeeded,
-        sourceEntityId: dto.sourceEntityId,
-        sourceEntityType: dto.sourceEntityType,
-        ...(postingAsCommunity
-          ? {
-              authorKind: 'community' as const,
-              authoredCommunityId: dto.sourceEntityId,
-              publishedByUserId: userId,
-            }
-          : {}),
-      },
-    );
-
-    // Save to database using Mongoose directly
-    // Include additional fields from DTO that are not in the aggregate snapshot
-    const publicationSnapshot = publication.toSnapshot();
-    const createdAt = new Date();
-    const ttlExpiresAt =
-      dto.ttlDays != null && dto.ttlDays > 0
-        ? new Date(createdAt.getTime() + dto.ttlDays * 24 * 60 * 60 * 1000)
-        : dto.ttlExpiresAt ?? null;
-
-    await this.publicationModel.create({
-      ...publicationSnapshot,
-      postType: dto.postType || 'basic',
-      isProject: dto.isProject || false,
-      title: dto.title,
-      description: dto.description,
-      categories: dto.categories || [],
-      investingEnabled: dto.investingEnabled ?? false,
-      investorSharePercent: dto.investorSharePercent,
-      investmentPool: 0,
-      investmentPoolTotal: 0,
-      investments: [],
-      ttlDays: dto.ttlDays ?? null,
-      ttlExpiresAt,
-      stopLoss: dto.stopLoss ?? 0,
-      noAuthorWalletSpend: dto.noAuthorWalletSpend ?? false,
-      sourceEntityId: dto.sourceEntityId,
-      sourceEntityType: dto.sourceEntityType,
-      valueTags: dto.valueTags ?? [],
-      ...(dto.postType === 'event'
-        ? {
-            eventStartDate: dto.eventStartDate,
-            eventEndDate: dto.eventEndDate,
-            eventTime: dto.eventTime,
-            eventLocation: dto.eventLocation,
-            eventParticipants: dto.eventParticipants ?? [],
-            eventAttendees: [],
-          }
-        : {}),
+    return this.createPublicationUseCase.execute(userId, dto, {
+      checkPermissions: options?.checkPermissions ?? false,
+      processPostCost: options?.processPostCost ?? dto.processPostCost ?? false,
     });
-
-    // Publish domain event
-    await this.eventBus.publish(
-      new PublicationCreatedEvent(
-        publication.getId.getValue(),
-        userId,
-        dto.communityId,
-      ),
-    );
-
-    this.logger.log(
-      `Publication created successfully: ${publication.getId.getValue()}`,
-    );
-    return publication;
   }
 
   /**
