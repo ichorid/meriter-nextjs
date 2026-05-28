@@ -42,7 +42,7 @@ module.exports = {
         message: 'P0-3: Domain zone-6 allowlist — forbidden god-object schema exports from barrel (17 symbols in p0_3_forbidden_import_names). V-13 drift symbols are NOT whitelisted — use Phase 1 Option B subpaths (zone 6 except list); monolithic schemas.ts not allowlisted.',
       }],
     }],
-    'import/no-restricted-paths': ['warn', {
+    'import/no-restricted-paths': ['error', {
       zones: [
         {
           target: './apps/meriter/src/domain/**',
