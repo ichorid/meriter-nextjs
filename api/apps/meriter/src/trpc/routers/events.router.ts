@@ -16,8 +16,10 @@ import {
 } from '@meriter/shared-types';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
-import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { createGetRemainingQuotaUseCase } from '../../application/use-cases/wallets/get-remaining-quota.use-case';
+import { createCreateEventUseCase } from '../../application/use-cases/events/create-event.use-case';
+import { createRsvpEventUseCase } from '../../application/use-cases/events/rsvp-event.use-case';
+import { createCheckInByTokenUseCase } from '../../application/use-cases/events/check-in-by-token.use-case';
+import { createSetParticipantAttendanceUseCase } from '../../application/use-cases/events/set-participant-attendance.use-case';
 
 async function assertCommunityExistsForEvents(
   ctx: { communityService: { getCommunity(id: string): Promise<unknown | null> } },
@@ -56,112 +58,13 @@ export const eventsRouter = router({
 
       await checkPermissionInHandler(ctx, 'create', 'publication', createDto);
 
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
-      }
-
-      const postCost = community.settings?.postCost ?? 1;
-      const canPayFromQuota = community.settings?.canPayPostFromQuota ?? false;
-
-      let quotaAmount = 0;
-      let walletAmount = 0;
-
-      if (postCost > 0) {
-        const getRemainingQuota = createGetRemainingQuotaUseCase(ctx);
-        const quotaDb = ctx.connection.db;
-        if (!quotaDb) {
-          throw new TRPCError({
-            code: 'INTERNAL_SERVER_ERROR',
-            message: 'Database connection not available',
-          });
-        }
-
-        if (canPayFromQuota) {
-          const remainingQuota = await getRemainingQuota.forPublicationCreate({
-            userId: ctx.user.id,
-            communityId: input.communityId,
-            community,
-            db: quotaDb,
-          });
-          quotaAmount = Math.min(postCost, remainingQuota);
-          walletAmount = Math.max(0, postCost - quotaAmount);
-        } else {
-          walletAmount = postCost;
-        }
-
-        if (walletAmount > 0) {
-          const wallet = await ctx.walletService.getWallet(ctx.user.id, GLOBAL_COMMUNITY_ID);
-          const walletBalance = wallet ? wallet.getBalance() : 0;
-          if (walletBalance < walletAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient wallet merits. Available: ${walletBalance}, Required: ${walletAmount}`,
-            });
-          }
-        }
-
-        if (quotaAmount > 0) {
-          const remainingQuota = await getRemainingQuota.forPublicationCreate({
-            userId: ctx.user.id,
-            communityId: input.communityId,
-            community,
-            db: quotaDb,
-          });
-          if (remainingQuota < quotaAmount) {
-            throw new TRPCError({
-              code: 'BAD_REQUEST',
-              message: `Insufficient quota. Available: ${remainingQuota}, Required: ${quotaAmount}`,
-            });
-          }
-        }
-      }
-
-      const publication = await ctx.eventService.createEvent(ctx.user.id, input);
-      const publicationId = publication.getId.getValue();
-      const communityId = publication.getCommunityId.getValue();
-
-      if (postCost > 0) {
-        try {
-          const _currency = community.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-
-          if (quotaAmount > 0 && ctx.connection?.db) {
-            await ctx.connection.db.collection('quota_usage').insertOne({
-              id: `quota_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-              userId: ctx.user.id,
-              communityId,
-              amountQuota: quotaAmount,
-              usageType: 'publication_creation',
-              referenceId: publicationId,
-              createdAt: new Date(),
-            });
-          }
-
-          if (walletAmount > 0) {
-            const globalCommunity = await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
-            const feeCurrency = globalCommunity?.settings?.currencyNames || _currency;
-            await ctx.walletService.addTransaction(
-              ctx.user.id,
-              GLOBAL_COMMUNITY_ID,
-              'debit',
-              walletAmount,
-              'personal',
-              'publication_creation',
-              publicationId,
-              feeCurrency,
-              'Payment for creating publication',
-            );
-          }
-        } catch {
-          // Same as publications.create: publication already exists
-        }
-      }
-
-      return { id: publicationId };
+      return createCreateEventUseCase({
+        user: ctx.user,
+        eventService: ctx.eventService,
+        communityService: ctx.communityService,
+        walletService: ctx.walletService,
+        connection: ctx.connection,
+      }).execute(input);
     }),
 
   updateEvent: protectedProcedure
@@ -213,8 +116,10 @@ export const eventsRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      await ctx.eventService.attendEvent(ctx.user.id, input.publicationId);
-      return { success: true as const };
+      return createRsvpEventUseCase({
+        user: ctx.user,
+        eventService: ctx.eventService,
+      }).execute({ publicationId: input.publicationId, action: 'attend' });
     }),
 
   unattend: protectedProcedure
@@ -223,8 +128,10 @@ export const eventsRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      await ctx.eventService.unattendEvent(ctx.user.id, input.publicationId);
-      return { success: true as const };
+      return createRsvpEventUseCase({
+        user: ctx.user,
+        eventService: ctx.eventService,
+      }).execute({ publicationId: input.publicationId, action: 'unattend' });
     }),
 
   issueMyCheckInToken: protectedProcedure
@@ -242,7 +149,10 @@ export const eventsRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      return ctx.eventService.checkInByToken(ctx.user.id, input.token);
+      return createCheckInByTokenUseCase({
+        user: ctx.user,
+        eventService: ctx.eventService,
+      }).execute({ token: input.token });
     }),
 
   setParticipantAttendance: protectedProcedure
@@ -251,13 +161,14 @@ export const eventsRouter = router({
       if (!ctx.user) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' });
       }
-      await ctx.eventService.setParticipantAttendance(
-        ctx.user.id,
-        input.publicationId,
-        input.targetUserId,
-        input.attendance,
-      );
-      return { success: true as const };
+      return createSetParticipantAttendanceUseCase({
+        user: ctx.user,
+        eventService: ctx.eventService,
+      }).execute({
+        publicationId: input.publicationId,
+        targetUserId: input.targetUserId,
+        attendance: input.attendance,
+      });
     }),
 
   createInviteLink: protectedProcedure
