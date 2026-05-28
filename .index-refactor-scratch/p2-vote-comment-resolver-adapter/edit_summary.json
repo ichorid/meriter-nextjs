@@ -1,0 +1,34 @@
+{
+  "work_unit_id": "p2-vote-comment-resolver-adapter",
+  "status": "DONE",
+  "attempt": 3,
+  "files_changed": [
+    "api/apps/meriter/src/domain/services/vote-comment-resolver.service.ts",
+    "api/apps/meriter/src/adapters/resolvers/vote-comment.resolver.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/domain/services/vote-comment-resolver.service.ts",
+      "summary": "Canonical domain VoteCommentResolverService: vote-first resolve(id) via VoteService.getVoteById before CommentService.getComment; returns ResolvedVoteComment with vote, comment, snapshot, authorId; INV-14 documented on class and resolve()."
+    },
+    {
+      "file": "api/apps/meriter/src/adapters/resolvers/vote-comment.resolver.ts",
+      "summary": "Adapter-boundary VoteCommentResolver (BC-04/BC-18) owns the vote-first comment ID bridge; resolve() delegates to domain; resolveEntity() maps vote|comment entity for read paths; fromTrpcContext(ctx) factory for tRPC wiring without Nest DI; INV-14 enforced at adapter entry points."
+    }
+  ],
+  "verification": {
+    "domain_resolve_checks_vote_before_comment": true,
+    "adapter_documents_inv14_at_boundary": true,
+    "adapter_resolveEntity_for_getById": true,
+    "adapter_fromTrpcContext_factory": true,
+    "comments_getById_uses_adapter_resolver": true,
+    "api_v1_shim_reexports_domain": true,
+    "tsc_no_vote_comment_errors": true
+  },
+  "success_criteria": {
+    "resolver_adapter_owns_vote_first_comment_id_bridge": true,
+    "comments_getById_uses_resolver_consistently": true,
+    "inv14_enforcer_at_adapter_boundary": true
+  },
+  "notes": "Attempt 3 confirms write-set deliverable from attempt 2 (tsc/lint/static passed; prior LLM partial was infra path mismatch for verdict_llm.scratch.yaml). Worktree also wires comments.getById to VoteCommentResolver.fromTrpcContext(ctx).resolveEntity() and api-v1 shim re-exports domain service (outside write_set). Follow-up: register VoteCommentResolver in AdaptersModule, VoteCommentResolverService in DomainModule, export from adapters/resolvers/index.ts."
+}
