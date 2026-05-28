@@ -1,0 +1,46 @@
+{
+  "work_unit_id": "p2-cron-infrastructure-shell",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/infrastructure/cron/inv-21-cron-paths.ts",
+    "api/apps/meriter/src/infrastructure/cron/quota-reset.cron.ts",
+    "api/apps/meriter/src/infrastructure/cron/post-closing.cron.ts",
+    "api/apps/meriter/src/infrastructure/cron/document-wave.cron.ts",
+    "api/apps/meriter/src/infrastructure/cron/cron.module.ts",
+    "api/apps/meriter/src/infrastructure/cron/index.ts",
+    "api/apps/meriter/src/domain/services/quota-reset.service.ts",
+    "api/apps/meriter/src/domain/services/post-closing-cron.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/infrastructure/cron/",
+      "summary": "Phase 2 BC-14 cron shell: inv-21-cron-paths.ts documents schedules and domain/entrypoint paths; QuotaResetCronEntrypoint, PostClosingCronEntrypoint (D-5/D-6/D-7), DocumentWaveCronEntrypoint delegate to domain services; CronInfrastructureModule composition root imports QuotaResetModule, PostClosingCronModule, DocumentWaveCronModule and registers entrypoint providers."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/quota-reset.service.ts",
+      "summary": "inv-21 JSDoc on midnight reset method; business logic and interim @Cron unchanged until meriter.module wires CronInfrastructureModule."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/post-closing-cron.service.ts",
+      "summary": "inv-21 class JSDoc; D-5/D-6/D-7 logic and interim @Cron unchanged until meriter.module wires CronInfrastructureModule."
+    }
+  ],
+  "verification": {
+    "infrastructure_cron_directory_exists": true,
+    "entrypoints": [
+      "quota-reset.cron.ts",
+      "post-closing.cron.ts",
+      "document-wave.cron.ts"
+    ],
+    "composition_root": "CronInfrastructureModule",
+    "inv_21_documented": true,
+    "tsc_no_cron_file_errors": true
+  },
+  "success_criteria": {
+    "infrastructure_cron_directory_exists_on_disk": true,
+    "cron_jobs_registered_via_composition_root": true,
+    "inv_21_cron_paths_documented": true
+  },
+  "notes": "CronInfrastructureModule is the Phase 2 composition root for quota-reset, post-closing, and document-wave jobs. meriter.module.ts still imports per-job domain modules directly (out of write_set); interim @Cron on domain services avoids double-scheduling until meriter replaces those imports with CronInfrastructureModule and strips domain decorators. document-wave-cron.service.ts logic move deferred to a follow-up work unit."
+}
