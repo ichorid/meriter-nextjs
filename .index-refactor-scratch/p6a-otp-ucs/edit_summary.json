@@ -1,0 +1,59 @@
+{
+  "work_unit_id": "p6a-otp-ucs",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/auth/send-sms-otp.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/verify-sms-otp.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/send-email-otp.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/verify-email-otp.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/verify-call-check.use-case.ts",
+    "api/apps/meriter/src/infrastructure/auth/otp-attempt.helper.ts",
+    "api/apps/meriter/src/api-v1/auth/sms-provider.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/infrastructure/auth/otp-attempt.helper.ts",
+      "summary": "New P-4 shared helper: verifyOtpCodeAttempt with channel-specific message presets (SMS_OTP_ATTEMPT_MESSAGES, EMAIL_OTP_ATTEMPT_MESSAGES). Centralizes attempt counting, max-attempt guard, and verified persistence."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/send-sms-otp.use-case.ts",
+      "summary": "New BC-12 SendSmsOtpUseCase: E.164 validation, SMS enabled gate (inv-24), delegates send to SmsProviderService.sendOtp. Exports SmsAuthDisabledError, InvalidPhoneNumberError, createSendSmsOtpUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/verify-sms-otp.use-case.ts",
+      "summary": "New BC-12 VerifySmsOtpUseCase: validates input, delegates OTP verify to SmsProviderService, authenticateSms + establishJwtSession. Exports createVerifySmsOtpUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/send-email-otp.use-case.ts",
+      "summary": "New BC-12 SendEmailOtpUseCase: email required/enabled gates, delegates send to EmailProviderService.sendOtp (15m TTL preserved in provider). Exports createSendEmailOtpUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/verify-email-otp.use-case.ts",
+      "summary": "New BC-12 VerifyEmailOtpUseCase: validates input, delegates OTP verify to EmailProviderService, authenticateEmail + establishJwtSession. Exports createVerifyEmailOtpUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/verify-call-check.use-case.ts",
+      "summary": "New BC-12 VerifyCallCheckUseCase: phone/call enabled gates, polls SmsProviderService.verifyCallStatus, on CONFIRMED runs authenticateSms + establishJwtSession. Exports createVerifyCallCheckUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/api-v1/auth/sms-provider.service.ts",
+      "summary": "P-4 retirement: verifyOtp now delegates attempt logic to verifyOtpCodeAttempt helper. Send/rate-limit/TTL behavior unchanged (5m OTP expiry, 60s resend cooldown, 3/hour rate limit)."
+    }
+  ],
+  "verification": {
+    "otp_send_verify_use_cases_extracted": true,
+    "sms_provider_uses_otp_attempt_helper": true,
+    "inv24_sms_5m_ttl_preserved": true,
+    "inv24_email_15m_ttl_delegated_to_provider": true,
+    "inv24_call_check_5m_ttl_preserved": true,
+    "tsc_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "OTP_send_verify_delegates": true,
+    "Shared_otp_attempt_helper": true,
+    "P-4_retirement_met": true,
+    "inv-24_TTL_rules_preserved": true
+  },
+  "notes": "AuthController wiring to these use cases is outside write_set (follow-up). EmailProviderService.verifyOtp still contains duplicated attempt logic; EMAIL_OTP_ATTEMPT_MESSAGES exported for its migration. call/init remains in controller delegating to SmsProviderService.initiateCallVerification."
+}

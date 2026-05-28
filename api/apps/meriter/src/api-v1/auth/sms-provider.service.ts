@@ -5,6 +5,10 @@ import { Model } from 'mongoose';
 import { SmsOtp, SmsOtpDocument } from '../../domain/models/auth/sms-otp.schema';
 import { AppConfig } from '../../config/configuration';
 import { AuthMagicLinkService } from './auth-magic-link.service';
+import {
+    SMS_OTP_ATTEMPT_MESSAGES,
+    verifyOtpCodeAttempt,
+} from '../../infrastructure/auth/otp-attempt.helper';
 import axios from 'axios';
 
 /**
@@ -323,28 +327,12 @@ export class SmsProviderService {
             })
             .sort({ lastSentAt: -1 });
 
-        if (!otp) {
-            throw new Error('No valid OTP found. Please request a new code.');
-        }
-
-        // Check if max attempts exceeded
-        if (otp.attempts >= this.maxAttemptsPerOtp) {
-            throw new Error('Maximum verification attempts exceeded. Please request a new code.');
-        }
-
-        // Verify code
-        if (otp.otpCode !== otpCode) {
-            // Increment attempts
-            otp.attempts += 1;
-            await otp.save();
-
-            const remainingAttempts = this.maxAttemptsPerOtp - otp.attempts;
-            throw new Error(`Invalid code. ${remainingAttempts} attempts remaining.`);
-        }
-
-        // Mark as verified
-        otp.verified = true;
-        await otp.save();
+        await verifyOtpCodeAttempt(
+            otp,
+            otpCode,
+            this.maxAttemptsPerOtp,
+            SMS_OTP_ATTEMPT_MESSAGES,
+        );
 
         this.logger.log(`OTP verified successfully for ${phoneNumber}`);
         return true;
