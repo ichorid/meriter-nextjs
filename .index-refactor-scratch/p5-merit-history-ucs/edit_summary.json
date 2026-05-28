@@ -1,0 +1,42 @@
+{
+  "work_unit_id": "p5-merit-history-ucs",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/wallets/get-merit-history-transactions.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/wallets/get-merit-history-dashboard.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/wallets/get-community-merit-history.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/wallets.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/wallets/get-merit-history-transactions.use-case.ts",
+      "summary": "Added GetMeritHistoryTransactionsUseCase (BC-02): assertMeritHistoryTransactionsAccess, paginated WalletService.getUserTransactions reads, batch enrichment via enrichMeritHistoryTransactions, and mapMeritHistoryTransactionRow DTO mapping. Retires router-owned enrichment (V-08)."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/wallets/get-merit-history-dashboard.use-case.ts",
+      "summary": "Added GetMeritHistoryDashboardUseCase: reuses transactions access guard and delegates KPI/series/breakdown to WalletService.getMeritHistoryDashboard (inv-16 authoritative wallet reads)."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/wallets/get-community-merit-history.use-case.ts",
+      "summary": "Added GetCommunityMeritHistoryUseCase: community membership gate, WalletService.getCommunityMeritHistoryTransactions, enrichment, subject display names, and shared row mapping."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/wallets.router.ts",
+      "summary": "Delegated getTransactions, getCommunityMeritHistory, and getMeritHistoryDashboard to new use cases via create* factories; removed assertMeritHistoryTransactionsAccess and inline enrichment/mapping (V-08 closed)."
+    }
+  ],
+  "verification": {
+    "getTransactions_delegates_to_use_case": true,
+    "getCommunityMeritHistory_delegates_to_use_case": true,
+    "getMeritHistoryDashboard_delegates_to_use_case": true,
+    "router_no_enrichMeritHistoryTransactions_import": true,
+    "tsc_merit_history_files": "no errors referencing write_set paths"
+  },
+  "success_criteria": {
+    "wallets_merit_history_procedures_delegate": true,
+    "V_08_closed": true,
+    "inv_16_wallet_authoritative_reads": true
+  },
+  "notes": "Use cases instantiated manually in router (applicationUseCaseProviders registration deferred). PaginationInputSchema retained in router; skip/limit resolution moved into use cases."
+}

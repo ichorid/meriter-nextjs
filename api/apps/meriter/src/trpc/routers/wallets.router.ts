@@ -1,20 +1,26 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import {
   MERIT_HISTORY_FILTER_KEYS,
-  meritHistoryCategoryForReferenceType,
-  meritHistoryLedgerMultiplier,
   type MeritHistoryDashboardPeriodDays,
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
-import { enrichMeritHistoryTransactions } from '../../domain/common/helpers/merit-history-enrichment';
 import { GetWalletBalanceUseCase } from '../../application/use-cases/wallets/get-wallet-balance.use-case';
+import {
+  createGetCommunityMeritHistoryUseCase,
+} from '../../application/use-cases/wallets/get-community-merit-history.use-case';
+import {
+  createGetMeritHistoryDashboardUseCase,
+} from '../../application/use-cases/wallets/get-merit-history-dashboard.use-case';
+import {
+  createGetMeritHistoryTransactionsUseCase,
+  type GetMeritHistoryTransactionsDeps,
+} from '../../application/use-cases/wallets/get-merit-history-transactions.use-case';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -39,47 +45,22 @@ function createGetWalletBalanceUseCase(ctx: {
   );
 }
 
-async function assertMeritHistoryTransactionsAccess(
-  ctx: {
-    user: { id: string };
-    userService: { getUserById: (id: string) => Promise<{ globalRole?: string | null } | null> };
-    permissionService: {
-      canViewUserMerits: (
-        viewerId: string,
-        targetUserId: string,
-        communityId: string,
-      ) => Promise<boolean>;
-    };
-  },
-  actualUserId: string,
-  permissionCommunityId: string | undefined,
-): Promise<void> {
-  if (actualUserId === ctx.user.id) {
-    return;
-  }
-  const requester = await ctx.userService.getUserById(ctx.user.id);
-  const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
-  if (isSuperadmin) {
-    return;
-  }
-  const ctxCommunity = permissionCommunityId?.trim();
-  if (!ctxCommunity) {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'permissionCommunityId is required to view another user\'s transactions',
-    });
-  }
-  const canView = await ctx.permissionService.canViewUserMerits(
-    ctx.user.id,
-    actualUserId,
-    ctxCommunity,
-  );
-  if (!canView) {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'You do not have permission to view this user\'s transactions',
-    });
-  }
+function createMeritHistoryTransactionsDeps(ctx: {
+  walletService: import('../../domain/services/wallet.service').WalletService;
+  userService: import('../../domain/services/user.service').UserService;
+  permissionService: import('../../domain/services/permission.service').PermissionService;
+  connection: { db?: import('mongoose').Connection['db'] };
+  userEnrichmentService: {
+    batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
+  };
+}): GetMeritHistoryTransactionsDeps {
+  return {
+    walletService: ctx.walletService,
+    userService: ctx.userService,
+    permissionService: ctx.permissionService,
+    db: ctx.connection.db ?? undefined,
+    batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+  };
 }
 
 export const walletsRouter = router({
@@ -155,79 +136,22 @@ export const walletsRouter = router({
         });
       }
 
-      // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
 
-      await assertMeritHistoryTransactionsAccess(
-        ctx,
-        actualUserId,
-        input.permissionCommunityId,
-      );
-
-      const pagination = PaginationHelper.parseOptions(input);
-      const limit = pagination.limit || 20;
-      let skip: number;
-      if (typeof input.cursor === 'number') {
-        skip = input.cursor;
-      } else if (typeof input.skip === 'number') {
-        skip = input.skip;
-      } else {
-        skip = PaginationHelper.getSkip(pagination);
-      }
-
-      const result = await ctx.walletService.getUserTransactions(
-        actualUserId,
-        'all',
-        limit,
-        skip,
-        {
-          communityId: input.communityId,
-          category: input.category,
-        },
-      );
-
-      const loaded = result.data.length;
-
-      const enrichmentById = await enrichMeritHistoryTransactions(
-        actualUserId,
-        result.data.map((tx) => ({
-          id: tx.id,
-          referenceType: tx.referenceType,
-          referenceId: tx.referenceId,
-        })),
-        {
-          db: ctx.connection.db ?? undefined,
-          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
-        },
-      );
-
-      const data = result.data.map((tx) => {
-        const createdAt =
-          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
-        const updatedAt =
-          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
-        const enriched = enrichmentById.get(tx.id);
-        return {
-          ...tx,
-          createdAt,
-          updatedAt,
-          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
-          ledgerMultiplier: meritHistoryLedgerMultiplier({
-            type: tx.type,
-            referenceType: tx.referenceType,
-          }),
-          meritHistoryEnrichment:
-            enriched && Object.keys(enriched).length > 0 ? enriched : null,
-        };
+      return createGetMeritHistoryTransactionsUseCase(
+        createMeritHistoryTransactionsDeps(ctx),
+      ).execute({
+        viewerId: ctx.user.id,
+        userId: actualUserId,
+        communityId: input.communityId,
+        category: input.category,
+        permissionCommunityId: input.permissionCommunityId,
+        cursor: input.cursor,
+        skip: input.skip,
+        page: input.page,
+        limit: input.limit,
+        pageSize: input.pageSize,
       });
-
-      return {
-        data,
-        total: result.total,
-        skip,
-        limit,
-        hasMore: skip + loaded < result.total,
-      };
     }),
 
   /**
@@ -250,101 +174,23 @@ export const walletsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Community not found',
-        });
-      }
-
-      const requester = await ctx.userService.getUserById(ctx.user.id);
-      const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
-      if (!isSuperadmin) {
-        const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, input.communityId);
-        if (!role) {
-          throw new TRPCError({
-            code: 'FORBIDDEN',
-            message: 'You must be a member of this community to view merit history',
-          });
-        }
-      }
-
-      const category = input.category ?? 'all';
-      const pagination = PaginationHelper.parseOptions(input);
-      const limit = pagination.limit || 20;
-      let skip: number;
-      if (typeof input.cursor === 'number') {
-        skip = input.cursor;
-      } else if (typeof input.skip === 'number') {
-        skip = input.skip;
-      } else {
-        skip = PaginationHelper.getSkip(pagination);
-      }
-
-      const result = await ctx.walletService.getCommunityMeritHistoryTransactions(
-        input.communityId,
-        category,
-        limit,
-        skip,
-      );
-
-      const loaded = result.data.length;
-
-      const enrichmentById = await enrichMeritHistoryTransactions(
-        ctx.user.id,
-        result.data.map((tx) => ({
-          id: tx.id,
-          referenceType: tx.referenceType,
-          referenceId: tx.referenceId,
-        })),
-        {
-          db: ctx.connection.db ?? undefined,
-          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
-          meritTransferWalletOwnerByTxId: result.walletOwnerByTxId,
-        },
-      );
-
-      const subjectIds = [
-        ...new Set(
-          result.data
-            .map((tx) => result.walletOwnerByTxId.get(tx.id))
-            .filter((id): id is string => typeof id === 'string' && id.length > 0),
-        ),
-      ];
-      const subjectNames = await ctx.userService.getDisplayNamesByUserIds(subjectIds);
-
-      const data = result.data.map((tx) => {
-        const createdAt =
-          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
-        const updatedAt =
-          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
-        const enriched = enrichmentById.get(tx.id);
-        const subjectUserId = result.walletOwnerByTxId.get(tx.id) ?? null;
-        return {
-          ...tx,
-          createdAt,
-          updatedAt,
-          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
-          ledgerMultiplier: meritHistoryLedgerMultiplier({
-            type: tx.type,
-            referenceType: tx.referenceType,
-          }),
-          meritHistoryEnrichment:
-            enriched && Object.keys(enriched).length > 0 ? enriched : null,
-          subjectUserId,
-          subjectDisplayName:
-            subjectUserId != null ? subjectNames.get(subjectUserId) ?? subjectUserId : null,
-        };
+      return createGetCommunityMeritHistoryUseCase({
+        walletService: ctx.walletService,
+        communityService: ctx.communityService,
+        userService: ctx.userService,
+        userCommunityRoleService: ctx.userCommunityRoleService,
+        db: ctx.connection.db ?? undefined,
+        batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+      }).execute({
+        viewerId: ctx.user.id,
+        communityId: input.communityId,
+        category: input.category,
+        cursor: input.cursor,
+        skip: input.skip,
+        page: input.page,
+        limit: input.limit,
+        pageSize: input.pageSize,
       });
-
-      return {
-        data,
-        total: result.total,
-        skip,
-        limit,
-        hasMore: skip + loaded < result.total,
-      };
     }),
 
   /**
@@ -371,16 +217,17 @@ export const walletsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
-      await assertMeritHistoryTransactionsAccess(
-        ctx,
-        actualUserId,
-        input.permissionCommunityId,
-      );
-      return ctx.walletService.getMeritHistoryDashboard(
-        actualUserId,
-        input.category,
-        input.periodDays satisfies MeritHistoryDashboardPeriodDays,
-      );
+      const accessDeps = createMeritHistoryTransactionsDeps(ctx);
+      return createGetMeritHistoryDashboardUseCase({
+        walletService: ctx.walletService,
+        accessDeps,
+      }).execute({
+        viewerId: ctx.user.id,
+        userId: actualUserId,
+        category: input.category,
+        periodDays: input.periodDays satisfies MeritHistoryDashboardPeriodDays,
+        permissionCommunityId: input.permissionCommunityId,
+      });
     }),
 
   /**
