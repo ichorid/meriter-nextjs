@@ -6,6 +6,9 @@
  * are imported and validated.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 // Core required by config validation (see `apps/meriter/src/config/validation.schema.ts`)
 process.env.NODE_ENV ||= 'test';
 process.env.DOMAIN ||= 'localhost';
@@ -17,4 +20,9 @@ process.env.JWT_SECRET ||= 'test-jwt-secret-key';
 process.env.MONGO_URL ||= 'mongodb://localhost:27017/meriter_test';
 process.env.MONGO_URL_SECONDARY ||= 'mongodb://localhost:27017/meriter_test_secondary';
 
-
+// Keep mongodb-memory-server temp data under api/.cache (not /tmp)
+const apiRoot = path.resolve(__dirname, '../../..');
+const mongoMemCacheDir =
+  process.env.MONGOMS_TMP_DIR || path.join(apiRoot, '.cache', 'mongo-mem-test');
+process.env.MONGOMS_TMP_DIR = mongoMemCacheDir;
+fs.mkdirSync(mongoMemCacheDir, { recursive: true });

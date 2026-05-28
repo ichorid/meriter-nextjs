@@ -1,14 +1,18 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose';
 import { Connection, connect } from 'mongoose';
+import {
+  registerServer,
+  unregisterServer,
+} from './mongo-memory-registry.js';
 
 /**
  * Test database helper using mongodb-memory-server
  * Provides an in-memory MongoDB instance for integration tests
  */
 export class TestDatabaseHelper {
-  private mongod: MongoMemoryServer;
-  private connection: Connection;
+  private mongod?: MongoMemoryServer;
+  private connection?: Connection;
 
   /**
    * Start the in-memory MongoDB instance
@@ -42,6 +46,14 @@ export class TestDatabaseHelper {
 
     try {
       this.mongod = await Promise.race([createPromise, timeoutPromise]);
+      registerServer(this.mongod);
+    } catch (err) {
+      if (this.mongod) {
+        await this.mongod.stop({ force: true }).catch(() => undefined);
+        unregisterServer(this.mongod);
+        this.mongod = undefined;
+      }
+      throw err;
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -118,7 +130,11 @@ export class TestDatabaseHelper {
   async stop(): Promise<void> {
     await this.closeConnection();
     if (this.mongod) {
-      await this.mongod.stop();
+      try {
+        await this.mongod.stop();
+      } finally {
+        unregisterServer(this.mongod);
+      }
     }
   }
 

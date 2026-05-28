@@ -22,6 +22,7 @@ import {
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { TestSetupHelper } from './helpers/test-setup.helper';
+import { registerReplSet, unregisterReplSet } from './mongo-memory-registry.js';
 import { trpcMutation } from './helpers/trpc-test-helper';
 import { BadRequestException } from '@nestjs/common';
 
@@ -50,6 +51,7 @@ describe('MeritTransferService (integration)', () => {
     replSet = await MongoMemoryReplSet.create({
       replSet: { count: 1, dbName: 'test' },
     });
+    registerReplSet(replSet);
     const mongoUri = replSet.getUri();
     process.env.MONGO_URL = mongoUri;
     process.env.MONGO_URL_SECONDARY = mongoUri;
@@ -138,7 +140,13 @@ describe('MeritTransferService (integration)', () => {
 
   afterAll(async () => {
     await app?.close();
-    await replSet?.stop();
+    if (replSet) {
+      try {
+        await replSet.stop();
+      } finally {
+        unregisterReplSet(replSet);
+      }
+    }
   });
 
   it('QA-1: transfers community-wallet merits between members; balances and list update', async () => {
