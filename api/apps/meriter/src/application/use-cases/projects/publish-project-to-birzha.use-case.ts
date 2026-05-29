@@ -4,11 +4,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Model } from 'mongoose';
 import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.constant';
 import { PublicationCreatedEvent } from '../../../domain/events';
 import type { EventBus } from '../../../domain/events/event-bus';
-import type { PublicationDocument } from '../../../domain/models/publication/publication.schema';
+import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { UserService } from '../../../domain/services/user.service';
@@ -51,7 +50,7 @@ export type PublishSourceEntityToBirzhaParams = PublishToBirzhaBaseInput & {
 };
 
 export type PublishToBirzhaCoreDeps = {
-  publicationModel: Model<PublicationDocument>;
+  publicationPersistence: PublicationPersistencePort;
   eventBus: EventBus;
   communityService: CommunityService;
   userService: UserService;
@@ -164,7 +163,7 @@ export async function executeBirzhaSourcePublish(
 
   const { investingEnabled, investorSharePercent } = params.investing;
 
-  await deps.publicationModel.create({
+  await deps.publicationPersistence.insertPublication({
     id,
     communityId: birzhaId,
     authorId: params.callerId,

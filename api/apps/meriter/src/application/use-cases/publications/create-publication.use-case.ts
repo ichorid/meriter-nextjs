@@ -4,12 +4,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
+import type { Connection } from 'mongoose';
 import { Publication } from '../../../domain/aggregates/publication/publication.entity';
 import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.constant';
 import { PublicationCreatedEvent } from '../../../domain/events';
 import type { EventBus } from '../../../domain/events/event-bus';
-import type { PublicationDocument } from '../../../domain/models/publication/publication.schema';
+import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
@@ -56,7 +56,7 @@ export class CreatePublicationUseCase {
   });
 
   constructor(
-    private readonly publicationModel: Model<PublicationDocument>,
+    private readonly publicationPersistence: PublicationPersistencePort,
     private readonly connection: Connection,
     private readonly eventBus: EventBus,
     private readonly permissionService: PermissionService,
@@ -364,7 +364,7 @@ export class CreatePublicationUseCase {
         ? new Date(createdAt.getTime() + dto.ttlDays * 24 * 60 * 60 * 1000)
         : dto.ttlExpiresAt ?? null;
 
-    await this.publicationModel.create({
+    await this.publicationPersistence.insertPublication({
       ...publicationSnapshot,
       postType: dto.postType || 'basic',
       isProject: dto.isProject || false,
@@ -405,7 +405,7 @@ export class CreatePublicationUseCase {
 }
 
 export function createCreatePublicationUseCase(deps: {
-  publicationModel: Model<PublicationDocument>;
+  publicationPersistence: PublicationPersistencePort;
   connection: Connection;
   eventBus: EventBus;
   permissionService: PermissionService;
@@ -416,7 +416,7 @@ export function createCreatePublicationUseCase(deps: {
   walletService: WalletService;
 }): CreatePublicationUseCase {
   return new CreatePublicationUseCase(
-    deps.publicationModel,
+    deps.publicationPersistence,
     deps.connection,
     deps.eventBus,
     deps.permissionService,
