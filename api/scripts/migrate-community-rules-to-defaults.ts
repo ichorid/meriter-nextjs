@@ -2,198 +2,61 @@
 
 /**
  * Migration Script: Remove Default Community Rules from Database
- * 
+ *
  * This script removes default rule values from communities in the database,
  * as defaults are now provided by CommunityDefaultsService at runtime.
- * 
+ *
  * Usage:
  *   ts-node scripts/migrate-community-rules-to-defaults.ts [--dry-run]
- * 
+ *
  * Options:
  *   --dry-run    - Show what would be changed without making changes
- * 
+ *
  * Environment Variables Required:
  *   MONGODB_URI  - MongoDB connection string
- * 
- * You can load it from your .env file or set it directly:
- *   export MONGODB_URI="mongodb://..."
- *   ts-node scripts/migrate-community-rules-to-defaults.ts
- * 
- * Or use dotenv if available:
- *   npm install -D dotenv
- *   ts-node -r dotenv/config scripts/migrate-community-rules-to-defaults.ts
  */
 
-import { MongoClient } from 'mongodb';
+import { NestFactory } from '@nestjs/core';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { MeriterModule } from '../apps/meriter/src/meriter.module';
+import {
+  CommunityDefaultsService,
+} from '../apps/meriter/src/domain/services/community-defaults.service';
+import {
+  CommunitySchemaClass,
+  CommunityDocument,
+  type PermissionRule,
+} from '../apps/meriter/src/domain/models/community/community.schema';
 
-// Import defaults service logic (copy the logic here to avoid NestJS dependencies)
-interface CommunityPostingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  requiresTeamMembership?: boolean;
-  onlyTeamLead?: boolean;
-  autoMembership?: boolean;
-}
-
-interface CommunityVotingRules {
-  allowedRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  canVoteForOwnPosts: boolean;
-  participantsCannotVoteForLead?: boolean;
-  spendsMerits: boolean;
-  awardsMerits: boolean;
-  meritConversion?: {
-    targetCommunityId: string;
-    ratio: number;
-  };
-}
-
-interface CommunityVisibilityRules {
-  visibleToRoles: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  isHidden?: boolean;
-  teamOnly?: boolean;
-}
-
-interface CommunityMeritRules {
-  dailyQuota: number;
-  quotaRecipients: ('superadmin' | 'lead' | 'participant' | 'viewer')[];
-  canEarn: boolean;
-  canSpend: boolean;
-}
-
-function getDefaultPostingRules(typeTag?: string): CommunityPostingRules {
-  const baseDefaults: CommunityPostingRules = {
-    allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    requiresTeamMembership: false,
-    onlyTeamLead: false,
-    autoMembership: false,
-  };
-
-  switch (typeTag) {
-    case 'marathon-of-good':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-        onlyTeamLead: false,
-      };
-    case 'future-vision':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-        onlyTeamLead: false,
-      };
-    case 'support':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-        requiresTeamMembership: false,
-      };
-    case 'team':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-        requiresTeamMembership: true,
-      };
-    default:
-      return baseDefaults;
-  }
-}
-
-function getDefaultVotingRules(typeTag?: string): CommunityVotingRules {
-  const baseDefaults: CommunityVotingRules = {
-    allowedRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    canVoteForOwnPosts: false,
-    participantsCannotVoteForLead: false,
-    spendsMerits: true,
-    awardsMerits: true,
-  };
-
-  switch (typeTag) {
-    case 'marathon-of-good':
-      return {
-        ...baseDefaults,
-        participantsCannotVoteForLead: true,
-      };
-    case 'future-vision':
-      return {
-        ...baseDefaults,
-        canVoteForOwnPosts: true,
-      };
-    case 'support':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-      };
-    case 'team':
-      return {
-        ...baseDefaults,
-        allowedRoles: ['superadmin', 'lead', 'participant'],
-      };
-    default:
-      return baseDefaults;
-  }
-}
-
-function getDefaultVisibilityRules(typeTag?: string): CommunityVisibilityRules {
-  return {
-    visibleToRoles: ['superadmin', 'lead', 'participant', 'viewer'],
-    isHidden: false,
-    teamOnly: false,
-  };
-}
-
-function getDefaultMeritRules(typeTag?: string): CommunityMeritRules {
-  const baseDefaults: CommunityMeritRules = {
-    dailyQuota: 100,
-    quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-    canEarn: true,
-    canSpend: true,
-  };
-
-  switch (typeTag) {
-    case 'marathon-of-good':
-      return {
-        ...baseDefaults,
-        quotaRecipients: ['superadmin', 'lead', 'participant', 'viewer'],
-      };
-    case 'future-vision':
-      return {
-        ...baseDefaults,
-        quotaRecipients: ['superadmin', 'lead', 'participant'],
-      };
-    case 'support':
-      return {
-        ...baseDefaults,
-        quotaRecipients: ['superadmin', 'lead', 'participant'],
-      };
-    case 'team':
-      return {
-        ...baseDefaults,
-        quotaRecipients: ['superadmin', 'lead', 'participant'],
-      };
-    default:
-      return baseDefaults;
-  }
-}
-
-function deepEqual(obj1: any, obj2: any): boolean {
+function deepEqual(obj1: unknown, obj2: unknown): boolean {
   if (obj1 === obj2) return true;
   if (obj1 == null || obj2 == null) return false;
   if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
 
-  const keys1 = Object.keys(obj1);
-  const keys2 = Object.keys(obj2);
+  const record1 = obj1 as Record<string, unknown>;
+  const record2 = obj2 as Record<string, unknown>;
+  const keys1 = Object.keys(record1);
+  const keys2 = Object.keys(record2);
 
   if (keys1.length !== keys2.length) return false;
 
   for (const key of keys1) {
     if (!keys2.includes(key)) return false;
-    
-    if (Array.isArray(obj1[key]) && Array.isArray(obj2[key])) {
-      if (JSON.stringify(obj1[key].sort()) !== JSON.stringify(obj2[key].sort())) {
+
+    if (Array.isArray(record1[key]) && Array.isArray(record2[key])) {
+      if (
+        JSON.stringify([...(record1[key] as unknown[])].sort()) !==
+        JSON.stringify([...(record2[key] as unknown[])].sort())
+      ) {
         return false;
       }
-    } else if (typeof obj1[key] === 'object' && typeof obj2[key] === 'object') {
-      if (!deepEqual(obj1[key], obj2[key])) return false;
-    } else if (obj1[key] !== obj2[key]) {
+    } else if (
+      typeof record1[key] === 'object' &&
+      typeof record2[key] === 'object'
+    ) {
+      if (!deepEqual(record1[key], record2[key])) return false;
+    } else if (record1[key] !== record2[key]) {
       return false;
     }
   }
@@ -201,95 +64,151 @@ function deepEqual(obj1: any, obj2: any): boolean {
   return true;
 }
 
-async function migrateCommunities(dryRun: boolean = false) {
-  const mongoUri = process.env.MONGODB_URI;
-  
-  if (!mongoUri) {
-    console.error('❌ ERROR: MONGODB_URI environment variable must be set');
-    console.error('');
-    console.error('Load it from your .env file:');
-    console.error('  export $(grep MONGODB_URI .env | xargs)');
-    console.error('');
-    process.exit(1);
-  }
+function normalizePermissionRules(rules: PermissionRule[]): PermissionRule[] {
+  return [...rules].sort((a, b) =>
+    `${a.role}:${a.action}`.localeCompare(`${b.role}:${b.action}`),
+  );
+}
 
-  console.log('🔄 Community Rules Migration');
-  console.log('═'.repeat(50));
-  console.log('');
-  console.log(`Mode: ${dryRun ? 'DRY RUN (no changes will be made)' : 'LIVE (changes will be applied)'}`);
-  console.log('');
-
-  const client = new MongoClient(mongoUri);
+async function migrateCommunities(dryRun: boolean = false): Promise<void> {
+  const app = await NestFactory.createApplicationContext(MeriterModule, {
+    logger: ['error', 'warn', 'log'],
+  });
 
   try {
-    await client.connect();
-    console.log('✅ Connected to MongoDB');
+    const defaultsService = app.get(CommunityDefaultsService);
+    const communityModel = app.get<Model<CommunityDocument>>(
+      getModelToken(CommunitySchemaClass.name),
+    );
+
+    console.log('🔄 Community Rules Migration');
+    console.log('═'.repeat(50));
+    console.log('');
+    console.log(
+      `Mode: ${dryRun ? 'DRY RUN (no changes will be made)' : 'LIVE (changes will be applied)'}`,
+    );
     console.log('');
 
-    const db = client.db();
-    const communitiesCollection = db.collection('communities');
-
-    // Get all communities
-    const communities = await communitiesCollection.find({}).toArray();
+    const communities = await communityModel.find({}).lean();
     console.log(`📋 Found ${communities.length} communities to process`);
     console.log('');
 
     let updatedCount = 0;
     let skippedCount = 0;
-    const updateOps: any[] = [];
+    const updateOps: Array<{ filter: { _id: unknown }; update: Record<string, unknown> }> =
+      [];
 
     for (const community of communities) {
       const typeTag = community.typeTag;
-      const updates: any = {};
+      const updates: Record<string, unknown> = {};
+      const unset: Record<string, ''> = {};
 
-      // Check postingRules
+      const legacyDefaults = {
+        postingRules: defaultsService.getLegacyPostingRulesForMigration(typeTag),
+        votingRules: defaultsService.getLegacyVotingRulesForMigration(typeTag),
+        visibilityRules: defaultsService.getLegacyVisibilityRulesForMigration(typeTag),
+        meritRules: defaultsService.getLegacyMeritRulesForMigration(typeTag),
+      };
+
       if (community.postingRules) {
-        const defaults = getDefaultPostingRules(typeTag);
-        if (deepEqual(community.postingRules, defaults)) {
-          updates['$unset'] = { postingRules: '' };
-          console.log(`  ✓ ${community.name || community.id}: postingRules matches defaults (will be removed)`);
+        if (deepEqual(community.postingRules, legacyDefaults.postingRules)) {
+          unset.postingRules = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: postingRules matches defaults (will be removed)`,
+          );
         } else {
-          console.log(`  ⚠ ${community.name || community.id}: postingRules has custom overrides (will be kept)`);
+          console.log(
+            `  ⚠ ${community.name || community.id}: postingRules has custom overrides (will be kept)`,
+          );
         }
       }
 
-      // Check votingRules
       if (community.votingRules) {
-        const defaults = getDefaultVotingRules(typeTag);
-        if (deepEqual(community.votingRules, defaults)) {
-          if (!updates['$unset']) updates['$unset'] = {};
-          updates['$unset'].votingRules = '';
-          console.log(`  ✓ ${community.name || community.id}: votingRules matches defaults (will be removed)`);
+        if (deepEqual(community.votingRules, legacyDefaults.votingRules)) {
+          unset.votingRules = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: votingRules matches defaults (will be removed)`,
+          );
         } else {
-          console.log(`  ⚠ ${community.name || community.id}: votingRules has custom overrides (will be kept)`);
+          console.log(
+            `  ⚠ ${community.name || community.id}: votingRules has custom overrides (will be kept)`,
+          );
         }
       }
 
-      // Check visibilityRules
       if (community.visibilityRules) {
-        const defaults = getDefaultVisibilityRules(typeTag);
-        if (deepEqual(community.visibilityRules, defaults)) {
-          if (!updates['$unset']) updates['$unset'] = {};
-          updates['$unset'].visibilityRules = '';
-          console.log(`  ✓ ${community.name || community.id}: visibilityRules matches defaults (will be removed)`);
+        if (deepEqual(community.visibilityRules, legacyDefaults.visibilityRules)) {
+          unset.visibilityRules = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: visibilityRules matches defaults (will be removed)`,
+          );
         } else {
-          console.log(`  ⚠ ${community.name || community.id}: visibilityRules has custom overrides (will be kept)`);
+          console.log(
+            `  ⚠ ${community.name || community.id}: visibilityRules has custom overrides (will be kept)`,
+          );
         }
       }
 
-      // Check meritRules
       if (community.meritRules) {
-        const defaults = getDefaultMeritRules(typeTag);
-        if (deepEqual(community.meritRules, defaults)) {
-          if (!updates['$unset']) updates['$unset'] = {};
-          updates['$unset'].meritRules = '';
-          console.log(`  ✓ ${community.name || community.id}: meritRules matches defaults (will be removed)`);
+        if (deepEqual(community.meritRules, legacyDefaults.meritRules)) {
+          unset.meritRules = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: meritRules matches defaults (will be removed)`,
+          );
         } else {
-          console.log(`  ⚠ ${community.name || community.id}: meritRules has custom overrides (will be kept)`);
+          console.log(
+            `  ⚠ ${community.name || community.id}: meritRules has custom overrides (will be kept)`,
+          );
         }
       }
 
-      if (Object.keys(updates).length > 0) {
+      if (community.meritSettings) {
+        const meritDefaults = defaultsService.getDefaultMeritSettings(typeTag);
+        if (deepEqual(community.meritSettings, meritDefaults)) {
+          unset.meritSettings = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: meritSettings matches defaults (will be removed)`,
+          );
+        } else {
+          console.log(
+            `  ⚠ ${community.name || community.id}: meritSettings has custom overrides (will be kept)`,
+          );
+        }
+      }
+
+      if (community.votingSettings) {
+        const votingDefaults = defaultsService.getDefaultVotingSettings(typeTag);
+        if (deepEqual(community.votingSettings, votingDefaults)) {
+          unset.votingSettings = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: votingSettings matches defaults (will be removed)`,
+          );
+        } else {
+          console.log(
+            `  ⚠ ${community.name || community.id}: votingSettings has custom overrides (will be kept)`,
+          );
+        }
+      }
+
+      if (community.permissionRules?.length) {
+        const permissionDefaults = normalizePermissionRules(
+          defaultsService.getDefaultPermissionRules(typeTag),
+        );
+        const storedRules = normalizePermissionRules(community.permissionRules);
+        if (deepEqual(storedRules, permissionDefaults)) {
+          unset.permissionRules = '';
+          console.log(
+            `  ✓ ${community.name || community.id}: permissionRules matches defaults (will be removed)`,
+          );
+        } else {
+          console.log(
+            `  ⚠ ${community.name || community.id}: permissionRules has custom overrides (will be kept)`,
+          );
+        }
+      }
+
+      if (Object.keys(unset).length > 0) {
+        updates.$unset = unset;
         updateOps.push({
           filter: { _id: community._id },
           update: updates,
@@ -301,7 +220,7 @@ async function migrateCommunities(dryRun: boolean = false) {
     }
 
     console.log('');
-    console.log(`📊 Summary:`);
+    console.log('📊 Summary:');
     console.log(`  - Communities to update: ${updatedCount}`);
     console.log(`  - Communities to skip: ${skippedCount}`);
     console.log('');
@@ -309,7 +228,7 @@ async function migrateCommunities(dryRun: boolean = false) {
     if (!dryRun && updateOps.length > 0) {
       console.log('🚀 Applying updates...');
       for (const op of updateOps) {
-        await communitiesCollection.updateOne(op.filter, op.update);
+        await communityModel.updateOne(op.filter, op.update);
       }
       console.log('✅ Migration completed successfully!');
     } else if (dryRun) {
@@ -325,22 +244,15 @@ async function migrateCommunities(dryRun: boolean = false) {
     console.log('  - Communities with custom overrides have been preserved');
     console.log('  - The application will continue to work as before');
     console.log('');
-
-  } catch (error) {
-    console.error('❌ Error during migration:', error);
-    process.exit(1);
   } finally {
-    await client.close();
-    console.log('✅ Database connection closed');
+    await app.close();
+    console.log('✅ Application context closed');
   }
 }
 
-// Main execution
-const args = process.argv.slice(2);
-const dryRun = args.includes('--dry-run');
+const dryRun = process.argv.slice(2).includes('--dry-run');
 
 migrateCommunities(dryRun).catch((err) => {
   console.error('Unexpected error:', err);
   process.exit(1);
 });
-

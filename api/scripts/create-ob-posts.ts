@@ -6,81 +6,89 @@
  *
  * For each community with futureVisionText != null and isProject != true:
  * - If no publication exists in future-vision community with sourceEntityId=community.id,
- *   sourceEntityType='community', create one (postCost=0, author=community lead).
+ *   sourceEntityType='community', create one via PublicationService (postCost=0 system action).
  *
  * Idempotent: re-running will not create duplicates.
  *
  * Usage:
  *   From api directory: pnpm run migration:ob-posts
  *   Or from repo root: pnpm --filter @meriter/api run migration:ob-posts
- *
- * Environment:
- *   MONGO_URL or MONGODB_URI - MongoDB connection string
  */
 
-import { MongoClient, Db, ObjectId } from 'mongodb';
-import * as dotenv from 'dotenv';
-import { join } from 'path';
-import { uid } from 'uid';
-import { createPublicationDocument } from '../apps/meriter/test/helpers/fixtures';
-
-dotenv.config({ path: join(__dirname, '../.env') });
-dotenv.config({ path: join(__dirname, '../.env.local') });
-dotenv.config({ path: join(__dirname, '../../.env') });
-dotenv.config({ path: join(__dirname, '../../.env.local') });
-
-const MONGO_URL =
-  process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/meriter';
+import { NestFactory } from '@nestjs/core';
+import { getModelToken } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { MeriterModule } from '../apps/meriter/src/meriter.module';
+import { CommunityService } from '../apps/meriter/src/domain/services/community.service';
+import { PublicationService } from '../apps/meriter/src/domain/services/publication.service';
+import {
+  CommunitySchemaClass,
+  CommunityDocument,
+} from '../apps/meriter/src/domain/models/community/community.schema';
+import {
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../apps/meriter/src/domain/models/publication/publication.schema';
+import {
+  UserCommunityRoleSchemaClass,
+  UserCommunityRoleDocument,
+} from '../apps/meriter/src/domain/models/user-community-role/user-community-role.schema';
 
 interface MigrationStats {
   communitiesProcessed: number;
   postsCreated: number;
-  skippedNoText: number;
   skippedAlreadyExists: number;
   skippedNoLead: number;
   errors: Array<{ communityId: string; error: string }>;
 }
 
 async function run(): Promise<void> {
-  const client = new MongoClient(MONGO_URL);
-  await client.connect();
-  const db = client.db();
+  const app = await NestFactory.createApplicationContext(MeriterModule, {
+    logger: ['error', 'warn', 'log'],
+  });
 
   const stats: MigrationStats = {
     communitiesProcessed: 0,
     postsCreated: 0,
-    skippedNoText: 0,
     skippedAlreadyExists: 0,
     skippedNoLead: 0,
     errors: [],
   };
 
   try {
-    const fv = await db.collection('communities').findOne({ typeTag: 'future-vision' });
+    const communityService = app.get(CommunityService);
+    const publicationService = app.get(PublicationService);
+    const communityModel = app.get<Model<CommunityDocument>>(
+      getModelToken(CommunitySchemaClass.name),
+    );
+    const publicationModel = app.get<Model<PublicationDocument>>(
+      getModelToken(PublicationSchemaClass.name),
+    );
+    const rolesModel = app.get<Model<UserCommunityRoleDocument>>(
+      getModelToken(UserCommunityRoleSchemaClass.name),
+    );
+
+    const fv = await communityService.getCommunityByTypeTag('future-vision');
     if (!fv) {
       console.error('Future-vision community not found. Ensure base communities are bootstrapped.');
       process.exit(1);
     }
-    const futureVisionId = (fv as any).id as string;
+    const futureVisionId = fv.id;
 
-    const communities = await db
-      .collection('communities')
+    const communities = await communityModel
       .find({
         futureVisionText: { $exists: true, $ne: null, $ne: '' },
         $or: [{ isProject: { $ne: true } }, { isProject: false }],
       })
-      .toArray();
+      .lean();
 
     console.log(`Found ${communities.length} communities with futureVisionText (non-project).`);
 
-    const rolesColl = db.collection('user_community_roles');
-    const publicationsColl = db.collection('publications');
-
     for (const community of communities) {
-      const communityId = (community as any).id as string;
+      const communityId = community.id;
       stats.communitiesProcessed++;
 
-      const existingOb = await publicationsColl.findOne({
+      const existingOb = await publicationModel.findOne({
         communityId: futureVisionId,
         sourceEntityType: 'community',
         sourceEntityId: communityId,
@@ -91,33 +99,24 @@ async function run(): Promise<void> {
         continue;
       }
 
-      const leadRole = await rolesColl.findOne({
-        communityId,
-        role: 'lead',
-      });
-      const authorId = leadRole ? (leadRole as any).userId : (community as any).members?.[0];
+      const leadRole = await rolesModel.findOne({ communityId, role: 'lead' }).lean();
+      const authorId = leadRole?.userId ?? community.members?.[0];
       if (!authorId) {
         stats.skippedNoLead++;
         continue;
       }
 
-      const content = (community as any).futureVisionText as string;
-      const now = new Date();
-      const pubId = uid();
+      const content = community.futureVisionText as string;
 
       try {
-        await publicationsColl.insertOne(
-          createPublicationDocument(futureVisionId, authorId, {
-            id: pubId,
-            sourceEntityId: communityId,
-            sourceEntityType: 'community',
-            content,
-            createdAt: now,
-            updatedAt: now,
-          }),
-        );
+        const created = await publicationService.createFutureVisionPost({
+          futureVisionCommunityId: futureVisionId,
+          authorId,
+          content,
+          sourceEntityId: communityId,
+        });
         stats.postsCreated++;
-        console.log(`Created OB post ${pubId} for community ${communityId}`);
+        console.log(`Created OB post ${created.id} for community ${communityId}`);
       } catch (err) {
         stats.errors.push({
           communityId,
@@ -128,7 +127,7 @@ async function run(): Promise<void> {
 
     console.log('Migration finished.', JSON.stringify(stats, null, 2));
   } finally {
-    await client.close();
+    await app.close();
   }
 }
 
