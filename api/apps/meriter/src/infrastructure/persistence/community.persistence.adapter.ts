@@ -240,6 +240,17 @@ export class CommunityPersistenceAdapter implements CommunityPersistencePort {
       sessionOpts(session),
     );
   }
+
+  async updateManyByIds(ids: string[], set: Record<string, unknown>): Promise<number> {
+    if (ids.length === 0) {
+      return 0;
+    }
+    const result = await this.communityModel.updateMany(
+      { id: { $in: ids } },
+      { $set: { ...set, updatedAt: new Date() } },
+    );
+    return result.modifiedCount ?? 0;
+  }
 }
 
 export const communityPersistenceProvider = {

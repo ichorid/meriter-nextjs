@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
+import type { Connection } from 'mongoose';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.constant';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
@@ -13,14 +13,12 @@ import {
   type DocumentVariantReferenceInput,
 } from '../../../domain/common/document-variant-references.util';
 import type { Community } from '../../../domain/models/community/community.schema';
-import type {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../../../domain/models/document-block-variant/document-block-variant.schema';
+import type { DocumentBlockVariantSchemaClass } from '../../../domain/models/document-block-variant/document-block-variant.schema';
 import type {
   MeriterDocumentSchemaClass,
   MeriterDocType,
 } from '../../../domain/models/meriter-document/meriter-document.schema';
+import type { DocumentPersistencePort } from '../../../domain/ports/document.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
@@ -47,7 +45,7 @@ export type ProposeDocumentVariantInput = {
 
 export type ProposeDocumentVariantDeps = {
   documentService: DocumentService;
-  variantModel: Model<DocumentBlockVariantDocument>;
+  documentPersistence: DocumentPersistencePort;
   communityService: CommunityService;
   walletService: WalletService;
   userCommunityRoleService: UserCommunityRoleService;
@@ -140,7 +138,7 @@ export class ProposeDocumentVariantUseCase {
       });
     }
 
-    await this.deps.variantModel.create({
+    const created = await this.deps.documentPersistence.insertVariant({
       id: variantId,
       documentId: doc.id,
       blockId: input.blockId,
@@ -165,18 +163,15 @@ export class ProposeDocumentVariantUseCase {
       variantId,
     );
 
-    const created = await this.deps.variantModel.findOne({ id: variantId }).lean().exec();
-    if (created) {
-      await this.notifyVariantProposed(created as DocumentBlockVariantSchemaClass, doc, community).catch(
-        (err) => {
-          this.logger.warn(
-            `Failed to notify new variant proposal ${variantId}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        },
-      );
-    }
+    await this.notifyVariantProposed(created as DocumentBlockVariantSchemaClass, doc, community).catch(
+      (err) => {
+        this.logger.warn(
+          `Failed to notify new variant proposal ${variantId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      },
+    );
     return created as DocumentBlockVariantSchemaClass;
   }
 

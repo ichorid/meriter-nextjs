@@ -259,4 +259,9 @@ export interface CommunityPersistencePort {
     investments: ProjectInvestmentEntry[],
     session?: CommunityPersistenceSession,
   ): Promise<void>;
+
+  updateManyByIds(
+    ids: string[],
+    set: Record<string, unknown>,
+  ): Promise<number>;
 }

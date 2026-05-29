@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
@@ -7,15 +7,7 @@ import {
   COLLABORATIVE_DOCUMENTS_MIGRATION_REVISION,
 } from '../common/constants/collaborative-documents.constants';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-  type CommunitySettings,
-} from '../models/community/community.schema';
-import {
-  MeriterDocumentSchemaClass,
-  MeriterDocumentDocument,
-} from '../models/meriter-document/meriter-document.schema';
+import type { CommunitySettings } from '../models/community/community.schema';
 import {
   PlatformSettingsSchemaClass,
   PlatformSettingsDocument,
@@ -26,6 +18,14 @@ import {
   UserCommunityRoleDocument,
 } from '../models/user-community-role/user-community-role.schema';
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import {
+  COMMUNITY_PERSISTENCE_PORT,
+  type CommunityPersistencePort,
+} from '../ports/community.persistence.port';
+import {
+  DOCUMENT_PERSISTENCE_PORT,
+  type DocumentPersistencePort,
+} from '../ports/document.persistence.port';
 import { DocumentService } from './document.service';
 
 export interface CollaborativeDocumentsMigrationStats {
@@ -47,10 +47,10 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
   constructor(
     @InjectModel(PlatformSettingsSchemaClass.name)
     private readonly platformSettingsModel: Model<PlatformSettingsDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(MeriterDocumentSchemaClass.name)
-    private readonly documentModel: Model<MeriterDocumentDocument>,
+    @Inject(COMMUNITY_PERSISTENCE_PORT)
+    private readonly communityPersistence: CommunityPersistencePort,
+    @Inject(DOCUMENT_PERSISTENCE_PORT)
+    private readonly documentPersistence: DocumentPersistencePort,
     @InjectModel(UserCommunityRoleSchemaClass.name)
     private readonly userCommunityRoleModel: Model<UserCommunityRoleDocument>,
     @InjectModel(UserSchemaClass.name)
@@ -115,10 +115,9 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
       errors: [],
     };
 
-    const missingDocsSettings = await this.communityModel
-      .find({
+    const missingDocsSettings = await this.communityPersistence.findByQuery({
+      query: {
         id: { $ne: GLOBAL_COMMUNITY_ID },
-        typeTag: { $ne: 'global' },
         $or: [
           { 'settings.documentsMode': { $exists: false } },
           { 'settings.documentCreators': { $exists: false } },
@@ -126,13 +125,14 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
           { 'settings.documentDefaultMode': { $exists: false } },
           { 'settings.documentAutoApplyTimerHours': { $exists: false } },
         ],
-      })
-      .lean()
-      .exec();
+      },
+      limit: 10_000,
+      skip: 0,
+    });
 
     for (const community of missingDocsSettings) {
       const id = community.id;
-      const set: Record<string, unknown> = { updatedAt: new Date() };
+      const set: Record<string, unknown> = {};
       const s = (community.settings ?? {}) as CommunitySettings;
       if (s.documentsMode === undefined) {
         set['settings.documentsMode'] = 'visionOrDescriptionOnly';
@@ -150,66 +150,52 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
         set['settings.documentAutoApplyTimerHours'] = 48;
       }
       try {
-        if (!dryRun) {
-          await this.communityModel.updateOne({ id }, { $set: set });
+        if (!dryRun && Object.keys(set).length > 0) {
+          await this.communityPersistence.updateCommunity(id, { set });
         }
-        stats.communitiesSettingsPatched++;
+        if (Object.keys(set).length > 0) {
+          stats.communitiesSettingsPatched++;
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         stats.errors.push({ id: id ?? 'unknown', error: msg });
       }
     }
 
-    const hubCommunities = await this.communityModel
-      .find({
+    const hubCommunities = await this.communityPersistence.findByQuery({
+      query: {
         typeTag: { $in: ['future-vision', 'marathon-of-good', 'team-projects'] },
-      })
-      .select({ id: 1 })
-      .lean()
-      .exec();
+      },
+      limit: 10_000,
+      skip: 0,
+    });
     const hubCommunityIds = hubCommunities
       .map((c) => c.id)
       .filter((id): id is string => typeof id === 'string' && id.length > 0);
 
     if (hubCommunityIds.length > 0) {
       if (!dryRun) {
-        const hubModeResult = await this.communityModel.updateMany(
-          { id: { $in: hubCommunityIds } },
-          {
-            $set: {
-              'settings.documentsMode': 'off',
-              updatedAt: new Date(),
-            },
-          },
+        const hubModePatched = await this.communityPersistence.updateManyByIds(
+          hubCommunityIds,
+          { 'settings.documentsMode': 'off' },
         );
-        stats.communitiesSettingsPatched += hubModeResult.modifiedCount ?? 0;
+        stats.communitiesSettingsPatched += hubModePatched;
 
-        const result = await this.documentModel.updateMany(
-          {
-            communityId: { $in: hubCommunityIds },
-            type: 'imageOfFuture',
-            deleted: false,
-          },
-          { $set: { deleted: true, updatedAt: new Date() } },
-        );
-        stats.hubObDocumentsRemoved = result.modifiedCount ?? 0;
+        stats.hubObDocumentsRemoved =
+          await this.documentPersistence.softDeleteImageOfFutureByCommunityIds(hubCommunityIds);
       } else {
-        const count = await this.documentModel.countDocuments({
-          communityId: { $in: hubCommunityIds },
-          type: 'imageOfFuture',
-          deleted: false,
-        });
-        stats.hubObDocumentsRemoved = count;
+        stats.hubObDocumentsRemoved =
+          await this.documentPersistence.countActiveImageOfFutureByCommunityIds(hubCommunityIds);
       }
     }
 
-    const candidates = await this.communityModel
-      .find({
+    const candidates = await this.communityPersistence.findByQuery({
+      query: {
         id: { $ne: GLOBAL_COMMUNITY_ID },
-        typeTag: { $ne: 'global' },
-      })
-      .lean()
-      .exec();
+      },
+      limit: 50_000,
+      skip: 0,
+    });
 
     for (const c of candidates) {
       const communityId = c.id;
@@ -248,18 +234,16 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
             typeTag !== 'global';
           const wouldCreateDescription = isProject;
           const existingOb = wouldCreateOb
-            ? await this.documentModel.exists({
+            ? await this.documentPersistence.existsActiveByCommunityAndType(
                 communityId,
-                type: 'imageOfFuture',
-                deleted: false,
-              })
+                'imageOfFuture',
+              )
             : true;
           const existingDesc = wouldCreateDescription
-            ? await this.documentModel.exists({
+            ? await this.documentPersistence.existsActiveByCommunityAndType(
                 communityId,
-                type: 'description',
-                deleted: false,
-              })
+                'description',
+              )
             : true;
           if (wouldCreateOb && !existingOb) {
             stats.documentsCreated += 1;

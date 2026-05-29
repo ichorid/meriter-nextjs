@@ -3,14 +3,14 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model } from 'mongoose';
+import type { PublicationClosingSummary } from '../models/publication/publication.schema';
 import {
-  PublicationSchemaClass,
-  PublicationDocument,
-  type PublicationClosingSummary,
-} from '../models/publication/publication.schema';
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+  type PublicationPersistenceSession,
+} from '../ports/publication.persistence.port';
 import { InvestmentService, HandlePostCloseResult } from './investment.service';
 import { PublicationService } from './publication.service';
 import { WalletService } from './wallet.service';
@@ -45,9 +45,8 @@ export class PostClosingService {
   private readonly logger = new Logger(PostClosingService.name);
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private readonly publicationModel: Model<PublicationDocument>,
-    @InjectConnection() private readonly connection: Connection,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
     private readonly investmentService: InvestmentService,
     private readonly publicationService: PublicationService,
     private readonly walletService: WalletService,
@@ -65,10 +64,7 @@ export class PostClosingService {
     postId: string,
     reason: PostCloseReason,
   ): Promise<ClosePostResult> {
-    const post = await this.publicationModel
-      .findOne({ id: postId })
-      .lean()
-      .exec();
+    const post = await this.publicationPersistence.findById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -98,7 +94,7 @@ export class PostClosingService {
     let result: HandlePostCloseResult;
     let closingSummary: PublicationClosingSummary;
 
-    const runCloseLogic = async (session: ClientSession | undefined) => {
+    const runCloseLogic = async (session?: PublicationPersistenceSession) => {
       result = await this.investmentService.handlePostClose(postId, session);
 
       const authorAmount = result.ratingDistributed.authorAmount;
@@ -167,44 +163,17 @@ export class PostClosingService {
         poolReturned: poolReturnedTotal,
       };
 
-      const now = new Date();
-      await this.publicationModel.updateOne(
-        { id: postId },
-        {
-          $set: {
-            status: 'closed',
-            closedAt: now,
-            closeReason: reason,
-            closingSummary,
-            investmentPool: 0,
-            'metrics.score': 0,
-          },
-        },
-        session ? { session } : {},
-      );
+      await this.publicationPersistence.closePublication({
+        id: postId,
+        reason,
+        closingSummary,
+        session,
+      });
     };
 
-    const transactionErrorMsg =
-      'Transaction numbers are only allowed on a replica set member or mongos';
-
-    try {
-      const session = await this.connection.startSession();
-      try {
-        await session.withTransaction(async () => runCloseLogic(session));
-      } finally {
-        await session.endSession();
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes(transactionErrorMsg)) {
-        this.logger.warn(
-          'MongoDB standalone detected; running post close without transaction',
-        );
-        await runCloseLogic(undefined);
-      } else {
-        throw err;
-      }
-    }
+    await this.publicationPersistence.runInTransaction(async (session) => {
+      await runCloseLogic(session);
+    });
 
     const res = result!;
     const summary = closingSummary!;

@@ -14,7 +14,7 @@ describe('DocumentStructureService', () => {
   let documentVariantService: jest.Mocked<
     Pick<DocumentVariantService, 'assertCanEditDocumentStructure'>
   >;
-  let variantModel: { updateMany: jest.Mock };
+  let documentPersistence: { withdrawOpenVariantsOnBlock: jest.Mock };
 
   const actorUserId = 'user-1';
   const documentId = 'doc-1';
@@ -57,14 +57,14 @@ describe('DocumentStructureService', () => {
     documentVariantService = {
       assertCanEditDocumentStructure: jest.fn().mockResolvedValue(undefined),
     };
-    variantModel = {
-      updateMany: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+    documentPersistence = {
+      withdrawOpenVariantsOnBlock: jest.fn().mockResolvedValue(undefined),
     };
 
     service = new DocumentStructureService(
       documentService as unknown as DocumentService,
       documentVariantService as unknown as DocumentVariantService,
-      variantModel as never,
+      documentPersistence as never,
     );
   });
 
@@ -116,15 +116,9 @@ describe('DocumentStructureService', () => {
       confirmLossOfOfficial: true,
     });
 
-    expect(variantModel.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        documentId,
-        blockId: 'b1',
-        status: 'open',
-      }),
-      expect.objectContaining({
-        $set: expect.objectContaining({ status: 'withdrawn' }),
-      }),
+    expect(documentPersistence.withdrawOpenVariantsOnBlock).toHaveBeenCalledWith(
+      documentId,
+      'b1',
     );
     expect(documentService.updateSections).toHaveBeenCalled();
   });

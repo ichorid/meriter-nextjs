@@ -1,21 +1,23 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import type { Community } from '../models/community/community.schema';
-import {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../models/document-block-variant/document-block-variant.schema';
+import { DocumentBlockVariantSchemaClass } from '../models/document-block-variant/document-block-variant.schema';
 import {
   MeriterDocumentSchemaClass,
   MeriterDocType,
 } from '../models/meriter-document/meriter-document.schema';
+import {
+  DOCUMENT_PERSISTENCE_PORT,
+  type DocumentPersistencePort,
+} from '../ports/document.persistence.port';
 import { CommunityService } from './community.service';
 import { DocumentService } from './document.service';
 import { NotificationService } from './notification.service';
@@ -49,8 +51,8 @@ export class DocumentVariantService {
 
   constructor(
     private readonly documentService: DocumentService,
-    @InjectModel(DocumentBlockVariantSchemaClass.name)
-    private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    @Inject(DOCUMENT_PERSISTENCE_PORT)
+    private readonly documentPersistence: DocumentPersistencePort,
     private readonly communityService: CommunityService,
     private readonly walletService: WalletService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
@@ -61,15 +63,14 @@ export class DocumentVariantService {
   ) {
     this.finalizeDocumentWaveUseCase = createFinalizeDocumentWaveUseCase({
       documentService: this.documentService,
-      variantModel: this.variantModel,
+      documentPersistence: this.documentPersistence,
       communityService: this.communityService,
       notificationService: this.notificationService,
-      connection: this.connection,
       autoApplyWinner: (documentId, blockId) => this.tryAutoApplyWinner(documentId, blockId),
     });
     this.proposeDocumentVariantUseCase = createProposeDocumentVariantUseCase({
       documentService: this.documentService,
-      variantModel: this.variantModel,
+      documentPersistence: this.documentPersistence,
       communityService: this.communityService,
       walletService: this.walletService,
       userCommunityRoleService: this.userCommunityRoleService,
@@ -83,15 +84,8 @@ export class DocumentVariantService {
   }
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
-    return this.variantModel
-      .find({
-        documentId,
-        blockId,
-        deleted: false,
-      })
-      .sort({ proposedAt: -1 })
-      .lean()
-      .exec() as Promise<DocumentBlockVariantSchemaClass[]>;
+    const variants = await this.documentPersistence.findVariantsByBlock(documentId, blockId);
+    return variants as DocumentBlockVariantSchemaClass[];
   }
 
   /**
@@ -140,10 +134,7 @@ export class DocumentVariantService {
     if (v.status !== 'open') {
       throw new BadRequestException('Only open variants can be withdrawn');
     }
-    await this.variantModel.updateOne(
-      { id: variantId },
-      { $set: { status: 'withdrawn', updatedAt: new Date() } },
-    );
+    await this.documentPersistence.updateVariantStatus(variantId, 'withdrawn');
   }
 
   /** Apply voting winner (closed-winner) — document owner or community admin. */
@@ -167,15 +158,10 @@ export class DocumentVariantService {
       throw new BadRequestException('Voting is still open on this block');
     }
 
-    const pending = await this.variantModel
-      .find({
-        documentId,
-        blockId,
-        deleted: false,
-        status: { $in: ['open', 'closed-winner', 'closed-not-winner'] },
-      })
-      .lean()
-      .exec();
+    const pending = await this.documentPersistence.findVariantsPendingResolution(
+      documentId,
+      blockId,
+    );
 
     if (pending.some((v) => v.status === 'open')) {
       throw new BadRequestException('Close voting before choosing a winner');
@@ -189,14 +175,14 @@ export class DocumentVariantService {
     }
 
     const now = new Date();
-    await this.variantModel.updateMany(
+    await this.documentPersistence.updateVariantsStatusByFilter(
       {
         documentId,
         blockId,
         deleted: false,
         status: { $in: ['closed-winner', 'closed-not-winner'] },
       },
-      { $set: { status: 'withdrawn', updatedAt: now } },
+      'withdrawn',
     );
 
     await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
@@ -290,15 +276,10 @@ export class DocumentVariantService {
       throw new NotFoundException('Block not found');
     }
 
-    const openVariantsBeforeOverride = await this.variantModel
-      .find({
-        documentId: doc.id,
-        blockId,
-        status: 'open',
-        deleted: false,
-      })
-      .lean()
-      .exec();
+    const openVariantsBeforeOverride = await this.documentPersistence.findOpenVariants(
+      doc.id,
+      blockId,
+    );
 
     const now = new Date();
     const ok = await this.documentService.updateDocumentBlock(doc.id, blockId, (b) => {
@@ -320,14 +301,14 @@ export class DocumentVariantService {
       throw new BadRequestException('Failed to update block');
     }
 
-    await this.variantModel.updateMany(
+    await this.documentPersistence.updateVariantsStatusByFilter(
       {
         documentId: doc.id,
         blockId,
         status: 'open',
         deleted: false,
       },
-      { $set: { status: 'closed-not-winner', updatedAt: now } },
+      'closed-not-winner',
     );
 
     await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
@@ -379,10 +360,7 @@ export class DocumentVariantService {
     if (v.status === 'applied') {
       throw new BadRequestException('Cannot delete an applied variant');
     }
-    await this.variantModel.updateOne(
-      { id: variantId },
-      { $set: { deleted: true, updatedAt: new Date() } },
-    );
+    await this.documentPersistence.softDeleteVariant(variantId);
   }
 
   private async applyVariantToOfficial(
@@ -392,16 +370,10 @@ export class DocumentVariantService {
     reason: 'vote' | 'admin',
   ): Promise<void> {
     const now = new Date();
-    const openVariantsBeforeApply = await this.variantModel
-      .find({
-        documentId: doc.id,
-        blockId: v.blockId,
-        id: { $ne: v.id },
-        status: 'open',
-        deleted: false,
-      })
-      .lean()
-      .exec();
+    const openVariantsBeforeApply = await this.documentPersistence.findOpenVariants(
+      doc.id,
+      v.blockId,
+    ).then((rows) => rows.filter((row) => row.id !== v.id));
     const ok = await this.documentService.updateDocumentBlock(doc.id, v.blockId, (b) => {
       const previousContent = String(b.officialContent ?? '');
       this.documentService.appendBlockEditHistory(b, {
@@ -426,7 +398,7 @@ export class DocumentVariantService {
       throw new BadRequestException('Failed to update block');
     }
 
-    await this.variantModel.updateMany(
+    await this.documentPersistence.updateVariantsStatusByFilter(
       {
         documentId: doc.id,
         blockId: v.blockId,
@@ -434,20 +406,10 @@ export class DocumentVariantService {
         status: 'open',
         deleted: false,
       },
-      { $set: { status: 'closed-not-winner', updatedAt: now } },
+      'closed-not-winner',
     );
 
-    await this.variantModel.updateOne(
-      { id: v.id },
-      {
-        $set: {
-          status: 'applied',
-          appliedAt: now,
-          appliedBy: actorUserId,
-          updatedAt: now,
-        },
-      },
-    );
+    await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
 
     await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
 
@@ -484,15 +446,7 @@ export class DocumentVariantService {
     if (!doc || doc.deleted || doc.mode !== 'auto') {
       return;
     }
-    const winner = await this.variantModel
-      .findOne({
-        documentId,
-        blockId,
-        status: 'closed-winner',
-        deleted: false,
-      })
-      .lean()
-      .exec();
+    const winner = await this.documentPersistence.findClosedWinnerVariant(documentId, blockId);
     if (!winner || (winner.rating ?? 0) <= 0) {
       return;
     }
