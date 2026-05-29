@@ -1,7 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectModel } from "@nestjs/mongoose";
-import { AppConfig } from "../config/configuration";
+import { AppConfig } from "../../config/configuration";
 import { Model } from "mongoose";
 import { uid } from "uid";
 import * as sharp from "sharp";
@@ -15,23 +15,28 @@ import {
   WELCOME_LEADER_MESSAGE,
   WELCOME_USER_MESSAGE,
   URL as WEB_BASE_URL,
-} from "../config";
+} from "../../config";
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
-import { UserSchemaClass, UserDocument } from "../domain/models/user/user.schema";
-import { PublicationSchemaClass, PublicationDocument } from "../domain/models/publication/publication.schema";
-import { CommunitySchemaClass, CommunityDocument } from "../domain/models/community/community.schema";
-import { UserCommunityRoleService } from "../domain/services/user-community-role.service";
+import { UserSchemaClass, UserDocument } from "../models/user/user.schema";
+import { CommunitySchemaClass, CommunityDocument } from "../models/community/community.schema";
+import { UserCommunityRoleService } from "./user-community-role.service";
+import { PublicationService } from "./publication.service";
 
 import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
-import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../common/helpers/telegram';
-import { t } from '../i18n';
-import { UpdateEventItem } from '../domain/services/user-updates.service';
-import { FeatureFlagsService } from '../common/services/feature-flags.service';
+import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
+import { t } from '../../i18n';
+import { UpdateEventItem } from './user-updates.service';
+import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 
+/**
+ * BC-19 Telegram bot domain service (OD-4).
+ * Inbound hashtag-gated publications route through PublicationService.createPublication
+ * with permission checks and postCost processing (closes V-09 / P-11).
+ */
 @Injectable()
 export class TgBotsService {
   private readonly logger = new Logger(TgBotsService.name);
@@ -40,8 +45,8 @@ export class TgBotsService {
   private readonly s3Bucket?: string;
   constructor(
     @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
-    @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
     @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
+    private publicationService: PublicationService,
     private userCommunityRoleService: UserCommunityRoleService,
     private featureFlagsService: FeatureFlagsService,
     private configService: ConfigService<AppConfig>,
@@ -542,7 +547,7 @@ export class TgBotsService {
     ]);
 
     const { publication, communityId } = result;
-    const slug = publication.id; // Use publication ID as slug
+    const slug = publication.getId.getValue();
     const link = `communities/${communityId}?post=${slug}`;
 
     this.logger.log(`✅ Publication created: slug=${slug}, communityId=${communityId}, tgChatId=${tgChatId}`);
@@ -650,7 +655,7 @@ export class TgBotsService {
 
   async tgSetHook() {
     return await Axios.get(BOT_URL + "/setWebhook", {
-      params: { url: URL + "/api/d/meriter/hook" },
+      params: { url: `${WEB_BASE_URL}/api/telegram/hooks/${BOT_USERNAME}` },
     });
   }
 
@@ -799,7 +804,7 @@ export class TgBotsService {
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
     if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
     const chat = await this.communityModel.findOne({
-
+      telegramChatId: String(tgChatId),
     });
     if (!chat) throw `chatNotFound ${tgChatId}`;
     return chat.hashtags ?? [];
@@ -847,7 +852,8 @@ export class TgBotsService {
   }
 
   async telegramGetChatPhotoUrl(token: string, chat_id: string | number, _revalidate = false) {
-    //if (process.env.NODE_ENV === 'test') return ``;
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) return null;
 
     const avatarBaseUrl =  ((this.configService.get as any)('telegram.avatarBaseUrl') ?? 'https://telegram.hb.bizmrg.com/telegram_small_avatars') as string;
     try {
@@ -1041,7 +1047,7 @@ export class TgBotsService {
       });
   }
   async publicationAdd({
-    tgChatId: tgChatIdInt,
+    tgChatId: _tgChatIdInt,
     fromTgChatId,
     tgAuthorName: _tgAuthorName,
     tgAuthorUsername: _tgAuthorUsername,
@@ -1071,62 +1077,69 @@ export class TgBotsService {
     entities?: any;
     beneficiary?: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null;
   }) {
-    const _tgChatId = String(tgChatIdInt);
+    const fromChatId = String(fromTgChatId);
 
-    // Fetch community and validate hashtag exists
     const community = await this.communityModel.findOne({
-
+      telegramChatId: fromChatId,
     }).lean();
 
     if (!community) {
-      this.logger.error(`Community not found for chat ${fromTgChatId}`);
-      throw new Error(`Community not found for chat ${fromTgChatId}`);
+      this.logger.error(`Community not found for chat ${fromChatId}`);
+      throw new Error(`Community not found for chat ${fromChatId}`);
     }
 
-    const cleanKeyword = keyword.replace("#", "");
+    const cleanKeyword = keyword.replace('#', '');
     const hashtagExists = community.hashtags?.includes(cleanKeyword);
 
     if (!hashtagExists) {
-      this.logger.error(`Hashtag #${cleanKeyword} not configured in community ${fromTgChatId}`);
+      this.logger.error(`Hashtag #${cleanKeyword} not configured in community ${fromChatId}`);
       throw new Error(`Hashtag #${cleanKeyword} is not configured for this community`);
     }
 
-    // Look up author user by telegramId to get internal id
-    const authorUser = await this.userModel.findOne({ telegramId: tgAuthorId }).lean();
+    const authorUser = await this.userModel.findOne({
+      authProvider: 'telegram',
+      authId: tgAuthorId,
+    }).lean();
     if (!authorUser) {
-      this.logger.error(`Author user not found for telegramId ${tgAuthorId}`);
-      throw new Error(`Author user not found for telegramId ${tgAuthorId}`);
+      this.logger.error(`Author user not found for telegram authId ${tgAuthorId}`);
+      throw new Error(`Author user not found for telegram authId ${tgAuthorId}`);
     }
 
-    // Look up beneficiary user by telegramId to get internal id (if beneficiary exists)
     let beneficiaryInternalId: string | undefined;
     if (beneficiary?.telegramId) {
-      const beneficiaryUser = await this.userModel.findOne({ telegramId: beneficiary.telegramId }).lean();
+      const beneficiaryUser = await this.userModel.findOne({
+        authProvider: 'telegram',
+        authId: beneficiary.telegramId,
+      }).lean();
       if (beneficiaryUser) {
         beneficiaryInternalId = beneficiaryUser.id;
       } else {
-        this.logger.warn(`Beneficiary user not found for telegramId ${beneficiary.telegramId}`);
+        this.logger.warn(`Beneficiary user not found for telegram authId ${beneficiary.telegramId}`);
       }
     }
 
-    const publicationData = {
-      id: uid(),
-      authorId: authorUser.id,
-      communityId: community.id,
-      beneficiaryId: beneficiaryInternalId,
-      title: messageText.substring(0, 100), // Use first 100 chars as title
-      content: messageText,
-      type: 'text',
-      hashtags: keyword ? [keyword] : [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    this.logger.log(`📝 Creating publication via CreatePublicationUseCase for community ${community.id}`);
 
-    this.logger.log(`📝 Creating publication with beneficiaryId: ${publicationData.beneficiaryId}`);
+    const publication = await this.publicationService.createPublication(
+      authorUser.id,
+      {
+        communityId: community.id,
+        title: messageText.substring(0, 100),
+        content: messageText,
+        type: 'text',
+        hashtags: [cleanKeyword],
+        beneficiaryId: beneficiaryInternalId,
+        processPostCost: true,
+      },
+      {
+        checkPermissions: true,
+        processPostCost: true,
+      },
+    );
 
-    const publication = await this.publicationModel.create(publicationData);
-
-    this.logger.log(`✅ Publication created with id: ${publication.id}, beneficiaryId: ${publication.beneficiaryId}, communityId: ${community.id}`);
+    this.logger.log(
+      `✅ Publication created with id: ${publication.getId.getValue()}, communityId: ${community.id}`,
+    );
 
     return { publication, communityId: community.id };
   }
@@ -1161,17 +1174,21 @@ export class TgBotsService {
   };
 
   async sendInfoLetter(aboutChatId: string, _toTgChatId: string) {
-    // Community lookup by Telegram chat ID is no longer supported
-    // Communities must be created manually through the API
-    this.logger.warn(`⚠️  sendInfoLetter called for chat ${aboutChatId}, but community lookup by chatId is not supported. Communities must be created manually.`);
-    return;
+    const community = await this.communityModel.findOne({
+      telegramChatId: String(aboutChatId),
+    }).lean();
+    if (!community) {
+      this.logger.warn(`⚠️  sendInfoLetter: no community for telegram chat ${aboutChatId}`);
+      return;
+    }
+    this.logger.log(`ℹ️  sendInfoLetter for community ${community.id} (chat ${aboutChatId}) — not implemented`);
   }
 
   async updateUserChatMembership(tgChatId: string, tgUserId: string): Promise<boolean> {
     this.logger.log(`🔍 Checking membership: user=${tgUserId}, chat=${tgChatId}`);
 
     // Get current user state for logging
-    const user = await this.userModel.findOne({ telegramId: tgUserId });
+    const user = await this.userModel.findOne({ authProvider: 'telegram', authId: tgUserId });
     this.logger.log(`📋 Current user tags: [${user?.communityTags?.join(', ') || 'none'}]`);
 
     const isMember = await this.tgGetChatMember(tgChatId, tgUserId);
@@ -1188,7 +1205,7 @@ export class TgBotsService {
 
     if (!hasTag) {
       await this.userModel.updateOne(
-        { telegramId: tgUserId },
+        { authProvider: 'telegram', authId: tgUserId },
         { $addToSet: { communityTags: tgChatId } }
       );
     }

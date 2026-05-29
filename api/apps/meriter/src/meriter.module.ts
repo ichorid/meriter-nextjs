@@ -16,7 +16,7 @@ import { QuotaResetModule } from './domain/services/quota-reset.module';
 import { PostClosingCronModule } from './domain/services/post-closing-cron.module';
 import { DocumentWaveCronModule } from './domain/services/document-wave-cron.module';
 import { CommonServicesModule } from './common/services/common-services.module';
-import { TgBotsModule } from './tg-bots/tg-bots.module';
+import { TgBotsModule } from './infrastructure/telegram';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 // Import the new domain module
