@@ -3,10 +3,13 @@ import {
   PERMISSION_GATES_PORT,
   PermissionGatesPort,
 } from '../ports/permission-gates.port';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection, type ClientSession } from 'mongoose';
-import { VoteSchemaClass, VoteDocument } from '../models/vote/vote.schema';
-import type { Vote } from '../models/vote/vote.schema';
+import {
+  VOTE_PERSISTENCE_PORT,
+  type VotePersistencePort,
+  type VotePersistenceSession,
+  type VoteRecord,
+  type VoteTargetType,
+} from '../ports/vote.persistence.port';
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
@@ -16,18 +19,17 @@ import { VoteFactorService } from './vote-factor.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationVotedEvent, CommentVotedEvent } from '../events';
 import { DocumentService } from './document.service';
-import {
-  buildOfficialBlockVoteTargetId,
-  parseOfficialBlockVoteTargetId,
-} from '../common/document-official-vote.util';
+import { parseOfficialBlockVoteTargetId } from '../common/document-official-vote.util';
+
+export type Vote = VoteRecord;
 
 @Injectable()
 export class VoteService {
   private readonly logger = new Logger(VoteService.name);
 
   constructor(
-    @InjectModel(VoteSchemaClass.name) private voteModel: Model<VoteDocument>,
-    @InjectConnection() private mongoose: Connection,
+    @Inject(VOTE_PERSISTENCE_PORT)
+    private readonly votePersistence: VotePersistencePort,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
     @Inject(forwardRef(() => CommunityService)) private communityService: CommunityService,
     @Inject(forwardRef(() => PermissionService)) private permissionService: PermissionService,
@@ -40,13 +42,8 @@ export class VoteService {
     private permissionGates: PermissionGatesPort,
   ) {}
 
-  /**
-   * Get the effective beneficiary for a target (publication or vote)
-   * - For publications: beneficiaryId if set, otherwise authorId
-   * - For votes: userId of the vote being voted on
-   */
   private async getEffectiveBeneficiary(
-    targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official',
+    targetType: VoteTargetType,
     targetId: string,
   ): Promise<string | null> {
     if (targetType === 'document-block-official') {
@@ -68,7 +65,6 @@ export class VoteService {
       const effectiveBeneficiary = publication.getEffectiveBeneficiary();
       return effectiveBeneficiary ? effectiveBeneficiary.getValue() : null;
     }
-    // targetId is a vote ID
     const vote = await this.getVoteById(targetId);
     if (!vote) {
       return null;
@@ -76,25 +72,17 @@ export class VoteService {
     return vote.userId;
   }
 
-  /**
-   * Check if user can withdraw from a publication or vote
-   * Rules:
-   * - Can withdraw only if user is the effective beneficiary
-   * - For publications: effective beneficiary = beneficiaryId if set, otherwise authorId
-   * - For votes: effective beneficiary = userId of the vote (can withdraw from your own vote)
-   */
   async canUserWithdraw(userId: string, targetType: 'publication' | 'vote', targetId: string): Promise<boolean> {
     const effectiveBeneficiary = await this.getEffectiveBeneficiary(targetType, targetId);
     if (!effectiveBeneficiary) {
       return false;
     }
-    // Compare the string value of UserId with userId
     return effectiveBeneficiary === userId;
   }
 
   async createVote(
     userId: string,
-    targetType: 'publication' | 'vote' | 'document-variant' | 'document-block-official',
+    targetType: VoteTargetType,
     targetId: string,
     amountQuota: number,
     amountWallet: number,
@@ -102,38 +90,30 @@ export class VoteService {
     comment: string,
     communityId: string,
     images?: string[],
-    session?: ClientSession,
+    session?: VotePersistenceSession,
   ): Promise<Vote> {
     const commentPreview = (comment ?? '').substring(0, 50);
     this.logger.log(
       `Creating vote: user=${userId}, target=${targetType}:${targetId}, amountQuota=${amountQuota}, amountWallet=${amountWallet}, direction=${direction}, communityId=${communityId}, comment=${commentPreview}...`,
     );
 
-    // inv-19: comment voting gate via PermissionGatesPort (V-07)
     if (targetType === 'vote' && !this.permissionGates.isCommentVotingEnabled()) {
       throw new BadRequestException(
         'Voting on comments is disabled. You can only vote on posts/publications.',
       );
     }
 
-    // Permission checks are handled by PermissionService in the tRPC router before this method is called
-    // This method only handles business logic validation (amounts, quota/wallet restrictions, post types)
-
-    // Validate amounts are non-negative
     if (amountQuota < 0 || amountWallet < 0) {
       throw new BadRequestException('Vote amounts cannot be negative');
     }
-    // Allow both zero for neutral comments (commentMode neutralOnly or all; enforced in router)
     if (amountQuota === 0 && amountWallet === 0 && !(comment?.trim?.())) {
       throw new BadRequestException('Neutral comment must include comment text');
     }
 
-    // Validate comment is provided (can be empty string but field must exist)
     if (comment === undefined || comment === null) {
       throw new BadRequestException('Comment is required');
     }
 
-    // Get effective beneficiary (for social currency constraint factor)
     const effectiveBeneficiaryId = await this.getEffectiveBeneficiary(targetType, targetId);
     if (!effectiveBeneficiaryId) {
       if (targetType === 'publication') {
@@ -145,10 +125,8 @@ export class VoteService {
       throw new NotFoundException('Vote not found');
     }
 
-    // Get user role for context currency mode factor
     const userRole = await this.permissionService.getUserRoleInCommunity(userId, communityId);
 
-    // Get publication info if voting on a publication
     let postType: string | undefined;
     let isProject: boolean | undefined;
     if (targetType === 'publication') {
@@ -160,15 +138,15 @@ export class VoteService {
       isProject = publication.getIsProject;
     }
 
-    // Calculate shared team communities (for social currency constraint factor)
     const voterTeamCommunities = await this.getTeamCommunitiesForUser(userId);
     const beneficiaryTeamCommunities = await this.getTeamCommunitiesForUser(effectiveBeneficiaryId);
-    const sharedTeamCommunities = voterTeamCommunities.filter(id => beneficiaryTeamCommunities.includes(id));
+    const sharedTeamCommunities = voterTeamCommunities.filter((id) =>
+      beneficiaryTeamCommunities.includes(id),
+    );
 
     const totalAmount = amountQuota + amountWallet;
     const isNeutralComment = totalAmount === 0;
 
-    // For neutral comments (0,0), skip currency mode validation
     if (!isNeutralComment) {
       const currencyMode = await this.voteFactorService.evaluateCurrencyMode(
         userId,
@@ -207,33 +185,25 @@ export class VoteService {
       }
     }
 
-    // Allow multiple votes on the same content - remove the duplicate check
-    // Users can vote multiple times on the same publication/vote
-
-    // Create vote with explicit direction
-    const voteArray = await this.voteModel.create(
-      [
-        {
-          id: uid(),
-          targetType,
-          targetId,
-          userId,
-          amountQuota,
-          amountWallet,
-          direction,
-          communityId,
-          comment: comment.trim(),
-          images: images || [],
-          createdAt: new Date(),
-        },
-      ],
-      session ? { session } : undefined,
+    const vote = await this.votePersistence.createVote(
+      {
+        id: uid(),
+        targetType,
+        targetId,
+        userId,
+        amountQuota,
+        amountWallet,
+        direction,
+        communityId,
+        comment: comment.trim(),
+        images: images || [],
+        createdAt: new Date(),
+      },
+      session,
     );
 
-    const vote = voteArray[0];
     this.logger.log(`Vote created successfully: ${vote.id}`);
 
-    // Publish domain event for notifications
     if (targetType === 'publication') {
       await this.eventBus.publish(
         new PublicationVotedEvent(targetId, userId, totalAmount, direction),
@@ -254,33 +224,29 @@ export class VoteService {
   ): Promise<boolean> {
     this.logger.log(`Removing vote: user=${userId}, target=${targetType}:${targetId}`);
 
-    const result = await this.voteModel.deleteOne(
-      { userId, targetType, targetId }
+    const removed = await this.votePersistence.deleteVoteByUserTarget(
+      userId,
+      targetType,
+      targetId,
     );
 
-    if (result.deletedCount > 0) {
+    if (removed) {
       this.logger.log(`Vote removed successfully`);
     }
 
-    return result.deletedCount > 0;
+    return removed;
   }
 
   async getUserVotes(userId: string, limit: number = 100, skip: number = 0): Promise<Vote[]> {
-    return this.voteModel
-      .find({ userId })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    return this.votePersistence.findVotesByUserId(userId, limit, skip);
   }
 
   async getVoteById(voteId: string): Promise<Vote | null> {
-    return this.voteModel.findOne({ id: voteId }).lean().exec();
+    return this.votePersistence.findVoteById(voteId);
   }
 
   async getTargetVotes(targetType: string, targetId: string): Promise<Vote[]> {
-    return this.voteModel.find({ targetType, targetId }).lean().exec();
+    return this.votePersistence.findVotesByTarget(targetType, targetId);
   }
 
   async getDocumentBlockPanelVotes(
@@ -288,34 +254,19 @@ export class VoteService {
     blockId: string,
     variantIds: string[],
   ): Promise<Vote[]> {
-    const officialTargetId = buildOfficialBlockVoteTargetId(documentId, blockId);
-    const or: Array<Record<string, unknown>> = [
-      { targetType: 'document-block-official', targetId: officialTargetId },
-    ];
-    if (variantIds.length > 0) {
-      or.push({ targetType: 'document-variant', targetId: { $in: variantIds } });
-    }
-    return this.voteModel
-      .find({ $or: or })
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    return this.votePersistence.findDocumentBlockPanelVotes(documentId, blockId, variantIds);
   }
 
   async getVotesOnVote(voteId: string): Promise<Vote[]> {
-    return this.voteModel.find({ targetType: 'vote', targetId: voteId }).lean().exec();
+    return this.votePersistence.findVotesOnVote(voteId);
   }
 
   async getVotesOnVotes(voteIds: string[]): Promise<Map<string, Vote[]>> {
     if (voteIds.length === 0) return new Map();
 
-    const votes = await this.voteModel
-      .find({ targetType: 'vote', targetId: { $in: voteIds } })
-      .lean()
-      .exec();
-
+    const votes = await this.votePersistence.findVotesOnVotes(voteIds);
     const votesMap = new Map<string, Vote[]>();
-    votes.forEach(vote => {
+    votes.forEach((vote) => {
       const existing = votesMap.get(vote.targetId) || [];
       existing.push(vote);
       votesMap.set(vote.targetId, existing);
@@ -325,76 +276,27 @@ export class VoteService {
   }
 
   async getVotesOnPublication(publicationId: string): Promise<Vote[]> {
-    return this.voteModel
-      .find({
-        targetType: 'publication',
-        targetId: publicationId,
-      })
-      .lean()
-      .exec();
+    return this.votePersistence.findVotesOnPublication(publicationId);
   }
 
-  /**
-   * Get votes on a publication with pagination and sorting
-   * Note: score sorting is done client-side after fetching votes on votes
-   */
   async getPublicationVotes(
     publicationId: string,
     limit: number = 50,
     skip: number = 0,
     sortField: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc'
+    sortOrder: 'asc' | 'desc' = 'desc',
   ): Promise<Vote[]> {
-    // For score sorting, we need to fetch all votes first to calculate scores
-    // For other fields, we can sort in the query
-    if (sortField === 'score') {
-      // Fetch all votes (we'll sort after calculating scores)
-      const allVotes = await this.voteModel
-        .find({
-          targetType: 'publication',
-          targetId: publicationId,
-        })
-        .lean()
-        .exec();
-
-      // Calculate scores for each vote (sum of votes on votes)
-      const voteIds = allVotes.map(v => v.id);
-      const votesOnVotesMap = await this.getVotesOnVotes(voteIds);
-
-      // Add score to each vote
-      const votesWithScores = allVotes.map(vote => ({
-        ...vote,
-        _score: (votesOnVotesMap.get(vote.id) || []).reduce((sum, r) => sum + (r.amountQuota + r.amountWallet), 0),
-      }));
-
-      // Sort by score
-      votesWithScores.sort((a, b) => {
-        return sortOrder === 'asc' ? a._score - b._score : b._score - a._score;
-      });
-
-      // Apply pagination
-      return votesWithScores.slice(skip, skip + limit);
-    }
-
-    // For other fields, sort in MongoDB query
-    const sortValue = sortOrder === 'asc' ? 1 : -1;
-    const sort: Record<string, 1 | -1> = { [sortField]: sortValue };
-
-    return this.voteModel
-      .find({
-        targetType: 'publication',
-        targetId: publicationId,
-      })
-      .limit(limit)
-      .skip(skip)
-      .sort(sort as any)
-      .lean()
-      .exec();
+    return this.votePersistence.findPublicationVotes({
+      publicationId,
+      limit,
+      skip,
+      sortField,
+      sortOrder,
+    });
   }
 
   async hasUserVoted(userId: string, targetType: string, targetId: string): Promise<boolean> {
-    const vote = await this.voteModel.findOne({ userId, targetType, targetId }).lean();
-    return vote !== null;
+    return this.votePersistence.hasUserVote(userId, targetType, targetId);
   }
 
   async hasVoted(
@@ -405,15 +307,8 @@ export class VoteService {
     return this.hasUserVoted(userId, targetType, targetId);
   }
 
-  /**
-   * Get list of team-type community IDs that a user belongs to
-   * Used for teammate detection in special community voting constraints
-   */
   private async getTeamCommunitiesForUser(userId: string): Promise<string[]> {
-    // Get all communities the user belongs to
     const userCommunities = await this.userService.getUserCommunities(userId);
-    
-    // Filter to only team-type communities
     const teamCommunities: string[] = [];
     for (const communityId of userCommunities) {
       const community = await this.communityService.getCommunity(communityId);
@@ -421,21 +316,10 @@ export class VoteService {
         teamCommunities.push(communityId);
       }
     }
-    
     return teamCommunities;
   }
 
-  /**
-   * Returns the sum of vote amounts cast ON the given vote.
-   * Uses MongoDB aggregation to avoid loading all documents.
-   */
   async getPositiveSumForVote(voteId: string): Promise<number> {
-    const result = await this.voteModel.aggregate([
-      { $match: { targetType: 'vote', targetId: voteId } },
-      { $project: { totalAmount: { $add: ['$amountQuota', '$amountWallet'] } } },
-      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
-    ]).exec();
-    return (result && result[0] && result[0].total) || 0;
+    return this.votePersistence.sumPositiveAmountsOnVote(voteId);
   }
-
 }
