@@ -1,24 +1,16 @@
 import { Logger } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
-import {
-  DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION,
-  documentWaveFinalizeLockId,
-} from '../../../domain/common/constants/document-wave-lock.constants';
 import type { Community } from '../../../domain/models/community/community.schema';
-import type {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../../../domain/models/document-block-variant/document-block-variant.schema';
+import type { DocumentBlockVariantSchemaClass } from '../../../domain/models/document-block-variant/document-block-variant.schema';
 import type { MeriterDocumentSchemaClass } from '../../../domain/models/meriter-document/meriter-document.schema';
+import type { DocumentPersistencePort } from '../../../domain/ports/document.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 export type FinalizeDocumentWaveDeps = {
   documentService: DocumentService;
-  variantModel: Model<DocumentBlockVariantDocument>;
+  documentPersistence: DocumentPersistencePort;
   communityService: CommunityService;
   notificationService: NotificationService;
-  connection: Connection;
   /** Applies closed-winner in auto mode (inv-15 mirror stays in DocumentVariantService). */
   autoApplyWinner: (documentId: string, blockId: string) => Promise<void>;
 };
@@ -34,16 +26,11 @@ export class FinalizeDocumentWaveUseCase {
 
   /** Periodic sweep invoked by document-wave cron. */
   async execute(): Promise<void> {
-    const pairs = await this.deps.variantModel
-      .aggregate<{ _id: { d: string; b: string } }>([
-        { $match: { status: 'open', deleted: false } },
-        { $group: { _id: { d: '$documentId', b: '$blockId' } } },
-      ])
-      .exec();
+    const pairs = await this.deps.documentPersistence.findOpenWaveBlockPairs();
 
     for (const p of pairs) {
-      const documentId = p._id.d;
-      const blockId = p._id.b;
+      const documentId = p.documentId;
+      const blockId = p.blockId;
       try {
         const doc = await this.deps.documentService.getById(documentId);
         if (!doc) {
@@ -70,24 +57,17 @@ export class FinalizeDocumentWaveUseCase {
     blockId: string,
     options?: { force?: boolean },
   ): Promise<void> {
-    const lockId = documentWaveFinalizeLockId(documentId, blockId);
-    const locks = this.deps.connection.db?.collection(DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION);
-    if (!locks) {
-      await this.finalizeBlockCore(documentId, blockId, options);
-      return;
-    }
-    const acquired = await locks.updateOne(
-      { lockId },
-      { $setOnInsert: { lockId, createdAt: new Date() } },
-      { upsert: true },
+    const acquired = await this.deps.documentPersistence.acquireWaveFinalizeLock(
+      documentId,
+      blockId,
     );
-    if (!acquired.upsertedCount) {
+    if (!acquired) {
       return;
     }
     try {
       await this.finalizeBlockCore(documentId, blockId, options);
     } finally {
-      await locks.deleteOne({ lockId }).catch(() => undefined);
+      await this.deps.documentPersistence.releaseWaveFinalizeLock(documentId, blockId);
     }
   }
 
@@ -107,15 +87,10 @@ export class FinalizeDocumentWaveUseCase {
       return;
     }
 
-    const openVariants = await this.deps.variantModel
-      .find({
-        documentId,
-        blockId,
-        status: 'open',
-        deleted: false,
-      })
-      .lean()
-      .exec();
+    const openVariants = await this.deps.documentPersistence.findOpenVariants(
+      documentId,
+      blockId,
+    );
 
     if (openVariants.length === 0) {
       await this.deps.documentService.updateDocumentBlock(documentId, blockId, (b) => {
@@ -144,15 +119,7 @@ export class FinalizeDocumentWaveUseCase {
 
     if (officialWins) {
       for (const v of openVariants) {
-        await this.deps.variantModel.updateOne(
-          { id: v.id },
-          {
-            $set: {
-              status: 'closed-not-winner',
-              updatedAt: new Date(),
-            },
-          },
-        );
+        await this.deps.documentPersistence.updateVariantStatus(v.id, 'closed-not-winner');
       }
       await this.deps.documentService.updateDocumentBlock(documentId, blockId, (b) => {
         delete b.currentWaveStartedAt;
@@ -182,14 +149,9 @@ export class FinalizeDocumentWaveUseCase {
 
     for (const v of openVariants) {
       const isWinner = topRated && v.id === top.id;
-      await this.deps.variantModel.updateOne(
-        { id: v.id },
-        {
-          $set: {
-            status: isWinner ? 'closed-winner' : 'closed-not-winner',
-            updatedAt: new Date(),
-          },
-        },
+      await this.deps.documentPersistence.updateVariantStatus(
+        v.id,
+        isWinner ? 'closed-winner' : 'closed-not-winner',
       );
     }
 

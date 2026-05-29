@@ -10,12 +10,15 @@ import {
 import {
   PUBLICATION_PERSISTENCE_PORT,
   type CommunityPublicationsQuery,
+  type ClosePublicationInput,
   type InsertPublicationInput,
   type ObPostSummary,
   type PublicationEditHistoryEntry,
   type PublicationForwardProposalInput,
+  type PublicationPatchUpdate,
   type PublicationPersistencePort,
   type PublicationPersistenceSession,
+  type PublicationQueryListOptions,
   type PublicationVoteUpdate,
 } from '../../domain/ports/publication.persistence.port';
 import {
@@ -490,6 +493,90 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
     };
 
     await deleteCommentsRecursively(publicationId, 'publication');
+  }
+
+  async findByQuery(options: PublicationQueryListOptions): Promise<PublicationSnapshot[]> {
+    let query = this.publicationModel.find(options.query);
+    if (options.select) {
+      query = query.select(options.select);
+    }
+    if (options.sort) {
+      query = query.sort(options.sort);
+    }
+    if (options.skip !== undefined) {
+      query = query.skip(options.skip);
+    }
+    if (options.limit !== undefined) {
+      query = query.limit(options.limit);
+    }
+    const docs = await query.lean().exec();
+    return docs.map((doc) => mapPublicationDocumentToSnapshot(doc as PublicationSnapshot));
+  }
+
+  async countByQuery(query: Record<string, unknown>): Promise<number> {
+    return this.publicationModel.countDocuments(query);
+  }
+
+  async patchById(
+    id: string,
+    update: PublicationPatchUpdate,
+    session?: PublicationPersistenceSession,
+  ): Promise<void> {
+    const mongoUpdate: Record<string, unknown> = {};
+    if (update.set && Object.keys(update.set).length > 0) {
+      mongoUpdate.$set = update.set;
+    }
+    if (update.push && Object.keys(update.push).length > 0) {
+      mongoUpdate.$push = update.push;
+    }
+    if (update.unset && Object.keys(update.unset).length > 0) {
+      mongoUpdate.$unset = update.unset;
+    }
+    if (Object.keys(mongoUpdate).length === 0) {
+      return;
+    }
+    await this.publicationModel.updateOne({ id }, mongoUpdate, sessionOpts(session));
+  }
+
+  async closePublication(input: ClosePublicationInput): Promise<void> {
+    const now = new Date();
+    await this.publicationModel.updateOne(
+      { id: input.id },
+      {
+        $set: {
+          status: 'closed',
+          closedAt: now,
+          closeReason: input.reason,
+          closingSummary: input.closingSummary,
+          investmentPool: 0,
+          'metrics.score': 0,
+        },
+      },
+      sessionOpts(input.session),
+    );
+  }
+
+  async runInTransaction<T>(
+    fn: (session: PublicationPersistenceSession) => Promise<T>,
+  ): Promise<T> {
+    const transactionErrorMsg =
+      'Transaction numbers are only allowed on a replica set member or mongos';
+    const session = await this.connection.startSession();
+    try {
+      let result!: T;
+      await session.withTransaction(async () => {
+        result = await fn(session);
+      });
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes(transactionErrorMsg)) {
+        return fn(undefined);
+      }
+      throw err;
+    } finally {
+      await session.endSession();
+    }
   }
 }
 

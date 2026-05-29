@@ -1,19 +1,18 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 import {
   MeriterDocumentSchemaClass,
 } from '../models/meriter-document/meriter-document.schema';
 import {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../models/document-block-variant/document-block-variant.schema';
+  DOCUMENT_PERSISTENCE_PORT,
+  type DocumentPersistencePort,
+} from '../ports/document.persistence.port';
 import { DocumentService } from './document.service';
 import { DocumentVariantService } from './document-variant.service';
 
@@ -54,8 +53,8 @@ export class DocumentStructureService {
   constructor(
     private readonly documentService: DocumentService,
     private readonly documentVariantService: DocumentVariantService,
-    @InjectModel(DocumentBlockVariantSchemaClass.name)
-    private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    @Inject(DOCUMENT_PERSISTENCE_PORT)
+    private readonly documentPersistence: DocumentPersistencePort,
   ) {}
 
   async addSection(
@@ -290,15 +289,7 @@ export class DocumentStructureService {
     documentId: string,
     blockId: string,
   ): Promise<void> {
-    await this.variantModel.updateMany(
-      {
-        documentId,
-        blockId,
-        status: 'open',
-        deleted: false,
-      },
-      { $set: { status: 'withdrawn', updatedAt: new Date() } },
-    );
+    await this.documentPersistence.withdrawOpenVariantsOnBlock(documentId, blockId);
   }
 
   private async persistSections(

@@ -1,11 +1,13 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { Inject, Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { Poll } from '../aggregates/poll/poll.entity';
-import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
 import { PollCreatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
+import {
+  POLL_PERSISTENCE_PORT,
+  type PollPersistencePort,
+  type PollPartialUpdate,
+} from '../ports/poll.persistence.port';
 import { CreatePollDto, UpdatePollDto } from '../../../../../../libs/shared-types/dist/index';
 import { uid } from 'uid';
 
@@ -14,106 +16,71 @@ export class PollService {
   private readonly logger = new Logger(PollService.name);
 
   constructor(
-    @InjectModel(PollSchemaClass.name) private pollModel: Model<PollDocument>,
+    @Inject(POLL_PERSISTENCE_PORT)
+    private readonly pollPersistence: PollPersistencePort,
     private pollCastRepository: PollCastRepository,
-    @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
   ) {}
 
   async createPoll(userId: string, dto: CreatePollDto): Promise<Poll> {
     this.logger.log(`Creating poll: user=${userId}, community=${dto.communityId}`);
 
-    // Validate expiration is in the future
     const expiresAt = typeof dto.expiresAt === 'string' ? new Date(dto.expiresAt) : dto.expiresAt;
     if (expiresAt <= new Date()) {
       throw new BadRequestException('Poll expiration must be in the future');
     }
 
-    // Create poll aggregate - entity will handle ID generation if needed
     const poll = Poll.create(
       userId,
       dto.communityId,
       dto.question,
       dto.description,
       dto.options,
-      expiresAt
+      expiresAt,
     );
 
-    // Save using Mongoose directly
-    await this.pollModel.create(poll.toSnapshot());
+    await this.pollPersistence.insertPoll(poll.toSnapshot());
 
-    // Publish domain event
-    await this.eventBus.publish(
-      new PollCreatedEvent(poll.getId, dto.communityId, userId)
-    );
+    await this.eventBus.publish(new PollCreatedEvent(poll.getId, dto.communityId, userId));
 
     this.logger.log(`Poll created successfully: ${poll.getId}`);
     return poll;
   }
 
   async getPoll(id: string): Promise<Poll | null> {
-    const doc = await this.pollModel.findOne({ id }).lean();
+    const doc = await this.pollPersistence.findById(id);
     return doc ? Poll.fromSnapshot(doc as any) : null;
   }
 
   async deletePoll(id: string): Promise<void> {
-    // Remove poll casts first to avoid orphan records
     await this.pollCastRepository.deleteByPoll(id);
-    await this.pollModel.deleteOne({ id }).exec();
+    await this.pollPersistence.deleteById(id);
   }
 
   async countActivePollsByCommunity(communityId: string): Promise<number> {
-    return this.pollModel.countDocuments({ communityId, isActive: true });
+    return this.pollPersistence.countActiveByCommunity(communityId);
   }
 
   async getPollsByCommunity(
-    communityId: string, 
-    limit: number = 20, 
+    communityId: string,
+    limit: number = 20,
     skip: number = 0,
     sortBy?: 'createdAt' | 'score',
     search?: string,
   ): Promise<Poll[]> {
-    // Build query
-    const query: any = { communityId, isActive: true };
-
-    // Apply search filter if provided
-    if (search && search.trim()) {
-      // Escape special regex characters for security
-      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const searchRegex = new RegExp(escapedSearch, 'i');
-      query.$or = [
-        { question: searchRegex },
-        { description: searchRegex },
-      ];
-    }
-
-    // Build sort object
-    const sort: any = {};
-    if (sortBy === 'score') {
-      sort['metrics.totalAmount'] = -1; // Use totalAmount as score for polls
-    } else {
-      sort.createdAt = -1;
-    }
-    
-    const docs = await this.pollModel
-      .find(query)
-      .limit(limit)
-      .skip(skip)
-      .sort(sort)
-      .lean();
-    
-    return docs.map(doc => Poll.fromSnapshot(doc as any));
+    const docs = await this.pollPersistence.findByCommunity({
+      communityId,
+      limit,
+      skip,
+      sortBy,
+      search,
+    });
+    return docs.map((doc) => Poll.fromSnapshot(doc as any));
   }
 
   async getActivePolls(limit: number = 20, skip: number = 0): Promise<Poll[]> {
-    const docs = await this.pollModel
-      .find({ isActive: true, expiresAt: { $gt: new Date() } })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    return docs.map(doc => Poll.fromSnapshot(doc as any));
+    const docs = await this.pollPersistence.findActiveNotExpired(limit, skip);
+    return docs.map((doc) => Poll.fromSnapshot(doc as any));
   }
 
   async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number }>> {
@@ -125,24 +92,19 @@ export class PollService {
   }
 
   async expirePoll(pollId: string): Promise<Poll | null> {
-    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    const doc = await this.pollPersistence.findById(pollId);
     if (!doc) {
       throw new NotFoundException('Poll not found');
     }
 
     const poll = Poll.fromSnapshot(doc as any);
-    
+
     if (poll.hasExpired()) {
       poll.expire();
-      
-      await this.pollModel.updateOne(
-        { id: poll.getId },
-        { $set: poll.toSnapshot() }
-      );
-      
+      await this.pollPersistence.updateSnapshot(poll.getId, poll.toSnapshot());
       return poll;
     }
-    
+
     return poll;
   }
 
@@ -153,28 +115,20 @@ export class PollService {
     isNewCaster: boolean,
     isNewCasterForOption: boolean,
   ): Promise<Poll> {
-    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    const doc = await this.pollPersistence.findById(pollId);
     if (!doc) {
       throw new NotFoundException('Poll not found');
     }
 
     const poll = Poll.fromSnapshot(doc as any);
-    
-    // Add cast to poll aggregate (isNewCasterForOption = first time this user voted for this option)
     poll.addCast(optionId, amount, isNewCaster, isNewCasterForOption);
-    
-    // Save updated poll
-    await this.pollModel.updateOne(
-      { id: poll.getId },
-      { $set: poll.toSnapshot() }
-    );
-    
+    await this.pollPersistence.updateSnapshot(poll.getId, poll.toSnapshot());
+
     this.logger.log(`Poll updated for cast: poll=${pollId}, option=${optionId}, amount=${amount}`);
-    
+
     return poll;
   }
 
-  /** Same filter as {@link getPollsByUser} (author or participated via casts). */
   private async buildPollsByUserFilter(userId: string): Promise<Record<string, unknown>> {
     const userCasts = await this.pollCastRepository.findByUser(userId, 1000, 0);
     const pollIdsWithCasts = [...new Set(userCasts.map((cast) => cast.pollId))];
@@ -189,49 +143,36 @@ export class PollService {
 
   async countPollsForUserProfile(userId: string): Promise<number> {
     const filter = await this.buildPollsByUserFilter(userId);
-    return this.pollModel.countDocuments(filter);
+    return this.pollPersistence.countByFilter(filter);
   }
 
   async getPollsByUser(
     userId: string,
     limit: number = 20,
-    skip: number = 0
+    skip: number = 0,
   ): Promise<Poll[]> {
-    const query = await this.buildPollsByUserFilter(userId);
-
-    const docs = await this.pollModel
-      .find(query)
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return docs.map(doc => Poll.fromSnapshot(doc as any));
+    const filter = await this.buildPollsByUserFilter(userId);
+    const docs = await this.pollPersistence.findByFilter(filter, limit, skip);
+    return docs.map((doc) => Poll.fromSnapshot(doc as any));
   }
 
   async updatePoll(
     pollId: string,
-    userId: string,
-    updateData: UpdatePollDto
+    _userId: string,
+    updateData: UpdatePollDto,
   ): Promise<Poll> {
-    const doc = await this.pollModel.findOne({ id: pollId }).lean();
+    const doc = await this.pollPersistence.findById(pollId);
     if (!doc) {
       throw new NotFoundException('Poll not found');
     }
 
     const poll = Poll.fromSnapshot(doc as any);
-
-    // Authorization is handled by PermissionGuard via PermissionService.canEditPoll()
-    // No need for redundant check here
-
-    // Check if poll has any casts (totalCasts > 0)
     const metrics = poll.getMetrics;
     if (metrics.totalCasts > 0) {
       throw new BadRequestException('Cannot edit poll after votes have been cast');
     }
 
-    // Build update object
-    const updateObj: any = {
+    const updateObj: PollPartialUpdate = {
       updatedAt: new Date(),
     };
 
@@ -242,19 +183,16 @@ export class PollService {
       updateObj.description = updateData.description;
     }
     if (updateData.options !== undefined) {
-      // Validate options
       if (updateData.options.length < 2) {
         throw new BadRequestException('Poll must have at least 2 options');
       }
-      
-      // Map options to the format expected by the schema
-      // Preserve existing option IDs if they match, otherwise generate new ones
+
       const existingOptions = poll.getOptions;
-      const updatedOptions = updateData.options.map((opt, index) => {
-        // Try to match by index first, then by ID
-        const existingOption = existingOptions[index] || existingOptions.find(o => o.getId === opt.id);
+      updateObj.options = updateData.options.map((opt, index) => {
+        const existingOption =
+          existingOptions[index] || existingOptions.find((o) => o.getId === opt.id);
         const optionId = existingOption?.getId || opt.id || uid();
-        
+
         return {
           id: optionId,
           text: opt.text,
@@ -263,25 +201,21 @@ export class PollService {
           casterCount: existingOption?.getCasterCount || 0,
         };
       });
-      
-      updateObj.options = updatedOptions;
     }
     if (updateData.expiresAt !== undefined) {
-      const expiresAt = typeof updateData.expiresAt === 'string' ? new Date(updateData.expiresAt) : updateData.expiresAt;
+      const expiresAt =
+        typeof updateData.expiresAt === 'string'
+          ? new Date(updateData.expiresAt)
+          : updateData.expiresAt;
       if (expiresAt <= new Date()) {
         throw new BadRequestException('Poll expiration must be in the future');
       }
       updateObj.expiresAt = expiresAt;
     }
 
-    // Update the document
-    await this.pollModel.updateOne(
-      { id: pollId },
-      { $set: updateObj }
-    );
+    await this.pollPersistence.partialUpdate(pollId, updateObj);
 
-    // Fetch and return updated poll
-    const updatedDoc = await this.pollModel.findOne({ id: pollId }).lean();
+    const updatedDoc = await this.pollPersistence.findById(pollId);
     if (!updatedDoc) {
       throw new NotFoundException('Poll not found after update');
     }
