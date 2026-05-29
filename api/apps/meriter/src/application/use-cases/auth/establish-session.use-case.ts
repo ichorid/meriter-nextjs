@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthProviderService } from '../../../api-v1/auth/auth.service';
+import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
 import { AppConfig } from '../../../config/configuration';
 import { CookieManager } from '../../../infrastructure/auth/cookie-manager';
 
@@ -31,7 +31,7 @@ export class EstablishSessionUseCase {
   constructor(
     private readonly cookieManager: CookieManager,
     private readonly configService: ConfigService<AppConfig>,
-    private readonly authService: AuthProviderService,
+    private readonly authService: AuthProviderPort,
   ) {}
 
   /** inv-23: fake/superadmin auth allowed when fakeDataMode or testAuthMode is enabled. */
@@ -121,7 +121,7 @@ export class EstablishSessionUseCase {
 export function createEstablishSessionUseCase(deps: {
   cookieManager: CookieManager;
   configService: ConfigService<AppConfig>;
-  authService: AuthProviderService;
+  authService: AuthProviderPort;
 }): EstablishSessionUseCase {
   return new EstablishSessionUseCase(deps.cookieManager, deps.configService, deps.authService);
 }

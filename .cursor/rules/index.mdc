@@ -19,7 +19,16 @@ Merit-based social platform operating through web. Users earn and spend "merits"
 ## Repository Structure
 Structure and layer overview: see @architecture.mdc.
 
-**Target architecture (Round 36):** Clean Architecture **landed** on `total_refac` — layers in [`architecture.mdc`](architecture.mdc). ESLint zones **1–9 enforced**. Orchestration in **`application/use-cases/`** (~60). Persistence via **`domain/ports/`** + **`infrastructure/persistence/`** (27 ports). Remaining debt: Tier-3 migration scripts (`@InjectModel`), `features/favorites/`, OD-3 sign-off — see architecture.mdc **Remaining debt**.
+**Target architecture (Round 36):** Clean Architecture **structure landed** on `total_refac` — layers in [`architecture.mdc`](architecture.mdc). ESLint zones **1–9 enforced**. Orchestration in **`application/use-cases/`** (~60). Persistence via **`domain/ports/`** + **`infrastructure/persistence/`**. **In progress:** thin `trpc/routers`, OD-3 sign-off. Remaining debt: Tier-3 `@InjectModel`, `features/favorites/` — see architecture.mdc **Remaining debt** and **Agent truth table**.
+
+### Agent truth table (machine-checkable)
+
+| Check | Command / signal |
+|-------|------------------|
+| Zone 4 clean | `pnpm --filter @meriter/api exec eslint "apps/meriter/src/application/**/*.ts"` → no `api-v1` path violations |
+| Publication create path | `publications.router` `create` delegates to `CREATE_PUBLICATION_PORT` / `CreatePublicationUseCase` |
+| No domain boundary violations | `rg 'from .*trpc/' api/apps/meriter/src/domain` → empty |
+| God-service edits | `codegraph fn-impact CommunityService -T` before large changes |
 
 ## Core Concepts
 - **Merit**: Unit of reputation/currency within a community or several communities

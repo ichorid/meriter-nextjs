@@ -71,6 +71,45 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
   }
 
   /** inv-07: posting as a community source requires lead of that community. */
+  private assertInvestingAndTtlRules(
+    dto: CreatePublicationDto,
+    community: NonNullable<Awaited<ReturnType<CommunityService['getCommunity']>>>,
+  ): void {
+    if (dto.investingEnabled) {
+      const investingEnabled = community.settings?.investingEnabled ?? false;
+      if (!investingEnabled) {
+        throw new BadRequestException('Investing is not enabled for this community');
+      }
+      const min = community.settings?.investorShareMin ?? 1;
+      const max = community.settings?.investorShareMax ?? 99;
+      const percent = dto.investorSharePercent;
+      if (percent == null || percent < min || percent > max) {
+        throw new BadRequestException(
+          `Investor share must be between ${min}% and ${max}%`,
+        );
+      }
+    }
+
+    const requireTTLForInvestPosts =
+      community.settings?.requireTTLForInvestPosts ?? false;
+    if (requireTTLForInvestPosts && dto.investingEnabled) {
+      if (dto.ttlDays == null || dto.ttlDays === undefined) {
+        throw new BadRequestException(
+          'Posts with investing enabled must have a TTL (time to live) set in this community',
+        );
+      }
+    }
+
+    if (dto.ttlDays != null) {
+      const maxTTL = community.settings?.maxTTL;
+      if (maxTTL != null && dto.ttlDays > maxTTL) {
+        throw new BadRequestException(
+          `TTL cannot exceed ${maxTTL} days in this community`,
+        );
+      }
+    }
+  }
+
   private async assertSourceEntityLead(userId: string, sourceEntityId: string): Promise<void> {
     const role = await this.userCommunityRoleService.getRole(userId, sourceEntityId);
     if (role?.role !== 'lead') {
@@ -251,6 +290,8 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
     if (!community) {
       throw new NotFoundException('Community not found');
     }
+
+    this.assertInvestingAndTtlRules(dto, community);
 
     if (community.isProject) {
       if (

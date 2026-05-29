@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { EmailProviderService } from '../../../api-v1/auth/email-provider.service';
+import type { EmailOtpProviderPort } from '../../../domain/ports/email-otp-provider.port';
 import { AppConfig } from '../../../config/configuration';
 
 export class EmailAuthDisabledError extends Error {
@@ -56,7 +56,7 @@ export class SendEmailOtpUseCase {
 
 export function createSendEmailOtpUseCase(deps: {
   configService: ConfigService<AppConfig>;
-  emailProviderService: EmailProviderService;
+  emailProviderService: EmailOtpProviderPort;
 }): SendEmailOtpUseCase {
   return new SendEmailOtpUseCase(deps.configService, deps.emailProviderService);
 }

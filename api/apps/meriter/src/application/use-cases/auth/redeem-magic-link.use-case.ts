@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import {
-  AuthMagicLinkService,
-  RedeemMagicLinkResult as MagicLinkTokenRedeemResult,
-} from '../../../api-v1/auth/auth-magic-link.service';
-import { AuthProviderService } from '../../../api-v1/auth/auth.service';
+import type { MagicLinkAuthPort } from '../../../domain/ports/magic-link-auth.port';
+import type { RedeemMagicLinkResult as MagicLinkTokenRedeemResult } from '../../../domain/ports/magic-link-auth.port';
+import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
 import { EstablishSessionUseCase } from './establish-session.use-case';
 
 export type RedeemMagicLinkResult = {
@@ -22,8 +20,8 @@ export type RedeemMagicLinkResult = {
 @Injectable()
 export class RedeemMagicLinkUseCase {
   constructor(
-    private readonly authMagicLinkService: AuthMagicLinkService,
-    private readonly authService: AuthProviderService,
+    private readonly authMagicLinkService: MagicLinkAuthPort,
+    private readonly authService: AuthProviderPort,
     private readonly establishSessionUseCase: EstablishSessionUseCase,
   ) {}
 
@@ -57,8 +55,8 @@ export class RedeemMagicLinkUseCase {
 }
 
 export function createRedeemMagicLinkUseCase(deps: {
-  authMagicLinkService: AuthMagicLinkService;
-  authService: AuthProviderService;
+  authMagicLinkService: MagicLinkAuthPort;
+  authService: AuthProviderPort;
   establishSessionUseCase: EstablishSessionUseCase;
 }): RedeemMagicLinkUseCase {
   return new RedeemMagicLinkUseCase(

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthProviderService } from '../../../api-v1/auth/auth.service';
-import { SmsProviderService } from '../../../api-v1/auth/sms-provider.service';
+import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
+import type { SmsOtpProviderPort } from '../../../domain/ports/sms-otp-provider.port';
 import { AppConfig } from '../../../config/configuration';
 import { EstablishSessionUseCase } from './establish-session.use-case';
 import {
@@ -46,8 +46,8 @@ export class VerifyCallCheckUseCase {
 
   constructor(
     private readonly configService: ConfigService<AppConfig>,
-    private readonly smsProviderService: SmsProviderService,
-    private readonly authService: AuthProviderService,
+    private readonly smsProviderService: SmsOtpProviderPort,
+    private readonly authService: AuthProviderPort,
     private readonly establishSessionUseCase: EstablishSessionUseCase,
   ) {
     this.sendSmsOtpUseCase = new SendSmsOtpUseCase(configService, smsProviderService);
@@ -100,8 +100,8 @@ export class VerifyCallCheckUseCase {
 
 export function createVerifyCallCheckUseCase(deps: {
   configService: ConfigService<AppConfig>;
-  smsProviderService: SmsProviderService;
-  authService: AuthProviderService;
+  smsProviderService: SmsOtpProviderPort;
+  authService: AuthProviderPort;
   establishSessionUseCase: EstablishSessionUseCase;
 }): VerifyCallCheckUseCase {
   return new VerifyCallCheckUseCase(

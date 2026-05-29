@@ -9,7 +9,11 @@ import {
   CommentAddedEvent,
   CommentVotedEvent,
   PollCastedEvent,
+  TicketAssignedEvent,
+  TicketApplyEvent,
+  TicketRejectedEvent,
 } from '../events';
+import { TicketService } from './ticket.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
 import { PublicationService } from './publication.service';
 import { CommunityService } from './community.service';
@@ -37,6 +41,8 @@ export class NotificationHandlersService implements OnModuleInit {
     @Inject(forwardRef(() => PollService))
     private readonly pollService: PollService,
     private readonly favoriteService: FavoriteService,
+    @Inject(forwardRef(() => TicketService))
+    private readonly ticketService: TicketService,
     @InjectConnection() private readonly mongoose: Connection,
   ) {}
 
@@ -59,6 +65,15 @@ export class NotificationHandlersService implements OnModuleInit {
     );
     this.eventBus.subscribe('PollCasted', (event) =>
       this.handlePollCasted(event as PollCastedEvent),
+    );
+    this.eventBus.subscribe('TicketAssigned', (event) =>
+      this.handleTicketAssigned(event as TicketAssignedEvent),
+    );
+    this.eventBus.subscribe('TicketApply', (event) =>
+      this.handleTicketApply(event as TicketApplyEvent),
+    );
+    this.eventBus.subscribe('TicketRejected', (event) =>
+      this.handleTicketRejected(event as TicketRejectedEvent),
     );
 
     this.logger.log('Notification handlers registered');
@@ -656,6 +671,72 @@ export class NotificationHandlersService implements OnModuleInit {
       );
     } catch (error) {
       this.logger.error(`Error handling CommentVoted event:`, error);
+    }
+  }
+
+  private async handleTicketAssigned(event: TicketAssignedEvent): Promise<void> {
+    try {
+      const metadata = await this.ticketService.buildTicketNotificationMetadata(
+        event.getTicketId(),
+        event.getProjectId(),
+        { leadUserId: event.getActorUserId() },
+      );
+      await this.notificationService.createNotification({
+        userId: event.getBeneficiaryId(),
+        type: 'ticket_assigned',
+        source: 'system',
+        sourceId: event.getActorUserId(),
+        metadata,
+        title: 'Ticket assigned',
+        message: 'You were assigned a ticket in the project.',
+      });
+    } catch (error) {
+      this.logger.error('Error handling TicketAssigned event:', error);
+    }
+  }
+
+  private async handleTicketApply(event: TicketApplyEvent): Promise<void> {
+    try {
+      const metadata = await this.ticketService.buildTicketNotificationMetadata(
+        event.getTicketId(),
+        event.getProjectId(),
+        {
+          applicantUserId: event.getApplicantUserId(),
+          applicantName: event.getApplicantName(),
+        },
+      );
+      await this.notificationService.createNotification({
+        userId: event.getLeadUserId(),
+        type: 'ticket_apply',
+        source: 'system',
+        sourceId: event.getApplicantUserId(),
+        metadata,
+        title: 'New ticket application',
+        message: 'Someone applied for a neutral ticket in your project.',
+      });
+    } catch (error) {
+      this.logger.error('Error handling TicketApply event:', error);
+    }
+  }
+
+  private async handleTicketRejected(event: TicketRejectedEvent): Promise<void> {
+    try {
+      const metadata = await this.ticketService.buildTicketNotificationMetadata(
+        event.getTicketId(),
+        event.getProjectId(),
+        { rejectionMessage: event.getRejectionMessage() },
+      );
+      await this.notificationService.createNotification({
+        userId: event.getRecipientUserId(),
+        type: 'ticket_rejection',
+        source: 'system',
+        sourceId: event.getActorUserId(),
+        metadata,
+        title: 'Application not selected',
+        message: event.getRejectionMessage(),
+      });
+    } catch (error) {
+      this.logger.error('Error handling TicketRejected event:', error);
     }
   }
 }

@@ -11,7 +11,16 @@ alwaysApply: false
 
 **Blueprint:** `.index/architecture/TARGET_ARCHITECTURE.md` (Round 36) · metadata: `target_architecture.yaml` · intrinsic complexity: `NECESSARY_COMPLEXITY.md` (30 concepts, **19** bounded contexts).
 
-**Status (2026-05, `total_refac`):** Clean Architecture layers are **landed**. ESLint boundary zones **1–9** are **enforced** (`error`/`warn` in [`api/.eslintrc.js`](api/.eslintrc.js)). Routers are **thin** — orchestration lives in **`application/use-cases/`** (~60 use cases). Mongoose stays in **`infrastructure/persistence/`** via **`domain/ports/`**. **Zone 8 is clean**: where a domain service must trigger an application use case, the dependency is inverted through a `domain/ports/*` orchestration token bound to the use case in [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts) (`@Global` composition root; mirrors `PermissionGatesPort`).
+**Status (2026-05, `total_refac`):** Clean Architecture **layers and ESLint zones 1–9 are landed** (`error`/`warn` in [`api/.eslintrc.js`](api/.eslintrc.js)). Orchestration lives in **`application/use-cases/`** (~60). Mongoose IO in **`infrastructure/persistence/`** via **`domain/ports/`**; auth/upload gateways in **`infrastructure/auth/`**, **`infrastructure/uploads/`**. **Zone 8** uses [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts). **Still thinning:** legacy **`trpc/routers`** (fat handlers) → use cases + presenters. **Authoritative rules:** this file; **historical blueprint only:** `.index/architecture/TARGET_ARCHITECTURE.md` Round changelog (not live grep anchors).
+
+### Agent truth table
+
+| Check | Command / signal |
+|-------|------------------|
+| Zone 4 clean | `pnpm --filter @meriter/api exec eslint "apps/meriter/src/application/**/*.ts"` |
+| Router thinness | `publications.router.ts` / `communities.router.ts` LOC down; mutations call use cases |
+| Domain imports | `rg 'from .*trpc/' api/apps/meriter/src/domain` → empty |
+| Impact | `codegraph fn-impact <Symbol> -T` before editing hubs |
 
 ## Clean Architecture layers (backend)
 
@@ -66,7 +75,7 @@ alwaysApply: false
 | — | `wallets.withdraw` / `wallets.transfer` | Permanent `NOT_IMPLEMENTED` |
 | — | `features/favorites/` | Not on disk |
 | — | Dual transport | Primary `trpc/`; `adapters/trpc/` scaffold; legacy `api-v1/` for auth/config |
-| — | Zone **4** lint: `application/use-cases` import `api-v1/*` (auth/upload/community-setup helpers) | Next work unit: extract `domain/ports` + `infrastructure/` adapters |
+| — | Fat `trpc/routers` (e.g. `publications`, `communities`) | Thin via use cases + presenters (ongoing) |
 
 **Retired waivers (do not re-introduce):** V-01, V-02, V-03/V-04 (`CreateVoteUseCase`), V-05, V-07 (`GetRuntimeConfigUseCase`), V-08, V-10, V-11.
 
@@ -240,18 +249,19 @@ libs/shared-types/src/
 
 ### Service Layer (Backend)
 ```typescript
-// domain/services/[entity].service.ts
+// domain/services/[entity].service.ts — new code uses persistence ports, not @InjectModel
 @Injectable()
 export class EntityService {
   constructor(
-    @InjectModel(Entity.name) private model: Model<Entity>,
+    @Inject(ENTITY_PERSISTENCE_PORT) private readonly persistence: EntityPersistencePort,
     private otherService: OtherService,
   ) {}
 
   async create(dto: CreateEntityDto): Promise<Entity> {
-    // Business logic here
+    // business rules + persistence port
   }
 }
+// Tier-3 exception: migration scripts / tg-bots may still use @InjectModel (tagged V-12-residual)
 ```
 
 ### tRPC Router (Backend)
@@ -307,6 +317,14 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 ## Canonical enrichment path (API responses)
 
 1. Load domain entities → 2. Batch fetch users/communities (`UserEnrichmentService`) → 3. `EntityMappers.map*ToApi` → 4. Router post-processing (transitional Mongo-only fields) → 5. `PermissionRuleEngine` allow/deny (via `PermissionGatesPort` Phase 3+) → 6. `permissions.presenter` → `ResourcePermissions` + i18n keys only → 7. Return shared-types DTO.
+
+## CA gap remediation status (2026-05)
+
+- **Zone 4:** application layer ESLint-clean (no `api-v1` imports); auth/upload ports in infrastructure.
+- **Publications adapter:** `trpc/routers/publications.router.ts` is a thin re-export; procedures in `adapters/trpc/handlers/publications-procedures.handler.ts`; withdrawal orchestration in `application/use-cases/publications/publication-withdrawal.orchestrator.ts`.
+- **Community split (partial):** `CommunityMembershipService`, `CommunityEffectiveSettingsService` extracted; `CommunityService` façade still large — continue incremental extraction.
+- **Notifications (partial):** ticket flows use `TicketAssigned` / `TicketApply` / `TicketRejected` events + `NotificationHandlersService`; other domain services still inline `createNotification` until migrated.
+- **CI:** `apps/meriter/test/architecture-boundaries.spec.ts` enforces Zone 4 on `src/application/**`.
 
 ## OD-3 permissions split (pending product sign-off)
 

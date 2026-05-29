@@ -1,0 +1,1404 @@
+import { z } from 'zod';
+import { router, protectedProcedure } from '../../../trpc/trpc';
+import { TRPCError } from '@trpc/server';
+import {
+  CreatePublicationDtoSchema,
+  TopUpPublicationRatingInputSchema,
+  UpdatePublicationDtoSchema,
+  WithdrawAmountDtoSchema,
+} from '@meriter/shared-types';
+import { createCreateVoteUseCaseFromContext } from '../../../application/use-cases/voting/create-vote.use-case';
+
+const IdInputSchema = z.object({ id: z.string() });
+import { EntityMappers } from '../../mappers';
+import { UserFormatter } from '../../../api-v1/common/utils/user-formatter.util';
+import { mapInvestmentsForPublicationFeed } from '../../../domain/services/feed-item-investments.mapper';
+import { NotFoundError } from '../../../common/exceptions/api.exceptions';
+import { checkPermissionInHandler } from '../../../trpc/middleware/permission.middleware';
+import { PaginationInputSchema } from '../../../common/schemas/pagination.schema';
+import {
+  attendeeIdsFromParticipants,
+  parseEventParticipantsFromDoc,
+} from '../../../domain/common/helpers/event-participant.helper';
+import { createForwardPublicationUseCase } from '../../../application/use-cases/publications/forward-publication.use-case';
+import { createAcceptForwardPublicationUseCase } from '../../../application/use-cases/publications/accept-forward-publication.use-case';
+import { createClosePublicationUseCase } from '../../../application/use-cases/publications/close-publication.use-case';
+import { createWithdrawPublicationRatingUseCase } from '../../../application/use-cases/publications/withdraw-publication-rating.use-case';
+import {
+  autoWithdrawPublicationBalanceBeforeDelete,
+  processPublicationWithdrawal,
+} from '../../../application/use-cases/publications/publication-withdrawal.orchestrator';
+
+export {
+  autoWithdrawPublicationBalanceBeforeDelete,
+} from '../../../application/use-cases/publications/publication-withdrawal.orchestrator';
+
+export const publicationsRouter = router({
+  /**
+   * Get publication by ID
+   */
+  getById: protectedProcedure
+    .input(IdInputSchema)
+    .query(async ({ ctx, input }) => {
+      const publication = await ctx.publicationService.getPublication(input.id);
+
+      if (!publication) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Publication not found',
+        });
+      }
+
+      // Hide deleted publications from non-leads (and non-superadmins).
+      // Leads/superadmins can access deleted publications (e.g. for moderation/audit).
+      const isDeleted = publication.toSnapshot().deleted === true;
+      if (isDeleted && ctx.user?.globalRole !== 'superadmin') {
+        const communityId = publication.getCommunityId.getValue();
+        const role = await ctx.permissionService.getUserRoleInCommunity(
+          ctx.user.id,
+          communityId,
+        );
+        if (role !== 'lead') {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: 'Publication not found',
+          });
+        }
+      }
+
+      // Extract IDs for enrichment
+      const authorId = publication.getAuthorId.getValue();
+      const beneficiaryId = publication.getBeneficiaryId?.getValue();
+      const communityId = publication.getCommunityId.getValue();
+
+      // Fetch document to get editHistory
+      const doc = await ctx.connection.db!
+        .collection('publications')
+        .findOne({ id: input.id });
+
+      const editHistory = (doc as any)?.editHistory || [];
+      const editorIds = editHistory.map((entry: any) => entry.editedBy);
+      const uniqueEditorIds = [...new Set(editorIds)];
+
+      const ticketActivityLogRaw = (doc as any)?.ticketActivityLog || [];
+      const ticketActorIds = [
+        ...new Set(
+          ticketActivityLogRaw.map((e: { actorId?: string }) => e.actorId).filter(Boolean),
+        ),
+      ] as string[];
+
+      // Deleted publications are only accessible to leads/superadmins (see gate above).
+
+      // Batch fetch users and communities
+      const userIds = [
+        authorId,
+        ...(beneficiaryId ? [beneficiaryId] : []),
+        ...uniqueEditorIds,
+        ...ticketActorIds,
+      ];
+      const pubSnap = publication.toSnapshot();
+      const communityIdsToFetch = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnap.authorKind === 'community' && pubSnap.authoredCommunityId
+            ? [pubSnap.authoredCommunityId]
+            : []),
+        ]),
+      );
+      const [usersMap, communitiesMap, permissions] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(userIds as string[]),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsToFetch),
+        ctx.permissionsHelperService.calculatePublicationPermissions(ctx.user?.id || null, input.id),
+      ]);
+
+      const logicalAuthorCommunity =
+        pubSnap.authorKind === 'community' && pubSnap.authoredCommunityId
+          ? communitiesMap.get(pubSnap.authoredCommunityId)
+          : undefined;
+
+      const mappedPublication = EntityMappers.mapPublicationToApi(
+        publication,
+        usersMap,
+        communitiesMap,
+        logicalAuthorCommunity
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunity.id as string,
+                name: (logicalAuthorCommunity as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                  .avatarUrl,
+              },
+            }
+          : undefined,
+      );
+
+      // Forward fields currently live on the persisted document; enrich response from Mongo doc
+      // (the domain aggregate snapshot may not include these).
+      mappedPublication.forwardStatus = (doc as any)?.forwardStatus ?? null;
+      mappedPublication.forwardTargetCommunityId = (doc as any)?.forwardTargetCommunityId || undefined;
+      mappedPublication.forwardProposedBy = (doc as any)?.forwardProposedBy || undefined;
+      mappedPublication.forwardProposedAt = (doc as any)?.forwardProposedAt || undefined;
+
+      // Event fields live on the persisted document only (not on Publication aggregate / mapPublicationToApi).
+      if (pubSnap.postType === 'event' || (doc as { postType?: string } | null)?.postType === 'event') {
+        const raw = doc as {
+          eventStartDate?: Date | string;
+          eventEndDate?: Date | string;
+          eventTime?: string;
+          eventLocation?: string;
+          eventAttendees?: string[];
+          eventParticipants?: Array<{
+            userId: string;
+            attendance?: 'checked_in' | 'no_show' | null;
+            attendanceUpdatedAt?: Date | string;
+            attendanceUpdatedByUserId?: string;
+          }>;
+        };
+        const toIso = (v: Date | string | undefined): string | undefined => {
+          if (v == null) return undefined;
+          const d = v instanceof Date ? v : new Date(v);
+          return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+        };
+        mappedPublication.eventStartDate = toIso(raw.eventStartDate);
+        mappedPublication.eventEndDate = toIso(raw.eventEndDate);
+        mappedPublication.eventTime = raw.eventTime;
+        mappedPublication.eventLocation = raw.eventLocation;
+        const participantRows = parseEventParticipantsFromDoc(raw);
+        mappedPublication.eventParticipants = participantRows.map((r) => ({
+          userId: r.userId,
+          attendance: r.attendance ?? null,
+          attendanceUpdatedAt: r.attendanceUpdatedAt
+            ? toIso(r.attendanceUpdatedAt instanceof Date ? r.attendanceUpdatedAt : new Date(r.attendanceUpdatedAt))
+            : undefined,
+          attendanceUpdatedByUserId: r.attendanceUpdatedByUserId,
+        }));
+        mappedPublication.eventAttendees = attendeeIdsFromParticipants(participantRows);
+
+        const attendeeIdsList = mappedPublication.eventAttendees as string[];
+        if (attendeeIdsList.length > 0) {
+          const attendeeMap = await ctx.userEnrichmentService.batchFetchUsers(attendeeIdsList);
+          mappedPublication.eventAttendeeSummaries = attendeeIdsList.map((attendeeId: string) =>
+            UserFormatter.formatUserForApi(attendeeMap.get(attendeeId) ?? null, attendeeId),
+          );
+        } else {
+          mappedPublication.eventAttendeeSummaries = [];
+        }
+      }
+
+      // Investment fields (from document)
+      mappedPublication.investingEnabled = (doc as any)?.investingEnabled ?? false;
+      mappedPublication.investorSharePercent = (doc as any)?.investorSharePercent ?? undefined;
+      mappedPublication.investmentPool = (doc as any)?.investmentPool ?? 0;
+      mappedPublication.investmentPoolTotal = (doc as any)?.investmentPoolTotal ?? 0;
+      mappedPublication.investments = (doc as any)?.investments ?? [];
+
+      // D-1: Post lifecycle (status, closing)
+      mappedPublication.status = (doc as any)?.status ?? 'active';
+      mappedPublication.closedAt = (doc as any)?.closedAt ?? undefined;
+      mappedPublication.closeReason = (doc as any)?.closeReason ?? undefined;
+      mappedPublication.closingSummary = (doc as any)?.closingSummary ?? undefined;
+      mappedPublication.lastEarnedAt = (doc as any)?.lastEarnedAt ?? undefined;
+      mappedPublication.ttlWarningNotified = (doc as any)?.ttlWarningNotified ?? false;
+
+      // Enrich edit history with user data
+      if (editHistory && editHistory.length > 0) {
+        mappedPublication.editHistory = editHistory.map((entry: any) => {
+          const editor = usersMap.get(entry.editedBy);
+          // Handle date conversion - MongoDB may return Date objects or ISO strings
+          let editedAtString: string;
+          if (entry.editedAt instanceof Date) {
+            editedAtString = entry.editedAt.toISOString();
+          } else if (typeof entry.editedAt === 'string') {
+            editedAtString = entry.editedAt;
+          } else {
+            // Fallback: try to parse as date
+            editedAtString = new Date(entry.editedAt).toISOString();
+          }
+
+          return {
+            editedBy: entry.editedBy,
+            editedAt: editedAtString,
+            editor: editor ? {
+              id: entry.editedBy,
+              name: editor.name || editor.displayName || 'Unknown',
+              photoUrl: editor.photoUrl || editor.avatarUrl,
+            } : undefined,
+          };
+        }).reverse(); // Reverse to show newest first
+      } else {
+        mappedPublication.editHistory = [];
+      }
+
+      mappedPublication.ticketStatus = (doc as any)?.ticketStatus ?? undefined;
+      mappedPublication.isNeutralTicket = (doc as any)?.isNeutralTicket ?? undefined;
+      mappedPublication.applicants = Array.isArray((doc as any)?.applicants)
+        ? ((doc as any).applicants as string[])
+        : [];
+      if (ticketActivityLogRaw.length > 0) {
+        mappedPublication.ticketActivityLog = ticketActivityLogRaw
+          .map((entry: { at?: Date | string; actorId: string; action: string; detail?: unknown }) => {
+            let atString: string;
+            if (entry.at instanceof Date) {
+              atString = entry.at.toISOString();
+            } else if (typeof entry.at === 'string') {
+              atString = entry.at;
+            } else {
+              atString =
+                entry.at != null
+                  ? new Date(entry.at as string | number).toISOString()
+                  : new Date(0).toISOString();
+            }
+            const actor = usersMap.get(entry.actorId);
+            return {
+              at: atString,
+              actorId: entry.actorId,
+              action: entry.action,
+              detail: entry.detail ?? {},
+              actor: actor
+                ? {
+                    id: entry.actorId,
+                    name: actor.name || actor.displayName || 'Unknown',
+                    photoUrl: actor.photoUrl || actor.avatarUrl,
+                  }
+                : undefined,
+            };
+          })
+          .reverse();
+      } else {
+        mappedPublication.ticketActivityLog = [];
+      }
+
+      // Add permissions to response
+      mappedPublication.permissions = permissions;
+
+      // Add withdrawals data
+      let totalWithdrawn = 0;
+      try {
+        totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+          'publication_withdrawal',
+          input.id,
+        );
+      } catch (_err) {
+        // Log but don't fail
+      }
+      mappedPublication.withdrawals = {
+        totalWithdrawn,
+      };
+
+      return mappedPublication;
+    }),
+
+  /**
+   * List Birzha posts published on behalf of a project or local community (source admin only).
+   */
+  getBirzhaPostsBySource: protectedProcedure
+    .input(
+      PaginationInputSchema.pick({ limit: true, skip: true }).extend({
+        sourceEntityType: z.enum(['project', 'community']),
+        sourceEntityId: z.string(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      if (
+        !(await ctx.communityService.isUserAdmin(
+          input.sourceEntityId,
+          ctx.user.id,
+        ))
+      ) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not allowed to list these publications',
+        });
+      }
+      const birzha = await ctx.communityService.getCommunityByTypeTag(
+        'marathon-of-good',
+      );
+      if (!birzha) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Birzha community not found',
+        });
+      }
+      const limit = input.limit ?? 20;
+      const skip = input.skip ?? 0;
+      const birzhaId = birzha.id as string;
+      const [total, publications] = await Promise.all([
+        ctx.publicationService.countBirzhaPostsBySourceEntity(
+          birzhaId,
+          input.sourceEntityType,
+          input.sourceEntityId,
+        ),
+        ctx.publicationService.getBirzhaPostsBySourceEntity(
+          birzhaId,
+          input.sourceEntityType,
+          input.sourceEntityId,
+          limit,
+          skip,
+        ),
+      ]);
+
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      for (const pub of publications) {
+        const s = pub.toSnapshot();
+        userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
+      }
+
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(
+          Array.from(communityIds),
+        ),
+      ]);
+
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        const mapped = EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+        mapped.investingEnabled = s.investingEnabled ?? false;
+        mapped.investorSharePercent = s.investorSharePercent;
+        mapped.investmentPool = s.investmentPool ?? 0;
+        mapped.investmentPoolTotal = s.investmentPoolTotal ?? 0;
+        mapped.investments = mapInvestmentsForPublicationFeed(s.investments);
+        mapped.status = s.status ?? 'active';
+        mapped.closedAt = s.closedAt ?? undefined;
+        mapped.closeReason = s.closeReason ?? undefined;
+        mapped.closingSummary = s.closingSummary ?? undefined;
+        mapped.ttlExpiresAt = s.ttlExpiresAt ?? undefined;
+        mapped.ttlDays = s.ttlDays;
+        mapped.lastEarnedAt = s.lastEarnedAt ?? undefined;
+        mapped.stopLoss = s.stopLoss ?? 0;
+        mapped.noAuthorWalletSpend = s.noAuthorWalletSpend ?? false;
+        mapped.ttlWarningNotified = s.ttlWarningNotified ?? false;
+        return mapped;
+      });
+
+      if (ctx.connection?.db && mappedPublications.length > 0) {
+        const ids = mappedPublications.map((p) => p.id);
+        const docs = await ctx.connection.db
+          .collection('publications')
+          .find(
+            { id: { $in: ids } },
+            {
+              projection: {
+                id: 1,
+                forwardStatus: 1,
+                forwardTargetCommunityId: 1,
+                forwardProposedBy: 1,
+                forwardProposedAt: 1,
+                status: 1,
+                closedAt: 1,
+                closeReason: 1,
+                closingSummary: 1,
+                lastEarnedAt: 1,
+                ttlWarningNotified: 1,
+              },
+            },
+          )
+          .toArray();
+        const forwardMap = new Map<string, unknown>();
+        for (const d of docs) {
+          const id = (d as Record<string, unknown>)['id'];
+          if (typeof id === 'string') {
+            forwardMap.set(id, d);
+          }
+        }
+        mappedPublications.forEach((pub) => {
+          const d = forwardMap.get(pub.id) as Record<string, unknown> | undefined;
+          if (!d) return;
+          pub.forwardStatus = (d.forwardStatus as typeof pub.forwardStatus) ?? null;
+          pub.forwardTargetCommunityId = (d.forwardTargetCommunityId as string) || undefined;
+          pub.forwardProposedBy = (d.forwardProposedBy as string) || undefined;
+          pub.forwardProposedAt = (d.forwardProposedAt as string) || undefined;
+          pub.status = (d.status as string) ?? 'active';
+          pub.closedAt = d.closedAt ?? undefined;
+          pub.closeReason = d.closeReason ?? undefined;
+          pub.closingSummary = d.closingSummary ?? undefined;
+          pub.lastEarnedAt = d.lastEarnedAt ?? undefined;
+          pub.ttlWarningNotified = (d.ttlWarningNotified as boolean) ?? false;
+        });
+      }
+
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap =
+        await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+          ctx.user?.id || null,
+          publicationIds,
+        );
+
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn =
+                await ctx.walletService.getTotalWithdrawnByReference(
+                  'publication_withdrawal',
+                  id,
+                );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // ignore
+      }
+
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
+      return {
+        data: mappedPublications,
+        total,
+        limit,
+        skip,
+      };
+    }),
+
+  /**
+   * Get publications (paginated)
+   */
+  getAll: protectedProcedure
+    .input(PaginationInputSchema.extend({
+      communityId: z.string().optional(),
+      authorId: z.string().optional(),
+      hashtag: z.string().optional(),
+      cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
+    }).optional())
+    .query(async ({ ctx, input }) => {
+      const query = input || {};
+      // Support both pagination formats: limit/skip and page/pageSize
+      // Use cursor if provided (from tRPC infinite query), otherwise use page
+      const page = query.cursor ?? query.page;
+      let parsedLimit = 20;
+      let parsedSkip = 0;
+
+      if (query.pageSize) {
+        parsedLimit = query.pageSize;
+      } else if (query.limit) {
+        parsedLimit = query.limit;
+      }
+
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
+      } else if (query.skip !== undefined) {
+        parsedSkip = query.skip;
+      }
+
+      let publications: any[];
+
+      if (query.communityId) {
+        publications = await ctx.publicationService.getPublicationsByCommunity(
+          query.communityId,
+          parsedLimit,
+          parsedSkip,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          true,
+        );
+      } else if (query.authorId) {
+        publications = await ctx.publicationService.getPublicationsByAuthor(
+          query.authorId,
+          parsedLimit,
+          parsedSkip,
+        );
+      } else if (query.hashtag) {
+        publications = await ctx.publicationService.getPublicationsByHashtag(
+          query.hashtag,
+          parsedLimit,
+          parsedSkip,
+        );
+      } else {
+        publications = await ctx.publicationService.getTopPublications(
+          parsedLimit,
+          parsedSkip,
+        );
+      }
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        const s = pub.toSnapshot();
+        userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        return EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+      });
+
+      // Enrich forward fields from Mongo documents (needed for pending/forwarded badges in UI).
+      if (ctx.connection?.db && mappedPublications.length > 0) {
+        const ids = mappedPublications.map((p) => p.id);
+        const docs = await ctx.connection.db
+          .collection('publications')
+          .find(
+            { id: { $in: ids } },
+            {
+              projection: {
+                id: 1,
+                forwardStatus: 1,
+                forwardTargetCommunityId: 1,
+                forwardProposedBy: 1,
+                forwardProposedAt: 1,
+                status: 1,
+                closedAt: 1,
+                closeReason: 1,
+                closingSummary: 1,
+                lastEarnedAt: 1,
+                ttlWarningNotified: 1,
+              },
+            },
+          )
+          .toArray();
+        const forwardMap = new Map<string, any>(docs.map((d: any) => [d.id, d]));
+        mappedPublications.forEach((pub) => {
+          const d = forwardMap.get(pub.id);
+          pub.forwardStatus = d?.forwardStatus ?? null;
+          pub.forwardTargetCommunityId = d?.forwardTargetCommunityId || undefined;
+          pub.forwardProposedBy = d?.forwardProposedBy || undefined;
+          pub.forwardProposedAt = d?.forwardProposedAt || undefined;
+          pub.status = d?.status ?? 'active';
+          pub.closedAt = d?.closedAt ?? undefined;
+          pub.closeReason = d?.closeReason ?? undefined;
+          pub.closingSummary = d?.closingSummary ?? undefined;
+          pub.lastEarnedAt = d?.lastEarnedAt ?? undefined;
+          pub.ttlWarningNotified = d?.ttlWarningNotified ?? false;
+        });
+      }
+
+      // Batch calculate permissions for all publications
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+        ctx.user?.id || null,
+        publicationIds,
+      );
+
+      // Batch fetch withdrawals data for all publications
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+                'publication_withdrawal',
+                id,
+              );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // Log but don't fail
+      }
+
+      // Add permissions and withdrawals to each publication
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
+      return {
+        data: mappedPublications,
+        total: mappedPublications.length,
+        skip: parsedSkip,
+        limit: parsedLimit,
+      };
+    }),
+
+  /**
+   * Create publication
+   */
+  create: protectedProcedure
+    .input(CreatePublicationDtoSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (input.postType === 'event') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Use events.createEvent to create event publications',
+        });
+      }
+      const createDto = { ...input } as typeof input & { sourceEntityId?: string; sourceEntityType?: 'community' };
+      const postCostFundingInput = createDto.postCostFunding;
+      if (createDto.actingAsCommunityId) {
+        const role = await ctx.userCommunityRoleService.getRole(
+          ctx.user.id,
+          createDto.actingAsCommunityId,
+        );
+        if (role?.role !== 'lead') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only the community lead can publish on behalf of the community',
+          });
+        }
+        createDto.sourceEntityId = createDto.actingAsCommunityId;
+        createDto.sourceEntityType = 'community';
+      }
+      delete (createDto as { actingAsCommunityId?: string }).actingAsCommunityId;
+      if (postCostFundingInput) {
+        createDto.postCostFunding = postCostFundingInput;
+      }
+
+      await checkPermissionInHandler(ctx, 'create', 'publication', createDto);
+
+      const publication = await ctx.publicationService.createPublication(
+        ctx.user.id,
+        createDto,
+        { checkPermissions: false, processPostCost: true },
+      );
+
+      const authorId = publication.getAuthorId.getValue();
+      const beneficiaryId = publication.getBeneficiaryId?.getValue();
+      const communityId = publication.getCommunityId.getValue();
+
+      // Batch fetch users and communities
+      const pubSnapCreate = publication.toSnapshot();
+      const userIdsCreate = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      if (pubSnapCreate.publishedByUserId) {
+        userIdsCreate.push(pubSnapCreate.publishedByUserId);
+      }
+      const communityIdsCreate = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnapCreate.authorKind === 'community' &&
+          pubSnapCreate.authoredCommunityId
+            ? [pubSnapCreate.authoredCommunityId]
+            : []),
+        ]),
+      );
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(userIdsCreate),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsCreate),
+      ]);
+
+      const logicalAuthorCommunityCreate =
+        pubSnapCreate.authorKind === 'community' &&
+        pubSnapCreate.authoredCommunityId
+          ? communitiesMap.get(pubSnapCreate.authoredCommunityId)
+          : undefined;
+
+      // Map domain entity to API format
+      const mappedPublication = EntityMappers.mapPublicationToApi(
+        publication,
+        usersMap,
+        communitiesMap,
+        logicalAuthorCommunityCreate
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunityCreate.id as string,
+                name: (logicalAuthorCommunityCreate as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunityCreate as {
+                  avatarUrl?: string;
+                }).avatarUrl,
+              },
+            }
+          : undefined,
+      );
+
+      return mappedPublication;
+    }),
+
+  /**
+   * Update publication
+   */
+  update: protectedProcedure
+    .input(z.object({
+      id: z.string(),
+      data: UpdatePublicationDtoSchema,
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'edit', 'publication', input);
+
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      if ((pubDoc?.status ?? 'active') === 'closed') {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'This post is closed and cannot be modified',
+        });
+      }
+
+      // Clean up null values from update data
+      const updateData: any = { ...input.data };
+      if (updateData.imageUrl === null) {
+        updateData.imageUrl = undefined;
+      }
+
+      const publication = await ctx.publicationService.updatePublication(
+        input.id,
+        ctx.user.id,
+        updateData,
+      );
+
+      // Extract IDs for enrichment
+      const authorId = publication.getAuthorId.getValue();
+      const beneficiaryId = publication.getBeneficiaryId?.getValue();
+      const communityId = publication.getCommunityId.getValue();
+
+      // Batch fetch users and communities
+      const pubSnapUpdate = publication.toSnapshot();
+      const userIdsUpdate = [authorId, ...(beneficiaryId ? [beneficiaryId] : [])];
+      if (pubSnapUpdate.publishedByUserId) {
+        userIdsUpdate.push(pubSnapUpdate.publishedByUserId);
+      }
+      const communityIdsUpdate = Array.from(
+        new Set([
+          communityId,
+          ...(pubSnapUpdate.authorKind === 'community' &&
+          pubSnapUpdate.authoredCommunityId
+            ? [pubSnapUpdate.authoredCommunityId]
+            : []),
+        ]),
+      );
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(userIdsUpdate),
+        ctx.communityEnrichmentService.batchFetchCommunities(communityIdsUpdate),
+      ]);
+
+      const logicalAuthorCommunityUpdate =
+        pubSnapUpdate.authorKind === 'community' &&
+        pubSnapUpdate.authoredCommunityId
+          ? communitiesMap.get(pubSnapUpdate.authoredCommunityId)
+          : undefined;
+
+      // Map domain entity to API format
+      const mappedPublication = EntityMappers.mapPublicationToApi(
+        publication,
+        usersMap,
+        communitiesMap,
+        logicalAuthorCommunityUpdate
+          ? {
+              logicalAuthorCommunity: {
+                id: logicalAuthorCommunityUpdate.id as string,
+                name: (logicalAuthorCommunityUpdate as { name?: string }).name,
+                avatarUrl: (logicalAuthorCommunityUpdate as {
+                  avatarUrl?: string;
+                }).avatarUrl,
+              },
+            }
+          : undefined,
+      );
+
+      return mappedPublication;
+    }),
+
+  /**
+   * Delete publication
+   */
+  delete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      const hasInvestments =
+        pubDoc?.investments && pubDoc.investments.length > 0;
+
+      if (hasInvestments) {
+        const result = await ctx.investmentService.handlePostClose(input.id);
+        const beneficiaryId =
+          publication.getEffectiveBeneficiary().getValue();
+        const communityId = publication.getCommunityId.getValue();
+        if (result.ratingDistributed.authorAmount > 0) {
+          await processPublicationWithdrawal(
+            beneficiaryId,
+            communityId,
+            input.id,
+            result.ratingDistributed.authorAmount,
+            'publication_withdrawal',
+            ctx,
+          );
+        }
+        if (result.totalRatingDistributed > 0) {
+          await ctx.publicationService.reduceScore(
+            input.id,
+            result.totalRatingDistributed,
+          );
+        }
+      } else {
+        await autoWithdrawPublicationBalanceBeforeDelete(
+          input.id,
+          publication,
+          ctx,
+        );
+      }
+
+      await ctx.publicationService.deletePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Restore a deleted publication
+   * Only leads and superadmins can restore publications
+   */
+  restore: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - restore uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      await ctx.publicationService.restorePublication(input.id, ctx.user.id);
+      return { success: true };
+    }),
+
+  /**
+   * Permanently delete a publication (hard delete)
+   * This removes the publication, all its votes, and all its comments from the database
+   * Only leads and superadmins can permanently delete publications
+   * 
+   * WARNING: This is a destructive operation that cannot be undone.
+   */
+  permanentDelete: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions - permanent delete uses the same permissions as delete
+      await checkPermissionInHandler(ctx, 'delete', 'publication', input);
+
+      const publication = await ctx.publicationService.getPublication(input.id);
+      if (!publication) {
+        throw new NotFoundError('Publication', input.id);
+      }
+
+      const pubDoc = await ctx.publicationService.getPublicationDocument(
+        input.id,
+      );
+      const hasInvestments =
+        pubDoc?.investments && pubDoc.investments.length > 0;
+
+      if (hasInvestments) {
+        const result = await ctx.investmentService.handlePostClose(input.id);
+        const beneficiaryId =
+          publication.getEffectiveBeneficiary().getValue();
+        const communityId = publication.getCommunityId.getValue();
+        if (result.ratingDistributed.authorAmount > 0) {
+          await processPublicationWithdrawal(
+            beneficiaryId,
+            communityId,
+            input.id,
+            result.ratingDistributed.authorAmount,
+            'publication_withdrawal',
+            ctx,
+          );
+        }
+        if (result.totalRatingDistributed > 0) {
+          await ctx.publicationService.reduceScore(
+            input.id,
+            result.totalRatingDistributed,
+          );
+        }
+      } else {
+        await autoWithdrawPublicationBalanceBeforeDelete(
+          input.id,
+          publication,
+          ctx,
+        );
+      }
+
+      await ctx.publicationService.permanentDeletePublication(
+        input.id,
+        ctx.user.id,
+      );
+      return { success: true };
+    }),
+
+  /**
+   * Get deleted publications (leads only)
+   */
+  getDeleted: protectedProcedure
+    .input(PaginationInputSchema.extend({
+      communityId: z.string(),
+      cursor: z.number().int().min(1).optional(),
+    }))
+    .query(async ({ ctx, input }) => {
+      // Check if user is a lead in the community
+      const userRole = await ctx.permissionService.getUserRoleInCommunity(
+        ctx.user.id,
+        input.communityId,
+      );
+
+      if (userRole !== 'lead' && ctx.user.globalRole !== 'superadmin') {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only leads can view deleted publications',
+        });
+      }
+
+      // Parse pagination
+      const query = input;
+      const page = query.cursor ?? query.page;
+      let parsedLimit = 20;
+      let parsedSkip = 0;
+
+      if (query.pageSize) {
+        parsedLimit = query.pageSize;
+      } else if (query.limit) {
+        parsedLimit = query.limit;
+      }
+
+      if (page && query.pageSize) {
+        parsedSkip = (page - 1) * parsedLimit;
+      } else if (query.skip !== undefined) {
+        parsedSkip = query.skip;
+      }
+
+      // Get deleted publications
+      const publications = await ctx.publicationService.getDeletedPublicationsByCommunity(
+        input.communityId,
+        parsedLimit,
+        parsedSkip,
+      );
+
+      // Extract unique user IDs (authors and beneficiaries) and community IDs
+      const userIds = new Set<string>();
+      const communityIds = new Set<string>();
+      publications.forEach((pub) => {
+        const s = pub.toSnapshot();
+        userIds.add(pub.getAuthorId.getValue());
+        if (s.publishedByUserId) {
+          userIds.add(s.publishedByUserId);
+        }
+        if (pub.getBeneficiaryId) {
+          userIds.add(pub.getBeneficiaryId.getValue());
+        }
+        communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          communityIds.add(s.authoredCommunityId);
+        }
+      });
+
+      // Batch fetch all users and communities
+      const [usersMap, communitiesMap] = await Promise.all([
+        ctx.userEnrichmentService.batchFetchUsers(Array.from(userIds)),
+        ctx.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
+      ]);
+
+      // Convert domain entities to DTOs with enriched user metadata
+      const mappedPublications = publications.map((publication) => {
+        const s = publication.toSnapshot();
+        const logicalAuthorCommunity =
+          s.authorKind === 'community' && s.authoredCommunityId
+            ? communitiesMap.get(s.authoredCommunityId)
+            : undefined;
+        return EntityMappers.mapPublicationToApi(
+          publication,
+          usersMap,
+          communitiesMap,
+          logicalAuthorCommunity
+            ? {
+                logicalAuthorCommunity: {
+                  id: logicalAuthorCommunity.id as string,
+                  name: (logicalAuthorCommunity as { name?: string }).name,
+                  avatarUrl: (logicalAuthorCommunity as { avatarUrl?: string })
+                    .avatarUrl,
+                },
+              }
+            : undefined,
+        );
+      });
+
+      // Batch calculate permissions for all publications
+      const publicationIds = mappedPublications.map((pub) => pub.id);
+      const permissionsMap = await ctx.permissionsHelperService.batchCalculatePublicationPermissions(
+        ctx.user?.id || null,
+        publicationIds,
+      );
+
+      // Batch fetch withdrawals data for all publications
+      const withdrawalsMap = new Map<string, number>();
+      try {
+        const withdrawals = await Promise.all(
+          publicationIds.map(async (id) => {
+            try {
+              const totalWithdrawn = await ctx.walletService.getTotalWithdrawnByReference(
+                'publication_withdrawal',
+                id,
+              );
+              return { id, totalWithdrawn };
+            } catch (_err) {
+              return { id, totalWithdrawn: 0 };
+            }
+          }),
+        );
+        withdrawals.forEach(({ id, totalWithdrawn }) => {
+          withdrawalsMap.set(id, totalWithdrawn);
+        });
+      } catch (_err) {
+        // Log but don't fail
+      }
+
+      // Add permissions and withdrawals to each publication
+      mappedPublications.forEach((pub) => {
+        pub.permissions = permissionsMap.get(pub.id);
+        pub.withdrawals = {
+          totalWithdrawn: withdrawalsMap.get(pub.id) || 0,
+        };
+      });
+
+      return {
+        data: mappedPublications,
+        total: mappedPublications.length,
+        skip: parsedSkip,
+        limit: parsedLimit,
+      };
+    }),
+
+  /**
+   * D-3: Close publication (manual). Only author or effective beneficiary can close.
+   * Returns closingSummary. Idempotent: throws if post is not active.
+   */
+  close: protectedProcedure
+    .input(IdInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      return createClosePublicationUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        permissionService: ctx.permissionService,
+        postClosingService: ctx.postClosingService,
+      }).execute({ publicationId: input.id });
+    }),
+
+  /**
+   * Withdraw from publication
+   */
+  withdraw: protectedProcedure
+    .input(WithdrawAmountDtoSchema.extend({ publicationId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      return createWithdrawPublicationRatingUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        communityService: ctx.communityService,
+        voteService: ctx.voteService,
+        investmentService: ctx.investmentService,
+        communityWalletService: ctx.communityWalletService,
+        meritResolverService: ctx.meritResolverService,
+        walletService: ctx.walletService,
+      }).execute({
+        publicationId: input.publicationId,
+        amount: input.amount,
+      });
+    }),
+
+  /**
+   * Top-up publication rating: personal wallet (same as vote up) or source CommunityWallet.
+   */
+  topUpRating: protectedProcedure
+    .input(TopUpPublicationRatingInputSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      if (input.fundingSource === 'personal') {
+        return createCreateVoteUseCaseFromContext(ctx).execute({
+          userId: ctx.user.id,
+          targetType: 'publication',
+          targetId: input.publicationId,
+          quotaAmount: 0,
+          walletAmount: input.amount,
+          comment: input.comment ?? '',
+          direction: 'up',
+        });
+      }
+      await ctx.publicationService.topUpBirzhaPublicationFromSourceWallet(
+        ctx.user.id,
+        input.publicationId,
+        input.amount,
+      );
+      return {
+        fundingSource: 'source_entity' as const,
+        amount: input.amount,
+      };
+    }),
+
+  /**
+   * Generate fake data (development only)
+   */
+  generateFakeData: protectedProcedure
+    .input(
+      z.object({
+        type: z.enum(['user', 'beneficiary']),
+        communityId: z.string().optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      // Check if fake data mode is enabled
+      const fakeDataMode = ((ctx.configService.get as any)('dev.fakeDataMode') ?? false) as boolean;
+      if (!fakeDataMode) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Fake data mode is not enabled',
+        });
+      }
+
+      // Get or use the specified community, or create/get a test community
+      let communityId: string;
+      let community: any;
+
+      if (input.communityId) {
+        communityId = input.communityId;
+        community = await ctx.communityService.getCommunity(communityId);
+        if (!community) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
+            message: `Community ${communityId} not found`,
+          });
+        }
+      } else {
+        // Get or create a test community (exclude project workspaces)
+        const communities = await ctx.communityService.getAllCommunities(50, 0, {
+          excludeProjects: true,
+        });
+        if (communities.length === 0) {
+          const testCommunity = await ctx.communityService.createCommunity({
+            name: 'Test Community',
+            description: 'Test community for fake data',
+          });
+          communityId = testCommunity.id;
+          community = testCommunity;
+        } else {
+          communityId = communities[0].id;
+          community = await ctx.communityService.getCommunity(communityId);
+        }
+      }
+
+      // Ensure the community has the 'test' hashtag
+      const hashtags = community?.hashtags || [];
+      if (!hashtags.includes('test')) {
+        const updatedHashtags = [...hashtags, 'test'];
+        await ctx.communityService.updateCommunity(communityId, {
+          hashtags: updatedHashtags,
+        });
+      }
+
+      // Generate fake publications
+      const createdPublications: any[] = [];
+
+      if (input.type === 'user') {
+        // Create 1-2 user posts (by the authenticated fake user)
+        const contents = [
+          'Test post #1 from fake user',
+          'Test post #2 from fake user',
+        ];
+
+        for (let i = 0; i < Math.min(2, contents.length); i++) {
+          const publication = await ctx.publicationService.createPublication(
+            ctx.user.id,
+            {
+              communityId,
+              content: contents[i],
+              type: 'text',
+              hashtags: ['#test'],
+            },
+          );
+          createdPublications.push(publication);
+        }
+      } else if (input.type === 'beneficiary') {
+        // Get a random user (excluding fake users)
+        const allUsers = await ctx.userService.getAllUsers(100, 0);
+        const otherUsers = allUsers.filter(
+          (u) => !u.authId?.startsWith('fake_user_') && u.id !== ctx.user.id,
+        );
+
+        let beneficiaryId: string;
+
+        if (otherUsers.length === 0) {
+          // Create a test beneficiary user if none exists
+          const testBeneficiary = await ctx.userService.createOrUpdateUser({
+            authProvider: 'fake',
+            authId: `fake_beneficiary_${Date.now()}`,
+            username: 'fakebeneficiary',
+            firstName: 'Fake',
+            lastName: 'Beneficiary',
+            displayName: 'Fake Beneficiary User',
+          });
+          beneficiaryId = testBeneficiary.id;
+        } else {
+          // Pick a random user
+          const randomIndex = Math.floor(Math.random() * otherUsers.length);
+          beneficiaryId = otherUsers[randomIndex].id;
+        }
+
+        // Create 1-2 posts with random beneficiary
+        const contents = [
+          'Test post #1 with beneficiary',
+          'Test post #2 with beneficiary',
+        ];
+
+        for (let i = 0; i < Math.min(2, contents.length); i++) {
+          try {
+            const publication = await ctx.publicationService.createPublication(
+              ctx.user.id,
+              {
+                communityId,
+                content: contents[i],
+                type: 'text',
+                hashtags: ['#test'],
+                beneficiaryId,
+              },
+            );
+            createdPublications.push(publication);
+          } catch (_error) {
+            // Continue on error
+          }
+        }
+      }
+
+      return {
+        publications: createdPublications,
+        count: createdPublications.length,
+      };
+    }),
+
+  /**
+   * Propose to forward a publication (for non-leads)
+   */
+  proposeForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return createForwardPublicationUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        communityService: ctx.communityService,
+        permissionService: ctx.permissionService,
+        walletService: ctx.walletService,
+        userCommunityRoleService: ctx.userCommunityRoleService,
+        userService: ctx.userService,
+        notificationService: ctx.notificationService,
+      }).proposeForward(input);
+    }),
+
+  /**
+   * Forward a publication (for leads - immediate forward or confirm proposal)
+   */
+  forward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+      targetCommunityId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return createAcceptForwardPublicationUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        communityService: ctx.communityService,
+        permissionService: ctx.permissionService,
+        voteService: ctx.voteService,
+        connection: ctx.connection,
+      }).execute(input);
+    }),
+
+  /**
+   * Reject a forward proposal (for leads)
+   */
+  rejectForward: protectedProcedure
+    .input(z.object({
+      publicationId: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      return createForwardPublicationUseCase({
+        user: ctx.user,
+        publicationService: ctx.publicationService,
+        communityService: ctx.communityService,
+        permissionService: ctx.permissionService,
+        walletService: ctx.walletService,
+        userCommunityRoleService: ctx.userCommunityRoleService,
+        userService: ctx.userService,
+        notificationService: ctx.notificationService,
+      }).rejectForward(input);
+    }),
+});

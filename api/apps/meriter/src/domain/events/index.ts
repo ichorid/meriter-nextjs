@@ -232,6 +232,12 @@ export class PollCastedEvent extends DomainEvent {
   }
 }
 
+export {
+  TicketAssignedEvent,
+  TicketApplyEvent,
+  TicketRejectedEvent,
+} from './ticket.events';
+
 export class WalletBalanceChangedEvent extends DomainEvent {
   constructor(
     private readonly walletId: string,

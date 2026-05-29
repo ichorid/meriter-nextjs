@@ -16,7 +16,6 @@ import {
   presentAnonymousPublicationPermissions,
   presentMissingResourcePermissions,
   presentResourcePermissions,
-  type ResourcePermissionFacts,
 } from '../../../adapters/presenters/permissions.presenter';
 
 export type EvaluateResourcePermissionsDeps = {
@@ -111,9 +110,9 @@ export class EvaluateResourcePermissionsUseCase {
       userId,
       communityId,
     );
-    const isAuthor = context.isAuthor ?? false;
+    const _isAuthor = context.isAuthor ?? false;
     const hasBeneficiary = !!(beneficiaryId && beneficiaryId !== authorId);
-    const isBeneficiary = hasBeneficiary && beneficiaryId === userId;
+    const _isBeneficiary = hasBeneficiary && beneficiaryId === userId;
 
     const canVote = await this.deps.permissionService.canVote(userId, publicationId);
     const canEdit = await this.deps.permissionService.canEditPublication(

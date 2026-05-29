@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthProviderService } from '../../../api-v1/auth/auth.service';
-import { EmailProviderService } from '../../../api-v1/auth/email-provider.service';
+import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
+import type { EmailOtpProviderPort } from '../../../domain/ports/email-otp-provider.port';
 import { AppConfig } from '../../../config/configuration';
 import { EstablishSessionUseCase } from './establish-session.use-case';
 import {
@@ -32,8 +32,8 @@ export class VerifyEmailOtpUseCase {
 
   constructor(
     configService: ConfigService<AppConfig>,
-    private readonly emailProviderService: EmailProviderService,
-    private readonly authService: AuthProviderService,
+    private readonly emailProviderService: EmailOtpProviderPort,
+    private readonly authService: AuthProviderPort,
     private readonly establishSessionUseCase: EstablishSessionUseCase,
   ) {
     this.sendEmailOtpUseCase = new SendEmailOtpUseCase(configService, emailProviderService);
@@ -74,8 +74,8 @@ export class VerifyEmailOtpUseCase {
 
 export function createVerifyEmailOtpUseCase(deps: {
   configService: ConfigService<AppConfig>;
-  emailProviderService: EmailProviderService;
-  authService: AuthProviderService;
+  emailProviderService: EmailOtpProviderPort;
+  authService: AuthProviderPort;
   establishSessionUseCase: EstablishSessionUseCase;
 }): VerifyEmailOtpUseCase {
   return new VerifyEmailOtpUseCase(

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SmsProviderService } from '../../../api-v1/auth/sms-provider.service';
+import type { SmsOtpProviderPort } from '../../../domain/ports/sms-otp-provider.port';
 import { AppConfig } from '../../../config/configuration';
 
 export class SmsAuthDisabledError extends Error {
@@ -37,7 +37,7 @@ export type SendSmsOtpResult = {
 export class SendSmsOtpUseCase {
   constructor(
     private readonly configService: ConfigService<AppConfig>,
-    private readonly smsProviderService: SmsProviderService,
+    private readonly smsProviderService: SmsOtpProviderPort,
   ) {}
 
   assertSmsAuthEnabled(): void {
@@ -66,7 +66,7 @@ export class SendSmsOtpUseCase {
 
 export function createSendSmsOtpUseCase(deps: {
   configService: ConfigService<AppConfig>;
-  smsProviderService: SmsProviderService;
+  smsProviderService: SmsOtpProviderPort;
 }): SendSmsOtpUseCase {
   return new SendSmsOtpUseCase(deps.configService, deps.smsProviderService);
 }

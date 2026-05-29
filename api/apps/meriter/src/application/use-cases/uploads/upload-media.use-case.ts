@@ -2,10 +2,10 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type {
+  MediaUploadPort,
   UploadOptions,
   UploadResult,
-  UploadsService,
-} from '../../../api-v1/uploads/uploads.service';
+} from '../../../domain/ports/media-upload.port';
 
 export class UploadNotConfiguredError extends Error {
   constructor() {
@@ -40,7 +40,7 @@ export type UploadCommunityAvatarInput = {
 };
 
 export type UploadMediaDeps = {
-  uploadsService: UploadsService;
+  uploadsService: MediaUploadPort;
   permissionService?: PermissionService;
   user?: { id: string; globalRole?: string };
 };

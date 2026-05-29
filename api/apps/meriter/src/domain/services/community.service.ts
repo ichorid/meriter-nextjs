@@ -30,9 +30,10 @@ import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
+import { CommunityEffectiveSettingsService } from './community-effective-settings.service';
+import { CommunityMembershipService } from './community-membership.service';
 import { PublicationService } from './publication.service';
 import { DocumentService } from './document.service';
-import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import {
   PRIORITY_HUB_BOOTSTRAP,
@@ -43,11 +44,7 @@ import {
   loadDevPlatformSnapshot,
   getPriorityHubSnapshotForTag,
 } from '../../seed-data/load-dev-platform-snapshot';
-import {
-  TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE,
-  isEligibleNonProjectBirzhaSourceCommunity,
-} from '../common/constants/birzha-source-entity.constants';
-import { isPriorityCommunity } from '../common/helpers/community.helper';
+import { isEligibleNonProjectBirzhaSourceCommunity } from '../common/constants/birzha-source-entity.constants';
 import { CommunityWalletService } from './community-wallet.service';
 
 export interface CreateCommunityDto {
@@ -235,6 +232,9 @@ export class CommunityService {
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
     private communityDefaultsService: CommunityDefaultsService,
+    private readonly effectiveSettings: CommunityEffectiveSettingsService,
+    @Inject(forwardRef(() => CommunityMembershipService))
+    private readonly membership: CommunityMembershipService,
     @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,
     private communityWalletService: CommunityWalletService,
@@ -248,142 +248,36 @@ export class CommunityService {
   }
 
 
-  /**
-   * Get effective permission rules (defaults merged with custom overrides)
-   * DB rules override defaults. Rules are matched by role + action.
-   */
   getEffectivePermissionRules(community: Community): PermissionRule[] {
-    const defaultRules = this.communityDefaultsService.getDefaultPermissionRules(
-      community.typeTag,
-    );
-
-    if (!community.permissionRules || community.permissionRules.length === 0) {
-      return defaultRules;
-    }
-
-    // Merge: DB rules override defaults
-    // Create a map of default rules by role+action for quick lookup
-    const defaultRulesMap = new Map<string, PermissionRule>();
-    for (const rule of defaultRules) {
-      const key = `${rule.role}:${rule.action}`;
-      defaultRulesMap.set(key, rule);
-    }
-
-    // Create a map of DB rules by role+action
-    const dbRulesMap = new Map<string, PermissionRule>();
-    for (const rule of community.permissionRules) {
-      const key = `${rule.role}:${rule.action}`;
-      dbRulesMap.set(key, rule);
-    }
-
-    // Merge: DB rules override defaults, but merge conditions from defaults
-    const mergedRules: PermissionRule[] = [];
-    const processedKeys = new Set<string>();
-
-    // First, merge DB rules with defaults (DB rules override, but conditions are merged)
-    for (const dbRule of community.permissionRules) {
-      const key = `${dbRule.role}:${dbRule.action}`;
-      const defaultRule = defaultRulesMap.get(key);
-      
-      // Merge conditions: DB conditions override defaults, but include defaults if not in DB
-      const mergedConditions = defaultRule?.conditions
-        ? { ...defaultRule.conditions, ...dbRule.conditions }
-        : dbRule.conditions;
-      
-      mergedRules.push({
-        ...dbRule,
-        conditions: mergedConditions && Object.keys(mergedConditions).length > 0
-          ? mergedConditions
-          : undefined,
-      });
-      processedKeys.add(key);
-    }
-
-    // Then, add default rules that weren't overridden
-    for (const defaultRule of defaultRules) {
-      const key = `${defaultRule.role}:${defaultRule.action}`;
-      if (!processedKeys.has(key)) {
-        mergedRules.push(defaultRule);
-      }
-    }
-
-    return mergedRules;
+    return this.effectiveSettings.getEffectivePermissionRules(community);
   }
 
-  /**
-   * Get effective merit settings (defaults merged with custom overrides)
-   */
-  getEffectiveMeritSettings(community: Pick<Community, 'typeTag' | 'meritSettings'>): CommunityMeritSettings {
-    const defaults = this.communityDefaultsService.getDefaultMeritSettings(
-      community.typeTag,
-    );
-
-    if (!community.meritSettings) {
-      return defaults;
-    }
-
-    const effectiveSettings = {
-      ...defaults,
-      ...community.meritSettings,
-      quotaRecipients:
-        community.meritSettings.quotaRecipients ?? defaults.quotaRecipients,
-    };
-
-    // If startingMerits is not set, default to dailyQuota value
-    if (effectiveSettings.startingMerits === undefined) {
-      effectiveSettings.startingMerits = effectiveSettings.dailyQuota;
-    }
-
-    return effectiveSettings;
+  getEffectiveMeritSettings(
+    community: Pick<Community, 'typeTag' | 'meritSettings'>,
+  ): CommunityMeritSettings {
+    return this.effectiveSettings.getEffectiveMeritSettings(community);
   }
 
-  /** BC-02 inv-02: start of the current quota usage window. */
   getQuotaStartTime(community: Pick<Community, 'lastQuotaResetAt'>): Date {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return community.lastQuotaResetAt
-      ? new Date(community.lastQuotaResetAt)
-      : today;
+    return this.effectiveSettings.getQuotaStartTime(community);
   }
 
-  /** BC-02: daily cap from settings.dailyEmission (wallets.getQuota / member list). */
   getDailyEmissionCapForQuota(
     community: Pick<Community, 'typeTag' | 'meritSettings' | 'settings'>,
   ): number {
-    const quotaEnabled = community.meritSettings?.quotaEnabled !== false;
-    const baseDailyEmission = quotaEnabled
-      ? (community.settings?.dailyEmission ?? 0)
-      : 0;
-    if (!quotaEnabled || community.typeTag === 'future-vision') {
-      return 0;
-    }
-    return baseDailyEmission;
+    return this.effectiveSettings.getDailyEmissionCapForQuota(community);
   }
 
-  /** BC-02: daily cap for publication/event post fees (meritSettings.dailyQuota). */
   getPublicationCreateDailyCap(
     community: Pick<Community, 'typeTag' | 'meritSettings'>,
   ): number {
-    if (isPriorityCommunity(community)) {
-      return 0;
-    }
-    if (community.meritSettings?.quotaEnabled === false) {
-      return 0;
-    }
-    const effectiveMeritSettings = this.getEffectiveMeritSettings(community);
-    const dailyQuota =
-      typeof effectiveMeritSettings?.dailyQuota === 'number'
-        ? effectiveMeritSettings.dailyQuota
-        : 0;
-    return dailyQuota <= 0 ? 0 : dailyQuota;
+    return this.effectiveSettings.getPublicationCreateDailyCap(community);
   }
 
-  /** BC-02 inv-02: remaining quota from daily cap and used amount. */
   computeRemainingQuota(dailyCap: number, used: number): number {
-    return dailyCap <= 0 ? 0 : Math.max(0, dailyCap - used);
+    return this.effectiveSettings.computeRemainingQuota(dailyCap, used);
   }
 
-  /** BC-02 inv-02 (P-3): remaining quota for publication/event create fees. */
   async getRemainingPublicationCreateQuota(
     userId: string,
     communityId: string,
@@ -391,22 +285,16 @@ export class CommunityService {
       Community,
       'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt' | 'isPriority'
     >,
-    dbOverride?: Parameters<CommunityService['aggregateQuotaUsedSince']>[3],
+    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
   ): Promise<number> {
-    const dailyCap = this.getPublicationCreateDailyCap(community);
-    if (dailyCap <= 0) {
-      return 0;
-    }
-    const used = await this.aggregateQuotaUsedSince(
+    return this.effectiveSettings.getRemainingPublicationCreateQuota(
       userId,
       communityId,
-      this.getQuotaStartTime(community),
+      community,
       dbOverride,
     );
-    return this.computeRemainingQuota(dailyCap, used);
   }
 
-  /** BC-02 inv-02 (P-3): remaining quota for wallets.getQuota / dailyEmission path. */
   async getRemainingDailyEmissionQuota(
     userId: string,
     communityId: string,
@@ -414,121 +302,36 @@ export class CommunityService {
       Community,
       'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt'
     >,
-    dbOverride?: Parameters<CommunityService['aggregateQuotaUsedSince']>[3],
+    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
   ): Promise<number> {
-    const dailyCap = this.getDailyEmissionCapForQuota(community);
-    if (dailyCap <= 0) {
-      return 0;
-    }
-    const used = await this.aggregateQuotaUsedSince(
+    return this.effectiveSettings.getRemainingDailyEmissionQuota(
       userId,
       communityId,
-      this.getQuotaStartTime(community),
+      community,
       dbOverride,
     );
-    return this.computeRemainingQuota(dailyCap, used);
-  }
-
-  /** P-3: single-user quota-used aggregation pipeline (votes, poll_casts, quota_usage). */
-  private quotaUsedAggregationPipeline(
-    userId: string,
-    communityId: string,
-    quotaStartTime: Date,
-  ): unknown[] {
-    return [
-      {
-        $match: {
-          userId,
-          communityId,
-          createdAt: { $gte: quotaStartTime },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$amountQuota' },
-        },
-      },
-    ];
-  }
-
-  private sumQuotaAggregationTotal(
-    rows: Array<{ total?: number }>,
-  ): number {
-    return rows.length > 0 && rows[0] ? (rows[0].total as number) : 0;
   }
 
   async aggregateQuotaUsedSince(
     userId: string,
     communityId: string,
     quotaStartTime: Date,
-    dbOverride?: {
-      collection(name: string): {
-        aggregate(pipeline: unknown[]): { toArray(): Promise<Array<{ total?: number }>> };
-      };
-    },
+    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
   ): Promise<number> {
-    const db = dbOverride ?? this.mongoose.db;
-    if (!db) {
-      throw new Error('Database connection not available');
-    }
-    const pipeline = this.quotaUsedAggregationPipeline(
+    return this.effectiveSettings.aggregateQuotaUsedSince(
       userId,
       communityId,
       quotaStartTime,
-    );
-    const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-      db.collection('votes').aggregate(pipeline).toArray(),
-      db.collection('poll_casts').aggregate(pipeline).toArray(),
-      db.collection('quota_usage').aggregate(pipeline).toArray(),
-    ]);
-
-    return (
-      this.sumQuotaAggregationTotal(votesUsed) +
-      this.sumQuotaAggregationTotal(pollCastsUsed) +
-      this.sumQuotaAggregationTotal(quotaUsageUsed)
+      dbOverride,
     );
   }
 
-  /**
-   * Get effective voting settings (defaults merged with custom overrides)
-   */
   getEffectiveVotingSettings(community: Community): CommunityVotingSettings {
-    const defaults = this.communityDefaultsService.getDefaultVotingSettings(
-      community.typeTag,
-    );
-
-    if (!community.votingSettings) {
-      return defaults;
-    }
-
-    return {
-      ...defaults,
-      ...community.votingSettings,
-      votingRestriction:
-        community.votingSettings.votingRestriction ?? defaults.votingRestriction,
-      currencySource:
-        community.votingSettings.currencySource ?? defaults.currencySource,
-      meritConversion:
-        community.votingSettings.meritConversion ?? defaults.meritConversion,
-    };
+    return this.effectiveSettings.getEffectiveVotingSettings(community);
   }
 
-  /**
-   * Permanent merits to credit when a user's wallet in this community is first created.
-   * Global hub uses welcome merits separately; team-projects hub defaults to 0.
-   */
   startingMeritsOnJoin(community: Community): number {
-    if (!community?.id || community.id === GLOBAL_COMMUNITY_ID) {
-      return 0;
-    }
-    const effective = this.getEffectiveMeritSettings(community);
-    const raw = effective.startingMerits ?? effective.dailyQuota ?? 0;
-    const n = Number(raw);
-    if (!Number.isFinite(n) || n <= 0) {
-      return 0;
-    }
-    return Math.floor(n);
+    return this.effectiveSettings.startingMeritsOnJoin(community);
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
@@ -1262,77 +1065,32 @@ export class CommunityService {
   }
 
   async addMember(communityId: string, userId: string): Promise<Community> {
-    return asCommunity(
-      await this.communityPersistence.addArrayItem(communityId, 'members', userId),
-    );
+    return this.membership.addMember(communityId, userId);
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
-    return asCommunity(
-      await this.communityPersistence.removeArrayItem(communityId, 'members', userId),
-    );
+    return this.membership.removeMember(communityId, userId);
   }
 
-  /**
-   * Participant leaves a non-project local community (team/custom). Not allowed for priority hubs or leads.
-   * Community-scoped wallet and its transactions are removed (merits lost).
-   */
   async leaveLocalCommunity(userId: string, communityId: string): Promise<void> {
     const community = await this.getCommunity(communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
     }
-    if (community.isProject === true) {
-      throw new BadRequestException('Use leave project for projects');
-    }
-    if (isPriorityCommunity(community)) {
-      throw new BadRequestException('Cannot leave priority communities');
-    }
-    if (!this.isLocalMembershipCommunity(community)) {
-      throw new BadRequestException('Cannot leave this community type');
-    }
-    const role = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (!role) {
-      throw new BadRequestException('You are not a member of this community');
-    }
-    if (role.role === COMMUNITY_ROLE_LEAD) {
-      throw new BadRequestException(
-        'Lead cannot leave; promote another lead first',
-      );
-    }
-
-    await this.walletService.removeUserWalletAndTransactionsForCommunity(
-      userId,
-      communityId,
-    );
-    await this.removeMember(communityId, userId);
-    await this.userService.removeCommunityMembership(userId, communityId);
-    await this.userCommunityRoleService.removeRole(userId, communityId);
+    return this.membership.leaveLocalCommunity(community, userId, communityId);
   }
 
-  /**
-   * Membership is managed via roles / invites / join requests (not auto-joined base globals).
-   */
   isLocalMembershipCommunity(community: Community): boolean {
-    const tag = community.typeTag;
-    if (!tag) {
-      return true;
-    }
-    return !(TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE as readonly string[]).includes(
-      tag,
-    );
+    return this.membership.isLocalMembershipCommunity(community);
   }
 
-  /**
-   * Validates a non-project local community may act as Birzha source (communities.publishToBirzha).
-   */
   assertEligibleCommunitySourceForBirzhaPublish(community: Community): void {
     if (community.isProject === true) {
       throw new BadRequestException(
         'Projects must use project.publishToBirzha',
       );
     }
-    if (!this.isLocalMembershipCommunity(community)) {
+    if (!this.membership.isLocalMembershipCommunity(community)) {
       throw new BadRequestException(
         'This community type cannot publish to Birzha as a source',
       );
@@ -1340,19 +1098,7 @@ export class CommunityService {
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
-    // 1. Check global superadmin role
-    const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
-      return true;
-    }
-
-    // 2. Check lead role in community
-    const userRole = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (userRole?.role === COMMUNITY_ROLE_LEAD) {
-      return true;
-    }
-
-    return false;
+    return this.membership.isUserAdmin(communityId, userId);
   }
 
   /**
@@ -1410,7 +1156,7 @@ export class CommunityService {
   }
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
-    return this.communityPersistence.isUserMember(communityId, userId);
+    return this.membership.isUserMember(communityId, userId);
   }
 
   async getAllCommunities(

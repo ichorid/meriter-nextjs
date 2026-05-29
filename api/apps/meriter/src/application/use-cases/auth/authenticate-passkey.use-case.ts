@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthProviderService } from '../../../api-v1/auth/auth.service';
+import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
 import { AppConfig } from '../../../config/configuration';
 import { EstablishSessionUseCase } from './establish-session.use-case';
 import { PasskeyAuthDisabledError } from './register-passkey.use-case';
@@ -22,7 +22,7 @@ export type FinishPasskeyAuthenticationResult = {
 export class AuthenticatePasskeyUseCase {
   constructor(
     private readonly configService: ConfigService<AppConfig>,
-    private readonly authService: AuthProviderService,
+    private readonly authService: AuthProviderPort,
     private readonly establishSessionUseCase: EstablishSessionUseCase,
   ) {}
 
@@ -88,7 +88,7 @@ export class AuthenticatePasskeyUseCase {
 
 export function createAuthenticatePasskeyUseCase(deps: {
   configService: ConfigService<AppConfig>;
-  authService: AuthProviderService;
+  authService: AuthProviderPort;
   establishSessionUseCase: EstablishSessionUseCase;
 }): AuthenticatePasskeyUseCase {
   return new AuthenticatePasskeyUseCase(

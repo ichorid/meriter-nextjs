@@ -14,10 +14,8 @@ import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { PublicationId } from '../../../domain/value-objects';
 import type {
-  PublishCommunityToBirzhaInput,
   PublishProjectToBirzhaInput,
   PublishProjectToBirzhaPort,
-  PublishToBirzhaBaseInput,
   PublishToBirzhaResult,
 } from '../../../domain/ports/publish-to-birzha.port';
 

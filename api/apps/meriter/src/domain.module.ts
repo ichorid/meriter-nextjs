@@ -129,6 +129,8 @@ import { NotificationHandlersService } from './domain/services/notification-hand
 import { FavoriteService } from './domain/services/favorite.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
+import { CommunityEffectiveSettingsService } from './domain/services/community-effective-settings.service';
+import { CommunityMembershipService } from './domain/services/community-membership.service';
 import { CategoryService } from './domain/services/category.service';
 import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
@@ -228,6 +230,8 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
+    CommunityEffectiveSettingsService,
+    CommunityMembershipService,
     PermissionRuleEngine,
     {
       provide: PERMISSION_GATES_PORT,
@@ -297,6 +301,8 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
+    CommunityEffectiveSettingsService,
+    CommunityMembershipService,
     PermissionRuleEngine,
     {
       provide: PERMISSION_GATES_PORT,

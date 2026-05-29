@@ -1,6 +1,6 @@
 import type { CreateCommunityDto } from '@meriter/shared-types';
 import type { Community } from '../../../domain/models/community/community.schema';
-import { CommunitySetupHelpers } from '../../../api-v1/common/helpers/community-setup.helpers';
+import { calculateCommunityNeedsSetup } from '../../../domain/common/helpers/community-setup.helper';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
@@ -46,7 +46,7 @@ function formatCreatedCommunityResponse(
         : community.hashtagDescriptions || {},
     adminIds,
     isAdmin: true,
-    needsSetup: CommunitySetupHelpers.calculateNeedsSetup(community, false),
+    needsSetup: calculateCommunityNeedsSetup(community, false),
     createdAt: community.createdAt.toISOString(),
     updatedAt: community.updatedAt.toISOString(),
   };

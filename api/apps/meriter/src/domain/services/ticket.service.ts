@@ -10,9 +10,13 @@ import { PublicationId } from '../value-objects';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
-import { NotificationService } from './notification.service';
 import { EventBus } from '../events/event-bus';
-import { PublicationCreatedEvent } from '../events';
+import {
+  PublicationCreatedEvent,
+  TicketAssignedEvent,
+  TicketApplyEvent,
+  TicketRejectedEvent,
+} from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import {
   TRANSITION_TICKET_STATUS_PORT,
@@ -50,7 +54,7 @@ export class TicketService {
   private readonly logger = new Logger(TicketService.name);
 
   /** Rich metadata for ticket-related notifications (URLs + client copy). */
-  private async buildTicketNotificationMetadata(
+  async buildTicketNotificationMetadata(
     ticketId: string,
     projectId: string,
     extra: Record<string, unknown> = {},
@@ -120,7 +124,6 @@ export class TicketService {
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
-    private notificationService: NotificationService,
     private eventBus: EventBus,
     @Inject(TRANSITION_TICKET_STATUS_PORT)
     private readonly transitionTicketStatusUseCase: TransitionTicketStatusPort,
@@ -220,19 +223,9 @@ export class TicketService {
       new PublicationCreatedEvent(id, leadUserId, projectId),
     );
 
-    try {
-      await this.notificationService.createNotification({
-        userId: dto.beneficiaryId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(id, projectId, { leadUserId }),
-        title: 'Ticket assigned',
-        message: `You were assigned a ticket in the project.`,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify beneficiary about ticket: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(id, projectId, dto.beneficiaryId, leadUserId),
+    );
 
     this.logger.log(`Ticket created: ${id} in project ${projectId}`);
     return { id };
@@ -320,22 +313,15 @@ export class TicketService {
     const applicantName = applicant?.displayName || applicant?.username || '';
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     for (const lead of leads) {
-      try {
-        await this.notificationService.createNotification({
-          userId: lead.userId,
-          type: 'ticket_apply',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            applicantUserId: userId,
-            applicantName,
-          }),
-          title: 'New ticket application',
-          message: 'Someone applied for a neutral ticket in your project.',
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify lead about ticket apply: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketApplyEvent(
+          ticketId,
+          projectId,
+          lead.userId,
+          userId,
+          applicantName,
+        ),
+      );
     }
 
     this.logger.log(`User ${userId} applied for ticket ${ticketId}`);
@@ -388,19 +374,9 @@ export class TicketService {
       status: 'in_progress',
     });
 
-    try {
-      await this.notificationService.createNotification({
-        userId: applicantUserId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId }),
-        title: 'Ticket assigned',
-        message: 'You were assigned a ticket in the project.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify approved applicant: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(ticketId, projectId, applicantUserId, leadUserId),
+    );
 
     const project = await this.communityService.getCommunity(projectId);
     const rejectionMessage =
@@ -408,21 +384,15 @@ export class TicketService {
 
     for (const otherUserId of applicants) {
       if (otherUserId === applicantUserId) continue;
-      try {
-        await this.notificationService.createNotification({
-          userId: otherUserId,
-          type: 'ticket_rejection',
-          source: 'system',
-          sourceId: leadUserId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            rejectionMessage,
-          }),
-          title: 'Application not selected',
-          message: rejectionMessage,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketRejectedEvent(
+          ticketId,
+          projectId,
+          otherUserId,
+          leadUserId,
+          rejectionMessage,
+        ),
+      );
     }
 
     this.logger.log(`Applicant ${applicantUserId} approved for ticket ${ticketId}`);
@@ -470,19 +440,9 @@ export class TicketService {
       selfAssignedByModerator: true,
     });
 
-    try {
-      await this.notificationService.createNotification({
-        userId: assigneeId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: userId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId: userId }),
-        title: 'Ticket assigned',
-        message: 'You were assigned a ticket in the project.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify assignee: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(ticketId, projectId, assigneeId, userId),
+    );
 
     const project = await this.communityService.getCommunity(projectId);
     const rejectionMessage =
@@ -490,21 +450,15 @@ export class TicketService {
 
     for (const otherUserId of previousApplicants) {
       if (otherUserId === assigneeId) continue;
-      try {
-        await this.notificationService.createNotification({
-          userId: otherUserId,
-          type: 'ticket_rejection',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            rejectionMessage,
-          }),
-          title: 'Application not selected',
-          message: rejectionMessage,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketRejectedEvent(
+          ticketId,
+          projectId,
+          otherUserId,
+          userId,
+          rejectionMessage,
+        ),
+      );
     }
 
     this.logger.log(`Open neutral ticket ${ticketId} self-assigned by moderator ${userId}`);
@@ -545,21 +499,15 @@ export class TicketService {
     const rejectionMessage =
       (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
 
-    try {
-      await this.notificationService.createNotification({
-        userId: applicantUserId,
-        type: 'ticket_rejection',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-          rejectionMessage,
-        }),
-        title: 'Application not selected',
-        message: rejectionMessage,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify rejected applicant: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketRejectedEvent(
+        ticketId,
+        projectId,
+        applicantUserId,
+        leadUserId,
+        rejectionMessage,
+      ),
+    );
 
     this.logger.log(`Applicant ${applicantUserId} rejected for ticket ${ticketId}`);
   }
