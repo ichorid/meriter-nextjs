@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 
 // Import schemas
 import {
@@ -172,6 +173,7 @@ import { EventBus } from './domain/events/event-bus';
 
 @Module({
   imports: [
+    PersistenceModule,
     // Mongoose schemas
     MongooseModule.forFeature([
       { name: PublicationSchemaClass.name, schema: PublicationSchema },

@@ -1,31 +1,28 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession } from 'mongoose';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { Wallet } from '../aggregates/wallet/wallet.entity';
-import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
-import { Transaction, TransactionSchemaClass, TransactionDocument } from '../models/transaction/transaction.schema';
 import { UserId, CommunityId } from '../value-objects';
 import { WalletBalanceChangedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
-import { WalletDocument as IWalletDocument } from '../../common/interfaces/wallet-document.interface';
 import {
-  MERIT_HISTORY_FILTER_KEYS,
-  buildCommunityMeritHistoryTransactionMatch,
-  buildMeritHistoryTransactionMatch,
-  meritHistoryCategoryMongoExprOnRtVar,
-  meritHistorySignedAmountMongoExpr,
-  meritHistoryUtcCalendarRange,
   type MeritHistoryDashboardPeriodDays,
   type MeritHistoryFilterKey,
 } from '../common/helpers/wallet-transaction-history';
+import {
+  WALLET_PERSISTENCE_PORT,
+  type WalletPersistencePort,
+  type WalletPersistenceSession,
+  type WalletTransactionRecord,
+} from '../ports/wallet.persistence.port';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
   plural: 'merits',
   genitive: 'merits',
 } as const;
+
+export type Transaction = WalletTransactionRecord;
 
 export type MeritHistoryDashboardKpis = {
   inflow: number;
@@ -54,24 +51,21 @@ export class WalletService {
   private readonly logger = new Logger(WalletService.name);
 
   constructor(
-    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
-    @InjectModel(TransactionSchemaClass.name) private transactionModel: Model<TransactionDocument>,
-    @InjectConnection() private mongoose: Connection,
+    @Inject(WALLET_PERSISTENCE_PORT)
+    private readonly walletPersistence: WalletPersistencePort,
     private eventBus: EventBus,
   ) {}
 
-  async startSession() {
-    return await this.mongoose.startSession();
+  async startSession(): Promise<WalletPersistenceSession> {
+    return this.walletPersistence.startSession();
   }
 
   async getWallet(userId: string, communityId: string): Promise<Wallet | null> {
-    // Direct Mongoose - no repository wrapper needed
-    const doc = await this.walletModel
-      .findOne({ userId, communityId })
-      .lean()
-      .exec();
-    
-    return doc ? Wallet.fromSnapshot(doc as IWalletDocument) : null;
+    const snapshot = await this.walletPersistence.findWalletByUserAndCommunity(
+      userId,
+      communityId,
+    );
+    return snapshot ? Wallet.fromSnapshot(snapshot) : null;
   }
 
   async createOrGetWallet(
@@ -90,7 +84,7 @@ export class WalletService {
         currency,
       );
 
-      await this.walletModel.create(wallet.toSnapshot());
+      await this.walletPersistence.insertWallet(wallet.toSnapshot());
     }
 
     const start =
@@ -102,10 +96,10 @@ export class WalletService {
 
     if (start > 0) {
       const walletId = wallet.getId.getValue();
-      const already = await this.transactionModel
-        .findOne({ walletId, referenceType: 'community_starting_merits' })
-        .lean()
-        .exec();
+      const already = await this.walletPersistence.findTransactionByWalletAndReferenceType(
+        walletId,
+        'community_starting_merits',
+      );
       if (!already) {
         return this.addTransaction(
           userId,
@@ -134,10 +128,8 @@ export class WalletService {
     referenceId: string,
     currency: { singular: string; plural: string; genitive: string },
     description?: string,
-    session?: ClientSession,
+    session?: WalletPersistenceSession,
   ): Promise<Wallet> {
-    const opts = session ? { session } : {};
-    // Get or create wallet
     let wallet = await this.getWallet(userId, communityId);
     const isNewWallet = !wallet;
 
@@ -149,28 +141,20 @@ export class WalletService {
       );
     }
 
-    // Domain logic
     if (type === 'credit') {
       wallet.add(amount);
     } else {
       wallet.deduct(amount);
     }
 
-    // Save wallet - use create for new wallets, updateOne for existing ones
     const walletSnapshot = wallet.toSnapshot();
     if (isNewWallet) {
-      await this.walletModel.create([walletSnapshot], opts);
+      await this.walletPersistence.insertWallet(walletSnapshot, session);
     } else {
-      await this.walletModel.updateOne(
-        { id: walletSnapshot.id },
-        { $set: walletSnapshot },
-        opts,
-      );
+      await this.walletPersistence.updateWallet(walletSnapshot, session);
     }
 
-    // Map transaction type: credit -> deposit/withdrawal, debit -> withdrawal
-    // The actual transaction type depends on referenceType (e.g., 'publication_withdrawal' -> 'withdrawal')
-    let transactionType: 'vote' | 'comment' | 'poll_cast' | 'withdrawal' | 'deposit';
+    let transactionType: WalletTransactionRecord['type'];
     if (referenceType === 'publication_withdrawal' || referenceType === 'comment_withdrawal') {
       transactionType = 'withdrawal';
     } else if (
@@ -189,60 +173,49 @@ export class WalletService {
     } else {
       transactionType = 'withdrawal';
     }
-    
-    // Create transaction record
-    await this.transactionModel.create(
-      [
-        {
-          id: uid(),
-          walletId: wallet.getId.getValue(),
-          type: transactionType,
-          amount: Math.abs(amount), // Always positive for transaction record
-          description:
-            description ||
-            `${transactionType} ${referenceType ? `(${referenceType})` : ''}`,
-          referenceType,
-          referenceId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ],
-      opts,
+
+    const now = new Date();
+    await this.walletPersistence.insertTransaction(
+      {
+        id: uid(),
+        walletId: wallet.getId.getValue(),
+        type: transactionType,
+        amount: Math.abs(amount),
+        description:
+          description || `${transactionType} ${referenceType ? `(${referenceType})` : ''}`,
+        referenceType,
+        referenceId,
+        createdAt: now,
+        updatedAt: now,
+      },
+      session,
     );
 
-    // Publish event
     await this.eventBus.publish(
       new WalletBalanceChangedEvent(
         wallet.getId.getValue(),
         userId,
         communityId,
         amount,
-        type
-      )
+        type,
+      ),
     );
 
     return wallet;
   }
 
-  async getTransactions(walletId: string, limit: number = 50, skip: number = 0): Promise<Transaction[]> {
-    // Direct Mongoose query
-    const transactions = await this.transactionModel
-      .find({ walletId })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
-    
-    return transactions as unknown as Transaction[];
+  async getTransactions(
+    walletId: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<Transaction[]> {
+    return this.walletPersistence.findTransactionsByWalletId(walletId, limit, skip);
   }
 
   async getUserWallet(userId: string, communityId: string): Promise<Wallet | null> {
     return this.getWallet(userId, communityId);
   }
 
-  /**
-   * Removes the user's wallet for a non-global community and its transaction rows (merits forfeited on leave).
-   */
   async removeUserWalletAndTransactionsForCommunity(
     userId: string,
     communityId: string,
@@ -255,17 +228,13 @@ export class WalletService {
       return;
     }
     const walletId = wallet.getId.getValue();
-    await this.transactionModel.deleteMany({ walletId });
-    await this.walletModel.deleteOne({ id: walletId });
+    await this.walletPersistence.deleteTransactionsByWalletId(walletId);
+    await this.walletPersistence.deleteWalletById(walletId);
   }
 
   async getUserWallets(userId: string): Promise<Wallet[]> {
-    const docs = await this.walletModel
-      .find({ userId })
-      .lean()
-      .exec();
-    
-    return docs.map(doc => Wallet.fromSnapshot(doc as IWalletDocument));
+    const snapshots = await this.walletPersistence.findWalletsByUserId(userId);
+    return snapshots.map((snapshot) => Wallet.fromSnapshot(snapshot));
   }
 
   async createTransaction(
@@ -276,8 +245,6 @@ export class WalletService {
     referenceType?: string,
     referenceId?: string,
   ): Promise<any> {
-    // This is a simplified implementation
-    // In reality, you'd create a transaction document
     return {
       id: uid(),
       walletId,
@@ -292,7 +259,6 @@ export class WalletService {
   }
 
   async getTransaction(_id: string): Promise<any> {
-    // This is a simplified implementation
     return null;
   }
 
@@ -301,7 +267,6 @@ export class WalletService {
     _referenceId: string,
     _userId: string,
   ): Promise<any> {
-    // This is a simplified implementation
     return null;
   }
 
@@ -311,14 +276,9 @@ export class WalletService {
     _limit: number,
     _skip: number,
   ): Promise<any[]> {
-    // This is a simplified implementation
     return [];
   }
 
-  /**
-   * Paginated wallet transaction rows for Merit History (default: global wallet).
-   * @param _legacyType reserved for older callers — ignored
-   */
   async getUserTransactions(
     userId: string,
     _legacyType: string,
@@ -338,43 +298,24 @@ export class WalletService {
     }
 
     const walletId = wallet.getId.getValue();
-    const filter = buildMeritHistoryTransactionMatch(walletId, category);
-
-    const [total, rows] = await Promise.all([
-      this.transactionModel.countDocuments(filter),
-      this.transactionModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
+    const [total, data] = await Promise.all([
+      this.walletPersistence.countMeritHistoryTransactions(walletId, category),
+      this.walletPersistence.findMeritHistoryTransactions(walletId, category, limit, skip),
     ]);
 
-    return { data: rows as unknown as Transaction[], total };
+    return { data, total };
   }
 
-  async deleteTransaction(_id: string): Promise<void> {
-    // This is a simplified implementation
-  }
+  async deleteTransaction(_id: string): Promise<void> {}
 
-  /**
-   * Credit welcome merits to global wallet on first registration.
-   * Idempotent: does nothing if user already received welcome merits.
-   * @param amount Amount to credit (from platform settings; 0 = no-op).
-   */
   async creditWelcomeMeritsIfNeeded(userId: string, amount: number): Promise<boolean> {
     if (amount <= 0) return false;
-    const wallet = await this.createOrGetWallet(
-      userId,
-      GLOBAL_COMMUNITY_ID,
-      DEFAULT_CURRENCY,
-    );
+    const wallet = await this.createOrGetWallet(userId, GLOBAL_COMMUNITY_ID, DEFAULT_CURRENCY);
     const walletId = wallet.getId.getValue();
-    const existing = await this.transactionModel
-      .findOne({ walletId, referenceType: 'welcome_merits' })
-      .lean()
-      .exec();
+    const existing = await this.walletPersistence.findTransactionByWalletAndReferenceType(
+      walletId,
+      'welcome_merits',
+    );
     if (existing) {
       return false;
     }
@@ -393,57 +334,21 @@ export class WalletService {
     return true;
   }
 
-  /**
-   * Returns total withdrawn amount for a reference (e.g., comment/publication) via wallet transactions.
-   * Aggregates by referenceType and referenceId to avoid N+1.
-   */
   async getTotalWithdrawnByReference(referenceType: string, referenceId: string): Promise<number> {
-    const result = await this.transactionModel.aggregate([
-      { $match: { referenceType, referenceId, type: 'withdrawal' } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]).exec();
-    return (result && result[0] && result[0].total) || 0;
+    return this.walletPersistence.sumWithdrawnByReference(referenceType, referenceId);
   }
 
-  /**
-   * Sum investor-bucket project payout credits to the user's global wallet, per project (for portfolio backfill).
-   */
   async sumProjectInvestorPayoutCreditsByProjects(
     userId: string,
     projectIds: string[],
   ): Promise<Map<string, number>> {
     const result = new Map<string, number>();
     if (projectIds.length === 0) return result;
-    const wallet = await this.walletModel
-      .findOne({ userId, communityId: GLOBAL_COMMUNITY_ID })
-      .select('id')
-      .lean()
-      .exec();
-    if (!wallet?.id) return result;
-    const rows = await this.transactionModel
-      .aggregate<{ _id: string; sum: number }>([
-        {
-          $match: {
-            walletId: wallet.id,
-            type: 'deposit',
-            referenceType: 'project_payout',
-            referenceId: { $in: projectIds },
-            description: { $regex: /\(investor\)\s*$/ },
-          },
-        },
-        { $group: { _id: '$referenceId', sum: { $sum: '$amount' } } },
-      ])
-      .exec();
-    for (const r of rows) {
-      if (r._id) result.set(r._id, r.sum);
-    }
-    return result;
+    const walletId = await this.walletPersistence.findGlobalWalletIdByUserId(userId);
+    if (!walletId) return result;
+    return this.walletPersistence.sumProjectInvestorPayoutCredits(walletId, projectIds);
   }
 
-  /**
-   * KPIs, daily signed net, and optional per-bucket breakdown for the merit-history dashboard.
-   * Same wallet scope as `getUserTransactions` (global wallet by default).
-   */
   async getMeritHistoryDashboard(
     userId: string,
     category: MeritHistoryFilterKey,
@@ -463,148 +368,9 @@ export class WalletService {
     }
 
     const walletId = wallet.getId.getValue();
-    const range =
-      periodDays === 'all' ? undefined : meritHistoryUtcCalendarRange(periodDays);
-    const match = buildMeritHistoryTransactionMatch(walletId, category, range);
-    const signedExpr = meritHistorySignedAmountMongoExpr();
-
-    const roundMerits = (n: number) => Math.round(n * 100) / 100;
-
-    const [facetRow] = await this.transactionModel
-      .aggregate<{
-        summary: Array<{
-          inflow: number;
-          outflow: number;
-          net: number;
-          count: number;
-        }>;
-        byDay: Array<{ _id: string; net: number }>;
-      }>([
-        { $match: match },
-        { $addFields: { _signed: signedExpr } },
-        {
-          $facet: {
-            summary: [
-              {
-                $group: {
-                  _id: null,
-                  inflow: {
-                    $sum: { $cond: [{ $gt: ['$_signed', 0] }, '$_signed', 0] },
-                  },
-                  outflow: {
-                    $sum: {
-                      $cond: [
-                        { $lt: ['$_signed', 0] },
-                        { $multiply: ['$_signed', -1] },
-                        0,
-                      ],
-                    },
-                  },
-                  net: { $sum: '$_signed' },
-                  count: { $sum: 1 },
-                },
-              },
-            ],
-            byDay: [
-              {
-                $addFields: {
-                  _day: {
-                    $dateToString: {
-                      format: '%Y-%m-%d',
-                      date: '$createdAt',
-                      timezone: 'UTC',
-                    },
-                  },
-                },
-              },
-              { $group: { _id: '$_day', net: { $sum: '$_signed' } } },
-              { $sort: { _id: 1 } },
-            ],
-          },
-        },
-      ])
-      .exec();
-
-    const summary = facetRow?.summary?.[0];
-    const kpis: MeritHistoryDashboardKpis = summary
-      ? {
-          inflow: roundMerits(summary.inflow ?? 0),
-          outflow: roundMerits(summary.outflow ?? 0),
-          net: roundMerits(summary.net ?? 0),
-          count: Math.trunc(summary.count ?? 0),
-        }
-      : emptyKpis;
-
-    const series: MeritHistoryDashboardSeriesPoint[] = (facetRow?.byDay ?? []).map((d) => ({
-      date: d._id,
-      net: roundMerits(d.net ?? 0),
-    }));
-
-    let breakdown: MeritHistoryDashboardBreakdownRow[] | undefined;
-    if (category === 'all') {
-      const allMatch = buildMeritHistoryTransactionMatch(walletId, 'all', range);
-      const catExpr = meritHistoryCategoryMongoExprOnRtVar();
-      const rows = await this.transactionModel
-        .aggregate<{
-          _id: string;
-          net: number;
-          inPos: number;
-          outNeg: number;
-          count: number;
-        }>([
-          { $match: allMatch },
-          { $addFields: { _signed: signedExpr } },
-          { $addFields: { _bucket: catExpr } },
-          {
-            $group: {
-              _id: '$_bucket',
-              net: { $sum: '$_signed' },
-              inPos: {
-                $sum: { $cond: [{ $gt: ['$_signed', 0] }, '$_signed', 0] },
-              },
-              outNeg: {
-                $sum: {
-                  $cond: [
-                    { $lt: ['$_signed', 0] },
-                    { $multiply: ['$_signed', -1] },
-                    0,
-                  ],
-                },
-              },
-              count: { $sum: 1 },
-            },
-          },
-        ])
-        .exec();
-
-      const byCat = new Map(rows.map((r) => [r._id, r]));
-      const ordered: MeritHistoryDashboardBreakdownRow[] = [];
-      for (const key of MERIT_HISTORY_FILTER_KEYS) {
-        if (key === 'all') continue;
-        const r = byCat.get(key);
-        const net = roundMerits(r?.net ?? 0);
-        const inPos = r?.inPos ?? 0;
-        const outNeg = r?.outNeg ?? 0;
-        const grossVolume = roundMerits(inPos + outNeg);
-        const count = Math.trunc(r?.count ?? 0);
-        if (net === 0 && grossVolume === 0 && count === 0) continue;
-        ordered.push({
-          category: key,
-          net,
-          grossVolume,
-          count,
-        });
-      }
-      breakdown = ordered;
-    }
-
-    return { kpis, series, breakdown };
+    return this.walletPersistence.aggregateMeritHistoryDashboard(walletId, category, periodDays);
   }
 
-  /**
-   * Ledger rows for all members' **community-scoped** wallets (`wallets.communityId === contextCommunityId`)
-   * plus sender-side **`merit_transfer`** lines tied to this context (often stored on global wallets).
-   */
   async getCommunityMeritHistoryTransactions(
     contextCommunityId: string,
     category: MeritHistoryFilterKey,
@@ -615,68 +381,11 @@ export class WalletService {
     total: number;
     walletOwnerByTxId: Map<string, string>;
   }> {
-    const walletRows = await this.walletModel
-      .find({ communityId: contextCommunityId })
-      .select('id userId')
-      .lean()
-      .exec();
-
-    const walletIds = walletRows.map((w) => String((w as { id: string }).id));
-    const walletIdToUserId = new Map<string, string>();
-    for (const w of walletRows) {
-      const row = w as { id: string; userId: string };
-      walletIdToUserId.set(String(row.id), String(row.userId));
-    }
-
-    const db = this.mongoose.db;
-    if (!db) {
-      return { data: [], total: 0, walletOwnerByTxId: new Map() };
-    }
-
-    const meritIds = (await db
-      .collection('merit_transfers')
-      .distinct('id', { communityContextId: contextCommunityId })) as string[];
-
-    const match = buildCommunityMeritHistoryTransactionMatch(walletIds, meritIds, category);
-
-    const [total, rows] = await Promise.all([
-      this.transactionModel.countDocuments(match),
-      this.transactionModel.find(match).sort({ createdAt: -1 }).skip(skip).limit(limit).lean().exec(),
-    ]);
-
-    const txs = rows as unknown as Transaction[];
-    const walletOwnerByTxId = new Map<string, string>();
-    for (const tx of txs) {
-      const uid = walletIdToUserId.get(tx.walletId);
-      if (uid) {
-        walletOwnerByTxId.set(tx.id, uid);
-      }
-    }
-
-    const missingWalletIds = [
-      ...new Set(
-        txs.filter((tx) => !walletOwnerByTxId.has(tx.id)).map((tx) => String(tx.walletId)),
-      ),
-    ];
-    if (missingWalletIds.length > 0) {
-      const extraRows = await this.walletModel
-        .find({ id: { $in: missingWalletIds } })
-        .select('id userId')
-        .lean()
-        .exec();
-      const extraByWid = new Map<string, string>();
-      for (const r of extraRows) {
-        const row = r as { id: string; userId: string };
-        extraByWid.set(String(row.id), String(row.userId));
-      }
-      for (const tx of txs) {
-        if (!walletOwnerByTxId.has(tx.id)) {
-          const u = extraByWid.get(String(tx.walletId));
-          if (u) walletOwnerByTxId.set(tx.id, u);
-        }
-      }
-    }
-
-    return { data: txs, total, walletOwnerByTxId };
+    return this.walletPersistence.findCommunityMeritHistoryTransactions(
+      contextCommunityId,
+      category,
+      limit,
+      skip,
+    );
   }
 }
