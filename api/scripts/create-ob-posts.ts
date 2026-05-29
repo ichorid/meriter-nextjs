@@ -22,6 +22,7 @@ import { MongoClient, Db, ObjectId } from 'mongodb';
 import * as dotenv from 'dotenv';
 import { join } from 'path';
 import { uid } from 'uid';
+import { createPublicationDocument } from '../apps/meriter/test/helpers/fixtures';
 
 dotenv.config({ path: join(__dirname, '../.env') });
 dotenv.config({ path: join(__dirname, '../.env.local') });
@@ -105,28 +106,16 @@ async function run(): Promise<void> {
       const pubId = uid();
 
       try {
-        await publicationsColl.insertOne({
-          id: pubId,
-          communityId: futureVisionId,
-          authorId,
-          sourceEntityId: communityId,
-          sourceEntityType: 'community',
-          content,
-          type: 'text',
-          hashtags: [],
-          categories: [],
-          images: [],
-          metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
-          investingEnabled: false,
-          investmentPool: 0,
-          investmentPoolTotal: 0,
-          investments: [],
-          status: 'active',
-          postType: 'basic',
-          isProject: false,
-          createdAt: now,
-          updatedAt: now,
-        });
+        await publicationsColl.insertOne(
+          createPublicationDocument(futureVisionId, authorId, {
+            id: pubId,
+            sourceEntityId: communityId,
+            sourceEntityType: 'community',
+            content,
+            createdAt: now,
+            updatedAt: now,
+          }),
+        );
         stats.postsCreated++;
         console.log(`Created OB post ${pubId} for community ${communityId}`);
       } catch (err) {
