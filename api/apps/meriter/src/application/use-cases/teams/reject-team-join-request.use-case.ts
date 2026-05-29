@@ -7,13 +7,16 @@ import type { TeamJoinRequestMutableRecord } from '../../../domain/ports/team-jo
 import { CommunityService } from '../../../domain/services/community.service';
 import { NotificationService } from '../../../domain/services/notification.service';
 import { UserService } from '../../../domain/services/user.service';
-import type { TeamJoinRequestLeadAction } from './approve-team-join-request.use-case';
+import type {
+  RejectTeamJoinRequestPort,
+  TeamJoinRequestLeadAction,
+} from '../../../domain/ports/team-join-request-flows.port';
 
 /**
  * BC-11: reject a pending team join request (P-9).
  */
 @Injectable()
-export class RejectTeamJoinRequestUseCase {
+export class RejectTeamJoinRequestUseCase implements RejectTeamJoinRequestPort {
   private readonly logger = new Logger(RejectTeamJoinRequestUseCase.name);
 
   constructor(

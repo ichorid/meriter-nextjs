@@ -16,7 +16,10 @@ import {
   parseEventParticipantsFromDoc,
 } from '../../../domain/common/helpers/event-participant.helper';
 import { CommunityService } from '../../../domain/services/community.service';
-import type { MeritTransferRecord } from '../../../domain/services/merit-transfer.service';
+import type {
+  CreateMeritTransferPort,
+  MeritTransferRecord,
+} from '../../../domain/ports/create-merit-transfer.port';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { WalletService } from '../../../domain/services/wallet.service';
 import type { MeritTransferPersistencePort } from '../../../domain/ports/merit-transfer.persistence.port';
@@ -32,7 +35,7 @@ const DEFAULT_CURRENCY = {
  * BC-15: peer merit transfer creation (P-10).
  * inv-06: wallet-only debits/credits; quota is never involved.
  */
-export class CreateMeritTransferUseCase {
+export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
   private readonly logger = new Logger(CreateMeritTransferUseCase.name);
 
   constructor(

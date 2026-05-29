@@ -13,12 +13,13 @@ import { UserCommunityRoleService } from '../../../domain/services/user-communit
 import { UserService } from '../../../domain/services/user.service';
 import { uid } from 'uid';
 import type { TeamJoinRequestPersistencePort } from '../../../domain/ports/team-join-request.persistence.port';
+import type { SubmitTeamJoinRequestPort } from '../../../domain/ports/team-join-request-flows.port';
 
 /**
  * BC-11: submit a join request for a local community (P-9).
  */
 @Injectable()
-export class SubmitTeamJoinRequestUseCase {
+export class SubmitTeamJoinRequestUseCase implements SubmitTeamJoinRequestPort {
   private readonly logger = new Logger(SubmitTeamJoinRequestUseCase.name);
 
   constructor(

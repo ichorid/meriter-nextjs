@@ -21,17 +21,26 @@ import { UserService } from './user.service';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
 import {
-  createDistributeOnWithdrawalUseCase,
-  DistributeOnWithdrawalUseCase,
-} from '../../application/use-cases/investments/distribute-on-withdrawal.use-case';
+  DISTRIBUTE_ON_WITHDRAWAL_PORT,
+  type DistributeOnWithdrawalPort,
+  type DistributeOnWithdrawalResult,
+} from '../ports/distribute-on-withdrawal.port';
 import {
-  createHandlePostCloseUseCase,
-  HandlePostCloseUseCase,
-} from '../../application/use-cases/investments/handle-post-close.use-case';
+  HANDLE_POST_CLOSE_PORT,
+  type HandlePostClosePort,
+  type HandlePostCloseResult,
+} from '../ports/handle-post-close.port';
 import {
   INVESTMENT_PERSISTENCE_PORT,
   type InvestmentPersistencePort,
 } from '../ports/investment.persistence.port';
+
+export type {
+  DistributeOnWithdrawalResult,
+} from '../ports/distribute-on-withdrawal.port';
+export type {
+  HandlePostCloseResult,
+} from '../ports/handle-post-close.port';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -46,20 +55,6 @@ export interface ProcessInvestmentResult {
   }>;
 }
 
-export interface DistributeOnWithdrawalResult {
-  authorAmount: number;
-  investorDistributions: Array<{
-    investorId: string;
-    amount: number;
-  }>;
-}
-
-export interface HandlePostCloseResult {
-  poolReturned: Array<{ investorId: string; amount: number }>;
-  ratingDistributed: DistributeOnWithdrawalResult;
-  /** Total rating that was distributed (for reduceScore) */
-  totalRatingDistributed: number;
-}
 
 /** C-3: Single investor entry in investment breakdown */
 export interface InvestmentBreakdownInvestor {
@@ -165,8 +160,6 @@ export interface InvestmentDetailsResult {
 @Injectable()
 export class InvestmentService {
   private readonly logger = new Logger(InvestmentService.name);
-  private readonly distributeOnWithdrawalUseCase: DistributeOnWithdrawalUseCase;
-  private readonly handlePostCloseUseCase: HandlePostCloseUseCase;
 
   constructor(
     @Inject(INVESTMENT_PERSISTENCE_PORT)
@@ -176,23 +169,11 @@ export class InvestmentService {
     private communityService: CommunityService,
     private notificationService: NotificationService,
     private userService: UserService,
-  ) {
-    this.distributeOnWithdrawalUseCase = createDistributeOnWithdrawalUseCase({
-      investmentPersistence: this.investmentPersistence,
-      walletService: this.walletService,
-      meritResolverService: this.meritResolverService,
-      communityService: this.communityService,
-      notificationService: this.notificationService,
-      userService: this.userService,
-    });
-    this.handlePostCloseUseCase = createHandlePostCloseUseCase({
-      investmentPersistence: this.investmentPersistence,
-      walletService: this.walletService,
-      meritResolverService: this.meritResolverService,
-      communityService: this.communityService,
-      distributeOnWithdrawalUseCase: this.distributeOnWithdrawalUseCase,
-    });
-  }
+    @Inject(DISTRIBUTE_ON_WITHDRAWAL_PORT)
+    private readonly distributeOnWithdrawalUseCase: DistributeOnWithdrawalPort,
+    @Inject(HANDLE_POST_CLOSE_PORT)
+    private readonly handlePostCloseUseCase: HandlePostClosePort,
+  ) {}
 
   /**
    * Process investment: deduct from investor wallet, add to post's investment pool.

@@ -4,8 +4,9 @@ import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.con
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { PlatformSettingsService } from '../../../domain/services/platform-settings.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
-import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { ProvisionBaseMembershipPort } from '../../../domain/ports/provision-base-membership.port';
+import type { UserPersistencePort } from '../../../domain/ports/user.persistence.port';
 
 const BASE_COMMUNITY_TYPE_TAGS = [
   'future-vision',
@@ -21,7 +22,7 @@ const DEFAULT_CURRENCY = {
 } as const;
 
 export type ProvisionBaseMembershipDeps = {
-  userService: UserService;
+  userPersistence: UserPersistencePort;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
   walletService: WalletService;
@@ -32,7 +33,7 @@ export type ProvisionBaseMembershipDeps = {
  * BC-01: ensure user membership in platform base hub communities.
  * Canonical implementation for ensureUserInBaseCommunities (13 call sites).
  */
-export class ProvisionBaseMembershipUseCase {
+export class ProvisionBaseMembershipUseCase implements ProvisionBaseMembershipPort {
   private readonly logger = new Logger(ProvisionBaseMembershipUseCase.name);
 
   constructor(private readonly deps: ProvisionBaseMembershipDeps) {}
@@ -53,7 +54,7 @@ export class ProvisionBaseMembershipUseCase {
       }
     }
 
-    const user = await this.deps.userService.getUserById(userId);
+    const user = await this.deps.userPersistence.findById(userId);
     if (!user) {
       this.logger.error(`User ${userId} not found`);
       return;
@@ -112,7 +113,7 @@ export class ProvisionBaseMembershipUseCase {
       );
 
       await this.deps.communityService.addMember(community.id, userId);
-      await this.deps.userService.addCommunityMembership(userId, community.id);
+      await this.deps.userPersistence.addCommunityMembership(userId, community.id);
 
       if (!existingRole) {
         await this.deps.userCommunityRoleService.setRole(

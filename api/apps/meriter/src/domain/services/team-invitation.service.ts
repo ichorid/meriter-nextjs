@@ -15,18 +15,17 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
-import { TeamJoinRequestService } from './team-join-request.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
-import {
-  AcceptTeamInvitationUseCase,
-  createAcceptTeamInvitationUseCase,
-  type TeamInvitationTargetAction,
-} from '../../application/use-cases/teams/accept-team-invitation.use-case';
 import {
   TEAM_INVITATION_PERSISTENCE_PORT,
   type TeamInvitationPersistencePort,
   type TeamInvitationMutableRecord,
 } from '../ports/team-invitation.persistence.port';
+import {
+  ACCEPT_TEAM_INVITATION_PORT,
+  type AcceptTeamInvitationPort,
+  type TeamInvitationTargetAction,
+} from '../ports/accept-team-invitation.port';
 
 /**
  * P-8: load invitation by id, ensure pending, and verify target user.
@@ -61,7 +60,6 @@ export async function loadPendingInvitationForTarget(
 @Injectable()
 export class TeamInvitationService {
   private readonly logger = new Logger(TeamInvitationService.name);
-  private readonly acceptTeamInvitationUseCase: AcceptTeamInvitationUseCase;
 
   constructor(
     @Inject(TEAM_INVITATION_PERSISTENCE_PORT)
@@ -70,23 +68,9 @@ export class TeamInvitationService {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
-    private readonly teamJoinRequestService: TeamJoinRequestService,
-  ) {
-    this.acceptTeamInvitationUseCase = createAcceptTeamInvitationUseCase({
-      loadPendingInvitationForTarget: (invitationId, targetUserId, action) =>
-        loadPendingInvitationForTarget(
-          this.teamInvitationPersistence,
-          invitationId,
-          targetUserId,
-          action,
-        ),
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      communityService: this.communityService,
-      notificationService: this.notificationService,
-      teamJoinRequestService: this.teamJoinRequestService,
-    });
-  }
+    @Inject(ACCEPT_TEAM_INVITATION_PORT)
+    private readonly acceptTeamInvitationUseCase: AcceptTeamInvitationPort,
+  ) {}
 
   /**
    * Create an invitation to join a local community (team, project, etc.)

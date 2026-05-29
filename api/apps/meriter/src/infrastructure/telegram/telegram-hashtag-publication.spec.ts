@@ -8,6 +8,7 @@ import { validationSchema } from '../../config/validation.schema';
 import { DatabaseModule } from '../../common/database/database.module';
 import { CommonServicesModule } from '../../common/services/common-services.module';
 import { DomainModule } from '../../domain.module';
+import { OrchestrationWiringModule } from '../../orchestration-wiring.module';
 import { TestDatabaseHelper } from '../../../test/test-db.helper';
 import { TgBotsService } from '../../domain/services/tg-bots.service';
 import {
@@ -64,6 +65,7 @@ describe('Telegram hashtag-gated publication (integration)', () => {
         DatabaseModule,
         CommonServicesModule,
         DomainModule,
+        OrchestrationWiringModule,
         TelegramInfrastructureModule,
       ],
     }).compile();

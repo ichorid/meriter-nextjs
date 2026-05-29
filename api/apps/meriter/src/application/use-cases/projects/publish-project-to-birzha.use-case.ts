@@ -13,41 +13,21 @@ import type { CommunityWalletService } from '../../../domain/services/community-
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { PublicationId } from '../../../domain/value-objects';
+import type {
+  PublishCommunityToBirzhaInput,
+  PublishProjectToBirzhaInput,
+  PublishProjectToBirzhaPort,
+  PublishToBirzhaBaseInput,
+  PublishToBirzhaResult,
+} from '../../../domain/ports/publish-to-birzha.port';
 
-export type PublishToBirzhaBaseInput = {
-  callerId: string;
-  content: string;
-  type: 'text' | 'image' | 'video';
-  title: string;
-  description?: string;
-  images?: string[];
-  valueTags?: string[];
-  hashtags?: string[];
-  beneficiaryId?: string;
-  /** Default: deduct postCost from source CommunityWallet. */
-  postCostFunding?: 'source_community_wallet' | 'caller_global_wallet';
-  investingEnabled?: boolean;
-  investorSharePercent?: number;
-  ttlDays?: 7 | 14 | 30 | 60 | 90 | null;
-  stopLoss?: number;
-  noAuthorWalletSpend?: boolean;
-};
-
-export type PublishProjectToBirzhaInput = PublishToBirzhaBaseInput & {
-  projectId: string;
-};
-
-export type PublishCommunityToBirzhaInput = PublishToBirzhaBaseInput & {
-  communityId: string;
-};
-
-export type PublishToBirzhaResult = { id: string };
-
-/** Params shared by PublicationService.publishSourceEntityToBirzha and both Birzha publish use cases. */
-export type PublishSourceEntityToBirzhaParams = PublishToBirzhaBaseInput & {
-  sourceEntityId: string;
-  sourceEntityType: 'project' | 'community';
-};
+export type {
+  PublishCommunityToBirzhaInput,
+  PublishProjectToBirzhaInput,
+  PublishSourceEntityToBirzhaParams,
+  PublishToBirzhaBaseInput,
+  PublishToBirzhaResult,
+} from '../../../domain/ports/publish-to-birzha.port';
 
 export type PublishToBirzhaCoreDeps = {
   publicationPersistence: PublicationPersistencePort;
@@ -208,7 +188,7 @@ export async function executeBirzhaSourcePublish(
  * inv-07: project source-entity admin verified before CommunityWallet debit.
  * inv-08: authorization and validation before persistence and fee debits.
  */
-export class PublishProjectToBirzhaUseCase {
+export class PublishProjectToBirzhaUseCase implements PublishProjectToBirzhaPort {
   private readonly logger = new Logger(PublishProjectToBirzhaUseCase.name);
 
   constructor(private readonly deps: PublishToBirzhaCoreDeps) {}

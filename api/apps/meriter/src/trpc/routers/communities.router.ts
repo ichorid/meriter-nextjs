@@ -20,6 +20,7 @@ import { createLeaveCommunityUseCase } from '../../application/use-cases/communi
 import { createListCommunityMembersUseCase } from '../../application/use-cases/communities/list-community-members.use-case';
 import { createUpdateCommunitySettingsUseCase } from '../../application/use-cases/communities/update-community-settings.use-case';
 import { createGetFutureVisionsFeedUseCase } from '../../application/use-cases/communities/get-future-visions-feed.use-case';
+import { createGetCommunityFeedUseCaseFromContext } from '../../application/use-cases/feed/get-community-feed.use-case';
 
 export const communitiesRouter = router({
   /**
@@ -436,7 +437,7 @@ export const communitiesRouter = router({
         limit: input.pageSize ?? 5,
       });
 
-      const result = await ctx.communityFeedService.getCommunityFeed(
+      const result = await createGetCommunityFeedUseCaseFromContext(ctx).execute(
         input.communityId,
         {
           page: pagination.page,

@@ -22,6 +22,7 @@ import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 // Import the new domain module
 import { DomainModule } from './domain.module';
 import { ApplicationModule } from './application/application.module';
+import { OrchestrationWiringModule } from './orchestration-wiring.module';
 import { TrpcModule } from './trpc/trpc.module';
 import { AdaptersModule } from './adapters/adapters.module';
 
@@ -49,6 +50,7 @@ import { AdaptersModule } from './adapters/adapters.module';
     ApiV1Module,
     DomainModule, // Domain layer with domain services
     ApplicationModule, // Application layer (Phase 2 scaffold)
+    OrchestrationWiringModule, // Binds domain orchestration port tokens to application use cases
     AdaptersModule, // Adapters layer (Phase 2 scaffold)
     UpdatesConductorsModule,
     QuotaResetModule,

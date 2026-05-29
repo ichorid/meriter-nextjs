@@ -11,14 +11,13 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
-import { VoteService } from './vote.service';
 import { EventBus } from '../events/event-bus';
 import { PublicationCreatedEvent } from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import {
-  createTransitionTicketStatusUseCase,
-  type TransitionTicketStatusUseCase,
-} from '../../application/use-cases/tickets/transition-ticket-status.use-case';
+  TRANSITION_TICKET_STATUS_PORT,
+  type TransitionTicketStatusPort,
+} from '../ports/transition-ticket-status.port';
 import {
   TICKET_PERSISTENCE_PORT,
   type TicketPersistencePort,
@@ -49,7 +48,6 @@ export interface ProjectShareRow {
 @Injectable()
 export class TicketService {
   private readonly logger = new Logger(TicketService.name);
-  private readonly transitionTicketStatusUseCase: TransitionTicketStatusUseCase;
 
   /** Rich metadata for ticket-related notifications (URLs + client copy). */
   private async buildTicketNotificationMetadata(
@@ -123,17 +121,10 @@ export class TicketService {
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
     private notificationService: NotificationService,
-    private voteService: VoteService,
     private eventBus: EventBus,
+    @Inject(TRANSITION_TICKET_STATUS_PORT)
+    private readonly transitionTicketStatusUseCase: TransitionTicketStatusPort,
   ) {
-    this.transitionTicketStatusUseCase = createTransitionTicketStatusUseCase({
-      ticketPersistence: this.ticketPersistence,
-      communityService: this.communityService,
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      notificationService: this.notificationService,
-      voteService: this.voteService,
-    });
   }
 
   private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {

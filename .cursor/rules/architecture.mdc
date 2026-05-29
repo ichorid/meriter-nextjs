@@ -11,7 +11,7 @@ alwaysApply: false
 
 **Blueprint:** `.index/architecture/TARGET_ARCHITECTURE.md` (Round 36) · metadata: `target_architecture.yaml` · intrinsic complexity: `NECESSARY_COMPLEXITY.md` (30 concepts, **19** bounded contexts).
 
-**Status (2026-05, `total_refac`):** Clean Architecture layers are **landed**. ESLint boundary zones **1–9** are **enforced** (`error`/`warn` in [`api/.eslintrc.js`](api/.eslintrc.js)). Routers are **thin** — orchestration lives in **`application/use-cases/`** (~60 use cases). Mongoose stays in **`infrastructure/persistence/`** via **`domain/ports/`**.
+**Status (2026-05, `total_refac`):** Clean Architecture layers are **landed**. ESLint boundary zones **1–9** are **enforced** (`error`/`warn` in [`api/.eslintrc.js`](api/.eslintrc.js)). Routers are **thin** — orchestration lives in **`application/use-cases/`** (~60 use cases). Mongoose stays in **`infrastructure/persistence/`** via **`domain/ports/`**. **Zone 8 is clean**: where a domain service must trigger an application use case, the dependency is inverted through a `domain/ports/*` orchestration token bound to the use case in [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts) (`@Global` composition root; mirrors `PermissionGatesPort`).
 
 ## Clean Architecture layers (backend)
 
@@ -52,7 +52,7 @@ alwaysApply: false
 ### Forbidden
 
 - `domain/services` → `trpc/*`, `api-v1/*`, `adapters/*`
-- `domain/services` → `application/use-cases`
+- `domain/services` → `application/use-cases` (orchestration is inverted via `domain/ports/*` tokens, wired in [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts))
 - `application/use-cases` → `trpc/*`, `api-v1/*`, `@nestjs/mongoose`
 - `infrastructure/**` (except adapter) → `api-v1/**`
 - `features/A` → `features/B` internals (public `index.ts` only)
@@ -66,7 +66,7 @@ alwaysApply: false
 | — | `wallets.withdraw` / `wallets.transfer` | Permanent `NOT_IMPLEMENTED` |
 | — | `features/favorites/` | Not on disk |
 | — | Dual transport | Primary `trpc/`; `adapters/trpc/` scaffold; legacy `api-v1/` for auth/config |
-| — | Zone **8** lint: domain services import `application/use-cases` (41 sites) | Refactor to port tokens + factory in `application.module` / routers |
+| — | Zone **4** lint: `application/use-cases` import `api-v1/*` (auth/upload/community-setup helpers) | Next work unit: extract `domain/ports` + `infrastructure/` adapters |
 
 **Retired waivers (do not re-introduce):** V-01, V-02, V-03/V-04 (`CreateVoteUseCase`), V-05, V-07 (`GetRuntimeConfigUseCase`), V-08, V-10, V-11.
 

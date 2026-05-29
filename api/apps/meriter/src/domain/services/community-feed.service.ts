@@ -1,35 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PublicationService } from './publication.service';
 import { PollService } from './poll.service';
-import { UserService } from './user.service';
 import { CommunityService } from './community.service';
-import { FeedItem } from '../../../../../../libs/shared-types/dist/index';
-import {
-  createGetCommunityFeedUseCase,
-  GetCommunityFeedUseCase,
-  type FeedOptions,
-} from '../../application/use-cases/feed/get-community-feed.use-case';
 
-export type { FeedOptions };
-
-/** Community hub feed; item mapping is canonical in `adapters/mappers/entity-mappers.ts` (P-2). */
+/**
+ * Community hub feed counters. The full feed read (`getCommunityFeed`) lives in
+ * `GetCommunityFeedUseCase` and is invoked directly by the communities router; only the
+ * hub post counter remains here (no application import, Zone 8 clean).
+ */
 @Injectable()
 export class CommunityFeedService {
-  private readonly getCommunityFeedUseCase: GetCommunityFeedUseCase;
-
   constructor(
     private readonly publicationService: PublicationService,
     private readonly pollService: PollService,
-    private readonly userService: UserService,
     private readonly communityService: CommunityService,
-  ) {
-    this.getCommunityFeedUseCase = createGetCommunityFeedUseCase({
-      publicationService: this.publicationService,
-      pollService: this.pollService,
-      userService: this.userService,
-      communityService: this.communityService,
-    });
-  }
+  ) {}
 
   /** Matches hub «Посты» tab (publications + polls, excluding project/event rows). */
   async countHubFeedPosts(communityId: string): Promise<number> {
@@ -44,20 +29,5 @@ export class CommunityFeedService {
     ]);
 
     return publicationCount + pollCount;
-  }
-
-  async getCommunityFeed(
-    communityId: string,
-    options: FeedOptions = {},
-  ): Promise<{
-    data: FeedItem[];
-    pagination: {
-      page: number;
-      pageSize: number;
-      total: number;
-      hasMore: boolean;
-    };
-  }> {
-    return this.getCommunityFeedUseCase.execute(communityId, options);
   }
 }

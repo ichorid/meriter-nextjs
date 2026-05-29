@@ -286,6 +286,18 @@ export function createGetCommunityFeedUseCase(
   return new GetCommunityFeedUseCase(deps);
 }
 
+/** Router-only factory: build the use case straight from the tRPC context (no domain facade). */
+export function createGetCommunityFeedUseCaseFromContext(
+  ctx: GetCommunityFeedDeps,
+): GetCommunityFeedUseCase {
+  return createGetCommunityFeedUseCase({
+    publicationService: ctx.publicationService,
+    pollService: ctx.pollService,
+    userService: ctx.userService,
+    communityService: ctx.communityService,
+  });
+}
+
 export function createToggleFavoriteUseCase(
   ctx: ToggleFavoriteContext,
 ): ToggleFavoriteUseCase {

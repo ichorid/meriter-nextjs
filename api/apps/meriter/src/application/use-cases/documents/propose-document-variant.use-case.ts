@@ -27,21 +27,19 @@ import type { UserCommunityRoleService } from '../../../domain/services/user-com
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { sanitizeDocumentHtml } from '../../../common/utils/sanitize-document-html';
+import type {
+  ProposeDocumentVariantInput,
+  ProposeDocumentVariantPort,
+} from '../../../domain/ports/propose-document-variant.port';
 import {
   createGetRemainingQuotaUseCase,
   type CommunityQuotaContext,
 } from '../wallets/get-remaining-quota.use-case';
 
 export type { DocumentVariantReferenceInput };
+export type { ProposeDocumentVariantInput } from '../../../domain/ports/propose-document-variant.port';
 
 const MAX_VARIANT_CONTENT = 5000;
-
-export type ProposeDocumentVariantInput = {
-  documentId: string;
-  blockId: string;
-  content: string;
-  references?: DocumentVariantReferenceInput[];
-};
 
 export type ProposeDocumentVariantDeps = {
   documentService: DocumentService;
@@ -60,7 +58,7 @@ export type ProposeDocumentVariantDeps = {
  * BC-06: propose a document block variant (§12.1).
  * inv-01: variantCost debited from quota and/or GLOBAL_COMMUNITY_ID wallet.
  */
-export class ProposeDocumentVariantUseCase {
+export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort {
   private readonly logger = new Logger(ProposeDocumentVariantUseCase.name);
   private readonly getRemainingQuota: ReturnType<typeof createGetRemainingQuotaUseCase>;
 

@@ -6,18 +6,18 @@ import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.con
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type {
+  InvestInProjectInput,
+  InvestInProjectPort,
+} from '../../../domain/ports/invest-in-project.port';
+
+export type { InvestInProjectInput } from '../../../domain/ports/invest-in-project.port';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
   plural: 'merits',
   genitive: 'merits',
 } as const;
-
-export type InvestInProjectInput = {
-  userId: string;
-  projectId: string;
-  amount: number;
-};
 
 export type InvestInProjectDeps = {
   communityService: CommunityService;
@@ -29,7 +29,7 @@ export type InvestInProjectDeps = {
  * BC-08: invest in a cooperative project pool (non-member path).
  * Requires project.settings.investingEnabled.
  */
-export class InvestInProjectUseCase {
+export class InvestInProjectUseCase implements InvestInProjectPort {
   constructor(private readonly deps: InvestInProjectDeps) {}
 
   async execute(input: InvestInProjectInput): Promise<void> {

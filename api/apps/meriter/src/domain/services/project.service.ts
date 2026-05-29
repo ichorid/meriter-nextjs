@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Inject,
   Logger,
   NotFoundException,
   BadRequestException,
@@ -16,15 +17,14 @@ import { PublicationService } from './publication.service';
 import { TicketService } from './ticket.service';
 import { NotificationService } from './notification.service';
 import { ProjectParentLinkRequestService } from './project-parent-link-request.service';
-import { ProjectPayoutService } from './project-payout.service';
 import {
-  createExecuteProjectPayoutUseCase,
-  ExecuteProjectPayoutUseCase,
-} from '../../application/use-cases/projects/execute-project-payout.use-case';
+  EXECUTE_PROJECT_PAYOUT_PORT,
+  type ExecuteProjectPayoutPort,
+} from '../ports/execute-project-payout.port';
 import {
-  createInvestInProjectUseCase,
-  InvestInProjectUseCase,
-} from '../../application/use-cases/projects/invest-in-project.use-case';
+  INVEST_IN_PROJECT_PORT,
+  type InvestInProjectPort,
+} from '../ports/invest-in-project.port';
 import type { Community, ProjectInvestmentEntry } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -99,8 +99,6 @@ export interface ProjectWithDetails {
 @Injectable()
 export class ProjectService {
   private readonly logger = new Logger(ProjectService.name);
-  private readonly investInProjectUseCase: InvestInProjectUseCase;
-  private readonly executeProjectPayoutUseCase: ExecuteProjectPayoutUseCase;
 
   constructor(
     private readonly communityService: CommunityService,
@@ -114,18 +112,11 @@ export class ProjectService {
     private readonly ticketService: TicketService,
     private readonly notificationService: NotificationService,
     private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
-    private readonly projectPayoutService: ProjectPayoutService,
-  ) {
-    this.investInProjectUseCase = createInvestInProjectUseCase({
-      communityService: this.communityService,
-      communityWalletService: this.communityWalletService,
-      walletService: this.walletService,
-    });
-    this.executeProjectPayoutUseCase = createExecuteProjectPayoutUseCase({
-      projectPayoutService: this.projectPayoutService,
-      userCommunityRoleService: this.userCommunityRoleService,
-    });
-  }
+    @Inject(INVEST_IN_PROJECT_PORT)
+    private readonly investInProjectUseCase: InvestInProjectPort,
+    @Inject(EXECUTE_PROJECT_PAYOUT_PORT)
+    private readonly executeProjectPayoutUseCase: ExecuteProjectPayoutPort,
+  ) {}
 
   private async createPersonalProjectAndSetup(
     userId: string,

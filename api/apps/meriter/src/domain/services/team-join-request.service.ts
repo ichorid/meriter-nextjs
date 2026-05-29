@@ -13,28 +13,22 @@ import type {
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
-import { WalletService } from './wallet.service';
 import { NotificationService } from './notification.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
-import { EventService } from './event.service';
-import {
-  ApproveTeamJoinRequestUseCase,
-  createApproveTeamJoinRequestUseCase,
-  type TeamJoinRequestLeadAction,
-} from '../../application/use-cases/teams/approve-team-join-request.use-case';
-import {
-  RejectTeamJoinRequestUseCase,
-  createRejectTeamJoinRequestUseCase,
-} from '../../application/use-cases/teams/reject-team-join-request.use-case';
-import {
-  SubmitTeamJoinRequestUseCase,
-  createSubmitTeamJoinRequestUseCase,
-} from '../../application/use-cases/teams/submit-team-join-request.use-case';
 import {
   TEAM_JOIN_REQUEST_PERSISTENCE_PORT,
   type TeamJoinRequestPersistencePort,
   type TeamJoinRequestMutableRecord,
 } from '../ports/team-join-request.persistence.port';
+import {
+  SUBMIT_TEAM_JOIN_REQUEST_PORT,
+  type SubmitTeamJoinRequestPort,
+  APPROVE_TEAM_JOIN_REQUEST_PORT,
+  type ApproveTeamJoinRequestPort,
+  REJECT_TEAM_JOIN_REQUEST_PORT,
+  type RejectTeamJoinRequestPort,
+  type TeamJoinRequestLeadAction,
+} from '../ports/team-join-request-flows.port';
 
 export type { TeamJoinRequestLeadAction };
 
@@ -80,9 +74,6 @@ export async function loadPendingJoinRequestForLead(
 @Injectable()
 export class TeamJoinRequestService {
   private readonly logger = new Logger(TeamJoinRequestService.name);
-  private readonly submitTeamJoinRequestUseCase: SubmitTeamJoinRequestUseCase;
-  private readonly approveTeamJoinRequestUseCase: ApproveTeamJoinRequestUseCase;
-  private readonly rejectTeamJoinRequestUseCase: RejectTeamJoinRequestUseCase;
 
   constructor(
     @Inject(TEAM_JOIN_REQUEST_PERSISTENCE_PORT)
@@ -90,46 +81,14 @@ export class TeamJoinRequestService {
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
-    private readonly walletService: WalletService,
     private readonly notificationService: NotificationService,
-    private readonly eventService: EventService,
-  ) {
-    const loadPendingForLead = (
-      requestId: string,
-      leadId: string,
-      action: TeamJoinRequestLeadAction,
-    ) =>
-      loadPendingJoinRequestForLead(
-        this.teamJoinRequestPersistence,
-        requestId,
-        leadId,
-        action,
-        this.userCommunityRoleService,
-        this.userService,
-      );
-
-    this.submitTeamJoinRequestUseCase = createSubmitTeamJoinRequestUseCase({
-      teamJoinRequestPersistence: this.teamJoinRequestPersistence,
-      communityService: this.communityService,
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      notificationService: this.notificationService,
-    });
-    this.approveTeamJoinRequestUseCase = createApproveTeamJoinRequestUseCase({
-      loadPendingJoinRequestForLead: loadPendingForLead,
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      communityService: this.communityService,
-      notificationService: this.notificationService,
-      eventService: this.eventService,
-    });
-    this.rejectTeamJoinRequestUseCase = createRejectTeamJoinRequestUseCase({
-      loadPendingJoinRequestForLead: loadPendingForLead,
-      userService: this.userService,
-      communityService: this.communityService,
-      notificationService: this.notificationService,
-    });
-  }
+    @Inject(SUBMIT_TEAM_JOIN_REQUEST_PORT)
+    private readonly submitTeamJoinRequestUseCase: SubmitTeamJoinRequestPort,
+    @Inject(APPROVE_TEAM_JOIN_REQUEST_PORT)
+    private readonly approveTeamJoinRequestUseCase: ApproveTeamJoinRequestPort,
+    @Inject(REJECT_TEAM_JOIN_REQUEST_PORT)
+    private readonly rejectTeamJoinRequestUseCase: RejectTeamJoinRequestPort,
+  ) {}
 
   /** Delegates to SubmitTeamJoinRequestUseCase (BC-11 / P-9). */
   async submitRequest(

@@ -1,41 +1,39 @@
 import { NotFoundException } from '@nestjs/common';
-import type { ClientSession } from 'mongoose';
 import type {
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
-import {
-  DistributeOnWithdrawalUseCase,
-  type DistributeOnWithdrawalResult,
-} from './distribute-on-withdrawal.use-case';
+import type {
+  DistributeOnWithdrawalPort,
+  DistributeOnWithdrawalResult,
+} from '../../../domain/ports/distribute-on-withdrawal.port';
+import type {
+  HandlePostCloseInput,
+  HandlePostClosePort,
+  HandlePostCloseResult,
+} from '../../../domain/ports/handle-post-close.port';
 import type { InvestmentPersistencePort } from '../../../domain/ports/investment.persistence.port';
 
-export type HandlePostCloseInput = {
-  postId: string;
-  session?: ClientSession;
-};
-
-export type HandlePostCloseResult = {
-  poolReturned: Array<{ investorId: string; amount: number }>;
-  ratingDistributed: DistributeOnWithdrawalResult;
-  totalRatingDistributed: number;
-};
+export type {
+  HandlePostCloseInput,
+  HandlePostCloseResult,
+} from '../../../domain/ports/handle-post-close.port';
 
 export type HandlePostCloseDeps = {
   investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
   meritResolverService: MeritResolverService;
   communityService: CommunityService;
-  distributeOnWithdrawalUseCase: DistributeOnWithdrawalUseCase;
+  distributeOnWithdrawalUseCase: DistributeOnWithdrawalPort;
 };
 
 /**
  * BC-08: close-time pool return and rating distribution for investing posts.
  * Mode A: pool + rating by contract. Mode B: proportional pool return then rating by contract.
  */
-export class HandlePostCloseUseCase {
+export class HandlePostCloseUseCase implements HandlePostClosePort {
   constructor(private readonly deps: HandlePostCloseDeps) {}
 
   async execute(input: HandlePostCloseInput): Promise<HandlePostCloseResult> {

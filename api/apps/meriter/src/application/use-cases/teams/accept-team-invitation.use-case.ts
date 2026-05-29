@@ -10,18 +10,22 @@ import { NotificationService } from '../../../domain/services/notification.servi
 import { TeamJoinRequestService } from '../../../domain/services/team-join-request.service';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { UserService } from '../../../domain/services/user.service';
+import type {
+  AcceptTeamInvitationPort,
+  AcceptTeamInvitationResult,
+  TeamInvitationTargetAction,
+} from '../../../domain/ports/accept-team-invitation.port';
 
-export type TeamInvitationTargetAction = 'accept' | 'reject';
-
-export type AcceptTeamInvitationResult = TeamInvitation & {
-  inviteTargetIsProject: boolean;
-};
+export type {
+  AcceptTeamInvitationResult,
+  TeamInvitationTargetAction,
+} from '../../../domain/ports/accept-team-invitation.port';
 
 /**
  * BC-11: accept pending team invitation for the target user (P-8).
  */
 @Injectable()
-export class AcceptTeamInvitationUseCase {
+export class AcceptTeamInvitationUseCase implements AcceptTeamInvitationPort {
   private readonly logger = new Logger(AcceptTeamInvitationUseCase.name);
 
   constructor(

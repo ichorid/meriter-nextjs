@@ -20,20 +20,16 @@ import type { UserCommunityRoleService } from '../../../domain/services/user-com
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { CommunityId, UserId } from '../../../domain/value-objects';
+import type {
+  CreatePublicationExecuteOptions,
+  CreatePublicationPort,
+} from '../../../domain/ports/create-publication.port';
 import {
   createGetRemainingQuotaUseCase,
   type CommunityQuotaContext,
 } from '../wallets/get-remaining-quota.use-case';
 
-export type CreatePublicationExecuteOptions = {
-  /** When true (default), enforce canCreatePublication before side effects (inv-08). */
-  checkPermissions?: boolean;
-  /**
-   * When true, deduct postCost (inv-01 global wallet burn / quota / community wallet).
-   * Default false so legacy callers and interim publications.create router path avoid double charge.
-   */
-  processPostCost?: boolean;
-};
+export type { CreatePublicationExecuteOptions } from '../../../domain/ports/create-publication.port';
 
 type PostCostBreakdown = {
   postCost: number;
@@ -49,7 +45,7 @@ type PostCostBreakdown = {
  * inv-07: community source-entity posts require lead of sourceEntityId.
  * inv-08: permission checks before persistence and fee debits.
  */
-export class CreatePublicationUseCase {
+export class CreatePublicationUseCase implements CreatePublicationPort {
   private readonly logger = new Logger(CreatePublicationUseCase.name);
   private readonly getRemainingQuota = createGetRemainingQuotaUseCase({
     communityService: this.communityService,

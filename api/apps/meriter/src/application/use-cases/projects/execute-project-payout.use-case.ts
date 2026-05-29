@@ -1,19 +1,16 @@
 import { ForbiddenException } from '@nestjs/common';
 import type { ProjectPayoutService } from '../../../domain/services/project-payout.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
+import type {
+  ExecuteProjectPayoutInput,
+  ExecuteProjectPayoutPort,
+  PreviewProjectPayoutInput,
+} from '../../../domain/ports/execute-project-payout.port';
 
-export type PreviewProjectPayoutInput = {
-  projectId: string;
-  amount: number;
-  viewerUserId: string;
-};
-
-export type ExecuteProjectPayoutInput = {
-  projectId: string;
-  amount: number;
-  actorUserId: string;
-  globalRole?: string | null;
-};
+export type {
+  ExecuteProjectPayoutInput,
+  PreviewProjectPayoutInput,
+} from '../../../domain/ports/execute-project-payout.port';
 
 export type ExecuteProjectPayoutDeps = {
   projectPayoutService: ProjectPayoutService;
@@ -24,7 +21,7 @@ export type ExecuteProjectPayoutDeps = {
  * BC-08: preview and execute cooperative project wallet payouts.
  * CommunityWallet balance debit + founder/investor/team split unchanged.
  */
-export class ExecuteProjectPayoutUseCase {
+export class ExecuteProjectPayoutUseCase implements ExecuteProjectPayoutPort {
   constructor(private readonly deps: ExecuteProjectPayoutDeps) {}
 
   async preview(input: PreviewProjectPayoutInput) {

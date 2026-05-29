@@ -6,8 +6,6 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
 import type { Community } from '../models/community/community.schema';
 import { DocumentBlockVariantSchemaClass } from '../models/document-block-variant/document-block-variant.schema';
 import {
@@ -18,26 +16,23 @@ import {
   DOCUMENT_PERSISTENCE_PORT,
   type DocumentPersistencePort,
 } from '../ports/document.persistence.port';
+import {
+  FINALIZE_DOCUMENT_WAVE_PORT,
+  type FinalizeDocumentWavePort,
+} from '../ports/finalize-document-wave.port';
+import {
+  PROPOSE_DOCUMENT_VARIANT_PORT,
+  type ProposeDocumentVariantPort,
+} from '../ports/propose-document-variant.port';
 import { CommunityService } from './community.service';
 import { DocumentService } from './document.service';
 import { NotificationService } from './notification.service';
 import { PermissionService } from './permission.service';
-import { UserCommunityRoleService } from './user-community-role.service';
-import { UserService } from './user.service';
-import { WalletService } from './wallet.service';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import {
   type DocumentVariantReferenceInput,
 } from '../common/document-variant-references.util';
-import {
-  createFinalizeDocumentWaveUseCase,
-  FinalizeDocumentWaveUseCase,
-} from '../../application/use-cases/documents/finalize-document-wave.use-case';
-import {
-  createProposeDocumentVariantUseCase,
-  ProposeDocumentVariantUseCase,
-} from '../../application/use-cases/documents/propose-document-variant.use-case';
 
 export type { DocumentVariantReferenceInput };
 
@@ -46,42 +41,19 @@ const MAX_VARIANT_CONTENT = 5000;
 @Injectable()
 export class DocumentVariantService {
   private readonly logger = new Logger(DocumentVariantService.name);
-  private readonly finalizeDocumentWaveUseCase: FinalizeDocumentWaveUseCase;
-  private readonly proposeDocumentVariantUseCase: ProposeDocumentVariantUseCase;
 
   constructor(
     private readonly documentService: DocumentService,
     @Inject(DOCUMENT_PERSISTENCE_PORT)
     private readonly documentPersistence: DocumentPersistencePort,
     private readonly communityService: CommunityService,
-    private readonly walletService: WalletService,
-    private readonly userCommunityRoleService: UserCommunityRoleService,
-    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
     private readonly permissionService: PermissionService,
-    @InjectConnection() private readonly connection: Connection,
-  ) {
-    this.finalizeDocumentWaveUseCase = createFinalizeDocumentWaveUseCase({
-      documentService: this.documentService,
-      documentPersistence: this.documentPersistence,
-      communityService: this.communityService,
-      notificationService: this.notificationService,
-      autoApplyWinner: (documentId, blockId) => this.tryAutoApplyWinner(documentId, blockId),
-    });
-    this.proposeDocumentVariantUseCase = createProposeDocumentVariantUseCase({
-      documentService: this.documentService,
-      documentPersistence: this.documentPersistence,
-      communityService: this.communityService,
-      walletService: this.walletService,
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      notificationService: this.notificationService,
-      permissionService: this.permissionService,
-      connection: this.connection,
-      finalizeExpiredWaveOnBlock: (documentId, blockId) =>
-        this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId),
-    });
-  }
+    @Inject(FINALIZE_DOCUMENT_WAVE_PORT)
+    private readonly finalizeDocumentWaveUseCase: FinalizeDocumentWavePort,
+    @Inject(PROPOSE_DOCUMENT_VARIANT_PORT)
+    private readonly proposeDocumentVariantUseCase: ProposeDocumentVariantPort,
+  ) {}
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
     const variants = await this.documentPersistence.findVariantsByBlock(documentId, blockId);
@@ -440,8 +412,11 @@ export class DocumentVariantService {
     }
   }
 
-  /** Auto-apply closed winner when document is in auto mode (§12.2). */
-  private async tryAutoApplyWinner(documentId: string, blockId: string): Promise<void> {
+  /**
+   * Auto-apply closed winner when document is in auto mode (§12.2).
+   * Invoked by FinalizeDocumentWaveUseCase via the orchestration callback (Zone 8 inversion).
+   */
+  async tryAutoApplyWinner(documentId: string, blockId: string): Promise<void> {
     const doc = await this.documentService.getById(documentId);
     if (!doc || doc.deleted || doc.mode !== 'auto') {
       return;

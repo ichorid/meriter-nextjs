@@ -1,5 +1,4 @@
 import { Logger, NotFoundException } from '@nestjs/common';
-import type { ClientSession } from 'mongoose';
 import type {
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
@@ -10,21 +9,16 @@ import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { formatMeritsForDisplay } from '../../../common/helpers/format-merits.helper';
 import type { InvestmentPersistencePort } from '../../../domain/ports/investment.persistence.port';
+import type {
+  DistributeOnWithdrawalInput,
+  DistributeOnWithdrawalPort,
+  DistributeOnWithdrawalResult,
+} from '../../../domain/ports/distribute-on-withdrawal.port';
 
-export type DistributeOnWithdrawalInput = {
-  postId: string;
-  withdrawAmount: number;
-  session?: ClientSession;
-  earningsReason?: 'withdrawal' | 'close';
-};
-
-export type DistributeOnWithdrawalResult = {
-  authorAmount: number;
-  investorDistributions: Array<{
-    investorId: string;
-    amount: number;
-  }>;
-};
+export type {
+  DistributeOnWithdrawalInput,
+  DistributeOnWithdrawalResult,
+} from '../../../domain/ports/distribute-on-withdrawal.port';
 
 export type DistributeOnWithdrawalDeps = {
   investmentPersistence: InvestmentPersistencePort;
@@ -39,7 +33,7 @@ export type DistributeOnWithdrawalDeps = {
  * BC-08: split withdrawal/close amount between author and investors per contract.
  * C-4: investor shares rounded to 0.01; remainder to author.
  */
-export class DistributeOnWithdrawalUseCase {
+export class DistributeOnWithdrawalUseCase implements DistributeOnWithdrawalPort {
   private readonly logger = new Logger(DistributeOnWithdrawalUseCase.name);
 
   constructor(private readonly deps: DistributeOnWithdrawalDeps) {}

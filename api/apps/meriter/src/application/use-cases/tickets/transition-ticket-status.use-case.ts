@@ -16,31 +16,20 @@ import type {
   TicketMutableRecord,
   TicketPersistencePort,
 } from '../../../domain/ports/ticket.persistence.port';
+import type {
+  AcceptTicketWorkInput,
+  DeclineTicketAsAssigneeInput,
+  ReturnTicketWorkForRevisionInput,
+  TransitionTicketStatusInput,
+  TransitionTicketStatusPort,
+} from '../../../domain/ports/transition-ticket-status.port';
 
-export type TransitionTicketStatusInput = {
-  ticketId: string;
-  userId: string;
-  newStatus: TicketStatus;
-};
-
-export type AcceptTicketWorkInput = {
-  ticketId: string;
-  leadUserId: string;
-};
-
-export type ReturnTicketWorkForRevisionInput = {
-  ticketId: string;
-  leadUserId: string;
-  reason: string;
-  locale?: string;
-};
-
-export type DeclineTicketAsAssigneeInput = {
-  ticketId: string;
-  userId: string;
-  reason: string;
-  locale?: string;
-};
+export type {
+  AcceptTicketWorkInput,
+  DeclineTicketAsAssigneeInput,
+  ReturnTicketWorkForRevisionInput,
+  TransitionTicketStatusInput,
+} from '../../../domain/ports/transition-ticket-status.port';
 
 export type TransitionTicketStatusDeps = {
   ticketPersistence: TicketPersistencePort;
@@ -61,7 +50,7 @@ export type TransitionTicketStatusDeps = {
  * - ticket.returnWorkForRevision → returnWorkForRevision
  * - ticket.declineAsAssignee → declineAsAssignee
  */
-export class TransitionTicketStatusUseCase {
+export class TransitionTicketStatusUseCase implements TransitionTicketStatusPort {
   private readonly logger = new Logger(TransitionTicketStatusUseCase.name);
 
   constructor(private readonly deps: TransitionTicketStatusDeps) {}

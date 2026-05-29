@@ -3,47 +3,35 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
-  ForbiddenException,
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, ClientSession } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import {
   PUBLICATION_PERSISTENCE_PORT,
   type PublicationPersistencePort,
   type PublicationPersistenceSession,
 } from '../ports/publication.persistence.port';
-import {
-  PublicationId,
-  UserId,
-  CommunityId,
-} from '../value-objects';
+import { PublicationId } from '../value-objects';
 import { PublicationCreatedEvent, PublicationUpdatedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 import { PermissionService } from './permission.service';
 import { CommunityService } from './community.service';
-import { UserCommunityRoleService } from './user-community-role.service';
-import { UserService } from './user.service';
 import { CommunityWalletService } from './community-wallet.service';
-import { WalletService } from './wallet.service';
-import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import {
-  createCreatePublicationUseCase,
-  CreatePublicationUseCase,
+  CREATE_PUBLICATION_PORT,
   type CreatePublicationExecuteOptions,
-} from '../../application/use-cases/publications/create-publication.use-case';
+  type CreatePublicationPort,
+} from '../ports/create-publication.port';
 import {
-  createPublishProjectToBirzhaUseCase,
-  PublishProjectToBirzhaUseCase,
+  PUBLISH_PROJECT_TO_BIRZHA_PORT,
+  PUBLISH_COMMUNITY_TO_BIRZHA_PORT,
+  type PublishCommunityToBirzhaPort,
+  type PublishProjectToBirzhaPort,
   type PublishSourceEntityToBirzhaParams,
-} from '../../application/use-cases/projects/publish-project-to-birzha.use-case';
-import {
-  createPublishCommunityToBirzhaUseCase,
-  PublishCommunityToBirzhaUseCase,
-} from '../../application/use-cases/communities/publish-community-to-birzha.use-case';
+} from '../ports/publish-to-birzha.port';
 
 export interface CreatePublicationDto {
   communityId: string;
@@ -95,50 +83,23 @@ export interface CreatePublicationDto {
 @Injectable()
 export class PublicationService {
   private readonly logger = new Logger(PublicationService.name);
-  private readonly createPublicationUseCase: CreatePublicationUseCase;
-  private readonly publishProjectToBirzhaUseCase: PublishProjectToBirzhaUseCase;
-  private readonly publishCommunityToBirzhaUseCase: PublishCommunityToBirzhaUseCase;
 
   constructor(
     @Inject(PUBLICATION_PERSISTENCE_PORT)
     private readonly publicationPersistence: PublicationPersistencePort,
-    @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
-    private userCommunityRoleService: UserCommunityRoleService,
-    @Inject(forwardRef(() => UserService))
-    private userService: UserService,
     private communityWalletService: CommunityWalletService,
-    @Inject(forwardRef(() => WalletService))
-    private walletService: WalletService,
-  ) {
-    this.createPublicationUseCase = createCreatePublicationUseCase({
-      publicationPersistence: this.publicationPersistence,
-      connection: this.mongoose,
-      eventBus: this.eventBus,
-      permissionService: this.permissionService,
-      communityService: this.communityService,
-      userCommunityRoleService: this.userCommunityRoleService,
-      userService: this.userService,
-      communityWalletService: this.communityWalletService,
-      walletService: this.walletService,
-    });
-
-    const birzhaPublishDeps = {
-      publicationPersistence: this.publicationPersistence,
-      eventBus: this.eventBus,
-      communityService: this.communityService,
-      userService: this.userService,
-      communityWalletService: this.communityWalletService,
-      walletService: this.walletService,
-    };
-    this.publishProjectToBirzhaUseCase = createPublishProjectToBirzhaUseCase(birzhaPublishDeps);
-    this.publishCommunityToBirzhaUseCase =
-      createPublishCommunityToBirzhaUseCase(birzhaPublishDeps);
-  }
+    @Inject(CREATE_PUBLICATION_PORT)
+    private readonly createPublicationUseCase: CreatePublicationPort,
+    @Inject(PUBLISH_PROJECT_TO_BIRZHA_PORT)
+    private readonly publishProjectToBirzhaUseCase: PublishProjectToBirzhaPort,
+    @Inject(PUBLISH_COMMUNITY_TO_BIRZHA_PORT)
+    private readonly publishCommunityToBirzhaUseCase: PublishCommunityToBirzhaPort,
+  ) {}
 
   async createPublication(
     userId: string,

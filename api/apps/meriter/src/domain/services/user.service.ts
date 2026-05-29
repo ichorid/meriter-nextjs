@@ -14,13 +14,12 @@ import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
-import { PlatformSettingsService } from './platform-settings.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import {
-  createProvisionBaseMembershipUseCase,
-  type ProvisionBaseMembershipUseCase,
-} from '../../application/use-cases/communities/provision-base-membership.use-case';
+  PROVISION_BASE_MEMBERSHIP_PORT,
+  type ProvisionBaseMembershipPort,
+} from '../ports/provision-base-membership.port';
 import {
   USER_PERSISTENCE_PORT,
   type UserPersistencePort,
@@ -45,7 +44,6 @@ export interface CreateUserDto {
 @Injectable()
 export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
-  private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipUseCase;
 
   constructor(
     @Inject(USER_PERSISTENCE_PORT)
@@ -56,16 +54,9 @@ export class UserService implements OnModuleInit {
     private walletService: WalletService,
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
-    private platformSettingsService: PlatformSettingsService,
-  ) {
-    this.provisionBaseMembershipUseCase = createProvisionBaseMembershipUseCase({
-      userService: this,
-      communityService: this.communityService,
-      userCommunityRoleService: this.userCommunityRoleService,
-      walletService: this.walletService,
-      platformSettingsService: this.platformSettingsService,
-    });
-  }
+    @Inject(PROVISION_BASE_MEMBERSHIP_PORT)
+    private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipPort,
+  ) {}
 
   async onModuleInit() {
     try {

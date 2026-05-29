@@ -10,13 +10,18 @@ import { EventService } from '../../../domain/services/event.service';
 import { NotificationService } from '../../../domain/services/notification.service';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { UserService } from '../../../domain/services/user.service';
-export type TeamJoinRequestLeadAction = 'approve' | 'reject';
+import type {
+  ApproveTeamJoinRequestPort,
+  TeamJoinRequestLeadAction,
+} from '../../../domain/ports/team-join-request-flows.port';
+
+export type { TeamJoinRequestLeadAction };
 
 /**
  * BC-11: approve a pending team join request (P-9).
  */
 @Injectable()
-export class ApproveTeamJoinRequestUseCase {
+export class ApproveTeamJoinRequestUseCase implements ApproveTeamJoinRequestPort {
   private readonly logger = new Logger(ApproveTeamJoinRequestUseCase.name);
 
   constructor(

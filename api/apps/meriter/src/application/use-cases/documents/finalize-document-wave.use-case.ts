@@ -6,6 +6,7 @@ import type { DocumentPersistencePort } from '../../../domain/ports/document.per
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
+import type { FinalizeDocumentWavePort } from '../../../domain/ports/finalize-document-wave.port';
 export type FinalizeDocumentWaveDeps = {
   documentService: DocumentService;
   documentPersistence: DocumentPersistencePort;
@@ -19,7 +20,7 @@ export type FinalizeDocumentWaveDeps = {
  * BC-06: periodic and on-demand voting-wave finalization (§12.2).
  * Cron and propose/close paths delegate here via DocumentVariantService.
  */
-export class FinalizeDocumentWaveUseCase {
+export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
   private readonly logger = new Logger(FinalizeDocumentWaveUseCase.name);
 
   constructor(private readonly deps: FinalizeDocumentWaveDeps) {}

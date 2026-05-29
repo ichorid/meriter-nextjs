@@ -1,38 +1,15 @@
 import { Injectable, Inject } from '@nestjs/common';
 import {
-  createCreateMeritTransferUseCase,
-  CreateMeritTransferUseCase,
-} from '../../application/use-cases/merit-transfer/create-merit-transfer.use-case';
-import {
-  type MeritTransferWalletType,
-} from '../models/merit-transfer/merit-transfer.schema';
-import { WalletService } from './wallet.service';
-import { CommunityService } from './community.service';
-import { UserCommunityRoleService } from './user-community-role.service';
-import {
   MERIT_TRANSFER_PERSISTENCE_PORT,
   type MeritTransferPersistencePort,
 } from '../ports/merit-transfer.persistence.port';
 import {
-  PUBLICATION_PERSISTENCE_PORT,
-  type PublicationPersistencePort,
-} from '../ports/publication.persistence.port';
+  CREATE_MERIT_TRANSFER_PORT,
+  type CreateMeritTransferPort,
+  type MeritTransferRecord,
+} from '../ports/create-merit-transfer.port';
 
-export interface MeritTransferRecord {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  amount: number;
-  comment?: string;
-  sourceWalletType: MeritTransferWalletType;
-  sourceContextId?: string;
-  targetWalletType: MeritTransferWalletType;
-  targetContextId?: string;
-  communityContextId: string;
-  eventPostId?: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { MeritTransferRecord } from '../ports/create-merit-transfer.port';
 
 export interface MeritTransferListPagination {
   page?: number;
@@ -46,25 +23,12 @@ export interface MeritTransferListResult {
 
 @Injectable()
 export class MeritTransferService {
-  private readonly createMeritTransferUseCase: CreateMeritTransferUseCase;
-
   constructor(
     @Inject(MERIT_TRANSFER_PERSISTENCE_PORT)
     private readonly meritTransferPersistence: MeritTransferPersistencePort,
-    @Inject(PUBLICATION_PERSISTENCE_PORT)
-    private readonly publicationPersistence: PublicationPersistencePort,
-    private readonly walletService: WalletService,
-    private readonly communityService: CommunityService,
-    private readonly userCommunityRoleService: UserCommunityRoleService,
-  ) {
-    this.createMeritTransferUseCase = createCreateMeritTransferUseCase({
-      meritTransferPersistence: this.meritTransferPersistence,
-      publicationPersistence: this.publicationPersistence,
-      walletService: this.walletService,
-      communityService: this.communityService,
-      userCommunityRoleService: this.userCommunityRoleService,
-    });
-  }
+    @Inject(CREATE_MERIT_TRANSFER_PORT)
+    private readonly createMeritTransferUseCase: CreateMeritTransferPort,
+  ) {}
 
   private toRecord(
     doc: Awaited<ReturnType<MeritTransferPersistencePort['findMany']>>[number],

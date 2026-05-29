@@ -6,17 +6,20 @@ import {
 } from '@nestjs/common';
 import {
   executeBirzhaSourcePublish,
-  type PublishCommunityToBirzhaInput,
   type PublishToBirzhaCoreDeps,
-  type PublishToBirzhaResult,
 } from '../projects/publish-project-to-birzha.use-case';
+import type {
+  PublishCommunityToBirzhaInput,
+  PublishCommunityToBirzhaPort,
+  PublishToBirzhaResult,
+} from '../../../domain/ports/publish-to-birzha.port';
 
 /**
  * BC-08: eligible local community Birzha publication.
  * inv-07: community source-entity admin verified before CommunityWallet debit.
  * inv-08: eligibility, authorization, and validation before persistence and fee debits.
  */
-export class PublishCommunityToBirzhaUseCase {
+export class PublishCommunityToBirzhaUseCase implements PublishCommunityToBirzhaPort {
   private readonly logger = new Logger(PublishCommunityToBirzhaUseCase.name);
 
   constructor(private readonly deps: PublishToBirzhaCoreDeps) {}
