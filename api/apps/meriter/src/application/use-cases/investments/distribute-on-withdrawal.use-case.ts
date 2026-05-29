@@ -1,7 +1,6 @@
 import { Logger, NotFoundException } from '@nestjs/common';
-import type { ClientSession, Model } from 'mongoose';
+import type { ClientSession } from 'mongoose';
 import type {
-  PublicationDocument,
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
@@ -10,6 +9,7 @@ import type { NotificationService } from '../../../domain/services/notification.
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { formatMeritsForDisplay } from '../../../common/helpers/format-merits.helper';
+import type { InvestmentPersistencePort } from '../../../domain/ports/investment.persistence.port';
 
 export type DistributeOnWithdrawalInput = {
   postId: string;
@@ -27,7 +27,7 @@ export type DistributeOnWithdrawalResult = {
 };
 
 export type DistributeOnWithdrawalDeps = {
-  publicationModel: Model<PublicationDocument>;
+  investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
   meritResolverService: MeritResolverService;
   communityService: CommunityService;
@@ -54,10 +54,10 @@ export class DistributeOnWithdrawalUseCase {
       earningsReason = 'withdrawal',
     } = input;
 
-    const post = await this.deps.publicationModel
-      .findOne({ id: postId })
-      .lean()
-      .exec();
+    const post = await this.deps.investmentPersistence.findPublicationById(
+      postId,
+      session,
+    );
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -132,22 +132,15 @@ export class DistributeOnWithdrawalUseCase {
       );
     }
 
-    const updateOptions = session ? { session } : {};
     await Promise.all(
       investorDistributions.map((dist) =>
-        this.deps.publicationModel.updateOne(
-          { id: postId, 'investments.investorId': dist.investorId },
-          {
-            $inc: { 'investments.$.totalEarnings': dist.amount },
-            $push: {
-              'investments.$.earningsHistory': {
-                amount: dist.amount,
-                date: new Date(),
-                reason: earningsReason,
-              },
-            },
-          },
-          updateOptions,
+        this.deps.investmentPersistence.updateInvestorEarnings(
+          postId,
+          dist.investorId,
+          dist.amount,
+          earningsReason,
+          new Date(),
+          session,
         ),
       ),
     );

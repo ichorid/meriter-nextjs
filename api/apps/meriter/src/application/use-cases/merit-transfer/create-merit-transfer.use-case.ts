@@ -3,7 +3,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
+import type { ClientSession } from 'mongoose';
 import {
   MeritTransferCreateInputSchema,
   type MeritTransferCreateInput,
@@ -15,14 +15,12 @@ import {
   attendeeIdsFromParticipants,
   parseEventParticipantsFromDoc,
 } from '../../../domain/common/helpers/event-participant.helper';
-import type {
-  MeritTransferDocument,
-} from '../../../domain/models/merit-transfer/merit-transfer.schema';
-import type { PublicationDocument } from '../../../domain/models/publication/publication.schema';
 import { CommunityService } from '../../../domain/services/community.service';
 import type { MeritTransferRecord } from '../../../domain/services/merit-transfer.service';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { WalletService } from '../../../domain/services/wallet.service';
+import type { MeritTransferPersistencePort } from '../../../domain/ports/merit-transfer.persistence.port';
+import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -38,15 +36,16 @@ export class CreateMeritTransferUseCase {
   private readonly logger = new Logger(CreateMeritTransferUseCase.name);
 
   constructor(
-    private readonly meritTransferModel: Model<MeritTransferDocument>,
-    private readonly publicationModel: Model<PublicationDocument>,
-    private readonly connection: Connection,
+    private readonly meritTransferPersistence: MeritTransferPersistencePort,
+    private readonly publicationPersistence: PublicationPersistencePort,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
   ) {}
 
-  private toRecord(doc: MeritTransferDocument): MeritTransferRecord {
+  private toRecord(
+    doc: Awaited<ReturnType<MeritTransferPersistencePort['create']>>,
+  ): MeritTransferRecord {
     return {
       id: doc.id,
       senderId: doc.senderId,
@@ -59,8 +58,8 @@ export class CreateMeritTransferUseCase {
       targetContextId: doc.targetContextId,
       communityContextId: doc.communityContextId,
       eventPostId: doc.eventPostId,
-      createdAt: doc.createdAt.toISOString(),
-      updatedAt: doc.updatedAt.toISOString(),
+      createdAt: new Date(doc.createdAt).toISOString(),
+      updatedAt: new Date(doc.updatedAt).toISOString(),
     };
   }
 
@@ -118,7 +117,7 @@ export class CreateMeritTransferUseCase {
     if (!input.eventPostId) {
       return;
     }
-    const pub = await this.publicationModel.findOne({ id: input.eventPostId }).lean();
+    const pub = await this.publicationPersistence.findById(input.eventPostId);
     if (!pub) {
       throw new NotFoundException('Event publication not found');
     }
@@ -183,11 +182,8 @@ export class CreateMeritTransferUseCase {
     const targetCurrency = await this.currencyForWalletCommunityId(targetWalletId);
 
     const id = uid();
-    const session = await this.connection.startSession();
-
-    try {
-      let created: MeritTransferDocument | null = null;
-      await session.withTransaction(async () => {
+    const created = await this.meritTransferPersistence.runInTransaction(
+      async (session) => {
         await this.walletService.addTransaction(
           input.senderId,
           sourceWalletId,
@@ -198,7 +194,7 @@ export class CreateMeritTransferUseCase {
           id,
           sourceCurrency,
           'Merit transfer (sent)',
-          session,
+          session as ClientSession,
         );
         await this.walletService.addTransaction(
           input.receiverId,
@@ -210,61 +206,48 @@ export class CreateMeritTransferUseCase {
           id,
           targetCurrency,
           'Merit transfer (received)',
+          session as ClientSession,
+        );
+        return this.meritTransferPersistence.create(
+          {
+            id,
+            senderId: input.senderId,
+            receiverId: input.receiverId,
+            amount: input.amount,
+            comment: input.comment,
+            sourceWalletType: input.sourceWalletType,
+            sourceContextId:
+              input.sourceWalletType === 'global' ? undefined : input.sourceContextId,
+            targetWalletType: input.targetWalletType,
+            targetContextId:
+              input.targetWalletType === 'global' ? undefined : input.targetContextId,
+            communityContextId: input.communityContextId,
+            eventPostId: input.eventPostId,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
           session,
         );
-        const createdDocs = await this.meritTransferModel.create(
-          [
-            {
-              id,
-              senderId: input.senderId,
-              receiverId: input.receiverId,
-              amount: input.amount,
-              comment: input.comment,
-              sourceWalletType: input.sourceWalletType,
-              sourceContextId:
-                input.sourceWalletType === 'global' ? undefined : input.sourceContextId,
-              targetWalletType: input.targetWalletType,
-              targetContextId:
-                input.targetWalletType === 'global' ? undefined : input.targetContextId,
-              communityContextId: input.communityContextId,
-              eventPostId: input.eventPostId,
-            },
-          ],
-          { session },
-        );
-        const doc = createdDocs[0];
-        if (!doc) {
-          throw new BadRequestException('Merit transfer document was not created');
-        }
-        created = doc;
-      });
+      },
+    );
 
-      if (!created) {
-        throw new BadRequestException('Merit transfer was not persisted');
-      }
-
-      this.logger.log(
-        `Merit transfer ${id}: ${input.senderId} → ${input.receiverId}, amount=${input.amount}, context=${input.communityContextId}`,
-      );
-      return this.toRecord(created);
-    } finally {
-      await session.endSession();
-    }
+    this.logger.log(
+      `Merit transfer ${id}: ${input.senderId} → ${input.receiverId}, amount=${input.amount}, context=${input.communityContextId}`,
+    );
+    return this.toRecord(created);
   }
 }
 
 export function createCreateMeritTransferUseCase(deps: {
-  meritTransferModel: Model<MeritTransferDocument>;
-  publicationModel: Model<PublicationDocument>;
-  connection: Connection;
+  meritTransferPersistence: MeritTransferPersistencePort;
+  publicationPersistence: PublicationPersistencePort;
   walletService: WalletService;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
 }): CreateMeritTransferUseCase {
   return new CreateMeritTransferUseCase(
-    deps.meritTransferModel,
-    deps.publicationModel,
-    deps.connection,
+    deps.meritTransferPersistence,
+    deps.publicationPersistence,
     deps.walletService,
     deps.communityService,
     deps.userCommunityRoleService,

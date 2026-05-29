@@ -4,13 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
 import { PublicationId } from '../value-objects';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
@@ -24,6 +19,11 @@ import {
   createTransitionTicketStatusUseCase,
   type TransitionTicketStatusUseCase,
 } from '../../application/use-cases/tickets/transition-ticket-status.use-case';
+import {
+  TICKET_PERSISTENCE_PORT,
+  type TicketPersistencePort,
+  type TicketRecord,
+} from '../ports/ticket.persistence.port';
 
 export interface CreateTicketDto {
   title: string;
@@ -58,7 +58,7 @@ export class TicketService {
     extra: Record<string, unknown> = {},
   ): Promise<Record<string, unknown>> {
     const [ticket, project] = await Promise.all([
-      this.publicationModel.findOne({ id: ticketId }).select('title').lean().exec(),
+      this.ticketPersistence.findOneLean({ id: ticketId }, 'title'),
       this.communityService.getCommunity(projectId),
     ]);
     const rawTitle = ticket && typeof (ticket as { title?: string }).title === 'string'
@@ -117,8 +117,8 @@ export class TicketService {
   }
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
+    @Inject(TICKET_PERSISTENCE_PORT)
+    private readonly ticketPersistence: TicketPersistencePort,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
@@ -127,7 +127,7 @@ export class TicketService {
     private eventBus: EventBus,
   ) {
     this.transitionTicketStatusUseCase = createTransitionTicketStatusUseCase({
-      publicationModel: this.publicationModel,
+      ticketPersistence: this.ticketPersistence,
       communityService: this.communityService,
       userCommunityRoleService: this.userCommunityRoleService,
       userService: this.userService,
@@ -156,7 +156,7 @@ export class TicketService {
     action: string,
     detail?: Record<string, unknown>,
   ): Promise<void> {
-    await this.publicationModel.updateOne(
+    await this.ticketPersistence.updateOne(
       { id: ticketId },
       {
         $push: {
@@ -203,7 +203,7 @@ export class TicketService {
     const id = PublicationId.generate().getValue();
     const now = new Date();
 
-    await this.publicationModel.create({
+    await this.ticketPersistence.create({
       id,
       communityId: projectId,
       authorId: leadUserId,
@@ -268,7 +268,7 @@ export class TicketService {
     const id = PublicationId.generate().getValue();
     const now = new Date();
 
-    await this.publicationModel.create({
+    await this.ticketPersistence.create({
       id,
       communityId: projectId,
       authorId: leadUserId,
@@ -303,7 +303,7 @@ export class TicketService {
    * Apply for a neutral ticket. Any authenticated user. Adds to applicants[], notifies lead.
    */
   async applyForTicket(ticketId: string, userId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -358,7 +358,7 @@ export class TicketService {
     leadUserId: string,
     applicantUserId: string,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -441,7 +441,7 @@ export class TicketService {
    * Lead/superadmin: take an open neutral ticket as assignee immediately (no applicant queue).
    */
   async assignOpenNeutralToSelfAsModerator(ticketId: string, userId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -527,7 +527,7 @@ export class TicketService {
     leadUserId: string,
     applicantUserId: string,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -582,17 +582,13 @@ export class TicketService {
       throw new NotFoundException('Project not found');
     }
 
-    const list = await this.publicationModel
-      .find({
-        communityId: projectId,
-        postType: 'ticket',
-        isNeutralTicket: true,
-        ticketStatus: 'open',
-        deleted: { $ne: true },
-      })
-      .select('id title description')
-      .lean()
-      .exec();
+    const list = await this.ticketPersistence.findMany({
+      communityId: projectId,
+      postType: 'ticket',
+      isNeutralTicket: true,
+      ticketStatus: 'open',
+      deleted: { $ne: true },
+    });
 
     return list.map((d) => ({
       id: d.id,
@@ -605,7 +601,7 @@ export class TicketService {
    * Get applicants for a neutral ticket. Lead only.
    */
   async getApplicants(ticketId: string, leadUserId: string): Promise<string[]> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -713,7 +709,7 @@ export class TicketService {
       throw new BadRequestException('No updates provided');
     }
 
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -795,7 +791,7 @@ export class TicketService {
       };
     }
 
-    await this.publicationModel.updateOne({ id: ticketId }, { $set, $push }).exec();
+    await this.ticketPersistence.updateOne({ id: ticketId }, { $set, $push });
     this.logger.log(`Ticket ${ticketId} updated by moderator ${moderatorUserId}`);
   }
 
@@ -805,47 +801,40 @@ export class TicketService {
   async getTicketsByBeneficiary(
     projectId: string,
     userId: string,
-  ): Promise<PublicationDocument[]> {
-    const list = await this.publicationModel
-      .find({
-        communityId: projectId,
-        postType: 'ticket',
-        beneficiaryId: userId,
-        deleted: { $ne: true },
-      })
-      .exec();
-    return list as unknown as PublicationDocument[];
+  ): Promise<TicketRecord[]> {
+    return this.ticketPersistence.findMany({
+      communityId: projectId,
+      postType: 'ticket',
+      beneficiaryId: userId,
+      deleted: { $ne: true },
+    });
   }
 
   /**
    * Set ticket to open, no beneficiary, neutral (for leaveProject when user had in_progress).
    */
   async setTicketOpenAndNeutral(ticketId: string): Promise<void> {
-    await this.publicationModel
-      .updateOne(
-        { id: ticketId, postType: 'ticket' },
-        {
-          $set: {
-            ticketStatus: 'open',
-            beneficiaryId: null,
-            isNeutralTicket: true,
-            updatedAt: new Date(),
-          },
+    await this.ticketPersistence.updateOne(
+      { id: ticketId, postType: 'ticket' },
+      {
+        $set: {
+          ticketStatus: 'open',
+          beneficiaryId: null,
+          isNeutralTicket: true,
+          updatedAt: new Date(),
         },
-      )
-      .exec();
+      },
+    );
   }
 
   /**
    * Set ticket to closed (for leaveProject when user had done - work counted).
    */
   async setTicketClosed(ticketId: string): Promise<void> {
-    await this.publicationModel
-      .updateOne(
-        { id: ticketId, postType: 'ticket' },
-        { $set: { ticketStatus: 'closed', updatedAt: new Date() } },
-      )
-      .exec();
+    await this.ticketPersistence.updateOne(
+      { id: ticketId, postType: 'ticket' },
+      { $set: { ticketStatus: 'closed', updatedAt: new Date() } },
+    );
   }
 
   /**
@@ -855,7 +844,7 @@ export class TicketService {
     projectId: string,
     userId: string,
     options: { postType?: 'ticket' | 'discussion'; ticketStatus?: TicketStatus } = {},
-  ): Promise<PublicationDocument[]> {
+  ): Promise<TicketRecord[]> {
     const project = await this.communityService.getCommunity(projectId);
     if (!project?.isProject) {
       throw new NotFoundException('Project not found');
@@ -875,13 +864,7 @@ export class TicketService {
       filter.ticketStatus = options.ticketStatus;
     }
 
-    const list = await this.publicationModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-
-    return list as unknown as PublicationDocument[];
+    return this.ticketPersistence.findMany(filter, { sort: { createdAt: -1 } });
   }
 
   /**
@@ -895,37 +878,8 @@ export class TicketService {
       throw new NotFoundException('Project not found');
     }
 
-    const pipeline = [
-      {
-        $match: {
-          communityId: projectId,
-          deleted: { $ne: true },
-          postType: { $in: ['ticket', 'discussion'] },
-          status: 'active',
-        },
-      },
-      {
-        $project: {
-          score: { $ifNull: ['$metrics.score', 0] },
-          effectiveUserId: {
-            $cond: {
-              if: { $eq: ['$postType', 'ticket'] },
-              then: { $ifNull: ['$beneficiaryId', '$authorId'] },
-              else: '$authorId',
-            },
-          },
-        },
-      },
-      {
-        $group: {
-          _id: '$effectiveUserId',
-          internalMerits: { $sum: '$score' },
-        },
-      },
-      { $match: { _id: { $ne: null } } },
-    ];
-
-    const grouped = await this.publicationModel.aggregate<{ _id: string; internalMerits: number }>(pipeline);
+    const grouped =
+      await this.ticketPersistence.aggregateProjectContributors(projectId);
     const totalActive = grouped.reduce((sum, r) => sum + r.internalMerits, 0);
     const totalFrozen = await this.userCommunityRoleService.getTotalFrozenInternalMerits(projectId);
     const total = totalActive + totalFrozen;

@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { createInvestInPostUseCaseFromContext } from '../../application/use-cases/investments/invest-in-post.use-case';
 
 const InvestInputSchema = z.object({
   postId: z.string(),
@@ -18,11 +17,11 @@ export const investmentRouter = router({
     .input(InvestInputSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        return await createInvestInPostUseCaseFromContext(ctx).execute({
-          postId: input.postId,
-          investorId: ctx.user.id,
-          amount: input.amount,
-        });
+        return await ctx.investmentService.processInvestment(
+          input.postId,
+          ctx.user.id,
+          input.amount,
+        );
       } catch (err) {
         if (err instanceof BadRequestException) {
           throw new TRPCError({

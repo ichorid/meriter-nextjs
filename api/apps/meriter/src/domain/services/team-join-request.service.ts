@@ -4,13 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  TeamJoinRequestSchemaClass,
-  TeamJoinRequestDocument,
-} from '../models/team-join-request/team-join-request.schema';
 import type {
   TeamJoinRequest,
   TeamJoinRequestStatus,
@@ -35,6 +30,11 @@ import {
   SubmitTeamJoinRequestUseCase,
   createSubmitTeamJoinRequestUseCase,
 } from '../../application/use-cases/teams/submit-team-join-request.use-case';
+import {
+  TEAM_JOIN_REQUEST_PERSISTENCE_PORT,
+  type TeamJoinRequestPersistencePort,
+  type TeamJoinRequestMutableRecord,
+} from '../ports/team-join-request.persistence.port';
 
 export type { TeamJoinRequestLeadAction };
 
@@ -42,16 +42,14 @@ export type { TeamJoinRequestLeadAction };
  * P-9: load join request by id, ensure pending, and verify lead (or superadmin).
  */
 export async function loadPendingJoinRequestForLead(
-  teamJoinRequestModel: Model<TeamJoinRequestDocument>,
+  teamJoinRequestPersistence: TeamJoinRequestPersistencePort,
   requestId: string,
   leadId: string,
   action: TeamJoinRequestLeadAction,
   userCommunityRoleService: UserCommunityRoleService,
   userService: UserService,
-): Promise<TeamJoinRequestDocument> {
-  const request = await teamJoinRequestModel.findOne({
-    id: requestId,
-  });
+): Promise<TeamJoinRequestMutableRecord> {
+  const request = await teamJoinRequestPersistence.findById(requestId);
 
   if (!request) {
     throw new NotFoundException('Request not found');
@@ -87,8 +85,8 @@ export class TeamJoinRequestService {
   private readonly rejectTeamJoinRequestUseCase: RejectTeamJoinRequestUseCase;
 
   constructor(
-    @InjectModel(TeamJoinRequestSchemaClass.name)
-    private readonly teamJoinRequestModel: Model<TeamJoinRequestDocument>,
+    @Inject(TEAM_JOIN_REQUEST_PERSISTENCE_PORT)
+    private readonly teamJoinRequestPersistence: TeamJoinRequestPersistencePort,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
@@ -102,7 +100,7 @@ export class TeamJoinRequestService {
       action: TeamJoinRequestLeadAction,
     ) =>
       loadPendingJoinRequestForLead(
-        this.teamJoinRequestModel,
+        this.teamJoinRequestPersistence,
         requestId,
         leadId,
         action,
@@ -111,7 +109,7 @@ export class TeamJoinRequestService {
       );
 
     this.submitTeamJoinRequestUseCase = createSubmitTeamJoinRequestUseCase({
-      teamJoinRequestModel: this.teamJoinRequestModel,
+      teamJoinRequestPersistence: this.teamJoinRequestPersistence,
       communityService: this.communityService,
       userCommunityRoleService: this.userCommunityRoleService,
       userService: this.userService,
@@ -169,29 +167,18 @@ export class TeamJoinRequestService {
       );
     }
 
-    const requests = await this.teamJoinRequestModel
-      .find({
-        communityId,
-        status: 'pending',
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return requests;
+    return (await this.teamJoinRequestPersistence.listPendingByCommunity(
+      communityId,
+    )) as TeamJoinRequest[];
   }
 
   /**
    * Get user's requests
    */
   async getMyRequests(userId: string): Promise<TeamJoinRequest[]> {
-    const requests = await this.teamJoinRequestModel
-      .find({
-        userId,
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return requests;
+    return (await this.teamJoinRequestPersistence.listByUser(
+      userId,
+    )) as TeamJoinRequest[];
   }
 
   /**
@@ -201,13 +188,11 @@ export class TeamJoinRequestService {
     userId: string,
     communityId: string,
   ): Promise<TeamJoinRequestStatus | null> {
-    const request = await this.teamJoinRequestModel
-      .findOne({
+    const request =
+      await this.teamJoinRequestPersistence.findPendingByUserAndCommunity(
         userId,
         communityId,
-        status: 'pending',
-      })
-      .lean();
+      );
 
     return request?.status || null;
   }
@@ -219,13 +204,11 @@ export class TeamJoinRequestService {
     userId: string,
     communityId: string,
   ): Promise<void> {
-    const request = await this.teamJoinRequestModel
-      .findOne({
+    const request =
+      await this.teamJoinRequestPersistence.findPendingByUserAndCommunity(
         userId,
         communityId,
-        status: 'pending',
-      })
-      .exec();
+      );
 
     if (!request) {
       throw new NotFoundException('No pending join request for this community');
@@ -247,7 +230,7 @@ export class TeamJoinRequestService {
       resolvedByDisplayName: applicantName,
     });
 
-    await this.teamJoinRequestModel.deleteOne({ _id: request._id }).exec();
+    await this.teamJoinRequestPersistence.deleteById(request.id);
 
     const leadRoles = await this.userCommunityRoleService.getUsersByRole(
       communityId,
@@ -290,20 +273,18 @@ export class TeamJoinRequestService {
     communityId: string,
     inviterUserId: string,
   ): Promise<void> {
-    const pending = await this.teamJoinRequestModel
-      .findOne({
+    const pending =
+      await this.teamJoinRequestPersistence.findPendingByUserAndCommunity(
         userId,
         communityId,
-        status: 'pending',
-      })
-      .exec();
+      );
 
     if (!pending) {
       return;
     }
 
     const requestId = pending.id;
-    await this.teamJoinRequestModel.deleteOne({ _id: pending._id }).exec();
+    await this.teamJoinRequestPersistence.deleteById(pending.id);
 
     const inviter = await this.userService.getUserById(inviterUserId);
     const inviterName =

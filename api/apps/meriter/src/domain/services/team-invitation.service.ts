@@ -4,13 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  TeamInvitationSchemaClass,
-  TeamInvitationDocument,
-} from '../models/team-invitation/team-invitation.schema';
 import type {
   TeamInvitation,
   TeamInvitationStatus,
@@ -27,19 +22,22 @@ import {
   createAcceptTeamInvitationUseCase,
   type TeamInvitationTargetAction,
 } from '../../application/use-cases/teams/accept-team-invitation.use-case';
+import {
+  TEAM_INVITATION_PERSISTENCE_PORT,
+  type TeamInvitationPersistencePort,
+  type TeamInvitationMutableRecord,
+} from '../ports/team-invitation.persistence.port';
 
 /**
  * P-8: load invitation by id, ensure pending, and verify target user.
  */
 export async function loadPendingInvitationForTarget(
-  teamInvitationModel: Model<TeamInvitationDocument>,
+  teamInvitationPersistence: TeamInvitationPersistencePort,
   invitationId: string,
   targetUserId: string,
   action: TeamInvitationTargetAction,
-): Promise<TeamInvitationDocument> {
-  const invitation = await teamInvitationModel.findOne({
-    id: invitationId,
-  });
+): Promise<TeamInvitationMutableRecord> {
+  const invitation = await teamInvitationPersistence.findById(invitationId);
 
   if (!invitation) {
     throw new NotFoundException('Invitation not found');
@@ -66,8 +64,8 @@ export class TeamInvitationService {
   private readonly acceptTeamInvitationUseCase: AcceptTeamInvitationUseCase;
 
   constructor(
-    @InjectModel(TeamInvitationSchemaClass.name)
-    private readonly teamInvitationModel: Model<TeamInvitationDocument>,
+    @Inject(TEAM_INVITATION_PERSISTENCE_PORT)
+    private readonly teamInvitationPersistence: TeamInvitationPersistencePort,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
@@ -77,7 +75,7 @@ export class TeamInvitationService {
     this.acceptTeamInvitationUseCase = createAcceptTeamInvitationUseCase({
       loadPendingInvitationForTarget: (invitationId, targetUserId, action) =>
         loadPendingInvitationForTarget(
-          this.teamInvitationModel,
+          this.teamInvitationPersistence,
           invitationId,
           targetUserId,
           action,
@@ -153,13 +151,11 @@ export class TeamInvitationService {
     }
 
     // 4. At most one pending invitation per target user per community (any inviter)
-    const existingPending = await this.teamInvitationModel
-      .findOne({
+    const existingPending =
+      await this.teamInvitationPersistence.findPendingByTargetAndCommunity(
         targetUserId,
         communityId,
-        status: 'pending',
-      })
-      .lean();
+      );
 
     if (existingPending) {
       throw new BadRequestException(
@@ -168,7 +164,7 @@ export class TeamInvitationService {
     }
 
     // 5. Create invitation
-    const invitation = await this.teamInvitationModel.create({
+    const invitation = await this.teamInvitationPersistence.create({
       id: uid(),
       inviterId,
       targetUserId,
@@ -203,7 +199,7 @@ export class TeamInvitationService {
       `Invitation ${invitation.id} created for user ${targetUserId} to join team ${communityId}`,
     );
 
-    return invitation.toObject();
+    return invitation as TeamInvitation;
   }
 
   /** Delegates to AcceptTeamInvitationUseCase (BC-11 / P-8). */
@@ -224,17 +220,21 @@ export class TeamInvitationService {
     this.logger.log(`User ${userId} rejecting invitation ${invitationId}`);
 
     const invitation = await loadPendingInvitationForTarget(
-      this.teamInvitationModel,
+      this.teamInvitationPersistence,
       invitationId,
       userId,
       'reject',
     );
 
     // 3. Update invitation status
-    invitation.status = 'rejected';
-    invitation.processedAt = new Date();
-    invitation.updatedAt = new Date();
-    await invitation.save();
+    const updated = await this.teamInvitationPersistence.findById(invitationId);
+    if (!updated) {
+      throw new NotFoundException('Invitation not found');
+    }
+    updated.status = 'rejected';
+    updated.set('processedAt', new Date());
+    updated.updatedAt = new Date();
+    await updated.save();
 
     // 4. Create notification for inviter
     const community = await this.communityService.getCommunity(
@@ -244,39 +244,33 @@ export class TeamInvitationService {
     const userName = user?.displayName || user?.username || 'User';
 
     await this.notificationService.createNotification({
-      userId: invitation.inviterId,
+      userId: updated.inviterId,
       type: 'system',
       source: 'user',
       sourceId: userId,
       metadata: {
-        invitationId: invitation.id,
-        communityId: invitation.communityId,
-        communityName: community?.name || invitation.communityId,
+        invitationId: updated.id,
+        communityId: updated.communityId,
+        communityName: community?.name || updated.communityId,
         noticeKind: 'team_invitation_rejected',
         inviteTargetIsProject: Boolean(community?.isProject),
       },
       title: 'Team invitation rejected',
-      message: `${userName} rejected your invitation to join "${community?.name || invitation.communityId}"`,
+      message: `${userName} rejected your invitation to join "${community?.name || updated.communityId}"`,
     });
 
     this.logger.log(`Invitation ${invitationId} rejected`);
 
-    return invitation.toObject();
+    return updated as unknown as TeamInvitation;
   }
 
   /**
    * Get pending invitations for a user
    */
   async getPendingInvitationsForUser(userId: string): Promise<TeamInvitation[]> {
-    const invitations = await this.teamInvitationModel
-      .find({
-        targetUserId: userId,
-        status: 'pending',
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    return invitations;
+    return (await this.teamInvitationPersistence.listPendingForTarget(
+      userId,
+    )) as TeamInvitation[];
   }
 
   /**
@@ -287,14 +281,12 @@ export class TeamInvitationService {
     targetUserId: string,
     communityId: string,
   ): Promise<TeamInvitationStatus | null> {
-    const invitation = await this.teamInvitationModel
-      .findOne({
+    const invitation =
+      await this.teamInvitationPersistence.findPendingByInviterTargetCommunity(
         inviterId,
         targetUserId,
         communityId,
-        status: 'pending',
-      })
-      .lean();
+      );
 
     return invitation?.status || null;
   }

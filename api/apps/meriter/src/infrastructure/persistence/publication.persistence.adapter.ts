@@ -517,11 +517,7 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
     return this.publicationModel.countDocuments(query);
   }
 
-  async patchById(
-    id: string,
-    update: PublicationPatchUpdate,
-    session?: PublicationPersistenceSession,
-  ): Promise<void> {
+  private buildMongoPatchUpdate(update: PublicationPatchUpdate): Record<string, unknown> | null {
     const mongoUpdate: Record<string, unknown> = {};
     if (update.set && Object.keys(update.set).length > 0) {
       mongoUpdate.$set = update.set;
@@ -532,10 +528,39 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
     if (update.unset && Object.keys(update.unset).length > 0) {
       mongoUpdate.$unset = update.unset;
     }
-    if (Object.keys(mongoUpdate).length === 0) {
+    if (update.inc && Object.keys(update.inc).length > 0) {
+      mongoUpdate.$inc = update.inc;
+    }
+    return Object.keys(mongoUpdate).length > 0 ? mongoUpdate : null;
+  }
+
+  async patchById(
+    id: string,
+    update: PublicationPatchUpdate,
+    session?: PublicationPersistenceSession,
+  ): Promise<void> {
+    const mongoUpdate = this.buildMongoPatchUpdate(update);
+    if (!mongoUpdate) {
       return;
     }
     await this.publicationModel.updateOne({ id }, mongoUpdate, sessionOpts(session));
+  }
+
+  async findAndPatchOne(
+    filter: Record<string, unknown>,
+    update: PublicationPatchUpdate,
+    session?: PublicationPersistenceSession,
+  ): Promise<PublicationSnapshot | null> {
+    const mongoUpdate = this.buildMongoPatchUpdate(update);
+    if (!mongoUpdate) {
+      const doc = await this.publicationModel.findOne(filter).lean().exec();
+      return doc ? mapPublicationDocumentToSnapshot(doc as PublicationSnapshot) : null;
+    }
+    const doc = await this.publicationModel
+      .findOneAndUpdate(filter, mongoUpdate, { new: true, ...sessionOpts(session) })
+      .lean()
+      .exec();
+    return doc ? mapPublicationDocumentToSnapshot(doc as PublicationSnapshot) : null;
   }
 
   async closePublication(input: ClosePublicationInput): Promise<void> {

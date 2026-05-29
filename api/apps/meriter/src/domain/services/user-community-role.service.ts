@@ -1,14 +1,13 @@
 import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  UserCommunityRoleSchemaClass,
-  UserCommunityRoleDocument,
-} from '../models/user-community-role/user-community-role.schema';
 import type { UserCommunityRole } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
 import { COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { uid } from 'uid';
+import {
+  USER_COMMUNITY_ROLE_PERSISTENCE_PORT,
+  type UserCommunityRolePersistencePort,
+  type UserCommunityRoleRecord,
+} from '../ports/user-community-role.persistence.port';
 
 /**
  * UserCommunityRoleService
@@ -21,14 +20,11 @@ export class UserCommunityRoleService {
   private readonly logger = new Logger(UserCommunityRoleService.name);
 
   constructor(
-    @InjectModel(UserCommunityRoleSchemaClass.name)
-    private userCommunityRoleModel: Model<UserCommunityRoleDocument>,
+    @Inject(USER_COMMUNITY_ROLE_PERSISTENCE_PORT)
+    private readonly userCommunityRolePersistence: UserCommunityRolePersistencePort,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
   ) {}
-
-  /** Active membership: `leftAt` null or absent (MongoDB `{ leftAt: null }`). */
-  private static readonly activeMembershipFilter = { leftAt: null } as const;
 
   /**
    * Get user role in a specific community
@@ -36,27 +32,17 @@ export class UserCommunityRoleService {
   async getRole(
     userId: string,
     communityId: string,
-  ): Promise<UserCommunityRoleDocument | null> {
-    const doc = await this.userCommunityRoleModel
-      .findOne({
-        userId,
-        communityId,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
-    return doc;
+  ): Promise<UserCommunityRoleRecord | null> {
+    return this.userCommunityRolePersistence.findActiveRole(userId, communityId);
   }
 
   /**
    * Get all roles for a user across all communities
    */
   async getUserRoles(userId: string): Promise<UserCommunityRole[]> {
-    return this.userCommunityRoleModel
-      .find({
-        userId,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
+    return (await this.userCommunityRolePersistence.findActiveRolesByUserId(
+      userId,
+    )) as UserCommunityRole[];
   }
 
   /**
@@ -66,23 +52,17 @@ export class UserCommunityRoleService {
     communityId: string,
     role: 'lead' | 'participant',
   ): Promise<UserCommunityRole[]> {
-    return this.userCommunityRoleModel
-      .find({
-        communityId,
-        role,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
+    return (await this.userCommunityRolePersistence.findActiveByCommunityAndRole(
+      communityId,
+      role,
+    )) as UserCommunityRole[];
   }
 
   /** Count users with any role in the community (source of truth for membership UI). */
   async countMembersInCommunity(communityId: string): Promise<number> {
-    return this.userCommunityRoleModel
-      .countDocuments({
-        communityId,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
+    return this.userCommunityRolePersistence.countActiveMembersInCommunity(
+      communityId,
+    );
   }
 
   /**
@@ -90,40 +70,17 @@ export class UserCommunityRoleService {
    */
   async countMembersInCommunities(communityIds: string[]): Promise<Map<string, number>> {
     const unique = [...new Set(communityIds.filter(Boolean))];
-    const map = new Map<string, number>();
     if (unique.length === 0) {
-      return map;
+      return new Map<string, number>();
     }
-    const rows = await this.userCommunityRoleModel
-      .aggregate<{ _id: string; count: number }>([
-        {
-          $match: {
-            communityId: { $in: unique },
-            ...UserCommunityRoleService.activeMembershipFilter,
-          },
-        },
-        { $group: { _id: '$communityId', count: { $sum: 1 } } },
-      ])
-      .exec();
-    for (const r of rows) {
-      map.set(r._id, r.count);
-    }
-    for (const id of unique) {
-      if (!map.has(id)) {
-        map.set(id, 0);
-      }
-    }
-    return map;
+    return this.userCommunityRolePersistence.countActiveMembersInCommunities(unique);
   }
 
   /** Distinct user IDs that have a role in the community. */
   async getMemberUserIdsInCommunity(communityId: string): Promise<string[]> {
-    return this.userCommunityRoleModel
-      .distinct('userId', {
-        communityId,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
+    return this.userCommunityRolePersistence.distinctActiveMemberUserIds(
+      communityId,
+    );
   }
 
   /**
@@ -151,38 +108,24 @@ export class UserCommunityRoleService {
     communityId: string,
     role: 'lead' | 'participant',
     skipSync: boolean = false, // Recursion guard to prevent infinite loops
-  ): Promise<UserCommunityRoleDocument> {
+  ): Promise<UserCommunityRoleRecord> {
     // Get existing role to check previous role for sync
-    const existingDoc = await this.userCommunityRoleModel
-      .findOne({
-        userId,
-        communityId,
-      })
-      .exec();
+    const existingDoc = await this.userCommunityRolePersistence.findAnyRole(
+      userId,
+      communityId,
+    );
     const previousRole = existingDoc?.role;
 
     // Use findOneAndUpdate with upsert to ensure the role is created/updated correctly
-    const result = await this.userCommunityRoleModel.findOneAndUpdate(
-      { userId, communityId },
-      {
-        $set: {
-          role,
-          updatedAt: new Date(),
-        },
-        $unset: { leftAt: 1 },
-        $setOnInsert: {
-          id: existingDoc?.id || uid(32),
-          userId,
-          communityId,
-          createdAt: new Date(),
-        },
-      },
-      {
-        new: true, // Return the updated document
-        upsert: true, // Create if it doesn't exist
-        runValidators: true, // Run schema validators
-      }
-    ).exec();
+    const now = new Date();
+    const result = await this.userCommunityRolePersistence.upsertRole({
+      id: existingDoc?.id || uid(32),
+      userId,
+      communityId,
+      role,
+      createdAt: existingDoc?.createdAt ?? now,
+      updatedAt: now,
+    });
 
     if (!result) {
       throw new Error(`Failed to set role for user ${userId} in community ${communityId}`);
@@ -239,13 +182,7 @@ export class UserCommunityRoleService {
    * Used by getProjectShares to include left members' frozen merits in total.
    */
   async getTotalFrozenInternalMerits(communityId: string): Promise<number> {
-    const result = await this.userCommunityRoleModel
-      .aggregate<{ total: number }>([
-        { $match: { communityId, frozenInternalMerits: { $gt: 0 } } },
-        { $group: { _id: null, total: { $sum: '$frozenInternalMerits' } } },
-      ])
-      .exec();
-    return result[0]?.total ?? 0;
+    return this.userCommunityRolePersistence.sumFrozenInternalMerits(communityId);
   }
 
   /**
@@ -257,30 +194,19 @@ export class UserCommunityRoleService {
     communityId: string,
     frozenInternalMerits: number,
   ): Promise<void> {
-    await this.userCommunityRoleModel
-      .updateOne(
-        { userId, communityId },
-        {
-          $set: {
-            frozenInternalMerits: Math.max(0, frozenInternalMerits),
-            leftAt: new Date(),
-            updatedAt: new Date(),
-          },
-        },
-      )
-      .exec();
+    await this.userCommunityRolePersistence.markLeftProject(
+      userId,
+      communityId,
+      frozenInternalMerits,
+      new Date(),
+    );
   }
 
   /**
    * Remove user role from a community
    */
   async removeRole(userId: string, communityId: string): Promise<void> {
-    await this.userCommunityRoleModel
-      .deleteOne({
-        userId,
-        communityId,
-      })
-      .exec();
+    await this.userCommunityRolePersistence.deleteRole(userId, communityId);
   }
 
   /**
@@ -302,15 +228,10 @@ export class UserCommunityRoleService {
     userId: string,
     role: 'lead' | 'participant',
   ): Promise<string[]> {
-    const roles = await this.userCommunityRoleModel
-      .find({
-        userId,
-        role,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
-
-    return roles.map((r) => r.communityId);
+    return this.userCommunityRolePersistence.findActiveCommunitiesByUserAndRole(
+      userId,
+      role,
+    );
   }
 
   /**
@@ -320,13 +241,6 @@ export class UserCommunityRoleService {
   async getAllUsersByRole(
     role: 'lead' | 'participant',
   ): Promise<string[]> {
-    const userIds = await this.userCommunityRoleModel
-      .distinct('userId', {
-        role,
-        ...UserCommunityRoleService.activeMembershipFilter,
-      })
-      .exec();
-
-    return userIds;
+    return this.userCommunityRolePersistence.distinctActiveUserIdsByRole(role);
   }
 }

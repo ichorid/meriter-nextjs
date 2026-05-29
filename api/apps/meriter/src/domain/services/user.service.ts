@@ -8,16 +8,8 @@ import {
   forwardRef,
   OnModuleInit,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-  type Community,
-} from '../models/community/community.schema';
-import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
+import type { Community } from '../models/community/community.schema';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
@@ -29,6 +21,10 @@ import {
   createProvisionBaseMembershipUseCase,
   type ProvisionBaseMembershipUseCase,
 } from '../../application/use-cases/communities/provision-base-membership.use-case';
+import {
+  USER_PERSISTENCE_PORT,
+  type UserPersistencePort,
+} from '../ports/user.persistence.port';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -52,9 +48,8 @@ export class UserService implements OnModuleInit {
   private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipUseCase;
 
   constructor(
-    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private communityModel: Model<CommunityDocument>,
+    @Inject(USER_PERSISTENCE_PORT)
+    private readonly userPersistence: UserPersistencePort,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     @Inject(forwardRef(() => WalletService))
@@ -75,9 +70,9 @@ export class UserService implements OnModuleInit {
   async onModuleInit() {
     try {
       // Drop legacy index on telegramId if it exists
-      if (await this.userModel.collection.indexExists('telegramId_1')) {
+      if (await this.userPersistence.indexExists('telegramId_1')) {
         this.logger.log('Dropping legacy index: telegramId_1');
-        await this.userModel.collection.dropIndex('telegramId_1');
+        await this.userPersistence.dropIndex('telegramId_1');
         this.logger.log('Legacy index dropped successfully');
       }
     } catch (error: unknown) {
@@ -93,15 +88,11 @@ export class UserService implements OnModuleInit {
   }
 
   async getUser(userId: string): Promise<User | null> {
-    // Search by internal id field
-    const doc = await this.userModel.findOne({ id: userId }).lean();
-    return doc;
+    return (await this.userPersistence.findById(userId)) as User | null;
   }
 
   async getUserById(id: string): Promise<User | null> {
-    // Search by internal id field
-    const doc = await this.userModel.findOne({ id }).lean();
-    return doc;
+    return (await this.userPersistence.findById(id)) as User | null;
   }
 
   /**
@@ -116,11 +107,7 @@ export class UserService implements OnModuleInit {
     if (unique.length === 0) {
       return result;
     }
-    const docs = await this.userModel
-      .find({ id: { $in: unique } })
-      .select({ id: 1, displayName: 1, avatarUrl: 1 })
-      .lean()
-      .exec();
+    const docs = await this.userPersistence.findForEnrichment(unique);
     for (const d of docs) {
       result.set(d.id, {
         id: d.id,
@@ -140,11 +127,7 @@ export class UserService implements OnModuleInit {
     if (unique.length === 0) {
       return result;
     }
-    const docs = await this.userModel
-      .find({ id: { $in: unique } })
-      .select({ id: 1, displayName: 1 })
-      .lean()
-      .exec();
+    const docs = await this.userPersistence.findForDisplayNames(unique);
     for (const d of docs) {
       const name = (d.displayName ?? '').trim();
       result.set(d.id, name.length > 0 ? name : d.id);
@@ -161,36 +144,26 @@ export class UserService implements OnModuleInit {
     authProvider: string,
     authId: string,
   ): Promise<User | null> {
-    // Search by authProvider and authId
-    const doc = await this.userModel.findOne({ authProvider, authId }).lean();
-    return doc;
+    return (await this.userPersistence.findByAuth(authProvider, authId)) as User | null;
   }
 
   async getUserByToken(token: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ token }).lean();
-    return doc;
+    return (await this.userPersistence.findByToken(token)) as User | null;
   }
 
   async getUserByCredentialId(credentialId: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ 'authenticators.credentialID': credentialId }).lean();
-    return doc;
+    return (await this.userPersistence.findByCredentialId(credentialId)) as User | null;
   }
 
   async getUserByUsername(username: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ username }).lean();
-    return doc;
+    return (await this.userPersistence.findByUsername(username)) as User | null;
   }
 
 
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
     // Check if user exists
-    let user = await this.userModel
-      .findOne({
-        authProvider: dto.authProvider,
-        authId: dto.authId,
-      })
-      .lean();
+    let user = await this.userPersistence.findByAuth(dto.authProvider, dto.authId);
 
     if (user) {
       // Update existing user
@@ -230,17 +203,13 @@ export class UserService implements OnModuleInit {
           updateData['profile.isVerified'] = dto.isVerified;
       }
 
-      await this.userModel.updateOne(
-        { authProvider: dto.authProvider, authId: dto.authId },
-        { $set: updateData },
+      await this.userPersistence.updateByAuth(
+        dto.authProvider,
+        dto.authId,
+        updateData,
       );
       // Re-fetch user to get updated data including preserved communityTags and communityMemberships
-      user = await this.userModel
-        .findOne({
-          authProvider: dto.authProvider,
-          authId: dto.authId,
-        })
-        .lean();
+      user = await this.userPersistence.findByAuth(dto.authProvider, dto.authId);
     } else {
       // Create new user
       const newUser: any = {
@@ -274,8 +243,8 @@ export class UserService implements OnModuleInit {
         newUser.globalRole = 'superadmin';
       }
 
-      await this.userModel.create([newUser]);
-      user = await this.userModel.findOne({ id: newUser.id }).lean();
+      await this.userPersistence.create(newUser);
+      user = await this.userPersistence.findById(newUser.id);
 
       this.logger.log(`Created user found in DB: ${user ? 'yes' : 'no'}`);
       if (!user) {
@@ -288,7 +257,7 @@ export class UserService implements OnModuleInit {
       throw new Error(`User not found after createOrUpdateUser`);
     }
 
-    return user;
+    return user as User;
   }
 
   /**
@@ -307,26 +276,24 @@ export class UserService implements OnModuleInit {
     userId: string,
     communityId: string,
   ): Promise<User> {
-    return MongoArrayUpdateHelper.addToArray<User>(
-      this.userModel,
-      { id: userId },
-      'communityMemberships',
-      communityId,
-      'User',
-    );
+    await this.userPersistence.addCommunityMembership(userId, communityId);
+    const updated = await this.userPersistence.findById(userId);
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    return updated as User;
   }
 
   async removeCommunityMembership(
     userId: string,
     communityId: string,
   ): Promise<User> {
-    return MongoArrayUpdateHelper.removeFromArray<User>(
-      this.userModel,
-      { id: userId },
-      'communityMemberships',
-      communityId,
-      'User',
-    );
+    await this.userPersistence.removeCommunityMembership(userId, communityId);
+    const updated = await this.userPersistence.findById(userId);
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    return updated as User;
   }
 
   /**
@@ -334,8 +301,7 @@ export class UserService implements OnModuleInit {
    * __global__ is a wallet-only id and must never be returned as a community.
    */
   async getUserCommunities(userId: string): Promise<string[]> {
-    const user = await this.userModel.findOne({ id: userId }).lean();
-    const memberships = user?.communityMemberships || [];
+    const memberships = await this.userPersistence.getCommunityMemberships(userId);
     return memberships.filter((id) => id !== GLOBAL_COMMUNITY_ID);
   }
 
@@ -543,22 +509,11 @@ export class UserService implements OnModuleInit {
     userId: string,
     communityId: string,
   ): Promise<boolean> {
-    const user = await this.userModel
-      .findOne({
-        id: userId,
-        communityMemberships: communityId,
-      })
-      .lean();
-    return user !== null;
+    return this.userPersistence.isMemberOfCommunity(userId, communityId);
   }
 
   async getAllUsers(limit: number = 50, skip: number = 0): Promise<User[]> {
-    return this.userModel
-      .find({})
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
+    return (await this.userPersistence.findAll(limit, skip)) as User[];
   }
 
   async getUsersByCommunity(
@@ -566,12 +521,11 @@ export class UserService implements OnModuleInit {
     limit: number = 50,
     skip: number = 0,
   ): Promise<User[]> {
-    return this.userModel
-      .find({ communityMemberships: communityId })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
+    return (await this.userPersistence.findByCommunity(
+      communityId,
+      limit,
+      skip,
+    )) as User[];
   }
 
   async updateProfile(
@@ -587,7 +541,7 @@ export class UserService implements OnModuleInit {
       educationalInstitution?: string;
     },
   ): Promise<User> {
-    const user = await this.userModel.findOne({ id: userId });
+    const user = await this.userPersistence.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
@@ -624,59 +578,46 @@ export class UserService implements OnModuleInit {
       updateData['profile.educationalInstitution'] = profileData.educationalInstitution;
     }
 
-    await this.userModel.updateOne({ id: userId }, { $set: updateData });
+    await this.userPersistence.updateById(userId, updateData);
 
     // Re-fetch user to get updated data
-    const updatedUser = await this.userModel.findOne({ id: userId }).lean();
+    const updatedUser = await this.userPersistence.findById(userId);
     if (!updatedUser) {
       throw new NotFoundException(
         `User with id ${userId} not found after update`,
       );
     }
-    return updatedUser;
+    return updatedUser as User;
   }
 
   async updateUser(userId: string, updateData: Partial<User>): Promise<User> {
-    await this.userModel.updateOne({ id: userId }, { $set: updateData });
-    const user = await this.userModel.findOne({ id: userId }).lean();
+    await this.userPersistence.updateById(userId, updateData as Record<string, unknown>);
+    const user = await this.userPersistence.findById(userId);
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return user as User;
   }
 
   async searchUsers(query: string, limit: number = 20): Promise<User[]> {
-    const regex = new RegExp(query, 'i');
-    return this.userModel
-      .find({
-        $or: [
-          { username: regex },
-          { displayName: regex },
-          { firstName: regex },
-          { lastName: regex },
-          { 'profile.contacts.email': regex },
-        ],
-      })
-      .limit(limit)
-      .lean();
+    return (await this.userPersistence.search(query, limit)) as User[];
   }
 
   async updateGlobalRole(
     userId: string,
     role: 'superadmin' | 'user',
   ): Promise<User> {
-    const user = await this.userModel.findOne({ id: userId });
+    const user = await this.userPersistence.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    if (role === GLOBAL_ROLE_SUPERADMIN) {
-      user.globalRole = GLOBAL_ROLE_SUPERADMIN;
-    } else {
-      user.globalRole = undefined;
+    const updated = await this.userPersistence.setGlobalRole(
+      userId,
+      role === GLOBAL_ROLE_SUPERADMIN ? GLOBAL_ROLE_SUPERADMIN : undefined,
+      new Date(),
+    );
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
     }
-
-    user.updatedAt = new Date();
-    await user.save();
-
-    return user.toObject();
+    return updated as User;
   }
 }

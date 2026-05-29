@@ -1,5 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from '../../config/configuration';
 import { ActionType } from '../common/constants/action-types.constants';
 import { PermissionContext } from '../models/community/community.schema';
 import { VoteFactorService } from './vote-factor.service';
@@ -30,6 +32,7 @@ export class PermissionRuleEngine {
     private voteFactorService: VoteFactorService,
     @Inject(forwardRef(() => PermissionService))
     private permissionService: PermissionService,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   /**
@@ -55,7 +58,7 @@ export class PermissionRuleEngine {
    * inv-19: ENABLE_COMMENT_VOTING runtime gate.
    */
   isCommentVotingEnabled(): boolean {
-    return process.env.ENABLE_COMMENT_VOTING === 'true';
+    return this.configService.get('features.commentVoting', false);
   }
 
   /**

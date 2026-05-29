@@ -6,8 +6,8 @@ import {
   forwardRef,
   Inject,
 } from '@nestjs/common';
-import { InjectModel, InjectConnection } from '@nestjs/mongoose';
-import { Model, Connection, ClientSession } from 'mongoose';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection, ClientSession } from 'mongoose';
 import {
   COMMUNITY_PERSISTENCE_PORT,
   type CommunityPersistencePort,
@@ -20,8 +20,10 @@ import type {
   CommunityMeritSettings,
   CommunityVotingSettings,
 } from '../models/community/community.schema';
-import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
-import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
+import {
+  USER_PERSISTENCE_PORT,
+  type UserPersistencePort,
+} from '../ports/user.persistence.port';
 import { EventBus } from '../events/event-bus';
 import { uid } from 'uid';
 import { UserService } from './user.service';
@@ -222,8 +224,8 @@ export class CommunityService {
   constructor(
     @Inject(COMMUNITY_PERSISTENCE_PORT)
     private readonly communityPersistence: CommunityPersistencePort,
-    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
-    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
+    @Inject(USER_PERSISTENCE_PORT)
+    private readonly userPersistence: UserPersistencePort,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))
@@ -448,42 +450,6 @@ export class CommunityService {
         },
       },
     ];
-  }
-
-  /** P-3: $lookup stage for per-member quota-used in getCommunityMembers. */
-  private memberQuotaUsedLookupStage(
-    collection: 'votes' | 'poll_casts' | 'quota_usage',
-    communityId: string,
-    quotaStartTime: Date,
-    asField: string,
-  ): Record<string, unknown> {
-    return {
-      $lookup: {
-        from: collection,
-        let: { userId: '$id', communityId, quotaStartTime },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$userId', '$$userId'] },
-                  { $eq: ['$communityId', '$$communityId'] },
-                  { $gt: ['$amountQuota', 0] },
-                  { $gte: ['$createdAt', '$$quotaStartTime'] },
-                ],
-              },
-            },
-          },
-          {
-            $group: {
-              _id: null,
-              total: { $sum: '$amountQuota' },
-            },
-          },
-        ],
-        as: asField,
-      },
-    };
   }
 
   private sumQuotaAggregationTotal(
@@ -797,20 +763,20 @@ export class CommunityService {
     
     try {
       // Get all users (without pagination to process all)
-      const allUsers = await this.userModel.find({}).lean();
-      this.logger.log(`Found ${allUsers.length} users to check`);
+      const allUserIds = await this.userPersistence.findAllUserIds();
+      this.logger.log(`Found ${allUserIds.length} users to check`);
       
       let processedCount = 0;
       let errorsCount = 0;
       
-      for (const user of allUsers) {
+      for (const userId of allUserIds) {
         try {
-          await this.userService.ensureUserInBaseCommunities(user.id);
+          await this.userService.ensureUserInBaseCommunities(userId);
           processedCount++;
         } catch (error) {
           errorsCount++;
           this.logger.error(
-            `Failed to ensure user ${user.id} in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Failed to ensure user ${userId} in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       }
@@ -1574,18 +1540,6 @@ export class CommunityService {
       await this.userCommunityRoleService.getMemberUserIdsInCommunity(communityId);
     const memberIds = [...new Set([...legacyMemberIds, ...roleMemberIds])];
 
-    // Build search filter if search query is provided
-    const searchFilter: Record<string, unknown> = { id: { $in: memberIds } };
-    if (search && search.trim()) {
-      // Escape special regex characters and create case-insensitive regex
-      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const searchRegex = new RegExp(escapedSearch, 'i');
-      searchFilter.$or = [
-        { username: searchRegex },
-        { displayName: searchRegex },
-      ];
-    }
-
     if (memberIds.length === 0) {
       return { members: [], total: 0 };
     }
@@ -1596,129 +1550,16 @@ export class CommunityService {
     );
     const isFutureVision = community.typeTag === 'future-vision';
 
-    // 2. Use aggregation pipeline to join users with roles, wallets, and quota
-    // Use $facet to get both filtered results and total count
-    const aggregationResult = await this.userModel.aggregate([
-      // Match users that are members AND match search criteria (if provided)
-      { $match: searchFilter },
-      
-      // Lookup user community role for this specific community
-      {
-        $lookup: {
-          from: 'user_community_roles',
-          let: { userId: '$id', communityId: communityId },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$userId'] },
-                    { $eq: ['$communityId', '$$communityId'] },
-                  ],
-                },
-              },
-            },
-            { $limit: 1 },
-          ],
-          as: 'roleData',
-        },
-      },
-      
-      // Lookup wallet for this user in this community
-      {
-        $lookup: {
-          from: 'wallets',
-          let: { userId: '$id', communityId: communityId },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$userId', '$$userId'] },
-                    { $eq: ['$communityId', '$$communityId'] },
-                  ],
-                },
-              },
-            },
-            { $limit: 1 },
-          ],
-          as: 'walletData',
-        },
-      },
-
-      // Add community context for quota calculation
-      {
-        $addFields: {
-          userRole: { $arrayElemAt: ['$roleData.role', 0] },
-          dailyEmission: dailyEmission,
-          quotaStartTime: quotaStartTime,
-          isFutureVision: isFutureVision,
-        },
-      },
-
-      this.memberQuotaUsedLookupStage('votes', communityId, quotaStartTime, 'votesQuota'),
-      this.memberQuotaUsedLookupStage('poll_casts', communityId, quotaStartTime, 'pollCastsQuota'),
-      this.memberQuotaUsedLookupStage('quota_usage', communityId, quotaStartTime, 'quotaUsageQuota'),
-
-      // Calculate quota fields
-      {
-        $addFields: {
-          votesTotal: { $ifNull: [{ $arrayElemAt: ['$votesQuota.total', 0] }, 0] },
-          pollCastsTotal: { $ifNull: [{ $arrayElemAt: ['$pollCastsQuota.total', 0] }, 0] },
-          quotaUsageTotal: { $ifNull: [{ $arrayElemAt: ['$quotaUsageQuota.total', 0] }, 0] },
-        },
-      },
-
-      {
-        $addFields: {
-          usedToday: {
-            $add: ['$votesTotal', '$pollCastsTotal', '$quotaUsageTotal'],
-          },
-          // Calculate effective daily emission based on community type
-          effectiveDailyEmission: {
-            $cond: {
-              if: { $eq: ['$isFutureVision', true] },
-              then: 0,
-              else: '$dailyEmission',
-            },
-          },
-        },
-      },
-
-      // Project final structure
-      {
-        $project: {
-          id: 1,
-          username: 1,
-          displayName: 1,
-          avatarUrl: 1,
-          globalRole: 1,
-          role: '$userRole',
-          walletBalance: { $arrayElemAt: ['$walletData.balance', 0] },
-          quota: {
-            dailyEmission: '$effectiveDailyEmission',
-            usedToday: '$usedToday',
-          },
-        },
-      },
-      // Use $facet to get both paginated results and total count
-      {
-        $facet: {
-          data: [
-            { $skip: skip },
-            { $limit: limit },
-          ],
-          totalCount: [
-            { $count: 'count' },
-          ],
-        },
-      },
-    ]);
-
-    // Extract results and total from facet
-    const facetResult = aggregationResult[0] || { data: [], totalCount: [] };
-    const members = facetResult.data || [];
-    const total = facetResult.totalCount[0]?.count ?? 0;
+    const { members, total } = await this.userPersistence.aggregateCommunityMembers({
+      memberIds,
+      search,
+      communityId,
+      quotaStartTime,
+      dailyEmission,
+      isFutureVision,
+      limit,
+      skip,
+    });
 
     // 3. Map to DTO format (handle undefined/null values)
     const mappedMembers = members.map((user: any) => ({

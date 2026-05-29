@@ -4,18 +4,18 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
+import type { Connection } from 'mongoose';
 import type { TicketStatus } from '@meriter/shared-types';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
-import {
-  PublicationSchemaClass,
-  type PublicationDocument,
-} from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { VoteService } from '../../../domain/services/vote.service';
+import type {
+  TicketMutableRecord,
+  TicketPersistencePort,
+} from '../../../domain/ports/ticket.persistence.port';
 
 export type TransitionTicketStatusInput = {
   ticketId: string;
@@ -43,7 +43,7 @@ export type DeclineTicketAsAssigneeInput = {
 };
 
 export type TransitionTicketStatusDeps = {
-  publicationModel: Model<PublicationDocument>;
+  ticketPersistence: TicketPersistencePort;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
   userService: UserService;
@@ -105,7 +105,7 @@ export class TransitionTicketStatusUseCase {
     action: string,
     detail?: Record<string, unknown>,
   ): Promise<void> {
-    await this.deps.publicationModel.updateOne(
+    await this.deps.ticketPersistence.updateOne(
       { id: ticketId },
       {
         $push: {
@@ -132,7 +132,7 @@ export class TransitionTicketStatusUseCase {
     extra: Record<string, unknown> = {},
   ): Promise<Record<string, unknown>> {
     const [ticket, project] = await Promise.all([
-      this.deps.publicationModel.findOne({ id: ticketId }).select('title').lean().exec(),
+      this.deps.ticketPersistence.findOneLean({ id: ticketId }, 'title'),
       this.deps.communityService.getCommunity(projectId),
     ]);
     const rawTitle =
@@ -193,8 +193,8 @@ export class TransitionTicketStatusUseCase {
     return out;
   }
 
-  private async loadTicket(ticketId: string): Promise<PublicationDocument> {
-    const doc = await this.deps.publicationModel.findOne({ id: ticketId }).exec();
+  private async loadTicket(ticketId: string): Promise<TicketMutableRecord> {
+    const doc = await this.deps.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -205,7 +205,7 @@ export class TransitionTicketStatusUseCase {
   }
 
   /** Neutral open ticket: no assignee, applicants cleared, flagged neutral. */
-  private applyNeutralOpenReset(doc: PublicationDocument): void {
+  private applyNeutralOpenReset(doc: TicketMutableRecord): void {
     doc.set('beneficiaryId', null);
     doc.ticketStatus = 'open';
     doc.isNeutralTicket = true;
@@ -499,7 +499,7 @@ export function createTransitionTicketStatusUseCase(
 
 /** Build deps from TRPC context fields (ticket.router / TicketService wiring). */
 export function buildTransitionTicketStatusDeps(ctx: {
-  publicationModel: TransitionTicketStatusDeps['publicationModel'];
+  ticketPersistence: TransitionTicketStatusDeps['ticketPersistence'];
   communityService: TransitionTicketStatusDeps['communityService'];
   userCommunityRoleService: TransitionTicketStatusDeps['userCommunityRoleService'];
   userService: TransitionTicketStatusDeps['userService'];
@@ -507,7 +507,7 @@ export function buildTransitionTicketStatusDeps(ctx: {
   voteService: TransitionTicketStatusDeps['voteService'];
 }): TransitionTicketStatusDeps {
   return {
-    publicationModel: ctx.publicationModel,
+    ticketPersistence: ctx.ticketPersistence,
     communityService: ctx.communityService,
     userCommunityRoleService: ctx.userCommunityRoleService,
     userService: ctx.userService,
@@ -517,7 +517,7 @@ export function buildTransitionTicketStatusDeps(ctx: {
 }
 
 /** One-line factory for ticket.router direct wiring (p5-event-use-cases pattern). */
-export function createTransitionTicketStatusUseCaseFromTrpcContext(ctx: {
+export function createTransitionTicketStatusUseCaseFromTrpcContext(_ctx: {
   connection: Connection;
   communityService: TransitionTicketStatusDeps['communityService'];
   userCommunityRoleService: TransitionTicketStatusDeps['userCommunityRoleService'];
@@ -525,10 +525,7 @@ export function createTransitionTicketStatusUseCaseFromTrpcContext(ctx: {
   notificationService: TransitionTicketStatusDeps['notificationService'];
   voteService: TransitionTicketStatusDeps['voteService'];
 }): TransitionTicketStatusUseCase {
-  const publicationModel = ctx.connection.model(
-    PublicationSchemaClass.name,
-  ) as Model<PublicationDocument>;
-  return createTransitionTicketStatusUseCase(
-    buildTransitionTicketStatusDeps({ ...ctx, publicationModel }),
+  throw new Error(
+    'createTransitionTicketStatusUseCaseFromTrpcContext is deprecated. Use TicketService wiring with ticketPersistence.',
   );
 }

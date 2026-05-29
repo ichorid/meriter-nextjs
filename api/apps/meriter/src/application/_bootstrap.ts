@@ -5,5 +5,5 @@ import { Provider } from '@nestjs/common';
  * Phase 3+ work units append injectable use case classes here for Nest DI.
  */
 export const applicationUseCaseProviders: Provider[] = [
-  // e.g. GetRemainingQuotaUseCase, CreateVoteUseCase (registered in phase-3 work units)
+  // CreateVoteUseCase wired via factory from routers (see application/use-cases/voting/create-vote.use-case.ts)
 ];

@@ -44,8 +44,10 @@ export class TgBotsService {
   s3: S3Client | null; // Allow s3 to be null
   private readonly s3Bucket?: string;
   constructor(
-    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
-    @InjectModel(CommunitySchemaClass.name) private communityModel: Model<CommunityDocument>,
+    @InjectModel(UserSchemaClass.name) // V-12-residual
+    private userModel: Model<UserDocument>,
+    @InjectModel(CommunitySchemaClass.name) // V-12-residual
+    private communityModel: Model<CommunityDocument>,
     private publicationService: PublicationService,
     private userCommunityRoleService: UserCommunityRoleService,
     private featureFlagsService: FeatureFlagsService,

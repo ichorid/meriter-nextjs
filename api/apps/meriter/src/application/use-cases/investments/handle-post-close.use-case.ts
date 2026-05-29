@@ -1,7 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import type { ClientSession, Model } from 'mongoose';
+import type { ClientSession } from 'mongoose';
 import type {
-  PublicationDocument,
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
@@ -11,6 +10,7 @@ import {
   DistributeOnWithdrawalUseCase,
   type DistributeOnWithdrawalResult,
 } from './distribute-on-withdrawal.use-case';
+import type { InvestmentPersistencePort } from '../../../domain/ports/investment.persistence.port';
 
 export type HandlePostCloseInput = {
   postId: string;
@@ -24,7 +24,7 @@ export type HandlePostCloseResult = {
 };
 
 export type HandlePostCloseDeps = {
-  publicationModel: Model<PublicationDocument>;
+  investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
   meritResolverService: MeritResolverService;
   communityService: CommunityService;
@@ -41,9 +41,10 @@ export class HandlePostCloseUseCase {
   async execute(input: HandlePostCloseInput): Promise<HandlePostCloseResult> {
     const { postId, session } = input;
 
-    const query = this.deps.publicationModel.findOne({ id: postId });
-    if (session) query.session(session);
-    const post = await query.lean().exec();
+    const post = await this.deps.investmentPersistence.findPublicationById(
+      postId,
+      session,
+    );
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -72,10 +73,10 @@ export class HandlePostCloseUseCase {
 
     if (investingActive && distributeAllByContract) {
       const totalToDistribute = currentScore + currentPool;
-      await this.deps.publicationModel.updateOne(
-        { id: postId },
-        { $set: { investmentPool: 0 } },
-        session ? { session } : {},
+      await this.deps.investmentPersistence.updatePublication(
+        postId,
+        { set: { investmentPool: 0 } },
+        session,
       );
       if (totalToDistribute > 0) {
         ratingDistributed = await this.deps.distributeOnWithdrawalUseCase.execute({
@@ -143,28 +144,21 @@ export class HandlePostCloseUseCase {
           );
         }
 
-        await this.deps.publicationModel.updateOne(
-          { id: postId },
-          { $set: { investmentPool: 0 } },
-          session ? { session } : {},
+        await this.deps.investmentPersistence.updatePublication(
+          postId,
+          { set: { investmentPool: 0 } },
+          session,
         );
 
-        const updateOpts = session ? { session } : {};
         await Promise.all(
           poolReturned.map((p) =>
-            this.deps.publicationModel.updateOne(
-              { id: postId, 'investments.investorId': p.investorId },
-              {
-                $inc: { 'investments.$.totalEarnings': p.amount },
-                $push: {
-                  'investments.$.earningsHistory': {
-                    amount: p.amount,
-                    date: new Date(),
-                    reason: 'pool_return' as const,
-                  },
-                },
-              },
-              updateOpts,
+            this.deps.investmentPersistence.updateInvestorEarnings(
+              postId,
+              p.investorId,
+              p.amount,
+              'pool_return',
+              new Date(),
+              session,
             ),
           ),
         );
@@ -174,10 +168,10 @@ export class HandlePostCloseUseCase {
       !distributeAllByContract &&
       (currentPool === 0 || totalInvested === 0)
     ) {
-      await this.deps.publicationModel.updateOne(
-        { id: postId },
-        { $set: { investmentPool: 0 } },
-        session ? { session } : {},
+      await this.deps.investmentPersistence.updatePublication(
+        postId,
+        { set: { investmentPool: 0 } },
+        session,
       );
     }
 

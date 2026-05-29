@@ -53,6 +53,7 @@ import { CommunityInviteService } from '../domain/services/community-invite.serv
 import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
+import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
@@ -110,6 +111,7 @@ export class TrpcService {
     private documentService: DocumentService,
     private documentVariantService: DocumentVariantService,
     private documentStructureService: DocumentStructureService,
+    private permissionRuleEngine: PermissionRuleEngine,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
@@ -173,6 +175,7 @@ export class TrpcService {
       documentService: this.documentService,
       documentVariantService: this.documentVariantService,
       documentStructureService: this.documentStructureService,
+      permissionRuleEngine: this.permissionRuleEngine,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,

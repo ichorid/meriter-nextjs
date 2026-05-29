@@ -4,16 +4,15 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Model } from 'mongoose';
 import type {
   TeamJoinRequest,
-  TeamJoinRequestDocument,
 } from '../../../domain/models/team-join-request/team-join-request.schema';
 import { CommunityService } from '../../../domain/services/community.service';
 import { NotificationService } from '../../../domain/services/notification.service';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { UserService } from '../../../domain/services/user.service';
 import { uid } from 'uid';
+import type { TeamJoinRequestPersistencePort } from '../../../domain/ports/team-join-request.persistence.port';
 
 /**
  * BC-11: submit a join request for a local community (P-9).
@@ -23,7 +22,7 @@ export class SubmitTeamJoinRequestUseCase {
   private readonly logger = new Logger(SubmitTeamJoinRequestUseCase.name);
 
   constructor(
-    private readonly teamJoinRequestModel: Model<TeamJoinRequestDocument>,
+    private readonly teamJoinRequestPersistence: TeamJoinRequestPersistencePort,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
@@ -65,13 +64,11 @@ export class SubmitTeamJoinRequestUseCase {
       );
     }
 
-    const existingRequest = await this.teamJoinRequestModel
-      .findOne({
+    const existingRequest =
+      await this.teamJoinRequestPersistence.findPendingByUserAndCommunity(
         userId,
         communityId,
-        status: 'pending',
-      })
-      .lean();
+      );
 
     if (existingRequest) {
       throw new BadRequestException(
@@ -88,7 +85,7 @@ export class SubmitTeamJoinRequestUseCase {
     }
     const leadId = leadRoles[0].userId;
 
-    const request = await this.teamJoinRequestModel.create({
+    const request = await this.teamJoinRequestPersistence.create({
       id: uid(),
       userId,
       communityId,
@@ -160,19 +157,19 @@ export class SubmitTeamJoinRequestUseCase {
       `Request ${request.id} created for user ${userId} to join team ${communityId}`,
     );
 
-    return request.toObject();
+    return request as TeamJoinRequest;
   }
 }
 
 export function createSubmitTeamJoinRequestUseCase(deps: {
-  teamJoinRequestModel: Model<TeamJoinRequestDocument>;
+  teamJoinRequestPersistence: TeamJoinRequestPersistencePort;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
   userService: UserService;
   notificationService: NotificationService;
 }): SubmitTeamJoinRequestUseCase {
   return new SubmitTeamJoinRequestUseCase(
-    deps.teamJoinRequestModel,
+    deps.teamJoinRequestPersistence,
     deps.communityService,
     deps.userCommunityRoleService,
     deps.userService,

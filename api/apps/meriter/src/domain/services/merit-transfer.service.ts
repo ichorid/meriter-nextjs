@@ -1,22 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { Injectable, Inject } from '@nestjs/common';
 import {
   createCreateMeritTransferUseCase,
   CreateMeritTransferUseCase,
 } from '../../application/use-cases/merit-transfer/create-merit-transfer.use-case';
 import {
-  MeritTransferSchemaClass,
-  MeritTransferDocument,
   type MeritTransferWalletType,
 } from '../models/merit-transfer/merit-transfer.schema';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
 import { WalletService } from './wallet.service';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
+import {
+  MERIT_TRANSFER_PERSISTENCE_PORT,
+  type MeritTransferPersistencePort,
+} from '../ports/merit-transfer.persistence.port';
+import {
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+} from '../ports/publication.persistence.port';
 
 export interface MeritTransferRecord {
   id: string;
@@ -49,26 +49,26 @@ export class MeritTransferService {
   private readonly createMeritTransferUseCase: CreateMeritTransferUseCase;
 
   constructor(
-    @InjectModel(MeritTransferSchemaClass.name)
-    private readonly meritTransferModel: Model<MeritTransferDocument>,
-    @InjectModel(PublicationSchemaClass.name)
-    private readonly publicationModel: Model<PublicationDocument>,
-    @InjectConnection() private readonly connection: Connection,
+    @Inject(MERIT_TRANSFER_PERSISTENCE_PORT)
+    private readonly meritTransferPersistence: MeritTransferPersistencePort,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
   ) {
     this.createMeritTransferUseCase = createCreateMeritTransferUseCase({
-      meritTransferModel: this.meritTransferModel,
-      publicationModel: this.publicationModel,
-      connection: this.connection,
+      meritTransferPersistence: this.meritTransferPersistence,
+      publicationPersistence: this.publicationPersistence,
       walletService: this.walletService,
       communityService: this.communityService,
       userCommunityRoleService: this.userCommunityRoleService,
     });
   }
 
-  private toRecord(doc: MeritTransferDocument): MeritTransferRecord {
+  private toRecord(
+    doc: Awaited<ReturnType<MeritTransferPersistencePort['findMany']>>[number],
+  ): MeritTransferRecord {
     return {
       id: doc.id,
       senderId: doc.senderId,
@@ -104,13 +104,12 @@ export class MeritTransferService {
     const { page, limit, skip } = this.normalizeListPagination(opts);
 
     const [total, docs] = await Promise.all([
-      this.meritTransferModel.countDocuments(filter).exec(),
-      this.meritTransferModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.meritTransferPersistence.count(filter),
+      this.meritTransferPersistence.findMany(filter, {
+        sort: { createdAt: -1 },
+        skip,
+        limit,
+      }),
     ]);
 
     return {
@@ -148,7 +147,7 @@ export class MeritTransferService {
 
   /** Transfers where the user sent or received merits (for profile activity counts). */
   async countTransfersInvolvingUser(userId: string): Promise<number> {
-    return this.meritTransferModel.countDocuments({
+    return this.meritTransferPersistence.count({
       $or: [{ senderId: userId }, { receiverId: userId }],
     });
   }

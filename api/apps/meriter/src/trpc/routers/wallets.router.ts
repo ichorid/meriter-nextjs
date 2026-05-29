@@ -21,6 +21,7 @@ import {
   createGetMeritHistoryTransactionsUseCase,
   type GetMeritHistoryTransactionsDeps,
 } from '../../application/use-cases/wallets/get-merit-history-transactions.use-case';
+import { createGetQuotaUseCaseFromContext } from '../../application/use-cases/wallets/get-quota.use-case';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -239,135 +240,12 @@ export const walletsRouter = router({
       communityId: z.string(),
     }))
     .query(async ({ ctx, input }) => {
-      // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
-
-      // Check permissions
-      const canView = await ctx.permissionService.canViewUserMerits(
-        ctx.user.id,
-        actualUserId,
-        input.communityId,
-      );
-      
-      if (!canView) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'You do not have permission to view this user\'s quota',
-        });
-      }
-
-      // Get community
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Community not found',
-        });
-      }
-
-      // Check if quota is enabled in community settings
-      const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
-      
-      // Calculate effective daily quota with special-group rules
-      const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
-      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
-        actualUserId,
-        input.communityId,
-      );
-      void _userRole;
-      const dailyQuota =
-        !quotaEnabled ||
-        community.typeTag === 'future-vision'
-          ? 0
-          : baseDailyQuota;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const quotaStartTime = community.lastQuotaResetAt
-        ? new Date(community.lastQuotaResetAt)
-        : today;
-
-      if (!ctx.connection.db) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Database connection not available',
-        });
-      }
-
-      const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-        ctx.connection.db
-          .collection('votes')
-          .aggregate([
-            {
-              $match: {
-                userId: actualUserId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-        ctx.connection.db
-          .collection('poll_casts')
-          .aggregate([
-            {
-              $match: {
-                userId: actualUserId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-        ctx.connection.db
-          .collection('quota_usage')
-          .aggregate([
-            {
-              $match: {
-                userId: actualUserId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-      ]);
-
-      const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
-      const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
-      const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
-      const used = dailyQuota === 0 ? 0 : usedRaw;
-      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
-
-      // Calculate resetAt: next midnight or next reset time
-      const resetAt = new Date(quotaStartTime);
-      resetAt.setDate(resetAt.getDate() + 1);
-      resetAt.setHours(0, 0, 0, 0);
-
-      return {
-        dailyQuota,
-        used,
-        remaining,
-        resetAt: resetAt.toISOString(),
-      };
+      return createGetQuotaUseCaseFromContext(ctx).getQuota({
+        viewerId: ctx.user.id,
+        userId: actualUserId,
+        communityId: input.communityId,
+      });
     }),
 
   /**
@@ -379,89 +257,10 @@ export const walletsRouter = router({
       communityIds: z.array(z.string()).max(100),
     }))
     .query(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-
-      if (input.communityIds.length === 0) {
-        return {} as Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }>;
-      }
-
-      const communities = await ctx.communityService.listCommunitiesByIds(input.communityIds);
-
-      if (!ctx.connection.db) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Database connection not available',
-        });
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const communityQuotaConfig = new Map<string, { dailyQuota: number; quotaStartTime: Date }>();
-      for (const community of communities) {
-        const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
-        const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
-        const dailyQuota =
-          !quotaEnabled || community.typeTag === 'future-vision'
-            ? 0
-            : baseDailyQuota;
-        const quotaStartTime = community.lastQuotaResetAt
-          ? new Date(community.lastQuotaResetAt)
-          : today;
-        communityQuotaConfig.set(community.id, { dailyQuota, quotaStartTime });
-      }
-
-      // Group IDs by quotaStartTime so each group shares one $gte filter
-      const startTimeGroups = new Map<number, string[]>();
-      for (const [communityId, config] of communityQuotaConfig) {
-        const key = config.quotaStartTime.getTime();
-        if (!startTimeGroups.has(key)) {
-          startTimeGroups.set(key, []);
-        }
-        startTimeGroups.get(key)!.push(communityId);
-      }
-
-      const aggregateUsage = async (
-        collection: string,
-        ids: string[],
-        since: Date,
-      ): Promise<Array<{ _id: string; total: number }>> =>
-        ctx.connection.db!
-          .collection(collection)
-          .aggregate<{ _id: string; total: number }>([
-            { $match: { userId, communityId: { $in: ids }, createdAt: { $gte: since } } },
-            { $group: { _id: '$communityId', total: { $sum: '$amountQuota' } } },
-          ])
-          .toArray();
-
-      const usedMap = new Map<string, number>();
-
-      for (const [startTimeMs, ids] of startTimeGroups) {
-        const since = new Date(startTimeMs);
-        const [votesResults, pollCastsResults, quotaUsageResults] = await Promise.all([
-          aggregateUsage('votes', ids, since),
-          aggregateUsage('poll_casts', ids, since),
-          aggregateUsage('quota_usage', ids, since),
-        ]);
-        for (const row of [...votesResults, ...pollCastsResults, ...quotaUsageResults]) {
-          usedMap.set(row._id, (usedMap.get(row._id) || 0) + row.total);
-        }
-      }
-
-      const result: Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }> = {};
-      for (const [communityId, config] of communityQuotaConfig) {
-        const usedRaw = usedMap.get(communityId) || 0;
-        const used = config.dailyQuota === 0 ? 0 : usedRaw;
-        const remaining = config.dailyQuota === 0 ? 0 : Math.max(0, config.dailyQuota - used);
-
-        const resetAt = new Date(config.quotaStartTime);
-        resetAt.setDate(resetAt.getDate() + 1);
-        resetAt.setHours(0, 0, 0, 0);
-
-        result[communityId] = { dailyQuota: config.dailyQuota, used, remaining, resetAt: resetAt.toISOString() };
-      }
-
-      return result;
+      return createGetQuotaUseCaseFromContext(ctx).getQuotaBatch({
+        userId: ctx.user.id,
+        communityIds: input.communityIds,
+      });
     }),
 
   /**
@@ -625,106 +424,10 @@ export const walletsRouter = router({
   getFreeBalance: protectedProcedure
     .input(z.object({ communityId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const userId = ctx.user.id;
-
-      // Get community
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Community not found',
-        });
-      }
-
-      // Calculate effective daily quota with special-group rules
-      const baseDailyQuota = community.settings?.dailyEmission || 0;
-      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
-        userId,
-        input.communityId,
-      );
-      void _userRole;
-      const dailyQuota =
-        community.typeTag === 'future-vision'
-          ? 0
-          : baseDailyQuota;
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const quotaStartTime = community.lastQuotaResetAt
-        ? new Date(community.lastQuotaResetAt)
-        : today;
-
-      if (!ctx.connection.db) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Database connection not available',
-        });
-      }
-
-      const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-        ctx.connection.db
-          .collection('votes')
-          .aggregate([
-            {
-              $match: {
-                userId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-        ctx.connection.db
-          .collection('poll_casts')
-          .aggregate([
-            {
-              $match: {
-                userId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-        ctx.connection.db
-          .collection('quota_usage')
-          .aggregate([
-            {
-              $match: {
-                userId,
-                communityId: input.communityId,
-                createdAt: { $gte: quotaStartTime },
-              },
-            },
-            {
-              $group: {
-                _id: null,
-                total: { $sum: '$amountQuota' },
-              },
-            },
-          ])
-          .toArray(),
-      ]);
-
-      const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
-      const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
-      const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
-      const used = dailyQuota === 0 ? 0 : usedRaw;
-      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
-
-      return remaining;
+      return createGetQuotaUseCaseFromContext(ctx).getFreeBalance({
+        userId: ctx.user.id,
+        communityId: input.communityId,
+      });
     }),
 
   /**

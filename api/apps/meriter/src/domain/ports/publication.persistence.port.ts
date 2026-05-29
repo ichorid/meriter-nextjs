@@ -60,6 +60,7 @@ export interface PublicationPatchUpdate {
   set?: Record<string, unknown>;
   push?: Record<string, unknown>;
   unset?: Record<string, unknown>;
+  inc?: Record<string, number>;
 }
 
 export interface ClosePublicationInput {
@@ -207,6 +208,12 @@ export interface PublicationPersistencePort {
     update: PublicationPatchUpdate,
     session?: PublicationPersistenceSession,
   ): Promise<void>;
+
+  findAndPatchOne(
+    filter: Record<string, unknown>,
+    update: PublicationPatchUpdate,
+    session?: PublicationPersistenceSession,
+  ): Promise<PublicationSnapshot | null>;
 
   closePublication(input: ClosePublicationInput): Promise<void>;
 

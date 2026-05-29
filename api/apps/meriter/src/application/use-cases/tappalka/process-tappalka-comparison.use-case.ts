@@ -3,13 +3,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
-import type { PublicationDocument } from '../../../domain/models/publication/publication.schema';
+import type { Connection } from 'mongoose';
 import type { Community } from '../../../domain/models/community/community.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { TappalkaService } from '../../../domain/services/tappalka.service';
 import type { TappalkaChoiceResult } from '@meriter/shared-types';
+import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
 
 export type ProcessTappalkaComparisonInput = {
   communityId: string;
@@ -23,7 +23,7 @@ export type ProcessTappalkaComparisonDeps = {
   tappalkaService: TappalkaService;
   communityService: CommunityService;
   permissionService: PermissionService;
-  publicationModel: Model<PublicationDocument>;
+  publicationPersistence: PublicationPersistencePort;
 };
 
 type TappalkaSettings = {
@@ -132,8 +132,8 @@ export class ProcessTappalkaComparisonUseCase {
     settings: TappalkaSettings,
   ): Promise<void> {
     const [winner, loser] = await Promise.all([
-      this.deps.publicationModel.findOne({ id: winnerPostId }).lean().exec(),
-      this.deps.publicationModel.findOne({ id: loserPostId }).lean().exec(),
+      this.deps.publicationPersistence.findById(winnerPostId),
+      this.deps.publicationPersistence.findById(loserPostId),
     ]);
 
     if (!winner || !loser) {
@@ -206,18 +206,13 @@ export function createProcessTappalkaComparisonUseCase(
 }
 
 /** tRPC wiring: resolves publication model from mongoose connection. */
-export function createProcessTappalkaComparisonUseCaseFromContext(ctx: {
+export function createProcessTappalkaComparisonUseCaseFromContext(_ctx: {
   connection: Connection;
   tappalkaService: TappalkaService;
   communityService: CommunityService;
   permissionService: PermissionService;
 }): ProcessTappalkaComparisonUseCase {
-  return createProcessTappalkaComparisonUseCase({
-    tappalkaService: ctx.tappalkaService,
-    communityService: ctx.communityService,
-    permissionService: ctx.permissionService,
-    publicationModel: ctx.connection.model(
-      'PublicationSchemaClass',
-    ) as Model<PublicationDocument>,
-  });
+  throw new Error(
+    'createProcessTappalkaComparisonUseCaseFromContext is deprecated. Use TappalkaService.submitChoice from service context.',
+  );
 }

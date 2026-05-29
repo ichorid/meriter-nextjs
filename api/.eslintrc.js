@@ -99,9 +99,7 @@ module.exports = {
         {
           target: './apps/meriter/src/trpc/routers/**',
           from: './apps/meriter/src/trpc/routers/**',
-          except: [
-            './apps/meriter/src/trpc/routers/votes.router.ts',
-          ],
+          except: [],
           message: 'Zone 9: Routers must not import other routers (V-03). Only yaml zone_9_interim_pairs.',
         },
       ],

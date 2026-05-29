@@ -4,8 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import type { Connection, Model } from 'mongoose';
-import type { PublicationDocument } from '../../../domain/models/publication/publication.schema';
+import type { Connection } from 'mongoose';
 import type { Community } from '../../../domain/models/community/community.schema';
 import { formatMeritsForDisplay } from '../../../common/helpers/format-merits.helper';
 import {
@@ -19,6 +18,7 @@ import type { NotificationService } from '../../../domain/services/notification.
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { InvestmentPersistencePort } from '../../../domain/ports/investment.persistence.port';
 
 export type InvestInPostInput = {
   postId: string;
@@ -40,7 +40,7 @@ export type InvestInPostResult = {
 };
 
 export type InvestInPostDeps = {
-  publicationModel: Model<PublicationDocument>;
+  investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
   meritResolverService: MeritResolverService;
   communityService: CommunityService;
@@ -66,7 +66,7 @@ export class InvestInPostUseCase {
       throw new BadRequestException('Investment amount must be greater than 0');
     }
 
-    const post = await this.deps.publicationModel.findOne({ id: postId }).lean().exec();
+    const post = await this.deps.investmentPersistence.findPublicationById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -141,16 +141,13 @@ export class InvestInPostUseCase {
       throw err;
     }
 
-    await this.deps.publicationModel.updateOne(
-      { id: postId },
-      {
-        $set: {
-          investmentPool: newPool,
-          investmentPoolTotal: newTotal,
-          investments: updatedInvestments,
-        },
+    await this.deps.investmentPersistence.updatePublication(postId, {
+      set: {
+        investmentPool: newPool,
+        investmentPoolTotal: newTotal,
+        investments: updatedInvestments,
       },
-    );
+    });
 
     const totalInvested = updatedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
     const resultInvestments = updatedInvestments.map((inv) => ({
@@ -260,7 +257,7 @@ export function createInvestInPostUseCase(
 }
 
 /** tRPC / domain-service wiring: resolves publication model from mongoose connection. */
-export function createInvestInPostUseCaseFromContext(ctx: {
+export function createInvestInPostUseCaseFromContext(_ctx: {
   connection: Connection;
   walletService: WalletService;
   meritResolverService: MeritResolverService;
@@ -269,15 +266,7 @@ export function createInvestInPostUseCaseFromContext(ctx: {
   userService: UserService;
   permissionService: PermissionService;
 }): InvestInPostUseCase {
-  return createInvestInPostUseCase({
-    publicationModel: ctx.connection.model(
-      'PublicationSchemaClass',
-    ) as Model<PublicationDocument>,
-    walletService: ctx.walletService,
-    meritResolverService: ctx.meritResolverService,
-    communityService: ctx.communityService,
-    notificationService: ctx.notificationService,
-    userService: ctx.userService,
-    permissionService: ctx.permissionService,
-  });
+  throw new Error(
+    'createInvestInPostUseCaseFromContext is deprecated. Use InvestmentService.processInvestment instead.',
+  );
 }

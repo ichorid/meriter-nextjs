@@ -3,8 +3,8 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import type { TeamInvitationDocument } from '../../../domain/models/team-invitation/team-invitation.schema';
 import type { TeamInvitation } from '../../../domain/models/team-invitation/team-invitation.schema';
+import type { TeamInvitationMutableRecord } from '../../../domain/ports/team-invitation.persistence.port';
 import { CommunityService } from '../../../domain/services/community.service';
 import { NotificationService } from '../../../domain/services/notification.service';
 import { TeamJoinRequestService } from '../../../domain/services/team-join-request.service';
@@ -29,7 +29,7 @@ export class AcceptTeamInvitationUseCase {
       invitationId: string,
       targetUserId: string,
       action: TeamInvitationTargetAction,
-    ) => Promise<TeamInvitationDocument>,
+    ) => Promise<TeamInvitationMutableRecord>,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
@@ -115,7 +115,7 @@ export function createAcceptTeamInvitationUseCase(deps: {
     invitationId: string,
     targetUserId: string,
     action: TeamInvitationTargetAction,
-  ) => Promise<TeamInvitationDocument>;
+  ) => Promise<TeamInvitationMutableRecord>;
   userCommunityRoleService: UserCommunityRoleService;
   userService: UserService;
   communityService: CommunityService;

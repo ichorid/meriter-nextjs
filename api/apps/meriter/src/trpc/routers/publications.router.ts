@@ -7,7 +7,9 @@ import {
   UpdatePublicationDtoSchema,
   WithdrawAmountDtoSchema,
 } from '@meriter/shared-types';
-import { createVoteLogic } from './votes.router';
+import {
+  createCreateVoteUseCaseFromContext,
+} from '../../application/use-cases/voting/create-vote.use-case';
 
 const IdInputSchema = z.object({ id: z.string() });
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
@@ -1506,7 +1508,8 @@ export const publicationsRouter = router({
         });
       }
       if (input.fundingSource === 'personal') {
-        return createVoteLogic(ctx, {
+        return createCreateVoteUseCaseFromContext(ctx).execute({
+          userId: ctx.user.id,
           targetType: 'publication',
           targetId: input.publicationId,
           quotaAmount: 0,

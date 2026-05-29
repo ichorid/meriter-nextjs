@@ -30,11 +30,11 @@ export class Decree809TagMigrationService implements OnModuleInit {
   private readonly logger = new Logger(Decree809TagMigrationService.name);
 
   constructor(
-    @InjectModel(PlatformSettingsSchemaClass.name)
+    @InjectModel(PlatformSettingsSchemaClass.name) // V-12-residual
     private readonly platformSettingsModel: Model<PlatformSettingsDocument>,
-    @InjectModel(CommunitySchemaClass.name)
+    @InjectModel(CommunitySchemaClass.name) // V-12-residual
     private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(PublicationSchemaClass.name)
+    @InjectModel(PublicationSchemaClass.name) // V-12-residual
     private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 

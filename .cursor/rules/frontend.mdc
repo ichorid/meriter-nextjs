@@ -14,8 +14,8 @@ Full monorepo and layer overview: @architecture.mdc · target web layout: TARGET
 | Path | Status | Phase |
 |------|--------|-------|
 | `features/*/` (general) | Partial — prefer for new domain UI | ongoing |
-| `features/notifications/` | **Does not exist** — routing in `app/meriter/notifications/notificationClientFormat.ts` | scaffold Phase 5, populate Phase 7 |
-| `features/favorites/` | **Does not exist** | types Phase 5, populate Phase 7 |
+| `features/notifications/` | **Landed** — `routing-matrix.ts`, tests, shared-types `NotificationRoutingSchema` | migrate organism list UI from `components/organisms/` over time |
+| `features/favorites/` | **Does not exist** | future feature module |
 | `features/tappalka/` | Partial / duplicated Birzha shells | consolidate Phase 7 |
 
 **Rules:** features own domain UI; consume tRPC + `@meriter/shared-types` only; no `api/apps/meriter/src/**` imports; cross-feature via public `index.ts` only; no client-side permission invariants (server `ResourcePermissions` authoritative).
@@ -102,7 +102,7 @@ Use this when wiring UI or docs so marketing names are not confused with `typeTa
 
 Subtitle typography, stacked lines, and profile/community/post links: @frontend-notifications.mdc (`NotificationsClient`, `InfoCard`).
 
-**Routing interim:** subtitle/link keys live in `notificationClientFormat.ts` — not yet `features/notifications/routing-matrix.ts`. Phase 1 adds `NotificationRoutingSchema` to shared-types; Phase 5 scaffold imports it; Phase 7 migrates organism list UI to feature module (inv-25).
+**Routing:** `features/notifications/routing-matrix.ts` imports `NotificationRoutingSchema` from `@meriter/shared-types/schemas/notifications`. Legacy `notificationClientFormat.ts` may still exist — prefer feature module for new work.
 
 ## Merit display (inv-26)
 

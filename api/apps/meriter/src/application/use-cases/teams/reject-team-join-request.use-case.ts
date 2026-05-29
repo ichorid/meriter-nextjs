@@ -2,8 +2,8 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import type { TeamJoinRequestDocument } from '../../../domain/models/team-join-request/team-join-request.schema';
 import type { TeamJoinRequest } from '../../../domain/models/team-join-request/team-join-request.schema';
+import type { TeamJoinRequestMutableRecord } from '../../../domain/ports/team-join-request.persistence.port';
 import { CommunityService } from '../../../domain/services/community.service';
 import { NotificationService } from '../../../domain/services/notification.service';
 import { UserService } from '../../../domain/services/user.service';
@@ -21,7 +21,7 @@ export class RejectTeamJoinRequestUseCase {
       requestId: string,
       leadId: string,
       action: TeamJoinRequestLeadAction,
-    ) => Promise<TeamJoinRequestDocument>,
+    ) => Promise<TeamJoinRequestMutableRecord>,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
@@ -86,7 +86,7 @@ export function createRejectTeamJoinRequestUseCase(deps: {
     requestId: string,
     leadId: string,
     action: TeamJoinRequestLeadAction,
-  ) => Promise<TeamJoinRequestDocument>;
+  ) => Promise<TeamJoinRequestMutableRecord>;
   userService: UserService;
   communityService: CommunityService;
   notificationService: NotificationService;

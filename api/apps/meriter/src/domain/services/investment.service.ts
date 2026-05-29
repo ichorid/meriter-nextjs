@@ -1,14 +1,12 @@
 import {
   Injectable,
+  Inject,
   Logger,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, ClientSession, type PipelineStage } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import {
-  PublicationSchemaClass,
-  PublicationDocument,
   type PublicationInvestment,
 } from '../models/publication/publication.schema';
 import type {
@@ -30,6 +28,10 @@ import {
   createHandlePostCloseUseCase,
   HandlePostCloseUseCase,
 } from '../../application/use-cases/investments/handle-post-close.use-case';
+import {
+  INVESTMENT_PERSISTENCE_PORT,
+  type InvestmentPersistencePort,
+} from '../ports/investment.persistence.port';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -167,8 +169,8 @@ export class InvestmentService {
   private readonly handlePostCloseUseCase: HandlePostCloseUseCase;
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
+    @Inject(INVESTMENT_PERSISTENCE_PORT)
+    private readonly investmentPersistence: InvestmentPersistencePort,
     private walletService: WalletService,
     private meritResolverService: MeritResolverService,
     private communityService: CommunityService,
@@ -176,7 +178,7 @@ export class InvestmentService {
     private userService: UserService,
   ) {
     this.distributeOnWithdrawalUseCase = createDistributeOnWithdrawalUseCase({
-      publicationModel: this.publicationModel,
+      investmentPersistence: this.investmentPersistence,
       walletService: this.walletService,
       meritResolverService: this.meritResolverService,
       communityService: this.communityService,
@@ -184,7 +186,7 @@ export class InvestmentService {
       userService: this.userService,
     });
     this.handlePostCloseUseCase = createHandlePostCloseUseCase({
-      publicationModel: this.publicationModel,
+      investmentPersistence: this.investmentPersistence,
       walletService: this.walletService,
       meritResolverService: this.meritResolverService,
       communityService: this.communityService,
@@ -206,7 +208,7 @@ export class InvestmentService {
       throw new BadRequestException('Investment amount must be greater than 0');
     }
 
-    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+    const post = await this.investmentPersistence.findPublicationById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -319,16 +321,13 @@ export class InvestmentService {
       throw err;
     }
 
-    await this.publicationModel.updateOne(
-      { id: postId },
-      {
-        $set: {
-          investmentPool: newPool,
-          investmentPoolTotal: newTotal,
-          investments: updatedInvestments,
-        },
+    await this.investmentPersistence.updatePublication(postId, {
+      set: {
+        investmentPool: newPool,
+        investmentPoolTotal: newTotal,
+        investments: updatedInvestments,
       },
-    );
+    });
 
     const totalInvested = updatedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
     const resultInvestments = updatedInvestments.map((inv) => ({
@@ -374,7 +373,7 @@ export class InvestmentService {
       sharePercent: number;
     }>
   > {
-    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+    const post = await this.investmentPersistence.findPublicationById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -400,7 +399,7 @@ export class InvestmentService {
   async getInvestmentBreakdown(
     postId: string,
   ): Promise<InvestmentBreakdownResult> {
-    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+    const post = await this.investmentPersistence.findPublicationById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -453,13 +452,7 @@ export class InvestmentService {
       investmentPoolTotal: number;
     }>
   > {
-    const posts = await this.publicationModel
-      .find({
-        'investments.investorId': userId,
-        deleted: { $ne: true },
-      })
-      .lean()
-      .exec();
+    const posts = await this.investmentPersistence.findPublicationsByInvestor(userId);
 
     return posts.map((post) => {
       const inv = post.investments?.find(
@@ -490,67 +483,12 @@ export class InvestmentService {
     userId: string,
     options: GetMyPortfolioOptions,
   ): Promise<GetMyPortfolioResult> {
-    const filterMatch =
-      options.filter === 'all' ? {} : { status: options.filter };
     const skip = (options.page - 1) * options.limit;
 
-    const postPipeline: PipelineStage[] = [
-      {
-        $match: {
-          'investments.investorId': userId,
-          deleted: { $ne: true },
-          ...filterMatch,
-        },
-      },
-      {
-        $addFields: {
-          myInv: {
-            $arrayElemAt: [
-              {
-                $filter: {
-                  input: '$investments',
-                  as: 'i',
-                  cond: { $eq: ['$$i.investorId', userId] },
-                },
-              },
-              0,
-            ],
-          },
-        },
-      },
-      { $match: { myInv: { $ne: null } } },
-      {
-        $project: {
-          id: 1,
-          title: 1,
-          authorId: 1,
-          communityId: 1,
-          status: 1,
-          'metrics.score': 1,
-          investmentPool: 1,
-          investmentPoolTotal: 1,
-          ttlExpiresAt: 1,
-          closingSummary: 1,
-          myInv: 1,
-        },
-      },
-    ];
-
-    const postRaw = await this.publicationModel
-      .aggregate<{
-        id: string;
-        title?: string;
-        authorId: string;
-        communityId: string;
-        status?: 'active' | 'closed';
-        metrics?: { score?: number };
-        investmentPool?: number;
-        investmentPoolTotal?: number;
-        ttlExpiresAt?: Date | null;
-        closingSummary?: unknown;
-        myInv: PublicationInvestment;
-      }>(postPipeline)
-      .exec();
+    const postRaw = await this.investmentPersistence.aggregatePortfolioByInvestor(
+      userId,
+      options.filter === 'all' ? undefined : options.filter,
+    );
 
     type PostRow = {
       kind: 'post';
@@ -771,10 +709,7 @@ export class InvestmentService {
     userId: string,
     postId: string,
   ): Promise<InvestmentDetailsResult> {
-    const post = await this.publicationModel
-      .findOne({ id: postId })
-      .lean()
-      .exec();
+    const post = await this.investmentPersistence.findPublicationById(postId);
     if (!post) {
       throw new NotFoundException('Publication not found');
     }

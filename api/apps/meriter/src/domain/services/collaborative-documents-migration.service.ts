@@ -45,15 +45,15 @@ export class CollaborativeDocumentsMigrationService implements OnModuleInit {
   private readonly logger = new Logger(CollaborativeDocumentsMigrationService.name);
 
   constructor(
-    @InjectModel(PlatformSettingsSchemaClass.name)
+    @InjectModel(PlatformSettingsSchemaClass.name) // V-12-residual
     private readonly platformSettingsModel: Model<PlatformSettingsDocument>,
     @Inject(COMMUNITY_PERSISTENCE_PORT)
     private readonly communityPersistence: CommunityPersistencePort,
     @Inject(DOCUMENT_PERSISTENCE_PORT)
     private readonly documentPersistence: DocumentPersistencePort,
-    @InjectModel(UserCommunityRoleSchemaClass.name)
+    @InjectModel(UserCommunityRoleSchemaClass.name) // V-12-residual
     private readonly userCommunityRoleModel: Model<UserCommunityRoleDocument>,
-    @InjectModel(UserSchemaClass.name)
+    @InjectModel(UserSchemaClass.name) // V-12-residual
     private readonly userModel: Model<UserDocument>,
     private readonly documentService: DocumentService,
   ) {}

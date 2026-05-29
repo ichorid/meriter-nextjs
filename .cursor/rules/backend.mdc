@@ -67,27 +67,27 @@ Note: additional migration/maintenance scripts also exist outside this tree unde
 
 ## Layer responsibilities (Clean Architecture)
 
-| Layer | Live | Target | Agent rule |
-|-------|------|--------|------------|
-| Domain | `domain/services`, `domain/aggregates`, `domain/events` | + `domain/ports/` (Phase 3) | Business rules only; no tRPC/api-v1 imports |
-| Application | scattered in routers (`createVoteLogic`) | `application/use-cases/` (Phase 2–3) | Orchestration; no `@InjectModel` / `@nestjs/mongoose` |
-| Adapters | `trpc/`, `api-v1/` | `adapters/trpc|rest|mappers|presenters|resolvers/` (Phase 2) | Validate → use case → map → `ResourcePermissions` |
-| Infrastructure | `domain/models`, `api-v1/auth`, `tg-bots`, `*-cron.service` in domain | `infrastructure/*` (Phase 2+) | Implements ports; cron invokes domain services only |
+| Layer | Path | Agent rule |
+|-------|------|------------|
+| Domain | `domain/services`, `domain/aggregates`, `domain/events`, **`domain/ports/`** | Business rules; persistence via ports; no tRPC/api-v1 imports |
+| Application | **`application/use-cases/`** (~60) | Orchestration; no `@InjectModel` / `@nestjs/mongoose` / `trpc/*` |
+| Adapters | **`adapters/`** + legacy `trpc/`, `api-v1/` | Thin transport → use case → map → `ResourcePermissions` |
+| Infrastructure | **`infrastructure/persistence/`**, `infrastructure/auth`, `infrastructure/cron`, `infrastructure/telegram` | Implements ports; Mongoose here only |
 
-**Aspirational paths not on disk yet:** `application/`, `adapters/`, `domain/ports/`, `infrastructure/permissions/`. Phase 3 requires `PermissionGatesPort` + adapter before `CreateVoteUseCase` extraction.
+See @architecture.mdc **Remaining debt** for Tier-3 `@InjectModel` scripts and OD-3.
 
 ## Module Wiring Rule
 - Use a shared `domain.module.ts` for providers and model registration.
 - Do not assume "one module per entity" layout.
-- **New orchestration:** add `application/use-cases/[domain]/[action].use-case.ts` when layer exists; until then, do not deepen router god-methods — prefer domain service + thin router.
-- **Legacy:** substantial logic remains in routers (`createVoteLogic`, merit history in `wallets.router`); extract per phase plan, do not add cross-router imports.
+- **New orchestration:** add `application/use-cases/[domain]/[action].use-case.ts`; router calls `createXUseCase(ctx).execute(...)`.
+- **Do not** add cross-router imports (ESLint Zone 9).
 
 ## API Layer Responsibilities
 
 ### tRPC (`trpc/routers` → target `adapters/trpc/routers`)
 - Validate input with shared Zod schemas when possible.
 - **Target:** thin controllers — delegate to application use cases; map via `EntityMappers`; attach permissions via engine + presenter.
-- **Interim:** substantial logic in routers is legacy (V-03/V-04/V-08); do not import logic from other routers (e.g. `createVoteLogic` export pattern is waiver until Phase 3).
+- **Do not** import logic from other routers (Zone 9).
 - No new REST business endpoints; dual transport = tRPC primary + REST auth narrow.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
 - Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`.
@@ -170,16 +170,16 @@ export const exampleRouter = router({
 
 - `wallets.withdraw` / `wallets.transfer` — **permanent NOT_IMPLEMENTED**; rating withdrawal = `publications.withdraw`; peer transfer = `meritTransfer.*`; hide UI callers (Phase 1 grep).
 
-## ESLint boundaries (Phase 0 — not landed)
+## ESLint boundaries (**landed**)
 
-Do not assume CI enforces layers yet. When Phase 0 merges, `import/no-restricted-paths` zones 1–7 apply (see @architecture.mdc). New code must not add domain→trpc or cross-router violations even before lint lands.
+Zones 1–9 enforced in `api/.eslintrc.js` (see @architecture.mdc). New code must not violate layer imports.
 
 ## Common Mistakes
 
 ❌ Putting business rules directly in tRPC routers/controllers (extract to use cases per phase plan)
 ❌ `PermissionRuleEngine` importing `permissions-helper` — use `PermissionGatesPort`
 ❌ Domain service importing `trpc/helpers` (V-01) or reading `process.env` for feature flags (V-07)
-❌ Cross-router imports for vote economics (`publications` → `votes.createVoteLogic`)
+❌ Cross-router imports (Zone 9)
 ❌ Inline notification creation in domain services (OD-12 / V-05)
 ❌ Duplicating validation instead of reusing shared schemas
 ❌ Skipping permission checks for "internal" endpoints
