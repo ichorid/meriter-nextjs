@@ -10,7 +10,7 @@ import { CommunityService } from '../src/domain/services/community.service';
 import { UserService } from '../src/domain/services/user.service';
 import { PermissionService } from '../src/domain/services/permission.service';
 import { QuotaUsageService } from '../src/domain/services/quota-usage.service';
-import { TgBotsService } from '../src/tg-bots/tg-bots.service';
+import { TgBotsService } from '../src/domain/services/tg-bots.service';
 import { UserEnrichmentService } from '../src/api-v1/common/services/user-enrichment.service';
 import { CommunityEnrichmentService } from '../src/api-v1/common/services/community-enrichment.service';
 import { PermissionsHelperService } from '../src/api-v1/common/services/permissions-helper.service';
