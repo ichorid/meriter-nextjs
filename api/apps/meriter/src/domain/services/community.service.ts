@@ -9,9 +9,11 @@ import {
 import { InjectModel, InjectConnection } from '@nestjs/mongoose';
 import { Model, Connection, ClientSession } from 'mongoose';
 import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../models/community/community.schema';
+  COMMUNITY_PERSISTENCE_PORT,
+  type CommunityPersistencePort,
+  type CommunitySnapshot,
+  type CommunityUpdatePayload,
+} from '../ports/community.persistence.port';
 import type {
   Community,
   PermissionRule,
@@ -21,7 +23,6 @@ import type {
 import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import { EventBus } from '../events/event-bus';
-import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
@@ -210,13 +211,17 @@ const DEFAULT_MERIT_CURRENCY = {
   genitive: 'merits',
 } as const;
 
+function asCommunity(snapshot: CommunitySnapshot): Community {
+  return snapshot as unknown as Community;
+}
+
 @Injectable()
 export class CommunityService {
   private readonly logger = new Logger(CommunityService.name);
 
   constructor(
-    @InjectModel(CommunitySchemaClass.name)
-    private communityModel: Model<CommunityDocument>,
+    @Inject(COMMUNITY_PERSISTENCE_PORT)
+    private readonly communityPersistence: CommunityPersistencePort,
     @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
     @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
     @InjectConnection() private mongoose: Connection,
@@ -236,8 +241,8 @@ export class CommunityService {
 
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
-    const doc = await this.communityModel.findOne({ id: communityId }).lean();
-    return doc ? (doc as unknown as Community) : null;
+    const doc = await this.communityPersistence.findById(communityId);
+    return doc ? asCommunity(doc) : null;
   }
 
 
@@ -561,8 +566,8 @@ export class CommunityService {
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
-    const doc = await this.communityModel.findOne({ typeTag }).lean();
-    return doc ? (doc as unknown as Community) : null;
+    const doc = await this.communityPersistence.findByTypeTag(typeTag);
+    return doc ? asCommunity(doc) : null;
   }
 
   /**
@@ -645,7 +650,7 @@ export class CommunityService {
 
     // 3. Team Projects
     // Check for duplicates first
-    const allTeamProjects = await this.communityModel.find({ typeTag: 'team-projects' }).lean();
+    const allTeamProjects = await this.communityPersistence.findAllByTypeTag('team-projects');
     if (allTeamProjects.length > 1) {
       this.logger.warn(`Found ${allTeamProjects.length} communities with typeTag 'team-projects'. Removing duplicates...`);
       // Keep the first one (oldest), delete the rest
@@ -657,7 +662,7 @@ export class CommunityService {
       const _toKeep = sorted[0];
       for (let i = 1; i < sorted.length; i++) {
         this.logger.log(`Deleting duplicate Team Projects community: ${sorted[i].id}`);
-        await this.communityModel.deleteOne({ id: sorted[i].id });
+        await this.communityPersistence.deleteById(sorted[i].id);
       }
     }
     
@@ -728,7 +733,7 @@ export class CommunityService {
     };
 
     for (const typeTag of PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS) {
-      const doc = await this.communityModel.findOne({ typeTag }).lean();
+      const doc = await this.communityPersistence.findByTypeTag(typeTag);
       if (!doc?.id) {
         continue;
       }
@@ -756,34 +761,28 @@ export class CommunityService {
       if (b.meritSettings) {
         delete unsetForHub.meritSettings;
       }
-      await this.communityModel.updateOne(
-        { id: doc.id },
-        {
-          $set: setDoc as never,
-          $unset: unsetForHub,
-        },
-      );
+      await this.communityPersistence.updateCommunity(doc.id, {
+        set: setDoc,
+        unset: unsetForHub,
+      });
     }
 
-    const g = await this.communityModel.findOne({ id: GLOBAL_COMMUNITY_ID }).lean();
+    const g = await this.communityPersistence.findById(GLOBAL_COMMUNITY_ID);
     if (g?.id) {
       const gc = snap.globalCommunity;
-      await this.communityModel.updateOne(
-        { id: GLOBAL_COMMUNITY_ID },
-        {
-          $set: {
-            name: gc.name,
-            description: gc.description,
-            typeTag: 'global',
-            isActive: true,
-            settings: { ...gc.settings } as unknown as Community['settings'],
-            hashtags: [],
-            hashtagDescriptions: {},
-            updatedAt: now,
-          },
-          $unset: unsetStoredOverrides,
+      await this.communityPersistence.updateCommunity(GLOBAL_COMMUNITY_ID, {
+        set: {
+          name: gc.name,
+          description: gc.description,
+          typeTag: 'global',
+          isActive: true,
+          settings: { ...gc.settings } as unknown as Community['settings'],
+          hashtags: [],
+          hashtagDescriptions: {},
+          updatedAt: now,
         },
-      );
+        unset: unsetStoredOverrides,
+      });
     }
 
     this.logger.log('Priority communities and global hub reset from dev snapshot (fallback: bootstrap)');
@@ -836,9 +835,7 @@ export class CommunityService {
 
     // Check for single-instance communities (Future Vision, Marathon of Good, Team Projects, and Support)
     if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'team-projects' || dto.typeTag === 'support') {
-      const existing = await this.communityModel
-        .findOne({ typeTag: dto.typeTag })
-        .lean();
+      const existing = await this.communityPersistence.findByTypeTag(dto.typeTag);
       if (existing) {
         throw new BadRequestException(
           `Community with typeTag "${dto.typeTag}" already exists. Only one instance is allowed.`,
@@ -931,7 +928,7 @@ export class CommunityService {
       community.projectInvestments = [];
     }
 
-    await this.communityModel.create([community]);
+    await this.communityPersistence.insertCommunity(community as CommunitySnapshot);
     this.logger.log(
       `Community created: ${community.id}${dto.typeTag ? ` (typeTag: ${dto.typeTag})` : ''}`,
     );
@@ -1233,7 +1230,7 @@ export class CommunityService {
 
     // Handle tappalkaSettings
     if (dto.tappalkaSettings) {
-      const existingCommunity = await this.communityModel.findOne({ id: communityId }).lean();
+      const existingCommunity = await this.communityPersistence.findById(communityId);
       if (
         dto.tappalkaSettings.enabled === true &&
         (existingCommunity as { isProject?: boolean } | null)?.isProject
@@ -1272,17 +1269,14 @@ export class CommunityService {
 
     this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
     
-    // Perform the update
-    const updatePayload: Record<string, unknown> = { $set: updateData };
+    const payload: CommunityUpdatePayload = { set: updateData };
     if (Object.keys(unsetData).length > 0) {
-      updatePayload.$unset = unsetData;
+      payload.unset = unsetData;
     }
-    await this.communityModel.updateOne({ id: communityId }, updatePayload);
-
-    // Explicitly re-fetch the document to ensure we get the updated values
-    const updatedCommunity = await this.communityModel
-      .findOne({ id: communityId })
-      .lean();
+    const updatedCommunity = await this.communityPersistence.updateCommunity(
+      communityId,
+      payload,
+    );
 
     if (!updatedCommunity) {
       throw new NotFoundException('Community not found');
@@ -1291,34 +1285,25 @@ export class CommunityService {
     this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, allowWithdraw: ${(updatedCommunity as any).settings?.allowWithdraw}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
     this.logger.log(`[UPDATE] After save, votingSettings.currencySource: ${(updatedCommunity as any).votingSettings?.currencySource}, full votingSettings: ${JSON.stringify((updatedCommunity as any).votingSettings)}`);
 
-    return (updatedCommunity as unknown) as Community;
+    return asCommunity(updatedCommunity);
   }
 
   async deleteCommunity(communityId: string): Promise<void> {
-    const result = await this.communityModel.deleteOne({ id: communityId });
-
-    if (result.deletedCount === 0) {
+    const deleted = await this.communityPersistence.deleteById(communityId);
+    if (!deleted) {
       throw new NotFoundException('Community not found');
     }
   }
 
   async addMember(communityId: string, userId: string): Promise<Community> {
-    return MongoArrayUpdateHelper.addToArray<Community>(
-      this.communityModel,
-      { id: communityId },
-      'members',
-      userId,
-      'Community',
+    return asCommunity(
+      await this.communityPersistence.addArrayItem(communityId, 'members', userId),
     );
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
-    return MongoArrayUpdateHelper.removeFromArray<Community>(
-      this.communityModel,
-      { id: communityId },
-      'members',
-      userId,
-      'Community',
+    return asCommunity(
+      await this.communityPersistence.removeArrayItem(communityId, 'members', userId),
     );
   }
 
@@ -1459,13 +1444,7 @@ export class CommunityService {
   }
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
-    const community = await this.communityModel
-      .findOne({
-        id: communityId,
-        members: userId,
-      })
-      .lean();
-    return community !== null;
+    return this.communityPersistence.isUserMember(communityId, userId);
   }
 
   async getAllCommunities(
@@ -1473,28 +1452,16 @@ export class CommunityService {
     skip: number = 0,
     options?: { excludeProjects?: boolean },
   ): Promise<Community[]> {
-    const filter: Record<string, unknown> = {
-      typeTag: { $ne: 'global' }, // Exclude Global community — internal, not user-facing
-    };
-    if (options?.excludeProjects) {
-      filter.isProject = { $ne: true };
-    }
-    return this.communityModel
-      .find(filter)
-      .limit(limit)
-      .skip(skip)
-      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
-      .lean() as unknown as Community[];
+    const docs = await this.communityPersistence.findAll({
+      limit,
+      skip,
+      excludeProjects: options?.excludeProjects,
+    });
+    return docs.map(asCommunity);
   }
 
   async countAllCommunities(options?: { excludeProjects?: boolean }): Promise<number> {
-    const filter: Record<string, unknown> = {
-      typeTag: { $ne: 'global' },
-    };
-    if (options?.excludeProjects) {
-      filter.isProject = { $ne: true };
-    }
-    return this.communityModel.countDocuments(filter);
+    return this.communityPersistence.countAll(options);
   }
 
   /**
@@ -1506,29 +1473,25 @@ export class CommunityService {
     skip: number,
     sort?: Record<string, 1 | -1>,
   ): Promise<Community[]> {
-    const q = { ...query, typeTag: { $ne: 'global' } };
-    const order = sort ?? { createdAt: -1 };
-    return this.communityModel
-      .find(q)
-      .limit(limit)
-      .skip(skip)
-      .sort(order)
-      .lean() as unknown as Community[];
+    const docs = await this.communityPersistence.findByQuery({
+      query,
+      limit,
+      skip,
+      sort,
+    });
+    return docs.map(asCommunity);
   }
 
   /**
    * Count communities matching query. Excludes global.
    */
   async countCommunitiesByQuery(query: Record<string, unknown>): Promise<number> {
-    const q = { ...query, typeTag: { $ne: 'global' } };
-    return this.communityModel.countDocuments(q);
+    return this.communityPersistence.countByQuery(query);
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {
-    return this.communityModel
-      .find({ members: userId, typeTag: { $ne: 'global' } }) // Exclude Global community
-      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
-      .lean() as unknown as Community[];
+    const docs = await this.communityPersistence.findByMemberUserId(userId);
+    return docs.map(asCommunity);
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
@@ -1542,20 +1505,13 @@ export class CommunityService {
       return [];
     }
 
-    // Fetch communities by IDs
-    return this.communityModel
-      .find({ id: { $in: communityIds } })
-      .sort({ createdAt: -1 })
-      .lean() as unknown as Community[];
+    const docs = await this.communityPersistence.findManagedByIds(communityIds);
+    return docs.map(asCommunity);
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
-    return MongoArrayUpdateHelper.addToArray<Community>(
-      this.communityModel,
-      { id: communityId },
-      'hashtags',
-      hashtag,
-      'Community',
+    return asCommunity(
+      await this.communityPersistence.addArrayItem(communityId, 'hashtags', hashtag),
     );
   }
 
@@ -1563,12 +1519,8 @@ export class CommunityService {
     communityId: string,
     hashtag: string,
   ): Promise<Community> {
-    return MongoArrayUpdateHelper.removeFromArray<Community>(
-      this.communityModel,
-      { id: communityId },
-      'hashtags',
-      hashtag,
-      'Community',
+    return asCommunity(
+      await this.communityPersistence.removeArrayItem(communityId, 'hashtags', hashtag),
     );
   }
 
@@ -1590,18 +1542,10 @@ export class CommunityService {
 
     // Update lastQuotaResetAt timestamp to current time
     const resetAt = new Date();
-    const updatedCommunity = await this.communityModel
-      .findOneAndUpdate(
-        { id: communityId },
-        {
-          $set: {
-            lastQuotaResetAt: resetAt,
-            updatedAt: new Date(),
-          },
-        },
-        { new: true },
-      )
-      .lean();
+    const updatedCommunity = await this.communityPersistence.resetDailyQuota(
+      communityId,
+      resetAt,
+    );
 
     if (!updatedCommunity) {
       throw new NotFoundException('Community not found');
@@ -1620,9 +1564,7 @@ export class CommunityService {
     search?: string,
   ): Promise<{ members: any[]; total: number }> {
     // 1. Get community to retrieve memberIds, settings, and total count
-    const community = await this.communityModel
-      .findOne({ id: communityId })
-      .lean();
+    const community = await this.communityPersistence.findById(communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
     }
@@ -1861,12 +1803,9 @@ export class CommunityService {
     });
 
     const communityIds = [...new Set(obPosts.map((p) => p.sourceEntityId))];
-    const communityDocs = await this.communityModel
-      .find({ id: { $in: communityIds } })
-      .lean()
-      .exec();
+    const communityDocs = await this.communityPersistence.findByIds(communityIds);
     const communityMap = new Map(
-      communityDocs.map((c: any) => [c.id, c]),
+      communityDocs.map((c) => [c.id, c]),
     );
 
     const obDocumentMap = await this.documentService.getOfficialByCommunities(
@@ -1997,10 +1936,7 @@ export class CommunityService {
     } else {
       invs.push({ userId, amount, totalEarnings: 0, createdAt: now, updatedAt: now });
     }
-    await this.communityModel.updateOne(
-      { id: projectId },
-      { $set: { projectInvestments: invs, updatedAt: now } },
-    );
+    await this.communityPersistence.updateProjectInvestments(projectId, invs);
   }
 
   /**
@@ -2031,33 +1967,22 @@ export class CommunityService {
       changed = true;
     }
     if (!changed) return;
-    const opts = session ? { session } : {};
-    await this.communityModel.updateOne(
-      { id: projectId },
-      { $set: { projectInvestments: invs, updatedAt: now } },
-      opts,
+    await this.communityPersistence.updateProjectInvestments(
+      projectId,
+      invs,
+      session,
     );
   }
 
   async listCommunitiesByIds(ids: string[]): Promise<Community[]> {
-    if (ids.length === 0) return [];
-    const rows = await this.communityModel
-      .find({ id: { $in: ids } })
-      .lean()
-      .exec();
-    return rows as unknown as Community[];
+    const rows = await this.communityPersistence.findByIds(ids);
+    return rows.map(asCommunity);
   }
 
   /** Projects (isProject) where the user has at least one projectInvestments row. */
   async findProjectsWhereUserInvested(userId: string): Promise<Community[]> {
-    const rows = await this.communityModel
-      .find({
-        isProject: true,
-        projectInvestments: { $elemMatch: { userId } },
-      })
-      .lean()
-      .exec();
-    return rows as unknown as Community[];
+    const rows = await this.communityPersistence.findProjectsWhereUserInvested(userId);
+    return rows.map(asCommunity);
   }
 }
 

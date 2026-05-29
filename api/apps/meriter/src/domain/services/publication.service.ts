@@ -7,13 +7,14 @@ import {
   Inject,
   forwardRef,
 } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, ClientSession } from 'mongoose';
+import { InjectConnection } from '@nestjs/mongoose';
+import { Connection, ClientSession } from 'mongoose';
 import { Publication } from '../aggregates/publication/publication.entity';
 import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+  type PublicationPersistenceSession,
+} from '../ports/publication.persistence.port';
 import {
   PublicationId,
   UserId,
@@ -29,7 +30,6 @@ import { UserService } from './user.service';
 import { CommunityWalletService } from './community-wallet.service';
 import { WalletService } from './wallet.service';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
-import { buildHubPostsFeedMongoQuery } from '../common/helpers/hub-posts-feed.helper';
 import {
   createCreatePublicationUseCase,
   CreatePublicationUseCase,
@@ -100,8 +100,8 @@ export class PublicationService {
   private readonly publishCommunityToBirzhaUseCase: PublishCommunityToBirzhaUseCase;
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => PermissionService))
@@ -116,7 +116,7 @@ export class PublicationService {
     private walletService: WalletService,
   ) {
     this.createPublicationUseCase = createCreatePublicationUseCase({
-      publicationModel: this.publicationModel,
+      publicationPersistence: this.publicationPersistence,
       connection: this.mongoose,
       eventBus: this.eventBus,
       permissionService: this.permissionService,
@@ -128,7 +128,7 @@ export class PublicationService {
     });
 
     const birzhaPublishDeps = {
-      publicationModel: this.publicationModel,
+      publicationPersistence: this.publicationPersistence,
       eventBus: this.eventBus,
       communityService: this.communityService,
       userService: this.userService,
@@ -159,16 +159,17 @@ export class PublicationService {
     publicationId: string,
     createdAt: Date,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    const doc = await this.publicationPersistence.findById(publicationId);
     if (!doc) return;
     const ttlDays = doc.ttlDays;
     const ttlExpiresAt =
       ttlDays != null && ttlDays > 0
         ? new Date(createdAt.getTime() + ttlDays * 24 * 60 * 60 * 1000)
         : doc.ttlExpiresAt ?? null;
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      { $set: { createdAt, updatedAt: createdAt, ttlExpiresAt } },
+    await this.publicationPersistence.setPublicationTimestampsForSeed(
+      publicationId,
+      createdAt,
+      ttlExpiresAt,
     );
   }
 
@@ -269,7 +270,7 @@ export class PublicationService {
     if (!Number.isInteger(amount) || amount <= 0) {
       throw new BadRequestException('Amount must be a positive integer');
     }
-    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    const doc = await this.publicationPersistence.findById(publicationId);
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
@@ -307,7 +308,7 @@ export class PublicationService {
     const id = PublicationId.generate().getValue();
     const now = new Date();
 
-    await this.publicationModel.create({
+    await this.publicationPersistence.insertPublication({
       id,
       communityId: params.futureVisionCommunityId,
       authorId: params.authorId,
@@ -315,8 +316,6 @@ export class PublicationService {
       sourceEntityType: 'community',
       content: params.content,
       type: 'text',
-      title: undefined,
-      description: undefined,
       hashtags: [],
       categories: [],
       images: [],
@@ -355,29 +354,17 @@ export class PublicationService {
     sourceCommunityId: string,
     content: string,
   ): Promise<boolean> {
-    const updated = await this.publicationModel
-      .findOneAndUpdate(
-        {
-          communityId: futureVisionCommunityId,
-          sourceEntityType: 'community',
-          sourceEntityId: sourceCommunityId,
-          deleted: { $ne: true },
-        },
-        {
-          $set: {
-            content,
-            updatedAt: new Date(),
-          },
-        },
-      )
-      .exec();
-
+    const updated = await this.publicationPersistence.updateFutureVisionPostContent(
+      futureVisionCommunityId,
+      sourceCommunityId,
+      content,
+    );
     if (updated) {
       this.logger.log(
         `OB post content updated for community ${sourceCommunityId}`,
       );
     }
-    return !!updated;
+    return updated;
   }
 
   /**
@@ -387,17 +374,10 @@ export class PublicationService {
     futureVisionCommunityId: string,
     sourceCommunityId: string,
   ): Promise<string | null> {
-    const doc = await this.publicationModel
-      .findOne({
-        communityId: futureVisionCommunityId,
-        sourceEntityType: 'community',
-        sourceEntityId: sourceCommunityId,
-        deleted: { $ne: true },
-      })
-      .select('id')
-      .lean()
-      .exec();
-    return doc?.id ?? null;
+    return this.publicationPersistence.findFutureVisionPostId(
+      futureVisionCommunityId,
+      sourceCommunityId,
+    );
   }
 
   /**
@@ -407,20 +387,14 @@ export class PublicationService {
   async findObPostsSortedByScore(
     futureVisionCommunityId: string,
   ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number } }[]> {
-    const docs = await this.publicationModel
-      .find({
-        communityId: futureVisionCommunityId,
-        sourceEntityType: 'community',
-        deleted: { $ne: true },
-      })
-      .select('id sourceEntityId metrics.score')
-      .sort({ 'metrics.score': -1 })
-      .lean()
-      .exec();
-    return docs.map((d: any) => ({
+    const docs = await this.publicationPersistence.findObPosts(
+      futureVisionCommunityId,
+      { sort: 'score' },
+    );
+    return docs.map((d) => ({
       id: d.id,
       sourceEntityId: d.sourceEntityId,
-      metrics: { score: d.metrics?.score ?? 0 },
+      metrics: { score: d.metrics.score },
     }));
   }
 
@@ -432,53 +406,32 @@ export class PublicationService {
     futureVisionCommunityId: string,
     params: { sort: 'score' | 'createdAt' },
   ): Promise<{ id: string; sourceEntityId: string; metrics: { score: number }; createdAt: Date }[]> {
-    const docs = await this.publicationModel
-      .find({
-        communityId: futureVisionCommunityId,
-        sourceEntityType: 'community',
-        deleted: { $ne: true },
-      })
-      .select('id sourceEntityId metrics.score createdAt')
-      .sort(
-        params.sort === 'createdAt'
-          ? { createdAt: -1 }
-          : { 'metrics.score': -1 },
-      )
-      .lean()
-      .exec();
-
-    return docs.map((d: any) => ({
+    const docs = await this.publicationPersistence.findObPosts(
+      futureVisionCommunityId,
+      params,
+    );
+    return docs.map((d) => ({
       id: d.id,
       sourceEntityId: d.sourceEntityId,
-      metrics: { score: d.metrics?.score ?? 0 },
+      metrics: { score: d.metrics.score },
       createdAt: d.createdAt ? new Date(d.createdAt) : new Date(0),
     }));
   }
 
   async getPublication(id: string): Promise<Publication | null> {
     // Direct Mongoose query
-    const doc = await this.publicationModel.findOne({ id }).lean();
+    const doc = await this.publicationPersistence.findById(id);
     return doc ? Publication.fromSnapshot(doc as IPublicationDocument) : null;
   }
 
   /** Hub «Посты» tab: non-project publications with body text in a community feed. */
   async countHubFeedPublicationsByCommunity(communityId: string): Promise<number> {
-    return this.publicationModel.countDocuments({
-      communityId,
-      deleted: { $ne: true },
-      content: { $exists: true, $nin: [null, ''] },
-      postType: { $nin: ['project', 'event'] },
-      isProject: { $ne: true },
-    });
+    return this.publicationPersistence.countHubFeedPublicationsByCommunity(communityId);
   }
 
   /** Cooperative project hub «Посты» tab: tickets + discussions. */
   async countProjectHubPosts(projectId: string): Promise<number> {
-    return this.publicationModel.countDocuments({
-      communityId: projectId,
-      deleted: { $ne: true },
-      postType: { $in: ['ticket', 'discussion'] },
-    });
+    return this.publicationPersistence.countProjectHubPosts(projectId);
   }
 
   /** Count active Birzha posts for a source entity (same filter as {@link getBirzhaPostsBySourceEntity}). */
@@ -487,12 +440,11 @@ export class PublicationService {
     sourceEntityType: 'project' | 'community',
     sourceEntityId: string,
   ): Promise<number> {
-    return this.publicationModel.countDocuments({
-      communityId: birzhaCommunityId,
+    return this.publicationPersistence.countBirzhaPostsBySourceEntity(
+      birzhaCommunityId,
       sourceEntityType,
       sourceEntityId,
-      deleted: { $ne: true },
-    });
+    );
   }
 
   /** Active posts on Birzha (МД) for a given source entity. */
@@ -503,18 +455,13 @@ export class PublicationService {
     limit: number,
     skip: number,
   ): Promise<Publication[]> {
-    const docs = await this.publicationModel
-      .find({
-        communityId: birzhaCommunityId,
-        sourceEntityType,
-        sourceEntityId,
-        deleted: { $ne: true },
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean()
-      .exec();
+    const docs = await this.publicationPersistence.findBirzhaPostsBySourceEntity(
+      birzhaCommunityId,
+      sourceEntityType,
+      sourceEntityId,
+      limit,
+      skip,
+    );
     return docs.map((d) =>
       Publication.fromSnapshot(d as IPublicationDocument),
     );
@@ -524,8 +471,7 @@ export class PublicationService {
   async getPublicationDocument(
     id: string,
   ): Promise<IPublicationDocument | null> {
-    const doc = await this.publicationModel.findOne({ id }).lean().exec();
-    return doc as IPublicationDocument | null;
+    return (await this.publicationPersistence.findById(id)) as IPublicationDocument | null;
   }
 
   async getPublicationsByCommunity(
@@ -546,90 +492,16 @@ export class PublicationService {
     search?: string,
     hubPostsFeedOnly = false,
   ): Promise<Publication[]> {
-    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    // Build query - exclude deleted items; hub «Posts» tab excludes dedicated-tab types
-    const query: Record<string, unknown> = {
+    const docs = await this.publicationPersistence.findPublicationsByCommunity({
       communityId,
-      deleted: { $ne: true },
-      ...(hubPostsFeedOnly ? buildHubPostsFeedMongoQuery() : {}),
-    };
-
-    const searchOr =
-      search && search.trim()
-        ? (() => {
-            const escapedSearch = escapeRe(search.trim());
-            const searchRegex = new RegExp(escapedSearch, 'i');
-            return [
-              { content: searchRegex },
-              { title: searchRegex },
-              { description: searchRegex },
-              { hashtags: searchRegex },
-            ];
-          })()
-        : null;
-
-    const valueTagOr =
-      filters?.valueTags && filters.valueTags.length > 0
-        ? filters.valueTags.map((t) => {
-            const escaped = escapeRe(t.trim());
-            return { valueTags: new RegExp(`^${escaped}$`, 'i') };
-          })
-        : null;
-
-    if (searchOr && valueTagOr) {
-      query.$and = [{ $or: searchOr }, { $or: valueTagOr }];
-    } else if (searchOr) {
-      query.$or = searchOr;
-    } else if (valueTagOr) {
-      query.$or = valueTagOr;
-    }
-
-    // Apply hashtag filter if provided
-    if (hashtag) {
-      query.hashtags = hashtag;
-    }
-
-    // Apply taxonomy filters with OR semantics for array fields
-    if (filters) {
-      if (filters.impactArea) {
-        query.impactArea = filters.impactArea;
-      }
-      if (filters.stage) {
-        query.stage = filters.stage;
-      }
-      // Array fields: item matches if it has ANY of the selected tags (OR)
-      if (filters.beneficiaries && filters.beneficiaries.length > 0) {
-        query.beneficiaries = { $in: filters.beneficiaries };
-      }
-      if (filters.methods && filters.methods.length > 0) {
-        query.methods = { $in: filters.methods };
-      }
-      if (filters.helpNeeded && filters.helpNeeded.length > 0) {
-        query.helpNeeded = { $in: filters.helpNeeded };
-      }
-      // Category filter: publication must have at least one of the selected categories
-      if (filters.categories && filters.categories.length > 0) {
-        query.categories = { $in: filters.categories };
-      }
-    }
-
-    // Build sort object
-    const sort: Record<string, 1 | -1> = {};
-    if (sortBy === 'score') {
-      sort['metrics.score'] = -1;
-    } else {
-      sort.createdAt = -1;
-    }
-
-    // Direct Mongoose query - no repository wrapper needed
-    const docs = await this.publicationModel
-      .find(query)
-      .limit(limit)
-      .skip(skip)
-      .sort(sort)
-      .lean();
-
+      limit,
+      skip,
+      sortBy,
+      hashtag,
+      filters,
+      search,
+      hubPostsFeedOnly,
+    });
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
     );
@@ -639,14 +511,7 @@ export class PublicationService {
     limit: number = 20,
     skip: number = 0,
   ): Promise<Publication[]> {
-    // Direct Mongoose query - exclude deleted items
-    const docs = await this.publicationModel
-      .find({ deleted: { $ne: true } })
-      .limit(limit)
-      .skip(skip)
-      .sort({ 'metrics.score': -1 })
-      .lean();
-
+    const docs = await this.publicationPersistence.findTopPublications(limit, skip);
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
     );
@@ -660,33 +525,26 @@ export class PublicationService {
   ): Promise<Publication> {
     const id = PublicationId.fromString(publicationId);
 
-    // Load aggregate using Mongoose directly
-    const doc = await this.publicationModel
-      .findOne({ id: id.getValue() })
-      .lean();
+    const doc = await this.publicationPersistence.findById(id.getValue());
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
 
-    // Business logic in domain
     const voteAmount = direction === 'up' ? amount : -amount;
     publication.vote(voteAmount);
 
-    // Save. D-8: track lastEarnedAt when post earns (positive vote).
     const snapshot = publication.toSnapshot();
     if (direction === 'up' && amount > 0) {
       snapshot.lastEarnedAt = new Date();
     }
-    const updateOp: Record<string, unknown> = { $set: snapshot };
-    // Track total ever earned for closingSummary.totalEarned (only positive credits)
-    if (voteAmount > 0) {
-      updateOp.$inc = { lifetimeCredits: voteAmount };
-    }
-    await this.publicationModel.updateOne(
-      { id: publication.getId.getValue() },
-      updateOp,
+    await this.publicationPersistence.updateWithVoteMetrics(
+      publication.getId.getValue(),
+      {
+        snapshot,
+        lifetimeCreditIncrement: voteAmount > 0 ? voteAmount : undefined,
+      },
     );
 
     return publication;
@@ -699,22 +557,21 @@ export class PublicationService {
   ): Promise<Publication> {
     const id = PublicationId.fromString(publicationId);
 
-    const query = this.publicationModel.findOne({ id: id.getValue() });
-    if (session) query.session(session);
-    const doc = await query.lean().exec();
+    const doc = await this.publicationPersistence.findById(
+      id.getValue(),
+      session as PublicationPersistenceSession | undefined,
+    );
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
 
     const publication = Publication.fromSnapshot(doc as IPublicationDocument);
-
     publication.reduceScore(amount);
 
-    const opts = session ? { session } : {};
-    await this.publicationModel.updateOne(
-      { id: publication.getId.getValue() },
-      { $set: publication.toSnapshot() },
-      opts,
+    await this.publicationPersistence.updateSnapshot(
+      publication.getId.getValue(),
+      publication.toSnapshot(),
+      session as PublicationPersistenceSession | undefined,
     );
 
     return publication;
@@ -725,13 +582,11 @@ export class PublicationService {
     limit: number = 50,
     skip: number = 0,
   ): Promise<Publication[]> {
-    const docs = await this.publicationModel
-      .find({ authorId, deleted: { $ne: true } })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
-
+    const docs = await this.publicationPersistence.findPublicationsByAuthor(
+      authorId,
+      limit,
+      skip,
+    );
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
     );
@@ -741,11 +596,7 @@ export class PublicationService {
    * Count active publications by author excluding project posts (aligns with profile publications tab).
    */
   async countProfilePublicationsByAuthor(authorId: string): Promise<number> {
-    return this.publicationModel.countDocuments({
-      authorId,
-      deleted: { $ne: true },
-      $nor: [{ isProject: true }, { postType: 'project' }],
-    });
+    return this.publicationPersistence.countProfilePublicationsByAuthor(authorId);
   }
 
   async getPublicationsByHashtag(
@@ -753,13 +604,11 @@ export class PublicationService {
     limit: number = 50,
     skip: number = 0,
   ): Promise<Publication[]> {
-    const docs = await this.publicationModel
-      .find({ hashtags: hashtag, deleted: { $ne: true } })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
-
+    const docs = await this.publicationPersistence.findPublicationsByHashtag(
+      hashtag,
+      limit,
+      skip,
+    );
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
     );
@@ -773,17 +622,11 @@ export class PublicationService {
     limit: number = 20,
     skip: number = 0,
   ): Promise<Publication[]> {
-    // Build query for deleted items
-    const query: any = { communityId, deleted: true };
-
-    // Direct Mongoose query
-    const docs = await this.publicationModel
-      .find(query)
-      .limit(limit)
-      .skip(skip)
-      .sort({ deletedAt: -1, createdAt: -1 })
-      .lean();
-
+    const docs = await this.publicationPersistence.findDeletedPublicationsByCommunity(
+      communityId,
+      limit,
+      skip,
+    );
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
     );
@@ -853,9 +696,7 @@ export class PublicationService {
       throw new BadRequestException('helpNeeded array cannot exceed 3 items');
     }
 
-    const doc = await this.publicationModel
-      .findOne({ id: publicationId })
-      .lean();
+    const doc = await this.publicationPersistence.findById(publicationId);
     if (!doc) {
       throw new NotFoundException('Publication not found');
     }
@@ -1035,16 +876,13 @@ export class PublicationService {
       editedAt: new Date(),
     };
 
-    await this.publicationModel.updateOne(
-      { id: publication.getId.getValue() },
-      {
-        $set: updatePayload,
-        $push: { editHistory: editHistoryEntry },
-      },
+    await this.publicationPersistence.updateWithEditHistory(
+      publication.getId.getValue(),
+      updatePayload,
+      editHistoryEntry,
     );
 
-    // Reload to return updated publication
-    const updatedDoc = await this.publicationModel.findOne({ id: publicationId }).lean();
+    const updatedDoc = await this.publicationPersistence.findById(publicationId);
     const updatedPublication = updatedDoc ? Publication.fromSnapshot(updatedDoc as IPublicationDocument) : publication;
 
     // Publish domain event if editor is not the author
@@ -1079,15 +917,7 @@ export class PublicationService {
 
     // Soft delete: mark as deleted instead of removing from database
     // This preserves votes, comments, and all related data
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      {
-        $set: {
-          deleted: true,
-          deletedAt: new Date(),
-        },
-      },
-    );
+    await this.publicationPersistence.softDelete(publicationId);
     return true;
   }
 
@@ -1114,15 +944,7 @@ export class PublicationService {
     // Restore uses the same permissions as delete (leads/superadmins only)
 
     // Restore: unmark as deleted
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      {
-        $unset: {
-          deleted: '',
-          deletedAt: '',
-        },
-      },
-    );
+    await this.publicationPersistence.restore(publicationId);
     return true;
   }
 
@@ -1134,18 +956,10 @@ export class PublicationService {
     targetCommunityId: string,
     proposedBy: string,
   ): Promise<void> {
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      {
-        $set: {
-          forwardStatus: 'pending',
-          forwardTargetCommunityId: targetCommunityId,
-          forwardProposedBy: proposedBy,
-          forwardProposedAt: new Date(),
-          updatedAt: new Date(),
-        },
-      },
-    );
+    await this.publicationPersistence.updateForwardProposal(publicationId, {
+      targetCommunityId,
+      proposedBy,
+    });
   }
 
   /**
@@ -1155,40 +969,14 @@ export class PublicationService {
     publicationId: string,
     targetCommunityId: string,
   ): Promise<void> {
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      {
-        $set: {
-          forwardStatus: 'forwarded',
-          forwardTargetCommunityId: targetCommunityId,
-          updatedAt: new Date(),
-        },
-        $unset: {
-          forwardProposedBy: '',
-          forwardProposedAt: '',
-        },
-      },
-    );
+    await this.publicationPersistence.markAsForwarded(publicationId, targetCommunityId);
   }
 
   /**
    * Clear forward proposal fields
    */
   async clearForwardProposal(publicationId: string): Promise<void> {
-    await this.publicationModel.updateOne(
-      { id: publicationId },
-      {
-        $set: {
-          forwardStatus: null,
-          updatedAt: new Date(),
-        },
-        $unset: {
-          forwardTargetCommunityId: '',
-          forwardProposedBy: '',
-          forwardProposedAt: '',
-        },
-      },
-    );
+    await this.publicationPersistence.clearForwardProposal(publicationId);
   }
 
   /**
@@ -1199,18 +987,11 @@ export class PublicationService {
     sourceEntityType: string,
     sourceEntityId: string,
   ): Promise<string[]> {
-    const list = await this.publicationModel
-      .find({
-        communityId,
-        sourceEntityType,
-        sourceEntityId,
-        status: 'active',
-        deleted: { $ne: true },
-      })
-      .select('id')
-      .lean()
-      .exec();
-    return list.map((d) => d.id);
+    return this.publicationPersistence.findActiveIdsBySource(
+      communityId,
+      sourceEntityType,
+      sourceEntityId,
+    );
   }
 
   /**
@@ -1235,46 +1016,9 @@ export class PublicationService {
     // Authorization is handled by PermissionGuard via PermissionService.canDeletePublication()
     // No need for redundant check here
 
-    // Use a helper function to recursively delete all comments on this publication
-    // and their replies
-    const deleteCommentsRecursively = async (targetId: string, targetType: 'publication' | 'comment') => {
-      if (!this.mongoose.db) {
-        throw new Error('Database connection not available');
-      }
-
-      // Find all comments on this publication or comment
-      const comments = await this.mongoose.db
-        .collection('comments')
-        .find({ targetType, targetId })
-        .toArray();
-
-      // Recursively delete replies first
-      for (const comment of comments) {
-        await deleteCommentsRecursively(comment.id, 'comment');
-      }
-
-      // Delete all comments found
-      if (comments.length > 0) {
-        const commentIds = comments.map(c => c.id);
-        await this.mongoose.db
-          .collection('comments')
-          .deleteMany({ id: { $in: commentIds } });
-      }
-    };
-
-    // Delete all votes on this publication
-    // (Votes on comments will be deleted when comments are deleted)
-    if (this.mongoose.db) {
-      await this.mongoose.db
-        .collection('votes')
-        .deleteMany({ targetType: 'publication', targetId: publicationId });
-    }
-
-    // Delete all comments on this publication (and their replies recursively)
-    await deleteCommentsRecursively(publicationId, 'publication');
-
-    // Finally, delete the publication itself
-    await this.publicationModel.deleteOne({ id: publicationId });
+    await this.publicationPersistence.deleteVotesByPublicationId(publicationId);
+    await this.publicationPersistence.deleteCommentsRecursivelyForPublication(publicationId);
+    await this.publicationPersistence.deleteById(publicationId);
 
     this.logger.log(`Permanently deleted publication: ${publicationId}`);
     return true;
