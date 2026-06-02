@@ -100,6 +100,43 @@
 
 ---
 
+## Phase GDocs — Proposal layers v2 (TZ v2)
+
+> **Normative:** [`TZ-v2-proposal-layers-gdocs.md`](./TZ-v2-proposal-layers-gdocs.md)  
+> Supersedes UX north star of [`document-canvas-ux-spec.md`](./document-canvas-ux-spec.md) (FE-UX-* remain shipped baseline).
+
+### Backend
+
+- [x] **B-GD-1**: `documents.syncStructureFromHtml` (or batch) — HTML → sections/blocks
+- [x] **B-GD-2**: Stable `blockId` mapping on re-parse (tests required)
+- [x] **B-GD-3**: Enforce `proposalsLocked` on propose
+- [x] **B-GD-4** (optional): `documentVariants.listByDocument` — all active threads for rail
+- [x] **B-GD-5**: Stale variant warn/block on apply
+
+### Frontend
+
+- [x] **FE-GD-1**: Three-column layout (platform nav | canvas | proposals rail)
+- [x] **FE-GD-2**: `DocumentUnifiedCanvas` — seamless official + proposal highlights
+- [x] **FE-GD-3**: Remove participant structure mode UI; lead format via editor only
+- [x] **FE-GD-4**: Selection → `blockId` resolver
+- [x] **FE-GD-5**: Proposal rail threads (vote, propose, apply)
+- [x] **FE-GD-6**: Mobile highlights + proposal sheet
+- [x] **FE-GD-7**: i18n `pages.documents.gdocs.*`
+
+### Docs
+
+- [x] **DOC-GD-1**: Update `business-shared-document.mdc` + `reports/11-phase-gdocs-proposal-layers.md`
+
+**Product gate:** PRD v2 §1 — **branch B (range)** approved. Kickoff: [`AGENT-KICKOFF-v2-proposal-layers.md`](./AGENT-KICKOFF-v2-proposal-layers.md).
+
+### Range / backend (branch B)
+
+- [x] **B-GD-1b**: range fields on variant + shared-types + migration
+- [x] **B-GD-2b**: overlap reject, range merge apply, multi-winner finalize, stale hash
+- [x] **B-GD-2c**: cut–paste / stable blockId integration tests
+
+---
+
 ## Phase 9: QA
 
 - [ ] **QA-1**: AC §24 manual pass

@@ -110,12 +110,25 @@ Up to 10 links: `url` (http/https, ≤2000), `summary` (≤280, required), optio
 
 ---
 
-## Document structure
+## UX v2 — proposal layers (Google Docs, 2026-06-02)
+
+- **Granularity:** sub-block **range** on `document_block_variants` (`rangeStart` / `rangeEnd` UTF-16 plain text in block, `proposedText`); legacy variants without range = full-block replace.
+- **Participants:** **propose only** — no inline official edit; read-only unified canvas + text selection → propose.
+- **Lead:** full-document WYSIWYG → `documents.syncStructureFromHtml` (debounced); **no** participant structure mode UI.
+- **Sections:** **one** empty-title section per document after sync.
+- **Overlap:** reject new propose if range intersects any **open** range on same `blockId`.
+- **Finalize:** multiple **non-overlapping** open variants with `rating > 0` → `closed-winner`; overlapping lower-rated → `closed-not-winner`.
+- **Apply:** merge `proposedText` into block `officialContent`; **stale** if `officialTextHashAtPropose` ≠ current → UI confirm + `confirmStale: true` on `applyVotingWinner`.
+- **Structure:** auto-parse HTML (`p`, `h1–h3`, each `li`, `blockquote`); stable `blockId` mapping on re-parse; cut–paste via lead editor sync; removed blocks → open variants `withdrawn`.
+- **Desktop:** proposals **rail** (`documentVariants.listByDocument` threads); **mobile:** highlights + existing bottom sheet.
+- **DnD reorder:** not in UI; cut–paste in editor only.
+
+## Document structure (API — hidden from participant UI)
 
 - **Who:** lead, document author, superadmin (`assertCanEditDocumentStructure` / `assertCanManageDocument`).
-- **tRPC `documents`:** `addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`, `reorderBlocks`.
+- **tRPC `documents`:** `addSection`, `updateSection`, `removeSection`, `addBlock`, `updateBlock`, `removeBlock`, `reorderBlocks`, **`syncStructureFromHtml`**.
 - **Guards:** cannot remove sole section/block; non-empty official removal needs `confirmLossOfOfficial: true`; open variants on removed blocks → `withdrawn`; OB/description re-mirror after structure change.
-- **Web:** structure mode toggle, dnd reorder, mobile `BottomActionSheet` for propose/vote/admin.
+- **Web (v2):** no structure mode toggle for participants; lead uses unified editor + sync; mobile `BottomActionSheet` for propose/vote/admin.
 
 ---
 
@@ -140,9 +153,9 @@ Up to 10 links: `url` (http/https, ≤2000), `summary` (≤280, required), optio
 
 | Procedure | Notes |
 |-----------|--------|
-| `listByBlock`, `getBlockVotingPanel`, `getBlockGovernanceHistory` | |
-| `propose`, `withdraw` | |
-| `applyVotingWinner`, `applyOfficialVotingWinner`, `applyOpenAsAdmin` | |
+| `listByBlock`, `listByDocument`, `getBlockVotingPanel`, `getBlockGovernanceHistory` | |
+| `propose` (optional range fields), `withdraw` | |
+| `applyVotingWinner` (+ `confirmStale`), `applyOfficialVotingWinner`, `applyOpenAsAdmin` | |
 | `closeVotingWaveOnBlock`, `deleteVariant` | |
 
 ### `votes`
