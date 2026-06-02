@@ -23,6 +23,15 @@ export type DocumentAdminDialog =
   | { kind: 'history'; blockId: string }
   | { kind: 'adminOverride'; blockId: string };
 
+export type DocumentSelectionRange = {
+  blockId: string;
+  rangeStart: number;
+  rangeEnd: number;
+  excerpt: string;
+  blockType: string;
+  officialHtml: string;
+};
+
 export interface DocumentCanvasFocusContextValue {
   documentId: string;
   docMode: 'manual' | 'auto';
@@ -41,6 +50,8 @@ export interface DocumentCanvasFocusContextValue {
   setFocusedBlockId: (blockId: string | null) => void;
   focusedVariantId: string | null;
   setFocusedVariantId: (variantId: string | null) => void;
+  selectedRange: DocumentSelectionRange | null;
+  setSelectedRange: (range: DocumentSelectionRange | null) => void;
   getBlock: (blockId: string) => DocBlock | null;
   mobileSheet: DocumentMobileSheet;
   openMobileSheet: (sheet: Exclude<DocumentMobileSheet, { kind: 'closed' }>) => void;
@@ -101,10 +112,12 @@ export function DocumentCanvasFocusProvider({
 }: DocumentCanvasFocusProviderProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [focusedVariantId, setFocusedVariantId] = useState<string | null>(null);
+  const [selectedRange, setSelectedRange] = useState<DocumentSelectionRange | null>(null);
 
   const setFocusedBlockIdWrapped = useCallback((blockId: string | null) => {
     setFocusedBlockId(blockId);
     setFocusedVariantId(null);
+    setSelectedRange(null);
   }, []);
   const [mobileSheet, setMobileSheet] = useState<DocumentMobileSheet>({ kind: 'closed' });
   const [adminDialog, setAdminDialog] = useState<DocumentAdminDialog>({ kind: 'closed' });
@@ -162,6 +175,8 @@ export function DocumentCanvasFocusProvider({
       setFocusedBlockId: setFocusedBlockIdWrapped,
       focusedVariantId,
       setFocusedVariantId,
+      selectedRange,
+      setSelectedRange,
       getBlock,
       mobileSheet,
       openMobileSheet,
@@ -188,6 +203,8 @@ export function DocumentCanvasFocusProvider({
       setFocusedBlockIdWrapped,
       focusedVariantId,
       setFocusedVariantId,
+      selectedRange,
+      setSelectedRange,
       getBlock,
       mobileSheet,
       openMobileSheet,

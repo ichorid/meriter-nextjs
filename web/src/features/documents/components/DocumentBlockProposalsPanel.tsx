@@ -56,6 +56,7 @@ export function DocumentBlockProposalsPanel({
   t,
 }: DocumentBlockProposalsPanelProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
+  const tGdocs = useTranslations('pages.documents.gdocs');
   const utils = trpc.useUtils();
   const [showAllVariants, setShowAllVariants] = useState(false);
   const [votesExpandedFor, setVotesExpandedFor] = useState<string | null>(null);
@@ -114,9 +115,33 @@ export function DocumentBlockProposalsPanel({
   };
 
   const applyWinnerMutation = trpc.documentVariants.applyVotingWinner.useMutation({
-    onSuccess: invalidateBlock,
-    onError: (err) => addToast(err.message, 'error'),
+    onSuccess: async () => {
+      await invalidateBlock();
+      await utils.documentVariants.listByDocument.invalidate({ documentId });
+    },
   });
+
+  const requestApplyWinner = (variantId: string, confirmStale = false) => {
+    applyWinnerMutation.mutate(
+      { variantId, ...(confirmStale ? { confirmStale: true } : {}) },
+      {
+        onError: (err) => {
+          const stale =
+            !confirmStale && err.message.includes('Official text changed');
+          if (stale) {
+            const ok = window.confirm(
+              `${tGdocs('staleApplyTitle')}\n\n${tGdocs('staleApplyBody')}`,
+            );
+            if (ok) {
+              requestApplyWinner(variantId, true);
+            }
+            return;
+          }
+          addToast(err.message, 'error');
+        },
+      },
+    );
+  };
 
   const applyOfficialWinnerMutation = trpc.documentVariants.applyOfficialVotingWinner.useMutation({
     onSuccess: invalidateBlock,
@@ -277,7 +302,7 @@ export function DocumentBlockProposalsPanel({
                       disabled={applyWinnerMutation.isPending}
                       onClick={(e) => {
                         e.stopPropagation();
-                        applyWinnerMutation.mutate({ variantId: v.id });
+                        requestApplyWinner(v.id);
                       }}
                     >
                       {t('applyWinner')}

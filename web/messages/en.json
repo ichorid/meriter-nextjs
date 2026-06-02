@@ -1201,6 +1201,22 @@
                 "sheetVoteOfficial": "Vote for original text",
                 "viewCompare": "View edits",
                 "viewClean": "Hide edits"
+            },
+            "gdocs": {
+                "railTitle": "Proposals",
+                "railSubtitle": "{count} active threads",
+                "selectBlock": "Select text in the document or pick a thread",
+                "emptyExcerpt": "(empty block)",
+                "waveOpen": "Voting open",
+                "waveIdle": "Idle",
+                "lockedBadge": "Pinned",
+                "proposalsLocked": "This passage is pinned — you cannot propose edits here",
+                "leadEditorHint": "Edit the official document; structure updates automatically",
+                "leadEditorPlaceholder": "Document text…",
+                "mobileProposals": "{count} proposals",
+                "staleApplyTitle": "Official text changed",
+                "staleApplyBody": "The passage changed after this proposal was submitted. Apply anyway?",
+                "staleApplyConfirm": "Apply anyway"
             }
         },
         "spaces": {

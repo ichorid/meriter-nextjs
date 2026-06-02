@@ -27,6 +27,8 @@ export interface DocumentProposeComposerProps {
   blockType?: MeriterBlockType | string;
   /** Current official block HTML — preloaded in the editor when proposing an edit. */
   initialContent?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
   onSuccess?: () => void;
   showCancel?: boolean;
   onCancel?: () => void;
@@ -38,6 +40,8 @@ export function DocumentProposeComposer({
   blockId,
   blockType = 'paragraph',
   initialContent = '',
+  rangeStart,
+  rangeEnd,
   onSuccess,
   showCancel,
   onCancel,
@@ -73,6 +77,7 @@ export function DocumentProposeComposer({
       setResetKey((k) => k + 1);
       await utils.documents.getById.invalidate({ id: documentId });
       await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
+      await utils.documentVariants.listByDocument.invalidate({ documentId });
       onSuccess?.();
     },
     onError: (err) => addToast(err.message, 'error'),
@@ -116,15 +121,21 @@ export function DocumentProposeComposer({
       }
     }
     const refs = referencesForPropose(referenceDrafts);
+    const isRange =
+      rangeStart !== undefined && rangeEnd !== undefined && rangeEnd > rangeStart;
     proposeMutation.mutate({
       documentId,
       blockId,
-      content: trimmed,
+      ...(isRange
+        ? { rangeStart, rangeEnd, proposedText: trimmed }
+        : { content: trimmed }),
       ...(refs.length > 0 ? { references: refs } : {}),
     });
   }, [
     blockId,
     documentId,
+    rangeStart,
+    rangeEnd,
     variantCost,
     quotaRemaining,
     globalWalletBalance,

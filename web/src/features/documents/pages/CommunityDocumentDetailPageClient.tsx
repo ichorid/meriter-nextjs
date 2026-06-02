@@ -20,7 +20,9 @@ import { DocumentCanvasFocusProvider } from '@/features/documents/context/Docume
 import { DocumentSettingsDialog } from '@/features/documents/components/DocumentSettingsDialog';
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
-import { DocumentCanvasBody } from '@/features/documents/components/DocumentCanvasBody';
+import { DocumentUnifiedCanvas } from '@/features/documents/components/DocumentUnifiedCanvas';
+import { DocumentLeadUnifiedEditor } from '@/features/documents/components/DocumentLeadUnifiedEditor';
+import { DocumentProposalRail } from '@/features/documents/components/DocumentProposalRail';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
@@ -178,7 +180,7 @@ export function CommunityDocumentDetailPageClient({
       myId={user.id}
       stickyHeader={pageHeader}
     >
-      <div className="relative mx-auto w-full max-w-3xl p-4">
+      <div className="relative mx-auto w-full max-w-[1600px] p-4">
         {canManageDocument ? (
           <DocumentSettingsDialog
             open={settingsOpen}
@@ -207,35 +209,41 @@ export function CommunityDocumentDetailPageClient({
         >
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
-              <DocumentCanvas>
-                <DocumentCanvasHeader
-                  title={doc.title}
-                  docType={doc.type}
-                  mode={doc.mode}
-                  votingDurationHours={doc.votingDurationHours ?? 48}
-                  variantCost={doc.variantCost ?? 1}
-                  updatedAt={doc.updatedAt}
-                  canManageDocument={canManageDocument}
-                  onOpenSettings={() => setSettingsOpen(true)}
-                />
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+                <div className="min-w-0 flex-1">
+                  <DocumentCanvas className="max-w-none">
+                    <DocumentCanvasHeader
+                      title={doc.title}
+                      docType={doc.type}
+                      mode={doc.mode}
+                      votingDurationHours={doc.votingDurationHours ?? 48}
+                      variantCost={doc.variantCost ?? 1}
+                      updatedAt={doc.updatedAt}
+                      canManageDocument={canManageDocument}
+                      onOpenSettings={() => setSettingsOpen(true)}
+                    />
 
-                <DocumentCanvasBody
+                    {canManageDocument ? (
+                      <DocumentLeadUnifiedEditor
+                        documentId={doc.id}
+                        sections={doc.sections}
+                        updatedAt={doc.updatedAt}
+                      />
+                    ) : (
+                      <DocumentUnifiedCanvas
+                        sections={doc.sections}
+                        documentId={doc.id}
+                        readOnly
+                      />
+                    )}
+                  </DocumentCanvas>
+                </div>
+
+                <DocumentProposalRail
                   sections={doc.sections}
-                  documentId={doc.id}
-                  docMode={doc.mode}
-                  variantCost={doc.variantCost ?? 1}
-                  votingDurationHours={doc.votingDurationHours ?? 48}
-                  docAllowDownvotes={doc.allowDownvotes ?? true}
-                  canManageDocument={canManageDocument}
-                  community={community ?? null}
-                  quotaRemaining={quotaRemaining}
-                  walletBalance={walletBalance}
-                  globalWalletBalance={globalWalletBalance}
-                  userId={user.id}
-                  addToast={addToast}
-                  t={t as DocTranslate}
+                  className="hidden lg:flex shrink-0"
                 />
-              </DocumentCanvas>
+              </div>
 
               <DocumentCanvasMobileSheet />
               <DocumentBlockAdminDialogs />

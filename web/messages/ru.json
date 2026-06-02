@@ -1201,6 +1201,22 @@
                 "sheetVoteOfficial": "Голос за исходный текст",
                 "viewCompare": "Посмотреть правки",
                 "viewClean": "Скрыть правки"
+            },
+            "gdocs": {
+                "railTitle": "Предложения",
+                "railSubtitle": "{count} активных веток",
+                "selectBlock": "Выделите фрагмент в документе или выберите ветку",
+                "emptyExcerpt": "(пустой блок)",
+                "waveOpen": "Идёт голосование",
+                "waveIdle": "Без волны",
+                "lockedBadge": "Закреплено",
+                "proposalsLocked": "Фрагмент закреплён — предложить правку нельзя",
+                "leadEditorHint": "Редактируйте официальный текст; структура обновится автоматически",
+                "leadEditorPlaceholder": "Текст документа…",
+                "mobileProposals": "{count} предложений",
+                "staleApplyTitle": "Официальный текст изменился",
+                "staleApplyBody": "Фрагмент изменился после отправки предложения. Всё равно применить?",
+                "staleApplyConfirm": "Применить"
             }
         },
         "spaces": {
