@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -21,7 +21,10 @@ import { DocumentSettingsDialog } from '@/features/documents/components/Document
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
 import { DocumentUnifiedCanvas } from '@/features/documents/components/DocumentUnifiedCanvas';
-import { DocumentLeadUnifiedEditor } from '@/features/documents/components/DocumentLeadUnifiedEditor';
+import {
+  DocumentGdocsUnifiedEditor,
+  type GdocsPersistMode,
+} from '@/features/documents/components/DocumentGdocsUnifiedEditor';
 import { DocumentProposalRail } from '@/features/documents/components/DocumentProposalRail';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
@@ -38,8 +41,13 @@ export function CommunityDocumentDetailPageClient({
 }: CommunityDocumentDetailPageClientProps) {
   const router = useRouter();
   const t = useTranslations('pages.documents');
+  const tGdocs = useTranslations('pages.documents.gdocs');
   const addToast = useToastStore((s) => s.addToast);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorPersistMode, setEditorPersistMode] = useState<GdocsPersistMode>('propose');
+  const editorSaveRef = useRef<(() => void) | null>(null);
   const { user, isLoading: authLoading } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
   const { data: community } = useCommunity(communityId);
@@ -80,11 +88,23 @@ export function CommunityDocumentDetailPageClient({
     (docQuery.data?.createdBy != null && docQuery.data.createdBy === user?.id) ||
     userRoleInCommunity === 'lead';
 
+  const isCommunityMember =
+    userRoleInCommunity === 'lead' || userRoleInCommunity === 'participant';
+
+  const documentCreators =
+    (community?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
+      ?.documentCreators ?? 'members';
+
+  const canUseGdocsEditor =
+    Boolean(user?.id) &&
+    (user?.globalRole === 'superadmin' ||
+      (isCommunityMember && (canManageDocument || documentCreators === 'members')));
+
   const pageHeader = (
     <SimpleStickyHeader
       title={docQuery.data?.title ?? t('listTitle')}
       showBack
-      onBack={() => router.push(routes.communityDocuments(communityId))}
+      onBack={() => router.push(routes.community(communityId))}
       asStickyHeader
       showScrollToTop
     />
@@ -180,7 +200,7 @@ export function CommunityDocumentDetailPageClient({
       myId={user.id}
       stickyHeader={pageHeader}
     >
-      <div className="relative mx-auto w-full max-w-[1600px] p-4">
+      <div className="relative w-full">
         {canManageDocument ? (
           <DocumentSettingsDialog
             open={settingsOpen}
@@ -209,39 +229,57 @@ export function CommunityDocumentDetailPageClient({
         >
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-                <div className="min-w-0 flex-1">
-                  <DocumentCanvas className="max-w-none">
-                    <DocumentCanvasHeader
-                      title={doc.title}
-                      docType={doc.type}
-                      mode={doc.mode}
-                      votingDurationHours={doc.votingDurationHours ?? 48}
-                      variantCost={doc.variantCost ?? 1}
+              <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_min(280px,32%)] lg:items-start">
+                <DocumentCanvas fullWidth>
+                  <DocumentCanvasHeader
+                    title={doc.title}
+                    docType={doc.type}
+                    mode={doc.mode}
+                    votingDurationHours={doc.votingDurationHours ?? 48}
+                    variantCost={doc.variantCost ?? 1}
+                    updatedAt={doc.updatedAt}
+                    canManageDocument={canManageDocument}
+                    onOpenSettings={() => setSettingsOpen(true)}
+                    onSave={
+                      canUseGdocsEditor
+                        ? () => {
+                            editorSaveRef.current?.();
+                          }
+                        : undefined
+                    }
+                    saveDisabled={!editorDirty}
+                    savePending={editorSaving}
+                    saveLabel={
+                      canManageDocument && editorPersistMode === 'official'
+                        ? tGdocs('leadEditorSave')
+                        : tGdocs('submitProposal')
+                    }
+                    savePendingLabel={tGdocs('leadEditorSaving')}
+                  />
+
+                  {canUseGdocsEditor ? (
+                    <DocumentGdocsUnifiedEditor
+                      documentId={doc.id}
+                      sections={doc.sections}
                       updatedAt={doc.updatedAt}
                       canManageDocument={canManageDocument}
-                      onOpenSettings={() => setSettingsOpen(true)}
+                      saveRequestRef={editorSaveRef}
+                      onDirtyChange={setEditorDirty}
+                      onSavingChange={setEditorSaving}
+                      onPersistModeChange={setEditorPersistMode}
                     />
-
-                    {canManageDocument ? (
-                      <DocumentLeadUnifiedEditor
-                        documentId={doc.id}
-                        sections={doc.sections}
-                        updatedAt={doc.updatedAt}
-                      />
-                    ) : (
-                      <DocumentUnifiedCanvas
-                        sections={doc.sections}
-                        documentId={doc.id}
-                        readOnly
-                      />
-                    )}
-                  </DocumentCanvas>
-                </div>
+                  ) : (
+                    <DocumentUnifiedCanvas
+                      sections={doc.sections}
+                      documentId={doc.id}
+                      readOnly
+                    />
+                  )}
+                </DocumentCanvas>
 
                 <DocumentProposalRail
                   sections={doc.sections}
-                  className="hidden lg:flex shrink-0"
+                  className="hidden lg:flex lg:min-h-0 lg:w-full lg:max-w-[320px] lg:justify-self-end"
                 />
               </div>
 

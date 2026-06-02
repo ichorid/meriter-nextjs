@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/shadcn/button';
+import { Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/shadcn/input';
 import {
   Select,
@@ -12,17 +11,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/shadcn/select';
-import { BrandFormControl } from '@/components/ui/BrandFormControl';
-import { useToastStore } from '@/shared/stores/toast.store';
+import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  MVP_COMMUNITY_DOCUMENT_SETTINGS,
+  communityShowsDocumentsHub,
+  type DocumentsMode,
+} from '@/features/documents/lib/mvp-document-settings';
+import { DocumentsSettingsLockedField } from '@/features/communities/components/DocumentsSettingsLockedField';
 import type { CommunityWithComputedFields } from '@/types/api-v1';
-
-type DocumentsMode = 'off' | 'visionOrDescriptionOnly' | 'all';
-type DocumentCreators = 'admins' | 'members';
-type DocumentDefaultMode = 'manual' | 'auto';
 
 interface CommunityDocumentsSettingsSectionProps {
   community: CommunityWithComputedFields;
   onSave: (data: { settings?: Record<string, unknown> }) => Promise<void>;
+}
+
+function resolveDocumentsMode(raw?: string): DocumentsMode {
+  if (raw === 'off' || raw === 'visionOrDescriptionOnly' || raw === 'all') {
+    return raw;
+  }
+  return MVP_COMMUNITY_DOCUMENT_SETTINGS.documentsMode;
 }
 
 export function CommunityDocumentsSettingsSection({
@@ -30,94 +37,68 @@ export function CommunityDocumentsSettingsSection({
   onSave,
 }: CommunityDocumentsSettingsSectionProps) {
   const t = useTranslations('pages.communitySettings');
-  const addToast = useToastStore((state) => state.addToast);
+  const migratedCreatorsRef = useRef(false);
 
   const settings = community.settings as
     | {
         documentsMode?: DocumentsMode;
-        documentCreators?: DocumentCreators;
+        documentCreators?: 'admins' | 'members';
         documentVariantCost?: number | null;
         documentVotingDurationHours?: number;
-        documentDefaultMode?: DocumentDefaultMode;
+        documentDefaultMode?: 'manual' | 'auto';
       }
     | undefined;
 
-  const [documentsMode, setDocumentsMode] = useState<DocumentsMode>(
-    settings?.documentsMode ?? 'visionOrDescriptionOnly',
+  const documentsMode = resolveDocumentsMode(settings?.documentsMode);
+  const documentCreators =
+    settings?.documentCreators === 'admins' ? 'admins' : 'members';
+  const hubTileVisible = communityShowsDocumentsHub(documentsMode);
+  const lockedTooltip = t('documentsMvpLockedTooltip');
+
+  const displayVariantCost =
+    settings?.documentVariantCost === null || settings?.documentVariantCost === undefined
+      ? ''
+      : String(settings?.documentVariantCost);
+  const displayVotingHours = String(
+    settings?.documentVotingDurationHours ??
+      MVP_COMMUNITY_DOCUMENT_SETTINGS.documentVotingDurationHours,
   );
-  const [documentCreators, setDocumentCreators] = useState<DocumentCreators>(
-    settings?.documentCreators === 'members' ? 'members' : 'admins',
-  );
-  const [documentVariantCost, setDocumentVariantCost] = useState('');
-  const [documentVotingDurationHours, setDocumentVotingDurationHours] = useState('48');
-  const [documentDefaultMode, setDocumentDefaultMode] = useState<DocumentDefaultMode>('manual');
-  const [isSaving, setIsSaving] = useState(false);
+  const displayDefaultMode =
+    settings?.documentDefaultMode === 'auto' ? 'auto' : 'manual';
 
   useEffect(() => {
-    const dm = settings?.documentsMode;
-    setDocumentsMode(
-      dm === 'off' || dm === 'visionOrDescriptionOnly' || dm === 'all'
-        ? dm
-        : 'visionOrDescriptionOnly',
-    );
-    setDocumentCreators(settings?.documentCreators === 'members' ? 'members' : 'admins');
-    const dvc = settings?.documentVariantCost;
-    setDocumentVariantCost(dvc === null || dvc === undefined ? '' : String(dvc));
-    setDocumentVotingDurationHours(String(settings?.documentVotingDurationHours ?? 48));
-    setDocumentDefaultMode(settings?.documentDefaultMode === 'auto' ? 'auto' : 'manual');
-  }, [
-    settings?.documentsMode,
-    settings?.documentCreators,
-    settings?.documentVariantCost,
-    settings?.documentVotingDurationHours,
-    settings?.documentDefaultMode,
-  ]);
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await onSave({
-        settings: {
-          documentsMode,
-          documentCreators,
-          ...(documentsMode !== 'off'
-            ? {
-                documentVariantCost:
-                  documentVariantCost.trim() === ''
-                    ? null
-                    : Math.max(0, parseInt(documentVariantCost, 10) || 0),
-                documentVotingDurationHours: Math.max(
-                  1,
-                  parseInt(documentVotingDurationHours, 10) || 48,
-                ),
-                documentDefaultMode,
-              }
-            : {}),
-        },
-      });
-      addToast(t('documentsSettingsSection.saveSuccess'), 'success');
-    } catch {
-      addToast(t('documentsSettingsSection.saveError'), 'error');
-    } finally {
-      setIsSaving(false);
+    if (migratedCreatorsRef.current || documentCreators === 'members') {
+      return;
     }
-  };
+    migratedCreatorsRef.current = true;
+    void onSave({
+      settings: {
+        documentCreators: MVP_COMMUNITY_DOCUMENT_SETTINGS.documentCreators,
+      },
+    });
+  }, [documentCreators, onSave]);
 
   return (
     <div className="space-y-6">
-      <div className="bg-base-200 rounded-lg p-6 shadow-none">
-        <h3 className="text-lg font-semibold text-brand-text-primary mb-2">
+      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-none dark:bg-primary/10">
+        <div className="flex gap-3">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+          <p className="text-sm leading-relaxed text-base-content/85">{t('documentsMvpBanner')}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg bg-base-200 p-6 shadow-none">
+        <h3 className="mb-2 text-lg font-semibold text-brand-text-primary">
           {t('documentsSection')}
         </h3>
-        <p className="text-sm text-brand-text-secondary mb-6">{t('documentsSectionHelp')}</p>
+        <p className="mb-6 text-sm text-brand-text-secondary">{t('documentsSectionHelp')}</p>
 
-        <div className="space-y-4">
-          <BrandFormControl label={t('documentsModeLabel')}>
-            <Select
-              value={documentsMode}
-              onValueChange={(v) => setDocumentsMode(v as DocumentsMode)}
-              disabled={isSaving}
-            >
+        <div className="space-y-6">
+          <DocumentsSettingsLockedField
+            label={t('documentsModeLabel')}
+            tooltip={lockedTooltip}
+          >
+            <Select value={MVP_COMMUNITY_DOCUMENT_SETTINGS.documentsMode} disabled>
               <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
                 <SelectValue />
               </SelectTrigger>
@@ -129,80 +110,82 @@ export function CommunityDocumentsSettingsSection({
                 <SelectItem value="all">{t('documentsModeAll')}</SelectItem>
               </SelectContent>
             </Select>
-          </BrandFormControl>
+          </DocumentsSettingsLockedField>
 
-          {documentsMode !== 'off' ? (
-            <>
-              <BrandFormControl label={t('documentCreatorsLabel')}>
-                <Select
-                  value={documentCreators}
-                  onValueChange={(v) => setDocumentCreators(v as DocumentCreators)}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admins">{t('documentCreatorsAdmins')}</SelectItem>
-                    <SelectItem value="members">{t('documentCreatorsMembers')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </BrandFormControl>
-              <BrandFormControl
-                label={t('documentVariantCostLabel')}
-                helperText={t('documentVariantCostHelp')}
+          <DocumentsSettingsLockedField
+            label={t('documentsHubTileLabel')}
+            helperText={t('documentsHubTileHint')}
+            tooltip={lockedTooltip}
+          >
+            <div className="flex h-11 max-w-md items-center gap-2 rounded-xl border border-input bg-muted/40 px-3">
+              <Badge
+                variant={hubTileVisible ? 'default' : 'outline'}
+                className="rounded-md font-normal"
               >
-                <Input
-                  type="number"
-                  min={0}
-                  className="h-11 max-w-md rounded-xl"
-                  value={documentVariantCost}
-                  onChange={(e) => setDocumentVariantCost(e.target.value)}
-                  disabled={isSaving}
-                  placeholder="1"
-                />
-              </BrandFormControl>
-              <BrandFormControl label={t('documentVotingDurationLabel')}>
-                <Input
-                  type="number"
-                  min={1}
-                  className="h-11 max-w-md rounded-xl"
-                  value={documentVotingDurationHours}
-                  onChange={(e) => setDocumentVotingDurationHours(e.target.value)}
-                  disabled={isSaving}
-                />
-              </BrandFormControl>
-              <BrandFormControl label={t('documentDefaultModeLabel')}>
-                <Select
-                  value={documentDefaultMode}
-                  onValueChange={(v) => setDocumentDefaultMode(v as DocumentDefaultMode)}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manual">{t('documentDefaultModeManual')}</SelectItem>
-                    <SelectItem value="auto">{t('documentDefaultModeAuto')}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </BrandFormControl>
-            </>
-          ) : null}
-        </div>
-      </div>
+                {hubTileVisible ? t('documentsHubTileOn') : t('documentsHubTileOff')}
+              </Badge>
+              <span className="text-xs text-base-content/55">{t('documentsHubTileDependsOnMode')}</span>
+            </div>
+          </DocumentsSettingsLockedField>
 
-      <div className="flex justify-end">
-        <Button
-          variant="default"
-          size="lg"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="rounded-xl active:scale-[0.98]"
-        >
-          {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isSaving ? t('saving') : t('saveChanges')}
-        </Button>
+          <DocumentsSettingsLockedField
+            label={t('documentCreatorsLabel')}
+            tooltip={lockedTooltip}
+          >
+            <Select value={MVP_COMMUNITY_DOCUMENT_SETTINGS.documentCreators} disabled>
+              <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admins">{t('documentCreatorsAdmins')}</SelectItem>
+                <SelectItem value="members">{t('documentCreatorsMembers')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </DocumentsSettingsLockedField>
+
+          <DocumentsSettingsLockedField
+            label={t('documentVariantCostLabel')}
+            helperText={t('documentVariantCostHelp')}
+            tooltip={lockedTooltip}
+          >
+            <Input
+              type="number"
+              min={0}
+              className="h-11 max-w-md rounded-xl"
+              value={displayVariantCost}
+              disabled
+              placeholder="1"
+            />
+          </DocumentsSettingsLockedField>
+
+          <DocumentsSettingsLockedField
+            label={t('documentVotingDurationLabel')}
+            tooltip={lockedTooltip}
+          >
+            <Input
+              type="number"
+              min={1}
+              className="h-11 max-w-md rounded-xl"
+              value={displayVotingHours}
+              disabled
+            />
+          </DocumentsSettingsLockedField>
+
+          <DocumentsSettingsLockedField
+            label={t('documentDefaultModeLabel')}
+            tooltip={lockedTooltip}
+          >
+            <Select value={displayDefaultMode} disabled>
+              <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual">{t('documentDefaultModeManual')}</SelectItem>
+                <SelectItem value="auto">{t('documentDefaultModeAuto')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </DocumentsSettingsLockedField>
+        </div>
       </div>
     </div>
   );

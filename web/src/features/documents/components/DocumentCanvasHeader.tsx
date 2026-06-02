@@ -15,6 +15,13 @@ export interface DocumentCanvasHeaderProps {
   updatedAt?: string | Date | null;
   canManageDocument: boolean;
   onOpenSettings: () => void;
+  onSave?: () => void;
+  saveDisabled?: boolean;
+  savePending?: boolean;
+  /** Override primary action label (e.g. propose vs official save). */
+  saveLabel?: string;
+  savePendingLabel?: string;
+  showSettings?: boolean;
 }
 
 export function DocumentCanvasHeader({
@@ -26,8 +33,15 @@ export function DocumentCanvasHeader({
   updatedAt,
   canManageDocument,
   onOpenSettings,
+  onSave,
+  saveDisabled = false,
+  savePending = false,
+  saveLabel,
+  savePendingLabel,
+  showSettings = true,
 }: DocumentCanvasHeaderProps) {
   const t = useTranslations('pages.documents');
+  const tGdocs = useTranslations('pages.documents.gdocs');
   const typeLabel =
     docType === 'imageOfFuture'
       ? t('typeImageOfFuture')
@@ -39,18 +53,33 @@ export function DocumentCanvasHeader({
     <header className="space-y-2 border-b border-base-300/50 pb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-xl font-extrabold tracking-tight text-base-content">{title}</h1>
-        {canManageDocument ? (
-          <div className="flex flex-wrap items-center gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1 rounded-lg text-xs text-base-content/70"
-              onClick={onOpenSettings}
-            >
-              <Settings size={14} />
-              {t('settings.open')}
-            </Button>
+        {onSave || (canManageDocument && showSettings) ? (
+          <div className="flex flex-wrap items-center gap-2">
+            {onSave ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-lg px-3 text-xs"
+                onClick={onSave}
+                disabled={saveDisabled || savePending}
+              >
+                {savePending
+                  ? (savePendingLabel ?? tGdocs('leadEditorSaving'))
+                  : (saveLabel ?? tGdocs('leadEditorSave'))}
+              </Button>
+            ) : null}
+            {canManageDocument && showSettings ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 rounded-lg text-xs text-base-content/70"
+                onClick={onOpenSettings}
+              >
+                <Settings size={14} />
+                {t('settings.open')}
+              </Button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -63,9 +92,6 @@ export function DocumentCanvasHeader({
         <span>{t('metaVariantCost', { cost: variantCost })}</span>
         {updatedAt ? (
           <span>{t('metaUpdated', { date: new Date(updatedAt).toLocaleString() })}</span>
-        ) : null}
-        {structure?.structureMode ? (
-          <span className="text-primary/80">{tCanvas('structureModeHint')}</span>
         ) : null}
       </div>
     </header>

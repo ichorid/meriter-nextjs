@@ -18,6 +18,8 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
 import { routes } from '@/lib/constants/routes';
+import { trpc } from '@/lib/trpc/client';
+import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
 
 interface CommunitySettingsPageClientProps {
   communityId: string;
@@ -54,9 +56,30 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
     // Check if user has access (superadmin or lead)
     const hasAccess = isSuperadmin || isUserLead;
 
+    const obDocForSettingsRedirect = trpc.documents.getOfficialByType.useQuery(
+        { communityId, type: 'imageOfFuture' },
+        {
+            enabled: Boolean(
+                focusFutureVisionText &&
+                    communityId &&
+                    hasAccess &&
+                    community &&
+                    communityMayHaveOfficialObDocument(community.typeTag),
+            ),
+        },
+    );
+
     useEffect(() => {
-        if (!focusFutureVisionText || !communityId || !hasAccess || communityLoading || rolesLoading) return;
-        router.replace(routes.communityDocuments(communityId));
+        if (!focusFutureVisionText || !communityId || !hasAccess || communityLoading || rolesLoading) {
+            return;
+        }
+        if (!obDocForSettingsRedirect.isFetched) {
+            return;
+        }
+        const docId = obDocForSettingsRedirect.data?.id;
+        if (docId) {
+            router.replace(routes.communityDocument(communityId, docId));
+        }
     }, [
         focusFutureVisionText,
         communityId,
@@ -64,6 +87,8 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         communityLoading,
         rolesLoading,
         router,
+        obDocForSettingsRedirect.isFetched,
+        obDocForSettingsRedirect.data?.id,
     ]);
 
     // Redirect if no access
@@ -242,7 +267,7 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             {t('tabs.general')}
                         </TabsTrigger>
                         {!isFutureVisionHub ? (
-                            <TabsTrigger 
+                            <TabsTrigger
                                 value="documents"
                                 className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                             >

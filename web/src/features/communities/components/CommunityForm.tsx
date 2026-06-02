@@ -43,6 +43,9 @@ import {
     serializeDraftForApi,
     type DocumentDraft,
 } from "@/features/documents/lib/document-draft";
+import { MVP_COMMUNITY_DOCUMENT_SETTINGS } from "@/features/documents/lib/mvp-document-settings";
+import { communityMayHaveOfficialObDocument } from "@/features/documents/lib/community-ob-document";
+import { trpc } from "@/lib/trpc/client";
 
 interface CommunityFormProps {
     communityId?: string; // Если нет - создание, если есть - редактирование
@@ -74,6 +77,25 @@ export const CommunityForm = ({
     const updateCommunity = useUpdateCommunity();
     const createCommunity = useCreateCommunity();
 
+    const obOfficialDocQuery = trpc.documents.getOfficialByType.useQuery(
+        { communityId: communityId ?? "", type: "imageOfFuture" },
+        {
+            enabled: Boolean(
+                isEditMode &&
+                    communityId &&
+                    community &&
+                    !isProjectCommunity &&
+                    communityMayHaveOfficialObDocument(
+                        (community as { typeTag?: string }).typeTag,
+                    ),
+            ),
+        },
+    );
+    const collaborativeObDocHref =
+        isEditMode && communityId && obOfficialDocQuery.data?.id
+            ? routes.communityDocument(communityId, obOfficialDocQuery.data.id)
+            : undefined;
+
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [avatarUrl, setAvatarUrl] = useState("");
@@ -96,17 +118,6 @@ export const CommunityForm = ({
     const [futureVisionTags, setFutureVisionTags] = useState<string[]>([]);
     const [futureVisionCover, setFutureVisionCover] = useState("");
     const [eventCreation, setEventCreation] = useState<"admin" | "members">("admin");
-    const [documentsMode, setDocumentsMode] = useState<
-        "off" | "visionOrDescriptionOnly" | "all"
-    >("visionOrDescriptionOnly");
-    const [documentCreators, setDocumentCreators] = useState<"admins" | "members">(
-        "admins",
-    );
-    const [documentVariantCost, setDocumentVariantCost] = useState("");
-    const [documentVotingDurationHours, setDocumentVotingDurationHours] = useState("48");
-    const [documentDefaultMode, setDocumentDefaultMode] = useState<"manual" | "auto">(
-        "manual",
-    );
     /** Draft collaborative OB document at create time (seeded into imageOfFuture document). */
     const [futureVisionDraft, setFutureVisionDraft] = useState<DocumentDraft>(() =>
         createEmptyDocumentDraft(),
@@ -133,23 +144,6 @@ export const CommunityForm = ({
             setFutureVisionCover(c.futureVisionCover || "");
             const ec = c.settings?.eventCreation;
             setEventCreation(ec === "members" ? "members" : "admin");
-            const dm = c.settings?.documentsMode;
-            setDocumentsMode(
-                dm === "off" || dm === "visionOrDescriptionOnly" || dm === "all"
-                    ? dm
-                    : "visionOrDescriptionOnly",
-            );
-            setDocumentCreators(c.settings?.documentCreators === "members" ? "members" : "admins");
-            const dvc = c.settings?.documentVariantCost;
-            setDocumentVariantCost(
-                dvc === null || dvc === undefined ? "" : String(dvc),
-            );
-            setDocumentVotingDurationHours(
-                String(c.settings?.documentVotingDurationHours ?? 48),
-            );
-            setDocumentDefaultMode(
-                c.settings?.documentDefaultMode === "auto" ? "auto" : "manual",
-            );
         }
     }, [community, isEditMode]);
 
@@ -175,27 +169,10 @@ export const CommunityForm = ({
                         plural: currencyPlural,
                         genitive: currencyGenitive,
                     },
-                    ...( !isEditMode
+                    ...(!isEditMode
                         ? {
                               eventCreation,
-                              documentsMode,
-                              documentCreators,
-                              ...(documentsMode !== "off"
-                                  ? {
-                                        documentVariantCost:
-                                            documentVariantCost.trim() === ""
-                                                ? null
-                                                : Math.max(
-                                                      0,
-                                                      parseInt(documentVariantCost, 10) || 0,
-                                                  ),
-                                        documentVotingDurationHours: Math.max(
-                                            1,
-                                            parseInt(documentVotingDurationHours, 10) || 48,
-                                        ),
-                                        documentDefaultMode,
-                                    }
-                                  : {}),
+                              ...MVP_COMMUNITY_DOCUMENT_SETTINGS,
                           }
                         : {}),
                 },
@@ -374,18 +351,16 @@ export const CommunityForm = ({
 
             {!isFutureVisionHub && (
                 <div className="border-t border-base-300 pt-6 space-y-6">
-                    {isEditMode && communityId ? (
+                    {isEditMode && communityId && collaborativeObDocHref ? (
                         <>
                             <h2 className="text-lg font-semibold text-brand-text-primary">
-                                {isProjectCommunity ? t("projectDocumentSection") : t("futureVisionSection")}
+                                {t("futureVisionSection")}
                             </h2>
                             <Button variant="outline" className="rounded-xl active:scale-[0.98]" asChild>
-                            <Link href={routes.communityDocuments(communityId)}>
-                                {t("openCollaborativeDocument")}
-                            </Link>
-                        </Button>
+                                <Link href={collaborativeObDocHref}>{t("openCollaborativeDocument")}</Link>
+                            </Button>
                         </>
-                    ) : (
+                    ) : !isEditMode ? (
                         <BrandFormControl
                             label={t("futureVisionSection")}
                             labelDescription={
@@ -404,7 +379,7 @@ export const CommunityForm = ({
                                 disabled={isPending}
                             />
                         </BrandFormControl>
-                    )}
+                    ) : null}
                     <div className="space-y-4">
                         <ValuesFormPickerFields
                             decree809Tags={rubricatorSections.decree809}

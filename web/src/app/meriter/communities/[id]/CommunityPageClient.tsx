@@ -16,7 +16,9 @@ import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/share
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar, FileText } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar } from 'lucide-react';
+import { CommunityDocumentsHubTile } from '@/components/organisms/Community/CommunityDocumentsHubTile';
+import { communityShowsDocumentsHub } from '@/features/documents/lib/mvp-document-settings';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -679,9 +681,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const documentsMode =
         (comms?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
         'visionOrDescriptionOnly';
+
     const documentCreators =
         (comms?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
-            ?.documentCreators ?? 'admins';
+            ?.documentCreators ?? 'members';
+
+    const showDocumentsHubTile = Boolean(
+        user?.id && isCommunityMember && communityShowsDocumentsHub(documentsMode),
+    );
 
     const obOfficialDocQuery = trpc.documents.getOfficialByType.useQuery(
         { communityId: chatId, type: 'imageOfFuture' },
@@ -689,7 +696,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             enabled: Boolean(
                 comms &&
                     user?.id &&
-                    documentsMode !== 'off' &&
                     communityMayHaveOfficialObDocument(comms.typeTag),
             ),
         },
@@ -699,7 +705,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const canEditFutureVisionDocument =
         Boolean(user?.id) &&
-        documentsMode !== 'off' &&
         (user?.globalRole === 'superadmin' ||
             userRoleInCommunity === 'lead' ||
             (isCommunityMember &&
@@ -707,10 +712,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 userRoleInCommunity === 'participant'));
 
     const canOpenObCollaborativeDocument = Boolean(
-        user?.id &&
-            documentsMode !== 'off' &&
-            isCommunityMember &&
-            obDocForHero?.id,
+        user?.id && isCommunityMember && obDocForHero?.id,
     );
 
     const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
@@ -837,7 +839,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         obDocumentLoading={obOfficialDocQuery.isLoading}
                         obDocumentFetched={obOfficialDocQuery.isFetched}
                         canEditFutureVisionDocument={canEditFutureVisionDocument}
-                        documentsMode={documentsMode}
                         avatarRowEndSlot={
                             user &&
                             isCommunityMember &&
@@ -884,6 +885,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             }
                             readOnly={false}
                             isCommunityMember={Boolean(user && isCommunityMember)}
+                            documentsMode={documentsMode}
+                            showDocumentsHub={showDocumentsHubTile}
                         />
                     </div>
                 </div>
@@ -959,22 +962,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     <ChevronRight size={14} />
                                 </span>
                             </Link>
-                            {isCommunityMember && documentsMode !== 'off' ? (
-                            <Link
-                                href={routes.communityDocuments(chatId)}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                            >
-                                <div className="flex min-w-0 items-center gap-3">
-                                    <FileText className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                    <span className="truncate font-medium text-base-content">
-                                        {tCommunities('communityDocuments')}
-                                    </span>
-                                </div>
-                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                    {tCommunities('all')}
-                                    <ChevronRight size={14} />
-                                </span>
-                            </Link>
+                            {showDocumentsHubTile ? (
+                                <CommunityDocumentsHubTile communityId={chatId} />
                             ) : null}
                         </>
                     ) : null}

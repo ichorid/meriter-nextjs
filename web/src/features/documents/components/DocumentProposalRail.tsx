@@ -52,8 +52,8 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
   return (
     <aside
       className={cn(
-        'sticky top-4 flex max-h-[calc(100vh-6rem)] w-full flex-col overflow-hidden rounded-xl',
-        'border-l border-stitch-border bg-stitch-surface lg:w-[340px]',
+        'sticky top-4 flex max-h-[calc(100vh-6rem)] w-full min-w-0 flex-col overflow-hidden rounded-xl',
+        'border border-stitch-border bg-stitch-surface lg:max-w-[320px]',
         className,
       )}
     >

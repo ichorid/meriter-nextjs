@@ -85,32 +85,8 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     return 'posts' as const;
   }, [searchParams]);
 
-  const documentsMode =
-    (data?.project?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
-    'visionOrDescriptionOnly';
-
-  const descriptionDocQuery = trpc.documents.getOfficialByType.useQuery(
-    { communityId: projectId, type: 'description' },
-    { enabled: Boolean(user?.id && data?.project && documentsMode !== 'off') },
-  );
-
-  const isProjectMemberForDocs = useMemo(() => {
-    if (!user?.id || !data?.project) return false;
-    const p = data.project;
-    return Boolean(
-      p.members?.includes(user.id) ||
-        meInProjectMembers?.role === 'lead' ||
-        meInProjectMembers?.role === 'participant',
-    );
-  }, [user?.id, data?.project, meInProjectMembers?.role]);
-
-  const descriptionDocumentHref =
-    user?.id &&
-    documentsMode !== 'off' &&
-    (isProjectMemberForDocs || user.globalRole === 'superadmin') &&
-    descriptionDocQuery.data?.id
-      ? routes.communityDocument(projectId, descriptionDocQuery.data.id)
-      : undefined;
+  /** MVP: collaborative UI is OB-only; project description doc link hidden. */
+  const descriptionDocumentHref = undefined;
 
   if (isLoading || !data) {
     return (
