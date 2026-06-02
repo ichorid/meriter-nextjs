@@ -47,9 +47,7 @@ type PostCostBreakdown = {
  */
 export class CreatePublicationUseCase implements CreatePublicationPort {
   private readonly logger = new Logger(CreatePublicationUseCase.name);
-  private readonly getRemainingQuota = createGetRemainingQuotaUseCase({
-    communityService: this.communityService,
-  });
+  private readonly getRemainingQuota: ReturnType<typeof createGetRemainingQuotaUseCase>;
 
   constructor(
     private readonly publicationPersistence: PublicationPersistencePort,
@@ -61,7 +59,11 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
     private readonly userService: UserService,
     private readonly communityWalletService: CommunityWalletService,
     private readonly walletService: WalletService,
-  ) {}
+  ) {
+    this.getRemainingQuota = createGetRemainingQuotaUseCase({
+      communityService: this.communityService,
+    });
+  }
 
   private async assertCanCreate(userId: string, communityId: string): Promise<void> {
     const allowed = await this.permissionService.canCreatePublication(userId, communityId);

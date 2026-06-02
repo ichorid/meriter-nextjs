@@ -33,11 +33,13 @@ const DEFAULT_CURRENCY = {
  * inv-01: postCost wallet portion debited from GLOBAL_COMMUNITY_ID.
  */
 export class CreateEventUseCase {
-  private readonly getRemainingQuota = createGetRemainingQuotaUseCase({
-    communityService: this.ctx.communityService,
-  });
+  private readonly getRemainingQuota: ReturnType<typeof createGetRemainingQuotaUseCase>;
 
-  constructor(private readonly ctx: CreateEventContext) {}
+  constructor(private readonly ctx: CreateEventContext) {
+    this.getRemainingQuota = createGetRemainingQuotaUseCase({
+      communityService: this.ctx.communityService,
+    });
+  }
 
   async execute(input: EventCreateInput): Promise<CreateEventResult> {
     const community = await this.ctx.communityService.getCommunity(input.communityId);

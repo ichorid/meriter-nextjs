@@ -49,15 +49,20 @@ export class PlatformSettingsPersistenceAdapter implements PlatformSettingsPersi
     set: PlatformSettingsUpdateSet,
     setOnInsert?: PlatformSettingsBootstrapInput,
   ): Promise<PlatformSettingsRecord | null> {
+    const update: { $set: PlatformSettingsUpdateSet; $setOnInsert?: Record<string, unknown> } = {
+      $set: set,
+    };
+    if (setOnInsert) {
+      const insertFields: Record<string, unknown> = { id };
+      for (const [key, value] of Object.entries(setOnInsert)) {
+        if (!(key in set)) {
+          insertFields[key] = value;
+        }
+      }
+      update.$setOnInsert = insertFields;
+    }
     const doc = await this.platformSettingsModel
-      .findOneAndUpdate(
-        { id },
-        {
-          $set: set,
-          ...(setOnInsert ? { $setOnInsert: { id, ...setOnInsert } } : {}),
-        },
-        { new: true, upsert: true, runValidators: true },
-      )
+      .findOneAndUpdate({ id }, update, { new: true, upsert: true, runValidators: true })
       .lean()
       .exec();
     return doc ? (doc as PlatformSettingsRecord) : null;

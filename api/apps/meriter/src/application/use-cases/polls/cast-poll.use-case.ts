@@ -48,11 +48,13 @@ const DEFAULT_CURRENCY = {
  * inv-01: wallet portion debited via WalletService (global or resolved community wallet).
  */
 export class CastPollUseCase {
-  private readonly getRemainingQuota = createGetRemainingQuotaUseCase({
-    communityService: this.ctx.communityService,
-  });
+  private readonly getRemainingQuota: ReturnType<typeof createGetRemainingQuotaUseCase>;
 
-  constructor(private readonly ctx: CastPollContext) {}
+  constructor(private readonly ctx: CastPollContext) {
+    this.getRemainingQuota = createGetRemainingQuotaUseCase({
+      communityService: this.ctx.communityService,
+    });
+  }
 
   async execute(input: CastPollInput): Promise<CastPollResult> {
     const poll = await this.ctx.pollService.getPoll(input.pollId);
