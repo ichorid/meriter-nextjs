@@ -65,7 +65,8 @@ meriter-nextjs/
 |------|-----|------------|
 | `index.mdc` | Always | Master context — обзор проекта, структура, ключевые концепции |
 | `business-index.mdc` | Always (routing) | Маршрутизация к `business-*.mdc` (merits, communities, content, …) |
-| `architecture.mdc` | Pattern | Структура кода, куда что добавлять |
+| `architecture.mdc` | Pattern | Структура кода, CA-слои, ESLint zones (полная спека) |
+| `ARCHITECTURE.md` (корень) | Human | Краткая карта репо → ссылка на `architecture.mdc` |
 | `frontend.mdc` | Pattern | React/Next.js паттерны, компоненты, хуки |
 | `backend.mdc` | Pattern | NestJS/tRPC паттерны, сервисы, роутеры |
 | `local-dev-win.mdc` | Manual | Команды для Windows |
@@ -203,7 +204,7 @@ codegraph search "запрос"          # semantic search
 | `docs/CURSOR-WORKFLOW.md` | Как работать с Cursor |
 | `docs/templates/PRD-TEMPLATE.md` | Шаблон для новых фич |
 | `docs/LOCAL_SETUP.md` | Детальная инструкция по запуску |
-| `ARCHITECTURE.md` | Архитектура (для человека) |
+| `ARCHITECTURE.md` | Краткая карта репо (люди + быстрый вход); полная CA-спека — `.cursor/rules/architecture.mdc` |
 | `BUSINESS_LOGIC_DOCUMENTATION.md` | Полная бизнес-логика |
 | `DEVELOPMENT.md` | Руководство разработчика |
 

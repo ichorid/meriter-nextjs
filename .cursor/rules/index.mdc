@@ -102,7 +102,7 @@ Use this file as the first entry point. For domain/business logic: open @busines
 - @business-shared-document.mdc — Collaborative documents, variants, document-variant votes, mirror/cron
 - @business-merit-transfer.mdc — Peer merit transfers (`meritTransfer` tRPC, UI feeds)
 - @business-events.mdc — Event publications, RSVP, invites, `eventCreation`, event-linked transfers
-- @architecture.mdc — Repository structure and code layers
+- @architecture.mdc — Repository structure and code layers (full CA spec); [`ARCHITECTURE.md`](../../ARCHITECTURE.md) — short repo map at root
 - @design-system.mdc — Obsidian Nocturne (dark/light), Manrope, layout, stitch layers, copy policy (Заслуги)
 - @frontend.mdc — React/Next.js patterns
 - @frontend-notifications.mdc — Notifications list cards (subtitles, links, typography)
