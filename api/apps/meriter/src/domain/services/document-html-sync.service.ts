@@ -121,6 +121,26 @@ export class DocumentHtmlSyncService {
       },
     ];
 
+    const structureUnchanged =
+      report.created.length === 0 &&
+      report.removed.length === 0 &&
+      mappedBlocks.length === existingBlocks.length &&
+      mappedBlocks.every((b) => {
+        const ex = existingBlocks.find((e) => e.id === b.id);
+        return (
+          ex &&
+          (ex.officialContent ?? '') === (b.officialContent ?? '') &&
+          ex.blockType === b.blockType &&
+          (ex.order ?? 0) === b.order
+        );
+      }) &&
+      existingSections.length === 1 &&
+      existingSections[0]?.id === sectionId;
+
+    if (structureUnchanged) {
+      return { document: doc, mapping: report };
+    }
+
     if (report.removed.length > 0) {
       for (const blockId of report.removed) {
         await this.documentPersistence.withdrawOpenVariantsOnBlock(doc.id, blockId);

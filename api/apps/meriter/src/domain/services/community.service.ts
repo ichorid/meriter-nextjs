@@ -623,7 +623,7 @@ export class CommunityService {
       },
       dailyEmission: dto.settings?.dailyEmission ?? 10,
       documentsMode: 'visionOrDescriptionOnly',
-      documentCreators: 'admins',
+      documentCreators: 'members',
       documentVotingDurationHours: 48,
       documentDefaultMode: 'manual',
       documentAutoApplyTimerHours: 48,
